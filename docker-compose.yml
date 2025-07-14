@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+  
+  migrate:
+    build: .
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - .env
+    command: "alembic upgrade head"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  bot:
+    build: .
+    env_file:
+      - .env
+    command: "python bot/main.py"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  pgdata:
