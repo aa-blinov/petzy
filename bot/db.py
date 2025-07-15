@@ -1,177 +1,65 @@
-import enum
+"Database interaction module for the Telegram bot application."
+
 import os
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, Dict
+from urllib.parse import quote_plus
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, Text, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
+from pymongo import MongoClient
 
-Base = declarative_base()
+from bot.config import MONGO_DB, MONGO_HOST, MONGO_PASS, MONGO_PORT, MONGO_USER
 
-
-class AsthmaType(enum.Enum):
-    """Перечисление для типа приступа астмы."""
-
-    short = "short"
-    long = "long"
-
-
-class AsthmaAttack(Base):
-    """Модель для хранения приступов астмы."""
-
-    __tablename__ = "asthma_attacks"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, nullable=False)
-    date_time = Column(DateTime, nullable=False)
-    duration = Column(Enum(AsthmaType), nullable=False)
-    reason = Column(String(512), nullable=False)
-    inhalation = Column(Boolean, nullable=False)
-    comment = Column(Text)
+mongo_user = quote_plus(MONGO_USER)
+mongo_pass = quote_plus(MONGO_PASS)
+mongo_uri: str = f"mongodb://{mongo_user}:{mongo_pass}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin"
+client: MongoClient = MongoClient(mongo_uri)
+db = client[MONGO_DB]
+user_context = db["user_context"]
+whitelist = db["whitelist_users"]
+asthma = db["asthma_attacks"]
+defecations = db["defecations"]
 
 
-class StoolType(enum.Enum):
-    """Вид стула."""
-
-    normal = "Обычный"
-    hard = "Твердый"
-    liquid = "Жидкий"
+def save_user_context(user_id: int, key: str, value: Any) -> None:
+    """Save user context data."""
+    user_context.update_one({"user_id": user_id}, {"$set": {key: value}}, upsert=True)
 
 
-class Defecation(Base):
-    """Модель для хранения данных о дефекации."""
-
-    __tablename__ = "defecations"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, nullable=False)
-    date_time = Column(DateTime, nullable=False)
-    stool_type = Column(Enum(StoolType), nullable=False)
-    comment = Column(Text)
+def get_user_context(user_id: int) -> Dict[str, Any]:
+    """Get user context data."""
+    result = user_context.find_one({"user_id": user_id})
+    return result or {}
 
 
-class WhitelistUser(Base):
-    """Модель для хранения пользователей из белого списка."""
-
-    __tablename__ = "whitelist_users"
-
-    id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True, nullable=False)
-    name = Column(String(100))
+def clear_user_context(user_id: int) -> None:
+    """Clear user context data."""
+    user_context.delete_one({"user_id": user_id})
 
 
-def get_engine():
-    """Создаёт и возвращает SQLAlchemy engine для подключения к базе данных."""
-
-    db_url = f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
-    return create_engine(db_url)
+def is_whitelisted(user_id: int) -> bool:
+    """Check if user is whitelisted."""
+    return whitelist.find_one({"telegram_id": user_id}) is not None
 
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+def save_asthma_attack(user_id: int, data: Dict[str, Any]) -> None:
+    """Save asthma attack event."""
+    event_time = data.get("date_time", datetime.now())
+    asthma.insert_one({"user_id": user_id, **data, "date_time": event_time})
 
 
-class CatHealthRepository:
-    """Репозиторий для работы с данными о здоровье кота (CRUD-операции)."""
-
-    def __init__(self, session: Session):
-        """
-        Инициализация репозитория с сессией SQLAlchemy.
-        :param session: SQLAlchemy Session
-        """
-        self.session = session
-
-    # AsthmaAttack CRUD
-    def add_asthma_attack(self, attack: AsthmaAttack) -> AsthmaAttack:
-        """
-        Добавить запись о приступе астмы.
-        :param attack: Объект AsthmaAttack
-        :return: Сохранённый объект AsthmaAttack
-        """
-        self.session.add(attack)
-        self.session.commit()
-        self.session.refresh(attack)
-        return attack
-
-    def get_asthma_attacks_by_user(self, user_id: int) -> List[AsthmaAttack]:
-        """
-        Получить все приступы астмы пользователя.
-        :param user_id: Telegram user id
-        :return: Список AsthmaAttack
-        """
-        return self.session.query(AsthmaAttack).filter_by(user_id=user_id).all()
-
-    def add_defecation(self, defe: Defecation) -> Defecation:
-        """
-        Добавить запись о дефекации.
-        :param defe: Объект Defecation
-        :return: Сохранённый объект Defecation
-        """
-        self.session.add(defe)
-        self.session.commit()
-        self.session.refresh(defe)
-        return defe
-
-    def get_defecations_by_user(self, user_id: int) -> List[Defecation]:
-        """
-        Получить все дефекации пользователя.
-        :param user_id: Telegram user id
-        :return: Список Defecation
-        """
-        return self.session.query(Defecation).filter_by(user_id=user_id).all()
-
-    def get_whitelist_user(self, telegram_id: int) -> Optional[WhitelistUser]:
-        """
-        Получить пользователя из белого списка по Telegram ID.
-        :param telegram_id: Telegram user id
-        :return: WhitelistUser или None
-        """
-        return self.session.query(WhitelistUser).filter_by(telegram_id=telegram_id).first()
-
-    def add_whitelist_user(self, telegram_id: int, name: Optional[str] = None) -> WhitelistUser:
-        """
-        Добавить пользователя в белый список.
-        :param telegram_id: Telegram user id
-        :param name: Имя пользователя (опционально)
-        :return: Сохранённый объект WhitelistUser
-        """
-        user = WhitelistUser(telegram_id=telegram_id, name=name)
-        self.session.add(user)
-        self.session.commit()
-        self.session.refresh(user)
-        return user
-
-    def remove_whitelist_user(self, telegram_id: int) -> bool:
-        """
-        Удалить пользователя из белого списка по Telegram ID.
-        :param telegram_id: Telegram user id
-        :return: True если пользователь был удалён, иначе False
-        """
-        user = self.get_whitelist_user(telegram_id)
-        if user:
-            self.session.delete(user)
-            self.session.commit()
-            return True
-        return False
+def save_defecation(user_id: int, data: Dict[str, Any]) -> None:
+    """Save defecation event."""
+    event_time = data.get("date_time", datetime.now())
+    defecations.insert_one({"user_id": user_id, **data, "date_time": event_time})
 
 
 def init_db() -> None:
-    """
-    Инициализация базы данных: создание всех таблиц.
-    """
-    engine = get_engine()
-    Base.metadata.create_all(bind=engine)
-
-    import os
-
-    whitelist_path = os.path.join(os.path.dirname(__file__), "whitelist.txt")
-    if os.path.exists(whitelist_path):
-        with open(whitelist_path, encoding="utf-8") as f:
-            ids = [line.strip() for line in f if line.strip() and line.strip().isdigit()]
-        from sqlalchemy.orm import Session
-
-        with Session(engine) as session:
-            for id_str in ids:
-                telegram_id = int(id_str)
-                exists = session.query(WhitelistUser).filter_by(telegram_id=telegram_id).first()
-                if not exists:
-                    session.add(WhitelistUser(telegram_id=telegram_id))
-            session.commit()
+    """Add users from whitelist.txt to whitelist collection if not present."""
+    whitelist_path: str = os.path.join(os.path.dirname(__file__), "whitelist.txt")
+    if not os.path.exists(whitelist_path):
+        return
+    with open(whitelist_path, "r", encoding="utf-8") as f:
+        for line in f:
+            user_id: str = line.strip()
+            if user_id and not whitelist.find_one({"telegram_id": int(user_id)}):
+                whitelist.insert_one({"telegram_id": int(user_id)})
