@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>{% block title %}Cat Health Control{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">🐾 Cat Health Control</h1>
+            {% if session.user_id %}
+            <div class="nav-user">
+                <span>{{ session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small">Выйти</a>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

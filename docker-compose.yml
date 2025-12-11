@@ -27,5 +27,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  web:
+    build: .
+    env_file:
+      - .env
+    command: "python -m web.main"
+    ports:
+      - "5001:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mongodata:

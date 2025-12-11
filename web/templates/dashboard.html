@@ -1,0 +1,664 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Cat Health Control{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Main Menu -->
+    <div id="main-menu" class="screen active">
+        <div class="welcome-section">
+            <h2>Добро пожаловать, {{ username }}!</h2>
+            <p>Следим за здоровьем Саймончика 🐱</p>
+        </div>
+        
+        <div class="action-cards">
+            <div class="card action-card action-card-asthma" onclick="showScreen('asthma-form')">
+                <h3>Приступ астмы</h3>
+                <p>Записать приступ</p>
+            </div>
+            
+            <div class="card action-card action-card-defecation" onclick="showScreen('defecation-form')">
+                <h3>Дефекация</h3>
+                <p>Записать дефекацию</p>
+            </div>
+            
+            <div class="card action-card action-card-weight" onclick="showScreen('weight-form')">
+                <h3>Вес</h3>
+                <p>Записать вес</p>
+            </div>
+            
+            <div class="card action-card action-card-history" onclick="showScreen('history')">
+                <h3>История</h3>
+                <p>Просмотр записей</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Asthma Form -->
+    <div id="asthma-form" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Записать приступ астмы</h2>
+        </div>
+        <form id="asthma-form-element" class="inline-form">
+            <input type="hidden" id="asthma-record-id" name="record_id" value="">
+            <div class="form-row">
+                <div class="form-group form-group-half">
+                    <label for="asthma-date">Дата</label>
+                    <input type="date" id="asthma-date" name="date" required>
+                </div>
+                <div class="form-group form-group-half">
+                    <label for="asthma-time">Время</label>
+                    <input type="time" id="asthma-time" name="time" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group form-group-half">
+                    <label for="asthma-duration">Длительность</label>
+                    <select id="asthma-duration" name="duration" required>
+                        <option value="Короткий" selected>Короткий</option>
+                        <option value="Длительный">Длительный</option>
+                    </select>
+                </div>
+                <div class="form-group form-group-half">
+                    <label for="asthma-inhalation">Ингаляция</label>
+                    <select id="asthma-inhalation" name="inhalation" required>
+                        <option value="false" selected>Нет</option>
+                        <option value="true">Да</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="asthma-reason">Причина</label>
+                <input type="text" id="asthma-reason" name="reason" value="Пил" placeholder="Например: Пил после сна" required>
+            </div>
+            <div class="form-group">
+                <label for="asthma-comment">Комментарий (необязательно)</label>
+                <textarea id="asthma-comment" name="comment" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="asthma-submit-btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Defecation Form -->
+    <div id="defecation-form" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Записать дефекацию</h2>
+        </div>
+        <form id="defecation-form-element" class="inline-form">
+            <input type="hidden" id="defecation-record-id" name="record_id" value="">
+            <div class="form-row">
+                <div class="form-group form-group-half">
+                    <label for="defecation-date">Дата</label>
+                    <input type="date" id="defecation-date" name="date" required>
+                </div>
+                <div class="form-group form-group-half">
+                    <label for="defecation-time">Время</label>
+                    <input type="time" id="defecation-time" name="time" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="defecation-stool-type">Тип стула</label>
+                <select id="defecation-stool-type" name="stool_type" required>
+                    <option value="Обычный" selected>Обычный</option>
+                    <option value="Твердый">Твердый</option>
+                    <option value="Жидкий">Жидкий</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="defecation-food">Корм</label>
+                <input type="text" id="defecation-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
+            </div>
+            <div class="form-group">
+                <label for="defecation-comment">Комментарий (необязательно)</label>
+                <textarea id="defecation-comment" name="comment" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="defecation-submit-btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Weight Form -->
+    <div id="weight-form" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Записать вес</h2>
+        </div>
+        <form id="weight-form-element" class="inline-form">
+            <input type="hidden" id="weight-record-id" name="record_id" value="">
+            <div class="form-row">
+                <div class="form-group form-group-half">
+                    <label for="weight-date">Дата</label>
+                    <input type="date" id="weight-date" name="date" required>
+                </div>
+                <div class="form-group form-group-half">
+                    <label for="weight-time">Время</label>
+                    <input type="time" id="weight-time" name="time" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="weight-value">Вес (кг)</label>
+                <input type="number" id="weight-value" name="weight" step="0.01" min="0" max="20" placeholder="Например: 4.5" required>
+            </div>
+            <div class="form-group">
+                <label for="weight-food">Корм</label>
+                <input type="text" id="weight-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
+            </div>
+            <div class="form-group">
+                <label for="weight-comment">Комментарий (необязательно)</label>
+                <textarea id="weight-comment" name="comment" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="weight-submit-btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- History Screen -->
+    <div id="history" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>История записей</h2>
+            <div class="export-buttons">
+                <button class="btn btn-secondary btn-small" onclick="showExportMenu()">Выгрузить</button>
+            </div>
+        </div>
+        <div id="export-menu" class="export-menu" style="display: none;" onclick="if(event.target === this) hideExportMenu()">
+            <div class="export-menu-content">
+                <h3 id="export-menu-title">Выберите тип данных:</h3>
+                <div id="export-type-selection" class="export-options">
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('asthma')">Приступы астмы</button>
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('defecation')">Дефекации</button>
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('weight')">Вес</button>
+                </div>
+                <div id="export-format-selection" class="export-options" style="display: none;">
+                    <button class="btn btn-secondary btn-block" onclick="exportData('csv')">CSV</button>
+                    <button class="btn btn-secondary btn-block" onclick="exportData('tsv')">TSV</button>
+                    <button class="btn btn-secondary btn-block" onclick="exportData('html')">HTML</button>
+                    <button class="btn btn-secondary btn-block" onclick="exportData('md')">Markdown</button>
+                    <button class="btn btn-secondary btn-block" onclick="backToExportType()">← Назад</button>
+                </div>
+                <button id="export-cancel-btn" class="btn btn-secondary btn-block" onclick="hideExportMenu()">Отмена</button>
+            </div>
+        </div>
+        <div class="history-tabs">
+            <button class="tab-btn active" data-tab="asthma" onclick="showHistoryTab('asthma'); return false;">Приступы астмы</button>
+            <button class="tab-btn" data-tab="defecation" onclick="showHistoryTab('defecation'); return false;">Дефекации</button>
+            <button class="tab-btn" data-tab="weight" onclick="showHistoryTab('weight'); return false;">Вес</button>
+        </div>
+        <div id="history-content" class="history-content">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </div>
+    
+    <!-- Alert Messages -->
+    <div id="alert-container" class="alert-container"></div>
+</div>
+
+<script>
+// Set default date/time to now
+function resetFormDefaults() {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().slice(0, 5);
+    
+    document.getElementById('asthma-date').value = dateStr;
+    document.getElementById('asthma-time').value = timeStr;
+    document.getElementById('asthma-duration').selectedIndex = 0;
+    document.getElementById('asthma-inhalation').selectedIndex = 0;
+    document.getElementById('asthma-reason').value = 'Пил';
+    
+    document.getElementById('defecation-date').value = dateStr;
+    document.getElementById('defecation-time').value = timeStr;
+    document.getElementById('defecation-stool-type').selectedIndex = 0;
+    document.getElementById('defecation-food').value = 'Royal Canin Fibre Response';
+    
+    document.getElementById('weight-date').value = dateStr;
+    document.getElementById('weight-time').value = timeStr;
+    document.getElementById('weight-food').value = 'Royal Canin Fibre Response';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    resetFormDefaults();
+});
+
+function showScreen(screenId) {
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    // Show selected screen
+    const screen = document.getElementById(screenId);
+    if (screen) {
+        screen.classList.add('active');
+        // Scroll to top
+        window.scrollTo(0, 0);
+        
+        // Reset form defaults if showing a form screen
+        if (screenId === 'asthma-form' && !document.getElementById('asthma-record-id').value) {
+            resetFormDefaults();
+            document.getElementById('asthma-submit-btn').textContent = 'Сохранить';
+        } else if (screenId === 'defecation-form' && !document.getElementById('defecation-record-id').value) {
+            resetFormDefaults();
+            document.getElementById('defecation-submit-btn').textContent = 'Сохранить';
+        } else if (screenId === 'weight-form' && !document.getElementById('weight-record-id').value) {
+            resetFormDefaults();
+            document.getElementById('weight-submit-btn').textContent = 'Сохранить';
+        } else if (screenId === 'history') {
+            // Load default tab when opening history
+            showHistoryTab('asthma');
+        }
+    }
+}
+
+
+let currentHistoryType = 'asthma';
+let selectedExportType = null;
+
+function showExportMenu() {
+    selectedExportType = null;
+    document.getElementById('export-type-selection').style.display = 'block';
+    document.getElementById('export-format-selection').style.display = 'none';
+    document.getElementById('export-menu-title').textContent = 'Выберите тип данных:';
+    document.getElementById('export-menu').style.display = 'flex';
+}
+
+function hideExportMenu() {
+    document.getElementById('export-menu').style.display = 'none';
+    selectedExportType = null;
+}
+
+function selectExportType(type) {
+    selectedExportType = type;
+    document.getElementById('export-type-selection').style.display = 'none';
+    document.getElementById('export-format-selection').style.display = 'block';
+    document.getElementById('export-cancel-btn').style.display = 'none';
+    const typeName = type === 'asthma' ? 'Приступы астмы' : (type === 'defecation' ? 'Дефекации' : 'Вес');
+    document.getElementById('export-menu-title').textContent = `Выберите формат (${typeName}):`;
+}
+
+function backToExportType() {
+    selectedExportType = null;
+    document.getElementById('export-type-selection').style.display = 'block';
+    document.getElementById('export-format-selection').style.display = 'none';
+    document.getElementById('export-cancel-btn').style.display = 'block';
+    document.getElementById('export-menu-title').textContent = 'Выберите тип данных:';
+}
+
+async function exportData(format) {
+    if (!selectedExportType) {
+        showAlert('error', 'Выберите тип данных');
+        return;
+    }
+    
+    const url = `/api/export/${selectedExportType}/${format}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Ошибка при выгрузке' }));
+            showAlert('error', errorData.error || 'Ошибка при выгрузке');
+            return;
+        }
+        
+        // Get filename from Content-Disposition header or generate one
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = '';
+        if (contentDisposition) {
+            // Try RFC 5987 format first: filename*=UTF-8''encoded-name
+            const rfc5987Match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+            if (rfc5987Match) {
+                filename = decodeURIComponent(rfc5987Match[1]);
+            } else {
+                // Fallback to standard format
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+        }
+        
+        if (!filename) {
+            const typeName = selectedExportType === 'asthma' ? 'asthma' : 'defecation';
+            filename = `${typeName}_${new Date().toISOString().slice(0, 10)}.${format}`;
+        }
+        
+        // Create blob and download
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        
+        hideExportMenu();
+        showAlert('success', 'Файл выгружен');
+    } catch (error) {
+        console.error('Export error:', error);
+        showAlert('error', 'Ошибка при выгрузке файла');
+    }
+}
+
+function showHistoryTab(type) {
+    currentHistoryType = type;
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        const isAsthma = type === 'asthma' && btn.textContent.includes('астмы');
+        const isDefecation = type === 'defecation' && btn.textContent.includes('Дефекации');
+        const isWeight = type === 'weight' && btn.textContent.includes('Вес');
+        if (isAsthma || isDefecation || isWeight) {
+            btn.classList.add('active');
+        }
+    });
+    
+    const content = document.getElementById('history-content');
+    content.innerHTML = '<div class="loading">Загрузка...</div>';
+    
+    const endpoint = type === 'asthma' ? '/api/asthma' : (type === 'defecation' ? '/api/defecation' : '/api/weight');
+    
+    fetch(endpoint)
+        .then(response => response.json())
+        .then(data => {
+            const items = type === 'asthma' ? data.attacks : (type === 'defecation' ? data.defecations : data.weights);
+            
+            if (items.length === 0) {
+                content.innerHTML = '<p class="no-data">Нет записей</p>';
+                return;
+            }
+            
+            let html = '<div class="history-list">';
+            items.forEach(item => {
+                html += `<div class="history-item history-item-${type}" data-id="${item._id}">`;
+                html += `<div class="history-date">${item.date_time}</div>`;
+                if (type === 'asthma') {
+                    html += `<div class="history-details">`;
+                    html += `<span><strong>Длительность:</strong> ${item.duration}</span>`;
+                    html += `<span><strong>Причина:</strong> ${item.reason}</span>`;
+                    html += `<span><strong>Ингаляция:</strong> ${item.inhalation}</span>`;
+                    if (item.comment && item.comment !== '-') {
+                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                    }
+                    html += `</div>`;
+                } else if (type === 'defecation') {
+                    html += `<div class="history-details">`;
+                    html += `<span><strong>Тип стула:</strong> ${item.stool_type}</span>`;
+                    if (item.food && item.food !== '-') {
+                        html += `<span><strong>Корм:</strong> ${item.food}</span>`;
+                    }
+                    if (item.comment && item.comment !== '-') {
+                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                    }
+                    html += `</div>`;
+                } else if (type === 'weight') {
+                    html += `<div class="history-details">`;
+                    html += `<span><strong>Вес:</strong> ${item.weight} кг</span>`;
+                    if (item.food && item.food !== '-') {
+                        html += `<span><strong>Корм:</strong> ${item.food}</span>`;
+                    }
+                    if (item.comment && item.comment !== '-') {
+                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                    }
+                    html += `</div>`;
+                }
+                html += `<div class="history-actions">`;
+                html += `<button class="btn btn-secondary btn-small" onclick="editRecord('${type}', '${item._id}')">Редактировать</button>`;
+                html += `<button class="btn btn-secondary btn-small" onclick="deleteRecord('${type}', '${item._id}')">Удалить</button>`;
+                html += `</div>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            content.innerHTML = html;
+        })
+        .catch(error => {
+            content.innerHTML = '<p class="error">Ошибка загрузки данных</p>';
+            console.error('Error:', error);
+        });
+}
+
+// Form submissions
+document.getElementById('asthma-form-element').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const recordId = formData.get('record_id');
+    const data = {
+        date: formData.get('date'),
+        time: formData.get('time'),
+        duration: formData.get('duration'),
+        reason: formData.get('reason'),
+        inhalation: formData.get('inhalation') === 'true',
+        comment: formData.get('comment') || ''
+    };
+    
+    try {
+        const url = recordId ? `/api/asthma/${recordId}` : '/api/asthma';
+        const method = recordId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            showAlert('success', result.message || (recordId ? 'Приступ астмы обновлен' : 'Приступ астмы записан'));
+            document.getElementById('asthma-form-element').reset();
+            document.getElementById('asthma-record-id').value = '';
+            document.getElementById('asthma-submit-btn').textContent = 'Сохранить';
+            resetFormDefaults();
+            setTimeout(() => {
+                showScreen('main-menu');
+                if (recordId) {
+                    showScreen('history');
+                    showHistoryTab('asthma');
+                }
+            }, 1000);
+        } else {
+            showAlert('error', result.error || 'Ошибка при сохранении');
+        }
+    } catch (error) {
+        showAlert('error', 'Ошибка при сохранении');
+    }
+});
+
+document.getElementById('defecation-form-element').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const recordId = formData.get('record_id');
+    const data = {
+        date: formData.get('date'),
+        time: formData.get('time'),
+        stool_type: formData.get('stool_type'),
+        food: formData.get('food') || '',
+        comment: formData.get('comment') || ''
+    };
+    
+    try {
+        const url = recordId ? `/api/defecation/${recordId}` : '/api/defecation';
+        const method = recordId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            showAlert('success', result.message || (recordId ? 'Дефекация обновлена' : 'Дефекация записана'));
+            document.getElementById('defecation-form-element').reset();
+            document.getElementById('defecation-record-id').value = '';
+            document.getElementById('defecation-submit-btn').textContent = 'Сохранить';
+            resetFormDefaults();
+            setTimeout(() => {
+                showScreen('main-menu');
+                if (recordId) {
+                    showScreen('history');
+                    showHistoryTab('defecation');
+                }
+            }, 1000);
+        } else {
+            showAlert('error', result.error || 'Ошибка при сохранении');
+        }
+    } catch (error) {
+        showAlert('error', 'Ошибка при сохранении');
+    }
+});
+
+document.getElementById('weight-form-element').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const recordId = formData.get('record_id');
+    const data = {
+        date: formData.get('date'),
+        time: formData.get('time'),
+        weight: formData.get('weight'),
+        food: formData.get('food') || '',
+        comment: formData.get('comment') || ''
+    };
+    
+    try {
+        const url = recordId ? `/api/weight/${recordId}` : '/api/weight';
+        const method = recordId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            showAlert('success', result.message || (recordId ? 'Вес обновлен' : 'Вес записан'));
+            document.getElementById('weight-form-element').reset();
+            document.getElementById('weight-record-id').value = '';
+            document.getElementById('weight-submit-btn').textContent = 'Сохранить';
+            resetFormDefaults();
+            setTimeout(() => {
+                showScreen('main-menu');
+                if (recordId) {
+                    showScreen('history');
+                    showHistoryTab('weight');
+                }
+            }, 1000);
+        } else {
+            showAlert('error', result.error || 'Ошибка при сохранении');
+        }
+    } catch (error) {
+        showAlert('error', 'Ошибка при сохранении');
+    }
+});
+
+function showAlert(type, message) {
+    const container = document.getElementById('alert-container');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+    container.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+
+async function editRecord(type, recordId) {
+    const endpoint = type === 'asthma' ? `/api/asthma` : (type === 'defecation' ? `/api/defecation` : `/api/weight`);
+    
+    try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        const items = type === 'asthma' ? data.attacks : (type === 'defecation' ? data.defecations : data.weights);
+        const record = items.find(item => item._id === recordId);
+        
+        if (!record) {
+            showAlert('error', 'Запись не найдена');
+            return;
+        }
+        
+        // Parse date and time
+        const [datePart, timePart] = record.date_time.split(' ');
+        const [year, month, day] = datePart.split('-');
+        const [hour, minute] = timePart.split(':');
+        
+        if (type === 'asthma') {
+            document.getElementById('asthma-record-id').value = recordId;
+            document.getElementById('asthma-date').value = datePart;
+            document.getElementById('asthma-time').value = timePart;
+            document.getElementById('asthma-duration').value = record.duration;
+            document.getElementById('asthma-reason').value = record.reason;
+            document.getElementById('asthma-inhalation').value = record.inhalation === 'Да' ? 'true' : 'false';
+            document.getElementById('asthma-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
+            document.getElementById('asthma-submit-btn').textContent = 'Обновить';
+            showScreen('asthma-form');
+        } else if (type === 'defecation') {
+            document.getElementById('defecation-record-id').value = recordId;
+            document.getElementById('defecation-date').value = datePart;
+            document.getElementById('defecation-time').value = timePart;
+            document.getElementById('defecation-stool-type').value = record.stool_type;
+            document.getElementById('defecation-food').value = record.food && record.food !== '-' ? record.food : 'Royal Canin Fibre Response';
+            document.getElementById('defecation-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
+            document.getElementById('defecation-submit-btn').textContent = 'Обновить';
+            showScreen('defecation-form');
+        } else if (type === 'weight') {
+            document.getElementById('weight-record-id').value = recordId;
+            document.getElementById('weight-date').value = datePart;
+            document.getElementById('weight-time').value = timePart;
+            document.getElementById('weight-value').value = record.weight;
+            document.getElementById('weight-food').value = record.food && record.food !== '-' ? record.food : 'Royal Canin Fibre Response';
+            document.getElementById('weight-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
+            document.getElementById('weight-submit-btn').textContent = 'Обновить';
+            showScreen('weight-form');
+        }
+    } catch (error) {
+        showAlert('error', 'Ошибка при загрузке записи');
+        console.error('Error:', error);
+    }
+}
+
+async function deleteRecord(type, recordId) {
+    if (!confirm('Вы уверены, что хотите удалить эту запись?')) {
+        return;
+    }
+    
+    const endpoint = `/api/${type}/${recordId}`;
+    
+    try {
+        const response = await fetch(endpoint, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            showAlert('success', result.message || 'Запись удалена');
+            // Reload history
+            const currentTab = document.querySelector('.tab-btn.active');
+            if (currentTab.textContent.includes('астмы')) {
+                showHistoryTab('asthma');
+            } else if (currentTab.textContent.includes('Дефекации')) {
+                showHistoryTab('defecation');
+            } else if (currentTab.textContent.includes('Вес')) {
+                showHistoryTab('weight');
+            }
+        } else {
+            showAlert('error', result.error || 'Ошибка при удалении');
+        }
+    } catch (error) {
+        showAlert('error', 'Ошибка при удалении');
+        console.error('Error:', error);
+    }
+}
+</script>
+{% endblock %}

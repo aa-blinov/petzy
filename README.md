@@ -9,6 +9,7 @@
 - **Health Tracking**: Log defecation events with stool type classification and asthma symptoms, including duration, reason, and inhalation usage.
 - **Data Storage**: Persistent storage using MongoDB.
 - **User-Friendly**: Simple and intuitive commands for easy interaction.
+- **Web Interface**: Modern web application with authentication and mobile-responsive design.
 - **Dockerized**: Fully containerized for seamless deployment.
 - **Extensible**: Easily add new features or metrics to track.
 
@@ -16,6 +17,8 @@
 
 - **python-telegram-bot**: Telegram Bot API
 - **pymongo**: MongoDB client for Python
+- **flask**: Web framework for the web interface
+- **werkzeug**: WSGI utilities (for password hashing)
 - **Docker, Docker Compose**: For containerized deployment
 
 ## How It Works
@@ -44,8 +47,14 @@
 2. Create a `.env` file (example):
 
    ```env
-   MONGO_URI=mongodb://localhost:27017
+   MONGO_USER=admin
+   MONGO_PASS=password
+   MONGO_HOST=db
+   MONGO_PORT=27017
+   MONGO_DB=cat_health
    TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+   FLASK_SECRET_KEY=your-secret-key-for-sessions
+   DEFAULT_PASSWORD=admin123
    ```
 
 3. Start all services:
@@ -56,12 +65,26 @@
 
 ### Usage
 
+#### Telegram Bot
+
 - Use the bot's main menu to select actions:
   - **Asthma Attack**: Log an asthma attack by providing details such as duration and reason.
   - **Defecation**: Log a defecation event by selecting the stool type.
   - **Export Data**: View or export health logs in various formats (CSV, markdown, or message).
 - Follow the bot's prompts to complete each action.
 - Use the "Back to Menu" button to return to the main menu at any time.
+
+#### Web Interface
+
+1. Access the web interface at `http://localhost:5001`
+2. Login with credentials:
+   - Username: `admin`
+   - Password: `admin123`
+3. Use the dashboard to:
+   - Record asthma attacks with full details
+   - Record defecation events
+   - View history of all recorded events
+4. The interface is fully responsive and works on mobile devices
 
 ### Useful Commands
 
@@ -78,8 +101,17 @@ bot/
   db.py            # MongoDB database logic
   main.py          # Telegram bot logic
   whitelist.txt    # User whitelist
+web/
+  app.py           # Flask web application
+  main.py          # Web app entry point
+  templates/       # HTML templates
+    base.html
+    login.html
+    dashboard.html
+  static/          # Static files (CSS, JS)
+    css/
+      style.css
 .env
-.env.example
 docker-compose.yml
 Dockerfile
 README.md
