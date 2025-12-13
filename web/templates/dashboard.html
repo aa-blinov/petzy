@@ -524,9 +524,9 @@
                     <button class="btn btn-secondary btn-block" onclick="exportData('tsv')">TSV</button>
                     <button class="btn btn-secondary btn-block" onclick="exportData('html')">HTML</button>
                     <button class="btn btn-secondary btn-block" onclick="exportData('md')">Markdown</button>
-                    <button class="btn btn-secondary btn-block" onclick="backToExportType()">← Назад</button>
                 </div>
-                <button id="export-cancel-btn" class="btn btn-secondary btn-block" onclick="hideExportMenu()">Отмена</button>
+                <button id="export-back-btn" class="btn btn-primary btn-block" onclick="backToExportType()" style="display: none;">Назад</button>
+                <button id="export-cancel-btn" class="btn btn-primary btn-block" onclick="hideExportMenu()">Отмена</button>
             </div>
         </div>
         <div class="history-tabs">
@@ -951,6 +951,8 @@ function showExportMenu() {
     selectedExportType = null;
     document.getElementById('export-type-selection').style.display = 'block';
     document.getElementById('export-format-selection').style.display = 'none';
+    document.getElementById('export-back-btn').style.display = 'none';
+    document.getElementById('export-cancel-btn').style.display = 'block';
     document.getElementById('export-menu-title').textContent = 'Выберите тип данных:';
     document.getElementById('export-menu').style.display = 'flex';
 }
@@ -964,6 +966,7 @@ function selectExportType(type) {
     selectedExportType = type;
     document.getElementById('export-type-selection').style.display = 'none';
     document.getElementById('export-format-selection').style.display = 'block';
+    document.getElementById('export-back-btn').style.display = 'block';
     document.getElementById('export-cancel-btn').style.display = 'none';
     let typeName;
     if (type === 'feeding') {
@@ -984,6 +987,7 @@ function backToExportType() {
     selectedExportType = null;
     document.getElementById('export-type-selection').style.display = 'block';
     document.getElementById('export-format-selection').style.display = 'none';
+    document.getElementById('export-back-btn').style.display = 'none';
     document.getElementById('export-cancel-btn').style.display = 'block';
     document.getElementById('export-menu-title').textContent = 'Выберите тип данных:';
 }
