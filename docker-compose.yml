@@ -17,16 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  bot:
-    build: .
-    env_file:
-      - .env
-    command: "python -m bot.main"
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-
   web:
     build: .
     env_file:

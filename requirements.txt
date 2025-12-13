@@ -1,4 +1,4 @@
-python-telegram-bot==20.7
 pymongo==4.5.0
 flask==3.0.0
 werkzeug==3.0.1
+bcrypt==4.1.2

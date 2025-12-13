@@ -3,17 +3,15 @@
 import csv
 import io
 import os
-import sys
+import time
 from datetime import datetime
 from functools import wraps
 from urllib.parse import quote
 
+import bcrypt
 from flask import Flask, jsonify, make_response, redirect, render_template, request, session, url_for
 
-# Add parent directory to path to import bot modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from bot.db import db
+from web.db import db
 
 # Configure Flask app with proper template and static folders
 app = Flask(
@@ -23,11 +21,24 @@ app = Flask(
 )
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
 
-# Simple authentication credentials
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin123"
-# Use a default telegram_id for web user (can be any number, just for data storage)
-DEFAULT_TELEGRAM_ID = 0
+# Authentication credentials - REQUIRED from environment
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
+
+# Validate required environment variables
+if not ADMIN_PASSWORD_HASH:
+    raise RuntimeError(
+        "ADMIN_PASSWORD_HASH environment variable is required! "
+        "To generate hash: python -c \"import bcrypt; print(bcrypt.hashpw('your_password'.encode(), bcrypt.gensalt()).decode())\""
+    )
+
+# Use a default user_id for web user (can be any number, just for data storage)
+DEFAULT_USER_ID = 0
+
+# Rate limiting for login attempts
+login_attempts = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_TIME = 300  # 5 minutes in seconds
 
 
 def login_required(f):
@@ -55,20 +66,55 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Login page."""
+    """Login page with rate limiting and password hashing."""
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        client_ip = request.remote_addr
         
         if not username or not password:
             return render_template("login.html", error="Введите логин и пароль")
         
-        # Simple authentication check
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session["user_id"] = "admin"
-            session["username"] = username
-            session["telegram_id"] = DEFAULT_TELEGRAM_ID
-            return redirect(url_for("dashboard"))
+        # Check rate limiting
+        if client_ip in login_attempts:
+            attempts_data = login_attempts[client_ip]
+            if attempts_data["locked_until"] > time.time():
+                remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
+                return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} мин.")
+            elif attempts_data["count"] >= MAX_LOGIN_ATTEMPTS:
+                # Reset after lockout period
+                if time.time() - attempts_data["last_attempt"] > LOGIN_LOCKOUT_TIME:
+                    login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
+                else:
+                    remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
+                    return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} мин.")
+        
+        # Verify username and password
+        if username == ADMIN_USERNAME:
+            try:
+                # Verify password using bcrypt
+                if bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode()):
+                    # Successful login - reset attempts
+                    if client_ip in login_attempts:
+                        del login_attempts[client_ip]
+                    
+                    session["user_id"] = "admin"
+                    session["username"] = username
+                    session["db_user_id"] = DEFAULT_USER_ID
+                    return redirect(url_for("dashboard"))
+            except (ValueError, TypeError):
+                # Invalid hash format
+                pass
+        
+        # Failed login - increment attempts
+        if client_ip not in login_attempts:
+            login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
+        
+        login_attempts[client_ip]["count"] += 1
+        login_attempts[client_ip]["last_attempt"] = time.time()
+        
+        if login_attempts[client_ip]["count"] >= MAX_LOGIN_ATTEMPTS:
+            login_attempts[client_ip]["locked_until"] = time.time() + LOGIN_LOCKOUT_TIME
         
         return render_template("login.html", error="Неверный логин или пароль")
     
@@ -95,7 +141,7 @@ def add_asthma_attack():
     """Add asthma attack event."""
     try:
         data = request.get_json()
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         # Parse datetime
         date_str = data.get("date")
@@ -127,7 +173,7 @@ def add_defecation():
     """Add defecation event."""
     try:
         data = request.get_json()
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         # Parse datetime
         date_str = data.get("date")
@@ -158,7 +204,7 @@ def add_weight():
     """Add weight measurement."""
     try:
         data = request.get_json()
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         # Parse datetime
         date_str = data.get("date")
@@ -187,7 +233,7 @@ def add_weight():
 @login_required
 def get_asthma_attacks():
     """Get asthma attacks for current user."""
-    user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+    user_id = session.get("db_user_id", DEFAULT_USER_ID)
     
     attacks = list(db["asthma_attacks"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
     
@@ -207,7 +253,7 @@ def get_asthma_attacks():
 @login_required
 def get_defecations():
     """Get defecations for current user."""
-    user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+    user_id = session.get("db_user_id", DEFAULT_USER_ID)
     
     defecations = list(db["defecations"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
     
@@ -223,7 +269,7 @@ def get_defecations():
 @login_required
 def get_weights():
     """Get weight measurements for current user."""
-    user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+    user_id = session.get("db_user_id", DEFAULT_USER_ID)
     
     weights = list(db["weights"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
     
@@ -243,7 +289,7 @@ def update_asthma_attack(record_id):
         from bson import ObjectId
         
         data = request.get_json()
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         # Parse datetime
         date_str = data.get("date")
@@ -282,7 +328,7 @@ def delete_asthma_attack(record_id):
     try:
         from bson import ObjectId
         
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         result = db["asthma_attacks"].delete_one(
             {"_id": ObjectId(record_id), "user_id": user_id}
@@ -305,7 +351,7 @@ def update_defecation(record_id):
         from bson import ObjectId
         
         data = request.get_json()
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         # Parse datetime
         date_str = data.get("date")
@@ -343,7 +389,7 @@ def delete_defecation(record_id):
     try:
         from bson import ObjectId
         
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         result = db["defecations"].delete_one(
             {"_id": ObjectId(record_id), "user_id": user_id}
@@ -366,7 +412,7 @@ def update_weight(record_id):
         from bson import ObjectId
         
         data = request.get_json()
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         # Parse datetime
         date_str = data.get("date")
@@ -404,7 +450,7 @@ def delete_weight(record_id):
     try:
         from bson import ObjectId
         
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         result = db["weights"].delete_one(
             {"_id": ObjectId(record_id), "user_id": user_id}
@@ -424,7 +470,7 @@ def delete_weight(record_id):
 def export_data(export_type, format_type):
     """Export data in various formats."""
     try:
-        user_id = session.get("telegram_id", DEFAULT_TELEGRAM_ID)
+        user_id = session.get("db_user_id", DEFAULT_USER_ID)
         
         if export_type == "asthma":
             collection = db["asthma_attacks"]

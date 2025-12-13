@@ -1,39 +1,31 @@
-# Cat Health Control Bot
+# Cat Health Control
 
 ## Overview
 
-**Cat Health Control Bot** is a Python-based Telegram bot designed to help cat owners track their pet's health. The bot allows users to log and monitor key health metrics, such as defecation events, stool types, asthma symptoms, and other relevant data, ensuring better care for their feline companions.
+**Cat Health Control** is a web application designed to help cat owners track their pet's health. The application allows users to log and monitor key health metrics, such as defecation events, stool types, asthma symptoms, weight measurements, and other relevant data, ensuring better care for their feline companions.
 
 ## Features
 
-- **Health Tracking**: Log defecation events with stool type classification and asthma symptoms, including duration, reason, and inhalation usage.
-- **Data Storage**: Persistent storage using MongoDB.
-- **User-Friendly**: Simple and intuitive commands for easy interaction.
-- **Web Interface**: Modern web application with authentication and mobile-responsive design.
-- **Dockerized**: Fully containerized for seamless deployment.
-- **Extensible**: Easily add new features or metrics to track.
+- **Health Tracking**: Log defecation events with stool type classification, asthma symptoms (including duration, reason, and inhalation usage), and weight measurements
+- **Food Tracking**: Record food information for each entry
+- **Data Storage**: Persistent storage using MongoDB
+- **Data Export**: Export health logs in various formats (CSV, TSV, HTML, Markdown)
+- **User-Friendly**: Modern web interface with authentication and mobile-responsive design
+- **Dockerized**: Fully containerized for seamless deployment
+- **Extensible**: Easily add new features or metrics to track
 
 ## Dependencies
 
-- **python-telegram-bot**: Telegram Bot API
 - **pymongo**: MongoDB client for Python
-- **flask**: Web framework for the web interface
-- **werkzeug**: WSGI utilities (for password hashing)
+- **flask**: Web framework
+- **werkzeug**: WSGI utilities
 - **Docker, Docker Compose**: For containerized deployment
-
-## How It Works
-
-1. **User** sends a command to log a health event (e.g., `/log_defecation` or `/log_asthma`).
-2. **Bot** prompts the user for details, such as stool type or asthma symptoms (duration, reason, inhalation usage, and comments).
-3. **Data** is stored in a MongoDB database.
-4. **User** can retrieve logs or summaries using commands (e.g., `/get_logs`).
 
 ## Getting Started
 
 ### Prerequisites
 
 - Docker and Docker Compose
-- Telegram Bot Token
 
 ### Installation & Run
 
@@ -52,10 +44,17 @@
    MONGO_HOST=db
    MONGO_PORT=27017
    MONGO_DB=cat_health
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
    FLASK_SECRET_KEY=your-secret-key-for-sessions
-   DEFAULT_PASSWORD=admin123
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD_HASH=your_bcrypt_password_hash
    ```
+
+   To generate a password hash, run:
+   ```bash
+   python -c "import bcrypt; print(bcrypt.hashpw('your_password'.encode(), bcrypt.gensalt()).decode())"
+   ```
+   
+   Or use the default password "admin123" (not recommended for production).
 
 3. Start all services:
 
@@ -65,25 +64,18 @@
 
 ### Usage
 
-#### Telegram Bot
-
-- Use the bot's main menu to select actions:
-  - **Asthma Attack**: Log an asthma attack by providing details such as duration and reason.
-  - **Defecation**: Log a defecation event by selecting the stool type.
-  - **Export Data**: View or export health logs in various formats (CSV, markdown, or message).
-- Follow the bot's prompts to complete each action.
-- Use the "Back to Menu" button to return to the main menu at any time.
-
 #### Web Interface
 
 1. Access the web interface at `http://localhost:5001`
-2. Login with credentials:
-   - Username: `admin`
-   - Password: `admin123`
+2. Login with credentials (set in `.env` file):
+   - Username: `admin` (or value from `ADMIN_USERNAME`)
+   - Password: Set via `ADMIN_PASSWORD_HASH` environment variable
 3. Use the dashboard to:
    - Record asthma attacks with full details
-   - Record defecation events
+   - Record defecation events with food information
+   - Record weight measurements with food information
    - View history of all recorded events
+   - Export data in various formats (CSV, TSV, HTML, Markdown)
 4. The interface is fully responsive and works on mobile devices
 
 ### Useful Commands
@@ -94,16 +86,19 @@
   docker-compose down
   ```
 
+- View logs:
+
+  ```sh
+  docker-compose logs -f web
+  ```
+
 ## Project Structure
 
 ```text
-bot/
-  db.py            # MongoDB database logic
-  main.py          # Telegram bot logic
-  whitelist.txt    # User whitelist
 web/
   app.py           # Flask web application
   main.py          # Web app entry point
+  db.py            # MongoDB database connection
   templates/       # HTML templates
     base.html
     login.html
@@ -116,7 +111,6 @@ docker-compose.yml
 Dockerfile
 README.md
 requirements.txt
-pyproject.toml
 ```
 
 ## Contributing
