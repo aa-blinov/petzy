@@ -509,6 +509,7 @@ def add_defecation():
             "user_id": user_id,
             "date_time": event_dt,
             "stool_type": data.get("stool_type", ""),
+            "color": data.get("color", "Коричневый"),
             "food": data.get("food", ""),
             "comment": data.get("comment", "")
         }
@@ -686,6 +687,7 @@ def update_defecation(record_id):
         defecation_data = {
             "date_time": event_dt,
             "stool_type": data.get("stool_type", ""),
+            "color": data.get("color", "Коричневый"),
             "food": data.get("food", ""),
             "comment": data.get("comment", "")
         }
@@ -810,6 +812,7 @@ def export_data(export_type, format_type):
             fields = [
                 ("date_time", "Дата и время"),
                 ("stool_type", "Тип стула"),
+                ("color", "Цвет стула"),
                 ("food", "Корм"),
                 ("comment", "Комментарий"),
             ]

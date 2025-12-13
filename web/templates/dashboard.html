@@ -31,6 +31,11 @@
                 <h3>История</h3>
                 <p>Просмотр записей</p>
             </div>
+            
+            <div class="card action-card action-card-settings" onclick="showScreen('settings')">
+                <h3>Настройки</h3>
+                <p>Значения по умолчанию</p>
+            </div>
         </div>
     </div>
     
@@ -109,6 +114,15 @@
                 </select>
             </div>
             <div class="form-group">
+                <label for="defecation-color">Цвет стула</label>
+                <select id="defecation-color" name="color" required>
+                    <option value="Коричневый" selected>Коричневый</option>
+                    <option value="Темно-коричневый">Темно-коричневый</option>
+                    <option value="Светло-коричневый">Светло-коричневый</option>
+                    <option value="Другой">Другой</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="defecation-food">Корм</label>
                 <input type="text" id="defecation-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
             </div>
@@ -158,6 +172,75 @@
         </form>
     </div>
     
+    <!-- Settings Screen -->
+    <div id="settings" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Настройки значений по умолчанию</h2>
+        </div>
+        <form id="settings-form" class="inline-form">
+            <div class="settings-section">
+                <h3>Приступ астмы</h3>
+                <div class="form-group">
+                    <label for="default-asthma-duration">Длительность по умолчанию</label>
+                    <select id="default-asthma-duration" name="default_asthma_duration">
+                        <option value="Короткий">Короткий</option>
+                        <option value="Длительный">Длительный</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="default-asthma-inhalation">Ингаляция по умолчанию</label>
+                    <select id="default-asthma-inhalation" name="default_asthma_inhalation">
+                        <option value="false">Нет</option>
+                        <option value="true">Да</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="default-asthma-reason">Причина по умолчанию</label>
+                    <input type="text" id="default-asthma-reason" name="default_asthma_reason" placeholder="Например: Пил">
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Дефекация</h3>
+                <div class="form-group">
+                    <label for="default-defecation-stool-type">Тип стула по умолчанию</label>
+                    <select id="default-defecation-stool-type" name="default_defecation_stool_type">
+                        <option value="Обычный">Обычный</option>
+                        <option value="Твердый">Твердый</option>
+                        <option value="Жидкий">Жидкий</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="default-defecation-color">Цвет стула по умолчанию</label>
+                    <select id="default-defecation-color" name="default_defecation_color">
+                        <option value="Коричневый">Коричневый</option>
+                        <option value="Темно-коричневый">Темно-коричневый</option>
+                        <option value="Светло-коричневый">Светло-коричневый</option>
+                        <option value="Другой">Другой</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="default-defecation-food">Корм по умолчанию</label>
+                    <input type="text" id="default-defecation-food" name="default_defecation_food" placeholder="Например: Royal Canin Fibre Response">
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Вес</h3>
+                <div class="form-group">
+                    <label for="default-weight-food">Корм по умолчанию</label>
+                    <input type="text" id="default-weight-food" name="default_weight_food" placeholder="Например: Royal Canin Fibre Response">
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block">Сохранить настройки</button>
+                <button type="button" class="btn btn-secondary btn-block" onclick="resetSettingsToDefaults()">Сбросить к значениям по умолчанию</button>
+            </div>
+        </form>
+    </div>
+    
     <!-- History Screen -->
     <div id="history" class="screen">
         <div class="form-header">
@@ -200,26 +283,97 @@
 </div>
 
 <script>
-// Set default date/time to now
+// Default settings
+const DEFAULT_SETTINGS = {
+    asthma: {
+        duration: 'Короткий',
+        inhalation: 'false',
+        reason: 'Пил'
+    },
+    defecation: {
+        stool_type: 'Обычный',
+        color: 'Коричневый',
+        food: 'Royal Canin Fibre Response'
+    },
+    weight: {
+        food: 'Royal Canin Fibre Response'
+    }
+};
+
+// Load settings from localStorage
+function loadSettings() {
+    const saved = localStorage.getItem('formDefaults');
+    if (saved) {
+        try {
+            const settings = JSON.parse(saved);
+            // Ensure backward compatibility - add color if missing
+            if (settings.defecation && !settings.defecation.color) {
+                settings.defecation.color = 'Коричневый';
+            }
+            return settings;
+        } catch (e) {
+            console.error('Error loading settings:', e);
+        }
+    }
+    return DEFAULT_SETTINGS;
+}
+
+// Save settings to localStorage
+function saveSettings(settings) {
+    localStorage.setItem('formDefaults', JSON.stringify(settings));
+}
+
+// Get current settings
+function getSettings() {
+    return loadSettings();
+}
+
+// Set default date/time to now and apply saved defaults
 function resetFormDefaults() {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().slice(0, 5);
+    const settings = getSettings();
     
+    // Asthma form
     document.getElementById('asthma-date').value = dateStr;
     document.getElementById('asthma-time').value = timeStr;
-    document.getElementById('asthma-duration').selectedIndex = 0;
-    document.getElementById('asthma-inhalation').selectedIndex = 0;
-    document.getElementById('asthma-reason').value = 'Пил';
+    document.getElementById('asthma-duration').value = settings.asthma.duration;
+    document.getElementById('asthma-inhalation').value = settings.asthma.inhalation;
+    document.getElementById('asthma-reason').value = settings.asthma.reason;
     
+    // Defecation form
     document.getElementById('defecation-date').value = dateStr;
     document.getElementById('defecation-time').value = timeStr;
-    document.getElementById('defecation-stool-type').selectedIndex = 0;
-    document.getElementById('defecation-food').value = 'Royal Canin Fibre Response';
+    document.getElementById('defecation-stool-type').value = settings.defecation.stool_type;
+    document.getElementById('defecation-color').value = settings.defecation.color || 'Коричневый';
+    document.getElementById('defecation-food').value = settings.defecation.food;
     
+    // Weight form
     document.getElementById('weight-date').value = dateStr;
     document.getElementById('weight-time').value = timeStr;
-    document.getElementById('weight-food').value = 'Royal Canin Fibre Response';
+    document.getElementById('weight-food').value = settings.weight.food;
+}
+
+// Load settings into settings form
+function loadSettingsForm() {
+    const settings = getSettings();
+    document.getElementById('default-asthma-duration').value = settings.asthma.duration;
+    document.getElementById('default-asthma-inhalation').value = settings.asthma.inhalation;
+    document.getElementById('default-asthma-reason').value = settings.asthma.reason;
+    document.getElementById('default-defecation-stool-type').value = settings.defecation.stool_type;
+    document.getElementById('default-defecation-color').value = settings.defecation.color || 'Коричневый';
+    document.getElementById('default-defecation-food').value = settings.defecation.food;
+    document.getElementById('default-weight-food').value = settings.weight.food;
+}
+
+// Reset settings to defaults
+function resetSettingsToDefaults() {
+    if (confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?')) {
+        saveSettings(DEFAULT_SETTINGS);
+        loadSettingsForm();
+        showAlert('success', 'Настройки сброшены к значениям по умолчанию');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -248,6 +402,8 @@ function showScreen(screenId) {
         } else if (screenId === 'weight-form' && !document.getElementById('weight-record-id').value) {
             resetFormDefaults();
             document.getElementById('weight-submit-btn').textContent = 'Сохранить';
+        } else if (screenId === 'settings') {
+            loadSettingsForm();
         } else if (screenId === 'history') {
             // Load default tab when opening history
             showHistoryTab('asthma');
@@ -395,6 +551,9 @@ function showHistoryTab(type) {
                 } else if (type === 'defecation') {
                     html += `<div class="history-details">`;
                     html += `<span><strong>Тип стула:</strong> ${item.stool_type}</span>`;
+                    if (item.color) {
+                        html += `<span><strong>Цвет стула:</strong> ${item.color}</span>`;
+                    }
                     if (item.food && item.food !== '-') {
                         html += `<span><strong>Корм:</strong> ${item.food}</span>`;
                     }
@@ -483,6 +642,7 @@ document.getElementById('defecation-form-element').addEventListener('submit', as
         date: formData.get('date'),
         time: formData.get('time'),
         stool_type: formData.get('stool_type'),
+        color: formData.get('color'),
         food: formData.get('food') || '',
         comment: formData.get('comment') || ''
     };
@@ -565,6 +725,32 @@ document.getElementById('weight-form-element').addEventListener('submit', async 
     }
 });
 
+// Settings form submission
+document.getElementById('settings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const settings = {
+        asthma: {
+            duration: document.getElementById('default-asthma-duration').value,
+            inhalation: document.getElementById('default-asthma-inhalation').value,
+            reason: document.getElementById('default-asthma-reason').value
+        },
+        defecation: {
+            stool_type: document.getElementById('default-defecation-stool-type').value,
+            color: document.getElementById('default-defecation-color').value,
+            food: document.getElementById('default-defecation-food').value
+        },
+        weight: {
+            food: document.getElementById('default-weight-food').value
+        }
+    };
+    
+    saveSettings(settings);
+    showAlert('success', 'Настройки сохранены');
+    setTimeout(() => {
+        showScreen('main-menu');
+    }, 500);
+});
+
 function showAlert(type, message) {
     const container = document.getElementById('alert-container');
     const alert = document.createElement('div');
@@ -611,6 +797,7 @@ async function editRecord(type, recordId) {
             document.getElementById('defecation-date').value = datePart;
             document.getElementById('defecation-time').value = timePart;
             document.getElementById('defecation-stool-type').value = record.stool_type;
+            document.getElementById('defecation-color').value = record.color || 'Коричневый';
             document.getElementById('defecation-food').value = record.food && record.food !== '-' ? record.food : 'Royal Canin Fibre Response';
             document.getElementById('defecation-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
             document.getElementById('defecation-submit-btn').textContent = 'Обновить';

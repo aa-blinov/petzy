@@ -288,6 +288,16 @@ body {
     border-left-color: var(--ios-blue);
 }
 
+.action-card-settings {
+    border-left: 4px solid var(--ios-purple);
+}
+
+.action-card-settings:hover,
+.action-card-settings:focus {
+    background: rgba(191, 90, 242, 0.1);
+    border-left-color: var(--ios-purple);
+}
+
 .card-icon {
     font-size: 3rem;
     margin-bottom: 0.75rem;
@@ -436,6 +446,26 @@ body {
     gap: 1rem;
     margin-top: 1.5rem;
     flex-wrap: wrap;
+}
+
+/* Settings Section */
+.settings-section {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 0.5px solid var(--ios-separator);
+}
+
+.settings-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+    color: var(--text-primary);
+    font-size: 1.17647rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.022em;
 }
 
 /* Buttons - iOS Style */
