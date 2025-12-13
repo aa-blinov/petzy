@@ -293,11 +293,15 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Управление животными</h2>
         </div>
-        <div id="pets-list" class="pets-list">
-            <div class="loading">Загрузка...</div>
-        </div>
-        <div class="form-actions" style="margin-top: 2rem;">
-            <button class="btn btn-primary btn-block" onclick="showScreen('pet-form')">+ Добавить животное</button>
+        <div class="inline-form">
+            <div class="form-content">
+                <div id="pets-list" class="pets-list">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary btn-block" onclick="showScreen('pet-form')">+ Добавить животное</button>
+            </div>
         </div>
     </div>
     

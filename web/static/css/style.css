@@ -691,7 +691,10 @@ body {
     box-shadow: var(--shadow-md);
     min-width: 200px;
     z-index: 1000;
-    padding: 0.5rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .pet-switcher-item {
@@ -705,7 +708,7 @@ body {
     color: var(--text-primary);
     cursor: pointer;
     border-radius: var(--radius-sm);
-    margin-bottom: 0.25rem;
+    margin: 0;
     transition: background 0.2s;
     height: 44px;
     min-height: 44px;
