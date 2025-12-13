@@ -1297,6 +1297,46 @@ def add_defecation():
         return jsonify({"error": str(e)}), 400
 
 
+@app.route("/api/litter", methods=["POST"])
+@login_required
+def add_litter():
+    """Add litter change event."""
+    try:
+        data = request.get_json()
+        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        
+        if not pet_id:
+            return jsonify({"error": "pet_id обязателен"}), 400
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
+        # Parse datetime
+        date_str = data.get("date")
+        time_str = data.get("time")
+        if date_str and time_str:
+            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        else:
+            event_dt = datetime.now()
+        
+        litter_data = {
+            "pet_id": pet_id,
+            "date_time": event_dt,
+            "comment": data.get("comment", "")
+        }
+        
+        db["litter_changes"].insert_one(litter_data)
+        return jsonify({"success": True, "message": "Смена лотка записана"}), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 @app.route("/api/weight", methods=["POST"])
 @login_required
 def add_weight():
@@ -1395,6 +1435,33 @@ def get_defecations():
             defecation["date_time"] = defecation["date_time"].strftime("%Y-%m-%d %H:%M")
     
     return jsonify({"defecations": defecations})
+
+
+@app.route("/api/litter", methods=["GET"])
+@login_required
+def get_litter_changes():
+    """Get litter changes for current pet."""
+    pet_id = request.args.get("pet_id")
+    
+    if not pet_id:
+        return jsonify({"error": "pet_id обязателен"}), 400
+    
+    username = getattr(request, 'current_user', None)
+    if not username:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # Check pet access
+    if not check_pet_access(pet_id, username):
+        return jsonify({"error": "Нет доступа к этому животному"}), 403
+    
+    litter_changes = list(db["litter_changes"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    
+    for change in litter_changes:
+        change["_id"] = str(change["_id"])
+        if isinstance(change.get("date_time"), datetime):
+            change["date_time"] = change["date_time"].strftime("%Y-%m-%d %H:%M")
+    
+    return jsonify({"litter_changes": litter_changes})
 
 
 @app.route("/api/weight", methods=["GET"])
@@ -1605,6 +1672,96 @@ def delete_defecation(record_id):
             return jsonify({"error": "Record not found"}), 404
         
         return jsonify({"success": True, "message": "Дефекация удалена"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/litter/<record_id>", methods=["PUT"])
+@login_required
+def update_litter(record_id):
+    """Update litter change event."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["litter_changes"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
+        data = request.get_json()
+        
+        # Parse datetime
+        date_str = data.get("date")
+        time_str = data.get("time")
+        if date_str and time_str:
+            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        else:
+            event_dt = datetime.now()
+        
+        litter_data = {
+            "date_time": event_dt,
+            "comment": data.get("comment", "")
+        }
+        
+        result = db["litter_changes"].update_one(
+            {"_id": ObjectId(record_id)},
+            {"$set": litter_data}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({"error": "Record not found"}), 404
+        
+        return jsonify({"success": True, "message": "Смена лотка обновлена"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/litter/<record_id>", methods=["DELETE"])
+@login_required
+def delete_litter(record_id):
+    """Delete litter change event."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["litter_changes"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
+        result = db["litter_changes"].delete_one(
+            {"_id": ObjectId(record_id)}
+        )
+        
+        if result.deleted_count == 0:
+            return jsonify({"error": "Record not found"}), 404
+        
+        return jsonify({"success": True, "message": "Смена лотка удалена"}), 200
     
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -1905,6 +2062,13 @@ def export_data(export_type, format_type):
                 ("stool_type", "Тип стула"),
                 ("color", "Цвет стула"),
                 ("food", "Корм"),
+                ("comment", "Комментарий"),
+            ]
+        elif export_type == "litter":
+            collection = db["litter_changes"]
+            title = "Смена лотка"
+            fields = [
+                ("date_time", "Дата и время"),
                 ("comment", "Комментарий"),
             ]
         elif export_type == "weight":

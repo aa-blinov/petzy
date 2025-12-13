@@ -27,6 +27,11 @@
                 <p>Записать дефекацию</p>
             </div>
             
+            <div class="card action-card action-card-litter" onclick="showScreen('litter-form')">
+                <h3>Смена лотка</h3>
+                <p>Записать смену лотка</p>
+            </div>
+            
             <div class="card action-card action-card-history" onclick="showScreen('history')">
                 <h3>История</h3>
                 <p>Просмотр записей</p>
@@ -173,6 +178,37 @@
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-block" id="defecation-submit-btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Litter Change Form -->
+    <div id="litter-form" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Записать смену лотка</h2>
+        </div>
+        <form id="litter-form-element" class="inline-form">
+            <div class="form-content">
+                <div id="litter-pet-info" class="pet-info-badge" style="display: none;"></div>
+                <input type="hidden" id="litter-record-id" name="record_id" value="">
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="litter-date">Дата</label>
+                        <input type="date" id="litter-date" name="date" required>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="litter-time">Время</label>
+                        <input type="time" id="litter-time" name="time" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="litter-comment">Комментарий (необязательно)</label>
+                    <textarea id="litter-comment" name="comment" rows="3" placeholder="Например: Полная замена наполнителя"></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block" id="litter-submit-btn">Сохранить</button>
             </div>
         </form>
     </div>
@@ -481,6 +517,7 @@
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('weight')">Вес</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('asthma')">Приступы астмы</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('defecation')">Дефекации</button>
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('litter')">Смена лотка</button>
                 </div>
                 <div id="export-format-selection" class="export-options" style="display: none;">
                     <button class="btn btn-secondary btn-block" onclick="exportData('csv')">CSV</button>
@@ -497,6 +534,7 @@
             <button class="tab-btn" data-tab="weight" onclick="showHistoryTab('weight'); return false;">Вес</button>
             <button class="tab-btn" data-tab="asthma" onclick="showHistoryTab('asthma'); return false;">Приступы астмы</button>
             <button class="tab-btn" data-tab="defecation" onclick="showHistoryTab('defecation'); return false;">Дефекации</button>
+            <button class="tab-btn" data-tab="litter" onclick="showHistoryTab('litter'); return false;">Смена лотка</button>
         </div>
         <div id="history-content" class="history-content">
             <div class="loading">Загрузка...</div>
@@ -577,7 +615,11 @@ function resetFormDefaults() {
     document.getElementById('defecation-stool-type').value = settings.defecation.stool_type;
     document.getElementById('defecation-color').value = settings.defecation.color || 'Коричневый';
     document.getElementById('defecation-food').value = settings.defecation.food;
-    
+
+    // Litter form
+    document.getElementById('litter-date').value = dateStr;
+    document.getElementById('litter-time').value = timeStr;
+
     // Weight form
     document.getElementById('weight-date').value = dateStr;
     document.getElementById('weight-time').value = timeStr;
@@ -697,7 +739,8 @@ function selectPet(petId, petName) {
     const activeScreen = document.querySelector('.screen.active');
     const isInForm = activeScreen && (
         activeScreen.id === 'asthma-form' || 
-        activeScreen.id === 'defecation-form' || 
+        activeScreen.id === 'defecation-form' ||
+        activeScreen.id === 'litter-form' ||
         activeScreen.id === 'weight-form'
     );
     
@@ -737,7 +780,7 @@ function updatePetSwitcher() {
 
 function updatePetInfoBadges() {
     const petName = selectedPetName || 'не выбрано';
-    const badges = ['feeding-pet-info', 'asthma-pet-info', 'defecation-pet-info', 'weight-pet-info'];
+    const badges = ['feeding-pet-info', 'asthma-pet-info', 'defecation-pet-info', 'litter-pet-info', 'weight-pet-info'];
     
     badges.forEach(badgeId => {
         const badge = document.getElementById(badgeId);
@@ -864,6 +907,10 @@ function showScreen(screenId) {
             resetFormDefaults();
             document.getElementById('defecation-submit-btn').textContent = 'Сохранить';
             updatePetInfoBadges();
+        } else if (screenId === 'litter-form' && !document.getElementById('litter-record-id').value) {
+            resetFormDefaults();
+            document.getElementById('litter-submit-btn').textContent = 'Сохранить';
+            updatePetInfoBadges();
         } else if (screenId === 'weight-form' && !document.getElementById('weight-record-id').value) {
             resetFormDefaults();
             document.getElementById('weight-submit-btn').textContent = 'Сохранить';
@@ -925,6 +972,8 @@ function selectExportType(type) {
         typeName = 'Приступы астмы';
     } else if (type === 'defecation') {
         typeName = 'Дефекации';
+    } else if (type === 'litter') {
+        typeName = 'Смена лотка';
     } else {
         typeName = 'Вес';
     }
@@ -1015,8 +1064,9 @@ function showHistoryTab(type) {
         const isFeeding = type === 'feeding' && btn.textContent.includes('Дневные порции');
         const isAsthma = type === 'asthma' && btn.textContent.includes('астмы');
         const isDefecation = type === 'defecation' && btn.textContent.includes('Дефекации');
+        const isLitter = type === 'litter' && btn.textContent.includes('Смена лотка');
         const isWeight = type === 'weight' && btn.textContent.includes('Вес');
-        if (isFeeding || isAsthma || isDefecation || isWeight) {
+        if (isFeeding || isAsthma || isDefecation || isLitter || isWeight) {
             btn.classList.add('active');
         }
     });
@@ -1038,6 +1088,8 @@ function showHistoryTab(type) {
         endpoint = `/api/asthma?pet_id=${petId}`;
     } else if (type === 'defecation') {
         endpoint = `/api/defecation?pet_id=${petId}`;
+    } else if (type === 'litter') {
+        endpoint = `/api/litter?pet_id=${petId}`;
     } else {
         endpoint = `/api/weight?pet_id=${petId}`;
     }
@@ -1047,16 +1099,18 @@ function showHistoryTab(type) {
         .then(data => {
             let items;
             if (type === 'feeding') {
-                items = data.feedings;
+                items = data.feedings || [];
             } else if (type === 'asthma') {
-                items = data.attacks;
+                items = data.attacks || [];
             } else if (type === 'defecation') {
-                items = data.defecations;
+                items = data.defecations || [];
+            } else if (type === 'litter') {
+                items = data.litter_changes || [];
             } else {
-                items = data.weights;
+                items = data.weights || [];
             }
             
-            if (items.length === 0) {
+            if (!items || items.length === 0) {
                 content.innerHTML = '<p class="no-data">Нет записей</p>';
                 return;
             }
@@ -1090,6 +1144,12 @@ function showHistoryTab(type) {
                     if (item.food && item.food !== '-') {
                         html += `<span><strong>Корм:</strong> ${item.food}</span>`;
                     }
+                    if (item.comment && item.comment !== '-') {
+                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                    }
+                    html += `</div>`;
+                } else if (type === 'litter') {
+                    html += `<div class="history-details">`;
                     if (item.comment && item.comment !== '-') {
                         html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
                     }
@@ -2194,6 +2254,56 @@ document.getElementById('defecation-form-element').addEventListener('submit', as
     }
 });
 
+document.getElementById('litter-form-element').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const recordId = formData.get('record_id');
+    const petId = getSelectedPetId();
+    if (!petId) {
+        showAlert('error', 'Выберите животное в меню навигации');
+        return;
+    }
+    
+    const data = {
+        pet_id: petId,
+        date: formData.get('date'),
+        time: formData.get('time'),
+        comment: formData.get('comment') || ''
+    };
+    
+    try {
+        const url = recordId ? `/api/litter/${recordId}` : '/api/litter';
+        const method = recordId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            showAlert('success', result.message || (recordId ? 'Смена лотка обновлена' : 'Смена лотка записана'));
+            document.getElementById('litter-form-element').reset();
+            document.getElementById('litter-record-id').value = '';
+            document.getElementById('litter-submit-btn').textContent = 'Сохранить';
+            resetFormDefaults();
+            setTimeout(() => {
+                showScreen('main-menu');
+                if (recordId) {
+                    showScreen('history');
+                    showHistoryTab('litter');
+                }
+            }, 150);
+        } else {
+            showAlert('error', result.error || 'Ошибка при сохранении');
+        }
+    } catch (error) {
+        showAlert('error', 'Ошибка при сохранении');
+    }
+});
+
 document.getElementById('weight-form-element').addEventListener('submit', async function(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -2314,6 +2424,8 @@ async function editRecord(type, recordId) {
             items = data.attacks;
         } else if (type === 'defecation') {
             items = data.defecations;
+        } else if (type === 'litter') {
+            items = data.litter_changes;
         } else {
             items = data.weights;
         }
@@ -2357,6 +2469,13 @@ async function editRecord(type, recordId) {
             document.getElementById('defecation-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
             document.getElementById('defecation-submit-btn').textContent = 'Обновить';
             showScreen('defecation-form');
+        } else if (type === 'litter') {
+            document.getElementById('litter-record-id').value = recordId;
+            document.getElementById('litter-date').value = datePart;
+            document.getElementById('litter-time').value = timePart;
+            document.getElementById('litter-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
+            document.getElementById('litter-submit-btn').textContent = 'Обновить';
+            showScreen('litter-form');
         } else if (type === 'weight') {
             document.getElementById('weight-record-id').value = recordId;
             document.getElementById('weight-date').value = datePart;
@@ -2397,6 +2516,8 @@ async function deleteRecord(type, recordId) {
                 showHistoryTab('asthma');
             } else if (currentTab.textContent.includes('Дефекации')) {
                 showHistoryTab('defecation');
+            } else if (currentTab.textContent.includes('Смена лотка')) {
+                showHistoryTab('litter');
             } else if (currentTab.textContent.includes('Вес')) {
                 showHistoryTab('weight');
             }

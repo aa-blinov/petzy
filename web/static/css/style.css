@@ -304,6 +304,16 @@ body {
     border-left-color: var(--ios-green);
 }
 
+.action-cards .action-card-litter {
+    border-left: 4px solid var(--ios-purple);
+}
+
+.action-cards .action-card-litter:hover,
+.action-cards .action-card-litter:focus {
+    background: rgba(191, 90, 242, 0.1);
+    border-left-color: var(--ios-purple);
+}
+
 .action-cards .action-card-weight {
     border-left: 4px solid var(--ios-orange);
 }
@@ -1173,6 +1183,11 @@ body {
     background: rgba(48, 209, 88, 0.15);
 }
 
+.tab-btn[data-tab="litter"].active {
+    border-left: 3px solid var(--ios-purple);
+    background: rgba(191, 90, 242, 0.15);
+}
+
 .tab-btn[data-tab="weight"].active {
     border-left: 3px solid var(--ios-orange);
     background: rgba(255, 159, 10, 0.15);
@@ -1213,6 +1228,10 @@ body {
 
 .history-item-defecation {
     border-left-color: var(--ios-green);
+}
+
+.history-item-litter {
+    border-left-color: var(--ios-purple);
 }
 
 .history-item-weight {
