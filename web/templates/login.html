@@ -9,7 +9,7 @@
         {% if error %}
         <div class="alert alert-error">{{ error }}</div>
         {% endif %}
-        <form method="POST" action="{{ url_for('login') }}" class="login-form">
+        <form method="POST" action="{{ url_for('login') }}" class="login-form" enctype="application/x-www-form-urlencoded">
             <div class="form-group">
                 <label for="username">Логин:</label>
                 <input type="text" id="username" name="username" required autofocus>

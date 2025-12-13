@@ -300,7 +300,7 @@ async function exportData(format) {
     try {
         const response = await fetch(url, {
             method: 'GET',
-            credentials: 'same-origin'
+            credentials: 'include'
         });
         
         if (!response.ok) {
@@ -369,7 +369,7 @@ function showHistoryTab(type) {
     
     const endpoint = type === 'asthma' ? '/api/asthma' : (type === 'defecation' ? '/api/defecation' : '/api/weight');
     
-    fetch(endpoint)
+    fetch(endpoint, { credentials: 'include' })
         .then(response => response.json())
         .then(data => {
             const items = type === 'asthma' ? data.attacks : (type === 'defecation' ? data.defecations : data.weights);
@@ -449,6 +449,7 @@ document.getElementById('asthma-form-element').addEventListener('submit', async 
         const response = await fetch(url, {
             method: method,
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify(data)
         });
         
@@ -493,6 +494,7 @@ document.getElementById('defecation-form-element').addEventListener('submit', as
         const response = await fetch(url, {
             method: method,
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify(data)
         });
         
@@ -537,6 +539,7 @@ document.getElementById('weight-form-element').addEventListener('submit', async 
         const response = await fetch(url, {
             method: method,
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify(data)
         });
         
@@ -637,7 +640,8 @@ async function deleteRecord(type, recordId) {
     
     try {
         const response = await fetch(endpoint, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include'
         });
         
         const result = await response.json();

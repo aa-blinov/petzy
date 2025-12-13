@@ -4,12 +4,13 @@ import csv
 import io
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import quote
 
 import bcrypt
-from flask import Flask, jsonify, make_response, redirect, render_template, request, session, url_for
+import jwt
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
 
 from web.db import db
 
@@ -20,6 +21,13 @@ app = Flask(
     static_folder='static'
 )
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+app.config['JSON_AS_ASCII'] = False
+# JWT configuration
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Access token expires in 15 minutes
+REFRESH_TOKEN_EXPIRE_DAYS = 7  # Refresh token expires in 7 days
 
 # Authentication credentials - REQUIRED from environment
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
@@ -41,17 +49,133 @@ MAX_LOGIN_ATTEMPTS = 5
 LOGIN_LOCKOUT_TIME = 300  # 5 minutes in seconds
 
 
+def create_access_token(username: str) -> str:
+    """Create JWT access token."""
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "username": username,
+        "exp": expire,
+        "type": "access"
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def create_refresh_token(username: str) -> str:
+    """Create JWT refresh token and store it in database."""
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    payload = {
+        "username": username,
+        "exp": expire,
+        "type": "refresh"
+    }
+    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    
+    # Store refresh token in database
+    db["refresh_tokens"].insert_one({
+        "token": token,
+        "username": username,
+        "created_at": datetime.utcnow(),
+        "expires_at": expire
+    })
+    
+    return token
+
+
+def verify_token(token: str, token_type: str = "access") -> dict:
+    """Verify JWT token and return payload."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != token_type:
+            return None
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+
+def get_token_from_request():
+    """Extract token from Authorization header or cookie."""
+    # Try Authorization header first
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    
+    # Try cookie
+    return request.cookies.get("access_token")
+
+
+def try_refresh_access_token():
+    """Try to refresh access token using refresh token. Returns new access token or None."""
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        return None
+    
+    # Verify refresh token
+    payload = verify_token(refresh_token, "refresh")
+    if not payload:
+        return None
+    
+    # Check if token exists in database
+    token_record = db["refresh_tokens"].find_one({"token": refresh_token})
+    if not token_record:
+        return None
+    
+    username = payload.get("username")
+    return create_access_token(username)
+
+
 def login_required(f):
-    """Decorator to require login for routes."""
+    """Decorator to require valid JWT access token."""
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            # For API routes, return JSON error instead of redirect
+        token = get_token_from_request()
+        payload = None
+        new_token = None
+        
+        if token:
+            payload = verify_token(token, "access")
+        
+        if not payload:
+            # Token missing or invalid, try to refresh
+            new_token = try_refresh_access_token()
+            if new_token:
+                payload = verify_token(new_token, "access")
+                if not payload:
+                    new_token = None
+        
+        if not payload:
+            # No valid token available
             if request.path.startswith('/api/'):
-                return jsonify({"error": "Unauthorized"}), 401
+                return jsonify({"error": "Unauthorized", "message": "Token required"}), 401
             return redirect(url_for("login"))
-        return f(*args, **kwargs)
+        
+        # We have valid token (either original or refreshed)
+        request.current_user = payload.get("username")
+        
+        # Execute the function
+        response = f(*args, **kwargs)
+        
+        # If we refreshed the token, set it in the response cookie
+        if new_token:
+            # Wrap response if needed to set cookie
+            if isinstance(response, tuple):
+                response_obj, status_code = response[0], response[1] if len(response) > 1 else 200
+                response = make_response(response_obj, status_code)
+            elif not hasattr(response, 'set_cookie'):
+                response = make_response(response)
+            
+            response.set_cookie(
+                "access_token",
+                new_token,
+                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                httponly=True,
+                secure=False,
+                samesite="Lax"
+            )
+        
+        return response
 
     return decorated_function
 
@@ -59,14 +183,175 @@ def login_required(f):
 @app.route("/")
 def index():
     """Redirect to login or dashboard."""
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
+    token = get_token_from_request()
+    if token:
+        payload = verify_token(token, "access")
+        if payload:
+            return redirect(url_for("dashboard"))
+    
+    # Try to refresh using refresh token
+    new_token = try_refresh_access_token()
+    if new_token:
+        payload = verify_token(new_token, "access")
+        if payload:
+            response = make_response(redirect(url_for("dashboard")))
+            response.set_cookie(
+                "access_token",
+                new_token,
+                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                httponly=True,
+                secure=False,
+                samesite="Lax"
+            )
+            return response
+    
     return redirect(url_for("login"))
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    """API endpoint for login - returns JWT tokens."""
+    data = request.get_json()
+    username = data.get("username", "").strip() if data else ""
+    password = data.get("password", "") if data else ""
+    client_ip = request.remote_addr
+    
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+    
+    # Check rate limiting
+    if client_ip in login_attempts:
+        attempts_data = login_attempts[client_ip]
+        if attempts_data["locked_until"] > time.time():
+            remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
+            return jsonify({"error": f"Too many attempts. Try again in {remaining_time} minutes"}), 429
+        elif attempts_data["count"] >= MAX_LOGIN_ATTEMPTS:
+            if time.time() - attempts_data["last_attempt"] > LOGIN_LOCKOUT_TIME:
+                login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
+            else:
+                remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
+                return jsonify({"error": f"Too many attempts. Try again in {remaining_time} minutes"}), 429
+    
+    # Verify username and password
+    if username == ADMIN_USERNAME:
+        try:
+            if bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode()):
+                # Successful login - reset attempts
+                if client_ip in login_attempts:
+                    del login_attempts[client_ip]
+                
+                # Create tokens
+                access_token = create_access_token(username)
+                refresh_token = create_refresh_token(username)
+                
+                response = jsonify({
+                    "success": True,
+                    "message": "Login successful",
+                    "access_token": access_token,
+                    "refresh_token": refresh_token
+                })
+                
+                # Set tokens in httpOnly cookies
+                response.set_cookie(
+                    "access_token",
+                    access_token,
+                    max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                    httponly=True,
+                    secure=False,  # Set to True in production with HTTPS
+                    samesite="Lax"
+                )
+                response.set_cookie(
+                    "refresh_token",
+                    refresh_token,
+                    max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+                    httponly=True,
+                    secure=False,  # Set to True in production with HTTPS
+                    samesite="Lax"
+                )
+                
+                return response
+        except (ValueError, TypeError):
+            pass
+    
+    # Failed login
+    if client_ip not in login_attempts:
+        login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
+    
+    login_attempts[client_ip]["count"] += 1
+    login_attempts[client_ip]["last_attempt"] = time.time()
+    
+    if login_attempts[client_ip]["count"] >= MAX_LOGIN_ATTEMPTS:
+        login_attempts[client_ip]["locked_until"] = time.time() + LOGIN_LOCKOUT_TIME
+    
+    return jsonify({"error": "Invalid username or password"}), 401
+
+
+@app.route("/api/auth/refresh", methods=["POST"])
+def api_refresh():
+    """Refresh access token using refresh token."""
+    refresh_token = request.cookies.get("refresh_token") or (request.get_json() or {}).get("refresh_token")
+    
+    if not refresh_token:
+        return jsonify({"error": "Refresh token required"}), 401
+    
+    # Verify refresh token
+    payload = verify_token(refresh_token, "refresh")
+    if not payload:
+        return jsonify({"error": "Invalid or expired refresh token"}), 401
+    
+    # Check if token exists in database
+    token_record = db["refresh_tokens"].find_one({"token": refresh_token})
+    if not token_record:
+        return jsonify({"error": "Refresh token not found"}), 401
+    
+    username = payload.get("username")
+    
+    # Create new access token
+    access_token = create_access_token(username)
+    
+    response = jsonify({
+        "success": True,
+        "access_token": access_token
+    })
+    
+    response.set_cookie(
+        "access_token",
+        access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=False,
+        samesite="Lax"
+    )
+    
+    return response
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def api_logout():
+    """Logout - invalidate refresh token."""
+    refresh_token = request.cookies.get("refresh_token")
+    
+    if refresh_token:
+        # Remove refresh token from database
+        db["refresh_tokens"].delete_one({"token": refresh_token})
+    
+    response = jsonify({"success": True, "message": "Logged out"})
+    response.set_cookie("access_token", "", max_age=0)
+    response.set_cookie("refresh_token", "", max_age=0)
+    
+    return response
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Login page with rate limiting and password hashing."""
+    """Login page."""
+    # Check if already logged in
+    token = get_token_from_request()
+    if token:
+        payload = verify_token(token, "access")
+        if payload:
+            return redirect(url_for("dashboard"))
+    
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -80,33 +365,52 @@ def login():
             attempts_data = login_attempts[client_ip]
             if attempts_data["locked_until"] > time.time():
                 remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
-                return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} мин.")
+                return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} минут")
             elif attempts_data["count"] >= MAX_LOGIN_ATTEMPTS:
-                # Reset after lockout period
                 if time.time() - attempts_data["last_attempt"] > LOGIN_LOCKOUT_TIME:
                     login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
                 else:
                     remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
-                    return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} мин.")
+                    return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} минут")
         
         # Verify username and password
         if username == ADMIN_USERNAME:
             try:
-                # Verify password using bcrypt
                 if bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode()):
                     # Successful login - reset attempts
                     if client_ip in login_attempts:
                         del login_attempts[client_ip]
                     
-                    session["user_id"] = "admin"
-                    session["username"] = username
-                    session["db_user_id"] = DEFAULT_USER_ID
-                    return redirect(url_for("dashboard"))
+                    # Create tokens
+                    access_token = create_access_token(username)
+                    refresh_token = create_refresh_token(username)
+                    
+                    # Create response with redirect
+                    response = make_response(redirect(url_for("dashboard")))
+                    
+                    # Set tokens in httpOnly cookies
+                    response.set_cookie(
+                        "access_token",
+                        access_token,
+                        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                        httponly=True,
+                        secure=False,  # Set to True in production with HTTPS
+                        samesite="Lax"
+                    )
+                    response.set_cookie(
+                        "refresh_token",
+                        refresh_token,
+                        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+                        httponly=True,
+                        secure=False,  # Set to True in production with HTTPS
+                        samesite="Lax"
+                    )
+                    
+                    return response
             except (ValueError, TypeError):
-                # Invalid hash format
                 pass
         
-        # Failed login - increment attempts
+        # Failed login
         if client_ip not in login_attempts:
             login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
         
@@ -123,8 +427,9 @@ def login():
 
 @app.route("/logout")
 def logout():
-    """Logout and clear session."""
-    session.clear()
+    """Logout and clear tokens."""
+    # Call API logout endpoint
+    api_logout()
     return redirect(url_for("login"))
 
 
@@ -132,7 +437,8 @@ def logout():
 @login_required
 def dashboard():
     """Main dashboard page."""
-    return render_template("dashboard.html", username=session.get("username", ""))
+    username = getattr(request, 'current_user', 'admin')
+    return render_template("dashboard.html", username=username)
 
 
 @app.route("/api/asthma", methods=["POST"])
@@ -141,7 +447,7 @@ def add_asthma_attack():
     """Add asthma attack event."""
     try:
         data = request.get_json()
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -173,7 +479,7 @@ def add_defecation():
     """Add defecation event."""
     try:
         data = request.get_json()
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -204,7 +510,7 @@ def add_weight():
     """Add weight measurement."""
     try:
         data = request.get_json()
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -233,7 +539,7 @@ def add_weight():
 @login_required
 def get_asthma_attacks():
     """Get asthma attacks for current user."""
-    user_id = session.get("db_user_id", DEFAULT_USER_ID)
+    user_id = DEFAULT_USER_ID
     
     attacks = list(db["asthma_attacks"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
     
@@ -253,7 +559,7 @@ def get_asthma_attacks():
 @login_required
 def get_defecations():
     """Get defecations for current user."""
-    user_id = session.get("db_user_id", DEFAULT_USER_ID)
+    user_id = DEFAULT_USER_ID
     
     defecations = list(db["defecations"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
     
@@ -269,7 +575,7 @@ def get_defecations():
 @login_required
 def get_weights():
     """Get weight measurements for current user."""
-    user_id = session.get("db_user_id", DEFAULT_USER_ID)
+    user_id = DEFAULT_USER_ID
     
     weights = list(db["weights"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
     
@@ -289,7 +595,7 @@ def update_asthma_attack(record_id):
         from bson import ObjectId
         
         data = request.get_json()
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -328,7 +634,7 @@ def delete_asthma_attack(record_id):
     try:
         from bson import ObjectId
         
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         result = db["asthma_attacks"].delete_one(
             {"_id": ObjectId(record_id), "user_id": user_id}
@@ -351,7 +657,7 @@ def update_defecation(record_id):
         from bson import ObjectId
         
         data = request.get_json()
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -389,7 +695,7 @@ def delete_defecation(record_id):
     try:
         from bson import ObjectId
         
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         result = db["defecations"].delete_one(
             {"_id": ObjectId(record_id), "user_id": user_id}
@@ -412,7 +718,7 @@ def update_weight(record_id):
         from bson import ObjectId
         
         data = request.get_json()
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -450,7 +756,7 @@ def delete_weight(record_id):
     try:
         from bson import ObjectId
         
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         result = db["weights"].delete_one(
             {"_id": ObjectId(record_id), "user_id": user_id}
@@ -470,7 +776,7 @@ def delete_weight(record_id):
 def export_data(export_type, format_type):
     """Export data in various formats."""
     try:
-        user_id = session.get("db_user_id", DEFAULT_USER_ID)
+        user_id = DEFAULT_USER_ID
         
         if export_type == "asthma":
             collection = db["asthma_attacks"]

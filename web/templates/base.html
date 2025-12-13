@@ -9,18 +9,82 @@
     <meta name="theme-color" content="#000000">
     <title>{% block title %}Cat Health Control{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Token refresh logic
+        let isRefreshing = false;
+        
+        async function refreshAccessToken() {
+            if (isRefreshing) {
+                // Wait for ongoing refresh
+                return new Promise((resolve) => {
+                    const checkInterval = setInterval(() => {
+                        if (!isRefreshing) {
+                            clearInterval(checkInterval);
+                            resolve(true);
+                        }
+                    }, 100);
+                });
+            }
+            
+            isRefreshing = true;
+            try {
+                const response = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    isRefreshing = false;
+                    return true;
+                } else {
+                    // Refresh token expired, redirect to login
+                    isRefreshing = false;
+                    window.location.href = '/login';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Token refresh error:', error);
+                isRefreshing = false;
+                window.location.href = '/login';
+                return false;
+            }
+        }
+        
+        // Intercept fetch requests to handle token refresh
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            let response = await originalFetch(...args);
+            
+            // If token expired, try to refresh
+            if (response.status === 401) {
+                const data = await response.json().catch(() => ({}));
+                if (data.refresh_required) {
+                    const refreshed = await refreshAccessToken();
+                    if (refreshed) {
+                        // Retry original request
+                        response = await originalFetch(...args);
+                    }
+                } else {
+                    // Not a token refresh issue, redirect to login
+                    window.location.href = '/login';
+                }
+            }
+            
+            return response;
+        };
+    </script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
             <h1 class="nav-title">🐾 Cat Health Control</h1>
-            {% if session.user_id %}
+            {% block nav_user %}
             <div class="nav-user">
-                <span>{{ session.username }}</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small">Выйти</a>
+                <span id="nav-username">Admin</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small" onclick="event.preventDefault(); fetch('/api/auth/logout', {method: 'POST', credentials: 'include'}).then(() => window.location.href='/login');">Выйти</a>
             </div>
-            {% endif %}
+            {% endblock %}
         </div>
     </nav>
     
