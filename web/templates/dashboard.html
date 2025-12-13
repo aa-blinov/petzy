@@ -1993,71 +1993,21 @@ document.getElementById('pet-form-element').addEventListener('submit', async fun
         if (response.ok) {
             showAlert('success', result.message || (recordId ? 'Животное обновлено' : 'Животное создано'));
             
-            if (recordId) {
-                // Reload pet data to get updated photo_url
-                try {
-                    const petResponse = await fetch(`/api/pets/${recordId}`, {
-                        credentials: 'include'
-                    });
-                    if (petResponse.ok) {
-                        const petData = await petResponse.json();
-                        const pet = petData.pet;
-                        
-                        // Update current photo display
-                        const photoCurrent = document.getElementById('pet-photo-current');
-                        const photoCurrentImg = document.getElementById('pet-photo-current-img');
-                        const preview = document.getElementById('pet-photo-preview');
-                        const photoInput = document.getElementById('pet-photo-file');
-                        
-                        // Clear file input
-                        if (photoInput) {
-                            photoInput.value = '';
-                        }
-                        
-                        // Hide preview
-                        if (preview) {
-                            preview.style.display = 'none';
-                        }
-                        
-                        // Show updated current photo
-                        if (pet.photo_url) {
-                            const photoUrl = pet.photo_url + '?t=' + new Date().getTime();
-                            
-                            // Clear old src first to force reload
-                            photoCurrentImg.src = '';
-                            
-                            // Set new src
-                            photoCurrentImg.src = photoUrl;
-                            photoCurrent.style.display = 'block';
-                            photoCurrent.style.visibility = 'visible';
-                            photoCurrent.style.opacity = '1';
-                        } else {
-                            photoCurrent.style.display = 'none';
-                        }
-                        
-                        // Update submit button text
-                        document.getElementById('pet-submit-btn').textContent = 'Обновить';
-                    }
-                } catch (error) {
-                    // Silent error handling
-                }
-            } else {
-                // New pet created
-                resetPetForm();
-                if (result.pet) {
-                    setSelectedPet(result.pet._id, result.pet.name);
-                }
+            // Reset form
+            resetPetForm();
+            
+            // If new pet created, set it as selected
+            if (!recordId && result.pet) {
+                setSelectedPet(result.pet._id, result.pet.name);
             }
             
-            // Always reload pets list to show updated photo
+            // Reload pets list to show updated data
             await renderPetsList();
             
-            // Don't switch screen immediately if we're updating
-            if (!recordId) {
-                setTimeout(() => {
-                    showScreen('pet-selector');
-                }, 500);
-            }
+            // Return to pet selector screen (same as events)
+            setTimeout(() => {
+                showScreen('pet-selector');
+            }, 150);
         } else {
             showAlert('error', result.error || 'Ошибка при сохранении');
         }
