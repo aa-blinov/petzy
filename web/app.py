@@ -352,6 +352,22 @@ def login():
         if payload:
             return redirect(url_for("dashboard"))
     
+    # If no access token, try to refresh using refresh token
+    new_token = try_refresh_access_token()
+    if new_token:
+        payload = verify_token(new_token, "access")
+        if payload:
+            response = make_response(redirect(url_for("dashboard")))
+            response.set_cookie(
+                "access_token",
+                new_token,
+                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                httponly=True,
+                secure=False,
+                samesite="Lax"
+            )
+            return response
+    
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
