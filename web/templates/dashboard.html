@@ -667,7 +667,7 @@ async function renderPetsList() {
     
     let html = '<div class="pets-grid">';
     pets.forEach(pet => {
-        const photo = pet.photo_url || '';
+        const photo = pet.photo_url ? pet.photo_url + '?t=' + new Date().getTime() : '';
         const isOwner = pet.current_user_is_owner || false;
         html += `
             <div class="pet-card">
@@ -1487,7 +1487,7 @@ async function editPet(petId) {
         const photoCurrent = document.getElementById('pet-photo-current');
         const photoCurrentImg = document.getElementById('pet-photo-current-img');
         if (pet.photo_url) {
-            photoCurrentImg.src = pet.photo_url;
+            photoCurrentImg.src = pet.photo_url + '?t=' + new Date().getTime();
             photoCurrent.style.display = 'block';
         } else {
             photoCurrent.style.display = 'none';
@@ -1942,12 +1942,18 @@ document.getElementById('pet-photo-file').addEventListener('change', function(e)
     const file = e.target.files[0];
     const preview = document.getElementById('pet-photo-preview');
     const previewImg = document.getElementById('pet-photo-preview-img');
+    const photoCurrent = document.getElementById('pet-photo-current');
     
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             previewImg.src = e.target.result;
             preview.style.display = 'block';
+            previewImg.style.display = 'block';
+            // Hide current photo when new photo is selected
+            if (photoCurrent) {
+                photoCurrent.style.display = 'none';
+            }
         };
         reader.readAsDataURL(file);
     } else {
@@ -1986,17 +1992,72 @@ document.getElementById('pet-form-element').addEventListener('submit', async fun
         const result = await response.json();
         if (response.ok) {
             showAlert('success', result.message || (recordId ? 'Животное обновлено' : 'Животное создано'));
-            resetPetForm();
             
-            if (!recordId) {
-                // New pet created, select it
-                setSelectedPet(result.pet._id, result.pet.name);
+            if (recordId) {
+                // Reload pet data to get updated photo_url
+                try {
+                    const petResponse = await fetch(`/api/pets/${recordId}`, {
+                        credentials: 'include'
+                    });
+                    if (petResponse.ok) {
+                        const petData = await petResponse.json();
+                        const pet = petData.pet;
+                        
+                        // Update current photo display
+                        const photoCurrent = document.getElementById('pet-photo-current');
+                        const photoCurrentImg = document.getElementById('pet-photo-current-img');
+                        const preview = document.getElementById('pet-photo-preview');
+                        const photoInput = document.getElementById('pet-photo-file');
+                        
+                        // Clear file input
+                        if (photoInput) {
+                            photoInput.value = '';
+                        }
+                        
+                        // Hide preview
+                        if (preview) {
+                            preview.style.display = 'none';
+                        }
+                        
+                        // Show updated current photo
+                        if (pet.photo_url) {
+                            const photoUrl = pet.photo_url + '?t=' + new Date().getTime();
+                            
+                            // Clear old src first to force reload
+                            photoCurrentImg.src = '';
+                            
+                            // Set new src
+                            photoCurrentImg.src = photoUrl;
+                            photoCurrent.style.display = 'block';
+                            photoCurrent.style.visibility = 'visible';
+                            photoCurrent.style.opacity = '1';
+                        } else {
+                            photoCurrent.style.display = 'none';
+                        }
+                        
+                        // Update submit button text
+                        document.getElementById('pet-submit-btn').textContent = 'Обновить';
+                    }
+                } catch (error) {
+                    // Silent error handling
+                }
+            } else {
+                // New pet created
+                resetPetForm();
+                if (result.pet) {
+                    setSelectedPet(result.pet._id, result.pet.name);
+                }
             }
             
-            setTimeout(() => {
-                showScreen('pet-selector');
-                renderPetsList();
-            }, 500);
+            // Always reload pets list to show updated photo
+            await renderPetsList();
+            
+            // Don't switch screen immediately if we're updating
+            if (!recordId) {
+                setTimeout(() => {
+                    showScreen('pet-selector');
+                }, 500);
+            }
         } else {
             showAlert('error', result.error || 'Ошибка при сохранении');
         }
@@ -2010,8 +2071,18 @@ function resetPetForm() {
     document.getElementById('pet-record-id').value = '';
     document.getElementById('pet-form-title').textContent = 'Добавить животное';
     document.getElementById('pet-submit-btn').textContent = 'Сохранить';
-    document.getElementById('pet-photo-preview').style.display = 'none';
-    document.getElementById('pet-photo-current').style.display = 'none';
+    const preview = document.getElementById('pet-photo-preview');
+    const previewImg = document.getElementById('pet-photo-preview-img');
+    if (preview) {
+        preview.style.display = 'none';
+        if (previewImg) {
+            previewImg.src = '';
+        }
+    }
+    const photoCurrent = document.getElementById('pet-photo-current');
+    if (photoCurrent) {
+        photoCurrent.style.display = 'none';
+    }
     document.getElementById('pet-access-section').style.display = 'none';
 }
 

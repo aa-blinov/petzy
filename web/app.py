@@ -702,8 +702,10 @@ def update_pet(pet_id):
             
             # Handle photo file upload
             photo_file_id = pet.get("photo_file_id")  # Keep existing if no new file
+            
             if 'photo_file' in request.files:
                 photo_file = request.files['photo_file']
+                
                 if photo_file.filename:
                     # Delete old photo if exists
                     old_photo_id = pet.get("photo_file_id")
@@ -713,6 +715,7 @@ def update_pet(pet_id):
                             fs.delete(ObjectId(old_photo_id))
                         except:
                             pass
+                    
                     # Upload new photo
                     from bson import ObjectId
                     photo_file_id = str(fs.put(photo_file, filename=photo_file.filename, content_type=photo_file.content_type))
@@ -2061,9 +2064,14 @@ def get_pet_photo(pet_id):
         
         try:
             photo_file = fs.get(ObjectId(photo_file_id))
-            response = make_response(photo_file.read())
+            photo_data = photo_file.read()
+            
+            response = make_response(photo_data)
             response.headers.set('Content-Type', photo_file.content_type)
-            response.headers.set('Content-Disposition', 'inline', filename=photo_file.filename)
+            response.headers.set('Content-Disposition', 'inline')
+            response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+            response.headers.set('Pragma', 'no-cache')
+            response.headers.set('Expires', '0')
             return response
         except Exception as e:
             return jsonify({"error": "Ошибка загрузки фото"}), 404
