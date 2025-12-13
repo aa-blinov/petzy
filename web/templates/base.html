@@ -81,6 +81,16 @@
             <h1 class="nav-title">🐾 Cat Health Control</h1>
             {% block nav_user %}
             <div class="nav-user">
+                <div id="pet-switcher" class="pet-switcher">
+                    <button class="btn btn-secondary btn-small" id="pet-switcher-btn" onclick="showPetSwitcherMenu()">
+                        <span id="pet-switcher-name">Выбрать животное</span> ▼
+                    </button>
+                    <div id="pet-switcher-menu" class="pet-switcher-menu" style="display: none;">
+                        <div id="pet-switcher-list"></div>
+                        <button class="btn btn-secondary btn-small btn-block" onclick="showScreen('pet-selector'); hidePetSwitcherMenu();">Управление животными</button>
+                        <button class="btn btn-primary btn-small btn-block" onclick="showScreen('pet-form'); hidePetSwitcherMenu();">+ Добавить животное</button>
+                    </div>
+                </div>
                 <span id="nav-username">Admin</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small" onclick="event.preventDefault(); fetch('/api/auth/logout', {method: 'POST', credentials: 'include'}).then(() => window.location.href='/login');">Выйти</a>
             </div>

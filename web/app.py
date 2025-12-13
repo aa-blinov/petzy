@@ -13,6 +13,10 @@ import jwt
 from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
 
 from web.db import db
+from gridfs import GridFS
+
+# Initialize GridFS for file storage
+fs = GridFS(db)
 
 # Configure Flask app with proper template and static folders
 app = Flask(
@@ -42,6 +46,45 @@ if not ADMIN_PASSWORD_HASH:
 
 # Use a default user_id for web user (can be any number, just for data storage)
 DEFAULT_USER_ID = 0
+
+# Helper function to verify user credentials
+def verify_user_credentials(username: str, password: str) -> bool:
+    """Verify user credentials from database or fallback to admin."""
+    # First, try to find user in database
+    user = db["users"].find_one({"username": username, "is_active": True})
+    if user:
+        try:
+            return bcrypt.checkpw(password.encode(), user["password_hash"].encode())
+        except (ValueError, TypeError, KeyError):
+            return False
+    
+    # Fallback to admin credentials for backward compatibility
+    if username == ADMIN_USERNAME:
+        try:
+            return bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode())
+        except (ValueError, TypeError):
+            return False
+    
+    return False
+
+# Helper function to ensure default admin user exists
+def ensure_default_admin():
+    """Ensure default admin user exists in database."""
+    admin_user = db["users"].find_one({"username": ADMIN_USERNAME})
+    if not admin_user:
+        # Create default admin user
+        db["users"].insert_one({
+            "username": ADMIN_USERNAME,
+            "password_hash": ADMIN_PASSWORD_HASH,
+            "full_name": "Administrator",
+            "email": "",
+            "created_at": datetime.utcnow(),
+            "created_by": "system",
+            "is_active": True
+        })
+
+# Initialize default admin on startup
+ensure_default_admin()
 
 # Rate limiting for login attempts
 login_attempts = {}
@@ -233,45 +276,41 @@ def api_login():
                 return jsonify({"error": f"Too many attempts. Try again in {remaining_time} minutes"}), 429
     
     # Verify username and password
-    if username == ADMIN_USERNAME:
-        try:
-            if bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode()):
-                # Successful login - reset attempts
-                if client_ip in login_attempts:
-                    del login_attempts[client_ip]
-                
-                # Create tokens
-                access_token = create_access_token(username)
-                refresh_token = create_refresh_token(username)
-                
-                response = jsonify({
-                    "success": True,
-                    "message": "Login successful",
-                    "access_token": access_token,
-                    "refresh_token": refresh_token
-                })
-                
-                # Set tokens in httpOnly cookies
-                response.set_cookie(
-                    "access_token",
-                    access_token,
-                    max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                    httponly=True,
-                    secure=False,  # Set to True in production with HTTPS
-                    samesite="Lax"
-                )
-                response.set_cookie(
-                    "refresh_token",
-                    refresh_token,
-                    max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-                    httponly=True,
-                    secure=False,  # Set to True in production with HTTPS
-                    samesite="Lax"
-                )
-                
-                return response
-        except (ValueError, TypeError):
-            pass
+    if verify_user_credentials(username, password):
+        # Successful login - reset attempts
+        if client_ip in login_attempts:
+            del login_attempts[client_ip]
+        
+        # Create tokens
+        access_token = create_access_token(username)
+        refresh_token = create_refresh_token(username)
+        
+        response = jsonify({
+            "success": True,
+            "message": "Login successful",
+            "access_token": access_token,
+            "refresh_token": refresh_token
+        })
+        
+        # Set tokens in httpOnly cookies
+        response.set_cookie(
+            "access_token",
+            access_token,
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="Lax"
+        )
+        response.set_cookie(
+            "refresh_token",
+            refresh_token,
+            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="Lax"
+        )
+        
+        return response
     
     # Failed login
     if client_ip not in login_attempts:
@@ -390,41 +429,37 @@ def login():
                     return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} минут")
         
         # Verify username and password
-        if username == ADMIN_USERNAME:
-            try:
-                if bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode()):
-                    # Successful login - reset attempts
-                    if client_ip in login_attempts:
-                        del login_attempts[client_ip]
-                    
-                    # Create tokens
-                    access_token = create_access_token(username)
-                    refresh_token = create_refresh_token(username)
-                    
-                    # Create response with redirect
-                    response = make_response(redirect(url_for("dashboard")))
-                    
-                    # Set tokens in httpOnly cookies
-                    response.set_cookie(
-                        "access_token",
-                        access_token,
-                        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                        httponly=True,
-                        secure=False,  # Set to True in production with HTTPS
-                        samesite="Lax"
-                    )
-                    response.set_cookie(
-                        "refresh_token",
-                        refresh_token,
-                        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-                        httponly=True,
-                        secure=False,  # Set to True in production with HTTPS
-                        samesite="Lax"
-                    )
-                    
-                    return response
-            except (ValueError, TypeError):
-                pass
+        if verify_user_credentials(username, password):
+            # Successful login - reset attempts
+            if client_ip in login_attempts:
+                del login_attempts[client_ip]
+            
+            # Create tokens
+            access_token = create_access_token(username)
+            refresh_token = create_refresh_token(username)
+            
+            # Create response with redirect
+            response = make_response(redirect(url_for("dashboard")))
+            
+            # Set tokens in httpOnly cookies
+            response.set_cookie(
+                "access_token",
+                access_token,
+                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                httponly=True,
+                secure=False,  # Set to True in production with HTTPS
+                samesite="Lax"
+            )
+            response.set_cookie(
+                "refresh_token",
+                refresh_token,
+                max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+                httponly=True,
+                secure=False,  # Set to True in production with HTTPS
+                samesite="Lax"
+            )
+            
+            return response
         
         # Failed login
         if client_ip not in login_attempts:
@@ -449,6 +484,23 @@ def logout():
     return redirect(url_for("login"))
 
 
+# Helper function to check if user is admin
+def is_admin(username: str) -> bool:
+    """Check if user is admin."""
+    return username == ADMIN_USERNAME
+
+# Decorator for admin-only endpoints
+def admin_required(f):
+    """Decorator to require admin privileges."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        username = getattr(request, 'current_user', None)
+        if not username or not is_admin(username):
+            return jsonify({"error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -457,13 +509,723 @@ def dashboard():
     return render_template("dashboard.html", username=username)
 
 
+# Helper function to check pet access
+def check_pet_access(pet_id, username):
+    """Check if user has access to pet."""
+    try:
+        from bson import ObjectId
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return False
+        # User is owner or in shared_with
+        return pet.get("owner") == username or username in pet.get("shared_with", [])
+    except Exception:
+        return False
+
+
+@app.route("/api/pets", methods=["GET"])
+@login_required
+def get_pets():
+    """Get list of all pets accessible to current user."""
+    username = getattr(request, 'current_user', None)
+    if not username:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # Get pets where user is owner or in shared_with
+    pets = list(db["pets"].find({
+        "$or": [
+            {"owner": username},
+            {"shared_with": username}
+        ]
+    }).sort("created_at", -1))
+    
+    for pet in pets:
+        pet["_id"] = str(pet["_id"])
+        if isinstance(pet.get("birth_date"), datetime):
+            pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
+        if isinstance(pet.get("created_at"), datetime):
+            pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
+        
+        # Add photo URL if file exists
+        if pet.get("photo_file_id"):
+            pet["photo_url"] = url_for('get_pet_photo', pet_id=pet["_id"], _external=False)
+    
+    return jsonify({"pets": pets})
+
+
+@app.route("/api/pets", methods=["POST"])
+@login_required
+def create_pet():
+    """Create a new pet."""
+    try:
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Handle form data with file upload
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            name = request.form.get("name", "").strip()
+            if not name:
+                return jsonify({"error": "Имя животного обязательно"}), 400
+            
+            # Handle photo file upload
+            photo_file_id = None
+            if 'photo_file' in request.files:
+                photo_file = request.files['photo_file']
+                if photo_file.filename:
+                    from bson import ObjectId
+                    photo_file_id = str(fs.put(photo_file, filename=photo_file.filename, content_type=photo_file.content_type))
+            
+            # Parse birth_date if provided
+            birth_date = None
+            if request.form.get("birth_date"):
+                try:
+                    birth_date = datetime.strptime(request.form.get("birth_date"), "%Y-%m-%d")
+                except ValueError:
+                    pass
+            
+            pet_data = {
+                "name": name,
+                "breed": request.form.get("breed", "").strip(),
+                "birth_date": birth_date,
+                "gender": request.form.get("gender", "").strip(),
+                "photo_file_id": str(photo_file_id) if photo_file_id else None,
+                "owner": username,
+                "shared_with": [],
+                "access_requests": [],
+                "created_at": datetime.utcnow(),
+                "created_by": username
+            }
+        else:
+            # Handle JSON data (backward compatibility)
+            data = request.get_json()
+            name = data.get("name", "").strip()
+            if not name:
+                return jsonify({"error": "Имя животного обязательно"}), 400
+            
+            # Parse birth_date if provided
+            birth_date = None
+            if data.get("birth_date"):
+                try:
+                    birth_date = datetime.strptime(data.get("birth_date"), "%Y-%m-%d")
+                except ValueError:
+                    pass
+            
+            pet_data = {
+                "name": name,
+                "breed": data.get("breed", "").strip(),
+                "birth_date": birth_date,
+                "gender": data.get("gender", "").strip(),
+                "photo_url": data.get("photo_url", "").strip(),
+                "owner": username,
+                "shared_with": [],
+                "access_requests": [],
+                "created_at": datetime.utcnow(),
+                "created_by": username
+            }
+        
+        result = db["pets"].insert_one(pet_data)
+        pet_data["_id"] = str(result.inserted_id)
+        if isinstance(pet_data.get("birth_date"), datetime):
+            pet_data["birth_date"] = pet_data["birth_date"].strftime("%Y-%m-%d")
+        if isinstance(pet_data.get("created_at"), datetime):
+            pet_data["created_at"] = pet_data["created_at"].strftime("%Y-%m-%d %H:%M")
+        
+        return jsonify({"success": True, "pet": pet_data, "message": "Животное создано"}), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>", methods=["GET"])
+@login_required
+def get_pet(pet_id):
+    """Get pet information."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Check access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
+        pet["_id"] = str(pet["_id"])
+        if isinstance(pet.get("birth_date"), datetime):
+            pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
+        if isinstance(pet.get("created_at"), datetime):
+            pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
+        
+        # Add photo URL if file exists
+        if pet.get("photo_file_id"):
+            pet["photo_url"] = url_for('get_pet_photo', pet_id=pet["_id"], _external=False)
+        
+        # Add current user info for frontend
+        pet["current_user_is_owner"] = pet.get("owner") == username
+        
+        return jsonify({"pet": pet})
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>", methods=["PUT"])
+@login_required
+def update_pet(pet_id):
+    """Update pet information."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can update
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может изменять информацию о животном"}), 403
+        
+        # Handle form data with file upload
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            name = request.form.get("name", "").strip()
+            if not name:
+                return jsonify({"error": "Имя животного обязательно"}), 400
+            
+            # Handle photo file upload
+            photo_file_id = pet.get("photo_file_id")  # Keep existing if no new file
+            if 'photo_file' in request.files:
+                photo_file = request.files['photo_file']
+                if photo_file.filename:
+                    # Delete old photo if exists
+                    old_photo_id = pet.get("photo_file_id")
+                    if old_photo_id:
+                        try:
+                            from bson import ObjectId
+                            fs.delete(ObjectId(old_photo_id))
+                        except:
+                            pass
+                    # Upload new photo
+                    from bson import ObjectId
+                    photo_file_id = str(fs.put(photo_file, filename=photo_file.filename, content_type=photo_file.content_type))
+                elif request.form.get("remove_photo") == "true":
+                    # Remove photo
+                    old_photo_id = pet.get("photo_file_id")
+                    if old_photo_id:
+                        try:
+                            fs.delete(ObjectId(old_photo_id))
+                        except:
+                            pass
+                    photo_file_id = None
+            
+            # Parse birth_date if provided
+            birth_date = None
+            if request.form.get("birth_date"):
+                try:
+                    birth_date = datetime.strptime(request.form.get("birth_date"), "%Y-%m-%d")
+                except ValueError:
+                    pass
+            
+            update_data = {
+                "name": name,
+                "breed": request.form.get("breed", "").strip(),
+                "birth_date": birth_date,
+                "gender": request.form.get("gender", "").strip(),
+            }
+            if photo_file_id is not None:
+                update_data["photo_file_id"] = photo_file_id
+            elif "photo_file_id" in request.form and request.form.get("photo_file_id") == "":
+                update_data["photo_file_id"] = None
+        else:
+            # Handle JSON data (backward compatibility)
+            data = request.get_json()
+            name = data.get("name", "").strip()
+            if not name:
+                return jsonify({"error": "Имя животного обязательно"}), 400
+            
+            # Parse birth_date if provided
+            birth_date = None
+            if data.get("birth_date"):
+                try:
+                    birth_date = datetime.strptime(data.get("birth_date"), "%Y-%m-%d")
+                except ValueError:
+                    pass
+            
+            update_data = {
+                "name": name,
+                "breed": data.get("breed", "").strip(),
+                "birth_date": birth_date,
+                "gender": data.get("gender", "").strip(),
+                "photo_url": data.get("photo_url", "").strip()
+            }
+        
+        result = db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        return jsonify({"success": True, "message": "Информация о животном обновлена"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# API endpoints for users (admin only)
+@app.route("/api/users", methods=["GET"])
+@login_required
+@admin_required
+def get_users():
+    """Get list of all users (admin only)."""
+    users = list(db["users"].find({}).sort("created_at", -1))
+    
+    for user in users:
+        user["_id"] = str(user["_id"])
+        # Don't return password hash
+        user.pop("password_hash", None)
+        if isinstance(user.get("created_at"), datetime):
+            user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+    
+    return jsonify({"users": users})
+
+
+@app.route("/api/users", methods=["POST"])
+@login_required
+@admin_required
+def create_user():
+    """Create a new user (admin only)."""
+    try:
+        data = request.get_json()
+        username = data.get("username", "").strip()
+        password = data.get("password", "")
+        full_name = data.get("full_name", "").strip()
+        email = data.get("email", "").strip()
+        
+        if not username or not password:
+            return jsonify({"error": "Username and password required"}), 400
+        
+        # Check if user already exists
+        existing = db["users"].find_one({"username": username})
+        if existing:
+            return jsonify({"error": "Пользователь с таким именем уже существует"}), 400
+        
+        # Hash password
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        
+        current_user = getattr(request, 'current_user', 'admin')
+        
+        user_data = {
+            "username": username,
+            "password_hash": password_hash,
+            "full_name": full_name,
+            "email": email,
+            "created_at": datetime.utcnow(),
+            "created_by": current_user,
+            "is_active": True
+        }
+        
+        result = db["users"].insert_one(user_data)
+        user_data["_id"] = str(result.inserted_id)
+        user_data.pop("password_hash", None)
+        if isinstance(user_data.get("created_at"), datetime):
+            user_data["created_at"] = user_data["created_at"].strftime("%Y-%m-%d %H:%M")
+        
+        return jsonify({"success": True, "user": user_data, "message": "Пользователь создан"}), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/users/<username>", methods=["GET"])
+@login_required
+@admin_required
+def get_user(username):
+    """Get user information (admin only)."""
+    user = db["users"].find_one({"username": username})
+    if not user:
+        return jsonify({"error": "Пользователь не найден"}), 404
+    
+    user["_id"] = str(user["_id"])
+    user.pop("password_hash", None)
+    if isinstance(user.get("created_at"), datetime):
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+    
+    return jsonify({"user": user})
+
+
+@app.route("/api/users/<username>", methods=["PUT"])
+@login_required
+@admin_required
+def update_user(username):
+    """Update user information (admin only)."""
+    try:
+        user = db["users"].find_one({"username": username})
+        if not user:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        data = request.get_json()
+        update_data = {}
+        
+        if "full_name" in data:
+            update_data["full_name"] = data.get("full_name", "").strip()
+        if "email" in data:
+            update_data["email"] = data.get("email", "").strip()
+        if "is_active" in data:
+            update_data["is_active"] = bool(data.get("is_active"))
+        
+        if not update_data:
+            return jsonify({"error": "Нет данных для обновления"}), 400
+        
+        result = db["users"].update_one(
+            {"username": username},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        return jsonify({"success": True, "message": "Пользователь обновлен"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/users/<username>", methods=["DELETE"])
+@login_required
+@admin_required
+def delete_user(username):
+    """Deactivate user (admin only)."""
+    try:
+        if username == ADMIN_USERNAME:
+            return jsonify({"error": "Нельзя деактивировать администратора"}), 400
+        
+        result = db["users"].update_one(
+            {"username": username},
+            {"$set": {"is_active": False}}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        return jsonify({"success": True, "message": "Пользователь деактивирован"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/users/<username>/reset-password", methods=["POST"])
+@login_required
+@admin_required
+def reset_user_password(username):
+    """Reset user password (admin only)."""
+    try:
+        data = request.get_json()
+        new_password = data.get("password", "")
+        
+        if not new_password:
+            return jsonify({"error": "Новый пароль обязателен"}), 400
+        
+        user = db["users"].find_one({"username": username})
+        if not user:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        # Hash new password
+        password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+        
+        result = db["users"].update_one(
+            {"username": username},
+            {"$set": {"password_hash": password_hash}}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        return jsonify({"success": True, "message": "Пароль изменен"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# API endpoints for sharing pets
+@app.route("/api/pets/<pet_id>/share", methods=["POST"])
+@login_required
+def share_pet(pet_id):
+    """Share pet with another user (owner only)."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can share
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может делиться животным"}), 403
+        
+        data = request.get_json()
+        share_username = data.get("username", "").strip()
+        
+        if not share_username:
+            return jsonify({"error": "Имя пользователя обязательно"}), 400
+        
+        # Check if user exists
+        user = db["users"].find_one({"username": share_username, "is_active": True})
+        if not user:
+            return jsonify({"error": "Пользователь не найден"}), 404
+        
+        # Don't share with owner
+        if share_username == username:
+            return jsonify({"error": "Нельзя поделиться с самим собой"}), 400
+        
+        # Check if already shared
+        shared_with = pet.get("shared_with", [])
+        if share_username in shared_with:
+            return jsonify({"error": "Доступ уже предоставлен этому пользователю"}), 400
+        
+        # Add to shared_with
+        db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {"$addToSet": {"shared_with": share_username}}
+        )
+        
+        return jsonify({"success": True, "message": f"Доступ предоставлен пользователю {share_username}"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>/share/<share_username>", methods=["DELETE"])
+@login_required
+def unshare_pet(pet_id, share_username):
+    """Remove access from user (owner only)."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can unshare
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может убрать доступ"}), 403
+        
+        # Remove from shared_with
+        db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {"$pull": {"shared_with": share_username}}
+        )
+        
+        return jsonify({"success": True, "message": f"Доступ убран у пользователя {share_username}"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>/request-access", methods=["POST"])
+@login_required
+def request_pet_access(pet_id):
+    """Request access to pet."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Check if already has access
+        if check_pet_access(pet_id, username):
+            return jsonify({"error": "У вас уже есть доступ к этому животному"}), 400
+        
+        # Check if already requested
+        access_requests = pet.get("access_requests", [])
+        if any(req.get("username") == username for req in access_requests):
+            return jsonify({"error": "Запрос на доступ уже отправлен"}), 400
+        
+        # Add request
+        db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {"$addToSet": {"access_requests": {
+                "username": username,
+                "requested_at": datetime.utcnow()
+            }}}
+        )
+        
+        return jsonify({"success": True, "message": "Запрос на доступ отправлен"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>/access-requests", methods=["GET"])
+@login_required
+def get_access_requests(pet_id):
+    """Get access requests for pet (owner only)."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can see requests
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может просматривать запросы"}), 403
+        
+        requests = pet.get("access_requests", [])
+        for req in requests:
+            if isinstance(req.get("requested_at"), datetime):
+                req["requested_at"] = req["requested_at"].strftime("%Y-%m-%d %H:%M")
+        
+        return jsonify({"requests": requests})
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>/access-requests/<request_username>/approve", methods=["POST"])
+@login_required
+def approve_access_request(pet_id, request_username):
+    """Approve access request (owner only)."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can approve
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может одобрять запросы"}), 403
+        
+        # Check if request exists
+        access_requests = pet.get("access_requests", [])
+        if not any(req.get("username") == request_username for req in access_requests):
+            return jsonify({"error": "Запрос не найден"}), 404
+        
+        # Add to shared_with and remove from requests
+        db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {
+                "$addToSet": {"shared_with": request_username},
+                "$pull": {"access_requests": {"username": request_username}}
+            }
+        )
+        
+        return jsonify({"success": True, "message": f"Доступ предоставлен пользователю {request_username}"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>/access-requests/<request_username>/reject", methods=["POST"])
+@login_required
+def reject_access_request(pet_id, request_username):
+    """Reject access request (owner only)."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can reject
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может отклонять запросы"}), 403
+        
+        # Remove from requests
+        db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {"$pull": {"access_requests": {"username": request_username}}}
+        )
+        
+        return jsonify({"success": True, "message": f"Запрос отклонен"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/pets/<pet_id>", methods=["DELETE"])
+@login_required
+def delete_pet(pet_id):
+    """Delete pet."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Only owner can delete
+        if pet.get("owner") != username:
+            return jsonify({"error": "Только владелец может удалить животное"}), 403
+        
+        result = db["pets"].delete_one({"_id": ObjectId(pet_id)})
+        
+        if result.deleted_count == 0:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        return jsonify({"success": True, "message": "Животное удалено"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 @app.route("/api/asthma", methods=["POST"])
 @login_required
 def add_asthma_attack():
     """Add asthma attack event."""
     try:
         data = request.get_json()
-        user_id = DEFAULT_USER_ID
+        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        
+        if not pet_id:
+            return jsonify({"error": "pet_id обязателен"}), 400
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         # Parse datetime
         date_str = data.get("date")
@@ -474,7 +1236,7 @@ def add_asthma_attack():
             event_dt = datetime.now()
         
         attack_data = {
-            "user_id": user_id,
+            "pet_id": pet_id,
             "date_time": event_dt,
             "duration": data.get("duration", ""),
             "reason": data.get("reason", ""),
@@ -495,7 +1257,18 @@ def add_defecation():
     """Add defecation event."""
     try:
         data = request.get_json()
-        user_id = DEFAULT_USER_ID
+        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        
+        if not pet_id:
+            return jsonify({"error": "pet_id обязателен"}), 400
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         # Parse datetime
         date_str = data.get("date")
@@ -506,7 +1279,7 @@ def add_defecation():
             event_dt = datetime.now()
         
         defecation_data = {
-            "user_id": user_id,
+            "pet_id": pet_id,
             "date_time": event_dt,
             "stool_type": data.get("stool_type", ""),
             "color": data.get("color", "Коричневый"),
@@ -527,7 +1300,18 @@ def add_weight():
     """Add weight measurement."""
     try:
         data = request.get_json()
-        user_id = DEFAULT_USER_ID
+        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        
+        if not pet_id:
+            return jsonify({"error": "pet_id обязателен"}), 400
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         # Parse datetime
         date_str = data.get("date")
@@ -538,7 +1322,7 @@ def add_weight():
             event_dt = datetime.now()
         
         weight_data = {
-            "user_id": user_id,
+            "pet_id": pet_id,
             "date_time": event_dt,
             "weight": data.get("weight", ""),
             "food": data.get("food", ""),
@@ -555,10 +1339,21 @@ def add_weight():
 @app.route("/api/asthma", methods=["GET"])
 @login_required
 def get_asthma_attacks():
-    """Get asthma attacks for current user."""
-    user_id = DEFAULT_USER_ID
+    """Get asthma attacks for current pet."""
+    pet_id = request.args.get("pet_id")
     
-    attacks = list(db["asthma_attacks"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
+    if not pet_id:
+        return jsonify({"error": "pet_id обязателен"}), 400
+    
+    username = getattr(request, 'current_user', None)
+    if not username:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # Check pet access
+    if not check_pet_access(pet_id, username):
+        return jsonify({"error": "Нет доступа к этому животному"}), 403
+    
+    attacks = list(db["asthma_attacks"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
     
     for attack in attacks:
         attack["_id"] = str(attack["_id"])
@@ -575,10 +1370,21 @@ def get_asthma_attacks():
 @app.route("/api/defecation", methods=["GET"])
 @login_required
 def get_defecations():
-    """Get defecations for current user."""
-    user_id = DEFAULT_USER_ID
+    """Get defecations for current pet."""
+    pet_id = request.args.get("pet_id")
     
-    defecations = list(db["defecations"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
+    if not pet_id:
+        return jsonify({"error": "pet_id обязателен"}), 400
+    
+    username = getattr(request, 'current_user', None)
+    if not username:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # Check pet access
+    if not check_pet_access(pet_id, username):
+        return jsonify({"error": "Нет доступа к этому животному"}), 403
+    
+    defecations = list(db["defecations"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
     
     for defecation in defecations:
         defecation["_id"] = str(defecation["_id"])
@@ -591,10 +1397,21 @@ def get_defecations():
 @app.route("/api/weight", methods=["GET"])
 @login_required
 def get_weights():
-    """Get weight measurements for current user."""
-    user_id = DEFAULT_USER_ID
+    """Get weight measurements for current pet."""
+    pet_id = request.args.get("pet_id")
     
-    weights = list(db["weights"].find({"user_id": user_id}).sort("date_time", -1).limit(100))
+    if not pet_id:
+        return jsonify({"error": "pet_id обязателен"}), 400
+    
+    username = getattr(request, 'current_user', None)
+    if not username:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # Check pet access
+    if not check_pet_access(pet_id, username):
+        return jsonify({"error": "Нет доступа к этому животному"}), 403
+    
+    weights = list(db["weights"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
     
     for weight in weights:
         weight["_id"] = str(weight["_id"])
@@ -611,8 +1428,24 @@ def update_asthma_attack(record_id):
     try:
         from bson import ObjectId
         
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["asthma_attacks"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
         data = request.get_json()
-        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -631,7 +1464,7 @@ def update_asthma_attack(record_id):
         }
         
         result = db["asthma_attacks"].update_one(
-            {"_id": ObjectId(record_id), "user_id": user_id},
+            {"_id": ObjectId(record_id)},
             {"$set": attack_data}
         )
         
@@ -651,10 +1484,25 @@ def delete_asthma_attack(record_id):
     try:
         from bson import ObjectId
         
-        user_id = DEFAULT_USER_ID
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["asthma_attacks"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         result = db["asthma_attacks"].delete_one(
-            {"_id": ObjectId(record_id), "user_id": user_id}
+            {"_id": ObjectId(record_id)}
         )
         
         if result.deleted_count == 0:
@@ -673,8 +1521,24 @@ def update_defecation(record_id):
     try:
         from bson import ObjectId
         
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["defecations"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
         data = request.get_json()
-        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -693,7 +1557,7 @@ def update_defecation(record_id):
         }
         
         result = db["defecations"].update_one(
-            {"_id": ObjectId(record_id), "user_id": user_id},
+            {"_id": ObjectId(record_id)},
             {"$set": defecation_data}
         )
         
@@ -713,10 +1577,25 @@ def delete_defecation(record_id):
     try:
         from bson import ObjectId
         
-        user_id = DEFAULT_USER_ID
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["defecations"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         result = db["defecations"].delete_one(
-            {"_id": ObjectId(record_id), "user_id": user_id}
+            {"_id": ObjectId(record_id)}
         )
         
         if result.deleted_count == 0:
@@ -735,8 +1614,24 @@ def update_weight(record_id):
     try:
         from bson import ObjectId
         
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["weights"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
+        
         data = request.get_json()
-        user_id = DEFAULT_USER_ID
         
         # Parse datetime
         date_str = data.get("date")
@@ -754,7 +1649,7 @@ def update_weight(record_id):
         }
         
         result = db["weights"].update_one(
-            {"_id": ObjectId(record_id), "user_id": user_id},
+            {"_id": ObjectId(record_id)},
             {"$set": weight_data}
         )
         
@@ -774,10 +1669,25 @@ def delete_weight(record_id):
     try:
         from bson import ObjectId
         
-        user_id = DEFAULT_USER_ID
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get existing record to check pet_id
+        existing = db["weights"].find_one({"_id": ObjectId(record_id)})
+        if not existing:
+            return jsonify({"error": "Record not found"}), 404
+        
+        pet_id = existing.get("pet_id")
+        if not pet_id:
+            return jsonify({"error": "Invalid record"}), 400
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         result = db["weights"].delete_one(
-            {"_id": ObjectId(record_id), "user_id": user_id}
+            {"_id": ObjectId(record_id)}
         )
         
         if result.deleted_count == 0:
@@ -794,7 +1704,18 @@ def delete_weight(record_id):
 def export_data(export_type, format_type):
     """Export data in various formats."""
     try:
-        user_id = DEFAULT_USER_ID
+        pet_id = request.args.get("pet_id")
+        
+        if not pet_id:
+            return jsonify({"error": "pet_id обязателен"}), 400
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Check pet access
+        if not check_pet_access(pet_id, username):
+            return jsonify({"error": "Нет доступа к этому животному"}), 403
         
         if export_type == "asthma":
             collection = db["asthma_attacks"]
@@ -828,7 +1749,7 @@ def export_data(export_type, format_type):
         else:
             return jsonify({"error": "Invalid export type"}), 400
         
-        records = list(collection.find({"user_id": user_id}).sort([("date_time", -1)]))
+        records = list(collection.find({"pet_id": pet_id}).sort([("date_time", -1)]))
         
         if not records:
             return jsonify({"error": "Нет данных для выгрузки"}), 404
@@ -948,6 +1869,43 @@ def export_data(export_type, format_type):
         return jsonify({"error": str(e)}), 400
 
 
+@app.route("/api/pets/<pet_id>/photo", methods=["GET"])
+@login_required
+def get_pet_photo(pet_id):
+    """Get pet photo file."""
+    try:
+        from bson import ObjectId
+        
+        username = getattr(request, 'current_user', None)
+        if not username:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return jsonify({"error": "Животное не найдено"}), 404
+        
+        # Check access
+        if pet.get("owner") != username and username not in pet.get("shared_with", []):
+            return jsonify({"error": "Нет доступа"}), 403
+        
+        photo_file_id = pet.get("photo_file_id")
+        if not photo_file_id:
+            return jsonify({"error": "Фото не найдено"}), 404
+        
+        try:
+            photo_file = fs.get(ObjectId(photo_file_id))
+            response = make_response(photo_file.read())
+            response.headers.set('Content-Type', photo_file.content_type)
+            response.headers.set('Content-Disposition', 'inline', filename=photo_file.filename)
+            return response
+        except Exception as e:
+            return jsonify({"error": "Ошибка загрузки фото"}), 404
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 if __name__ == "__main__":
+    ensure_default_admin()
     app.run(host="0.0.0.0", port=5000, debug=True)
 
