@@ -46,42 +46,44 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать приступ астмы</h2>
         </div>
-        <div id="asthma-pet-info" class="pet-info-badge" style="display: none;"></div>
         <form id="asthma-form-element" class="inline-form">
-            <input type="hidden" id="asthma-record-id" name="record_id" value="">
-            <div class="form-row">
-                <div class="form-group form-group-half">
-                    <label for="asthma-date">Дата</label>
-                    <input type="date" id="asthma-date" name="date" required>
+            <div class="form-content">
+                <div id="asthma-pet-info" class="pet-info-badge" style="display: none;"></div>
+                <input type="hidden" id="asthma-record-id" name="record_id" value="">
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="asthma-date">Дата</label>
+                        <input type="date" id="asthma-date" name="date" required>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="asthma-time">Время</label>
+                        <input type="time" id="asthma-time" name="time" required>
+                    </div>
                 </div>
-                <div class="form-group form-group-half">
-                    <label for="asthma-time">Время</label>
-                    <input type="time" id="asthma-time" name="time" required>
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="asthma-duration">Длительность</label>
+                        <select id="asthma-duration" name="duration" required>
+                            <option value="Короткий" selected>Короткий</option>
+                            <option value="Длительный">Длительный</option>
+                        </select>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="asthma-inhalation">Ингаляция</label>
+                        <select id="asthma-inhalation" name="inhalation" required>
+                            <option value="false" selected>Нет</option>
+                            <option value="true">Да</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group form-group-half">
-                    <label for="asthma-duration">Длительность</label>
-                    <select id="asthma-duration" name="duration" required>
-                        <option value="Короткий" selected>Короткий</option>
-                        <option value="Длительный">Длительный</option>
-                    </select>
+                <div class="form-group">
+                    <label for="asthma-reason">Причина</label>
+                    <input type="text" id="asthma-reason" name="reason" value="Пил" placeholder="Например: Пил после сна" required>
                 </div>
-                <div class="form-group form-group-half">
-                    <label for="asthma-inhalation">Ингаляция</label>
-                    <select id="asthma-inhalation" name="inhalation" required>
-                        <option value="false" selected>Нет</option>
-                        <option value="true">Да</option>
-                    </select>
+                <div class="form-group">
+                    <label for="asthma-comment">Комментарий (необязательно)</label>
+                    <textarea id="asthma-comment" name="comment" rows="2"></textarea>
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="asthma-reason">Причина</label>
-                <input type="text" id="asthma-reason" name="reason" value="Пил" placeholder="Например: Пил после сна" required>
-            </div>
-            <div class="form-group">
-                <label for="asthma-comment">Комментарий (необязательно)</label>
-                <textarea id="asthma-comment" name="comment" rows="2"></textarea>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-block" id="asthma-submit-btn">Сохранить</button>
@@ -95,43 +97,45 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать дефекацию</h2>
         </div>
-        <div id="defecation-pet-info" class="pet-info-badge" style="display: none;"></div>
         <form id="defecation-form-element" class="inline-form">
-            <input type="hidden" id="defecation-record-id" name="record_id" value="">
-            <div class="form-row">
-                <div class="form-group form-group-half">
-                    <label for="defecation-date">Дата</label>
-                    <input type="date" id="defecation-date" name="date" required>
+            <div class="form-content">
+                <div id="defecation-pet-info" class="pet-info-badge" style="display: none;"></div>
+                <input type="hidden" id="defecation-record-id" name="record_id" value="">
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="defecation-date">Дата</label>
+                        <input type="date" id="defecation-date" name="date" required>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="defecation-time">Время</label>
+                        <input type="time" id="defecation-time" name="time" required>
+                    </div>
                 </div>
-                <div class="form-group form-group-half">
-                    <label for="defecation-time">Время</label>
-                    <input type="time" id="defecation-time" name="time" required>
+                <div class="form-group">
+                    <label for="defecation-stool-type">Тип стула</label>
+                    <select id="defecation-stool-type" name="stool_type" required>
+                        <option value="Обычный" selected>Обычный</option>
+                        <option value="Твердый">Твердый</option>
+                        <option value="Жидкий">Жидкий</option>
+                    </select>
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="defecation-stool-type">Тип стула</label>
-                <select id="defecation-stool-type" name="stool_type" required>
-                    <option value="Обычный" selected>Обычный</option>
-                    <option value="Твердый">Твердый</option>
-                    <option value="Жидкий">Жидкий</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="defecation-color">Цвет стула</label>
-                <select id="defecation-color" name="color" required>
-                    <option value="Коричневый" selected>Коричневый</option>
-                    <option value="Темно-коричневый">Темно-коричневый</option>
-                    <option value="Светло-коричневый">Светло-коричневый</option>
-                    <option value="Другой">Другой</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="defecation-food">Корм</label>
-                <input type="text" id="defecation-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
-            </div>
-            <div class="form-group">
-                <label for="defecation-comment">Комментарий (необязательно)</label>
-                <textarea id="defecation-comment" name="comment" rows="2"></textarea>
+                <div class="form-group">
+                    <label for="defecation-color">Цвет стула</label>
+                    <select id="defecation-color" name="color" required>
+                        <option value="Коричневый" selected>Коричневый</option>
+                        <option value="Темно-коричневый">Темно-коричневый</option>
+                        <option value="Светло-коричневый">Светло-коричневый</option>
+                        <option value="Другой">Другой</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="defecation-food">Корм</label>
+                    <input type="text" id="defecation-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
+                </div>
+                <div class="form-group">
+                    <label for="defecation-comment">Комментарий (необязательно)</label>
+                    <textarea id="defecation-comment" name="comment" rows="2"></textarea>
+                </div>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-block" id="defecation-submit-btn">Сохранить</button>
@@ -145,30 +149,32 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать вес</h2>
         </div>
-        <div id="weight-pet-info" class="pet-info-badge" style="display: none;"></div>
         <form id="weight-form-element" class="inline-form">
-            <input type="hidden" id="weight-record-id" name="record_id" value="">
-            <div class="form-row">
-                <div class="form-group form-group-half">
-                    <label for="weight-date">Дата</label>
-                    <input type="date" id="weight-date" name="date" required>
+            <div class="form-content">
+                <div id="weight-pet-info" class="pet-info-badge" style="display: none;"></div>
+                <input type="hidden" id="weight-record-id" name="record_id" value="">
+                <div class="form-row">
+                    <div class="form-group form-group-half">
+                        <label for="weight-date">Дата</label>
+                        <input type="date" id="weight-date" name="date" required>
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="weight-time">Время</label>
+                        <input type="time" id="weight-time" name="time" required>
+                    </div>
                 </div>
-                <div class="form-group form-group-half">
-                    <label for="weight-time">Время</label>
-                    <input type="time" id="weight-time" name="time" required>
+                <div class="form-group">
+                    <label for="weight-value">Вес (кг)</label>
+                    <input type="number" id="weight-value" name="weight" step="0.01" min="0" max="20" placeholder="Например: 4.5" required>
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="weight-value">Вес (кг)</label>
-                <input type="number" id="weight-value" name="weight" step="0.01" min="0" max="20" placeholder="Например: 4.5" required>
-            </div>
-            <div class="form-group">
-                <label for="weight-food">Корм</label>
-                <input type="text" id="weight-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
-            </div>
-            <div class="form-group">
-                <label for="weight-comment">Комментарий (необязательно)</label>
-                <textarea id="weight-comment" name="comment" rows="2"></textarea>
+                <div class="form-group">
+                    <label for="weight-food">Корм</label>
+                    <input type="text" id="weight-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
+                </div>
+                <div class="form-group">
+                    <label for="weight-comment">Комментарий (необязательно)</label>
+                    <textarea id="weight-comment" name="comment" rows="2"></textarea>
+                </div>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-block" id="weight-submit-btn">Сохранить</button>
@@ -183,58 +189,60 @@
             <h2>Настройки значений по умолчанию</h2>
         </div>
         <form id="settings-form" class="inline-form">
-            <div class="settings-section">
-                <h3>Приступ астмы</h3>
-                <div class="form-group">
-                    <label for="default-asthma-duration">Длительность по умолчанию</label>
-                    <select id="default-asthma-duration" name="default_asthma_duration">
-                        <option value="Короткий">Короткий</option>
-                        <option value="Длительный">Длительный</option>
-                    </select>
+            <div class="form-content">
+                <div class="settings-section">
+                    <h3>Приступ астмы</h3>
+                    <div class="form-group">
+                        <label for="default-asthma-duration">Длительность по умолчанию</label>
+                        <select id="default-asthma-duration" name="default_asthma_duration">
+                            <option value="Короткий">Короткий</option>
+                            <option value="Длительный">Длительный</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="default-asthma-inhalation">Ингаляция по умолчанию</label>
+                        <select id="default-asthma-inhalation" name="default_asthma_inhalation">
+                            <option value="false">Нет</option>
+                            <option value="true">Да</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="default-asthma-reason">Причина по умолчанию</label>
+                        <input type="text" id="default-asthma-reason" name="default_asthma_reason" placeholder="Например: Пил">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="default-asthma-inhalation">Ингаляция по умолчанию</label>
-                    <select id="default-asthma-inhalation" name="default_asthma_inhalation">
-                        <option value="false">Нет</option>
-                        <option value="true">Да</option>
-                    </select>
+                
+                <div class="settings-section">
+                    <h3>Дефекация</h3>
+                    <div class="form-group">
+                        <label for="default-defecation-stool-type">Тип стула по умолчанию</label>
+                        <select id="default-defecation-stool-type" name="default_defecation_stool_type">
+                            <option value="Обычный">Обычный</option>
+                            <option value="Твердый">Твердый</option>
+                            <option value="Жидкий">Жидкий</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="default-defecation-color">Цвет стула по умолчанию</label>
+                        <select id="default-defecation-color" name="default_defecation_color">
+                            <option value="Коричневый">Коричневый</option>
+                            <option value="Темно-коричневый">Темно-коричневый</option>
+                            <option value="Светло-коричневый">Светло-коричневый</option>
+                            <option value="Другой">Другой</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="default-defecation-food">Корм по умолчанию</label>
+                        <input type="text" id="default-defecation-food" name="default_defecation_food" placeholder="Например: Royal Canin Fibre Response">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="default-asthma-reason">Причина по умолчанию</label>
-                    <input type="text" id="default-asthma-reason" name="default_asthma_reason" placeholder="Например: Пил">
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3>Дефекация</h3>
-                <div class="form-group">
-                    <label for="default-defecation-stool-type">Тип стула по умолчанию</label>
-                    <select id="default-defecation-stool-type" name="default_defecation_stool_type">
-                        <option value="Обычный">Обычный</option>
-                        <option value="Твердый">Твердый</option>
-                        <option value="Жидкий">Жидкий</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="default-defecation-color">Цвет стула по умолчанию</label>
-                    <select id="default-defecation-color" name="default_defecation_color">
-                        <option value="Коричневый">Коричневый</option>
-                        <option value="Темно-коричневый">Темно-коричневый</option>
-                        <option value="Светло-коричневый">Светло-коричневый</option>
-                        <option value="Другой">Другой</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="default-defecation-food">Корм по умолчанию</label>
-                    <input type="text" id="default-defecation-food" name="default_defecation_food" placeholder="Например: Royal Canin Fibre Response">
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3>Вес</h3>
-                <div class="form-group">
-                    <label for="default-weight-food">Корм по умолчанию</label>
-                    <input type="text" id="default-weight-food" name="default_weight_food" placeholder="Например: Royal Canin Fibre Response">
+                
+                <div class="settings-section">
+                    <h3>Вес</h3>
+                    <div class="form-group">
+                        <label for="default-weight-food">Корм по умолчанию</label>
+                        <input type="text" id="default-weight-food" name="default_weight_food" placeholder="Например: Royal Canin Fibre Response">
+                    </div>
                 </div>
             </div>
             

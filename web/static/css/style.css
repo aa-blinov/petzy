@@ -173,11 +173,14 @@ body {
 .screen {
     display: none;
     width: 100%;
+    height: 100%;
     animation: fadeIn 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .screen.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px); /* Navbar height */
 }
 
 @keyframes fadeIn {
@@ -227,20 +230,20 @@ body {
     border: 0.5px solid var(--ios-separator);
 }
 
-.action-card {
+/* Action cards on main menu - более специфичный селектор */
+.action-cards .action-card {
     cursor: pointer;
     text-align: center;
-    min-height: 100px;
-    padding: 1rem;
+    min-height: 60px;
+    padding: 0.5rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    align-content: center;
     gap: 0.25rem;
 }
 
-.action-card h3 {
+.action-cards .action-card h3 {
     margin: 0;
     padding: 0;
     font-size: 1rem;
@@ -250,97 +253,97 @@ body {
     width: 100%;
 }
 
-.action-card p {
+.action-cards .action-card p {
     margin: 0;
     padding: 0;
-    font-size: 0.82353rem;
-    line-height: 1.3;
+    font-size: 0.875rem;
+    line-height: 1.2;
     text-align: center;
     width: 100%;
 }
 
-.action-card:active {
+.action-cards .action-card:active {
     transform: scale(0.97);
     background: var(--card-hover);
 }
 
-.action-card:hover,
-.action-card:focus {
+.action-cards .action-card:hover,
+.action-cards .action-card:focus {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-.action-card-asthma {
+.action-cards .action-card-asthma {
     border-left: 4px solid var(--ios-red);
 }
 
-.action-card-asthma:hover,
-.action-card-asthma:focus {
+.action-cards .action-card-asthma:hover,
+.action-cards .action-card-asthma:focus {
     background: rgba(255, 69, 58, 0.1);
     border-left-color: var(--ios-red);
 }
 
-.action-card-defecation {
+.action-cards .action-card-defecation {
     border-left: 4px solid var(--ios-green);
 }
 
-.action-card-defecation:hover,
-.action-card-defecation:focus {
+.action-cards .action-card-defecation:hover,
+.action-cards .action-card-defecation:focus {
     background: rgba(48, 209, 88, 0.1);
     border-left-color: var(--ios-green);
 }
 
-.action-card-weight {
+.action-cards .action-card-weight {
     border-left: 4px solid var(--ios-orange);
 }
 
-.action-card-weight:hover,
-.action-card-weight:focus {
+.action-cards .action-card-weight:hover,
+.action-cards .action-card-weight:focus {
     background: rgba(255, 159, 10, 0.1);
     border-left-color: var(--ios-orange);
 }
 
-.action-card-history {
+.action-cards .action-card-history {
     border-left: 4px solid var(--ios-blue);
 }
 
-.action-card-history:hover,
-.action-card-history:focus {
+.action-cards .action-card-history:hover,
+.action-cards .action-card-history:focus {
     background: rgba(10, 132, 255, 0.1);
     border-left-color: var(--ios-blue);
 }
 
-.action-card-settings {
+.action-cards .action-card-settings {
     border-left: 4px solid var(--ios-purple);
 }
 
-.action-card-settings:hover,
-.action-card-settings:focus {
+.action-cards .action-card-settings:hover,
+.action-cards .action-card-settings:focus {
     background: rgba(191, 90, 242, 0.1);
     border-left-color: var(--ios-purple);
 }
 
-.action-card-pets {
+.action-cards .action-card-pets {
     border-left: 4px solid var(--ios-yellow);
 }
 
-.action-card-pets:hover,
-.action-card-pets:focus {
+.action-cards .action-card-pets:hover,
+.action-cards .action-card-pets:focus {
     background: rgba(255, 214, 10, 0.1);
     border-left-color: var(--ios-yellow);
 }
 
-.action-card-admin {
+.action-cards .action-card-admin {
     border-left: 4px solid var(--ios-pink);
 }
 
-.action-card-admin h3 {
-    font-size: 0.9rem;
-    line-height: 1.3;
+.action-cards .action-card-admin h3 {
+    font-size: 0.875rem;
+    line-height: 1.2;
 }
 
-.action-card-admin:hover,
-.action-card-admin:focus {
+.action-cards .action-card-admin:hover,
+.action-cards .action-card-admin:focus {
     background: rgba(255, 55, 95, 0.1);
     border-left-color: var(--ios-pink);
 }
@@ -863,13 +866,23 @@ body {
     width: 100%;
     max-width: 600px;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.form-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 1rem;
 }
 
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .form-group-half {
@@ -878,7 +891,7 @@ body {
 
 /* Forms - iOS Style */
 .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .form-group label {
@@ -886,7 +899,7 @@ body {
     margin-bottom: 0.5rem;
     color: var(--text-primary);
     font-weight: 400;
-    font-size: 0.88235rem;
+    font-size: 0.875rem;
     letter-spacing: -0.011em;
 }
 
@@ -935,28 +948,37 @@ body {
 
 .form-actions {
     display: flex;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 1rem;
+    margin: 0;
+    background: var(--card-background);
+    border-top: 0.5px solid var(--ios-separator);
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    flex-shrink: 0;
 }
 
 /* Settings Section */
 .settings-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
     padding-bottom: 2rem;
     border-bottom: 0.5px solid var(--ios-separator);
 }
 
 .settings-section:last-of-type {
     border-bottom: none;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .settings-section h3 {
     color: var(--text-primary);
-    font-size: 1.17647rem;
+    font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     letter-spacing: -0.022em;
 }
 
@@ -1337,7 +1359,7 @@ body {
     }
     
     .card h3 {
-        font-size: 1.05882rem;
+        font-size: 1.125rem;
     }
     
     .form-header {
@@ -1357,16 +1379,17 @@ body {
     
     .inline-form {
         max-width: 100%;
+        margin: 0;
     }
     
     .form-row {
         grid-template-columns: 1fr;
         gap: 0;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
     
     .form-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
     
     .form-group input,
@@ -1381,9 +1404,15 @@ body {
     }
     
     .form-actions {
-        flex-direction: column;
+        flex-direction: row;
         gap: 0.75rem;
-        margin-top: 1.5rem;
+        padding: 1rem;
+        width: calc(100% + 1.5rem);
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        left: 0;
+        right: 0;
+        box-sizing: border-box;
     }
     
     .btn {
@@ -1468,15 +1497,15 @@ body {
     }
     
     .form-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
     
     .form-row {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
     
     .form-group label {
-        font-size: 0.82353rem;
+        font-size: 0.875rem;
         margin-bottom: 0.5rem;
     }
     
@@ -1537,11 +1566,11 @@ body {
 
 /* Touch improvements for iOS */
 @media (hover: none) and (pointer: coarse) {
-    .action-card:hover {
+    .action-cards .action-card:hover {
         transform: none;
     }
     
-    .action-card:active {
+    .action-cards .action-card:active {
         transform: scale(0.97);
         background: var(--card-hover);
     }
