@@ -735,6 +735,9 @@ async function renderPetsList() {
 function selectPet(petId, petName) {
     setSelectedPet(petId, petName);
     
+    // Update pet switcher in navbar
+    updatePetSwitcher();
+    
     // Check if we're in a form screen or history screen
     const activeScreen = document.querySelector('.screen.active');
     const isInForm = activeScreen && (
@@ -780,6 +783,7 @@ function updatePetSwitcher() {
         // Always show switcher
         switcher.style.display = 'block';
         if (selectedPetId && selectedPetName) {
+            // Update the name, arrow stays in place (it's outside the span in HTML)
             switcherName.textContent = selectedPetName;
         } else {
             switcherName.textContent = 'Выбрать животное';
