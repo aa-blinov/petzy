@@ -38,7 +38,7 @@
             </div>
             
             <div class="card action-card action-card-admin admin-link" onclick="showScreen('admin-panel')" style="display: none;">
-                <h3>Административная панель</h3>
+                <h3>Админ-панель</h3>
                 <p>Управление пользователями</p>
             </div>
         </div>
@@ -1197,7 +1197,7 @@ async function checkAdminStatus() {
             // Show admin panel link in menu
             const adminLink = document.querySelector('.admin-link');
             if (adminLink) {
-                adminLink.style.display = 'block';
+                adminLink.style.display = 'flex';
             }
         }
         return isAdmin;

@@ -217,9 +217,33 @@ body {
 /* Action Cards - iOS Style */
 .action-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
     margin-bottom: 2rem;
+    width: 100%;
+}
+
+/* Планшеты (480px - 640px) */
+@media (min-width: 480px) {
+    .action-cards {
+        gap: 1rem;
+    }
+}
+
+/* Средние экраны (640px - 1024px) */
+@media (min-width: 640px) {
+    .action-cards {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+}
+
+/* Большие экраны (> 1024px) */
+@media (min-width: 1024px) {
+    .action-cards {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+    }
 }
 
 .card {
@@ -229,138 +253,178 @@ body {
     padding: 1.5rem;
     transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
     border: 0.5px solid var(--ios-separator);
+    box-sizing: border-box;
 }
 
 /* Action cards on main menu - более специфичный селектор */
 .action-cards .action-card {
     cursor: pointer;
     text-align: center;
-    min-height: 60px;
-    padding: 0.5rem;
+    min-height: 100px;
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
+    transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+/* Увеличенные размеры на десктопе */
+@media (min-width: 768px) {
+    .action-cards .action-card {
+        min-height: 120px;
+        padding: 1.5rem;
+        gap: 0.75rem;
+    }
 }
 
 .action-cards .action-card h3 {
     margin: 0;
     padding: 0;
-    font-size: 1rem;
+    font-size: 1.05882rem;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.3;
     text-align: center;
     width: 100%;
+    color: var(--text-primary);
+    letter-spacing: -0.011em;
+}
+
+@media (min-width: 768px) {
+    .action-cards .action-card h3 {
+        font-size: 1.17647rem;
+    }
 }
 
 .action-cards .action-card p {
     margin: 0;
     padding: 0;
-    font-size: 0.875rem;
-    line-height: 1.2;
+    font-size: 0.88235rem;
+    line-height: 1.4;
     text-align: center;
     width: 100%;
+    color: var(--text-secondary);
+}
+
+@media (min-width: 768px) {
+    .action-cards .action-card p {
+        font-size: 0.94118rem;
+    }
 }
 
 .action-cards .action-card:active {
-    transform: scale(0.97);
+    transform: scale(0.96);
     background: var(--card-hover);
+    box-shadow: var(--shadow-sm);
 }
 
 .action-cards .action-card:hover,
 .action-cards .action-card:focus {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--ios-separator-opaque);
 }
 
 .action-cards .action-card-feeding {
     border-left: 4px solid var(--ios-brown);
+    background: rgba(162, 132, 94, 0.05);
 }
 
 .action-cards .action-card-feeding:hover,
 .action-cards .action-card-feeding:focus {
-    background: rgba(162, 132, 94, 0.1);
+    background: rgba(162, 132, 94, 0.15);
     border-left-color: var(--ios-brown);
 }
 
 .action-cards .action-card-asthma {
     border-left: 4px solid var(--ios-red);
+    background: rgba(255, 69, 58, 0.05);
 }
 
 .action-cards .action-card-asthma:hover,
 .action-cards .action-card-asthma:focus {
-    background: rgba(255, 69, 58, 0.1);
+    background: rgba(255, 69, 58, 0.15);
     border-left-color: var(--ios-red);
 }
 
 .action-cards .action-card-defecation {
     border-left: 4px solid var(--ios-green);
+    background: rgba(48, 209, 88, 0.05);
 }
 
 .action-cards .action-card-defecation:hover,
 .action-cards .action-card-defecation:focus {
-    background: rgba(48, 209, 88, 0.1);
+    background: rgba(48, 209, 88, 0.15);
     border-left-color: var(--ios-green);
 }
 
 .action-cards .action-card-litter {
     border-left: 4px solid var(--ios-purple);
+    background: rgba(191, 90, 242, 0.05);
 }
 
 .action-cards .action-card-litter:hover,
 .action-cards .action-card-litter:focus {
-    background: rgba(191, 90, 242, 0.1);
+    background: rgba(191, 90, 242, 0.15);
     border-left-color: var(--ios-purple);
 }
 
 .action-cards .action-card-weight {
     border-left: 4px solid var(--ios-orange);
+    background: rgba(255, 159, 10, 0.05);
 }
 
 .action-cards .action-card-weight:hover,
 .action-cards .action-card-weight:focus {
-    background: rgba(255, 159, 10, 0.1);
+    background: rgba(255, 159, 10, 0.15);
     border-left-color: var(--ios-orange);
 }
 
 .action-cards .action-card-history {
     border-left: 4px solid var(--ios-blue);
+    background: rgba(10, 132, 255, 0.05);
 }
 
 .action-cards .action-card-history:hover,
 .action-cards .action-card-history:focus {
-    background: rgba(10, 132, 255, 0.1);
+    background: rgba(10, 132, 255, 0.15);
     border-left-color: var(--ios-blue);
 }
 
 .action-cards .action-card-settings {
     border-left: 4px solid var(--ios-purple);
+    background: rgba(191, 90, 242, 0.05);
 }
 
 .action-cards .action-card-settings:hover,
 .action-cards .action-card-settings:focus {
-    background: rgba(191, 90, 242, 0.1);
+    background: rgba(191, 90, 242, 0.15);
     border-left-color: var(--ios-purple);
 }
 
 .action-cards .action-card-pets {
     border-left: 4px solid var(--ios-yellow);
+    background: rgba(255, 214, 10, 0.05);
 }
 
 .action-cards .action-card-pets:hover,
 .action-cards .action-card-pets:focus {
-    background: rgba(255, 214, 10, 0.1);
+    background: rgba(255, 214, 10, 0.15);
     border-left-color: var(--ios-yellow);
 }
 
 .action-cards .action-card-admin {
     border-left: 4px solid var(--ios-pink);
+    background: rgba(255, 55, 95, 0.05);
 }
 
 .action-cards .action-card-admin:hover,
 .action-cards .action-card-admin:focus {
-    background: rgba(255, 55, 95, 0.1);
+    background: rgba(255, 55, 95, 0.15);
     border-left-color: var(--ios-pink);
 }
 
@@ -1397,8 +1461,13 @@ body {
     }
     
     .action-cards {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
+    }
+    
+    .action-cards .action-card {
+        min-height: 100px;
+        padding: 1.25rem;
     }
     
     .card {
@@ -1620,11 +1689,13 @@ body {
 @media (hover: none) and (pointer: coarse) {
     .action-cards .action-card:hover {
         transform: none;
+        box-shadow: var(--shadow-sm);
     }
     
     .action-cards .action-card:active {
-        transform: scale(0.97);
+        transform: scale(0.96);
         background: var(--card-hover);
+        box-shadow: var(--shadow-sm);
     }
     
     .btn:hover {
