@@ -3,7 +3,6 @@
 import csv
 import io
 import logging
-import os
 import sys
 from datetime import datetime, timedelta
 from functools import wraps
@@ -16,7 +15,14 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
 
-from web.db import db, mongo_uri
+from web.db import db
+from web.configs import (
+    FLASK_CONFIG,
+    JWT_CONFIG,
+    RATE_LIMIT_CONFIG,
+    LOGGING_CONFIG,
+    ADMIN_CONFIG,
+)
 from gridfs import GridFS
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -25,14 +31,13 @@ from bson.errors import InvalidId
 # Configure logging
 def setup_logging(app):
     """Configure centralized logging for the application."""
-    # Get log level from environment or default to INFO
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = LOGGING_CONFIG["level"]
 
     # Configure root logger
     logging.basicConfig(
         level=getattr(logging, log_level, logging.INFO),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        format=LOGGING_CONFIG["format"],
+        datefmt=LOGGING_CONFIG["datefmt"],
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
@@ -49,10 +54,14 @@ def setup_logging(app):
 fs = GridFS(db)
 
 # Configure Flask app with proper template and static folders
-app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
-app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
-app.config["JSON_AS_ASCII"] = False
+app = Flask(
+    __name__,
+    template_folder=FLASK_CONFIG["template_folder"],
+    static_folder=FLASK_CONFIG["static_folder"],
+)
+app.secret_key = FLASK_CONFIG["secret_key"]
+app.config["JSONIFY_PRETTYPRINT_REGULAR"] = FLASK_CONFIG["jsonify_prettyprint_regular"]
+app.config["JSON_AS_ASCII"] = FLASK_CONFIG["json_as_ascii"]
 
 # Setup logging
 logger = setup_logging(app)
@@ -61,13 +70,12 @@ logger = setup_logging(app)
 # Use memory storage for tests, MongoDB for production
 # No default limits - rate limiting applied only to specific endpoints (login)
 # Using empty list [] to disable default limits (recommended in documentation)
-storage_uri = os.getenv("RATELIMIT_STORAGE_URI", mongo_uri)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=[],  # Empty list disables default limits - only explicit @limiter.limit() decorators apply
-    storage_uri=storage_uri,
-    strategy="fixed-window",
+    default_limits=RATE_LIMIT_CONFIG["default_limits"],
+    storage_uri=RATE_LIMIT_CONFIG["storage_uri"],
+    strategy=RATE_LIMIT_CONFIG["strategy"],
 )
 
 
@@ -84,14 +92,14 @@ def handle_rate_limit_exceeded(e):
 
 
 # JWT configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Access token expires in 15 minutes
-REFRESH_TOKEN_EXPIRE_DAYS = 7  # Refresh token expires in 7 days
+JWT_SECRET_KEY = JWT_CONFIG["secret_key"]
+JWT_ALGORITHM = JWT_CONFIG["algorithm"]
+ACCESS_TOKEN_EXPIRE_MINUTES = JWT_CONFIG["access_token_expire_minutes"]
+REFRESH_TOKEN_EXPIRE_DAYS = JWT_CONFIG["refresh_token_expire_days"]
 
 # Authentication credentials - REQUIRED from environment
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
+ADMIN_USERNAME = ADMIN_CONFIG["username"]
+ADMIN_PASSWORD_HASH = ADMIN_CONFIG["password_hash"]
 
 # Validate required environment variables
 if not ADMIN_PASSWORD_HASH:
@@ -2375,4 +2383,4 @@ def get_pet_photo(pet_id):
 
 if __name__ == "__main__":
     ensure_default_admin()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=FLASK_CONFIG["debug"])

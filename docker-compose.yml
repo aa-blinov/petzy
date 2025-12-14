@@ -21,7 +21,10 @@ services:
     build: .
     env_file:
       - .env
-    command: "python -m web.main"
+    environment:
+      # Explicitly pass logging configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    command: "gunicorn -c gunicorn.conf.py web.app:app"
     ports:
       - "5001:5000"
     depends_on:

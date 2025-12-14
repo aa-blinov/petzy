@@ -19,6 +19,7 @@
 - **pymongo**: MongoDB client for Python
 - **flask**: Web framework
 - **werkzeug**: WSGI utilities
+- **gunicorn**: Production WSGI server (used in Docker)
 - **Docker, Docker Compose**: For containerized deployment
 
 ## Getting Started
@@ -36,30 +37,42 @@
    cd cat-health-control
    ```
 
-2. Create a `.env` file (example):
+2. Create a `.env` file based on `.env.example`:
 
-   ```env
-   MONGO_USER=admin
-   MONGO_PASS=password
-   MONGO_HOST=db
-   MONGO_PORT=27017
-   MONGO_DB=cat_health
-   FLASK_SECRET_KEY=your-secret-key-for-sessions
-   ADMIN_USERNAME=admin
-   ADMIN_PASSWORD_HASH=your_bcrypt_password_hash
+   ```sh
+   cp .env.example .env
    ```
+
+   Then edit `.env` and set your values. Required variables:
+   - `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` - MongoDB credentials
+   - `FLASK_SECRET_KEY` - Secret key for Flask sessions (change in production!)
+   - `ADMIN_PASSWORD_HASH` - Bcrypt hash of admin password
 
    To generate a password hash, run:
    ```bash
    python -c "import bcrypt; print(bcrypt.hashpw('your_password'.encode(), bcrypt.gensalt()).decode())"
    ```
-   
-   Or use the default password "admin123" (not recommended for production).
 
 3. Start all services:
 
    ```sh
    docker-compose up -d --build
+   ```
+
+   The application runs with **Gunicorn** (production WSGI server) in Docker containers with **2 workers** by default. You can override this by setting `GUNICORN_WORKERS` environment variable.
+   
+   For local development without Docker, you can run:
+   
+   ```sh
+   # Development mode (with debug)
+   export FLASK_DEBUG=true
+   python -m web.main
+   
+   # Or use Gunicorn directly (2 workers by default)
+   gunicorn -c gunicorn.conf.py web.app:app
+   
+   # Or specify custom number of workers
+   gunicorn -c gunicorn.conf.py --workers 4 web.app:app
    ```
 
 ### Usage
@@ -99,6 +112,7 @@ web/
   app.py           # Flask web application
   main.py          # Web app entry point
   db.py            # MongoDB database connection
+  configs.py       # Application configuration
   templates/       # HTML templates
     base.html
     login.html
@@ -106,11 +120,13 @@ web/
   static/          # Static files (CSS, JS)
     css/
       style.css
-.env
-docker-compose.yml
-Dockerfile
-README.md
-requirements.txt
+.env               # Environment variables (create from .env.example)
+.env.example       # Example environment variables
+docker-compose.yml # Docker Compose configuration
+Dockerfile         # Docker image definition
+gunicorn.conf.py   # Gunicorn server configuration (2 workers by default)
+README.md          # This file
+requirements.txt   # Python dependencies
 ```
 
 ## Contributing
