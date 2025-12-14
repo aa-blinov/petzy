@@ -19,5 +19,5 @@ jobs:
             cd ~/services/cat-health-control-bot
             git pull origin master
             docker compose build web
-            docker compose up -d --force-recreate web
+            docker compose up -d --no-deps --force-recreate web
             docker compose ps

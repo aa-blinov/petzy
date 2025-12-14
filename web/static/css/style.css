@@ -63,12 +63,19 @@
     --radius-xl: 20px;
 }
 
+html {
+    /* Support for safe area insets on iOS - only for horizontal insets */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     background-color: var(--background);
     color: var(--text-primary);
     line-height: 1.47059;
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari fix */
     display: flex;
     flex-direction: column;
     -webkit-font-smoothing: antialiased;
@@ -92,6 +99,7 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0.75rem 1rem;
+    padding-top: calc(0.75rem + env(safe-area-inset-top));
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -129,6 +137,7 @@ body {
     width: 100%;
     margin: 0 auto;
     padding: 1.5rem 1rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 
 /* Login Page */
