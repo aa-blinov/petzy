@@ -793,8 +793,8 @@ def update_pet(pet_id):
                         try:
                             from bson import ObjectId
                             fs.delete(ObjectId(old_photo_id))
-                        except:
-                            pass
+                        except Exception as e:
+                            logger.warning(f"Failed to delete old photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}")
                     
                     # Upload new photo
                     from bson import ObjectId
@@ -805,8 +805,8 @@ def update_pet(pet_id):
                     if old_photo_id:
                         try:
                             fs.delete(ObjectId(old_photo_id))
-                        except:
-                            pass
+                        except Exception as e:
+                            logger.warning(f"Failed to delete photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}")
                     photo_file_id = None
             
             # Parse birth_date if provided
@@ -1239,8 +1239,12 @@ def get_access_requests(pet_id):
         
         return jsonify({"requests": requests})
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for get_access_requests: pet_id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error getting access requests: pet_id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>/access-requests/<request_username>/approve", methods=["POST"])
