@@ -2202,7 +2202,7 @@ def export_data(export_type, format_type):
         # Prepare records
         for r in records:
             if isinstance(r.get("date_time"), datetime):
-                r["date_time"] = r["date_time"].strftime("%Y-%m-%d %H:%M")
+                r["date_time"] = r["date_time"].strftime("%d.%m.%Y %H:%M")
             else:
                 r["date_time"] = str(r.get("date_time", ""))
 
