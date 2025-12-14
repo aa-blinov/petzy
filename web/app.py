@@ -116,6 +116,101 @@ def handle_error(error, context="", status_code=500):
         return jsonify({"error": "Internal server error"}), status_code
 
 
+# Helper function for safe datetime parsing
+def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1, max_past_years=50):
+    """
+    Safely parse datetime from date and optional time strings.
+    
+    Args:
+        date_str: Date string in format "YYYY-MM-DD"
+        time_str: Optional time string in format "HH:MM"
+        allow_future: Whether to allow future dates (default: True)
+        max_future_days: Maximum days in the future allowed (default: 1)
+        max_past_years: Maximum years in the past allowed (default: 50)
+    
+    Returns:
+        datetime object if parsing and validation succeed
+    
+    Raises:
+        ValueError: If date format is invalid or date is out of allowed range
+    """
+    if not date_str:
+        raise ValueError("Date string is required")
+    
+    try:
+        if time_str:
+            # Parse date and time
+            dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        else:
+            # Parse date only
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError as e:
+        if time_str:
+            raise ValueError(f"Invalid date/time format. Expected YYYY-MM-DD HH:MM, got '{date_str} {time_str}'")
+        else:
+            raise ValueError(f"Invalid date format. Expected YYYY-MM-DD, got '{date_str}'")
+    
+    # Validate date range
+    now = datetime.now()
+    max_future = now + timedelta(days=max_future_days) if allow_future else now
+    max_past = now - timedelta(days=max_past_years * 365)
+    
+    if dt > max_future:
+        raise ValueError(f"Date cannot be more than {max_future_days} day(s) in the future")
+    
+    if dt < max_past:
+        raise ValueError(f"Date cannot be more than {max_past_years} years in the past")
+    
+    return dt
+
+
+# Helper function for safe date parsing (for birth_date)
+def parse_date(date_str, allow_future=False, max_past_years=50):
+    """
+    Safely parse date string (for birth_date).
+    
+    Args:
+        date_str: Date string in format "YYYY-MM-DD"
+        allow_future: Whether to allow future dates (default: False for birth dates)
+        max_past_years: Maximum years in the past allowed (default: 50)
+    
+    Returns:
+        datetime object if parsing and validation succeed, None if date_str is empty
+    
+    Raises:
+        ValueError: If date format is invalid or date is out of allowed range
+    """
+    if not date_str:
+        return None
+    
+    return parse_datetime(date_str, time_str=None, allow_future=allow_future, max_future_days=0, max_past_years=max_past_years)
+
+
+# Helper function to safely parse event datetime with error handling
+def parse_event_datetime(date_str, time_str, context=""):
+    """
+    Safely parse event datetime with proper error handling.
+    
+    Args:
+        date_str: Date string in format "YYYY-MM-DD"
+        time_str: Time string in format "HH:MM"
+        context: Context string for error messages
+    
+    Returns:
+        datetime object if parsing succeeds, None if both date_str and time_str are empty
+    
+    Raises:
+        ValueError: If date format is invalid or date is out of allowed range
+    """
+    if date_str and time_str:
+        return parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+    elif date_str or time_str:
+        # If only one is provided, it's invalid
+        raise ValueError("Both date and time must be provided together")
+    else:
+        return datetime.now()
+
+
 # Helper function to verify user credentials
 def verify_user_credentials(username: str, password: str) -> bool:
     """Verify user credentials from database or fallback to admin."""
@@ -616,9 +711,10 @@ def create_pet():
             birth_date = None
             if request.form.get("birth_date"):
                 try:
-                    birth_date = datetime.strptime(request.form.get("birth_date"), "%Y-%m-%d")
-                except ValueError:
-                    pass
+                    birth_date = parse_date(request.form.get("birth_date"), allow_future=False, max_past_years=50)
+                except ValueError as e:
+                    logger.warning(f"Invalid birth_date format: {e}")
+                    return jsonify({"error": f"Неверный формат даты рождения: {str(e)}"}), 400
             
             pet_data = {
                 "name": name,
@@ -643,9 +739,10 @@ def create_pet():
             birth_date = None
             if data.get("birth_date"):
                 try:
-                    birth_date = datetime.strptime(data.get("birth_date"), "%Y-%m-%d")
-                except ValueError:
-                    pass
+                    birth_date = parse_date(data.get("birth_date"), allow_future=False, max_past_years=50)
+                except ValueError as e:
+                    logger.warning(f"Invalid birth_date format: {e}")
+                    return jsonify({"error": f"Неверный формат даты рождения: {str(e)}"}), 400
             
             pet_data = {
                 "name": name,
@@ -784,9 +881,10 @@ def update_pet(pet_id):
             birth_date = None
             if request.form.get("birth_date"):
                 try:
-                    birth_date = datetime.strptime(request.form.get("birth_date"), "%Y-%m-%d")
-                except ValueError:
-                    pass
+                    birth_date = parse_date(request.form.get("birth_date"), allow_future=False, max_past_years=50)
+                except ValueError as e:
+                    logger.warning(f"Invalid birth_date format: {e}")
+                    return jsonify({"error": f"Неверный формат даты рождения: {str(e)}"}), 400
             
             update_data = {
                 "name": name,
@@ -809,9 +907,10 @@ def update_pet(pet_id):
             birth_date = None
             if data.get("birth_date"):
                 try:
-                    birth_date = datetime.strptime(data.get("birth_date"), "%Y-%m-%d")
-                except ValueError:
-                    pass
+                    birth_date = parse_date(data.get("birth_date"), allow_future=False, max_past_years=50)
+                except ValueError as e:
+                    logger.warning(f"Invalid birth_date format: {e}")
+                    return jsonify({"error": f"Неверный формат даты рождения: {str(e)}"}), 400
             
             update_data = {
                 "name": name,
@@ -1368,7 +1467,11 @@ def add_asthma_attack():
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for asthma attack: pet_id={pet_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -1419,7 +1522,11 @@ def add_defecation():
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for defecation: pet_id={pet_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -1470,7 +1577,11 @@ def add_litter():
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for litter change: pet_id={pet_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -1518,7 +1629,11 @@ def add_weight():
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for weight: pet_id={pet_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -1696,7 +1811,11 @@ def update_asthma_attack(record_id):
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for asthma attack update: record_id={record_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -1799,7 +1918,11 @@ def update_defecation(record_id):
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for defecation update: record_id={record_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -1902,7 +2025,11 @@ def update_litter(record_id):
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for litter change update: record_id={record_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -2002,7 +2129,11 @@ def update_weight(record_id):
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for weight update: record_id={record_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -2100,7 +2231,11 @@ def add_feeding():
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for feeding: pet_id={pet_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
@@ -2183,7 +2318,11 @@ def update_feeding(record_id):
         date_str = data.get("date")
         time_str = data.get("time")
         if date_str and time_str:
-            event_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            try:
+                event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            except ValueError as e:
+                logger.warning(f"Invalid datetime format for feeding: pet_id={pet_id}, user={username}, error={e}")
+                return jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 400
         else:
             event_dt = datetime.now()
         
