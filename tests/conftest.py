@@ -19,6 +19,8 @@ os.environ["MONGO_PASS"] = "test_pass"
 os.environ["MONGO_HOST"] = "localhost"
 os.environ["MONGO_PORT"] = "27017"
 os.environ["MONGO_DB"] = "test_db"
+# Use memory storage for Flask-Limiter in tests
+os.environ["RATELIMIT_STORAGE_URI"] = "memory://"
 
 # Create mock database and patch before importing app
 _mock_client = MongoClient()

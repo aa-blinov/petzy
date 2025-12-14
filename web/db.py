@@ -29,3 +29,6 @@ mongo_uri: str = f"mongodb://{mongo_user}:{mongo_pass}@{MONGO_HOST}:{MONGO_PORT}
 # Create MongoDB client and database connection
 client: MongoClient = MongoClient(mongo_uri)
 db = client[MONGO_DB]
+
+# Export mongo_uri for use in Flask-Limiter
+__all__ = ['db', 'client', 'mongo_uri']

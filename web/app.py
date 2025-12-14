@@ -5,7 +5,6 @@ import io
 import logging
 import os
 import sys
-import time
 from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import quote
@@ -13,8 +12,11 @@ from urllib.parse import quote
 import bcrypt
 import jwt
 from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_limiter.errors import RateLimitExceeded
 
-from web.db import db
+from web.db import db, mongo_uri
 from gridfs import GridFS
 
 # Configure logging
@@ -56,6 +58,29 @@ app.config['JSON_AS_ASCII'] = False
 
 # Setup logging
 logger = setup_logging(app)
+
+# Initialize Flask-Limiter for rate limiting
+# Use memory storage for tests, MongoDB for production
+storage_uri = os.getenv("RATELIMIT_STORAGE_URI", mongo_uri)
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri=storage_uri,
+    strategy="fixed-window"
+)
+
+# Error handler for rate limit exceeded
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit_exceeded(e):
+    """Handle rate limit exceeded errors."""
+    # Check if request is JSON (API) or HTML (web page)
+    if request.is_json or request.path.startswith('/api/'):
+        return jsonify({"error": str(e.description)}), 429
+    else:
+        # For HTML requests, render login page with error
+        return render_template("login.html", error=str(e.description)), 429
+
 # JWT configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
 JWT_ALGORITHM = "HS256"
@@ -129,11 +154,6 @@ def ensure_default_admin():
 
 # Initialize default admin on startup
 ensure_default_admin()
-
-# Rate limiting for login attempts
-login_attempts = {}
-MAX_LOGIN_ATTEMPTS = 5
-LOGIN_LOCKOUT_TIME = 300  # 5 minutes in seconds
 
 
 def create_access_token(username: str) -> str:
@@ -296,6 +316,7 @@ def index():
 
 
 @app.route("/api/auth/login", methods=["POST"])
+@limiter.limit("5 per 5 minutes", error_message="Too many login attempts. Please try again later.")
 def api_login():
     """API endpoint for login - returns JWT tokens."""
     data = request.get_json()
@@ -306,25 +327,8 @@ def api_login():
     if not username or not password:
         return jsonify({"error": "Username and password required"}), 400
     
-    # Check rate limiting
-    if client_ip in login_attempts:
-        attempts_data = login_attempts[client_ip]
-        if attempts_data["locked_until"] > time.time():
-            remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
-            return jsonify({"error": f"Too many attempts. Try again in {remaining_time} minutes"}), 429
-        elif attempts_data["count"] >= MAX_LOGIN_ATTEMPTS:
-            if time.time() - attempts_data["last_attempt"] > LOGIN_LOCKOUT_TIME:
-                login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
-            else:
-                remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
-                return jsonify({"error": f"Too many attempts. Try again in {remaining_time} minutes"}), 429
-    
     # Verify username and password
     if verify_user_credentials(username, password):
-        # Successful login - reset attempts
-        if client_ip in login_attempts:
-            del login_attempts[client_ip]
-        
         # Create tokens
         access_token = create_access_token(username)
         refresh_token = create_refresh_token(username)
@@ -359,18 +363,7 @@ def api_login():
         return response
     
     # Failed login
-    if client_ip not in login_attempts:
-        login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
-    
-    login_attempts[client_ip]["count"] += 1
-    login_attempts[client_ip]["last_attempt"] = time.time()
-    
-    if login_attempts[client_ip]["count"] >= MAX_LOGIN_ATTEMPTS:
-        login_attempts[client_ip]["locked_until"] = time.time() + LOGIN_LOCKOUT_TIME
-        logger.warning(f"Login locked: user={username}, ip={client_ip}, attempts={login_attempts[client_ip]['count']}")
-    else:
-        logger.warning(f"Failed login attempt: user={username}, ip={client_ip}, attempts={login_attempts[client_ip]['count']}")
-    
+    logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
     return jsonify({"error": "Invalid username or password"}), 401
 
 
@@ -431,6 +424,7 @@ def api_logout():
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per 5 minutes", error_message="Слишком много попыток. Попробуйте позже.")
 def login():
     """Login page."""
     # Check if already logged in
@@ -464,28 +458,13 @@ def login():
         if not username or not password:
             return render_template("login.html", error="Введите логин и пароль")
         
-        # Check rate limiting
-        if client_ip in login_attempts:
-            attempts_data = login_attempts[client_ip]
-            if attempts_data["locked_until"] > time.time():
-                remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
-                return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} минут")
-            elif attempts_data["count"] >= MAX_LOGIN_ATTEMPTS:
-                if time.time() - attempts_data["last_attempt"] > LOGIN_LOCKOUT_TIME:
-                    login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
-                else:
-                    remaining_time = int((attempts_data["locked_until"] - time.time()) / 60) + 1
-                    return render_template("login.html", error=f"Слишком много попыток. Попробуйте через {remaining_time} минут")
-        
         # Verify username and password
         if verify_user_credentials(username, password):
-            # Successful login - reset attempts
-            if client_ip in login_attempts:
-                del login_attempts[client_ip]
-            
             # Create tokens
             access_token = create_access_token(username)
             refresh_token = create_refresh_token(username)
+            
+            logger.info(f"Successful login: user={username}, ip={client_ip}")
             
             # Create response with redirect
             response = make_response(redirect(url_for("dashboard")))
@@ -511,15 +490,7 @@ def login():
             return response
         
         # Failed login
-        if client_ip not in login_attempts:
-            login_attempts[client_ip] = {"count": 0, "last_attempt": time.time(), "locked_until": 0}
-        
-        login_attempts[client_ip]["count"] += 1
-        login_attempts[client_ip]["last_attempt"] = time.time()
-        
-        if login_attempts[client_ip]["count"] >= MAX_LOGIN_ATTEMPTS:
-            login_attempts[client_ip]["locked_until"] = time.time() + LOGIN_LOCKOUT_TIME
-        
+        logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
         return render_template("login.html", error="Неверный логин или пароль")
     
     return render_template("login.html")
