@@ -223,6 +223,11 @@ body {
     width: 100%;
 }
 
+/* Растягиваем последнюю карточку на всю ширину, если она одна в ряду */
+.action-cards .action-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
 /* Планшеты (480px - 640px) */
 @media (min-width: 480px) {
     .action-cards {
@@ -331,67 +336,67 @@ body {
 
 .action-cards .action-card-feeding {
     border-left: 4px solid var(--ios-brown);
-    background: rgba(162, 132, 94, 0.05);
+    background: rgba(162, 132, 94, 0.15);
 }
 
 .action-cards .action-card-feeding:hover,
 .action-cards .action-card-feeding:focus {
-    background: rgba(162, 132, 94, 0.15);
+    background: rgba(162, 132, 94, 0.25);
     border-left-color: var(--ios-brown);
 }
 
 .action-cards .action-card-asthma {
     border-left: 4px solid var(--ios-red);
-    background: rgba(255, 69, 58, 0.05);
+    background: rgba(255, 69, 58, 0.15);
 }
 
 .action-cards .action-card-asthma:hover,
 .action-cards .action-card-asthma:focus {
-    background: rgba(255, 69, 58, 0.15);
+    background: rgba(255, 69, 58, 0.25);
     border-left-color: var(--ios-red);
 }
 
 .action-cards .action-card-defecation {
     border-left: 4px solid var(--ios-green);
-    background: rgba(48, 209, 88, 0.05);
+    background: rgba(48, 209, 88, 0.15);
 }
 
 .action-cards .action-card-defecation:hover,
 .action-cards .action-card-defecation:focus {
-    background: rgba(48, 209, 88, 0.15);
+    background: rgba(48, 209, 88, 0.25);
     border-left-color: var(--ios-green);
 }
 
 .action-cards .action-card-litter {
     border-left: 4px solid var(--ios-purple);
-    background: rgba(191, 90, 242, 0.05);
+    background: rgba(191, 90, 242, 0.15);
 }
 
 .action-cards .action-card-litter:hover,
 .action-cards .action-card-litter:focus {
-    background: rgba(191, 90, 242, 0.15);
+    background: rgba(191, 90, 242, 0.25);
     border-left-color: var(--ios-purple);
 }
 
 .action-cards .action-card-weight {
     border-left: 4px solid var(--ios-orange);
-    background: rgba(255, 159, 10, 0.05);
+    background: rgba(255, 159, 10, 0.15);
 }
 
 .action-cards .action-card-weight:hover,
 .action-cards .action-card-weight:focus {
-    background: rgba(255, 159, 10, 0.15);
+    background: rgba(255, 159, 10, 0.25);
     border-left-color: var(--ios-orange);
 }
 
 .action-cards .action-card-history {
     border-left: 4px solid var(--ios-blue);
-    background: rgba(10, 132, 255, 0.05);
+    background: rgba(10, 132, 255, 0.15);
 }
 
 .action-cards .action-card-history:hover,
 .action-cards .action-card-history:focus {
-    background: rgba(10, 132, 255, 0.15);
+    background: rgba(10, 132, 255, 0.25);
     border-left-color: var(--ios-blue);
 }
 
@@ -419,12 +424,12 @@ body {
 
 .action-cards .action-card-admin {
     border-left: 4px solid var(--ios-pink);
-    background: rgba(255, 55, 95, 0.05);
+    background: rgba(255, 55, 95, 0.15);
 }
 
 .action-cards .action-card-admin:hover,
 .action-cards .action-card-admin:focus {
-    background: rgba(255, 55, 95, 0.15);
+    background: rgba(255, 55, 95, 0.25);
     border-left-color: var(--ios-pink);
 }
 
