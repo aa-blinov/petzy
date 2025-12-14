@@ -656,7 +656,7 @@ def api_logout():
 
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per 5 minutes", error_message="Слишком много попыток. Попробуйте позже.")
+@limiter.limit("50 per 5 minutes", error_message="Слишком много попыток. Попробуйте позже.")
 def login():
     """Login page."""
     # Check if already logged in
