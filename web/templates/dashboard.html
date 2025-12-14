@@ -741,9 +741,15 @@ function selectPet(petId, petName) {
         activeScreen.id === 'asthma-form' || 
         activeScreen.id === 'defecation-form' ||
         activeScreen.id === 'litter-form' ||
-        activeScreen.id === 'weight-form'
+        activeScreen.id === 'weight-form' ||
+        activeScreen.id === 'feeding-form' ||
+        activeScreen.id === 'pet-form' ||
+        activeScreen.id === 'user-form'
     );
     const isInHistory = activeScreen && activeScreen.id === 'history';
+    const isInAdminPanel = activeScreen && activeScreen.id === 'admin-panel';
+    const isInPetSelector = activeScreen && activeScreen.id === 'pet-selector';
+    const isInPetSharing = activeScreen && activeScreen.id === 'pet-sharing';
     
     if (isInForm) {
         // Just update the pet info badge, stay in the form
@@ -757,6 +763,9 @@ function selectPet(petId, petName) {
                 showHistoryTab(tabType);
             }
         }
+    } else if (isInAdminPanel || isInPetSelector || isInPetSharing) {
+        // Stay in current screen, just update pet info
+        updatePetInfoBadges();
     } else {
         // Return to main menu
         showScreen('main-menu');
