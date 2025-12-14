@@ -851,6 +851,13 @@ body {
     color: var(--primary-color);
 }
 
+.pet-switcher-divider {
+    height: 0.5px;
+    background: var(--ios-separator);
+    margin: 0.5rem 0;
+    width: 100%;
+}
+
 /* Pet Cards */
 .pets-list {
     margin-bottom: 2rem;
