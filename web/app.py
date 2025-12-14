@@ -2,7 +2,9 @@
 
 import csv
 import io
+import logging
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 from functools import wraps
@@ -14,6 +16,30 @@ from flask import Flask, jsonify, make_response, redirect, render_template, requ
 
 from web.db import db
 from gridfs import GridFS
+
+# Configure logging
+def setup_logging(app):
+    """Configure centralized logging for the application."""
+    # Get log level from environment or default to INFO
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=getattr(logging, log_level, logging.INFO),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    # Configure Flask app logger
+    app.logger.setLevel(getattr(logging, log_level, logging.INFO))
+    
+    # Suppress noisy loggers
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    
+    return app.logger
 
 # Initialize GridFS for file storage
 fs = GridFS(db)
@@ -27,6 +53,9 @@ app = Flask(
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_AS_ASCII'] = False
+
+# Setup logging
+logger = setup_logging(app)
 # JWT configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
 JWT_ALGORITHM = "HS256"
@@ -46,6 +75,21 @@ if not ADMIN_PASSWORD_HASH:
 
 # Use a default user_id for web user (can be any number, just for data storage)
 DEFAULT_USER_ID = 0
+
+
+# Helper function for safe error handling
+def handle_error(error, context="", status_code=500):
+    """Safely handle errors with logging and user-friendly messages."""
+    if isinstance(error, ValueError):
+        logger.warning(f"Invalid input data: {context}, error={error}")
+        return jsonify({"error": "Invalid input data"}), 400
+    elif isinstance(error, (KeyError, AttributeError)):
+        logger.warning(f"Missing required data: {context}, error={error}")
+        return jsonify({"error": "Missing required data"}), 400
+    else:
+        logger.error(f"Unexpected error: {context}, error={error}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), status_code
+
 
 # Helper function to verify user credentials
 def verify_user_credentials(username: str, password: str) -> bool:
@@ -285,6 +329,8 @@ def api_login():
         access_token = create_access_token(username)
         refresh_token = create_refresh_token(username)
         
+        logger.info(f"Successful login: user={username}, ip={client_ip}")
+        
         response = jsonify({
             "success": True,
             "message": "Login successful",
@@ -321,6 +367,9 @@ def api_login():
     
     if login_attempts[client_ip]["count"] >= MAX_LOGIN_ATTEMPTS:
         login_attempts[client_ip]["locked_until"] = time.time() + LOGIN_LOCKOUT_TIME
+        logger.warning(f"Login locked: user={username}, ip={client_ip}, attempts={login_attempts[client_ip]['count']}")
+    else:
+        logger.warning(f"Failed login attempt: user={username}, ip={client_ip}, attempts={login_attempts[client_ip]['count']}")
     
     return jsonify({"error": "Invalid username or password"}), 401
 
@@ -647,10 +696,15 @@ def create_pet():
         if isinstance(pet_data.get("created_at"), datetime):
             pet_data["created_at"] = pet_data["created_at"].strftime("%Y-%m-%d %H:%M")
         
+        logger.info(f"Pet created: id={pet_data['_id']}, name={pet_data['name']}, owner={username}")
         return jsonify({"success": True, "pet": pet_data, "message": "Животное создано"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error creating pet: user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>", methods=["GET"])
@@ -690,8 +744,12 @@ def get_pet(pet_id):
         
         return jsonify({"pet": pet})
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for get_pet: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error getting pet: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>", methods=["PUT"])
@@ -800,10 +858,15 @@ def update_pet(pet_id):
         if result.matched_count == 0:
             return jsonify({"error": "Животное не найдено"}), 404
         
+        logger.info(f"Pet updated: id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Информация о животном обновлена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for pet update: id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating pet: id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # API endpoints for users (admin only)
@@ -865,10 +928,15 @@ def create_user():
         if isinstance(user_data.get("created_at"), datetime):
             user_data["created_at"] = user_data["created_at"].strftime("%Y-%m-%d %H:%M")
         
+        logger.info(f"User created: username={user_data['username']}, created_by={current_user}")
         return jsonify({"success": True, "user": user_data, "message": "Пользователь создан"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for user creation: created_by={current_user}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error creating user: created_by={current_user}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/users/<username>", methods=["GET"])
@@ -919,10 +987,15 @@ def update_user(username):
         if result.matched_count == 0:
             return jsonify({"error": "Пользователь не найден"}), 404
         
+        logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
         return jsonify({"success": True, "message": "Пользователь обновлен"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for user update: username={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating user: username={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/users/<username>", methods=["DELETE"])
@@ -942,10 +1015,15 @@ def delete_user(username):
         if result.matched_count == 0:
             return jsonify({"error": "Пользователь не найден"}), 404
         
+        logger.info(f"User deactivated: username={username}, deactivated_by={getattr(request, 'current_user', 'admin')}")
         return jsonify({"success": True, "message": "Пользователь деактивирован"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for user deactivation: username={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deactivating user: username={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/users/<username>/reset-password", methods=["POST"])
@@ -975,10 +1053,15 @@ def reset_user_password(username):
         if result.matched_count == 0:
             return jsonify({"error": "Пользователь не найден"}), 404
         
+        logger.info(f"Password reset: username={username}, reset_by={getattr(request, 'current_user', 'admin')}")
         return jsonify({"success": True, "message": "Пароль изменен"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for password reset: username={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error resetting password: username={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # API endpoints for sharing pets
@@ -1030,10 +1113,15 @@ def share_pet(pet_id):
             {"$addToSet": {"shared_with": share_username}}
         )
         
+        logger.info(f"Pet shared: id={pet_id}, owner={username}, shared_with={share_username}")
         return jsonify({"success": True, "message": f"Доступ предоставлен пользователю {share_username}"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for sharing pet: id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error sharing pet: id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>/share/<share_username>", methods=["DELETE"])
@@ -1064,10 +1152,15 @@ def unshare_pet(pet_id, share_username):
             {"$pull": {"shared_with": share_username}}
         )
         
+        logger.info(f"Pet unshared: id={pet_id}, owner={username}, unshared_from={share_username}")
         return jsonify({"success": True, "message": f"Доступ убран у пользователя {share_username}"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for unsharing pet: id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error unsharing pet: id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>/request-access", methods=["POST"])
@@ -1106,10 +1199,15 @@ def request_pet_access(pet_id):
             }}}
         )
         
+        logger.info(f"Access request sent: pet_id={pet_id}, requested_by={username}")
         return jsonify({"success": True, "message": "Запрос на доступ отправлен"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for access request: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error requesting access: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>/access-requests", methods=["GET"])
@@ -1181,10 +1279,15 @@ def approve_access_request(pet_id, request_username):
             }
         )
         
+        logger.info(f"Access request approved: pet_id={pet_id}, owner={username}, approved_user={request_username}")
         return jsonify({"success": True, "message": f"Доступ предоставлен пользователю {request_username}"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for approving access: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error approving access request: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>/access-requests/<request_username>/reject", methods=["POST"])
@@ -1215,10 +1318,15 @@ def reject_access_request(pet_id, request_username):
             {"$pull": {"access_requests": {"username": request_username}}}
         )
         
+        logger.info(f"Access request rejected: pet_id={pet_id}, owner={username}, rejected_user={request_username}")
         return jsonify({"success": True, "message": f"Запрос отклонен"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for rejecting access: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error rejecting access request: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>", methods=["DELETE"])
@@ -1248,10 +1356,15 @@ def delete_pet(pet_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Животное не найдено"}), 404
         
+        logger.info(f"Pet deleted: id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Животное удалено"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid pet_id for deletion: id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid pet_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deleting pet: id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/asthma", methods=["POST"])
@@ -1294,10 +1407,15 @@ def add_asthma_attack():
         }
         
         db["asthma_attacks"].insert_one(attack_data)
+        logger.info(f"Asthma attack recorded: pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы записан"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for asthma attack: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error adding asthma attack: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/defecation", methods=["POST"])
@@ -1340,10 +1458,15 @@ def add_defecation():
         }
         
         db["defecations"].insert_one(defecation_data)
+        logger.info(f"Defecation recorded: pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация записана"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for defecation: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error adding defecation: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/litter", methods=["POST"])
@@ -1383,10 +1506,15 @@ def add_litter():
         }
         
         db["litter_changes"].insert_one(litter_data)
+        logger.info(f"Litter change recorded: pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка записана"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for litter change: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error adding litter change: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/weight", methods=["POST"])
@@ -1428,10 +1556,15 @@ def add_weight():
         }
         
         db["weights"].insert_one(weight_data)
+        logger.info(f"Weight recorded: pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес записан"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for weight: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error adding weight: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/asthma", methods=["GET"])
@@ -1608,10 +1741,15 @@ def update_asthma_attack(record_id):
         if result.matched_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Asthma attack updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы обновлен"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for asthma attack update: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating asthma attack: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/asthma/<record_id>", methods=["DELETE"])
@@ -1645,10 +1783,15 @@ def delete_asthma_attack(record_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Asthma attack deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы удален"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid record_id for asthma attack deletion: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid record_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deleting asthma attack: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/defecation/<record_id>", methods=["PUT"])
@@ -1701,10 +1844,15 @@ def update_defecation(record_id):
         if result.matched_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Defecation updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация обновлена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for defecation update: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating defecation: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/defecation/<record_id>", methods=["DELETE"])
@@ -1738,10 +1886,15 @@ def delete_defecation(record_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Defecation deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация удалена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid record_id for defecation deletion: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid record_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deleting defecation: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/litter/<record_id>", methods=["PUT"])
@@ -1791,10 +1944,15 @@ def update_litter(record_id):
         if result.matched_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Litter change updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка обновлена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for litter change update: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating litter change: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/litter/<record_id>", methods=["DELETE"])
@@ -1828,10 +1986,15 @@ def delete_litter(record_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Litter change deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка удалена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid record_id for litter change deletion: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid record_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deleting litter change: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/weight/<record_id>", methods=["PUT"])
@@ -1883,10 +2046,15 @@ def update_weight(record_id):
         if result.matched_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Weight updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес обновлен"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for weight update: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating weight: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/weight/<record_id>", methods=["DELETE"])
@@ -1920,10 +2088,15 @@ def delete_weight(record_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Weight deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес удален"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid record_id for weight deletion: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid record_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deleting weight: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/feeding", methods=["POST"])
@@ -1964,10 +2137,15 @@ def add_feeding():
         }
         
         db["feedings"].insert_one(feeding_data)
+        logger.info(f"Feeding recorded: pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция записана"}), 201
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for feeding: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error adding feeding: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/feeding", methods=["GET"])
@@ -2048,10 +2226,15 @@ def update_feeding(record_id):
         if result.matched_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Feeding updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция обновлена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for feeding update: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error updating feeding: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/feeding/<record_id>", methods=["DELETE"])
@@ -2085,10 +2268,15 @@ def delete_feeding(record_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Record not found"}), 404
         
+        logger.info(f"Feeding deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция удалена"}), 200
     
+    except ValueError as e:
+        logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid record_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error deleting feeding: record_id={record_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/export/<export_type>/<format_type>", methods=["GET"])
@@ -2273,10 +2461,15 @@ def export_data(export_type, format_type):
         response.headers["Content-Type"] = mimetype
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
         response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+        logger.info(f"Data exported: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}")
         return response
     
+    except ValueError as e:
+        logger.warning(f"Invalid input data for export: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error exporting data: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/pets/<pet_id>/photo", methods=["GET"])
@@ -2315,12 +2508,18 @@ def get_pet_photo(pet_id):
             response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
             response.headers.set('Pragma', 'no-cache')
             response.headers.set('Expires', '0')
+            logger.info(f"Pet photo retrieved: pet_id={pet_id}, user={username}")
             return response
         except Exception as e:
+            logger.error(f"Error retrieving pet photo: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
             return jsonify({"error": "Ошибка загрузки фото"}), 404
     
+    except ValueError as e:
+        logger.warning(f"Invalid pet_id for photo: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}")
+        return jsonify({"error": "Invalid pet_id format"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"Error getting pet photo: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
 
 
 if __name__ == "__main__":
