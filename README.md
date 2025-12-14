@@ -91,6 +91,32 @@
    - Export data in various formats (CSV, TSV, HTML, Markdown)
 4. The interface is fully responsive and works on mobile devices
 
+### MongoDB Backups
+
+The application includes an automated backup service (`mongo-backup`) that:
+
+- **Automatically creates backups** every 24 hours
+- **Stores backups** in the `./backups/` directory (mounted as volume)
+- **Retains backups** for 7 days (configurable via `BACKUP_RETENTION_DAYS` in `.env`)
+- **Uses gzip compression** to save disk space
+- **Runs continuously** as a Docker service
+
+Backups are stored with timestamps: `backup-YYYYMMDD_HHMMSS/`
+
+To manually trigger a one-time backup:
+
+```sh
+./scripts/mongo-backup-manual.sh
+```
+
+To view backup service logs:
+
+```sh
+docker-compose logs -f mongo-backup
+```
+
+**Note**: The `backups/` directory is excluded from git (see `.gitignore`). Make sure to regularly copy backups to a safe location for disaster recovery.
+
 ### Useful Commands
 
 - Stop all services:
@@ -103,6 +129,7 @@
 
   ```sh
   docker-compose logs -f web
+  docker-compose logs -f mongo-backup
   ```
 
 ## Project Structure
@@ -120,6 +147,10 @@ web/
   static/          # Static files (CSS, JS)
     css/
       style.css
+scripts/
+  mongo-backup.sh       # MongoDB backup script (runs in container)
+  backup-mongo-test.sh  # Manual backup test script
+backups/           # MongoDB backups directory (auto-created, git-ignored)
 .env               # Environment variables (create from .env.example)
 .env.example       # Example environment variables
 docker-compose.yml # Docker Compose configuration

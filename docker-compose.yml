@@ -32,5 +32,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  mongo-backup:
+    image: mongo:latest
+    volumes:
+      - ./backups:/backups
+      - ./scripts:/backup-script:ro
+    env_file:
+      - .env
+    command: ["/backup-script/mongo-backup.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mongodata:
