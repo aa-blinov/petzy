@@ -63,12 +63,6 @@
     --radius-xl: 20px;
 }
 
-html {
-    /* Support for safe area insets on iOS - only for horizontal insets */
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-}
-
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     background-color: var(--background);
@@ -81,6 +75,11 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-size: 17px;
+    /* Support for safe area insets on iOS */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Navbar - iOS Style */
@@ -91,6 +90,7 @@ body {
     padding: 0;
     position: sticky;
     top: 0;
+    margin-top: calc(-1 * env(safe-area-inset-top)); /* Compensate for body padding */
     z-index: 1000;
     border-bottom: 0.5px solid var(--ios-separator-opaque);
 }
@@ -100,6 +100,8 @@ body {
     margin: 0 auto;
     padding: 0.75rem 1rem;
     padding-top: calc(0.75rem + env(safe-area-inset-top));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -137,7 +139,9 @@ body {
     width: 100%;
     margin: 0 auto;
     padding: 1.5rem 1rem;
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
 
 /* Login Page */

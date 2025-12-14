@@ -1,1 +1,1 @@
-"""Test package for cat health control application."""
+"""Test package for Petzy application."""

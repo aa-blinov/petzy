@@ -23,7 +23,7 @@ loglevel = log_level if log_level in ["debug", "info", "warning", "error", "crit
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process naming
-proc_name = "cat-health-control"
+proc_name = "petzy"
 
 # Server mechanics
 daemon = False

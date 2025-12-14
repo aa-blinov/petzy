@@ -1,8 +1,8 @@
-# Cat Health Control
+# Petzy
 
 ## Overview
 
-**Cat Health Control** is a web application designed to help cat owners track their pet's health. The application allows users to log and monitor key health metrics, such as defecation events, stool types, asthma symptoms, weight measurements, and other relevant data, ensuring better care for their feline companions.
+**Petzy** is a web application designed to help pet owners track their pet's health. The application allows users to log and monitor key health metrics, such as defecation events, stool types, asthma symptoms, weight measurements, and other relevant data, ensuring better care for their pets.
 
 ## Features
 
@@ -34,7 +34,7 @@
 
    ```sh
    git clone <repo-url>
-   cd cat-health-control
+   cd petzy
    ```
 
 2. Create a `.env` file based on `.env.example`:

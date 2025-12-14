@@ -1,4 +1,4 @@
-"""Flask web application for cat health tracking."""
+"""Flask web application for pet health tracking - Petzy."""
 
 import csv
 import io
