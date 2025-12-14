@@ -45,6 +45,31 @@ class TestHealthTracking:
         data = response.get_json()
         assert "error" in data
     
+    def test_add_asthma_attack_invalid_pet_id(self, client, mock_db, regular_user_token):
+        """Test adding asthma attack with invalid pet_id format."""
+        response = client.post("/api/asthma?pet_id=invalid_id", json={
+            "date": "2024-01-15",
+            "time": "14:30"
+        }, headers={
+            "Authorization": f"Bearer {regular_user_token}"
+        })
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "error" in data
+        assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
+    
+    def test_get_asthma_attacks_invalid_pet_id(self, client, regular_user_token):
+        """Test getting asthma attacks with invalid pet_id format."""
+        response = client.get("/api/asthma?pet_id=invalid_id", headers={
+            "Authorization": f"Bearer {regular_user_token}"
+        })
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "error" in data
+        assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
+    
     def test_get_asthma_attacks_success(self, client, mock_db, regular_user_token, test_pet):
         """Test getting asthma attacks."""
         # Add some attacks

@@ -509,9 +509,25 @@ def dashboard():
     return render_template("dashboard.html", username=username)
 
 
+# Helper function to validate pet_id format
+def validate_pet_id(pet_id):
+    """Validate that pet_id is a valid ObjectId string."""
+    if not pet_id or not isinstance(pet_id, str):
+        return False
+    try:
+        from bson import ObjectId
+        from bson.errors import InvalidId
+        ObjectId(pet_id)
+        return True
+    except (InvalidId, TypeError, ValueError):
+        return False
+
+
 # Helper function to check pet access
 def check_pet_access(pet_id, username):
     """Check if user has access to pet."""
+    if not validate_pet_id(pet_id):
+        return False
     try:
         from bson import ObjectId
         pet = db["pets"].find_one({"_id": ObjectId(pet_id)})
@@ -644,6 +660,9 @@ def get_pet(pet_id):
     try:
         from bson import ObjectId
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -681,6 +700,9 @@ def update_pet(pet_id):
     """Update pet information."""
     try:
         from bson import ObjectId
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -967,6 +989,9 @@ def share_pet(pet_id):
     try:
         from bson import ObjectId
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1018,6 +1043,9 @@ def unshare_pet(pet_id, share_username):
     try:
         from bson import ObjectId
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1048,6 +1076,9 @@ def request_pet_access(pet_id):
     """Request access to pet."""
     try:
         from bson import ObjectId
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -1088,6 +1119,9 @@ def get_access_requests(pet_id):
     try:
         from bson import ObjectId
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1117,6 +1151,9 @@ def approve_access_request(pet_id, request_username):
     """Approve access request (owner only)."""
     try:
         from bson import ObjectId
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -1157,6 +1194,9 @@ def reject_access_request(pet_id, request_username):
     try:
         from bson import ObjectId
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1187,6 +1227,9 @@ def delete_pet(pet_id):
     """Delete pet."""
     try:
         from bson import ObjectId
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -1221,6 +1264,9 @@ def add_asthma_attack():
         
         if not pet_id:
             return jsonify({"error": "pet_id обязателен"}), 400
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -1265,6 +1311,9 @@ def add_defecation():
         if not pet_id:
             return jsonify({"error": "pet_id обязателен"}), 400
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1308,6 +1357,9 @@ def add_litter():
         if not pet_id:
             return jsonify({"error": "pet_id обязателен"}), 400
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1347,6 +1399,9 @@ def add_weight():
         
         if not pet_id:
             return jsonify({"error": "pet_id обязателен"}), 400
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -1388,6 +1443,9 @@ def get_asthma_attacks():
     if not pet_id:
         return jsonify({"error": "pet_id обязателен"}), 400
     
+    if not validate_pet_id(pet_id):
+        return jsonify({"error": "Неверный формат pet_id"}), 400
+    
     username = getattr(request, 'current_user', None)
     if not username:
         return jsonify({"error": "Unauthorized"}), 401
@@ -1419,6 +1477,9 @@ def get_defecations():
     if not pet_id:
         return jsonify({"error": "pet_id обязателен"}), 400
     
+    if not validate_pet_id(pet_id):
+        return jsonify({"error": "Неверный формат pet_id"}), 400
+    
     username = getattr(request, 'current_user', None)
     if not username:
         return jsonify({"error": "Unauthorized"}), 401
@@ -1446,6 +1507,9 @@ def get_litter_changes():
     if not pet_id:
         return jsonify({"error": "pet_id обязателен"}), 400
     
+    if not validate_pet_id(pet_id):
+        return jsonify({"error": "Неверный формат pet_id"}), 400
+    
     username = getattr(request, 'current_user', None)
     if not username:
         return jsonify({"error": "Unauthorized"}), 401
@@ -1472,6 +1536,9 @@ def get_weights():
     
     if not pet_id:
         return jsonify({"error": "pet_id обязателен"}), 400
+    
+    if not validate_pet_id(pet_id):
+        return jsonify({"error": "Неверный формат pet_id"}), 400
     
     username = getattr(request, 'current_user', None)
     if not username:
@@ -1870,6 +1937,9 @@ def add_feeding():
         if not pet_id:
             return jsonify({"error": "pet_id обязателен"}), 400
         
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
+        
         username = getattr(request, 'current_user', None)
         if not username:
             return jsonify({"error": "Unauthorized"}), 401
@@ -1908,6 +1978,9 @@ def get_feedings():
     
     if not pet_id:
         return jsonify({"error": "pet_id обязателен"}), 400
+    
+    if not validate_pet_id(pet_id):
+        return jsonify({"error": "Неверный формат pet_id"}), 400
     
     username = getattr(request, 'current_user', None)
     if not username:
@@ -2027,6 +2100,9 @@ def export_data(export_type, format_type):
         
         if not pet_id:
             return jsonify({"error": "pet_id обязателен"}), 400
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:
@@ -2209,6 +2285,9 @@ def get_pet_photo(pet_id):
     """Get pet photo file."""
     try:
         from bson import ObjectId
+        
+        if not validate_pet_id(pet_id):
+            return jsonify({"error": "Неверный формат pet_id"}), 400
         
         username = getattr(request, 'current_user', None)
         if not username:

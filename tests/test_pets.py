@@ -106,6 +106,17 @@ class TestPetManagement:
         data = response.get_json()
         assert "error" in data
     
+    def test_get_pet_invalid_id_format(self, client, regular_user_token):
+        """Test getting pet with invalid ID format."""
+        response = client.get("/api/pets/invalid_id", headers={
+            "Authorization": f"Bearer {regular_user_token}"
+        })
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "error" in data
+        assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
+    
     def test_get_pet_no_access(self, client, mock_db, regular_user_token, admin_pet):
         """Test getting pet without access."""
         response = client.get(f"/api/pets/{admin_pet['_id']}", headers={
