@@ -162,7 +162,7 @@ body {
 .login-form {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 /* Dashboard */
@@ -663,6 +663,9 @@ body {
     margin-bottom: 2.5rem;
     padding-bottom: 2rem;
     border-bottom: 0.5px solid var(--ios-separator);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 /* Share input group - responsive flex layout */
@@ -702,11 +705,11 @@ body {
     color: var(--text-primary);
     font-size: 1.17647rem;
     font-weight: 600;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
 }
 
 .shared-list, .requests-list {
-    margin-top: 1rem;
+    margin-top: 0;
 }
 
 .shared-users-list, .requests-list-items {
@@ -969,6 +972,14 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    gap: 1rem;
+}
+
+.inline-form > input[type="hidden"] {
+    display: none;
+    height: 0;
+    margin: 0;
+    padding: 0;
 }
 
 .form-content {
@@ -976,13 +987,16 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
 }
 
 .form-group-half {
@@ -991,7 +1005,7 @@ body {
 
 /* Forms - iOS Style */
 .form-group {
-    margin-bottom: 1rem;
+    margin-bottom: 0;
 }
 
 .form-group label {
@@ -1066,6 +1080,9 @@ body {
     margin-bottom: 2rem;
     padding-bottom: 2rem;
     border-bottom: 0.5px solid var(--ios-separator);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 .settings-section:last-of-type {
@@ -1078,8 +1095,48 @@ body {
     color: var(--text-primary);
     font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     letter-spacing: -0.022em;
+    order: -1;
+}
+
+/* Sharing and Access Sections */
+.sharing-section h3:not(:first-child),
+.access-requests-title {
+    margin-top: 1rem;
+}
+
+.sharing-section .inline-form {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.sharing-section .inline-form .form-actions {
+    margin-top: 0;
+}
+
+/* Photo Preview/Current Sections */
+.photo-preview-section,
+.photo-current-section {
+    margin-top: 1rem;
+}
+
+.photo-preview-section img,
+.photo-current-section img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--ios-separator);
+}
+
+.photo-preview-section .btn,
+.photo-current-section .btn {
+    margin-top: 0.5rem;
+}
+
+.photo-current-section p {
+    color: var(--text-secondary);
+    font-size: 0.88235rem;
 }
 
 /* Buttons - iOS Style */
@@ -1510,12 +1567,12 @@ body {
     
     .form-row {
         grid-template-columns: 1fr;
-        gap: 0;
-        margin-bottom: 1rem;
+        gap: 1rem;
+        margin-bottom: 0;
     }
     
     .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 0;
     }
     
     .form-group input,
@@ -1623,11 +1680,11 @@ body {
     }
     
     .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 0;
     }
     
     .form-row {
-        margin-bottom: 1rem;
+        margin-bottom: 0;
     }
     
     .form-group label {
