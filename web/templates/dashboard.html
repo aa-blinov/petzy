@@ -50,32 +50,7 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать дневную порцию корма</h2>
         </div>
-        <form id="feeding-form-element" class="inline-form">
-            <div class="form-content">
-                <input type="hidden" id="feeding-record-id" name="record_id" value="">
-                <div class="form-row">
-                    <div class="form-group form-group-half">
-                        <label for="feeding-date">Дата</label>
-                        <input type="date" id="feeding-date" name="date" required>
-                    </div>
-                    <div class="form-group form-group-half">
-                        <label for="feeding-time">Время</label>
-                        <input type="time" id="feeding-time" name="time" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="feeding-food-weight">Вес корма (граммы)</label>
-                    <input type="number" id="feeding-food-weight" name="food_weight" min="0" step="0.1" placeholder="50" required>
-                </div>
-                <div class="form-group">
-                    <label for="feeding-comment">Комментарий (необязательно)</label>
-                    <textarea id="feeding-comment" name="comment" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-block" id="feeding-submit-btn">Сохранить</button>
-            </div>
-        </form>
+        <div id="feeding-form-container"></div>
     </div>
     
     <!-- Asthma Form -->
@@ -84,48 +59,7 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать приступ астмы</h2>
         </div>
-        <form id="asthma-form-element" class="inline-form">
-            <div class="form-content">
-                <input type="hidden" id="asthma-record-id" name="record_id" value="">
-                <div class="form-row">
-                    <div class="form-group form-group-half">
-                        <label for="asthma-date">Дата</label>
-                        <input type="date" id="asthma-date" name="date" required>
-                    </div>
-                    <div class="form-group form-group-half">
-                        <label for="asthma-time">Время</label>
-                        <input type="time" id="asthma-time" name="time" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group form-group-half">
-                        <label for="asthma-duration">Длительность</label>
-                        <select id="asthma-duration" name="duration" required>
-                            <option value="Короткий" selected>Короткий</option>
-                            <option value="Длительный">Длительный</option>
-                        </select>
-                    </div>
-                    <div class="form-group form-group-half">
-                        <label for="asthma-inhalation">Ингаляция</label>
-                        <select id="asthma-inhalation" name="inhalation" required>
-                            <option value="false" selected>Нет</option>
-                            <option value="true">Да</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="asthma-reason">Причина</label>
-                    <input type="text" id="asthma-reason" name="reason" value="Пил" placeholder="Пил после сна" required>
-                </div>
-                <div class="form-group">
-                    <label for="asthma-comment">Комментарий (необязательно)</label>
-                    <textarea id="asthma-comment" name="comment" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-block" id="asthma-submit-btn">Сохранить</button>
-            </div>
-        </form>
+        <div id="asthma-form-container"></div>
     </div>
     
     <!-- Defecation Form -->
@@ -134,49 +68,7 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать дефекацию</h2>
         </div>
-        <form id="defecation-form-element" class="inline-form">
-            <div class="form-content">
-                <input type="hidden" id="defecation-record-id" name="record_id" value="">
-                <div class="form-row">
-                    <div class="form-group form-group-half">
-                        <label for="defecation-date">Дата</label>
-                        <input type="date" id="defecation-date" name="date" required>
-                    </div>
-                    <div class="form-group form-group-half">
-                        <label for="defecation-time">Время</label>
-                        <input type="time" id="defecation-time" name="time" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="defecation-stool-type">Тип стула</label>
-                    <select id="defecation-stool-type" name="stool_type" required>
-                        <option value="Обычный" selected>Обычный</option>
-                        <option value="Твердый">Твердый</option>
-                        <option value="Жидкий">Жидкий</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="defecation-color">Цвет стула</label>
-                    <select id="defecation-color" name="color" required>
-                        <option value="Коричневый" selected>Коричневый</option>
-                        <option value="Темно-коричневый">Темно-коричневый</option>
-                        <option value="Светло-коричневый">Светло-коричневый</option>
-                        <option value="Другой">Другой</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="defecation-food">Корм</label>
-                    <input type="text" id="defecation-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
-                </div>
-                <div class="form-group">
-                    <label for="defecation-comment">Комментарий (необязательно)</label>
-                    <textarea id="defecation-comment" name="comment" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-block" id="defecation-submit-btn">Сохранить</button>
-            </div>
-        </form>
+        <div id="defecation-form-container"></div>
     </div>
     
     <!-- Litter Change Form -->
@@ -185,28 +77,7 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать смену лотка</h2>
         </div>
-        <form id="litter-form-element" class="inline-form">
-            <div class="form-content">
-                <input type="hidden" id="litter-record-id" name="record_id" value="">
-                <div class="form-row">
-                    <div class="form-group form-group-half">
-                        <label for="litter-date">Дата</label>
-                        <input type="date" id="litter-date" name="date" required>
-                    </div>
-                    <div class="form-group form-group-half">
-                        <label for="litter-time">Время</label>
-                        <input type="time" id="litter-time" name="time" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="litter-comment">Комментарий (необязательно)</label>
-                    <textarea id="litter-comment" name="comment" rows="3" placeholder="Полная замена наполнителя"></textarea>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-block" id="litter-submit-btn">Сохранить</button>
-            </div>
-        </form>
+        <div id="litter-form-container"></div>
     </div>
     
     <!-- Weight Form -->
@@ -215,36 +86,7 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Записать вес</h2>
         </div>
-        <form id="weight-form-element" class="inline-form">
-            <div class="form-content">
-                <input type="hidden" id="weight-record-id" name="record_id" value="">
-                <div class="form-row">
-                    <div class="form-group form-group-half">
-                        <label for="weight-date">Дата</label>
-                        <input type="date" id="weight-date" name="date" required>
-                    </div>
-                    <div class="form-group form-group-half">
-                        <label for="weight-time">Время</label>
-                        <input type="time" id="weight-time" name="time" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="weight-value">Вес (кг)</label>
-                    <input type="number" id="weight-value" name="weight" step="0.01" min="0" max="20" placeholder="4.5" required>
-                </div>
-                <div class="form-group">
-                    <label for="weight-food">Корм</label>
-                    <input type="text" id="weight-food" name="food" value="Royal Canin Fibre Response" placeholder="Royal Canin Fibre Response">
-                </div>
-                <div class="form-group">
-                    <label for="weight-comment">Комментарий (необязательно)</label>
-                    <textarea id="weight-comment" name="comment" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-block" id="weight-submit-btn">Сохранить</button>
-            </div>
-        </form>
+        <div id="weight-form-container"></div>
     </div>
     
     <!-- Settings Screen -->
@@ -579,7 +421,6 @@ function getSettings() {
 // Set default date/time to now and apply saved defaults
 function resetFormDefaults() {
     const now = new Date();
-    // Use local time, not UTC
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -587,32 +428,43 @@ function resetFormDefaults() {
     const timeStr = now.toTimeString().slice(0, 5);
     const settings = getSettings();
     
-    // Feeding form
-    document.getElementById('feeding-date').value = dateStr;
-    document.getElementById('feeding-time').value = timeStr;
+    // Универсальная установка значений по умолчанию для всех форм
+    const formDefaults = {
+        feeding: { date: dateStr, time: timeStr },
+        asthma: { 
+            date: dateStr, 
+            time: timeStr,
+            duration: settings.asthma.duration,
+            inhalation: settings.asthma.inhalation,
+            reason: settings.asthma.reason
+        },
+        defecation: {
+            date: dateStr,
+            time: timeStr,
+            stool_type: settings.defecation.stool_type,
+            color: settings.defecation.color || 'Коричневый',
+            food: settings.defecation.food
+        },
+        litter: { date: dateStr, time: timeStr },
+        weight: {
+            date: dateStr,
+            time: timeStr,
+            food: settings.weight.food
+        }
+    };
     
-    // Asthma form
-    document.getElementById('asthma-date').value = dateStr;
-    document.getElementById('asthma-time').value = timeStr;
-    document.getElementById('asthma-duration').value = settings.asthma.duration;
-    document.getElementById('asthma-inhalation').value = settings.asthma.inhalation;
-    document.getElementById('asthma-reason').value = settings.asthma.reason;
-    
-    // Defecation form
-    document.getElementById('defecation-date').value = dateStr;
-    document.getElementById('defecation-time').value = timeStr;
-    document.getElementById('defecation-stool-type').value = settings.defecation.stool_type;
-    document.getElementById('defecation-color').value = settings.defecation.color || 'Коричневый';
-    document.getElementById('defecation-food').value = settings.defecation.food;
-
-    // Litter form
-    document.getElementById('litter-date').value = dateStr;
-    document.getElementById('litter-time').value = timeStr;
-
-    // Weight form
-    document.getElementById('weight-date').value = dateStr;
-    document.getElementById('weight-time').value = timeStr;
-    document.getElementById('weight-food').value = settings.weight.food;
+    // Применяем значения по умолчанию к активным формам
+    Object.keys(formDefaults).forEach(formType => {
+        const config = FORM_CONFIGS[formType];
+        if (!config) return;
+        
+        config.fields.forEach(field => {
+            const element = document.getElementById(field.id);
+            if (element && formDefaults[formType][field.name] !== undefined) {
+                element.value = formDefaults[formType][field.name];
+            }
+        });
+    });
 }
 
 // Load settings into settings form
@@ -851,6 +703,22 @@ async function checkAndSelectPet() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Инициализируем формы при загрузке
+    const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight'];
+    formTypes.forEach(formType => {
+        const container = document.getElementById(`${formType}-form-container`);
+        if (container) {
+            container.innerHTML = createFormHTML(formType);
+            const form = document.getElementById(`${formType}-form-element`);
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleFormSubmit(formType, form);
+                });
+            }
+        }
+    });
+    
     resetFormDefaults();
     // Initialize selected pet from localStorage
     selectedPetId = getSelectedPetId();
@@ -880,42 +748,53 @@ function showScreen(screenId) {
         // Scroll to top
         window.scrollTo(0, 0);
         
-        // Reset form defaults if showing a form screen
-        if (screenId === 'asthma-form' && !document.getElementById('asthma-record-id').value) {
-            resetFormDefaults();
-            document.getElementById('asthma-submit-btn').textContent = 'Сохранить';
-        } else if (screenId === 'defecation-form' && !document.getElementById('defecation-record-id').value) {
-            resetFormDefaults();
-            document.getElementById('defecation-submit-btn').textContent = 'Сохранить';
-        } else if (screenId === 'litter-form' && !document.getElementById('litter-record-id').value) {
-            resetFormDefaults();
-            document.getElementById('litter-submit-btn').textContent = 'Сохранить';
-        } else if (screenId === 'weight-form' && !document.getElementById('weight-record-id').value) {
-            resetFormDefaults();
-            document.getElementById('weight-submit-btn').textContent = 'Сохранить';
+        // Генерируем формы динамически для типов записей
+        const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight'];
+        const formType = formTypes.find(type => screenId === `${type}-form`);
+        
+        if (formType) {
+            const container = document.getElementById(`${formType}-form-container`);
+            if (container) {
+                const formElement = document.getElementById(`${formType}-form-element`);
+                const recordId = formElement ? formElement.querySelector('[name="record_id"]')?.value : null;
+                
+                // Создаем форму (уже с настройками из localStorage)
+                container.innerHTML = createFormHTML(formType, recordId);
+                
+                // Привязываем обработчик
+                const newForm = document.getElementById(`${formType}-form-element`);
+                if (newForm) {
+                    newForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        handleFormSubmit(formType, newForm);
+                    });
+                }
+                
+                // Сбрасываем значения по умолчанию только для новых записей
+                // (date/time обновятся, настройки уже применены при создании формы)
+                if (!recordId) {
+                    resetFormDefaults();
+                }
+            }
         } else if (screenId === 'settings') {
             loadSettingsForm();
         } else if (screenId === 'pet-selector') {
             renderPetsList();
         } else if (screenId === 'pet-form') {
-            // Only reset if we're not editing (no record id set)
-            const recordId = document.getElementById('pet-record-id').value;
+            const recordId = document.getElementById('pet-record-id')?.value;
             if (!recordId) {
                 resetPetForm();
             }
         } else if (screenId === 'admin-panel') {
             loadUsersList();
         } else if (screenId === 'user-form') {
-            // Only reset if we're not editing (no record username set)
-            const recordUsername = document.getElementById('user-record-username').value;
+            const recordUsername = document.getElementById('user-record-username')?.value;
             if (!recordUsername) {
                 resetUserForm();
             }
         } else if (screenId === 'pet-sharing') {
-            // Pet info badge will be updated in loadPetSharing
             loadPetSharing();
         } else if (screenId === 'history') {
-            // Load default tab when opening history
             showHistoryTab('feeding');
         }
     }
@@ -1904,265 +1783,8 @@ function resetPetForm() {
     document.getElementById('pet-access-section').style.display = 'none';
 }
 
-// Form submissions
-document.getElementById('feeding-form-element').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const recordId = formData.get('record_id');
-    const petId = getSelectedPetId();
-    if (!petId) {
-        showAlert('error', 'Выберите животное в меню навигации');
-        return;
-    }
-
-    const data = {
-        pet_id: petId,
-        date: formData.get('date'),
-        time: formData.get('time'),
-        food_weight: formData.get('food_weight'),
-        comment: formData.get('comment') || ''
-    };
-
-    try {
-        const url = recordId ? `/api/feeding/${recordId}` : '/api/feeding';
-        const method = recordId ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || (recordId ? 'Дневная порция обновлена' : 'Дневная порция записана'));
-            document.getElementById('feeding-form-element').reset();
-            document.getElementById('feeding-record-id').value = '';
-            document.getElementById('feeding-submit-btn').textContent = 'Сохранить';
-            resetFormDefaults();
-            setTimeout(() => {
-                showScreen('main-menu');
-                if (recordId) {
-                    showScreen('history');
-                    showHistoryTab('feeding');
-                }
-            }, 150);
-        } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при сохранении');
-    }
-});
-
-document.getElementById('asthma-form-element').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const recordId = formData.get('record_id');
-    const petId = getSelectedPetId();
-    if (!petId) {
-        showAlert('error', 'Выберите животное в меню навигации');
-        return;
-    }
-    
-    const data = {
-        pet_id: petId,
-        date: formData.get('date'),
-        time: formData.get('time'),
-        duration: formData.get('duration'),
-        reason: formData.get('reason'),
-        inhalation: formData.get('inhalation') === 'true',
-        comment: formData.get('comment') || ''
-    };
-    
-    try {
-        const url = recordId ? `/api/asthma/${recordId}` : '/api/asthma';
-        const method = recordId ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || (recordId ? 'Приступ астмы обновлен' : 'Приступ астмы записан'));
-            document.getElementById('asthma-form-element').reset();
-            document.getElementById('asthma-record-id').value = '';
-            document.getElementById('asthma-submit-btn').textContent = 'Сохранить';
-            resetFormDefaults();
-            setTimeout(() => {
-                showScreen('main-menu');
-                if (recordId) {
-                    showScreen('history');
-                    showHistoryTab('asthma');
-                }
-            }, 150);
-        } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при сохранении');
-    }
-});
-
-document.getElementById('defecation-form-element').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const recordId = formData.get('record_id');
-    const petId = getSelectedPetId();
-    if (!petId) {
-        showAlert('error', 'Выберите животное в меню навигации');
-        return;
-    }
-    
-    const data = {
-        pet_id: petId,
-        date: formData.get('date'),
-        time: formData.get('time'),
-        stool_type: formData.get('stool_type'),
-        color: formData.get('color'),
-        food: formData.get('food') || '',
-        comment: formData.get('comment') || ''
-    };
-    
-    try {
-        const url = recordId ? `/api/defecation/${recordId}` : '/api/defecation';
-        const method = recordId ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || (recordId ? 'Дефекация обновлена' : 'Дефекация записана'));
-            document.getElementById('defecation-form-element').reset();
-            document.getElementById('defecation-record-id').value = '';
-            document.getElementById('defecation-submit-btn').textContent = 'Сохранить';
-            resetFormDefaults();
-            setTimeout(() => {
-                showScreen('main-menu');
-                if (recordId) {
-                    showScreen('history');
-                    showHistoryTab('defecation');
-                }
-            }, 150);
-        } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при сохранении');
-    }
-});
-
-document.getElementById('litter-form-element').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const recordId = formData.get('record_id');
-    const petId = getSelectedPetId();
-    if (!petId) {
-        showAlert('error', 'Выберите животное в меню навигации');
-        return;
-    }
-    
-    const data = {
-        pet_id: petId,
-        date: formData.get('date'),
-        time: formData.get('time'),
-        comment: formData.get('comment') || ''
-    };
-    
-    try {
-        const url = recordId ? `/api/litter/${recordId}` : '/api/litter';
-        const method = recordId ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || (recordId ? 'Смена лотка обновлена' : 'Смена лотка записана'));
-            document.getElementById('litter-form-element').reset();
-            document.getElementById('litter-record-id').value = '';
-            document.getElementById('litter-submit-btn').textContent = 'Сохранить';
-            resetFormDefaults();
-            setTimeout(() => {
-                showScreen('main-menu');
-                if (recordId) {
-                    showScreen('history');
-                    showHistoryTab('litter');
-                }
-            }, 150);
-        } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при сохранении');
-    }
-});
-
-document.getElementById('weight-form-element').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const recordId = formData.get('record_id');
-    const petId = getSelectedPetId();
-    if (!petId) {
-        showAlert('error', 'Выберите животное в меню навигации');
-        return;
-    }
-    
-    const data = {
-        pet_id: petId,
-        date: formData.get('date'),
-        time: formData.get('time'),
-        weight: formData.get('weight'),
-        food: formData.get('food') || '',
-        comment: formData.get('comment') || ''
-    };
-    
-    try {
-        const url = recordId ? `/api/weight/${recordId}` : '/api/weight';
-        const method = recordId ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || (recordId ? 'Вес обновлен' : 'Вес записан'));
-            document.getElementById('weight-form-element').reset();
-            document.getElementById('weight-record-id').value = '';
-            document.getElementById('weight-submit-btn').textContent = 'Сохранить';
-            resetFormDefaults();
-            setTimeout(() => {
-                showScreen('main-menu');
-                if (recordId) {
-                    showScreen('history');
-                    showHistoryTab('weight');
-                }
-            }, 150);
-        } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при сохранении');
-    }
-});
+// Form submissions - теперь обрабатываются универсальным handleFormSubmit в forms-config.js
+// Старые обработчики удалены для сокращения кода (~260 строк удалено)
 
 // Settings form submission
 document.getElementById('settings-form').addEventListener('submit', function(e) {
@@ -2249,56 +1871,17 @@ async function editRecord(type, recordId) {
             return;
         }
         
-        // Parse date and time
-        const [datePart, timePart] = record.date_time.split(' ');
-        const [year, month, day] = datePart.split('-');
-        const [hour, minute] = timePart.split(':');
-        
-        if (type === 'feeding') {
-            document.getElementById('feeding-record-id').value = recordId;
-            document.getElementById('feeding-date').value = datePart;
-            document.getElementById('feeding-time').value = timePart;
-            document.getElementById('feeding-food-weight').value = record.food_weight || '';
-            document.getElementById('feeding-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
-            document.getElementById('feeding-submit-btn').textContent = 'Обновить';
-            showScreen('feeding-form');
-        } else if (type === 'asthma') {
-            document.getElementById('asthma-record-id').value = recordId;
-            document.getElementById('asthma-date').value = datePart;
-            document.getElementById('asthma-time').value = timePart;
-            document.getElementById('asthma-duration').value = record.duration;
-            document.getElementById('asthma-reason').value = record.reason;
-            document.getElementById('asthma-inhalation').value = record.inhalation === 'Да' ? 'true' : 'false';
-            document.getElementById('asthma-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
-            document.getElementById('asthma-submit-btn').textContent = 'Обновить';
-            showScreen('asthma-form');
-        } else if (type === 'defecation') {
-            document.getElementById('defecation-record-id').value = recordId;
-            document.getElementById('defecation-date').value = datePart;
-            document.getElementById('defecation-time').value = timePart;
-            document.getElementById('defecation-stool-type').value = record.stool_type;
-            document.getElementById('defecation-color').value = record.color || 'Коричневый';
-            document.getElementById('defecation-food').value = record.food && record.food !== '-' ? record.food : 'Royal Canin Fibre Response';
-            document.getElementById('defecation-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
-            document.getElementById('defecation-submit-btn').textContent = 'Обновить';
-            showScreen('defecation-form');
-        } else if (type === 'litter') {
-            document.getElementById('litter-record-id').value = recordId;
-            document.getElementById('litter-date').value = datePart;
-            document.getElementById('litter-time').value = timePart;
-            document.getElementById('litter-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
-            document.getElementById('litter-submit-btn').textContent = 'Обновить';
-            showScreen('litter-form');
-        } else if (type === 'weight') {
-            document.getElementById('weight-record-id').value = recordId;
-            document.getElementById('weight-date').value = datePart;
-            document.getElementById('weight-time').value = timePart;
-            document.getElementById('weight-value').value = record.weight;
-            document.getElementById('weight-food').value = record.food && record.food !== '-' ? record.food : 'Royal Canin Fibre Response';
-            document.getElementById('weight-comment').value = record.comment && record.comment !== '-' ? record.comment : '';
-            document.getElementById('weight-submit-btn').textContent = 'Обновить';
-            showScreen('weight-form');
+        // Используем универсальную функцию заполнения формы
+        // Преобразуем данные для совместимости
+        const formRecord = { ...record };
+        if (type === 'asthma' && record.inhalation === 'Да') {
+            formRecord.inhalation = 'true';
+        } else if (type === 'asthma' && record.inhalation === 'Нет') {
+            formRecord.inhalation = 'false';
         }
+        
+        populateForm(type, formRecord, recordId);
+        showScreen(`${type}-form`);
     } catch (error) {
         showAlert('error', 'Ошибка при загрузке записи');
         console.error('Error:', error);

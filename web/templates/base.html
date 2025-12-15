@@ -12,7 +12,10 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icon-192.svg') }}">
     <title>{% block title %}Petzy{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
+    <!-- Framework7 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7@8/css/framework7.bundle.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5">
     <script>
         // Token refresh logic
         let isRefreshing = false;
@@ -107,6 +110,10 @@
         {% block content %}{% endblock %}
     </main>
     
+    <!-- Framework7 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/framework7@8/js/framework7.bundle.min.js"></script>
+    <!-- Forms Configuration -->
+    <script src="{{ url_for('static', filename='js/forms-config.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
