@@ -805,16 +805,9 @@ body {
     gap: 0.5rem;
 }
 
-/* Pet Info Badge */
+/* Pet Info Badge - скрыт, так как дублируется с навбаром */
 .pet-info-badge {
-    background: var(--background-secondary);
-    border: 0.5px solid var(--ios-separator);
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    color: var(--text-secondary);
-    font-size: 0.88235rem;
-    text-align: center;
+    display: none;
 }
 
 /* Pet Switcher */
@@ -1147,15 +1140,16 @@ body {
     gap: 0.75rem;
     padding: 1rem;
     margin: 0;
-    background: var(--card-background);
     border-top: 0.5px solid var(--ios-separator);
     position: fixed;
-    bottom: 0;
+    /* Сдвигаем вниз на величину safe area, чтобы фон заполнил её */
+    bottom: calc(0px - env(safe-area-inset-bottom));
     left: 0;
     right: 0;
     z-index: 10;
     flex-shrink: 0;
-    /* iOS safe area support - аналогично navbar */
+    /* iOS safe area support - padding для контента внутри */
+    padding-top: 1rem;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
     padding-left: calc(1rem + env(safe-area-inset-left));
     padding-right: calc(1rem + env(safe-area-inset-right));
@@ -1163,8 +1157,9 @@ body {
     will-change: transform;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
-    /* Фон заполняет всю область включая safe area */
     box-sizing: border-box;
+    /* Фон заполняет safe area */
+    background: var(--card-background);
 }
 
 /* Settings Section */

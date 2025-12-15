@@ -52,7 +52,6 @@
         </div>
         <form id="feeding-form-element" class="inline-form">
             <div class="form-content">
-                <div id="feeding-pet-info" class="pet-info-badge" style="display: none;"></div>
                 <input type="hidden" id="feeding-record-id" name="record_id" value="">
                 <div class="form-row">
                     <div class="form-group form-group-half">
@@ -87,7 +86,6 @@
         </div>
         <form id="asthma-form-element" class="inline-form">
             <div class="form-content">
-                <div id="asthma-pet-info" class="pet-info-badge" style="display: none;"></div>
                 <input type="hidden" id="asthma-record-id" name="record_id" value="">
                 <div class="form-row">
                     <div class="form-group form-group-half">
@@ -138,7 +136,6 @@
         </div>
         <form id="defecation-form-element" class="inline-form">
             <div class="form-content">
-                <div id="defecation-pet-info" class="pet-info-badge" style="display: none;"></div>
                 <input type="hidden" id="defecation-record-id" name="record_id" value="">
                 <div class="form-row">
                     <div class="form-group form-group-half">
@@ -190,7 +187,6 @@
         </div>
         <form id="litter-form-element" class="inline-form">
             <div class="form-content">
-                <div id="litter-pet-info" class="pet-info-badge" style="display: none;"></div>
                 <input type="hidden" id="litter-record-id" name="record_id" value="">
                 <div class="form-row">
                     <div class="form-group form-group-half">
@@ -221,7 +217,6 @@
         </div>
         <form id="weight-form-element" class="inline-form">
             <div class="form-content">
-                <div id="weight-pet-info" class="pet-info-badge" style="display: none;"></div>
                 <input type="hidden" id="weight-record-id" name="record_id" value="">
                 <div class="form-row">
                     <div class="form-group form-group-half">
@@ -461,7 +456,6 @@
             <button class="back-btn" onclick="showScreen('pet-selector')">← Назад</button>
             <h2>Доступ к животному</h2>
         </div>
-        <div id="pet-sharing-pet-info" class="pet-info-badge" style="display: none;"></div>
         <div class="sharing-content">
             <div id="sharing-info" class="sharing-section">
                 <h3>Пользователи с доступом</h3>
@@ -750,8 +744,7 @@ function selectPet(petId, petName) {
     const isInPetSharing = activeScreen && activeScreen.id === 'pet-sharing';
     
     if (isInForm) {
-        // Just update the pet info badge, stay in the form
-        updatePetInfoBadges();
+        // Stay in the form
     } else if (isInHistory) {
         // Stay in history and reload current tab
         const currentTab = document.querySelector('.tab-btn.active');
@@ -762,8 +755,7 @@ function selectPet(petId, petName) {
             }
         }
     } else if (isInAdminPanel || isInPetSelector || isInPetSharing) {
-        // Stay in current screen, just update pet info
-        updatePetInfoBadges();
+        // Stay in current screen
     } else {
         // Return to main menu
         showScreen('main-menu');
@@ -784,26 +776,8 @@ function updatePetSwitcher() {
             switcherName.textContent = 'Выбрать животное';
         }
     }
-    updatePetInfoBadges();
 }
 
-function updatePetInfoBadges() {
-    const petName = selectedPetName || 'не выбрано';
-    const badges = ['feeding-pet-info', 'asthma-pet-info', 'defecation-pet-info', 'litter-pet-info', 'weight-pet-info'];
-    
-    badges.forEach(badgeId => {
-        const badge = document.getElementById(badgeId);
-        if (badge) {
-            if (selectedPetId && selectedPetName) {
-                badge.textContent = petName;
-                badge.style.display = 'block';
-            } else {
-                badge.textContent = 'не выбрано';
-                badge.style.display = 'block';
-            }
-        }
-    });
-}
 
 async function showPetSwitcherMenu() {
     const menu = document.getElementById('pet-switcher-menu');
@@ -890,7 +864,6 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAdminStatus().then(() => {
         checkAndSelectPet().then(() => {
             checkPetOwnership();
-            updatePetInfoBadges();
         });
     });
 });
@@ -911,19 +884,15 @@ function showScreen(screenId) {
         if (screenId === 'asthma-form' && !document.getElementById('asthma-record-id').value) {
             resetFormDefaults();
             document.getElementById('asthma-submit-btn').textContent = 'Сохранить';
-            updatePetInfoBadges();
         } else if (screenId === 'defecation-form' && !document.getElementById('defecation-record-id').value) {
             resetFormDefaults();
             document.getElementById('defecation-submit-btn').textContent = 'Сохранить';
-            updatePetInfoBadges();
         } else if (screenId === 'litter-form' && !document.getElementById('litter-record-id').value) {
             resetFormDefaults();
             document.getElementById('litter-submit-btn').textContent = 'Сохранить';
-            updatePetInfoBadges();
         } else if (screenId === 'weight-form' && !document.getElementById('weight-record-id').value) {
             resetFormDefaults();
             document.getElementById('weight-submit-btn').textContent = 'Сохранить';
-            updatePetInfoBadges();
         } else if (screenId === 'settings') {
             loadSettingsForm();
         } else if (screenId === 'pet-selector') {
@@ -1705,13 +1674,7 @@ async function loadPetSharing() {
         return;
     }
     
-    // Update pet info badge
-    const petName = selectedPetName || 'не выбрано';
-    const badge = document.getElementById('pet-sharing-pet-info');
-    if (badge) {
-        badge.textContent = petName;
-        badge.style.display = 'block';
-    }
+    // Бейдж удален - информация о животном отображается только в навбаре
     
     try {
         const response = await fetch(`/api/pets/${petId}`, {
