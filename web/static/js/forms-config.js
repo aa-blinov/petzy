@@ -1,4 +1,6 @@
 // Универсальная конфигурация форм для всех типов записей
+// Примечание: значения `value` в полях используются как fallback и должны соответствовать
+// SettingsModule.DEFAULT_SETTINGS. При создании формы значения берутся из настроек (localStorage).
 const FORM_CONFIGS = {
     feeding: {
         title: 'Записать дневную порцию корма',
@@ -116,6 +118,7 @@ const FORM_CONFIGS = {
 };
 
 // Получаем настройки из localStorage
+// Используем SettingsModule.DEFAULT_SETTINGS как источник значений по умолчанию
 function getFormSettings() {
     try {
         const saved = localStorage.getItem('formDefaults');
@@ -130,7 +133,11 @@ function getFormSettings() {
     } catch (e) {
         console.error('Error loading settings:', e);
     }
-    // Возвращаем значения по умолчанию
+    // Возвращаем значения по умолчанию из SettingsModule
+    if (typeof SettingsModule !== 'undefined' && SettingsModule.DEFAULT_SETTINGS) {
+        return SettingsModule.DEFAULT_SETTINGS;
+    }
+    // Fallback, если SettingsModule еще не загружен
     return {
         asthma: {
             duration: 'Короткий',

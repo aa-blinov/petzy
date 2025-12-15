@@ -373,51 +373,6 @@
 </div>
 
 <script>
-// Default settings
-const DEFAULT_SETTINGS = {
-    asthma: {
-        duration: 'Короткий',
-        inhalation: 'false',
-        reason: 'Пил'
-    },
-    defecation: {
-        stool_type: 'Обычный',
-        color: 'Коричневый',
-        food: 'Royal Canin Fibre Response'
-    },
-    weight: {
-        food: 'Royal Canin Fibre Response'
-    }
-};
-
-// Load settings from localStorage
-function loadSettings() {
-    const saved = localStorage.getItem('formDefaults');
-    if (saved) {
-        try {
-            const settings = JSON.parse(saved);
-            // Ensure backward compatibility - add color if missing
-            if (settings.defecation && !settings.defecation.color) {
-                settings.defecation.color = 'Коричневый';
-            }
-            return settings;
-        } catch (e) {
-            console.error('Error loading settings:', e);
-        }
-    }
-    return DEFAULT_SETTINGS;
-}
-
-// Save settings to localStorage
-function saveSettings(settings) {
-    localStorage.setItem('formDefaults', JSON.stringify(settings));
-}
-
-// Get current settings
-function getSettings() {
-    return loadSettings();
-}
-
 // Set default date/time to now and apply saved defaults
 function resetFormDefaults() {
     const now = new Date();
@@ -467,208 +422,7 @@ function resetFormDefaults() {
     });
 }
 
-// Load settings into settings form
-function loadSettingsForm() {
-    const settings = getSettings();
-    document.getElementById('default-asthma-duration').value = settings.asthma.duration;
-    document.getElementById('default-asthma-inhalation').value = settings.asthma.inhalation;
-    document.getElementById('default-asthma-reason').value = settings.asthma.reason;
-    document.getElementById('default-defecation-stool-type').value = settings.defecation.stool_type;
-    document.getElementById('default-defecation-color').value = settings.defecation.color || 'Коричневый';
-    document.getElementById('default-defecation-food').value = settings.defecation.food;
-    document.getElementById('default-weight-food').value = settings.weight.food;
-}
-
-// Reset settings to defaults
-function resetSettingsToDefaults() {
-    if (confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?')) {
-        saveSettings(DEFAULT_SETTINGS);
-        loadSettingsForm();
-        showAlert('success', 'Настройки сброшены к значениям по умолчанию');
-    }
-}
-
-// Pet management
-let selectedPetId = null;
-let selectedPetName = null;
-
-function getSelectedPetId() {
-    return localStorage.getItem('selectedPetId');
-}
-
-function setSelectedPet(petId, petName) {
-    localStorage.setItem('selectedPetId', petId);
-    localStorage.setItem('selectedPetName', petName);
-    selectedPetId = petId;
-    selectedPetName = petName;
-    updatePetSwitcher();
-    checkPetOwnership();
-    // Reload current screen data if needed
-    const activeScreen = document.querySelector('.screen.active');
-    if (activeScreen && activeScreen.id === 'history') {
-        const currentTab = document.querySelector('.tab-btn.active');
-        if (currentTab) {
-            const tabType = currentTab.getAttribute('data-tab');
-            if (tabType) {
-                showHistoryTab(tabType);
-            }
-        }
-    }
-}
-
-function clearSelectedPet() {
-    localStorage.removeItem('selectedPetId');
-    localStorage.removeItem('selectedPetName');
-    selectedPetId = null;
-    selectedPetName = null;
-    updatePetSwitcher();
-}
-
-async function loadPets() {
-    try {
-        const response = await fetch('/api/pets', {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        return data.pets || [];
-    } catch (error) {
-        console.error('Error loading pets:', error);
-        return [];
-    }
-}
-
-async function renderPetsList() {
-    const container = document.getElementById('pets-list');
-    container.innerHTML = '<div class="loading">Загрузка...</div>';
-    
-    const pets = await loadPets();
-    
-    if (pets.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>У вас пока нет животных. Создайте первое!</p></div>';
-        return;
-    }
-    
-    let html = '<div class="pets-grid">';
-    pets.forEach(pet => {
-        const photo = pet.photo_url ? pet.photo_url + '?t=' + new Date().getTime() : '';
-        const isOwner = pet.current_user_is_owner || false;
-        html += `
-            <div class="pet-card">
-                <div class="pet-card-content" onclick="selectPet('${pet._id}', '${pet.name}')">
-                    ${photo ? `<img src="${photo}" alt="${pet.name}" class="pet-photo">` : '<div class="pet-photo-placeholder">🐱</div>'}
-                    <div class="pet-info">
-                        <h3>${pet.name}</h3>
-                        ${pet.breed ? `<p>${pet.breed}</p>` : ''}
-                        ${pet.gender ? `<p>${pet.gender}</p>` : ''}
-                    </div>
-                </div>
-                <div class="pet-card-actions">
-                    <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editPet('${pet._id}')">Редактировать</button>
-                    ${isOwner ? `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); showPetSharing('${pet._id}', '${pet.name}')">Доступ</button>` : ''}
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function selectPet(petId, petName) {
-    setSelectedPet(petId, petName);
-    
-    // Update pet switcher in navbar
-    updatePetSwitcher();
-    
-    // Check if we're in a form screen or history screen
-    const activeScreen = document.querySelector('.screen.active');
-    const isInForm = activeScreen && (
-        activeScreen.id === 'asthma-form' || 
-        activeScreen.id === 'defecation-form' ||
-        activeScreen.id === 'litter-form' ||
-        activeScreen.id === 'weight-form' ||
-        activeScreen.id === 'feeding-form' ||
-        activeScreen.id === 'pet-form' ||
-        activeScreen.id === 'user-form'
-    );
-    const isInHistory = activeScreen && activeScreen.id === 'history';
-    const isInAdminPanel = activeScreen && activeScreen.id === 'admin-panel';
-    const isInPetSelector = activeScreen && activeScreen.id === 'pet-selector';
-    const isInPetSharing = activeScreen && activeScreen.id === 'pet-sharing';
-    
-    if (isInForm) {
-        // Stay in the form
-    } else if (isInHistory) {
-        // Stay in history and reload current tab
-        const currentTab = document.querySelector('.tab-btn.active');
-        if (currentTab) {
-            const tabType = currentTab.getAttribute('data-tab');
-            if (tabType) {
-                showHistoryTab(tabType);
-            }
-        }
-    } else if (isInAdminPanel || isInPetSelector || isInPetSharing) {
-        // Stay in current screen
-    } else {
-        // Return to main menu
-        showScreen('main-menu');
-    }
-}
-
-function updatePetSwitcher() {
-    const switcher = document.getElementById('pet-switcher');
-    const switcherName = document.getElementById('pet-switcher-name');
-    
-    if (switcher && switcherName) {
-        // Always show switcher
-        switcher.style.display = 'block';
-        if (selectedPetId && selectedPetName) {
-            // Update the name, arrow stays in place (it's outside the span in HTML)
-            switcherName.textContent = selectedPetName;
-        } else {
-            switcherName.textContent = 'Выбрать животное';
-        }
-    }
-}
-
-
-async function showPetSwitcherMenu() {
-    const menu = document.getElementById('pet-switcher-menu');
-    const list = document.getElementById('pet-switcher-list');
-    
-    if (!menu || !list) return;
-    
-    if (menu.style.display === 'block') {
-        hidePetSwitcherMenu();
-        return;
-    }
-    
-    menu.style.display = 'block';
-    list.innerHTML = '<div class="loading">Загрузка...</div>';
-    
-    const pets = await loadPets();
-    let html = '';
-    
-    pets.forEach(pet => {
-        const isSelected = pet._id === selectedPetId;
-        html += `
-            <button class="pet-switcher-item ${isSelected ? 'active' : ''}" 
-                    onclick="selectPet('${pet._id}', '${pet.name}'); hidePetSwitcherMenu();">
-                ${pet.name}
-            </button>
-        `;
-    });
-    
-    list.innerHTML = html;
-}
-
-function hidePetSwitcherMenu() {
-    const menu = document.getElementById('pet-switcher-menu');
-    if (menu) {
-        menu.style.display = 'none';
-    }
-}
-
-// Close menu when clicking outside
+// Close pet switcher menu when clicking outside
 document.addEventListener('click', function(event) {
     const switcher = document.getElementById('pet-switcher');
     const menu = document.getElementById('pet-switcher-menu');
@@ -676,31 +430,6 @@ document.addEventListener('click', function(event) {
         hidePetSwitcherMenu();
     }
 });
-
-async function checkAndSelectPet() {
-    const savedPetId = getSelectedPetId();
-    if (savedPetId) {
-        // Verify pet still exists and user has access
-        try {
-            const response = await fetch(`/api/pets/${savedPetId}`, {
-                credentials: 'include'
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setSelectedPet(savedPetId, data.pet.name);
-                updatePetSwitcher();
-                return true;
-            }
-        } catch (error) {
-            console.error('Error checking pet:', error);
-        }
-    }
-    
-    // No valid pet selected, but don't force selector - let user work and choose when needed
-    // Just show main menu, user can select pet from navbar
-    updatePetSwitcher();
-    return false;
-}
 
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализируем формы при загрузке
@@ -720,831 +449,125 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     resetFormDefaults();
-    // Initialize selected pet from localStorage
-    selectedPetId = getSelectedPetId();
-    selectedPetName = localStorage.getItem('selectedPetName');
-    // Always show pet switcher
+    
+    // Инициализируем модули
+    PetsModule.init();
     const switcher = document.getElementById('pet-switcher');
     if (switcher) {
         switcher.style.display = 'block';
     }
-    updatePetSwitcher();
-    checkAdminStatus().then(() => {
-        checkAndSelectPet().then(() => {
-            checkPetOwnership();
-        });
+    
+    // Проверяем статус админа (функция сама покажет/скроет админ-панель)
+    UsersModule.checkAdminStatus().then(() => {
+        return PetsModule.checkAndSelectPet();
+    }).then(() => {
+        // checkPetOwnership is deprecated
     });
 });
 
-function showScreen(screenId) {
-    // Hide all screens
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-    });
-    // Show selected screen
-    const screen = document.getElementById(screenId);
-    if (screen) {
-        screen.classList.add('active');
-        // Scroll to top
-        window.scrollTo(0, 0);
-        
-        // Генерируем формы динамически для типов записей
-        const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight'];
-        const formType = formTypes.find(type => screenId === `${type}-form`);
-        
-        if (formType) {
-            const container = document.getElementById(`${formType}-form-container`);
-            if (container) {
-                const formElement = document.getElementById(`${formType}-form-element`);
-                const recordId = formElement ? formElement.querySelector('[name="record_id"]')?.value : null;
-                
-                // Создаем форму (уже с настройками из localStorage)
-                container.innerHTML = createFormHTML(formType, recordId);
-                
-                // Привязываем обработчик
-                const newForm = document.getElementById(`${formType}-form-element`);
-                if (newForm) {
-                    newForm.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        handleFormSubmit(formType, newForm);
-                    });
-                }
-                
-                // Сбрасываем значения по умолчанию только для новых записей
-                // (date/time обновятся, настройки уже применены при создании формы)
-                if (!recordId) {
-                    resetFormDefaults();
-                }
-            }
-        } else if (screenId === 'settings') {
-            loadSettingsForm();
-        } else if (screenId === 'pet-selector') {
-            renderPetsList();
-        } else if (screenId === 'pet-form') {
-            const recordId = document.getElementById('pet-record-id')?.value;
-            if (!recordId) {
-                resetPetForm();
-            }
-        } else if (screenId === 'admin-panel') {
-            loadUsersList();
-        } else if (screenId === 'user-form') {
-            const recordUsername = document.getElementById('user-record-username')?.value;
-            if (!recordUsername) {
-                resetUserForm();
-            }
-        } else if (screenId === 'pet-sharing') {
-            loadPetSharing();
-        } else if (screenId === 'history') {
-            showHistoryTab('feeding');
-        }
-    }
-}
-
-
-let currentHistoryType = 'asthma';
-let selectedExportType = null;
-
-function showExportMenu() {
-    selectedExportType = null;
-    document.getElementById('export-type-selection').style.display = 'block';
-    document.getElementById('export-format-selection').style.display = 'none';
-    document.getElementById('export-back-btn').style.display = 'none';
-    document.getElementById('export-cancel-btn').style.display = 'block';
-    document.getElementById('export-menu-title').textContent = 'Выберите тип данных:';
-    document.getElementById('export-menu').style.display = 'flex';
-}
-
-function hideExportMenu() {
-    document.getElementById('export-menu').style.display = 'none';
-    selectedExportType = null;
-}
-
-function selectExportType(type) {
-    selectedExportType = type;
-    document.getElementById('export-type-selection').style.display = 'none';
-    document.getElementById('export-format-selection').style.display = 'block';
-    document.getElementById('export-back-btn').style.display = 'block';
-    document.getElementById('export-cancel-btn').style.display = 'none';
-    let typeName;
-    if (type === 'feeding') {
-        typeName = 'Дневные порции';
-    } else if (type === 'asthma') {
-        typeName = 'Приступы астмы';
-    } else if (type === 'defecation') {
-        typeName = 'Дефекации';
-    } else if (type === 'litter') {
-        typeName = 'Смена лотка';
-    } else {
-        typeName = 'Вес';
-    }
-    document.getElementById('export-menu-title').textContent = `Выберите формат (${typeName}):`;
-}
-
-function backToExportType() {
-    selectedExportType = null;
-    document.getElementById('export-type-selection').style.display = 'block';
-    document.getElementById('export-format-selection').style.display = 'none';
-    document.getElementById('export-back-btn').style.display = 'none';
-    document.getElementById('export-cancel-btn').style.display = 'block';
-    document.getElementById('export-menu-title').textContent = 'Выберите тип данных:';
-}
-
-async function exportData(format) {
-    if (!selectedExportType) {
-        showAlert('error', 'Выберите тип данных');
-        return;
-    }
-    
-    const petId = getSelectedPetId();
-    if (!petId) {
-        showAlert('error', 'Выберите животное');
-        return;
-    }
-    
-    const url = `/api/export/${selectedExportType}/${format}?pet_id=${petId}`;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Ошибка при выгрузке' }));
-            showAlert('error', errorData.error || 'Ошибка при выгрузке');
-            return;
-        }
-        
-        // Get filename from Content-Disposition header or generate one
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = '';
-        if (contentDisposition) {
-            // Try RFC 5987 format first: filename*=UTF-8''encoded-name
-            const rfc5987Match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-            if (rfc5987Match) {
-                filename = decodeURIComponent(rfc5987Match[1]);
-            } else {
-                // Fallback to standard format
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch) {
-                    filename = filenameMatch[1];
-                }
-            }
-        }
-        
-        if (!filename) {
-            const typeName = selectedExportType === 'asthma' ? 'asthma' : 'defecation';
-            filename = `${typeName}_${new Date().toISOString().slice(0, 10)}.${format}`;
-        }
-        
-        // Create blob and download
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = filename;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
-        
-        hideExportMenu();
-        showAlert('success', 'Файл выгружен');
-    } catch (error) {
-        console.error('Export error:', error);
-        showAlert('error', 'Ошибка при выгрузке файла');
-    }
-}
-
-// Format date from YYYY-MM-DD HH:MM to DD.MM.YYYY HH:MM
-function formatDateTime(dateTimeStr) {
-    if (!dateTimeStr) return '';
-    const parts = dateTimeStr.split(' ');
-    if (parts.length !== 2) return dateTimeStr;
-    const [datePart, timePart] = parts;
-    const dateParts = datePart.split('-');
-    if (dateParts.length !== 3) return dateTimeStr;
-    const [year, month, day] = dateParts;
-    return `${day}.${month}.${year} ${timePart}`;
-}
-
-function showHistoryTab(type) {
-    currentHistoryType = type;
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        const isFeeding = type === 'feeding' && btn.textContent.includes('Дневные порции');
-        const isAsthma = type === 'asthma' && btn.textContent.includes('астмы');
-        const isDefecation = type === 'defecation' && btn.textContent.includes('Дефекации');
-        const isLitter = type === 'litter' && btn.textContent.includes('Смена лотка');
-        const isWeight = type === 'weight' && btn.textContent.includes('Вес');
-        if (isFeeding || isAsthma || isDefecation || isLitter || isWeight) {
-            btn.classList.add('active');
-        }
-    });
-    
-    const content = document.getElementById('history-content');
-    const petId = getSelectedPetId();
-    
-    if (!petId) {
-        content.innerHTML = '<div class="empty-state"><p>Выберите животное в меню навигации для просмотра истории</p></div>';
-        return;
-    }
-    
-    content.innerHTML = '<div class="loading">Загрузка...</div>';
-    
-    let endpoint;
-    if (type === 'feeding') {
-        endpoint = `/api/feeding?pet_id=${petId}`;
-    } else if (type === 'asthma') {
-        endpoint = `/api/asthma?pet_id=${petId}`;
-    } else if (type === 'defecation') {
-        endpoint = `/api/defecation?pet_id=${petId}`;
-    } else if (type === 'litter') {
-        endpoint = `/api/litter?pet_id=${petId}`;
-    } else {
-        endpoint = `/api/weight?pet_id=${petId}`;
-    }
-    
-    fetch(endpoint, { credentials: 'include' })
-        .then(response => {
-            if (!response.ok) {
-                // If response is not ok, try to parse error message
-                return response.json().then(data => {
-                    throw new Error(data.error || 'Ошибка загрузки данных');
-                }).catch(() => {
-                    throw new Error('Ошибка загрузки данных');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            let items;
-            if (type === 'feeding') {
-                items = data.feedings || [];
-            } else if (type === 'asthma') {
-                items = data.attacks || [];
-            } else if (type === 'defecation') {
-                items = data.defecations || [];
-            } else if (type === 'litter') {
-                items = data.litter_changes || [];
-            } else {
-                items = data.weights || [];
-            }
-            
-            if (!items || items.length === 0) {
-                content.innerHTML = '<p class="no-data">Нет записей</p>';
-                return;
-            }
-            
-            let html = '<div class="history-list">';
-            items.forEach(item => {
-                html += `<div class="history-item history-item-${type}" data-id="${item._id}">`;
-                html += `<div class="history-date">${formatDateTime(item.date_time)}</div>`;
-                const username = item.username || '-';
-                html += `<div class="history-user"><strong>Пользователь:</strong> ${username}</div>`;
-                if (type === 'feeding') {
-                    html += `<div class="history-details">`;
-                    html += `<span><strong>Вес корма:</strong> ${item.food_weight} г</span>`;
-                    if (item.comment && item.comment !== '-') {
-                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-                    }
-                    html += `</div>`;
-                } else if (type === 'asthma') {
-                    html += `<div class="history-details">`;
-                    html += `<span><strong>Длительность:</strong> ${item.duration}</span>`;
-                    html += `<span><strong>Причина:</strong> ${item.reason}</span>`;
-                    html += `<span><strong>Ингаляция:</strong> ${item.inhalation}</span>`;
-                    if (item.comment && item.comment !== '-') {
-                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-                    }
-                    html += `</div>`;
-                } else if (type === 'defecation') {
-                    html += `<div class="history-details">`;
-                    html += `<span><strong>Тип стула:</strong> ${item.stool_type}</span>`;
-                    if (item.color) {
-                        html += `<span><strong>Цвет стула:</strong> ${item.color}</span>`;
-                    }
-                    if (item.food && item.food !== '-') {
-                        html += `<span><strong>Корм:</strong> ${item.food}</span>`;
-                    }
-                    if (item.comment && item.comment !== '-') {
-                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-                    }
-                    html += `</div>`;
-                } else if (type === 'litter') {
-                    html += `<div class="history-details">`;
-                    if (item.comment && item.comment !== '-') {
-                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-                    }
-                    html += `</div>`;
-                } else if (type === 'weight') {
-                    html += `<div class="history-details">`;
-                    html += `<span><strong>Вес:</strong> ${item.weight} кг</span>`;
-                    if (item.food && item.food !== '-') {
-                        html += `<span><strong>Корм:</strong> ${item.food}</span>`;
-                    }
-                    if (item.comment && item.comment !== '-') {
-                        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-                    }
-                    html += `</div>`;
-                }
-                html += `<div class="history-actions">`;
-                html += `<button class="btn btn-secondary btn-small" onclick="editRecord('${type}', '${item._id}')">Редактировать</button>`;
-                html += `<button class="btn btn-secondary btn-small" onclick="deleteRecord('${type}', '${item._id}')">Удалить</button>`;
-                html += `</div>`;
-                html += '</div>';
-            });
-            html += '</div>';
-            content.innerHTML = html;
-        })
-        .catch(error => {
-            content.innerHTML = '<p class="error">Ошибка загрузки данных</p>';
-            console.error('Error:', error);
-        });
-}
-
-// Admin panel functions
-let isAdmin = false;
-
-async function checkAdminStatus() {
-    try {
-        const response = await fetch('/api/users', {
-            credentials: 'include'
-        });
-        isAdmin = response.ok;
-        if (isAdmin) {
-            // Show admin panel link in menu
-            const adminLink = document.querySelector('.admin-link');
-            if (adminLink) {
-                adminLink.style.display = 'flex';
-            }
-        }
-        return isAdmin;
-    } catch (error) {
-        isAdmin = false;
-        return false;
-    }
-}
-
+// Deprecated - use UsersModule.checkAdminStatus() instead
 async function checkPetOwnership() {
     // This function is no longer needed as sharing is now in pet-selector
     // Keeping it for backward compatibility but it does nothing
 }
 
-async function loadUsersList() {
-    const container = document.getElementById('users-list');
-    if (!container) return;
-    
-    container.innerHTML = '<div class="loading">Загрузка...</div>';
-    
-    try {
-        const response = await fetch('/api/users', {
-            credentials: 'include'
-        });
+// User form submission (kept here as it's specific to dashboard)
+const userForm = document.getElementById('user-form-element');
+if (userForm) {
+    userForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const recordUsername = formData.get('username');
+        const username = document.getElementById('user-username').value;
+        const password = formData.get('password');
+        const data = {
+            username: username,
+            full_name: formData.get('full_name') || '',
+            email: formData.get('email') || ''
+        };
         
-        if (!response.ok) {
-            container.innerHTML = '<div class="error">Ошибка загрузки пользователей</div>';
-            return;
-        }
-        
-        const data = await response.json();
-        const users = data.users || [];
-        
-        if (users.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>Нет пользователей</p></div>';
-            return;
-        }
-        
-        // Desktop table view
-        let html = '<div class="users-table">';
-        html += '<div class="table-header">';
-        html += '<div>Имя пользователя</div>';
-        html += '<div>Полное имя</div>';
-        html += '<div>Email</div>';
-        html += '<div>Статус</div>';
-        html += '<div>Действия</div>';
-        html += '</div>';
-        
-        users.forEach(user => {
-            html += `<div class="table-row">`;
-            html += `<div>${user.username}</div>`;
-            html += `<div>${user.full_name || '-'}</div>`;
-            html += `<div>${user.email || '-'}</div>`;
-            html += `<div>${user.is_active ? 'Активен' : 'Неактивен'}</div>`;
-            html += `<div class="table-actions">`;
-            html += `<button class="btn btn-secondary btn-small" onclick="editUser('${user.username}')">Редактировать</button>`;
-            if (user.username !== 'admin') {
-                html += `<button class="btn btn-secondary btn-small" onclick="resetUserPassword('${user.username}')">Сбросить пароль</button>`;
-                if (user.is_active) {
-                    html += `<button class="btn btn-secondary btn-small" onclick="deactivateUser('${user.username}')">Деактивировать</button>`;
-                } else {
-                    html += `<button class="btn btn-primary btn-small" onclick="activateUser('${user.username}')">Активировать</button>`;
+        if (recordUsername) {
+            // Update existing user
+            if (password) {
+                // Reset password if provided
+                try {
+                    const resetResponse = await fetch(`/api/users/${username}/reset-password`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify({password: password})
+                    });
+                    if (!resetResponse.ok) {
+                        const errorData = await resetResponse.json();
+                        showAlert('error', errorData.error || 'Ошибка при изменении пароля');
+                        return;
+                    }
+                } catch (error) {
+                    showAlert('error', 'Ошибка при изменении пароля');
+                    return;
                 }
             }
-            html += `</div>`;
-            html += `</div>`;
-        });
-        
-        html += '</div>';
-        
-        // Mobile card view
-        html += '<div class="users-cards">';
-        users.forEach(user => {
-            html += `<div class="user-card">`;
-            html += `<div class="user-card-header">`;
-            html += `<div class="user-card-title">`;
-            html += `<h4>${user.username}</h4>`;
-            html += `<span class="user-status-badge ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Активен' : 'Неактивен'}</span>`;
-            html += `</div>`;
-            html += `</div>`;
-            html += `<div class="user-card-body">`;
-            if (user.full_name) {
-                html += `<div class="user-card-field">`;
-                html += `<span class="user-card-label">Полное имя:</span>`;
-                html += `<span class="user-card-value">${user.full_name}</span>`;
-                html += `</div>`;
-            }
-            if (user.email) {
-                html += `<div class="user-card-field">`;
-                html += `<span class="user-card-label">Email:</span>`;
-                html += `<span class="user-card-value">${user.email}</span>`;
-                html += `</div>`;
-            }
-            html += `</div>`;
-            html += `<div class="user-card-actions">`;
-            html += `<button class="btn btn-secondary btn-block" onclick="editUser('${user.username}')">Редактировать</button>`;
-            if (user.username !== 'admin') {
-                html += `<button class="btn btn-secondary btn-block" onclick="resetUserPassword('${user.username}')">Сбросить пароль</button>`;
-                if (user.is_active) {
-                    html += `<button class="btn btn-secondary btn-block" onclick="deactivateUser('${user.username}')">Деактивировать</button>`;
-                } else {
-                    html += `<button class="btn btn-primary btn-block" onclick="activateUser('${user.username}')">Активировать</button>`;
-                }
-            }
-            html += `</div>`;
-            html += `</div>`;
-        });
-        html += '</div>';
-        
-        container.innerHTML = html;
-    } catch (error) {
-        container.innerHTML = '<div class="error">Ошибка загрузки пользователей</div>';
-        console.error('Error:', error);
-    }
-}
-
-function resetUserForm() {
-    // Clear all form fields
-    document.getElementById('user-record-username').value = '';
-    document.getElementById('user-form-element').reset();
-    
-    // Reset form state to "add new user"
-    document.getElementById('user-username').value = '';
-    document.getElementById('user-username').disabled = false;
-    document.getElementById('user-password').value = '';
-    document.getElementById('user-password').required = true;
-    document.getElementById('user-password-label').textContent = 'Пароль *';
-    document.getElementById('user-full-name').value = '';
-    document.getElementById('user-email').value = '';
-    document.getElementById('user-form-title').textContent = 'Добавить пользователя';
-    document.getElementById('user-submit-btn').textContent = 'Сохранить';
-}
-
-async function editUser(username) {
-    try {
-        const response = await fetch(`/api/users/${username}`, {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        const user = data.user;
-        
-        // Set record username first to prevent form reset
-        document.getElementById('user-record-username').value = user.username;
-        
-        // Fill form fields
-        document.getElementById('user-username').value = user.username;
-        document.getElementById('user-username').disabled = true; // Username cannot be changed when editing
-        document.getElementById('user-password').value = '';
-        document.getElementById('user-password').required = false;
-        document.getElementById('user-password-label').textContent = 'Пароль (оставьте пустым, чтобы не менять)';
-        document.getElementById('user-full-name').value = user.full_name || '';
-        document.getElementById('user-email').value = user.email || '';
-        document.getElementById('user-form-title').textContent = 'Редактировать пользователя';
-        document.getElementById('user-submit-btn').textContent = 'Обновить';
-        
-        // Show form screen (won't reset because record-username is set)
-        showScreen('user-form');
-    } catch (error) {
-        showAlert('error', 'Ошибка при загрузке пользователя');
-        console.error('Error loading user:', error);
-    }
-}
-
-async function resetUserPassword(username) {
-    const newPassword = prompt('Введите новый пароль:');
-    if (!newPassword) return;
-    
-    try {
-        const response = await fetch(`/api/users/${username}/reset-password`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify({password: newPassword})
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || 'Пароль изменен');
-        } else {
-            showAlert('error', result.error || 'Ошибка при изменении пароля');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при изменении пароля');
-    }
-}
-
-async function deactivateUser(username) {
-    if (!confirm(`Вы уверены, что хотите деактивировать пользователя ${username}?`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/users/${username}`, {
-            method: 'DELETE',
-            credentials: 'include'
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || 'Пользователь деактивирован');
-            loadUsersList();
-        } else {
-            showAlert('error', result.error || 'Ошибка при деактивации');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при деактивации');
-    }
-}
-
-async function activateUser(username) {
-    if (!confirm(`Вы уверены, что хотите активировать пользователя ${username}?`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/users/${username}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify({is_active: true})
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || 'Пользователь активирован');
-            loadUsersList();
-        } else {
-            showAlert('error', result.error || 'Ошибка при активации');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при активации');
-    }
-}
-
-// User form submission
-document.getElementById('user-form-element').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const recordUsername = formData.get('username');
-    const username = document.getElementById('user-username').value;
-    const password = formData.get('password');
-    const data = {
-        username: username,
-        full_name: formData.get('full_name') || '',
-        email: formData.get('email') || ''
-    };
-    
-    if (recordUsername) {
-        // Update existing user
-        if (password) {
-            // Reset password if provided
+            
+            // Update user info
             try {
-                const resetResponse = await fetch(`/api/users/${username}/reset-password`, {
+                const response = await fetch(`/api/users/${username}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('success', result.message || 'Пользователь обновлен');
+                    resetUserForm();
+                    setTimeout(() => {
+                        showScreen('admin-panel');
+                        loadUsersList();
+                    }, 500);
+                } else {
+                    showAlert('error', result.error || 'Ошибка при сохранении');
+                }
+            } catch (error) {
+                showAlert('error', 'Ошибка при сохранении');
+            }
+        } else {
+            // Create new user
+            if (!password) {
+                showAlert('error', 'Пароль обязателен для нового пользователя');
+                return;
+            }
+            
+            data.password = password;
+            
+            try {
+                const response = await fetch('/api/users', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     credentials: 'include',
-                    body: JSON.stringify({password: password})
+                    body: JSON.stringify(data)
                 });
-                if (!resetResponse.ok) {
-                    const errorData = await resetResponse.json();
-                    showAlert('error', errorData.error || 'Ошибка при изменении пароля');
-                    return;
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('success', result.message || 'Пользователь создан');
+                    resetUserForm();
+                    setTimeout(() => {
+                        showScreen('admin-panel');
+                        loadUsersList();
+                    }, 500);
+                } else {
+                    showAlert('error', result.error || 'Ошибка при сохранении');
                 }
             } catch (error) {
-                showAlert('error', 'Ошибка при изменении пароля');
-                return;
+                showAlert('error', 'Ошибка при сохранении');
             }
         }
-        
-        // Update user info
-        try {
-            const response = await fetch(`/api/users/${username}`, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                credentials: 'include',
-                body: JSON.stringify(data)
-            });
-            
-            const result = await response.json();
-            if (response.ok) {
-                showAlert('success', result.message || 'Пользователь обновлен');
-                resetUserForm();
-                setTimeout(() => {
-                    showScreen('admin-panel');
-                    loadUsersList();
-                }, 500);
-            } else {
-                showAlert('error', result.error || 'Ошибка при сохранении');
-            }
-        } catch (error) {
-            showAlert('error', 'Ошибка при сохранении');
-        }
-    } else {
-        // Create new user
-        if (!password) {
-            showAlert('error', 'Пароль обязателен для нового пользователя');
-            return;
-        }
-        
-        data.password = password;
-        
-        try {
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                credentials: 'include',
-                body: JSON.stringify(data)
-            });
-            
-            const result = await response.json();
-            if (response.ok) {
-                showAlert('success', result.message || 'Пользователь создан');
-                resetUserForm();
-                setTimeout(() => {
-                    showScreen('admin-panel');
-                    loadUsersList();
-                }, 500);
-            } else {
-                showAlert('error', result.error || 'Ошибка при сохранении');
-            }
-        } catch (error) {
-            showAlert('error', 'Ошибка при сохранении');
-        }
-    }
-});
-
-// Pet sharing functions
-function showPetSharing(petId, petName) {
-    setSelectedPet(petId, petName);
-    loadPetSharing();
+    });
 }
 
-async function editPet(petId) {
-    try {
-        const response = await fetch(`/api/pets/${petId}`, {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        const pet = data.pet;
-        
-        // Fill form fields
-        document.getElementById('pet-record-id').value = pet._id;
-        document.getElementById('pet-name').value = pet.name || '';
-        document.getElementById('pet-breed').value = pet.breed || '';
-        document.getElementById('pet-birth-date').value = pet.birth_date || '';
-        document.getElementById('pet-gender').value = pet.gender || '';
-        document.getElementById('pet-form-title').textContent = 'Редактировать питомца';
-        document.getElementById('pet-submit-btn').textContent = 'Обновить';
-        
-        // Show current photo if exists
-        const photoCurrent = document.getElementById('pet-photo-current');
-        const photoCurrentImg = document.getElementById('pet-photo-current-img');
-        if (pet.photo_url) {
-            photoCurrentImg.src = pet.photo_url + '?t=' + new Date().getTime();
-            photoCurrent.style.display = 'block';
-        } else {
-            photoCurrent.style.display = 'none';
-        }
-        
-        // Show access management section if user is owner
-        const accessSection = document.getElementById('pet-access-section');
-        if (pet.current_user_is_owner) {
-            accessSection.style.display = 'block';
-            await loadPetAccessInForm(petId);
-        } else {
-            accessSection.style.display = 'none';
-        }
-        
-        showScreen('pet-form');
-    } catch (error) {
-        showAlert('error', 'Ошибка при загрузке питомца');
-        console.error('Error loading pet:', error);
-    }
-}
-
-async function loadPetAccessInForm(petId) {
-    try {
-        const response = await fetch(`/api/pets/${petId}`, {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        const pet = data.pet;
-        
-        // Load shared users
-        const sharedList = document.getElementById('pet-shared-with-list');
-        const sharedWith = pet.shared_with || [];
-        if (sharedWith.length === 0) {
-            sharedList.innerHTML = '<div class="empty-state"><p>Нет пользователей с доступом</p></div>';
-        } else {
-            let html = '<div class="shared-users-list">';
-            sharedWith.forEach(username => {
-                html += `
-                    <div class="shared-user-item">
-                        <div class="shared-user-name">${username}</div>
-                        <div class="shared-user-actions">
-                            <button class="btn btn-secondary btn-block" onclick="unsharePetFromForm('${petId}', '${username}')">Убрать доступ</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            sharedList.innerHTML = html;
-        }
-    } catch (error) {
-        console.error('Error loading pet access:', error);
-    }
-}
-
-async function sharePetFromForm() {
-    const petId = document.getElementById('pet-record-id').value;
-    const usernameInput = document.getElementById('share-username-input');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        showAlert('error', 'Введите имя пользователя');
-        return;
-    }
-    
-    if (!petId) {
-        showAlert('error', 'Сначала сохраните питомца');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/pets/${petId}/share`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify({username: username})
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || 'Доступ предоставлен');
-            usernameInput.value = '';
-            await loadPetAccessInForm(petId);
-        } else {
-            showAlert('error', result.error || 'Ошибка при предоставлении доступа');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при предоставлении доступа');
-    }
-}
-
-async function unsharePetFromForm(petId, username) {
-    if (!confirm(`Убрать доступ у пользователя ${username}?`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/pets/${petId}/share/${username}`, {
-            method: 'DELETE',
-            credentials: 'include'
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            showAlert('success', result.message || 'Доступ убран');
-            await loadPetAccessInForm(petId);
-        } else {
-            showAlert('error', result.error || 'Ошибка при удалении доступа');
-        }
-    } catch (error) {
-        showAlert('error', 'Ошибка при удалении доступа');
-    }
-}
+// Pet sharing functions (специфичные для dashboard - используют элементы HTML dashboard)
+// editPet, showPetSharing, sharePetFromForm, loadPetAccessInForm, unsharePetFromForm - теперь в PetsModule
 
 async function loadPetSharing() {
     const petId = getSelectedPetId();

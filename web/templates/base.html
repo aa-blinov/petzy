@@ -112,6 +112,12 @@
     
     <!-- Framework7 JS -->
     <script src="https://cdn.jsdelivr.net/npm/framework7@8/js/framework7.bundle.min.js"></script>
+    <!-- Application Modules -->
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pets.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/users.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
     <!-- Forms Configuration -->
     <script src="{{ url_for('static', filename='js/forms-config.js') }}"></script>
     {% block scripts %}{% endblock %}
