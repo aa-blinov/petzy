@@ -1065,8 +1065,8 @@ body {
     -webkit-overflow-scrolling: touch;
     padding: 1rem;
     /* Add bottom padding to prevent content from being hidden behind fixed form-actions 
-       Button height ~64px (44px + 2*1rem padding) + safe area */
-    padding-bottom: calc(80px + max(0px, env(safe-area-inset-bottom)));
+       Button height: 44px (button) + 2rem (top+bottom padding) + safe area */
+    padding-bottom: calc(44px + 2rem + env(safe-area-inset-bottom) + 1rem);
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -1155,14 +1155,16 @@ body {
     right: 0;
     z-index: 10;
     flex-shrink: 0;
-    /* iOS safe area support - padding inside, но кнопка прижата к низу */
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
+    /* iOS safe area support - аналогично navbar */
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-left: calc(1rem + env(safe-area-inset-left));
+    padding-right: calc(1rem + env(safe-area-inset-right));
     /* Оптимизация для плавного отображения */
     will-change: transform;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    /* Фон заполняет всю область включая safe area */
+    box-sizing: border-box;
 }
 
 /* Settings Section */
@@ -1721,12 +1723,7 @@ body {
     .form-actions {
         flex-direction: row;
         gap: 0.75rem;
-        padding: 1rem;
-        width: 100%;
-        left: 0;
-        right: 0;
-        box-sizing: border-box;
-        /* Safe area уже установлена в основных стилях */
+        /* Padding уже установлен в основных стилях с safe area */
     }
     
     .btn {
