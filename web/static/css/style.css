@@ -198,24 +198,14 @@ body {
     height: 100%;
     /* Add top padding to compensate for fixed navbar */
     padding-top: calc(60px + env(safe-area-inset-top));
-    box-sizing: border-box;
 }
 
 .screen.active {
     display: flex;
     flex-direction: column;
-    /* Занимаем ровно высоту экрана */
-    height: 100vh;
-    height: 100dvh;
-    /* По умолчанию скроллится сам экран (для меню, списков) */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Специальная обработка для экранов с формами - используем Flexbox Layout */
-/* Если внутри экрана есть форма, отключаем скролл экрана и скроллим только контент формы */
-.screen.active:has(.inline-form) {
-    overflow: hidden;
+    /* Высота экрана без navbar */
+    min-height: calc(100vh - 60px - env(safe-area-inset-top, 0px));
+    height: auto;
 }
 
 @keyframes fadeIn {
@@ -1061,12 +1051,12 @@ body {
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    /* Форма занимает всю доступную высоту контейнера */
-    height: 100%;
+    /* Убеждаемся, что форма занимает минимум высоту экрана для работы sticky */
+    min-height: 100vh;
+    min-height: 100dvh;
     gap: 0;
     position: relative;
-    /* Важно для работы скролла внутри */
-    min-height: 0;
+    flex: 1;
 }
 
 .inline-form > input[type="hidden"] {
@@ -1077,18 +1067,16 @@ body {
 }
 
 .form-content {
-    /* Контент занимает все свободное место */
     flex: 1;
-    /* И скроллится внутри */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 1rem;
-    /* Обычный отступ снизу, так как кнопка не перекрывает контент */
+    /* Small padding at bottom for spacing */
     padding-bottom: 1rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    /* Анимация только для контента */
+    /* Анимация только для контента, не для кнопки */
     animation: fadeIn 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
@@ -1164,25 +1152,36 @@ body {
     display: flex;
     gap: 0.75rem;
     margin: 0;
+    margin-top: auto;
     border-top: 0.5px solid var(--ios-separator);
-    
-    /* Flexbox layout: кнопка просто находится внизу потока */
-    position: relative; 
+    /* Используем sticky для надежности на iOS */
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
     flex-shrink: 0;
     
-    /* Padding: сверху и по бокам обычные, снизу - safe area */
-    padding: 0.75rem 1rem calc(env(safe-area-inset-bottom, 20px) + 0.5rem) 1rem;
-    
+    /* Padding: сверху 1rem, снизу - выбираем большее между 1rem и safe area */
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 20px));
     padding-left: calc(1rem + env(safe-area-inset-left, 0px));
     padding-right: calc(1rem + env(safe-area-inset-right, 0px));
     
+    /* Box-shadow для визуального расширения фона вниз, если sticky "подпрыгнет" */
+    box-shadow: 0 50px 0 50px var(--card-background);
+    
+    /* Оптимизация */
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
     box-sizing: border-box;
     background: var(--card-background);
     
-    /* Убираем лишние эффекты */
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    /* Backdrop blur для современного вида */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 /* Settings Section */
