@@ -88,9 +88,9 @@
             <h1 class="nav-title">🐾 Petzy</h1>
             {% block nav_user %}
             <div class="nav-user">
-                <button class="btn btn-secondary btn-small" onclick="showScreen('settings')" title="Настройки" style="padding: 0 0.75rem; min-width: 44px;">⚙️</button>
+                <button class="btn btn-secondary btn-small nav-btn" onclick="showScreen('settings')" title="Настройки">⚙️</button>
                 <div id="pet-switcher" class="pet-switcher">
-                    <button class="btn btn-secondary btn-small" id="pet-switcher-btn" onclick="showPetSwitcherMenu()">
+                    <button class="btn btn-secondary btn-small nav-btn" id="pet-switcher-btn" onclick="showPetSwitcherMenu()">
                         <span id="pet-switcher-name">Выбрать животное</span> ▼
                     </button>
                     <div id="pet-switcher-menu" class="pet-switcher-menu" style="display: none;">
@@ -100,7 +100,7 @@
                     </div>
                 </div>
                 <span id="nav-username">Admin</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small" onclick="event.preventDefault(); fetch('/api/auth/logout', {method: 'POST', credentials: 'include'}).then(() => window.location.href='/login');">Выйти</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small nav-btn" onclick="event.preventDefault(); fetch('/api/auth/logout', {method: 'POST', credentials: 'include'}).then(() => window.location.href='/login');">Выйти</a>
             </div>
             {% endblock %}
         </div>
