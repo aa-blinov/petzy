@@ -457,103 +457,77 @@ body {
     border-color: var(--ios-separator-opaque);
 }
 
-.action-cards .action-card-feeding {
+/* Color variants using data attributes */
+.action-cards .action-card[data-color="brown"] {
     border-left: 4px solid var(--ios-brown);
     background: var(--bg-brown-light);
 }
-
-.action-cards .action-card-feeding:hover,
-.action-cards .action-card-feeding:focus {
+.action-cards .action-card[data-color="brown"]:hover,
+.action-cards .action-card[data-color="brown"]:focus {
     background: var(--bg-brown-hover);
-    border-left-color: var(--ios-brown);
 }
 
-.action-cards .action-card-asthma {
+.action-cards .action-card[data-color="red"] {
     border-left: 4px solid var(--ios-red);
     background: var(--bg-red-light);
 }
-
-.action-cards .action-card-asthma:hover,
-.action-cards .action-card-asthma:focus {
+.action-cards .action-card[data-color="red"]:hover,
+.action-cards .action-card[data-color="red"]:focus {
     background: var(--bg-red-hover);
-    border-left-color: var(--ios-red);
 }
 
-.action-cards .action-card-defecation {
+.action-cards .action-card[data-color="green"] {
     border-left: 4px solid var(--ios-green);
     background: var(--bg-green-light);
 }
-
-.action-cards .action-card-defecation:hover,
-.action-cards .action-card-defecation:focus {
+.action-cards .action-card[data-color="green"]:hover,
+.action-cards .action-card[data-color="green"]:focus {
     background: var(--bg-green-hover);
-    border-left-color: var(--ios-green);
 }
 
-.action-cards .action-card-litter {
+.action-cards .action-card[data-color="purple"] {
     border-left: 4px solid var(--ios-purple);
     background: var(--bg-purple-light);
 }
-
-.action-cards .action-card-litter:hover,
-.action-cards .action-card-litter:focus {
+.action-cards .action-card[data-color="purple"]:hover,
+.action-cards .action-card[data-color="purple"]:focus {
     background: var(--bg-purple-hover);
-    border-left-color: var(--ios-purple);
 }
 
-.action-cards .action-card-weight {
+.action-cards .action-card[data-color="orange"] {
     border-left: 4px solid var(--ios-orange);
     background: var(--bg-orange-light);
 }
-
-.action-cards .action-card-weight:hover,
-.action-cards .action-card-weight:focus {
+.action-cards .action-card[data-color="orange"]:hover,
+.action-cards .action-card[data-color="orange"]:focus {
     background: var(--bg-orange-hover);
-    border-left-color: var(--ios-orange);
 }
 
-.action-cards .action-card-history {
+.action-cards .action-card[data-color="blue"] {
     border-left: 4px solid var(--ios-blue);
     background: var(--bg-blue-light);
 }
-
-.action-cards .action-card-history:hover,
-.action-cards .action-card-history:focus {
+.action-cards .action-card[data-color="blue"]:hover,
+.action-cards .action-card[data-color="blue"]:focus {
     background: var(--bg-blue-hover);
-    border-left-color: var(--ios-blue);
 }
 
-.action-cards .action-card-settings {
-    border-left: 4px solid var(--ios-purple);
-    background: var(--bg-purple-subtle);
-}
-
-.action-cards .action-card-settings:hover,
-.action-cards .action-card-settings:focus {
-    background: var(--bg-purple-light);
-    border-left-color: var(--ios-purple);
-}
-
-.action-cards .action-card-pets {
+.action-cards .action-card[data-color="yellow"] {
     border-left: 4px solid var(--ios-yellow);
     background: var(--bg-yellow-light);
 }
-
-.action-cards .action-card-pets:hover,
-.action-cards .action-card-pets:focus {
+.action-cards .action-card[data-color="yellow"]:hover,
+.action-cards .action-card[data-color="yellow"]:focus {
     background: var(--bg-yellow-hover);
-    border-left-color: var(--ios-yellow);
 }
 
-.action-cards .action-card-admin {
+.action-cards .action-card[data-color="pink"] {
     border-left: 4px solid var(--ios-pink);
     background: var(--bg-pink-light);
 }
-
-.action-cards .action-card-admin:hover,
-.action-cards .action-card-admin:focus {
+.action-cards .action-card[data-color="pink"]:hover,
+.action-cards .action-card[data-color="pink"]:focus {
     background: var(--bg-pink-hover);
-    border-left-color: var(--ios-pink);
 }
 
 .admin-content {
@@ -1471,23 +1445,24 @@ body {
     background: var(--card-hover);
 }
 
-.history-item-feeding {
+/* History item colors using data attributes */
+.history-item[data-color="brown"] {
     border-left-color: var(--ios-brown);
 }
 
-.history-item-asthma {
+.history-item[data-color="red"] {
     border-left-color: var(--ios-red);
 }
 
-.history-item-defecation {
+.history-item[data-color="green"] {
     border-left-color: var(--ios-green);
 }
 
-.history-item-litter {
+.history-item[data-color="purple"] {
     border-left-color: var(--ios-purple);
 }
 
-.history-item-weight {
+.history-item[data-color="orange"] {
     border-left-color: var(--ios-orange);
 }
 

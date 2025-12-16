@@ -9,6 +9,7 @@ const HistoryModule = {
             endpoint: 'feeding',
             dataKey: 'feedings',
             displayName: 'Дневные порции',
+            color: 'brown',
             renderDetails: (item) => {
                 let html = `<span><strong>Вес корма:</strong> ${item.food_weight} г</span>`;
                 if (item.comment && item.comment !== '-') {
@@ -21,6 +22,7 @@ const HistoryModule = {
             endpoint: 'asthma',
             dataKey: 'attacks',
             displayName: 'Приступы астмы',
+            color: 'red',
             renderDetails: (item) => {
                 let html = `<span><strong>Длительность:</strong> ${item.duration}</span>`;
                 html += `<span><strong>Причина:</strong> ${item.reason}</span>`;
@@ -35,6 +37,7 @@ const HistoryModule = {
             endpoint: 'defecation',
             dataKey: 'defecations',
             displayName: 'Дефекации',
+            color: 'green',
             renderDetails: (item) => {
                 let html = `<span><strong>Тип стула:</strong> ${item.stool_type}</span>`;
                 if (item.color) {
@@ -53,6 +56,7 @@ const HistoryModule = {
             endpoint: 'litter',
             dataKey: 'litter_changes',
             displayName: 'Смена лотка',
+            color: 'purple',
             renderDetails: (item) => {
                 let html = '';
                 if (item.comment && item.comment !== '-') {
@@ -65,6 +69,7 @@ const HistoryModule = {
             endpoint: 'weight',
             dataKey: 'weights',
             displayName: 'Вес',
+            color: 'orange',
             renderDetails: (item) => {
                 let html = `<span><strong>Вес:</strong> ${item.weight} кг</span>`;
                 if (item.food && item.food !== '-') {
@@ -136,7 +141,7 @@ const HistoryModule = {
                 
                 let html = '<div class="history-list">';
                 items.forEach(item => {
-                    html += `<div class="history-item history-item-${type}" data-id="${item._id}">`;
+                    html += `<div class="history-item" data-color="${config.color}" data-id="${item._id}">`;
                     html += `<div class="history-date">${this.formatDateTime(item.date_time)}</div>`;
                     const username = item.username || '-';
                     html += `<div class="history-user"><strong>Пользователь:</strong> ${username}</div>`;
