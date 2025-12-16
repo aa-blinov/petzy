@@ -120,6 +120,33 @@ html {
     --transition-base: all var(--duration-fast) var(--ease-ios);
     --transition-smooth: all var(--duration-base) var(--ease-ios);
     --transition-fade: all var(--duration-slow) var(--ease-ios);
+    
+    /* Color Backgrounds - Light/Hover variants */
+    --bg-brown-light: rgba(162, 132, 94, 0.15);
+    --bg-brown-hover: rgba(162, 132, 94, 0.25);
+    --bg-red-light: rgba(255, 69, 58, 0.15);
+    --bg-red-hover: rgba(255, 69, 58, 0.25);
+    --bg-red-badge: rgba(255, 59, 48, 0.2);
+    --bg-green-light: rgba(48, 209, 88, 0.15);
+    --bg-green-hover: rgba(48, 209, 88, 0.25);
+    --bg-green-subtle: rgba(48, 209, 88, 0.1);
+    --bg-green-badge: rgba(48, 209, 88, 0.2);
+    --bg-purple-light: rgba(191, 90, 242, 0.15);
+    --bg-purple-hover: rgba(191, 90, 242, 0.25);
+    --bg-purple-subtle: rgba(191, 90, 242, 0.05);
+    --bg-orange-light: rgba(255, 159, 10, 0.15);
+    --bg-orange-hover: rgba(255, 159, 10, 0.25);
+    --bg-blue-light: rgba(10, 132, 255, 0.15);
+    --bg-blue-hover: rgba(10, 132, 255, 0.25);
+    --bg-blue-badge: rgba(10, 132, 255, 0.2);
+    --bg-blue-focus: rgba(10, 132, 255, 0.1);
+    --bg-yellow-light: rgba(255, 214, 10, 0.05);
+    --bg-yellow-hover: rgba(255, 214, 10, 0.15);
+    --bg-pink-light: rgba(255, 55, 95, 0.15);
+    --bg-pink-hover: rgba(255, 55, 95, 0.25);
+    
+    /* Overlay */
+    --overlay-dark: rgba(0, 0, 0, 0.75);
 }
 
 body {
@@ -432,100 +459,100 @@ body {
 
 .action-cards .action-card-feeding {
     border-left: 4px solid var(--ios-brown);
-    background: rgba(162, 132, 94, 0.15);
+    background: var(--bg-brown-light);
 }
 
 .action-cards .action-card-feeding:hover,
 .action-cards .action-card-feeding:focus {
-    background: rgba(162, 132, 94, 0.25);
+    background: var(--bg-brown-hover);
     border-left-color: var(--ios-brown);
 }
 
 .action-cards .action-card-asthma {
     border-left: 4px solid var(--ios-red);
-    background: rgba(255, 69, 58, 0.15);
+    background: var(--bg-red-light);
 }
 
 .action-cards .action-card-asthma:hover,
 .action-cards .action-card-asthma:focus {
-    background: rgba(255, 69, 58, 0.25);
+    background: var(--bg-red-hover);
     border-left-color: var(--ios-red);
 }
 
 .action-cards .action-card-defecation {
     border-left: 4px solid var(--ios-green);
-    background: rgba(48, 209, 88, 0.15);
+    background: var(--bg-green-light);
 }
 
 .action-cards .action-card-defecation:hover,
 .action-cards .action-card-defecation:focus {
-    background: rgba(48, 209, 88, 0.25);
+    background: var(--bg-green-hover);
     border-left-color: var(--ios-green);
 }
 
 .action-cards .action-card-litter {
     border-left: 4px solid var(--ios-purple);
-    background: rgba(191, 90, 242, 0.15);
+    background: var(--bg-purple-light);
 }
 
 .action-cards .action-card-litter:hover,
 .action-cards .action-card-litter:focus {
-    background: rgba(191, 90, 242, 0.25);
+    background: var(--bg-purple-hover);
     border-left-color: var(--ios-purple);
 }
 
 .action-cards .action-card-weight {
     border-left: 4px solid var(--ios-orange);
-    background: rgba(255, 159, 10, 0.15);
+    background: var(--bg-orange-light);
 }
 
 .action-cards .action-card-weight:hover,
 .action-cards .action-card-weight:focus {
-    background: rgba(255, 159, 10, 0.25);
+    background: var(--bg-orange-hover);
     border-left-color: var(--ios-orange);
 }
 
 .action-cards .action-card-history {
     border-left: 4px solid var(--ios-blue);
-    background: rgba(10, 132, 255, 0.15);
+    background: var(--bg-blue-light);
 }
 
 .action-cards .action-card-history:hover,
 .action-cards .action-card-history:focus {
-    background: rgba(10, 132, 255, 0.25);
+    background: var(--bg-blue-hover);
     border-left-color: var(--ios-blue);
 }
 
 .action-cards .action-card-settings {
     border-left: 4px solid var(--ios-purple);
-    background: rgba(191, 90, 242, 0.05);
+    background: var(--bg-purple-subtle);
 }
 
 .action-cards .action-card-settings:hover,
 .action-cards .action-card-settings:focus {
-    background: rgba(191, 90, 242, 0.15);
+    background: var(--bg-purple-light);
     border-left-color: var(--ios-purple);
 }
 
 .action-cards .action-card-pets {
     border-left: 4px solid var(--ios-yellow);
-    background: rgba(255, 214, 10, 0.05);
+    background: var(--bg-yellow-light);
 }
 
 .action-cards .action-card-pets:hover,
 .action-cards .action-card-pets:focus {
-    background: rgba(255, 214, 10, 0.15);
+    background: var(--bg-yellow-hover);
     border-left-color: var(--ios-yellow);
 }
 
 .action-cards .action-card-admin {
     border-left: 4px solid var(--ios-pink);
-    background: rgba(255, 55, 95, 0.15);
+    background: var(--bg-pink-light);
 }
 
 .action-cards .action-card-admin:hover,
 .action-cards .action-card-admin:focus {
-    background: rgba(255, 55, 95, 0.25);
+    background: var(--bg-pink-hover);
     border-left-color: var(--ios-pink);
 }
 
@@ -654,12 +681,12 @@ body {
 }
 
 .user-status-badge.active {
-    background: rgba(48, 209, 88, 0.2);
+    background: var(--bg-green-badge);
     color: var(--ios-green);
 }
 
 .user-status-badge.inactive {
-    background: rgba(255, 59, 48, 0.2);
+    background: var(--bg-red-badge);
     color: var(--ios-red);
 }
 
@@ -727,7 +754,7 @@ body {
 
 .action-card-sharing:hover,
 .action-card-sharing:focus {
-    background: rgba(48, 209, 88, 0.1);
+    background: var(--bg-green-subtle);
     border-left-color: var(--ios-green);
 }
 
@@ -877,7 +904,7 @@ body {
 }
 
 .pet-switcher-item.active {
-    background: rgba(10, 132, 255, 0.2);
+    background: var(--bg-blue-badge);
     color: var(--primary-color);
 }
 
@@ -1120,7 +1147,7 @@ body {
     outline: none;
     border-color: var(--primary-color);
     background: var(--card-background);
-    box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.1);
+    box-shadow: 0 0 0 4px var(--bg-blue-focus);
 }
 
 .form-group input::placeholder,
@@ -1395,27 +1422,27 @@ body {
 
 .tab-btn[data-tab="feeding"].active {
     border-left: 3px solid var(--ios-brown);
-    background: rgba(162, 132, 94, 0.15);
+    background: var(--bg-brown-light);
 }
 
 .tab-btn[data-tab="asthma"].active {
     border-left: 3px solid var(--ios-red);
-    background: rgba(255, 69, 58, 0.15);
+    background: var(--bg-red-light);
 }
 
 .tab-btn[data-tab="defecation"].active {
     border-left: 3px solid var(--ios-green);
-    background: rgba(48, 209, 88, 0.15);
+    background: var(--bg-green-light);
 }
 
 .tab-btn[data-tab="litter"].active {
     border-left: 3px solid var(--ios-purple);
-    background: rgba(191, 90, 242, 0.15);
+    background: var(--bg-purple-light);
 }
 
 .tab-btn[data-tab="weight"].active {
     border-left: 3px solid var(--ios-orange);
-    background: rgba(255, 159, 10, 0.15);
+    background: var(--bg-orange-light);
 }
 
 .history-content {
@@ -1527,7 +1554,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: var(--overlay-dark);
     backdrop-filter: blur(4px);
     z-index: 2000;
     display: none;
