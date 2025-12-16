@@ -814,6 +814,9 @@ def get_pets():
         if pet.get("photo_file_id"):
             pet["photo_url"] = url_for("get_pet_photo", pet_id=pet["_id"], _external=False)
 
+        # Mark whether current user is the owner (used for UI actions like delete/share)
+        pet["current_user_is_owner"] = pet.get("owner") == username
+
     return jsonify({"pets": pets})
 
 

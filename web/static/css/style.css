@@ -326,6 +326,14 @@ body {
     min-width: 0;
 }
 
+/* Заблокированные карточки действий, когда не выбрано животное */
+.action-cards .action-card.action-card-disabled {
+    cursor: default;
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(0.3);
+}
+
 /* Увеличенные размеры на десктопе */
 @media (min-width: 768px) {
     .action-cards .action-card {
@@ -890,8 +898,14 @@ body {
 
 .pets-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .pets-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
 }
 
 .pet-card {
@@ -929,8 +943,13 @@ body {
     border-top: 0.5px solid var(--ios-separator);
     background: var(--background-secondary);
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
-    justify-content: flex-end;
+}
+
+.pet-card-actions .btn {
+    width: 100%;
+    white-space: nowrap;
 }
 
 .pet-photo {

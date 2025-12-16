@@ -1,6 +1,27 @@
 // Модуль для навигации между экранами
 const NavigationModule = {
     showScreen(screenId) {
+        // Экраны, которые требуют выбранного питомца
+        const petRequiredScreens = [
+            'feeding-form',
+            'asthma-form',
+            'defecation-form',
+            'litter-form',
+            'weight-form',
+            'history'
+        ];
+
+        // Если для экрана нужен питомец, но он не выбран – блокируем переход
+        if (petRequiredScreens.includes(screenId)) {
+            const petId = typeof getSelectedPetId === 'function' ? getSelectedPetId() : null;
+            if (!petId) {
+                if (typeof showAlert === 'function') {
+                    showAlert('error', 'Сначала выберите животное в меню навигации');
+                }
+                return;
+            }
+        }
+
         // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');

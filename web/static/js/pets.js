@@ -81,8 +81,8 @@ const PetsModule = {
                         </div>
                     </div>
                     <div class="pet-card-actions">
-                        <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); PetsModule.editPet('${pet._id}')">Редактировать</button>
-                        ${isOwner ? `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); PetsModule.showPetSharing('${pet._id}', '${pet.name}')">Доступ</button>` : ''}
+                        <button class="btn btn-primary btn-small" onclick="event.stopPropagation(); PetsModule.editPet('${pet._id}')">Редактировать</button>
+                        ${isOwner ? `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); PetsModule.deletePet('${pet._id}', '${pet.name}')">Удалить</button>` : ''}
                     </div>
                 </div>
             `;
@@ -139,6 +139,17 @@ const PetsModule = {
                 switcherName.textContent = 'Выбрать животное';
             }
         }
+
+        // Обновляем состояние карточек действий в дашборде
+        const actionCards = document.querySelectorAll('.action-cards .action-card');
+        const hasPet = !!this.selectedPetId;
+        actionCards.forEach(card => {
+            if (hasPet) {
+                card.classList.remove('action-card-disabled');
+            } else {
+                card.classList.add('action-card-disabled');
+            }
+        });
     },
 
     async showPetSwitcherMenu() {
@@ -198,6 +209,43 @@ const PetsModule = {
         
         this.updatePetSwitcher();
         return false;
+    },
+
+    async deletePet(petId, petName) {
+        if (!confirm(`Удалить питомца «${petName}»? Это действие нельзя отменить.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/pets/${petId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                if (typeof showAlert === 'function') {
+                    showAlert('success', result.message || 'Питомец удален');
+                }
+
+                // Если удалён выбранный сейчас питомец — очищаем выбор
+                if (this.selectedPetId === petId) {
+                    this.clearSelectedPet();
+                }
+
+                // Обновляем список питомцев
+                await this.renderPetsList();
+            } else {
+                if (typeof showAlert === 'function') {
+                    showAlert('error', result.error || 'Ошибка при удалении питомца');
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting pet:', error);
+            if (typeof showAlert === 'function') {
+                showAlert('error', 'Ошибка при удалении питомца');
+            }
+        }
     },
 
     async editPet(petId) {
