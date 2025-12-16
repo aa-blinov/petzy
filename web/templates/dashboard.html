@@ -457,10 +457,11 @@ document.addEventListener('DOMContentLoaded', function() {
         switcher.style.display = 'block';
     }
     
-    // Проверяем статус админа (функция сама покажет/скроет админ-панель)
-    UsersModule.checkAdminStatus().then(() => {
-        return PetsModule.checkAndSelectPet();
-    }).then(() => {
+    // Инициализируем статус админа (загрузит из кеша и обновит в фоне)
+    UsersModule.init();
+    
+    // Проверяем и выбираем питомца
+    PetsModule.checkAndSelectPet().then(() => {
         // checkPetOwnership is deprecated
     });
 });

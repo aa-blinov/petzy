@@ -196,14 +196,31 @@ const PetsModule = {
                 const response = await fetch(`/api/pets/${savedPetId}`, {
                     credentials: 'include'
                 });
+                
                 if (response.ok) {
                     const data = await response.json();
                     this.setSelectedPet(savedPetId, data.pet.name);
                     this.updatePetSwitcher();
                     return true;
+                } else if (response.status === 403) {
+                    // 403 (FORBIDDEN) - нормальная ситуация: нет доступа к питомцу
+                    // Очищаем сохранённый petId, так как доступа больше нет
+                    this.clearSelectedPet();
+                    this.updatePetSwitcher();
+                    return false;
+                } else {
+                    // Другие ошибки (404, 500 и т.д.) - логируем
+                    console.warn(`Error loading pet ${savedPetId}: ${response.status}`);
+                    this.clearSelectedPet();
+                    this.updatePetSwitcher();
+                    return false;
                 }
             } catch (error) {
+                // Ошибка сети - логируем только реальные ошибки
                 console.error('Error checking pet:', error);
+                this.clearSelectedPet();
+                this.updatePetSwitcher();
+                return false;
             }
         }
         

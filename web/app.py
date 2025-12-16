@@ -655,6 +655,25 @@ def api_logout():
     return response
 
 
+@app.route("/api/auth/check-admin", methods=["GET"])
+@login_required
+def check_admin():
+    """Check if current user is admin (returns 200 with isAdmin flag, no 403)."""
+    try:
+        username, error_response = get_current_user()
+        if error_response:
+            return error_response[0], error_response[1]
+        
+        # Check if user is admin
+        user = db["users"].find_one({"username": username})
+        is_admin = user and user.get("is_admin", False)
+        
+        return jsonify({"isAdmin": is_admin}), 200
+    except Exception as e:
+        logger.error(f"Error checking admin status: user={getattr(request, 'current_user', None)}, error={e}", exc_info=True)
+        return jsonify({"isAdmin": False}), 200  # Return false instead of error
+
+
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("50 per 5 minutes", error_message="Слишком много попыток. Попробуйте позже.")
 def login():

@@ -1,36 +1,117 @@
 // Модуль для работы с пользователями (админ-панель)
 const UsersModule = {
     isAdmin: false,
+    STORAGE_KEY: 'user_is_admin',
+    STORAGE_TIMESTAMP_KEY: 'user_is_admin_timestamp',
+    CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 часа в миллисекундах
 
-    async checkAdminStatus() {
+    // Получить статус администратора из localStorage
+    getCachedAdminStatus() {
         try {
-            const response = await fetch('/api/users', {
+            const cached = localStorage.getItem(this.STORAGE_KEY);
+            const timestamp = localStorage.getItem(this.STORAGE_TIMESTAMP_KEY);
+            
+            if (cached && timestamp) {
+                const cacheAge = Date.now() - parseInt(timestamp, 10);
+                // Если кеш свежий (меньше 24 часов), используем его
+                if (cacheAge < this.CACHE_DURATION) {
+                    return cached === 'true';
+                } else {
+                    // Кеш устарел, удаляем
+                    this.clearAdminCache();
+                }
+            }
+            return null; // Кеша нет или он устарел
+        } catch (error) {
+            console.error('Error reading admin status from cache:', error);
+            return null;
+        }
+    },
+
+    // Сохранить статус администратора в localStorage
+    saveAdminStatus(isAdmin) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, isAdmin ? 'true' : 'false');
+            localStorage.setItem(this.STORAGE_TIMESTAMP_KEY, Date.now().toString());
+            this.isAdmin = isAdmin;
+        } catch (error) {
+            console.error('Error saving admin status to cache:', error);
+        }
+    },
+
+    // Очистить кеш статуса администратора
+    clearAdminCache() {
+        try {
+            localStorage.removeItem(this.STORAGE_KEY);
+            localStorage.removeItem(this.STORAGE_TIMESTAMP_KEY);
+            this.isAdmin = false;
+        } catch (error) {
+            console.error('Error clearing admin cache:', error);
+        }
+    },
+
+    // Обновить статус администратора (принудительно)
+    async refreshAdminStatus() {
+        try {
+            const response = await fetch('/api/auth/check-admin', {
                 credentials: 'include'
             });
-            this.isAdmin = response.ok;
-            if (this.isAdmin) {
-                // Показываем админ-панель в меню
-                const adminLink = document.querySelector('.admin-link');
-                if (adminLink) {
-                    adminLink.style.display = 'flex';
-                }
+            
+            if (response.ok) {
+                const result = await response.json();
+                const isAdmin = result.isAdmin === true;
+                this.saveAdminStatus(isAdmin);
+                return isAdmin;
             } else {
-                // Скрываем админ-панель, если не админ
-                const adminLink = document.querySelector('.admin-link');
-                if (adminLink) {
-                    adminLink.style.display = 'none';
-                }
+                // Если ошибка сервера, считаем что не админ
+                this.saveAdminStatus(false);
+                return false;
             }
-            return this.isAdmin;
         } catch (error) {
-            this.isAdmin = false;
-            // Скрываем админ-панель при ошибке
-            const adminLink = document.querySelector('.admin-link');
-            if (adminLink) {
-                adminLink.style.display = 'none';
-            }
+            console.error('Error checking admin status:', error);
+            this.saveAdminStatus(false);
             return false;
         }
+    },
+
+    // Проверить статус администратора (с кешированием)
+    async checkAdminStatus(forceRefresh = false) {
+        // Если принудительное обновление, пропускаем кеш
+        if (!forceRefresh) {
+            const cached = this.getCachedAdminStatus();
+            if (cached !== null) {
+                // Используем кеш
+                this.isAdmin = cached;
+                this.updateAdminUI();
+                return this.isAdmin;
+            }
+        }
+
+        // Кеша нет или требуется обновление - делаем запрос
+        const isAdmin = await this.refreshAdminStatus();
+        this.updateAdminUI();
+        return isAdmin;
+    },
+
+    // Обновить UI в зависимости от статуса администратора
+    updateAdminUI() {
+        const adminLink = document.querySelector('.admin-link');
+        if (adminLink) {
+            adminLink.style.display = this.isAdmin ? 'flex' : 'none';
+        }
+    },
+
+    // Инициализация: загрузить статус из кеша
+    init() {
+        const cached = this.getCachedAdminStatus();
+        if (cached !== null) {
+            this.isAdmin = cached;
+            this.updateAdminUI();
+        }
+        // Асинхронно обновим статус в фоне (без блокировки UI)
+        this.checkAdminStatus().catch(error => {
+            console.error('Error initializing admin status:', error);
+        });
     },
 
     async loadUsersList() {
@@ -292,5 +373,10 @@ function deactivateUser(username) {
 
 function activateUser(username) {
     return UsersModule.activateUser(username);
+}
+
+// Обновить статус администратора (принудительно, с очисткой кеша)
+async function refreshAdminStatus() {
+    return await UsersModule.checkAdminStatus(true);
 }
 

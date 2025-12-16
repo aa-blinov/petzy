@@ -100,7 +100,7 @@
                     </div>
                 </div>
                 <span id="nav-username">Admin</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small nav-btn" onclick="event.preventDefault(); fetch('/api/auth/logout', {method: 'POST', credentials: 'include'}).then(() => window.location.href='/login');">Выйти</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-small nav-btn" onclick="event.preventDefault(); if (typeof UsersModule !== 'undefined') UsersModule.clearAdminCache(); fetch('/api/auth/logout', {method: 'POST', credentials: 'include'}).then(() => window.location.href='/login');">Выйти</a>
             </div>
             {% endblock %}
         </div>
