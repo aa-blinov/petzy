@@ -62,7 +62,7 @@ def create_pet():
     try:
         username = getattr(request, "current_user", None)
         if not username:
-            return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "Не авторизован"}), 401
 
         # Manual validation instead of @api.validate(body=...) to support multipart/form-data
         if request.content_type and "multipart/form-data" in request.content_type:
@@ -72,7 +72,7 @@ def create_pet():
                 data = PetCreate.model_validate(data_dict)
             except Exception as e:
                 # Extract the first error message from Pydantic
-                error_msg = "Invalid input data"
+                error_msg = "Неверные данные"
                 if hasattr(e, "errors") and callable(e.errors):
                     errors = e.errors()
                     if errors:
@@ -110,7 +110,7 @@ def create_pet():
             try:
                 data = PetCreate.model_validate(request.get_json())
             except Exception:
-                return jsonify({"error": "Invalid input data"}), 422
+                return jsonify({"error": "Неверные данные"}), 422
 
             name = data.name
             birth_date = parse_date(data.birth_date, allow_future=False)
@@ -139,7 +139,7 @@ def create_pet():
 
     except ValueError as e:
         logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["GET"])
@@ -182,7 +182,7 @@ def get_pet(pet_id):
         logger.warning(
             f"Invalid input data for get_pet: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["PUT"])
@@ -215,7 +215,7 @@ def update_pet(pet_id):
                 data_dict = request.form.to_dict()
                 data = PetUpdate.model_validate(data_dict)
             except Exception:
-                return jsonify({"error": "Invalid input data"}), 422
+                return jsonify({"error": "Неверные данные"}), 422
 
             photo_file_id = pet.get("photo_file_id")
 
@@ -270,7 +270,7 @@ def update_pet(pet_id):
             try:
                 data = PetUpdate.model_validate(request.get_json())
             except Exception:
-                return jsonify({"error": "Invalid input data"}), 422
+                return jsonify({"error": "Неверные данные"}), 422
 
             birth_date = parse_date(data.birth_date, allow_future=False)
 
@@ -295,7 +295,7 @@ def update_pet(pet_id):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for pet update: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @pets_bp.route("/api/pets/<pet_id>/share", methods=["POST"])
@@ -346,7 +346,7 @@ def share_pet(pet_id):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for sharing pet: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @pets_bp.route("/api/pets/<pet_id>/share/<share_username>", methods=["DELETE"])
@@ -373,7 +373,7 @@ def unshare_pet(pet_id, share_username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for unsharing pet: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["DELETE"])
@@ -409,7 +409,7 @@ def delete_pet(pet_id):
 
     except ValueError as e:
         logger.warning(f"Invalid pet_id for deletion: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid pet_id format"}), 422
+        return jsonify({"error": "Неверный формат pet_id"}), 422
 
 
 @pets_bp.route("/api/pets/<pet_id>/photo", methods=["GET"])
@@ -430,7 +430,7 @@ def get_pet_photo(pet_id):
     try:
         username = getattr(request, "current_user", None)
         if not username:
-            return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "Не авторизован"}), 401
 
         pet = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
         if not pet:

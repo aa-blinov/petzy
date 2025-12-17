@@ -34,7 +34,7 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
         ValueError: If date format is invalid or date is out of allowed range
     """
     if not date_str:
-        raise ValueError("Date string is required")
+        raise ValueError("Требуется строка с датой")
 
     try:
         if time_str:
@@ -43,19 +43,19 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
             dt = datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         if time_str:
-            raise ValueError(f"Invalid date/time format. Expected YYYY-MM-DD HH:MM, got '{date_str} {time_str}'")
+            raise ValueError(f"Неверный формат даты/времени. Ожидается YYYY-MM-DD HH:MM, получено '{date_str} {time_str}'")
         else:
-            raise ValueError(f"Invalid date format. Expected YYYY-MM-DD, got '{date_str}'")
+            raise ValueError(f"Неверный формат даты. Ожидается YYYY-MM-DD, получено '{date_str}'")
 
     now = datetime.now()
     max_future = now + timedelta(days=max_future_days) if allow_future else now
     max_past = now - timedelta(days=max_past_years * 365)
 
     if dt > max_future:
-        raise ValueError(f"Date cannot be more than {max_future_days} day(s) in the future")
+        raise ValueError(f"Дата не может быть более чем на {max_future_days} день(дней) в будущем")
 
     if dt < max_past:
-        raise ValueError(f"Date cannot be more than {max_past_years} years in the past")
+        raise ValueError(f"Дата не может быть более чем на {max_past_years} лет в прошлом")
 
     return dt
 
@@ -105,7 +105,7 @@ def parse_event_datetime(date_str, time_str, context=""):
     if date_str and time_str:
         return parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
     elif date_str or time_str:
-        raise ValueError("Both date and time must be provided together")
+        raise ValueError("Дата и время должны быть указаны вместе")
     else:
         return datetime.now()
 
@@ -174,15 +174,15 @@ def get_record_and_validate_access(record_id, collection_name, username):
     try:
         record_id_obj = ObjectId(record_id)
     except (InvalidId, TypeError, ValueError):
-        return None, None, (jsonify({"error": "Invalid record_id format"}), 422)
+        return None, None, (jsonify({"error": "Неверный формат record_id"}), 422)
 
     existing = app.db[collection_name].find_one({"_id": record_id_obj})
     if not existing:
-        return None, None, (jsonify({"error": "Record not found"}), 404)
+        return None, None, (jsonify({"error": "Запись не найдена"}), 404)
 
     pet_id = existing.get("pet_id")
     if not pet_id:
-        return None, None, (jsonify({"error": "Invalid record"}), 422)
+        return None, None, (jsonify({"error": "Неверная запись"}), 422)
 
     if not check_pet_access(pet_id, username):
         return None, None, (jsonify({"error": "Нет доступа к этому животному"}), 403)

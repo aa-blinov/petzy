@@ -165,7 +165,7 @@ def get_current_user():
     """
     username = getattr(request, "current_user", None)
     if not username:
-        return None, (jsonify({"error": "Unauthorized"}), 401)
+        return None, (jsonify({"error": "Не авторизован"}), 401)
     return username, None
 
 

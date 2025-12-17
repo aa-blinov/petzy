@@ -84,7 +84,7 @@ def add_asthma_attack():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for asthma attack: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/asthma", methods=["GET"])
@@ -169,7 +169,7 @@ def update_asthma_attack(record_id):
         result = app.db["asthma_attacks"].update_one({"_id": ObjectId(record_id)}, {"$set": attack_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Asthma attack updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы обновлен"}), 200
@@ -178,7 +178,7 @@ def update_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid input data for asthma attack update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["DELETE"])
@@ -207,7 +207,7 @@ def delete_asthma_attack(record_id):
         result = app.db["asthma_attacks"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Asthma attack deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы удален"}), 200
@@ -216,7 +216,7 @@ def delete_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid record_id for asthma attack deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 422
+        return jsonify({"error": "Неверный формат record_id"}), 422
 
 
 # Defecation routes
@@ -263,7 +263,7 @@ def add_defecation():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for defecation: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/defecation", methods=["GET"])
@@ -342,7 +342,7 @@ def update_defecation(record_id):
         result = app.db["defecations"].update_one({"_id": ObjectId(record_id)}, {"$set": defecation_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Defecation updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация обновлена"}), 200
@@ -351,7 +351,7 @@ def update_defecation(record_id):
         app.logger.warning(
             f"Invalid input data for defecation update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["DELETE"])
@@ -380,7 +380,7 @@ def delete_defecation(record_id):
         result = app.db["defecations"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Defecation deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация удалена"}), 200
@@ -389,7 +389,7 @@ def delete_defecation(record_id):
         app.logger.warning(
             f"Invalid record_id for defecation deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 422
+        return jsonify({"error": "Неверный формат record_id"}), 422
 
 
 # Litter routes
@@ -433,7 +433,7 @@ def add_litter():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for litter change: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/litter", methods=["GET"])
@@ -508,7 +508,7 @@ def update_litter(record_id):
         result = app.db["litter_changes"].update_one({"_id": ObjectId(record_id)}, {"$set": litter_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Litter change updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка обновлена"}), 200
@@ -517,7 +517,7 @@ def update_litter(record_id):
         app.logger.warning(
             f"Invalid input data for litter change update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["DELETE"])
@@ -546,7 +546,7 @@ def delete_litter(record_id):
         result = app.db["litter_changes"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Litter change deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка удалена"}), 200
@@ -555,7 +555,7 @@ def delete_litter(record_id):
         app.logger.warning(
             f"Invalid record_id for litter change deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 422
+        return jsonify({"error": "Неверный формат record_id"}), 422
 
 
 # Weight routes
@@ -601,7 +601,7 @@ def add_weight():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/weight", methods=["GET"])
@@ -675,14 +675,14 @@ def update_weight(record_id):
         result = app.db["weights"].update_one({"_id": ObjectId(record_id)}, {"$set": weight_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Weight updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес обновлен"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight update: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["DELETE"])
@@ -711,14 +711,14 @@ def delete_weight(record_id):
         result = app.db["weights"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Weight deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес удален"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for weight deletion: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid record_id format"}), 422
+        return jsonify({"error": "Неверный формат record_id"}), 422
 
 
 # Feeding routes
@@ -763,7 +763,7 @@ def add_feeding():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/feeding", methods=["GET"])
@@ -836,14 +836,14 @@ def update_feeding(record_id):
         result = app.db["feedings"].update_one({"_id": ObjectId(record_id)}, {"$set": feeding_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Feeding updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция обновлена"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding update: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["DELETE"])
@@ -872,14 +872,14 @@ def delete_feeding(record_id):
         result = app.db["feedings"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Feeding deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция удалена"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid record_id format"}), 422
+        return jsonify({"error": "Неверный формат record_id"}), 422
 
 
 # Eye drops routes
@@ -924,7 +924,7 @@ def add_eye_drops():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for eye drops: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/eye-drops", methods=["GET"])
@@ -999,7 +999,7 @@ def update_eye_drops(record_id):
         result = app.db["eye_drops"].update_one({"_id": ObjectId(record_id)}, {"$set": eye_drops_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Eye drops updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Запись о каплях обновлена"}), 200
@@ -1008,7 +1008,7 @@ def update_eye_drops(record_id):
         app.logger.warning(
             f"Invalid input data for eye drops update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @health_records_bp.route("/api/eye-drops/<record_id>", methods=["DELETE"])
@@ -1037,7 +1037,7 @@ def delete_eye_drops(record_id):
         result = app.db["eye_drops"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Record not found"}), 404
+            return jsonify({"error": "Запись не найдена"}), 404
 
         app.logger.info(f"Eye drops deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Запись о каплях удалена"}), 200
@@ -1046,4 +1046,4 @@ def delete_eye_drops(record_id):
         app.logger.warning(
             f"Invalid record_id for eye drops deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 422
+        return jsonify({"error": "Неверный формат record_id"}), 422

@@ -34,7 +34,7 @@ def export_data(export_type, format_type):
 
         username = getattr(request, "current_user", None)
         if not username:
-            return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "Не авторизован"}), 401
 
         # Check pet access
         if not check_pet_access(pet_id, username):
@@ -99,7 +99,7 @@ def export_data(export_type, format_type):
                 ("comment", "Комментарий"),
             ]
         else:
-            return jsonify({"error": "Invalid export type"}), 422
+            return jsonify({"error": "Неверный тип экспорта"}), 422
 
         records = list(collection.find({"pet_id": pet_id}).sort([("date_time", -1)]))
 
@@ -209,7 +209,7 @@ def export_data(export_type, format_type):
             filename = f"{filename_base}.md"
 
         else:
-            return jsonify({"error": "Invalid format type"}), 422
+            return jsonify({"error": "Неверный тип формата"}), 422
 
         encoded_filename = quote(filename)
 
@@ -224,4 +224,4 @@ def export_data(export_type, format_type):
         app.logger.warning(
             f"Invalid input data for export: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422

@@ -85,7 +85,7 @@ def create_user():
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user creation: created_by={current_user}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @users_bp.route("/api/users/<username>", methods=["GET"])
@@ -147,7 +147,7 @@ def update_user(username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user update: username={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @users_bp.route("/api/users/<username>", methods=["DELETE"])
@@ -175,7 +175,7 @@ def delete_user(username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user deactivation: username={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
 
 
 @users_bp.route("/api/users/<username>/reset-password", methods=["POST"])
@@ -208,4 +208,4 @@ def reset_user_password(username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for password reset: username={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 422
+        return jsonify({"error": "Неверные данные"}), 422
