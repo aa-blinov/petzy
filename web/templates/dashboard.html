@@ -95,7 +95,7 @@
             <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
             <h2>Настройки значений по умолчанию</h2>
         </div>
-        <form id="settings-form" class="inline-form">
+        <form id="settings-form" class="inline-form" autocomplete="off">
             <div class="form-content">
                 <div class="settings-section">
                     <h3>Приступ астмы</h3>
@@ -184,24 +184,24 @@
             <button class="back-btn" onclick="showScreen('pet-selector')">← Назад</button>
             <h2 id="pet-form-title">Добавить питомца</h2>
         </div>
-        <form id="pet-form-element" class="inline-form">
+        <form id="pet-form-element" class="inline-form" autocomplete="off">
             <input type="hidden" id="pet-record-id" name="pet_id" value="">
             <div class="form-content">
                 <div class="form-group">
                     <label for="pet-name">Имя *</label>
-                    <input type="text" id="pet-name" name="name" required placeholder="Саймон">
+                    <input type="text" id="pet-name" name="name" required placeholder="Саймон" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="pet-breed">Порода</label>
-                    <input type="text" id="pet-breed" name="breed" placeholder="Британская короткошерстная">
+                    <input type="text" id="pet-breed" name="breed" placeholder="Британская короткошерстная" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="pet-birth-date">Дата рождения</label>
-                    <input type="date" id="pet-birth-date" name="birth_date">
+                    <input type="date" id="pet-birth-date" name="birth_date" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="pet-gender">Пол</label>
-                    <select id="pet-gender" name="gender">
+                    <select id="pet-gender" name="gender" autocomplete="off">
                         <option value="">Не указано</option>
                         <option value="Мальчик">Мальчик</option>
                         <option value="Девочка">Девочка</option>
@@ -230,7 +230,7 @@
                     <div class="form-group">
                         <label for="share-username-input">Поделиться с пользователем</label>
                         <div class="share-input-group">
-                            <input type="text" id="share-username-input" placeholder="Введите имя пользователя">
+                            <input type="text" id="share-username-input" placeholder="Введите имя пользователя" autocomplete="username">
                             <button type="button" class="btn btn-primary" onclick="sharePetFromForm()">Поделиться</button>
                         </div>
                     </div>
@@ -271,19 +271,19 @@
             <input type="hidden" id="user-record-username" name="username" value="">
             <div class="form-group">
                 <label for="user-username">Имя пользователя *</label>
-                <input type="text" id="user-username" name="username" required placeholder="user123">
+                <input type="text" id="user-username" name="username" required placeholder="user123" autocomplete="username">
             </div>
             <div class="form-group">
                 <label for="user-password" id="user-password-label">Пароль *</label>
-                <input type="password" id="user-password" name="password" required placeholder="Введите пароль">
+                <input type="password" id="user-password" name="password" required placeholder="Введите пароль" autocomplete="new-password">
             </div>
             <div class="form-group">
                 <label for="user-full-name">Полное имя</label>
-                <input type="text" id="user-full-name" name="full_name" placeholder="Мария Иванова">
+                <input type="text" id="user-full-name" name="full_name" placeholder="Мария Иванова" autocomplete="name">
             </div>
             <div class="form-group">
                 <label for="user-email">Email</label>
-                <input type="email" id="user-email" name="email" placeholder="email@example.com">
+                <input type="email" id="user-email" name="email" placeholder="email@example.com" autocomplete="email">
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-block" id="user-submit-btn">Сохранить</button>
@@ -311,7 +311,7 @@
                 <form id="share-form" class="inline-form">
                     <div class="form-group">
                         <label for="share-username">Имя пользователя</label>
-                        <input type="text" id="share-username" name="username" required placeholder="Введите имя пользователя">
+                        <input type="text" id="share-username" name="username" required placeholder="Введите имя пользователя" autocomplete="username">
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary btn-block">Поделиться</button>

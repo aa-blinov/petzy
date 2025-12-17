@@ -171,7 +171,7 @@ function createFormHTML(formType, recordId = null) {
     const dateStr = `${year}-${month}-${day}`;
     const timeStr = now.toTimeString().slice(0, 5);
     
-    let html = `<form id="${formType}-form-element" class="inline-form">`;
+    let html = `<form id="${formType}-form-element" class="inline-form" autocomplete="off">`;
     html += `<input type="hidden" name="record_id" value="${recordId || ''}">`;
     html += `<input type="hidden" name="pet_id" value="">`;
     
@@ -242,7 +242,7 @@ function createFieldHTML(field, isHalf = false) {
     html += `<label for="${field.id}">${field.label}${field.required ? ' *' : ''}</label>`;
     
     if (field.type === 'select') {
-        html += `<select name="${field.name}" ${field.required ? 'required' : ''} id="${field.id}">`;
+        html += `<select name="${field.name}" ${field.required ? 'required' : ''} id="${field.id}" autocomplete="off">`;
         field.options.forEach(opt => {
             // Выбираем первое значение по умолчанию, если не указано field.value
             const isDefault = field.value ? (field.value === opt.value) : (opt === field.options[0]);
@@ -251,7 +251,7 @@ function createFieldHTML(field, isHalf = false) {
         });
         html += `</select>`;
     } else if (field.type === 'textarea') {
-        html += `<textarea name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" rows="${field.rows || 2}" id="${field.id}"></textarea>`;
+        html += `<textarea name="${field.name}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" rows="${field.rows || 2}" id="${field.id}" autocomplete="off"></textarea>`;
     } else {
         const attrs = [];
         if (field.required) attrs.push('required');
@@ -260,6 +260,7 @@ function createFieldHTML(field, isHalf = false) {
         if (field.min !== undefined) attrs.push(`min="${field.min}"`);
         if (field.max !== undefined) attrs.push(`max="${field.max}"`);
         if (field.step !== undefined) attrs.push(`step="${field.step}"`);
+        attrs.push('autocomplete="off"');
         
         html += `<input type="${field.type}" name="${field.name}" id="${field.id}" ${attrs.join(' ')}>`;
     }

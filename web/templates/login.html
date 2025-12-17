@@ -15,11 +15,11 @@
     <form method="POST" action="{{ url_for('auth.login') }}" class="login-form" enctype="application/x-www-form-urlencoded">
             <div class="form-group">
                 <label for="username">Логин:</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <input type="text" id="username" name="username" required autofocus autocomplete="username">
             </div>
             <div class="form-group">
                 <label for="password">Пароль:</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
             <button type="submit" class="btn btn-primary btn-block">Войти</button>
         </form>
