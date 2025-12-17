@@ -31,6 +31,11 @@
                 <h3>Смена лотка</h3>
                 <p>Записать смену лотка</p>
             </div>
+
+            <div class="card action-card" data-color="teal" onclick="showScreen('eye-drops-form')">
+                <h3>Закапывание глаз</h3>
+                <p>Записать капли</p>
+            </div>
             
             <div class="card action-card" data-color="blue" onclick="showScreen('history')">
                 <h3>История</h3>
@@ -87,6 +92,15 @@
             <h2>Записать вес</h2>
         </div>
         <div id="weight-form-container"></div>
+    </div>
+
+    <!-- Eye Drops Form -->
+    <div id="eye-drops-form" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Записать закапывание глаз</h2>
+        </div>
+        <div id="eye-drops-form-container"></div>
     </div>
     
     <!-- Settings Screen -->
@@ -149,6 +163,17 @@
                     <div class="form-group">
                         <label for="default-weight-food">Корм по умолчанию</label>
                         <input type="text" id="default-weight-food" name="default_weight_food" placeholder="Royal Canin Fibre Response">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Закапывание глаз</h3>
+                    <div class="form-group">
+                        <label for="default-eye-drops-type">Тип капель по умолчанию</label>
+                        <select id="default-eye-drops-type" name="default_eye_drops_type">
+                            <option value="Обычные">Обычные</option>
+                            <option value="Гелевые">Гелевые</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -345,6 +370,7 @@
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('asthma')">Приступы астмы</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('defecation')">Дефекации</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('litter')">Смена лотка</button>
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('eye-drops')">Закапывание глаз</button>
                 </div>
                 <div id="export-format-selection" class="export-options" style="display: none;">
                     <button class="btn btn-secondary btn-block" onclick="exportData('csv')">CSV</button>
@@ -362,6 +388,7 @@
             <button class="tab-btn" data-tab="asthma" onclick="showHistoryTab('asthma'); return false;">Приступы астмы</button>
             <button class="tab-btn" data-tab="defecation" onclick="showHistoryTab('defecation'); return false;">Дефекации</button>
             <button class="tab-btn" data-tab="litter" onclick="showHistoryTab('litter'); return false;">Смена лотка</button>
+            <button class="tab-btn" data-tab="eye-drops" onclick="showHistoryTab('eye-drops'); return false;">Глаза</button>
         </div>
         <div id="history-content" class="history-content">
             <div class="loading">Загрузка...</div>
@@ -405,6 +432,11 @@ function resetFormDefaults() {
             date: dateStr,
             time: timeStr,
             food: settings.weight.food
+        },
+        'eye-drops': {
+            date: dateStr,
+            time: timeStr,
+            drops_type: settings['eye-drops']?.drops_type || 'Обычные'
         }
     };
     
@@ -433,9 +465,10 @@ document.addEventListener('click', function(event) {
 
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализируем формы при загрузке
-    const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight'];
+    const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye-drops'];
     formTypes.forEach(formType => {
-        const container = document.getElementById(`${formType}-form-container`);
+        const containerIdSuffix = formType === 'eye-drops' ? 'eye-drops' : formType;
+        const container = document.getElementById(`${containerIdSuffix}-form-container`);
         if (container) {
             container.innerHTML = createFormHTML(formType);
             const form = document.getElementById(`${formType}-form-element`);
@@ -843,6 +876,9 @@ document.getElementById('settings-form').addEventListener('submit', function(e) 
         },
         weight: {
             food: document.getElementById('default-weight-food').value
+        },
+        'eye-drops': {
+            drops_type: document.getElementById('default-eye-drops-type').value
         }
     };
     
@@ -895,6 +931,8 @@ async function editRecord(type, recordId) {
         endpoint = `/api/defecation?pet_id=${petId}`;
     } else if (type === 'litter') {
         endpoint = `/api/litter?pet_id=${petId}`;
+    } else if (type === 'eye-drops') {
+        endpoint = `/api/eye-drops?pet_id=${petId}`;
     } else {
         endpoint = `/api/weight?pet_id=${petId}`;
     }
@@ -913,6 +951,8 @@ async function editRecord(type, recordId) {
             items = data.defecations;
         } else if (type === 'litter') {
             items = data.litter_changes;
+        } else if (type === 'eye-drops') {
+            items = data['eye-drops'];
         } else {
             items = data.weights;
         }
@@ -969,6 +1009,8 @@ async function deleteRecord(type, recordId) {
                 showHistoryTab('defecation');
             } else if (currentTab.textContent.includes('Смена лотка')) {
                 showHistoryTab('litter');
+            } else if (currentTab.textContent.includes('глаз')) {
+                showHistoryTab('eye-drops');
             } else if (currentTab.textContent.includes('Вес')) {
                 showHistoryTab('weight');
             }
@@ -986,6 +1028,8 @@ async function deleteRecord(type, recordId) {
                 showHistoryTab('defecation');
             } else if (currentTab.textContent.includes('Смена лотка')) {
                 showHistoryTab('litter');
+            } else if (currentTab.textContent.includes('глаз')) {
+                showHistoryTab('eye-drops');
             } else if (currentTab.textContent.includes('Вес')) {
                 showHistoryTab('weight');
             }
