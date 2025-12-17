@@ -1643,5 +1643,5 @@ def export_data(export_type, format_type):
 
 
 if __name__ == "__main__":
-    ensure_default_admin()
+    security.ensure_default_admin()
     app.run(host="0.0.0.0", port=5000, debug=FLASK_CONFIG["debug"])
