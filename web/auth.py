@@ -146,7 +146,7 @@ def api_login():
 
     # Failed login
     logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
-    return jsonify({"error": "Invalid username or password"}), 401
+    return jsonify({"error": "Неверное имя пользователя или пароль"}), 401
 
 
 @auth_bp.route("/api/auth/refresh", methods=["POST"])
@@ -164,7 +164,7 @@ def api_refresh():
     # Verify refresh token
     payload = verify_token(refresh_token, "refresh")
     if not payload:
-        return jsonify({"error": "Invalid or expired refresh token"}), 401
+        return jsonify({"error": "Неверный или истекший refresh token"}), 401
 
     # Check if token exists in database
     token_record = app.db["refresh_tokens"].find_one({"token": refresh_token})

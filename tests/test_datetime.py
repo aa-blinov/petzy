@@ -33,27 +33,27 @@ class TestDateTimeParsing:
         """Test parsing with invalid date format."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("2024/01/15", "14:30")
-        assert "Invalid date/time format" in str(exc_info.value)
+        assert "Неверный формат даты/времени" in str(exc_info.value)
         assert "YYYY-MM-DD HH:MM" in str(exc_info.value)
 
     def test_parse_datetime_invalid_time_format(self):
         """Test parsing with invalid time format."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("2024-01-15", "14:30:00")
-        assert "Invalid date/time format" in str(exc_info.value)
+        assert "Неверный формат даты/времени" in str(exc_info.value)
 
     def test_parse_datetime_invalid_date_only_format(self):
         """Test parsing date only with invalid format."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("2024/01/15")
-        assert "Invalid date format" in str(exc_info.value)
+        assert "Неверный формат даты" in str(exc_info.value)
         assert "YYYY-MM-DD" in str(exc_info.value)
 
     def test_parse_datetime_empty_date_string(self):
         """Test parsing with empty date string."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("", "14:30")
-        assert "Date string is required" in str(exc_info.value)
+        assert "Требуется строка с датой" in str(exc_info.value)
 
     def test_parse_datetime_future_date_allowed(self):
         """Test parsing future date when allowed."""
@@ -72,7 +72,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
-        assert "cannot be more than 1 day(s) in the future" in str(exc_info.value)
+        assert "не может быть более чем на 1 день(дней) в будущем" in str(exc_info.value)
 
     def test_parse_datetime_future_date_not_allowed(self):
         """Test parsing future date when not allowed."""
@@ -82,7 +82,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_datetime(date_str, time_str, allow_future=False, max_future_days=0)
-        assert "cannot be more than 0 day(s) in the future" in str(exc_info.value)
+        assert "не может быть более чем на 0 день(дней) в будущем" in str(exc_info.value)
 
     def test_parse_datetime_past_date_too_old(self):
         """Test parsing date that is too old."""
@@ -91,7 +91,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_datetime(date_str, allow_future=True, max_past_years=50)
-        assert "cannot be more than 50 years in the past" in str(exc_info.value)
+        assert "не может быть более чем на 50 лет в прошлом" in str(exc_info.value)
 
     def test_parse_datetime_valid_past_date(self):
         """Test parsing valid past date."""
@@ -160,7 +160,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_date(date_str, allow_future=False)
-        assert "cannot be more than 0 day(s) in the future" in str(exc_info.value)
+        assert "не может быть более чем на 0 день(дней) в будущем" in str(exc_info.value)
 
     def test_parse_date_future_allowed_when_set(self):
         """Test that future dates are allowed when explicitly set."""
@@ -175,7 +175,7 @@ class TestDateTimeParsing:
         """Test parsing date with invalid format."""
         with pytest.raises(ValueError) as exc_info:
             parse_date("2020/01/15")
-        assert "Invalid date format" in str(exc_info.value)
+        assert "Неверный формат даты" in str(exc_info.value)
 
     def test_parse_date_too_old(self):
         """Test parsing birth_date that is too old."""
@@ -184,7 +184,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_date(date_str, allow_future=False, max_past_years=50)
-        assert "cannot be more than 50 years in the past" in str(exc_info.value)
+        assert "не может быть более чем на 50 лет в прошлом" in str(exc_info.value)
 
     def test_parse_date_valid_birth_date(self):
         """Test parsing valid birth date."""

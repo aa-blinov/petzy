@@ -115,7 +115,7 @@ def handle_unexpected_error(e):
 
     # Return JSON error if it's an API request or expects JSON
     if request.path.startswith("/api/") or request.is_json:
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
     # Otherwise return the exception which Flask will convert to a 500 page
     return e
