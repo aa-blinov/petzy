@@ -80,6 +80,19 @@ const HistoryModule = {
                 }
                 return html;
             }
+        },
+        'eye-drops': {
+            endpoint: 'eye-drops',
+            dataKey: 'eye-drops',
+            displayName: 'Глаза',
+            color: 'teal',
+            renderDetails: (item) => {
+                let html = `<span><strong>Тип капель:</strong> ${item.drops_type}</span>`;
+                if (item.comment && item.comment !== '-') {
+                    html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                }
+                return html;
+            }
         }
     },
 
@@ -102,8 +115,8 @@ const HistoryModule = {
         // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('active');
-            const isMatch = btn.textContent.includes(config.displayName);
-            if (isMatch) {
+            const dataTab = btn.getAttribute('data-tab');
+            if (dataTab === type) {
                 btn.classList.add('active');
             }
         });

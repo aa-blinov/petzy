@@ -29,6 +29,9 @@ from web.schemas import (
     FeedingCreate,
     FeedingUpdate,
     FeedingListResponse,
+    EyeDropsCreate,
+    EyeDropsUpdate,
+    EyeDropsListResponse,
     PetIdQuery,
     SuccessResponse,
     ErrorResponse,
@@ -876,4 +879,171 @@ def delete_feeding(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid record_id format"}), 422
+
+
+# Eye drops routes
+@health_records_bp.route("/api/eye-drops", methods=["POST"])
+@login_required
+@api.validate(
+    body=Request(EyeDropsCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
+def add_eye_drops():
+    """Add eye drops record."""
+    try:
+        data = request.context.body
+        pet_id = request.args.get("pet_id") or data.pet_id
+
+        username, error_response = get_current_user()
+        if error_response:
+            return error_response[0], error_response[1]
+
+        success, error_response = validate_pet_access(pet_id, username)
+        if not success:
+            return error_response[0], error_response[1]
+
+        date_str = data.date
+        time_str = data.time
+        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "eye drops", pet_id, username)
+        if error_response:
+            return error_response[0], error_response[1]
+
+        eye_drops_data = {
+            "pet_id": pet_id,
+            "date_time": event_dt,
+            "drops_type": data.drops_type or "Обычные",
+            "comment": data.comment or "",
+            "username": username,
+        }
+
+        app.db["eye_drops"].insert_one(eye_drops_data)
+        app.logger.info(f"Eye drops recorded: pet_id={pet_id}, user={username}")
+        return jsonify({"success": True, "message": "Запись о каплях создана"}), 201
+
+    except ValueError as e:
+        app.logger.warning(f"Invalid input data for eye drops: pet_id={pet_id}, user={username}, error={e}")
+        return jsonify({"error": "Invalid input data"}), 422
+
+
+@health_records_bp.route("/api/eye-drops", methods=["GET"])
+@login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(HTTP_200=EyeDropsListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_eye_drops():
+    """Get eye drops records for current pet."""
+    pet_id = request.context.query.pet_id
+
+    username, error_response = get_current_user()
+    if error_response:
+        return error_response[0], error_response[1]
+
+    success, error_response = validate_pet_access(pet_id, username)
+    if not success:
+        return error_response[0], error_response[1]
+
+    eye_drops = list(app.db["eye_drops"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+
+    for item in eye_drops:
+        item["_id"] = str(item["_id"])
+        if isinstance(item.get("date_time"), datetime):
+            item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
+
+    return jsonify({"eye-drops": eye_drops})
+
+
+@health_records_bp.route("/api/eye-drops/<record_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(EyeDropsUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
+def update_eye_drops(record_id):
+    """Update eye drops record."""
+    try:
+        username, error_response = get_current_user()
+        if error_response:
+            return error_response[0], error_response[1]
+
+        existing, pet_id, error_response = get_record_and_validate_access(record_id, "eye_drops", username)
+        if error_response:
+            return error_response[0], error_response[1]
+
+        data = request.context.body
+
+        date_str = data.date
+        time_str = data.time
+        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "eye drops update", pet_id, username)
+        if error_response:
+            return error_response[0], error_response[1]
+
+        eye_drops_data = {}
+        if event_dt is not None:
+            eye_drops_data["date_time"] = event_dt
+        if data.drops_type is not None:
+            eye_drops_data["drops_type"] = data.drops_type
+        if data.comment is not None:
+            eye_drops_data["comment"] = data.comment
+
+        result = app.db["eye_drops"].update_one({"_id": ObjectId(record_id)}, {"$set": eye_drops_data})
+
+        if result.matched_count == 0:
+            return jsonify({"error": "Record not found"}), 404
+
+        app.logger.info(f"Eye drops updated: record_id={record_id}, pet_id={pet_id}, user={username}")
+        return jsonify({"success": True, "message": "Запись о каплях обновлена"}), 200
+
+    except ValueError as e:
+        app.logger.warning(
+            f"Invalid input data for eye drops update: record_id={record_id}, user={username}, error={e}"
+        )
+        return jsonify({"error": "Invalid input data"}), 422
+
+
+@health_records_bp.route("/api/eye-drops/<record_id>", methods=["DELETE"])
+@login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
+def delete_eye_drops(record_id):
+    """Delete eye drops record."""
+    try:
+        username, error_response = get_current_user()
+        if error_response:
+            return error_response[0], error_response[1]
+
+        existing, pet_id, error_response = get_record_and_validate_access(record_id, "eye_drops", username)
+        if error_response:
+            return error_response[0], error_response[1]
+
+        result = app.db["eye_drops"].delete_one({"_id": ObjectId(record_id)})
+
+        if result.deleted_count == 0:
+            return jsonify({"error": "Record not found"}), 404
+
+        app.logger.info(f"Eye drops deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
+        return jsonify({"success": True, "message": "Запись о каплях удалена"}), 200
+
+    except ValueError as e:
+        app.logger.warning(
+            f"Invalid record_id for eye drops deletion: record_id={record_id}, user={username}, error={e}"
+        )
         return jsonify({"error": "Invalid record_id format"}), 422

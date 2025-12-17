@@ -8,6 +8,7 @@ const NavigationModule = {
             'defecation-form',
             'litter-form',
             'weight-form',
+            'eye-drops-form',
             'history'
         ];
 
@@ -34,11 +35,15 @@ const NavigationModule = {
             window.scrollTo(0, 0);
             
             // Генерируем формы динамически для типов записей
-            const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight'];
-            const formType = formTypes.find(type => screenId === `${type}-form`);
+            const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye-drops'];
+            const formType = formTypes.find(type => {
+                const expectedScreenId = type === 'eye-drops' ? 'eye-drops-form' : `${type}-form`;
+                return screenId === expectedScreenId;
+            });
             
             if (formType) {
-                const container = document.getElementById(`${formType}-form-container`);
+                const containerIdSuffix = formType === 'eye-drops' ? 'eye-drops' : formType;
+                const container = document.getElementById(`${containerIdSuffix}-form-container`);
                 if (container) {
                     const formElement = document.getElementById(`${formType}-form-element`);
                     const recordId = formElement ? formElement.querySelector('[name="record_id"]')?.value : null;

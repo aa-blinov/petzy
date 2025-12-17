@@ -89,6 +89,15 @@ def export_data(export_type, format_type):
                 ("food", "Корм"),
                 ("comment", "Комментарий"),
             ]
+        elif export_type == "eye-drops":
+            collection = app.db["eye_drops"]
+            title = "Закапывание глаз"
+            fields = [
+                ("date_time", "Дата и время"),
+                ("username", "Пользователь"),
+                ("drops_type", "Тип капель"),
+                ("comment", "Комментарий"),
+            ]
         else:
             return jsonify({"error": "Invalid export type"}), 422
 
