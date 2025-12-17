@@ -224,7 +224,7 @@ const HistoryModule = {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ error: 'Ошибка при выгрузке' }));
                 if (typeof showAlert === 'function') {
-                    showAlert('error', errorData.error || 'Ошибка при выгрузке');
+                    showAlert('error', errorData.error || errorData);
                 }
                 return;
             }

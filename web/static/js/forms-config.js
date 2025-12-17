@@ -373,7 +373,7 @@ async function handleFormSubmit(formType, formElement) {
                 }
             }, 150);
         } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
+            showAlert('error', result.error || result);
         }
     } catch (error) {
         showAlert('error', 'Ошибка при сохранении');

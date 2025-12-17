@@ -19,7 +19,7 @@ class TestAccessHelpers:
         assert success is False
         assert error_response is not None
         response, status = error_response
-        assert status == 400
+        assert status == 422
         data = response.get_json()
         assert "error" in data
         assert "pet_id" in data["error"]
@@ -34,7 +34,7 @@ class TestAccessHelpers:
 
         assert success is False
         response, status = error_response
-        assert status == 400
+        assert status == 422
         data = response.get_json()
         assert "Неверный формат pet_id" in data["error"]
 
@@ -127,7 +127,7 @@ class TestParseEventDateTimeSafe:
         assert event_dt is None
         assert error_response is not None
         response, status = error_response
-        assert status == 400
+        assert status == 422
         data = response.get_json()
         assert "Неверный формат даты/времени" in data["error"]
 

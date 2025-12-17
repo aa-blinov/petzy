@@ -20,7 +20,7 @@ class TestAsthmaRecords:
             json={"duration": "5 minutes", "reason": "Stress", "inhalation": "Yes"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_create_asthma_success(self, client, mock_db, regular_user_token, test_pet):
         """Test creating an asthma attack record."""
@@ -53,7 +53,7 @@ class TestAsthmaRecords:
         assert record is not None
         assert record["duration"] == "5 minutes"
         assert record["reason"] == "Stress"
-        assert record["inhalation"] == "Yes"
+        assert record["inhalation"] is True
         assert record["comment"] == "Test attack"
         assert record["pet_id"] == str(test_pet["_id"])
         assert record["username"] == "testuser"
@@ -67,7 +67,7 @@ class TestAsthmaRecords:
     def test_get_asthma_requires_pet_id(self, client, regular_user_token):
         """Test that getting asthma records requires pet_id."""
         response = client.get("/api/asthma", headers={"Authorization": f"Bearer {regular_user_token}"})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_get_asthma_success(self, client, mock_db, regular_user_token, test_pet):
         """Test getting asthma records."""
@@ -136,7 +136,7 @@ class TestAsthmaRecords:
         assert updated_record is not None
         assert updated_record["duration"] == "10 minutes"
         assert updated_record["reason"] == "Exercise"
-        assert updated_record["inhalation"] == "No"
+        assert updated_record["inhalation"] is False
         assert updated_record["pet_id"] == str(test_pet["_id"])
         assert updated_record["username"] == "testuser"
 

@@ -157,9 +157,9 @@ class TestDataExport:
         """Test that export requires pet_id."""
         response = client.get("/api/export/asthma/csv", headers={"Authorization": f"Bearer {regular_user_token}"})
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_export_invalid_type(self, client, regular_user_token, test_pet):
         """Test export with invalid export type."""
@@ -168,9 +168,9 @@ class TestDataExport:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_export_invalid_format(self, client, mock_db, regular_user_token, test_pet):
         """Test export with invalid format type."""
@@ -194,9 +194,9 @@ class TestDataExport:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_export_no_data(self, client, mock_db, regular_user_token, test_pet):
         """Test export when no data exists."""

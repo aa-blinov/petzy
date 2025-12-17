@@ -1,15 +1,37 @@
 """Health records endpoints (asthma, defecation, litter, weight, feeding)."""
 
 from flask import Blueprint, jsonify, request
+from flask_pydantic_spec import Request, Response
 from bson import ObjectId
 from datetime import datetime
 
 import web.app as app  # Import app module to access db and logger
+from web.app import api
 from web.security import get_current_user, login_required
 from web.helpers import (
     validate_pet_access,
     parse_event_datetime_safe,
     get_record_and_validate_access,
+)
+from web.schemas import (
+    AsthmaAttackCreate,
+    AsthmaAttackUpdate,
+    AsthmaAttackListResponse,
+    DefecationCreate,
+    DefecationUpdate,
+    DefecationListResponse,
+    LitterChangeCreate,
+    LitterChangeUpdate,
+    LitterChangeListResponse,
+    WeightRecordCreate,
+    WeightRecordUpdate,
+    WeightRecordListResponse,
+    FeedingCreate,
+    FeedingUpdate,
+    FeedingListResponse,
+    PetIdQuery,
+    SuccessResponse,
+    ErrorResponse,
 )
 
 health_records_bp = Blueprint("health_records", __name__)
@@ -18,11 +40,16 @@ health_records_bp = Blueprint("health_records", __name__)
 # Asthma routes
 @health_records_bp.route("/api/asthma", methods=["POST"])
 @login_required
+@api.validate(
+    body=Request(AsthmaAttackCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
 def add_asthma_attack():
     """Add asthma attack event."""
     try:
-        data = request.get_json()
-        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        data = request.context.body
+        pet_id = request.args.get("pet_id") or data.pet_id
 
         username, error_response = get_current_user()
         if error_response:
@@ -32,8 +59,8 @@ def add_asthma_attack():
         if not success:
             return error_response[0], error_response[1]
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "asthma attack", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
@@ -41,10 +68,10 @@ def add_asthma_attack():
         attack_data = {
             "pet_id": pet_id,
             "date_time": event_dt,
-            "duration": data.get("duration", ""),
-            "reason": data.get("reason", ""),
-            "inhalation": data.get("inhalation", False),
-            "comment": data.get("comment", ""),
+            "duration": data.duration or "",
+            "reason": data.reason or "",
+            "inhalation": data.inhalation,
+            "comment": data.comment or "",
             "username": username,
         }
 
@@ -54,17 +81,19 @@ def add_asthma_attack():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for asthma attack: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error adding asthma attack: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/asthma", methods=["GET"])
 @login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(HTTP_200=AsthmaAttackListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
 def get_asthma_attacks():
     """Get asthma attacks for current pet."""
-    pet_id = request.args.get("pet_id")
+    pet_id = request.context.query.pet_id
 
     username, error_response = get_current_user()
     if error_response:
@@ -90,6 +119,17 @@ def get_asthma_attacks():
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["PUT"])
 @login_required
+@api.validate(
+    body=Request(AsthmaAttackUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def update_asthma_attack(record_id):
     """Update asthma attack event."""
     try:
@@ -101,23 +141,27 @@ def update_asthma_attack(record_id):
         if error_response:
             return error_response[0], error_response[1]
 
-        data = request.get_json()
+        data = request.context.body
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(
             date_str, time_str, "asthma attack update", pet_id, username
         )
         if error_response:
             return error_response[0], error_response[1]
 
-        attack_data = {
-            "date_time": event_dt,
-            "duration": data.get("duration", ""),
-            "reason": data.get("reason", ""),
-            "inhalation": data.get("inhalation", False),
-            "comment": data.get("comment", ""),
-        }
+        attack_data = {}
+        if event_dt is not None:
+            attack_data["date_time"] = event_dt
+        if data.duration is not None:
+            attack_data["duration"] = data.duration
+        if data.reason is not None:
+            attack_data["reason"] = data.reason
+        if data.inhalation is not None:
+            attack_data["inhalation"] = data.inhalation
+        if data.comment is not None:
+            attack_data["comment"] = data.comment
 
         result = app.db["asthma_attacks"].update_one({"_id": ObjectId(record_id)}, {"$set": attack_data})
 
@@ -131,16 +175,21 @@ def update_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid input data for asthma attack update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(
-            f"Error updating asthma attack: record_id={record_id}, user={username}, error={e}", exc_info=True
-        )
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["DELETE"])
 @login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def delete_asthma_attack(record_id):
     """Delete asthma attack event."""
     try:
@@ -164,22 +213,22 @@ def delete_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid record_id for asthma attack deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 400
-    except Exception as e:
-        app.logger.error(
-            f"Error deleting asthma attack: record_id={record_id}, user={username}, error={e}", exc_info=True
-        )
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid record_id format"}), 422
 
 
 # Defecation routes
 @health_records_bp.route("/api/defecation", methods=["POST"])
 @login_required
+@api.validate(
+    body=Request(DefecationCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
 def add_defecation():
     """Add defecation event."""
     try:
-        data = request.get_json()
-        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        data = request.context.body
+        pet_id = request.args.get("pet_id") or data.pet_id
 
         username, error_response = get_current_user()
         if error_response:
@@ -189,8 +238,8 @@ def add_defecation():
         if not success:
             return error_response[0], error_response[1]
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "defecation", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
@@ -198,10 +247,10 @@ def add_defecation():
         defecation_data = {
             "pet_id": pet_id,
             "date_time": event_dt,
-            "stool_type": data.get("stool_type", ""),
-            "color": data.get("color", "Коричневый"),
-            "food": data.get("food", ""),
-            "comment": data.get("comment", ""),
+            "stool_type": data.stool_type or "",
+            "color": data.color or "Коричневый",
+            "food": data.food or "",
+            "comment": data.comment or "",
             "username": username,
         }
 
@@ -211,17 +260,19 @@ def add_defecation():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for defecation: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error adding defecation: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/defecation", methods=["GET"])
 @login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(HTTP_200=DefecationListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
 def get_defecations():
     """Get defecations for current pet."""
-    pet_id = request.args.get("pet_id")
+    pet_id = request.context.query.pet_id
 
     username, error_response = get_current_user()
     if error_response:
@@ -243,6 +294,17 @@ def get_defecations():
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["PUT"])
 @login_required
+@api.validate(
+    body=Request(DefecationUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def update_defecation(record_id):
     """Update defecation event."""
     try:
@@ -254,21 +316,25 @@ def update_defecation(record_id):
         if error_response:
             return error_response[0], error_response[1]
 
-        data = request.get_json()
+        data = request.context.body
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "defecation update", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
 
-        defecation_data = {
-            "date_time": event_dt,
-            "stool_type": data.get("stool_type", ""),
-            "color": data.get("color", "Коричневый"),
-            "food": data.get("food", ""),
-            "comment": data.get("comment", ""),
-        }
+        defecation_data = {}
+        if event_dt is not None:
+            defecation_data["date_time"] = event_dt
+        if data.stool_type is not None:
+            defecation_data["stool_type"] = data.stool_type
+        if data.color is not None:
+            defecation_data["color"] = data.color
+        if data.food is not None:
+            defecation_data["food"] = data.food
+        if data.comment is not None:
+            defecation_data["comment"] = data.comment
 
         result = app.db["defecations"].update_one({"_id": ObjectId(record_id)}, {"$set": defecation_data})
 
@@ -282,14 +348,21 @@ def update_defecation(record_id):
         app.logger.warning(
             f"Invalid input data for defecation update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error updating defecation: record_id={record_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["DELETE"])
 @login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def delete_defecation(record_id):
     """Delete defecation event."""
     try:
@@ -313,20 +386,22 @@ def delete_defecation(record_id):
         app.logger.warning(
             f"Invalid record_id for defecation deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 400
-    except Exception as e:
-        app.logger.error(f"Error deleting defecation: record_id={record_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid record_id format"}), 422
 
 
 # Litter routes
 @health_records_bp.route("/api/litter", methods=["POST"])
 @login_required
+@api.validate(
+    body=Request(LitterChangeCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
 def add_litter():
     """Add litter change event."""
     try:
-        data = request.get_json()
-        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        data = request.context.body
+        pet_id = request.args.get("pet_id") or data.pet_id
 
         username, error_response = get_current_user()
         if error_response:
@@ -336,8 +411,8 @@ def add_litter():
         if not success:
             return error_response[0], error_response[1]
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "litter change", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
@@ -345,7 +420,7 @@ def add_litter():
         litter_data = {
             "pet_id": pet_id,
             "date_time": event_dt,
-            "comment": data.get("comment", ""),
+            "comment": data.comment or "",
             "username": username,
         }
 
@@ -355,17 +430,19 @@ def add_litter():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for litter change: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error adding litter change: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/litter", methods=["GET"])
 @login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(HTTP_200=LitterChangeListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
 def get_litter_changes():
     """Get litter changes for current pet."""
-    pet_id = request.args.get("pet_id")
+    pet_id = request.context.query.pet_id
 
     username, error_response = get_current_user()
     if error_response:
@@ -387,6 +464,17 @@ def get_litter_changes():
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["PUT"])
 @login_required
+@api.validate(
+    body=Request(LitterChangeUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def update_litter(record_id):
     """Update litter change event."""
     try:
@@ -398,17 +486,21 @@ def update_litter(record_id):
         if error_response:
             return error_response[0], error_response[1]
 
-        data = request.get_json()
+        data = request.context.body
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(
             date_str, time_str, "litter change update", pet_id, username
         )
         if error_response:
             return error_response[0], error_response[1]
 
-        litter_data = {"date_time": event_dt, "comment": data.get("comment", "")}
+        litter_data = {}
+        if event_dt is not None:
+            litter_data["date_time"] = event_dt
+        if data.comment is not None:
+            litter_data["comment"] = data.comment
 
         result = app.db["litter_changes"].update_one({"_id": ObjectId(record_id)}, {"$set": litter_data})
 
@@ -422,16 +514,21 @@ def update_litter(record_id):
         app.logger.warning(
             f"Invalid input data for litter change update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(
-            f"Error updating litter change: record_id={record_id}, user={username}, error={e}", exc_info=True
-        )
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["DELETE"])
 @login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def delete_litter(record_id):
     """Delete litter change event."""
     try:
@@ -455,22 +552,22 @@ def delete_litter(record_id):
         app.logger.warning(
             f"Invalid record_id for litter change deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid record_id format"}), 400
-    except Exception as e:
-        app.logger.error(
-            f"Error deleting litter change: record_id={record_id}, user={username}, error={e}", exc_info=True
-        )
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid record_id format"}), 422
 
 
 # Weight routes
 @health_records_bp.route("/api/weight", methods=["POST"])
 @login_required
+@api.validate(
+    body=Request(WeightRecordCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
 def add_weight():
     """Add weight measurement."""
     try:
-        data = request.get_json()
-        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        data = request.context.body
+        pet_id = request.args.get("pet_id") or data.pet_id
 
         username, error_response = get_current_user()
         if error_response:
@@ -480,8 +577,8 @@ def add_weight():
         if not success:
             return error_response[0], error_response[1]
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "weight", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
@@ -489,9 +586,9 @@ def add_weight():
         weight_data = {
             "pet_id": pet_id,
             "date_time": event_dt,
-            "weight": data.get("weight", ""),
-            "food": data.get("food", ""),
-            "comment": data.get("comment", ""),
+            "weight": data.weight or "",
+            "food": data.food or "",
+            "comment": data.comment or "",
             "username": username,
         }
 
@@ -501,17 +598,19 @@ def add_weight():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error adding weight: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/weight", methods=["GET"])
 @login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(HTTP_200=WeightRecordListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
 def get_weights():
     """Get weight measurements for current pet."""
-    pet_id = request.args.get("pet_id")
+    pet_id = request.context.query.pet_id
 
     username, error_response = get_current_user()
     if error_response:
@@ -533,6 +632,17 @@ def get_weights():
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["PUT"])
 @login_required
+@api.validate(
+    body=Request(WeightRecordUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def update_weight(record_id):
     """Update weight measurement."""
     try:
@@ -544,19 +654,19 @@ def update_weight(record_id):
         if error_response:
             return error_response[0], error_response[1]
 
-        data = request.get_json()
+        data = request.context.body
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "weight update", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
 
         weight_data = {
             "date_time": event_dt,
-            "weight": data.get("weight", ""),
-            "food": data.get("food", ""),
-            "comment": data.get("comment", ""),
+            "weight": data.weight or "",
+            "food": data.food or "",
+            "comment": data.comment or "",
         }
 
         result = app.db["weights"].update_one({"_id": ObjectId(record_id)}, {"$set": weight_data})
@@ -569,14 +679,21 @@ def update_weight(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight update: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error updating weight: record_id={record_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["DELETE"])
 @login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def delete_weight(record_id):
     """Delete weight measurement."""
     try:
@@ -598,20 +715,22 @@ def delete_weight(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for weight deletion: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid record_id format"}), 400
-    except Exception as e:
-        app.logger.error(f"Error deleting weight: record_id={record_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid record_id format"}), 422
 
 
 # Feeding routes
 @health_records_bp.route("/api/feeding", methods=["POST"])
 @login_required
+@api.validate(
+    body=Request(FeedingCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
 def add_feeding():
     """Add feeding event."""
     try:
-        data = request.get_json()
-        pet_id = request.args.get("pet_id") or data.get("pet_id")
+        data = request.context.body
+        pet_id = request.args.get("pet_id") or data.pet_id
 
         username, error_response = get_current_user()
         if error_response:
@@ -621,8 +740,8 @@ def add_feeding():
         if not success:
             return error_response[0], error_response[1]
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "feeding", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
@@ -630,8 +749,8 @@ def add_feeding():
         feeding_data = {
             "pet_id": pet_id,
             "date_time": event_dt,
-            "food_weight": data.get("food_weight", ""),
-            "comment": data.get("comment", ""),
+            "food_weight": data.food_weight or "",
+            "comment": data.comment or "",
             "username": username,
         }
 
@@ -641,17 +760,19 @@ def add_feeding():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error adding feeding: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/feeding", methods=["GET"])
 @login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(HTTP_200=FeedingListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
 def get_feedings():
     """Get feedings for current pet."""
-    pet_id = request.args.get("pet_id")
+    pet_id = request.context.query.pet_id
 
     username, error_response = get_current_user()
     if error_response:
@@ -673,6 +794,17 @@ def get_feedings():
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["PUT"])
 @login_required
+@api.validate(
+    body=Request(FeedingUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def update_feeding(record_id):
     """Update feeding event."""
     try:
@@ -684,18 +816,18 @@ def update_feeding(record_id):
         if error_response:
             return error_response[0], error_response[1]
 
-        data = request.get_json()
+        data = request.context.body
 
-        date_str = data.get("date")
-        time_str = data.get("time")
+        date_str = data.date
+        time_str = data.time
         event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "feeding update", pet_id, username)
         if error_response:
             return error_response[0], error_response[1]
 
         feeding_data = {
             "date_time": event_dt,
-            "food_weight": data.get("food_weight", ""),
-            "comment": data.get("comment", ""),
+            "food_weight": data.food_weight or "",
+            "comment": data.comment or "",
         }
 
         result = app.db["feedings"].update_one({"_id": ObjectId(record_id)}, {"$set": feeding_data})
@@ -708,14 +840,21 @@ def update_feeding(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding update: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(f"Error updating feeding: record_id={record_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["DELETE"])
 @login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
 def delete_feeding(record_id):
     """Delete feeding event."""
     try:
@@ -737,7 +876,4 @@ def delete_feeding(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Invalid record_id format"}), 400
-    except Exception as e:
-        app.logger.error(f"Error deleting feeding: record_id={record_id}, user={username}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid record_id format"}), 422

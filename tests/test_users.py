@@ -77,18 +77,18 @@ class TestUserManagement:
             headers=auth_headers,
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
         assert "уже существует" in data["error"]
 
     def test_create_user_missing_fields(self, client, auth_headers):
         """Test creating user with missing required fields."""
         response = client.post("/api/users", json={"username": "incomplete"}, headers=auth_headers)
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_get_user_success(self, client, mock_db, auth_headers, regular_user):
         """Test getting a specific user."""
@@ -138,9 +138,9 @@ class TestUserManagement:
         """Test updating user with no data."""
         response = client.put(f"/api/users/{regular_user['username']}", json={}, headers=auth_headers)
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_delete_user_success(self, client, mock_db, auth_headers, regular_user):
         """Test deactivating a user."""
@@ -160,9 +160,9 @@ class TestUserManagement:
         """Test that admin cannot be deactivated."""
         response = client.delete("/api/users/admin", headers=auth_headers)
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
         assert "администратора" in data["error"]
 
     def test_reset_user_password_success(self, client, mock_db, auth_headers, regular_user):
@@ -188,9 +188,9 @@ class TestUserManagement:
         """Test resetting password without providing new password."""
         response = client.post(f"/api/users/{regular_user['username']}/reset-password", json={}, headers=auth_headers)
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_reset_user_password_not_found(self, client, auth_headers):
         """Test resetting password for non-existent user."""

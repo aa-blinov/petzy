@@ -7,6 +7,7 @@ from flask import Flask, jsonify, make_response, redirect, render_template, requ
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
+from flask_pydantic_spec import FlaskPydanticSpec
 
 from web.db import db
 from web.configs import FLASK_CONFIG, RATE_LIMIT_CONFIG, LOGGING_CONFIG
@@ -70,6 +71,59 @@ limiter = Limiter(
     strategy=RATE_LIMIT_CONFIG["strategy"],
 )
 
+# Initialize FlaskPydanticSpec for OpenAPI documentation and Pydantic validation
+api = FlaskPydanticSpec(
+    "flask",
+    title="Pet Health Control API",
+    version="1.0.0",
+    path="apidoc",
+    security=[{"bearerAuth": []}],
+    components={
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+            }
+        }
+    },
+)
+
+
+@app.errorhandler(422)
+def handle_unprocessable_entity(err):
+    """Handle Pydantic validation errors and return a consistent format."""
+    # Try to get the original data from the exception
+    data = getattr(err, "data", None)
+    if data and "messages" in data:
+        # flask-pydantic-spec puts errors in 'messages'
+        messages = data["messages"]
+        if isinstance(messages, list) and len(messages) > 0:
+            # Format the first error nicely
+            error = messages[0]
+            if isinstance(error, dict):
+                loc = ".".join(str(x) for x in error.get("loc", []))
+                msg = error.get("msg", "Validation error")
+                return jsonify({"error": f"{loc}: {msg}"}), 422
+
+    # Fallback for other 422 errors
+    return jsonify({"error": "Неверные данные"}), 422
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    """Global error handler for unexpected exceptions."""
+    # Log the full traceback
+    logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
+
+    # Return JSON error if it's an API request or expects JSON
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"error": "Internal server error"}), 500
+
+    # Otherwise let Flask handle it (default HTML error page)
+    return e
+
+
 from web.auth import auth_bp, page_login_required  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
@@ -82,6 +136,9 @@ app.register_blueprint(users_bp)
 app.register_blueprint(health_records_bp)
 app.register_blueprint(export_bp)
 
+# Register API spec after all blueprints are registered
+api.register(app)
+
 
 # Error handler for rate limit exceeded
 @app.errorhandler(RateLimitExceeded)
@@ -93,10 +150,6 @@ def handle_rate_limit_exceeded(e):
     else:
         # For HTML requests, render login page with error
         return render_template("login.html", error=str(e.description)), 429
-
-
-# Use a default user_id for web user (can be any number, just for data storage)
-DEFAULT_USER_ID = 0
 
 
 @app.route("/")

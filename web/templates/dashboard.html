@@ -796,7 +796,7 @@ document.getElementById('pet-form-element').addEventListener('submit', async fun
                 showScreen('pet-selector');
             }, 150);
         } else {
-            showAlert('error', result.error || 'Ошибка при сохранении');
+            showAlert('error', result.error || result);
         }
     } catch (error) {
         console.error('Error submitting pet form:', error);
@@ -857,7 +857,21 @@ function showAlert(type, message) {
     const container = document.getElementById('alert-container');
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.textContent = message;
+    
+    // Handle Pydantic error format (list of errors)
+    if (type === 'error' && Array.isArray(message)) {
+        if (message.length > 0) {
+            const err = message[0];
+            const loc = err.loc ? err.loc.join('.') : '';
+            const msg = err.msg || 'Ошибка валидации';
+            alert.textContent = loc ? `${loc}: ${msg}` : msg;
+        } else {
+            alert.textContent = 'Неизвестная ошибка валидации';
+        }
+    } else {
+        alert.textContent = message;
+    }
+    
     container.appendChild(alert);
     
     setTimeout(() => {
