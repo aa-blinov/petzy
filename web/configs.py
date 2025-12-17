@@ -20,7 +20,9 @@ def load_config() -> Dict[str, Any]:
     # Use quote_plus to properly encode credentials (matching db.py)
     mongo_user_encoded = quote_plus(mongo_user)
     mongo_pass_encoded = quote_plus(mongo_pass)
-    mongo_uri = f"mongodb://{mongo_user_encoded}:{mongo_pass_encoded}@{mongo_host}:{mongo_port}/{mongo_db}?authSource=admin"
+    mongo_uri = (
+        f"mongodb://{mongo_user_encoded}:{mongo_pass_encoded}@{mongo_host}:{mongo_port}/{mongo_db}?authSource=admin"
+    )
 
     # Base configuration structure
     config = {
@@ -35,7 +37,9 @@ def load_config() -> Dict[str, Any]:
         },
         # JWT settings
         "jwt": {
-            "secret_key": os.getenv("JWT_SECRET_KEY", os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")),
+            "secret_key": os.getenv(
+                "JWT_SECRET_KEY", os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+            ),
             "algorithm": "HS256",
             "access_token_expire_minutes": 15,
             "refresh_token_expire_days": 7,
@@ -81,13 +85,16 @@ def get_config_json() -> str:
     safe_config = json.loads(json.dumps(config))
     if safe_config["admin"]["password_hash"]:
         safe_config["admin"]["password_hash"] = "***MASKED***"
-    if safe_config["flask"]["secret_key"] and safe_config["flask"]["secret_key"] != "dev-secret-key-change-in-production":
+    if (
+        safe_config["flask"]["secret_key"]
+        and safe_config["flask"]["secret_key"] != "dev-secret-key-change-in-production"
+    ):
         safe_config["flask"]["secret_key"] = "***MASKED***"
     if safe_config["jwt"]["secret_key"] and safe_config["jwt"]["secret_key"] != "dev-secret-key-change-in-production":
         safe_config["jwt"]["secret_key"] = "***MASKED***"
     if safe_config["mongodb"]["pass"]:
         safe_config["mongodb"]["pass"] = "***MASKED***"
-    
+
     return json.dumps(safe_config, indent=2, ensure_ascii=False)
 
 
@@ -101,4 +108,3 @@ RATE_LIMIT_CONFIG = _config["rate_limit"]
 LOGGING_CONFIG = _config["logging"]
 ADMIN_CONFIG = _config["admin"]
 MONGODB_CONFIG = _config["mongodb"]
-

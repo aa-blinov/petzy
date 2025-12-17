@@ -1,7 +1,7 @@
 """Tests for user management endpoints (admin only)."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 import bcrypt
 
 
@@ -29,7 +29,7 @@ class TestUserManagement:
                 "password_hash": password_hash,
                 "full_name": "Test User 2",
                 "email": "test2@example.com",
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "created_by": "admin",
                 "is_active": True,
             }
