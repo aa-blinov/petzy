@@ -1,7 +1,7 @@
 """Tests for error handling and edge cases."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 from flask_limiter.errors import RateLimitExceeded
 
@@ -63,7 +63,7 @@ class TestErrorHandling:
         from bson import ObjectId
 
         fake_id = ObjectId()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         response = client.put(
             f"/api/asthma/{fake_id}",
             json={
@@ -90,11 +90,11 @@ class TestErrorHandling:
                 "duration": "5 minutes",
                 "reason": "Stress",
                 "username": "admin",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         response = client.put(
             f"/api/asthma/{record_id.inserted_id}",
             json={
@@ -257,9 +257,8 @@ class TestErrorHandling:
         """Test exception handling in health record creation."""
         from web.app import db
         from unittest.mock import patch
-        from datetime import datetime
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Mock database to raise exception
         with patch.object(db["asthma_attacks"], "insert_one", side_effect=Exception("Database error")):

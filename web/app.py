@@ -4,7 +4,7 @@ import csv
 import io
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
 
@@ -16,13 +16,7 @@ from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
 
 from web.db import db
-from web.configs import (
-    FLASK_CONFIG,
-    JWT_CONFIG,
-    RATE_LIMIT_CONFIG,
-    LOGGING_CONFIG,
-    ADMIN_CONFIG,
-)
+from web.configs import FLASK_CONFIG, RATE_LIMIT_CONFIG, LOGGING_CONFIG
 from gridfs import GridFS
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -78,6 +72,10 @@ limiter = Limiter(
     strategy=RATE_LIMIT_CONFIG["strategy"],
 )
 
+from web.auth import auth_bp  # noqa: E402
+
+app.register_blueprint(auth_bp)
+
 
 # Error handler for rate limit exceeded
 @app.errorhandler(RateLimitExceeded)
@@ -91,22 +89,26 @@ def handle_rate_limit_exceeded(e):
         return render_template("login.html", error=str(e.description)), 429
 
 
-# JWT configuration
-JWT_SECRET_KEY = JWT_CONFIG["secret_key"]
-JWT_ALGORITHM = JWT_CONFIG["algorithm"]
-ACCESS_TOKEN_EXPIRE_MINUTES = JWT_CONFIG["access_token_expire_minutes"]
-REFRESH_TOKEN_EXPIRE_DAYS = JWT_CONFIG["refresh_token_expire_days"]
+from web import security
 
-# Authentication credentials - REQUIRED from environment
-ADMIN_USERNAME = ADMIN_CONFIG["username"]
-ADMIN_PASSWORD_HASH = ADMIN_CONFIG["password_hash"]
+# Re-export security constants/helpers for backward compatibility (tests & other modules)
+JWT_SECRET_KEY = security.JWT_SECRET_KEY
+JWT_ALGORITHM = security.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = security.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = security.REFRESH_TOKEN_EXPIRE_DAYS
+ADMIN_USERNAME = security.ADMIN_USERNAME
+ADMIN_PASSWORD_HASH = security.ADMIN_PASSWORD_HASH
 
-# Validate required environment variables
-if not ADMIN_PASSWORD_HASH:
-    raise RuntimeError(
-        "ADMIN_PASSWORD_HASH environment variable is required! "
-        "To generate hash: python -c \"import bcrypt; print(bcrypt.hashpw('your_password'.encode(), bcrypt.gensalt()).decode())\""
-    )
+verify_user_credentials = security.verify_user_credentials
+create_access_token = security.create_access_token
+create_refresh_token = security.create_refresh_token
+verify_token = security.verify_token
+get_token_from_request = security.get_token_from_request
+try_refresh_access_token = security.try_refresh_access_token
+get_current_user = security.get_current_user
+is_admin = security.is_admin
+login_required = security.login_required
+admin_required = security.admin_required
 
 # Use a default user_id for web user (can be any number, just for data storage)
 DEFAULT_USER_ID = 0
@@ -356,66 +358,22 @@ def get_pet_and_validate(pet_id, username, require_owner=False):
     return pet, None
 
 
-# Helper function to verify user credentials
-def verify_user_credentials(username: str, password: str) -> bool:
-    """Verify user credentials from database or fallback to admin."""
-    # First, try to find user in database
-    user = db["users"].find_one({"username": username, "is_active": True})
-    if user:
-        try:
-            return bcrypt.checkpw(password.encode(), user["password_hash"].encode())
-        except (ValueError, TypeError, KeyError):
-            return False
-
-    # Fallback to admin credentials for backward compatibility
-    if username == ADMIN_USERNAME:
-        try:
-            return bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode())
-        except (ValueError, TypeError):
-            return False
-
-    return False
-
-
-# Helper function to ensure default admin user exists
-def ensure_default_admin():
-    """Ensure default admin user exists in database."""
-    admin_user = db["users"].find_one({"username": ADMIN_USERNAME})
-    if not admin_user:
-        # Create default admin user
-        db["users"].insert_one(
-            {
-                "username": ADMIN_USERNAME,
-                "password_hash": ADMIN_PASSWORD_HASH,
-                "full_name": "Administrator",
-                "email": "",
-                "created_at": datetime.utcnow(),
-                "created_by": "system",
-                "is_active": True,
-            }
-        )
-
-
-# Initialize default admin on startup
-ensure_default_admin()
-
-
 def create_access_token(username: str) -> str:
     """Create JWT access token."""
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"username": username, "exp": expire, "type": "access"}
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def create_refresh_token(username: str) -> str:
     """Create JWT refresh token and store it in database."""
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {"username": username, "exp": expire, "type": "refresh"}
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
     # Store refresh token in database
     db["refresh_tokens"].insert_one(
-        {"token": token, "username": username, "created_at": datetime.utcnow(), "expires_at": expire}
+        {"token": token, "username": username, "created_at": datetime.now(timezone.utc), "expires_at": expire}
     )
 
     return token
@@ -548,110 +506,12 @@ def index():
     return redirect(url_for("login"))
 
 
-@app.route("/api/auth/login", methods=["POST"])
-@limiter.limit("5 per 5 minutes", error_message="Too many login attempts. Please try again later.")
-def api_login():
-    """API endpoint for login - returns JWT tokens."""
-    data = request.get_json()
-    username = data.get("username", "").strip() if data else ""
-    password = data.get("password", "") if data else ""
-    client_ip = request.remote_addr
-
-    if not username or not password:
-        return jsonify({"error": "Username and password required"}), 400
-
-    # Verify username and password
-    if verify_user_credentials(username, password):
-        # Create tokens
-        access_token = create_access_token(username)
-        refresh_token = create_refresh_token(username)
-
-        logger.info(f"Successful login: user={username}, ip={client_ip}")
-
-        response = jsonify(
-            {
-                "success": True,
-                "message": "Login successful",
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-        )
-
-        # Set tokens in httpOnly cookies
-        response.set_cookie(
-            "access_token",
-            access_token,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="Lax",
-        )
-        response.set_cookie(
-            "refresh_token",
-            refresh_token,
-            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-            httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="Lax",
-        )
-
-        return response
-
-    # Failed login
-    logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
-    return jsonify({"error": "Invalid username or password"}), 401
-
-
-@app.route("/api/auth/refresh", methods=["POST"])
-def api_refresh():
-    """Refresh access token using refresh token."""
-    refresh_token = request.cookies.get("refresh_token") or (request.get_json() or {}).get("refresh_token")
-
-    if not refresh_token:
-        return jsonify({"error": "Refresh token required"}), 401
-
-    # Verify refresh token
-    payload = verify_token(refresh_token, "refresh")
-    if not payload:
-        return jsonify({"error": "Invalid or expired refresh token"}), 401
-
-    # Check if token exists in database
-    token_record = db["refresh_tokens"].find_one({"token": refresh_token})
-    if not token_record:
-        return jsonify({"error": "Refresh token not found"}), 401
-
-    username = payload.get("username")
-
-    # Create new access token
-    access_token = create_access_token(username)
-
-    response = jsonify({"success": True, "access_token": access_token})
-
-    response.set_cookie(
-        "access_token",
-        access_token,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True,
-        secure=False,
-        samesite="Lax",
-    )
-
-    return response
-
-
-@app.route("/api/auth/logout", methods=["POST"])
-def api_logout():
-    """Logout - invalidate refresh token."""
-    refresh_token = request.cookies.get("refresh_token")
-
-    if refresh_token:
-        # Remove refresh token from database
-        db["refresh_tokens"].delete_one({"token": refresh_token})
-
-    response = jsonify({"success": True, "message": "Logged out"})
+@app.route("/logout")
+def logout():
+    """Logout route - clear tokens and redirect to login."""
+    response = make_response(redirect(url_for("login")))
     response.set_cookie("access_token", "", max_age=0)
     response.set_cookie("refresh_token", "", max_age=0)
-
     return response
 
 
@@ -745,14 +605,6 @@ def login():
         return render_template("login.html", error="Неверный логин или пароль")
 
     return render_template("login.html")
-
-
-@app.route("/logout")
-def logout():
-    """Logout and clear tokens."""
-    # Call API logout endpoint
-    api_logout()
-    return redirect(url_for("login"))
 
 
 # Helper function to check if user is admin
@@ -880,7 +732,7 @@ def create_pet():
                 "photo_file_id": str(photo_file_id) if photo_file_id else None,
                 "owner": username,
                 "shared_with": [],
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "created_by": username,
             }
         else:
@@ -907,7 +759,7 @@ def create_pet():
                 "photo_url": data.get("photo_url", "").strip(),
                 "owner": username,
                 "shared_with": [],
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "created_by": username,
             }
 
@@ -1132,7 +984,7 @@ def create_user():
             "password_hash": password_hash,
             "full_name": full_name,
             "email": email,
-            "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
             "created_by": current_user,
             "is_active": True,
         }

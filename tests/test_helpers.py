@@ -1,7 +1,7 @@
 """Edge-case tests for helper functions in web.app (access and datetime helpers)."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @pytest.mark.unit
@@ -98,7 +98,7 @@ class TestParseEventDateTimeSafe:
         """Should return parsed datetime when both date and time are valid."""
         from web.app import parse_event_datetime_safe
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         date_str = now.strftime("%Y-%m-%d")
         time_str = now.strftime("%H:%M")
 
@@ -131,12 +131,20 @@ class TestParseEventDateTimeSafe:
 
         # Missing time
         event_dt1, error_response1 = parse_event_datetime_safe(
-            datetime.utcnow().strftime("%Y-%m-%d"), None, "test-context", str(test_pet["_id"]), "testuser"
+            datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            None,
+            "test-context",
+            str(test_pet["_id"]),
+            "testuser",
         )
 
         # Missing date
         event_dt2, error_response2 = parse_event_datetime_safe(
-            None, datetime.utcnow().strftime("%H:%M"), "test-context", str(test_pet["_id"]), "testuser"
+            None,
+            datetime.now(timezone.utc).strftime("%H:%M"),
+            "test-context",
+            str(test_pet["_id"]),
+            "testuser",
         )
 
         assert error_response1 is None

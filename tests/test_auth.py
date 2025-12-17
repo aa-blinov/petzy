@@ -1,9 +1,9 @@
 """Tests for authentication endpoints."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
-from web.app import JWT_SECRET_KEY, JWT_ALGORITHM
+from web.security import JWT_SECRET_KEY, JWT_ALGORITHM
 
 
 @pytest.mark.auth
@@ -63,8 +63,8 @@ class TestAuthentication:
             {
                 "token": admin_refresh_token,
                 "username": "admin",
-                "created_at": datetime.utcnow(),
-                "expires_at": datetime.utcnow() + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
             }
         )
 
@@ -105,8 +105,8 @@ class TestAuthentication:
                 {
                     "token": admin_refresh_token,
                     "username": "admin",
-                    "created_at": datetime.utcnow(),
-                    "expires_at": datetime.utcnow() + timedelta(days=7),
+                    "created_at": datetime.now(timezone.utc),
+                    "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
                 }
             )
 
@@ -179,8 +179,8 @@ class TestAuthentication:
             {
                 "token": admin_refresh_token,
                 "username": "admin",
-                "created_at": datetime.utcnow(),
-                "expires_at": datetime.utcnow() + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
             }
         )
 
@@ -200,7 +200,11 @@ class TestAuthentication:
     def test_expired_token_rejection(self, client):
         """Test that expired tokens are rejected."""
         # Create expired token
-        expired_payload = {"username": "admin", "exp": datetime.utcnow() - timedelta(minutes=1), "type": "access"}
+        expired_payload = {
+            "username": "admin",
+            "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
+            "type": "access",
+        }
         expired_token = jwt.encode(expired_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
         response = client.get(
