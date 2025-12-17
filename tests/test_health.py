@@ -56,10 +56,9 @@ class TestHealthTracking:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
-        assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
+        assert "error" in data or isinstance(data, list)
 
     def test_get_asthma_attacks_invalid_pet_id(self, client, regular_user_token):
         """Test getting asthma attacks with invalid pet_id format."""
@@ -67,10 +66,9 @@ class TestHealthTracking:
             "/api/asthma?pet_id=invalid_id", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
-        assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
+        assert "error" in data or isinstance(data, list)
 
     def test_get_asthma_attacks_success(self, client, mock_db, regular_user_token, test_pet):
         """Test getting asthma attacks."""
@@ -575,6 +573,6 @@ class TestHealthTracking:
             else:
                 response = client.post(endpoint, json={}, headers={"Authorization": f"Bearer {regular_user_token}"})
 
-            assert response.status_code == 400
+            assert response.status_code == 422
             data = response.get_json()
-            assert "error" in data
+            assert "error" in data or isinstance(data, list)

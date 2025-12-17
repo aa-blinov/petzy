@@ -69,9 +69,9 @@ class TestPetManagement:
             "/api/pets", json={"breed": "Persian"}, headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_get_pet_success(self, client, mock_db, regular_user_token, test_pet):
         """Test getting a specific pet."""
@@ -95,9 +95,9 @@ class TestPetManagement:
         """Test getting pet with invalid ID format."""
         response = client.get("/api/pets/invalid_id", headers={"Authorization": f"Bearer {regular_user_token}"})
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
         assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
 
     def test_get_pet_no_access(self, client, mock_db, regular_user_token, admin_pet):
@@ -219,9 +219,9 @@ class TestPetManagement:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_unshare_pet_success(self, client, mock_db, regular_user_token, test_pet):
         """Test removing access from user."""
@@ -318,9 +318,9 @@ class TestPetManagement:
         """Test getting photo with invalid pet_id format."""
         response = client.get("/api/pets/invalid_id/photo", headers={"Authorization": f"Bearer {regular_user_token}"})
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert "error" in data or isinstance(data, list)
 
     def test_get_pet_photo_pet_not_found(self, client, mock_db, regular_user_token):
         """Test getting photo for non-existent pet."""

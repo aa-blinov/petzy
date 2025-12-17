@@ -38,9 +38,9 @@ class TestAuthentication:
         """Test login with missing fields."""
         response = client.post("/api/auth/login", json={"username": "admin"})
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.get_json()
-        assert "error" in data
+        assert isinstance(data, list) and "missing" in str(data)
 
     def test_api_login_rate_limiting(self, client, mock_db):
         """Test rate limiting on login attempts."""

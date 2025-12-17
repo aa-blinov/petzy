@@ -254,7 +254,7 @@ const PetsModule = {
                 await this.renderPetsList();
             } else {
                 if (typeof showAlert === 'function') {
-                    showAlert('error', result.error || 'Ошибка при удалении питомца');
+                    showAlert('error', result.error || result);
                 }
             }
         } catch (error) {
@@ -377,7 +377,7 @@ const PetsModule = {
                 await this.loadPetAccessInForm(petId);
             } else {
                 if (typeof showAlert === 'function') {
-                    showAlert('error', result.error || 'Ошибка при предоставлении доступа');
+                    showAlert('error', result.error || result);
                 }
             }
         } catch (error) {
@@ -406,7 +406,7 @@ const PetsModule = {
                 await this.loadPetAccessInForm(petId);
             } else {
                 if (typeof showAlert === 'function') {
-                    showAlert('error', result.error || 'Ошибка при удалении доступа');
+                    showAlert('error', result.error || result);
                 }
             }
         } catch (error) {

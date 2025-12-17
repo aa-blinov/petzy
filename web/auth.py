@@ -12,7 +12,9 @@ from flask import (
 
 from functools import wraps
 
-from web.app import limiter, logger  # app-level singletons
+from flask_pydantic_spec import Request, Response
+
+from web.app import api, limiter, logger  # app-level singletons
 import web.app as app  # use app.db so test patches (web.app.db) are visible
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -25,6 +27,14 @@ from web.security import (
     create_access_token,
     create_refresh_token,
     verify_user_credentials,
+)
+from web.schemas import (
+    AuthLoginRequest,
+    AuthTokensResponse,
+    AuthRefreshResponse,
+    AdminStatusResponse,
+    SuccessResponse,
+    ErrorResponse,
 )
 
 
@@ -85,15 +95,17 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 @limiter.limit("5 per 5 minutes", error_message="Too many login attempts. Please try again later.")
+@api.validate(
+    body=Request(AuthLoginRequest),
+    resp=Response(HTTP_200=AuthTokensResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse),
+    tags=["auth"],
+)
 def api_login():
     """API endpoint for login - returns JWT tokens."""
-    data = request.get_json()
-    username = data.get("username", "").strip() if data else ""
-    password = data.get("password", "") if data else ""
+    data = request.context.body
+    username = data.username.strip()
+    password = data.password
     client_ip = request.remote_addr
-
-    if not username or not password:
-        return jsonify({"error": "Username and password required"}), 400
 
     # Verify username and password
     if verify_user_credentials(username, password):
@@ -138,6 +150,10 @@ def api_login():
 
 
 @auth_bp.route("/api/auth/refresh", methods=["POST"])
+@api.validate(
+    resp=Response(HTTP_200=AuthRefreshResponse, HTTP_401=ErrorResponse),
+    tags=["auth"],
+)
 def api_refresh():
     """Refresh access token using refresh token."""
     refresh_token = request.cookies.get("refresh_token") or (request.get_json() or {}).get("refresh_token")
@@ -175,6 +191,10 @@ def api_refresh():
 
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
+@api.validate(
+    resp=Response(HTTP_200=SuccessResponse),
+    tags=["auth"],
+)
 def api_logout():
     """Logout - invalidate refresh token."""
     refresh_token = request.cookies.get("refresh_token")
@@ -192,6 +212,10 @@ def api_logout():
 
 @auth_bp.route("/api/auth/check-admin", methods=["GET"])
 @login_required
+@api.validate(
+    resp=Response(HTTP_200=AdminStatusResponse),
+    tags=["auth"],
+)
 def check_admin():
     """Check if current user is admin (returns 200 with isAdmin flag, no 403)."""
     try:
@@ -199,11 +223,12 @@ def check_admin():
         if error_response:
             return error_response[0], error_response[1]
 
-        # Check if user is admin; normalize to strict bool and use app.db (patched in tests)
-        user = app.db["users"].find_one({"username": username})
-        is_admin = bool(user and user.get("is_admin", False))
+        # Use shared is_admin helper for consistency
+        from web.security import is_admin as is_admin_check
 
-        return jsonify({"isAdmin": is_admin}), 200
+        is_admin_flag = is_admin_check(username)
+
+        return jsonify({"isAdmin": is_admin_flag}), 200
     except Exception as e:
         logger.error(
             f"Error checking admin status: user={getattr(request, 'current_user', None)}, error={e}",

@@ -68,8 +68,12 @@ def ensure_default_admin():
                 "created_at": datetime.now(timezone.utc),
                 "created_by": "system",
                 "is_active": True,
+                "is_admin": True,
             }
         )
+    elif not admin_user.get("is_admin"):
+        # Ensure existing admin also has the flag
+        db["users"].update_one({"username": ADMIN_USERNAME}, {"$set": {"is_admin": True}})
 
 
 def create_access_token(username):
@@ -229,7 +233,3 @@ def admin_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
-
-
-# Initialize default admin on import
-ensure_default_admin()

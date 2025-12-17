@@ -275,7 +275,7 @@ const UsersModule = {
                 }
             } else {
                 if (typeof showAlert === 'function') {
-                    showAlert('error', result.error || 'Ошибка при изменении пароля');
+                    showAlert('error', result.error || result);
                 }
             }
         } catch (error) {
@@ -304,7 +304,7 @@ const UsersModule = {
                 this.loadUsersList();
             } else {
                 if (typeof showAlert === 'function') {
-                    showAlert('error', result.error || 'Ошибка при деактивации');
+                    showAlert('error', result.error || result);
                 }
             }
         } catch (error) {
@@ -335,7 +335,7 @@ const UsersModule = {
                 this.loadUsersList();
             } else {
                 if (typeof showAlert === 'function') {
-                    showAlert('error', result.error || 'Ошибка при активации');
+                    showAlert('error', result.error || result);
                 }
             }
         } catch (error) {

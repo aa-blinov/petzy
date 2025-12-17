@@ -6,10 +6,13 @@ from datetime import datetime
 from urllib.parse import quote
 
 from flask import Blueprint, jsonify, make_response, request
+from flask_pydantic_spec import Response
 
 import web.app as app  # access db, logger
+from web.app import api
 from web.security import login_required
-from web.helpers import validate_pet_id, check_pet_access
+from web.helpers import check_pet_access
+from web.schemas import ErrorResponse, PetIdQuery
 
 
 export_bp = Blueprint("export", __name__)
@@ -17,16 +20,17 @@ export_bp = Blueprint("export", __name__)
 
 @export_bp.route("/api/export/<export_type>/<format_type>", methods=["GET"])
 @login_required
+@api.validate(
+    query=PetIdQuery,
+    resp=Response(
+        HTTP_200=None, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse
+    ),
+    tags=["export"],
+)
 def export_data(export_type, format_type):
     """Export data in various formats."""
     try:
-        pet_id = request.args.get("pet_id")
-
-        if not pet_id:
-            return jsonify({"error": "pet_id обязателен"}), 400
-
-        if not validate_pet_id(pet_id):
-            return jsonify({"error": "Неверный формат pet_id"}), 400
+        pet_id = request.context.query.pet_id
 
         username = getattr(request, "current_user", None)
         if not username:
@@ -86,7 +90,7 @@ def export_data(export_type, format_type):
                 ("comment", "Комментарий"),
             ]
         else:
-            return jsonify({"error": "Invalid export type"}), 400
+            return jsonify({"error": "Invalid export type"}), 422
 
         records = list(collection.find({"pet_id": pet_id}).sort([("date_time", -1)]))
 
@@ -196,7 +200,7 @@ def export_data(export_type, format_type):
             filename = f"{filename_base}.md"
 
         else:
-            return jsonify({"error": "Invalid format type"}), 400
+            return jsonify({"error": "Invalid format type"}), 422
 
         encoded_filename = quote(filename)
 
@@ -211,10 +215,4 @@ def export_data(export_type, format_type):
         app.logger.warning(
             f"Invalid input data for export: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Invalid input data"}), 400
-    except Exception as e:
-        app.logger.error(
-            f"Error exporting data: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}",
-            exc_info=True,
-        )
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Invalid input data"}), 422
