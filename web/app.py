@@ -77,17 +77,10 @@ api = FlaskPydanticSpec(
     title="Pet Health Control API",
     version="1.0.0",
     path="apidoc",
-    security=[{"bearerAuth": []}],
-    components={
-        "securitySchemes": {
-            "bearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-            }
-        }
-    },
 )
+
+
+from werkzeug.exceptions import HTTPException
 
 
 @app.errorhandler(422)
@@ -113,14 +106,18 @@ def handle_unprocessable_entity(err):
 @app.errorhandler(Exception)
 def handle_unexpected_error(e):
     """Global error handler for unexpected exceptions."""
-    # Log the full traceback
+    # If it's a standard HTTP exception (like 404, 405), let Flask handle it
+    if isinstance(e, HTTPException):
+        return e
+
+    # For actual code exceptions, log the full traceback
     logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
 
     # Return JSON error if it's an API request or expects JSON
     if request.path.startswith("/api/") or request.is_json:
         return jsonify({"error": "Internal server error"}), 500
 
-    # Otherwise let Flask handle it (default HTML error page)
+    # Otherwise return the exception which Flask will convert to a 500 page
     return e
 
 
@@ -138,6 +135,18 @@ app.register_blueprint(export_bp)
 
 # Register API spec after all blueprints are registered
 api.register(app)
+
+# Configure Swagger security
+if "components" not in api.spec:
+    api.spec["components"] = {}
+api.spec["components"]["securitySchemes"] = {
+    "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+    }
+}
+api.spec["security"] = [{"bearerAuth": []}]
 
 
 # Error handler for rate limit exceeded
