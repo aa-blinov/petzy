@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime, timedelta
-from web.app import parse_datetime, parse_date
+from web.helpers import parse_datetime, parse_date
 
 
 @pytest.mark.datetime

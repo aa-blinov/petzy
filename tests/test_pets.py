@@ -1,7 +1,7 @@
 """Tests for pet management endpoints."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 
 
@@ -179,7 +179,7 @@ class TestPetManagement:
                 "password_hash": password_hash,
                 "full_name": "Share User",
                 "email": "",
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "created_by": "admin",
                 "is_active": True,
             }
@@ -236,7 +236,7 @@ class TestPetManagement:
                 "password_hash": password_hash,
                 "full_name": "Share User",
                 "email": "",
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "created_by": "admin",
                 "is_active": True,
             }
@@ -316,9 +316,7 @@ class TestPetManagement:
 
     def test_get_pet_photo_invalid_pet_id(self, client, regular_user_token):
         """Test getting photo with invalid pet_id format."""
-        response = client.get(
-            "/api/pets/invalid_id/photo", headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
+        response = client.get("/api/pets/invalid_id/photo", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 400
         data = response.get_json()

@@ -1,7 +1,7 @@
 """Tests for health records endpoints (asthma, defecation, litter, weight, feeding)."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @pytest.mark.health_records
@@ -24,8 +24,9 @@ class TestAsthmaRecords:
 
     def test_create_asthma_success(self, client, mock_db, regular_user_token, test_pet):
         """Test creating an asthma attack record."""
-        from datetime import datetime
-        now = datetime.utcnow()
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
         response = client.post(
             "/api/asthma",
             json={
@@ -47,6 +48,7 @@ class TestAsthmaRecords:
 
         # Verify record was created in database with correct fields
         from web.app import db
+
         record = db["asthma_attacks"].find_one({"pet_id": str(test_pet["_id"]), "username": "testuser"})
         assert record is not None
         assert record["duration"] == "5 minutes"
@@ -77,7 +79,7 @@ class TestAsthmaRecords:
                 "reason": "Stress",
                 "inhalation": "Yes",
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -98,7 +100,7 @@ class TestAsthmaRecords:
     def test_update_asthma_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating an asthma record."""
         # Create a record first
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = mock_db["asthma_attacks"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
@@ -129,6 +131,7 @@ class TestAsthmaRecords:
 
         # Verify record was updated in database with correct fields
         from web.app import db
+
         updated_record = db["asthma_attacks"].find_one({"_id": record.inserted_id})
         assert updated_record is not None
         assert updated_record["duration"] == "10 minutes"
@@ -152,7 +155,7 @@ class TestAsthmaRecords:
                 "reason": "Stress",
                 "inhalation": "Yes",
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -174,7 +177,7 @@ class TestDefecationRecords:
 
     def test_create_defecation_success(self, client, mock_db, regular_user_token, test_pet):
         """Test creating a defecation record."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         response = client.post(
             "/api/defecation",
             json={
@@ -196,6 +199,7 @@ class TestDefecationRecords:
 
         # Verify record was created in database with correct fields
         from web.app import db
+
         record = db["defecations"].find_one({"pet_id": str(test_pet["_id"]), "username": "testuser"})
         assert record is not None
         assert record["stool_type"] == "Normal"
@@ -215,7 +219,7 @@ class TestDefecationRecords:
                 "stool_type": "Normal",
                 "color": "Brown",
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -231,7 +235,7 @@ class TestDefecationRecords:
     def test_update_defecation_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a defecation record."""
         # Create a record first
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = mock_db["defecations"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
@@ -260,6 +264,7 @@ class TestDefecationRecords:
 
         # Verify record was updated in database with correct fields
         from web.app import db
+
         updated_record = db["defecations"].find_one({"_id": record.inserted_id})
         assert updated_record is not None
         assert updated_record["stool_type"] == "Diarrhea"
@@ -276,7 +281,7 @@ class TestDefecationRecords:
                 "stool_type": "Normal",
                 "color": "Brown",
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -294,7 +299,7 @@ class TestLitterRecords:
 
     def test_create_litter_success(self, client, mock_db, regular_user_token, test_pet):
         """Test creating a litter change record."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         response = client.post(
             "/api/litter",
             json={
@@ -313,6 +318,7 @@ class TestLitterRecords:
 
         # Verify record was created in database with correct fields
         from web.app import db
+
         record = db["litter_changes"].find_one({"pet_id": str(test_pet["_id"]), "username": "testuser"})
         assert record is not None
         assert record["comment"] == "Changed litter"
@@ -327,7 +333,7 @@ class TestLitterRecords:
             {
                 "pet_id": str(test_pet["_id"]),
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -343,7 +349,7 @@ class TestLitterRecords:
     def test_update_litter_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a litter change record."""
         # Create a record first
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = mock_db["litter_changes"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
@@ -369,6 +375,7 @@ class TestLitterRecords:
 
         # Verify record was updated in database with correct fields
         from web.app import db
+
         updated_record = db["litter_changes"].find_one({"_id": record.inserted_id})
         assert updated_record is not None
         assert updated_record["comment"] == "Updated comment"
@@ -382,7 +389,7 @@ class TestLitterRecords:
             {
                 "pet_id": str(test_pet["_id"]),
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -400,7 +407,7 @@ class TestWeightRecords:
 
     def test_create_weight_success(self, client, mock_db, regular_user_token, test_pet):
         """Test creating a weight record."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         response = client.post(
             "/api/weight",
             json={
@@ -421,6 +428,7 @@ class TestWeightRecords:
 
         # Verify record was created in database with correct fields
         from web.app import db
+
         record = db["weights"].find_one({"pet_id": str(test_pet["_id"]), "username": "testuser"})
         assert record is not None
         assert record["weight"] == 4.5
@@ -438,7 +446,7 @@ class TestWeightRecords:
                 "pet_id": str(test_pet["_id"]),
                 "weight": 4.5,
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -454,7 +462,7 @@ class TestWeightRecords:
     def test_update_weight_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a weight record."""
         # Create a record first
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = mock_db["weights"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
@@ -482,6 +490,7 @@ class TestWeightRecords:
 
         # Verify record was updated in database with correct fields
         from web.app import db
+
         updated_record = db["weights"].find_one({"_id": record.inserted_id})
         assert updated_record is not None
         assert updated_record["weight"] == 5.0
@@ -497,7 +506,7 @@ class TestWeightRecords:
                 "pet_id": str(test_pet["_id"]),
                 "weight": 4.5,
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -515,7 +524,7 @@ class TestFeedingRecords:
 
     def test_create_feeding_success(self, client, mock_db, regular_user_token, test_pet):
         """Test creating a feeding record."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         response = client.post(
             "/api/feeding",
             json={
@@ -535,6 +544,7 @@ class TestFeedingRecords:
 
         # Verify record was created in database with correct fields
         from web.app import db
+
         record = db["feedings"].find_one({"pet_id": str(test_pet["_id"]), "username": "testuser"})
         assert record is not None
         assert record["food_weight"] == 100
@@ -551,7 +561,7 @@ class TestFeedingRecords:
                 "pet_id": str(test_pet["_id"]),
                 "food_weight": 100,
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -567,7 +577,7 @@ class TestFeedingRecords:
     def test_update_feeding_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a feeding record."""
         # Create a record first
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = mock_db["feedings"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
@@ -595,6 +605,7 @@ class TestFeedingRecords:
 
         # Verify record was updated in database with correct fields
         from web.app import db
+
         updated_record = db["feedings"].find_one({"_id": record.inserted_id})
         assert updated_record is not None
         assert updated_record["food_weight"] == 150
@@ -610,7 +621,7 @@ class TestFeedingRecords:
                 "pet_id": str(test_pet["_id"]),
                 "food_weight": 100,
                 "username": "testuser",
-                "date_time": datetime.utcnow(),
+                "date_time": datetime.now(timezone.utc),
             }
         )
 
@@ -620,4 +631,3 @@ class TestFeedingRecords:
 
         assert response.status_code == 200
         assert mock_db["feedings"].find_one({"_id": record.inserted_id}) is None
-

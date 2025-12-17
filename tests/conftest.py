@@ -2,7 +2,7 @@
 
 import os
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 
 import jwt
@@ -27,7 +27,8 @@ _mock_client = MongoClient()
 _mock_db = _mock_client["test_db"]
 # Patch db and GridFS before importing app so ensure_default_admin uses mock_db
 with patch("web.db.db", _mock_db), patch("web.db.client", _mock_client), patch("gridfs.GridFS", MagicMock):
-    from web.app import app, create_access_token
+    from web.app import app
+    from web.security import create_access_token
 
 
 @pytest.fixture(scope="function")
@@ -56,7 +57,7 @@ def mock_db():
                 "password_hash": admin_password_hash,
                 "full_name": "Administrator",
                 "email": "",
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "created_by": "system",
                 "is_active": True,
             }
@@ -88,9 +89,9 @@ def admin_token():
 def admin_refresh_token(mock_db):
     """Create a valid refresh token for admin user."""
     # Need to use mock_db context, so create token manually
-    from web.app import JWT_SECRET_KEY, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
+    from web.security import JWT_SECRET_KEY, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {"username": "admin", "exp": expire, "type": "refresh"}
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
@@ -98,7 +99,7 @@ def admin_refresh_token(mock_db):
     from web.app import db
 
     db["refresh_tokens"].insert_one(
-        {"token": token, "username": "admin", "created_at": datetime.utcnow(), "expires_at": expire}
+        {"token": token, "username": "admin", "created_at": datetime.now(timezone.utc), "expires_at": expire}
     )
 
     return token
@@ -113,7 +114,7 @@ def regular_user(mock_db):
         "password_hash": password_hash,
         "full_name": "Test User",
         "email": "test@example.com",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "created_by": "admin",
         "is_active": True,
     }
@@ -137,7 +138,7 @@ def test_pet(mock_db, regular_user):
         "gender": "Male",
         "owner": regular_user["username"],
         "shared_with": [],
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "created_by": regular_user["username"],
     }
     result = mock_db["pets"].insert_one(pet_data)
@@ -155,7 +156,7 @@ def admin_pet(mock_db):
         "gender": "Female",
         "owner": "admin",
         "shared_with": [],
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "created_by": "admin",
     }
     result = mock_db["pets"].insert_one(pet_data)
