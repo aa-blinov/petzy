@@ -666,6 +666,55 @@ class FeedingListResponse(BaseModel):
 
 
 # ============================================================================
+# Eye Drops Schemas
+# ============================================================================
+
+
+class EyeDropsCreate(HealthRecordBase):
+    """Eye drops record creation request model."""
+
+    drops_type: str = Field("Обычные", max_length=50, description="Тип капель")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1f77bcf86cd799439011",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "drops_type": "Обычные",
+                "comment": "Закапали утром",
+            }
+        }
+    )
+
+
+class EyeDropsUpdate(HealthRecordUpdateBase):
+    """Eye drops record update request model."""
+
+    drops_type: Optional[str] = Field(None, max_length=50)
+
+
+class EyeDropsItem(BaseModel):
+    """Eye drops record item in list response."""
+
+    id: str = Field(alias="_id")
+    pet_id: str
+    date_time: str
+    drops_type: str
+    comment: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class EyeDropsListResponse(BaseModel):
+    """List of eye drops records response."""
+
+    eye_drops: List[EyeDropsItem] = Field(alias="eye-drops")
+    
+    model_config = ConfigDict(populate_by_name=True)
+
+
+# ============================================================================
 # Export Schemas
 # ============================================================================
 

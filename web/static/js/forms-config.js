@@ -114,6 +114,27 @@ const FORM_CONFIGS = {
             comment: formData.get('comment') || ''
         }),
         successMessage: (isEdit) => isEdit ? 'Вес обновлен' : 'Вес записан'
+    },
+    'eye-drops': {
+        title: 'Записать закапывание глаз',
+        endpoint: '/api/eye-drops',
+        fields: [
+            { name: 'date', type: 'date', label: 'Дата', required: true, id: 'eye-drops-date' },
+            { name: 'time', type: 'time', label: 'Время', required: true, id: 'eye-drops-time' },
+            { name: 'drops_type', type: 'select', label: 'Тип капель', required: true, options: [
+                { value: 'Обычные', text: 'Обычные' },
+                { value: 'Гелевые', text: 'Гелевые' }
+            ], value: 'Обычные', id: 'eye-drops-type' },
+            { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'eye-drops-comment' }
+        ],
+        transformData: (formData) => ({
+            pet_id: formData.get('pet_id'),
+            date: formData.get('date'),
+            time: formData.get('time'),
+            drops_type: formData.get('drops_type'),
+            comment: formData.get('comment') || ''
+        }),
+        successMessage: (isEdit) => isEdit ? 'Запись о каплях обновлена' : 'Запись о каплях создана'
     }
 };
 
@@ -151,6 +172,9 @@ function getFormSettings() {
         },
         weight: {
             food: 'Royal Canin Fibre Response'
+        },
+        'eye-drops': {
+            drops_type: 'Обычные'
         }
     };
 }
@@ -243,9 +267,9 @@ function createFieldHTML(field, isHalf = false) {
     
     if (field.type === 'select') {
         html += `<select name="${field.name}" ${field.required ? 'required' : ''} id="${field.id}" autocomplete="off">`;
-        field.options.forEach(opt => {
-            // Выбираем первое значение по умолчанию, если не указано field.value
-            const isDefault = field.value ? (field.value === opt.value) : (opt === field.options[0]);
+        field.options.forEach((opt, optIndex) => {
+            // Выбираем значение по умолчанию: если указано field.value, используем его, иначе первое значение
+            const isDefault = field.value ? (field.value === opt.value) : (optIndex === 0);
             const selected = isDefault ? 'selected' : '';
             html += `<option value="${opt.value}" ${selected}>${opt.text}</option>`;
         });

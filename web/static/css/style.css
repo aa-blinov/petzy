@@ -33,6 +33,7 @@
     --ios-pink: #FF375F;
     --ios-yellow: #FFD60A;
     --ios-brown: #A2845E;
+    --ios-teal: #66D4CF;
     
     /* iOS Background Colors */
     --ios-bg-primary: #000000;
@@ -155,6 +156,8 @@
     --bg-yellow-hover: rgba(255, 214, 10, 0.15);
     --bg-pink-light: rgba(255, 55, 95, 0.15);
     --bg-pink-hover: rgba(255, 55, 95, 0.25);
+    --bg-teal-light: rgba(102, 212, 207, 0.15);
+    --bg-teal-hover: rgba(102, 212, 207, 0.25);
     
     /* Overlay */
     --overlay-dark: rgba(0, 0, 0, 0.75);
@@ -221,6 +224,7 @@ body {
 .interactive {
     cursor: pointer;
     transition: var(--transition-base);
+    -webkit-tap-highlight-color: transparent;
 }
 
 .interactive:hover {
@@ -434,6 +438,7 @@ body {
     width: 100%;
     box-sizing: border-box;
     min-width: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .action-cards .action-card.action-card-disabled {
@@ -542,7 +547,17 @@ body {
     background: var(--bg-yellow-hover);
 }
 
-.action-cards .action-card[data-color="pink"] {
+    .action-cards .action-card[data-color="teal"] {
+        border-left: 4px solid var(--ios-teal);
+        background: var(--bg-teal-light);
+    }
+
+    .action-cards .action-card[data-color="teal"]:hover,
+    .action-cards .action-card[data-color="teal"]:focus {
+        background: var(--bg-teal-hover);
+    }
+
+    .action-cards .action-card[data-color="pink"] {
     border-left: 4px solid var(--ios-pink);
     background: var(--bg-pink-light);
 }
@@ -940,6 +955,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .pet-card:hover {
@@ -1045,6 +1061,7 @@ body {
     padding: 0 var(--space-4);
     border-radius: var(--radius-md);
     font-size: var(--text-base);
+    -webkit-tap-highlight-color: transparent;
     font-weight: var(--font-normal);
     cursor: pointer;
     transition: var(--transition-base);
@@ -1267,10 +1284,20 @@ body {
     height: 44px;
     min-height: 44px;
     letter-spacing: var(--tracking-normal);
+    -webkit-tap-highlight-color: transparent;
 }
 
 .btn:active {
     transform: scale(0.97);
+}
+
+.btn:focus {
+    outline: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 .btn-primary {
@@ -1380,6 +1407,7 @@ body {
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
     font-size: 0.88235rem;
     font-weight: 400;
     color: var(--text-secondary);
@@ -1435,6 +1463,11 @@ body {
     background: var(--bg-orange-light);
 }
 
+.tab-btn[data-tab="eye-drops"].active {
+    border-left: 3px solid var(--ios-teal);
+    background: var(--bg-teal-light);
+}
+
 .history-content {
     padding: 0;
     min-height: 200px;
@@ -1454,6 +1487,7 @@ body {
     border: 0.5px solid var(--ios-separator);
     border-left: 3px solid var(--primary-color);
     transition: var(--transition-base);
+    -webkit-tap-highlight-color: transparent;
 }
 
 .history-item:active {
@@ -1480,6 +1514,10 @@ body {
 
 .history-item[data-color="orange"] {
     border-left-color: var(--ios-orange);
+}
+
+.history-item[data-color="teal"] {
+    border-left-color: var(--ios-teal);
 }
 
 .history-date {
@@ -1537,6 +1575,11 @@ body {
 .export-buttons {
     display: flex;
     gap: var(--space-2);
+}
+
+.export-buttons .btn:focus,
+.export-buttons .btn:focus-visible {
+    outline: none;
 }
 
 .export-menu {
