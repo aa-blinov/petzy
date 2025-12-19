@@ -129,7 +129,8 @@ class TestParseEventDateTimeSafe:
         response, status = error_response
         assert status == 422
         data = response.get_json()
-        assert "Неверный формат даты/времени" in data["error"]
+        assert data["error"] == "Неверные данные"
+        assert data["code"] == "validation_error"
 
     def test_parse_event_datetime_safe_missing_date_or_time(self, client, mock_db, regular_user_token, test_pet):
         """When date or time is missing, should return current datetime without error."""

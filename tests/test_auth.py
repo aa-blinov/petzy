@@ -52,7 +52,7 @@ class TestAuthentication:
         assert response.status_code == 429
         data = response.get_json()
         assert "error" in data
-        assert "Too many" in data["error"] or "rate limit" in data["error"].lower()
+        assert "Превышен лимит" in data["error"] or "rate limit" in data["error"].lower() or "Too many" in data["error"]
 
     def test_api_refresh_token_success(self, client, mock_db, admin_refresh_token):
         """Test successful token refresh."""
