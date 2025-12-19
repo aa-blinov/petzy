@@ -8,6 +8,7 @@ from datetime import datetime
 import web.app as app  # Import app module to access db and logger
 from web.app import api
 from web.errors import error_response
+from web.messages import get_message
 from web.security import get_current_user, login_required
 from web.helpers import (
     validate_pet_access,
@@ -82,7 +83,7 @@ def add_asthma_attack():
 
         app.db["asthma_attacks"].insert_one(attack_data)
         app.logger.info(f"Asthma attack recorded: pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Приступ астмы записан"}), 201
+        return get_message("asthma_created", status=201)
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for asthma attack: pet_id={pet_id}, user={username}, error={e}")
@@ -173,7 +174,7 @@ def update_asthma_attack(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Asthma attack updated: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Приступ астмы обновлен"}), 200
+        return get_message("asthma_updated")
 
     except ValueError as e:
         app.logger.warning(
@@ -211,7 +212,7 @@ def delete_asthma_attack(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Asthma attack deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Приступ астмы удален"}), 200
+        return get_message("asthma_deleted")
 
     except ValueError as e:
         app.logger.warning(
@@ -260,7 +261,7 @@ def add_defecation():
 
         app.db["defecations"].insert_one(defecation_data)
         app.logger.info(f"Defecation recorded: pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Дефекация записана"}), 201
+        return get_message("defecation_created", status=201)
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for defecation: pet_id={pet_id}, user={username}, error={e}")
@@ -346,7 +347,7 @@ def update_defecation(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Defecation updated: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Дефекация обновлена"}), 200
+        return get_message("defecation_updated")
 
     except ValueError as e:
         app.logger.warning(
@@ -384,7 +385,7 @@ def delete_defecation(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Defecation deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Дефекация удалена"}), 200
+        return get_message("defecation_deleted")
 
     except ValueError as e:
         app.logger.warning(
@@ -430,7 +431,7 @@ def add_litter():
 
         app.db["litter_changes"].insert_one(litter_data)
         app.logger.info(f"Litter change recorded: pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Смена лотка записана"}), 201
+        return get_message("litter_created", status=201)
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for litter change: pet_id={pet_id}, user={username}, error={e}")
@@ -510,7 +511,7 @@ def update_litter(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Litter change updated: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Смена лотка обновлена"}), 200
+        return get_message("litter_updated")
 
     except ValueError as e:
         app.logger.warning(
@@ -548,7 +549,7 @@ def delete_litter(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Litter change deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Смена лотка удалена"}), 200
+        return get_message("litter_deleted")
 
     except ValueError as e:
         app.logger.warning(
@@ -596,7 +597,7 @@ def add_weight():
 
         app.db["weights"].insert_one(weight_data)
         app.logger.info(f"Weight recorded: pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Вес записан"}), 201
+        return get_message("weight_created", status=201)
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight: pet_id={pet_id}, user={username}, error={e}")
@@ -677,7 +678,7 @@ def update_weight(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Weight updated: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Вес обновлен"}), 200
+        return get_message("weight_updated")
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight update: record_id={record_id}, user={username}, error={e}")
@@ -713,7 +714,7 @@ def delete_weight(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Weight deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Вес удален"}), 200
+        return get_message("weight_deleted")
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for weight deletion: record_id={record_id}, user={username}, error={e}")
@@ -758,7 +759,7 @@ def add_feeding():
 
         app.db["feedings"].insert_one(feeding_data)
         app.logger.info(f"Feeding recorded: pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Дневная порция записана"}), 201
+        return get_message("feeding_created", status=201)
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding: pet_id={pet_id}, user={username}, error={e}")
@@ -838,7 +839,7 @@ def update_feeding(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Feeding updated: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Дневная порция обновлена"}), 200
+        return get_message("feeding_updated")
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding update: record_id={record_id}, user={username}, error={e}")
@@ -874,7 +875,7 @@ def delete_feeding(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Feeding deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Дневная порция удалена"}), 200
+        return get_message("feeding_deleted")
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
@@ -919,7 +920,7 @@ def add_eye_drops():
 
         app.db["eye_drops"].insert_one(eye_drops_data)
         app.logger.info(f"Eye drops recorded: pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Запись о каплях создана"}), 201
+        return get_message("eye_drops_created", status=201)
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for eye drops: pet_id={pet_id}, user={username}, error={e}")
@@ -1001,7 +1002,7 @@ def update_eye_drops(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Eye drops updated: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Запись о каплях обновлена"}), 200
+        return get_message("eye_drops_updated")
 
     except ValueError as e:
         app.logger.warning(
@@ -1039,7 +1040,7 @@ def delete_eye_drops(record_id):
             return error_response("record_not_found")
 
         app.logger.info(f"Eye drops deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Запись о каплях удалена"}), 200
+        return get_message("eye_drops_deleted")
 
     except ValueError as e:
         app.logger.warning(

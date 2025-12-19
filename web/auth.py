@@ -37,6 +37,7 @@ from web.schemas import (
     ErrorResponse,
 )
 from web.errors import error_response
+from web.messages import get_message
 
 
 def page_login_required(f):
@@ -117,14 +118,7 @@ def api_login():
 
         logger.info(f"Successful login: user={username}, ip={client_ip}")
 
-        response = jsonify(
-            {
-                "success": True,
-                "message": "Login successful",
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-        )
+        response, status = get_message("auth_login_success", access_token=access_token, refresh_token=refresh_token)
 
         # Set tokens in httpOnly cookies
         response.set_cookie(
@@ -144,7 +138,7 @@ def api_login():
             samesite="Lax",
         )
 
-        return response
+        return response, status
 
     # Failed login
     logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
@@ -178,7 +172,7 @@ def api_refresh():
     # Create new access token
     access_token = create_access_token(username)
 
-    response = jsonify({"success": True, "access_token": access_token})
+    response, status = get_message("auth_refresh_success", access_token=access_token)
 
     response.set_cookie(
         "access_token",
@@ -189,7 +183,7 @@ def api_refresh():
         samesite="Lax",
     )
 
-    return response
+    return response, status
 
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
@@ -205,11 +199,11 @@ def api_logout():
         # Remove refresh token from database (must see patched app.db in tests)
         app.db["refresh_tokens"].delete_one({"token": refresh_token})
 
-    response = jsonify({"success": True, "message": "Logged out"})
+    response, status = get_message("auth_logout_success")
     response.set_cookie("access_token", "", max_age=0)
     response.set_cookie("refresh_token", "", max_age=0)
 
-    return response
+    return response, status
 
 
 @auth_bp.route("/api/auth/check-admin", methods=["GET"])

@@ -12,6 +12,7 @@ from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
 from web.helpers import get_pet_and_validate, parse_date
 from web.errors import error_response
+from web.messages import get_message
 from web.schemas import (
     PetCreate,
     PetUpdate,
@@ -131,7 +132,7 @@ def create_pet():
             pet_data["created_at"] = pet_data["created_at"].strftime("%Y-%m-%d %H:%M")
 
         logger.info(f"Pet created: id={pet_data['_id']}, name={pet_data['name']}, owner={username}")
-        return jsonify({"success": True, "pet": pet_data, "message": "Питомец создан"}), 201
+        return get_message("pet_created", status=201, pet=pet_data)
 
     except ValueError as e:
         logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
@@ -290,7 +291,7 @@ def update_pet(pet_id):
 
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$set": update_data})
         logger.info(f"Pet updated: id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Данные питомца обновлены"})
+        return get_message("pet_updated")
 
     except ValueError as e:
         logger.warning(f"Invalid input data for pet update: id={pet_id}, user={username}, error={e}")
@@ -342,7 +343,7 @@ def share_pet(pet_id):
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$addToSet": {"shared_with": share_username}})
 
         logger.info(f"Pet shared: id={pet_id}, owner={username}, shared_with={share_username}")
-        return jsonify({"success": True, "message": f"Доступ предоставлен пользователю {share_username}"}), 200
+        return get_message("pet_shared", username=share_username)
 
     except ValueError as e:
         logger.warning(f"Invalid input data for sharing pet: id={pet_id}, user={username}, error={e}")
@@ -369,7 +370,7 @@ def unshare_pet(pet_id, share_username):
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$pull": {"shared_with": share_username}})
 
         logger.info(f"Pet unshared: id={pet_id}, owner={username}, unshared_from={share_username}")
-        return jsonify({"success": True, "message": f"Доступ убран у пользователя {share_username}"}), 200
+        return get_message("pet_unshared", username=share_username)
 
     except ValueError as e:
         logger.warning(f"Invalid input data for unsharing pet: id={pet_id}, user={username}, error={e}")
@@ -405,7 +406,7 @@ def delete_pet(pet_id):
             return error_response("pet_not_found")
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
-        return jsonify({"success": True, "message": "Питомец удален"}), 200
+        return get_message("pet_deleted")
 
     except ValueError as e:
         logger.warning(f"Invalid pet_id for deletion: id={pet_id}, user={username}, error={e}")

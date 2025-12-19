@@ -10,6 +10,7 @@ from web.app import api, logger  # shared logger and api
 from web.security import login_required, admin_required
 import web.app as app  # to access patched app.db in tests
 from web.security import ADMIN_USERNAME
+from web.messages import get_message
 from web.schemas import (
     UserCreate,
     UserUpdate,
@@ -83,7 +84,7 @@ def create_user():
             user_data["created_at"] = user_data["created_at"].strftime("%Y-%m-%d %H:%M")
 
         logger.info(f"User created: username={user_data['username']}, created_by={current_user}")
-        return jsonify({"success": True, "user": user_data, "message": "Пользователь создан"}), 201
+        return get_message("user_created", status=201, user=user_data)
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user creation: created_by={current_user}, error={e}")
@@ -146,7 +147,7 @@ def update_user(username):
             return error_response("user_not_found")
 
         logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
-        return jsonify({"success": True, "message": "Пользователь обновлен"}), 200
+        return get_message("user_updated")
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user update: username={username}, error={e}")
@@ -174,7 +175,7 @@ def delete_user(username):
         logger.info(
             f"User deactivated: username={username}, deactivated_by={getattr(request, 'current_user', 'admin')}"
         )
-        return jsonify({"success": True, "message": "Пользователь деактивирован"}), 200
+        return get_message("user_deactivated")
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user deactivation: username={username}, error={e}")
@@ -207,7 +208,7 @@ def reset_user_password(username):
             return error_response("user_not_found")
 
         logger.info(f"Password reset: username={username}, reset_by={getattr(request, 'current_user', 'admin')}")
-        return jsonify({"success": True, "message": "Пароль изменен"}), 200
+        return get_message("user_password_reset")
 
     except ValueError as e:
         logger.warning(f"Invalid input data for password reset: username={username}, error={e}")
