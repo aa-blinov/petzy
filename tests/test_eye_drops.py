@@ -1,6 +1,5 @@
 """Tests for eye drops health record endpoints."""
 
-import pytest
 from datetime import datetime, timezone
 
 
@@ -128,4 +127,3 @@ def test_eye_drops_require_pet_id(client, admin_token):
     assert response.status_code == 422
     data = response.get_json()
     assert "error" in data
-

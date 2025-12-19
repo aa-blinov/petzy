@@ -36,6 +36,7 @@ from web.schemas import (
     SuccessResponse,
     ErrorResponse,
 )
+from web.errors import error_response
 
 
 def page_login_required(f):
@@ -102,7 +103,8 @@ auth_bp = Blueprint("auth", __name__)
 )
 def api_login():
     """API endpoint for login - returns JWT tokens."""
-    data = request.context.body
+    # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
+    data = request.context.body  # type: ignore[attr-defined]
     username = data.username.strip()
     password = data.password
     client_ip = request.remote_addr
@@ -146,7 +148,7 @@ def api_login():
 
     # Failed login
     logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
-    return jsonify({"error": "Неверное имя пользователя или пароль"}), 401
+    return error_response("unauthorized_invalid_credentials")
 
 
 @auth_bp.route("/api/auth/refresh", methods=["POST"])
@@ -159,17 +161,17 @@ def api_refresh():
     refresh_token = request.cookies.get("refresh_token") or (request.get_json() or {}).get("refresh_token")
 
     if not refresh_token:
-        return jsonify({"error": "Refresh token required"}), 401
+        return error_response("unauthorized_refresh_token_required")
 
     # Verify refresh token
     payload = verify_token(refresh_token, "refresh")
     if not payload:
-        return jsonify({"error": "Неверный или истекший refresh token"}), 401
+        return error_response("unauthorized_refresh_token_invalid")
 
     # Check if token exists in database
     token_record = app.db["refresh_tokens"].find_one({"token": refresh_token})
     if not token_record:
-        return jsonify({"error": "Refresh token not found"}), 401
+        return error_response("unauthorized_refresh_token_not_found")
 
     username = payload.get("username") or ""
 

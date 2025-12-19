@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from flask import jsonify
 
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
+from web.errors import error_response
 
 
 logger = app.logger
@@ -43,7 +43,9 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
             dt = datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         if time_str:
-            raise ValueError(f"Неверный формат даты/времени. Ожидается YYYY-MM-DD HH:MM, получено '{date_str} {time_str}'")
+            raise ValueError(
+                f"Неверный формат даты/времени. Ожидается YYYY-MM-DD HH:MM, получено '{date_str} {time_str}'"
+            )
         else:
             raise ValueError(f"Неверный формат даты. Ожидается YYYY-MM-DD, получено '{date_str}'")
 
@@ -130,15 +132,15 @@ def validate_pet_access(pet_id, username):
                or (False, (jsonify_response, status_code)) if validation/access fails
     """
     if not pet_id:
-        return False, (jsonify({"error": "pet_id обязателен"}), 422)
+        return False, error_response("validation_error_pet_id_required")
 
     try:
         ObjectId(pet_id)
     except (InvalidId, TypeError, ValueError):
-        return False, (jsonify({"error": "Неверный формат pet_id"}), 422)
+        return False, error_response("invalid_pet_id")
 
     if not check_pet_access(pet_id, username):
-        return False, (jsonify({"error": "Нет доступа к этому животному"}), 403)
+        return False, error_response("pet_forbidden")
 
     return True, None
 
@@ -158,7 +160,7 @@ def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, usern
         except ValueError as e:
             log_context = f"pet_id={pet_id}, user={username}" if pet_id and username else ""
             logger.warning(f"Invalid datetime format for {context}: {log_context}, error={e}")
-            return None, (jsonify({"error": f"Неверный формат даты/времени: {str(e)}"}), 422)
+            return None, error_response("validation_error")
     else:
         return datetime.now(), None
 
@@ -174,18 +176,18 @@ def get_record_and_validate_access(record_id, collection_name, username):
     try:
         record_id_obj = ObjectId(record_id)
     except (InvalidId, TypeError, ValueError):
-        return None, None, (jsonify({"error": "Неверный формат record_id"}), 422)
+        return None, None, error_response("invalid_record_id")
 
     existing = app.db[collection_name].find_one({"_id": record_id_obj})
     if not existing:
-        return None, None, (jsonify({"error": "Запись не найдена"}), 404)
+        return None, None, error_response("record_not_found")
 
     pet_id = existing.get("pet_id")
     if not pet_id:
-        return None, None, (jsonify({"error": "Неверная запись"}), 422)
+        return None, None, error_response("validation_error_invalid_record")
 
     if not check_pet_access(pet_id, username):
-        return None, None, (jsonify({"error": "Нет доступа к этому животному"}), 403)
+        return None, None, error_response("pet_forbidden")
 
     return existing, pet_id, None
 
@@ -201,15 +203,15 @@ def get_pet_and_validate(pet_id, username, require_owner=False):
     try:
         pet = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
         if not pet:
-            return None, (jsonify({"error": "Питомец не найден"}), 404)
+            return None, error_response("pet_not_found")
 
         if require_owner:
             if pet.get("owner") != username:
-                return None, (jsonify({"error": "Только владелец может выполнить это действие"}), 403)
+                return None, error_response("owner_action_forbidden")
         else:
             if not check_pet_access(pet_id, username):
-                return None, (jsonify({"error": "Нет доступа к этому животному"}), 403)
+                return None, error_response("pet_forbidden")
 
         return pet, None
     except (InvalidId, TypeError, ValueError):
-        return None, (jsonify({"error": "Неверный формат pet_id"}), 422)
+        return None, error_response("invalid_pet_id")

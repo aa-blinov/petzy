@@ -7,6 +7,7 @@ from datetime import datetime
 
 import web.app as app  # Import app module to access db and logger
 from web.app import api
+from web.errors import error_response
 from web.security import get_current_user, login_required
 from web.helpers import (
     validate_pet_access,
@@ -51,22 +52,23 @@ health_records_bp = Blueprint("health_records", __name__)
 def add_asthma_attack():
     """Add asthma attack event."""
     try:
-        data = request.context.body
+        # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
+        data = request.context.body  # type: ignore[attr-defined]
         pet_id = request.args.get("pet_id") or data.pet_id
 
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        success, error_response = validate_pet_access(pet_id, username)
-        if not success:
-            return error_response[0], error_response[1]
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "asthma attack", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "asthma attack", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         attack_data = {
             "pet_id": pet_id,
@@ -84,7 +86,7 @@ def add_asthma_attack():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for asthma attack: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/asthma", methods=["GET"])
@@ -96,15 +98,16 @@ def add_asthma_attack():
 )
 def get_asthma_attacks():
     """Get asthma attacks for current pet."""
-    pet_id = request.context.query.pet_id
+    # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
+    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
 
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
-    success, error_response = validate_pet_access(pet_id, username)
-    if not success:
-        return error_response[0], error_response[1]
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
 
     attacks = list(app.db["asthma_attacks"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
 
@@ -136,23 +139,21 @@ def get_asthma_attacks():
 def update_asthma_attack(record_id):
     """Update asthma attack event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "asthma_attacks", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "asthma_attacks", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(
-            date_str, time_str, "asthma attack update", pet_id, username
-        )
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "asthma attack update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         attack_data = {}
         if event_dt is not None:
@@ -169,7 +170,7 @@ def update_asthma_attack(record_id):
         result = app.db["asthma_attacks"].update_one({"_id": ObjectId(record_id)}, {"$set": attack_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Asthma attack updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы обновлен"}), 200
@@ -178,7 +179,7 @@ def update_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid input data for asthma attack update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["DELETE"])
@@ -196,18 +197,18 @@ def update_asthma_attack(record_id):
 def delete_asthma_attack(record_id):
     """Delete asthma attack event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "asthma_attacks", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "asthma_attacks", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["asthma_attacks"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Asthma attack deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Приступ астмы удален"}), 200
@@ -216,7 +217,7 @@ def delete_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid record_id for asthma attack deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверный формат record_id"}), 422
+        return error_response("invalid_record_id")
 
 
 # Defecation routes
@@ -230,22 +231,22 @@ def delete_asthma_attack(record_id):
 def add_defecation():
     """Add defecation event."""
     try:
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
         pet_id = request.args.get("pet_id") or data.pet_id
 
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        success, error_response = validate_pet_access(pet_id, username)
-        if not success:
-            return error_response[0], error_response[1]
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "defecation", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "defecation", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         defecation_data = {
             "pet_id": pet_id,
@@ -263,7 +264,7 @@ def add_defecation():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for defecation: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/defecation", methods=["GET"])
@@ -275,15 +276,15 @@ def add_defecation():
 )
 def get_defecations():
     """Get defecations for current pet."""
-    pet_id = request.context.query.pet_id
+    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
 
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
-    success, error_response = validate_pet_access(pet_id, username)
-    if not success:
-        return error_response[0], error_response[1]
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
 
     defecations = list(app.db["defecations"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
 
@@ -311,21 +312,21 @@ def get_defecations():
 def update_defecation(record_id):
     """Update defecation event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "defecations", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "defecations", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "defecation update", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "defecation update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         defecation_data = {}
         if event_dt is not None:
@@ -342,7 +343,7 @@ def update_defecation(record_id):
         result = app.db["defecations"].update_one({"_id": ObjectId(record_id)}, {"$set": defecation_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Defecation updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация обновлена"}), 200
@@ -351,7 +352,7 @@ def update_defecation(record_id):
         app.logger.warning(
             f"Invalid input data for defecation update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["DELETE"])
@@ -369,18 +370,18 @@ def update_defecation(record_id):
 def delete_defecation(record_id):
     """Delete defecation event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "defecations", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "defecations", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["defecations"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Defecation deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дефекация удалена"}), 200
@@ -389,7 +390,7 @@ def delete_defecation(record_id):
         app.logger.warning(
             f"Invalid record_id for defecation deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверный формат record_id"}), 422
+        return error_response("invalid_record_id")
 
 
 # Litter routes
@@ -403,22 +404,22 @@ def delete_defecation(record_id):
 def add_litter():
     """Add litter change event."""
     try:
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
         pet_id = request.args.get("pet_id") or data.pet_id
 
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        success, error_response = validate_pet_access(pet_id, username)
-        if not success:
-            return error_response[0], error_response[1]
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "litter change", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "litter change", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         litter_data = {
             "pet_id": pet_id,
@@ -433,7 +434,7 @@ def add_litter():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for litter change: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/litter", methods=["GET"])
@@ -445,15 +446,15 @@ def add_litter():
 )
 def get_litter_changes():
     """Get litter changes for current pet."""
-    pet_id = request.context.query.pet_id
+    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
 
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
-    success, error_response = validate_pet_access(pet_id, username)
-    if not success:
-        return error_response[0], error_response[1]
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
 
     litter_changes = list(app.db["litter_changes"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
 
@@ -481,23 +482,21 @@ def get_litter_changes():
 def update_litter(record_id):
     """Update litter change event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "litter_changes", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "litter_changes", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(
-            date_str, time_str, "litter change update", pet_id, username
-        )
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "litter change update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         litter_data = {}
         if event_dt is not None:
@@ -508,7 +507,7 @@ def update_litter(record_id):
         result = app.db["litter_changes"].update_one({"_id": ObjectId(record_id)}, {"$set": litter_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Litter change updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка обновлена"}), 200
@@ -517,7 +516,7 @@ def update_litter(record_id):
         app.logger.warning(
             f"Invalid input data for litter change update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["DELETE"])
@@ -535,18 +534,18 @@ def update_litter(record_id):
 def delete_litter(record_id):
     """Delete litter change event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "litter_changes", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "litter_changes", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["litter_changes"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Litter change deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Смена лотка удалена"}), 200
@@ -555,7 +554,7 @@ def delete_litter(record_id):
         app.logger.warning(
             f"Invalid record_id for litter change deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверный формат record_id"}), 422
+        return error_response("invalid_record_id")
 
 
 # Weight routes
@@ -569,22 +568,22 @@ def delete_litter(record_id):
 def add_weight():
     """Add weight measurement."""
     try:
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
         pet_id = request.args.get("pet_id") or data.pet_id
 
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        success, error_response = validate_pet_access(pet_id, username)
-        if not success:
-            return error_response[0], error_response[1]
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "weight", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "weight", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         weight_data = {
             "pet_id": pet_id,
@@ -601,7 +600,7 @@ def add_weight():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/weight", methods=["GET"])
@@ -613,15 +612,15 @@ def add_weight():
 )
 def get_weights():
     """Get weight measurements for current pet."""
-    pet_id = request.context.query.pet_id
+    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
 
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
-    success, error_response = validate_pet_access(pet_id, username)
-    if not success:
-        return error_response[0], error_response[1]
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
 
     weights = list(app.db["weights"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
 
@@ -649,21 +648,21 @@ def get_weights():
 def update_weight(record_id):
     """Update weight measurement."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "weights", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "weights", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "weight update", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "weight update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         weight_data = {
             "date_time": event_dt,
@@ -675,14 +674,14 @@ def update_weight(record_id):
         result = app.db["weights"].update_one({"_id": ObjectId(record_id)}, {"$set": weight_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Weight updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес обновлен"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight update: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["DELETE"])
@@ -700,25 +699,25 @@ def update_weight(record_id):
 def delete_weight(record_id):
     """Delete weight measurement."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "weights", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "weights", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["weights"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Weight deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Вес удален"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for weight deletion: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверный формат record_id"}), 422
+        return error_response("invalid_record_id")
 
 
 # Feeding routes
@@ -732,22 +731,22 @@ def delete_weight(record_id):
 def add_feeding():
     """Add feeding event."""
     try:
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
         pet_id = request.args.get("pet_id") or data.pet_id
 
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        success, error_response = validate_pet_access(pet_id, username)
-        if not success:
-            return error_response[0], error_response[1]
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "feeding", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "feeding", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         feeding_data = {
             "pet_id": pet_id,
@@ -763,7 +762,7 @@ def add_feeding():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/feeding", methods=["GET"])
@@ -775,15 +774,15 @@ def add_feeding():
 )
 def get_feedings():
     """Get feedings for current pet."""
-    pet_id = request.context.query.pet_id
+    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
 
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
-    success, error_response = validate_pet_access(pet_id, username)
-    if not success:
-        return error_response[0], error_response[1]
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
 
     feedings = list(app.db["feedings"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
 
@@ -811,21 +810,21 @@ def get_feedings():
 def update_feeding(record_id):
     """Update feeding event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "feedings", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "feedings", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "feeding update", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "feeding update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         feeding_data = {
             "date_time": event_dt,
@@ -836,14 +835,14 @@ def update_feeding(record_id):
         result = app.db["feedings"].update_one({"_id": ObjectId(record_id)}, {"$set": feeding_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Feeding updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция обновлена"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding update: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["DELETE"])
@@ -861,25 +860,25 @@ def update_feeding(record_id):
 def delete_feeding(record_id):
     """Delete feeding event."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "feedings", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "feedings", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["feedings"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Feeding deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Дневная порция удалена"}), 200
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверный формат record_id"}), 422
+        return error_response("invalid_record_id")
 
 
 # Eye drops routes
@@ -896,19 +895,19 @@ def add_eye_drops():
         data = request.context.body
         pet_id = request.args.get("pet_id") or data.pet_id
 
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        success, error_response = validate_pet_access(pet_id, username)
-        if not success:
-            return error_response[0], error_response[1]
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "eye drops", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "eye drops", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         eye_drops_data = {
             "pet_id": pet_id,
@@ -924,7 +923,7 @@ def add_eye_drops():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for eye drops: pet_id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/eye-drops", methods=["GET"])
@@ -938,13 +937,13 @@ def get_eye_drops():
     """Get eye drops records for current pet."""
     pet_id = request.context.query.pet_id
 
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
-    success, error_response = validate_pet_access(pet_id, username)
-    if not success:
-        return error_response[0], error_response[1]
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
 
     eye_drops = list(app.db["eye_drops"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
 
@@ -972,21 +971,21 @@ def get_eye_drops():
 def update_eye_drops(record_id):
     """Update eye drops record."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "eye_drops", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "eye_drops", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         data = request.context.body
 
         date_str = data.date
         time_str = data.time
-        event_dt, error_response = parse_event_datetime_safe(date_str, time_str, "eye drops update", pet_id, username)
-        if error_response:
-            return error_response[0], error_response[1]
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "eye drops update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
 
         eye_drops_data = {}
         if event_dt is not None:
@@ -999,7 +998,7 @@ def update_eye_drops(record_id):
         result = app.db["eye_drops"].update_one({"_id": ObjectId(record_id)}, {"$set": eye_drops_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Eye drops updated: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Запись о каплях обновлена"}), 200
@@ -1008,7 +1007,7 @@ def update_eye_drops(record_id):
         app.logger.warning(
             f"Invalid input data for eye drops update: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @health_records_bp.route("/api/eye-drops/<record_id>", methods=["DELETE"])
@@ -1026,18 +1025,18 @@ def update_eye_drops(record_id):
 def delete_eye_drops(record_id):
     """Delete eye drops record."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        existing, pet_id, error_response = get_record_and_validate_access(record_id, "eye_drops", username)
-        if error_response:
-            return error_response[0], error_response[1]
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "eye_drops", username)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["eye_drops"].delete_one({"_id": ObjectId(record_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Запись не найдена"}), 404
+            return error_response("record_not_found")
 
         app.logger.info(f"Eye drops deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Запись о каплях удалена"}), 200
@@ -1046,4 +1045,4 @@ def delete_eye_drops(record_id):
         app.logger.warning(
             f"Invalid record_id for eye drops deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверный формат record_id"}), 422
+        return error_response("invalid_record_id")

@@ -5,7 +5,7 @@ import io
 from datetime import datetime
 from urllib.parse import quote
 
-from flask import Blueprint, jsonify, make_response, request
+from flask import Blueprint, make_response, request
 from flask_pydantic_spec import Response
 
 import web.app as app  # access db, logger
@@ -13,6 +13,7 @@ from web.app import api
 from web.security import login_required
 from web.helpers import check_pet_access
 from web.schemas import ErrorResponse, PetIdQuery
+from web.errors import error_response
 
 
 export_bp = Blueprint("export", __name__)
@@ -30,15 +31,16 @@ export_bp = Blueprint("export", __name__)
 def export_data(export_type, format_type):
     """Export data in various formats."""
     try:
-        pet_id = request.context.query.pet_id
+        # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
+        pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
 
         username = getattr(request, "current_user", None)
         if not username:
-            return jsonify({"error": "Не авторизован"}), 401
+            return error_response("unauthorized")
 
         # Check pet access
         if not check_pet_access(pet_id, username):
-            return jsonify({"error": "Нет доступа к этому животному"}), 403
+            return error_response("pet_forbidden")
 
         if export_type == "feeding":
             collection = app.db["feedings"]
@@ -99,12 +101,12 @@ def export_data(export_type, format_type):
                 ("comment", "Комментарий"),
             ]
         else:
-            return jsonify({"error": "Неверный тип экспорта"}), 422
+            return error_response("export_invalid_type")
 
         records = list(collection.find({"pet_id": pet_id}).sort([("date_time", -1)]))
 
         if not records:
-            return jsonify({"error": "Нет данных для выгрузки"}), 404
+            return error_response("no_data_for_export")
 
         # Prepare records
         for r in records:
@@ -209,7 +211,7 @@ def export_data(export_type, format_type):
             filename = f"{filename_base}.md"
 
         else:
-            return jsonify({"error": "Неверный тип формата"}), 422
+            return error_response("export_invalid_format")
 
         encoded_filename = quote(filename)
 
@@ -224,4 +226,4 @@ def export_data(export_type, format_type):
         app.logger.warning(
             f"Invalid input data for export: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}"
         )
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
