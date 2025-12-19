@@ -829,8 +829,8 @@ document.getElementById('pet-form-element').addEventListener('submit', async fun
                 console.error('Error rendering pets list:', renderError);
             }
             
-            // Синхронизируем с анимацией: slideIn (0.3s) + небольшая задержка для восприятия
-            const alertAnimationDuration = 300; // slideIn animation duration
+            // Синхронизируем с анимацией: fadeIn (0.3s) + небольшая задержка для восприятия
+            const alertAnimationDuration = 300; // fadeIn animation duration (совпадает с экранами)
             const screenTransitionDuration = 300; // fadeIn animation duration (--duration-slow)
             const perceptionDelay = 300; // время для восприятия сообщения
             const totalDelay = alertAnimationDuration + perceptionDelay;
