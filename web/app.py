@@ -3,22 +3,24 @@
 import logging
 import sys
 
-from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
+from flask import Flask, make_response, redirect, render_template, request, url_for
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
+from flask_limiter.util import get_remote_address
 from flask_pydantic_spec import FlaskPydanticSpec
+from gridfs import GridFS
+from werkzeug.exceptions import HTTPException
 
-from web.db import db
-from web.configs import FLASK_CONFIG, RATE_LIMIT_CONFIG, LOGGING_CONFIG
 from web import security
+from web.configs import FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
+from web.db import db
+from web.errors import error_response
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    verify_token,
     get_token_from_request,
     try_refresh_access_token,
+    verify_token,
 )
-from gridfs import GridFS
 
 
 # Configure logging
@@ -80,9 +82,6 @@ api = FlaskPydanticSpec(
 )
 
 
-from werkzeug.exceptions import HTTPException
-
-
 @app.errorhandler(422)
 def handle_unprocessable_entity(err):
     """Handle Pydantic validation errors and return a consistent format."""
@@ -93,21 +92,30 @@ def handle_unprocessable_entity(err):
         messages = data["messages"]
         if isinstance(messages, list) and len(messages) > 0:
             # Format the first error nicely
-            error = messages[0]
-            if isinstance(error, dict):
-                loc = ".".join(str(x) for x in error.get("loc", []))
-                msg = error.get("msg", "Validation error")
-                return jsonify({"error": f"{loc}: {msg}"}), 422
+            # Pydantic validation errors are detailed enough, use generic error
+            return error_response("validation_error")
 
     # Fallback for other 422 errors
-    return jsonify({"error": "Неверные данные"}), 422
+    return error_response("validation_error")
 
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(e):
     """Global error handler for unexpected exceptions."""
-    # If it's a standard HTTP exception (like 404, 405), let Flask handle it
+    # If it's a standard HTTP exception (like 404, 405)
     if isinstance(e, HTTPException):
+        # For API requests, convert to unified error format
+        if request.path.startswith("/api/") or request.is_json:
+            status_code = e.code
+            if status_code == 404:
+                return error_response("not_found")
+            elif status_code == 405:
+                return error_response("method_not_allowed")
+            else:
+                # For other HTTP exceptions, use generic error with appropriate status
+                # This shouldn't happen often, but we handle it gracefully
+                return error_response("internal_error")
+        # For HTML requests, let Flask handle it normally
         return e
 
     # For actual code exceptions, log the full traceback
@@ -115,7 +123,7 @@ def handle_unexpected_error(e):
 
     # Return JSON error if it's an API request or expects JSON
     if request.path.startswith("/api/") or request.is_json:
-        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+        return error_response("internal_error")
 
     # Otherwise return the exception which Flask will convert to a 500 page
     return e
@@ -155,7 +163,7 @@ def handle_rate_limit_exceeded(e):
     """Handle rate limit exceeded errors."""
     # Check if request is JSON (API) or HTML (web page)
     if request.is_json or request.path.startswith("/api/"):
-        return jsonify({"error": str(e.description)}), 429
+        return error_response("rate_limit_exceeded")
     else:
         # For HTML requests, render login page with error
         return render_template("login.html", error=str(e.description)), 429

@@ -11,10 +11,11 @@ import logging
 
 import bcrypt
 import jwt
-from flask import jsonify, request
+from flask import request
 
 from web.configs import JWT_CONFIG, ADMIN_CONFIG
 from web.db import db
+from web.errors import error_response
 
 
 logger = logging.getLogger(__name__)
@@ -165,7 +166,7 @@ def get_current_user():
     """
     username = getattr(request, "current_user", None)
     if not username:
-        return None, (jsonify({"error": "Не авторизован"}), 401)
+        return None, error_response("unauthorized")
     return username, None
 
 
@@ -197,7 +198,7 @@ def login_required(f):
                     new_token = None
 
         if not payload:
-            return jsonify({"error": "Unauthorized"}), 401
+            return error_response("unauthorized")
 
         # Store username in request context
         username = payload.get("username")
@@ -229,7 +230,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         username = getattr(request, "current_user", None)
         if not username or not is_admin(username or ""):
-            return jsonify({"error": "Admin access required"}), 403
+            return error_response("forbidden_admin_only")
         return f(*args, **kwargs)
 
     return decorated_function

@@ -19,6 +19,7 @@ from web.schemas import (
     SuccessResponse,
     ErrorResponse,
 )
+from web.errors import error_response
 
 
 users_bp = Blueprint("users", __name__)
@@ -52,13 +53,14 @@ def get_users():
 def create_user():
     """Create a new user (admin only)."""
     try:
-        data = request.context.body
+        # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
+        data = request.context.body  # type: ignore[attr-defined]
         username = data.username
         password = data.password
 
         existing = app.db["users"].find_one({"username": username})
         if existing:
-            return jsonify({"error": "Пользователь с таким именем уже существует"}), 422
+            return error_response("user_exists")
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
@@ -85,7 +87,7 @@ def create_user():
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user creation: created_by={current_user}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @users_bp.route("/api/users/<username>", methods=["GET"])
@@ -99,7 +101,7 @@ def get_user(username):
     """Get user information (admin only)."""
     user = app.db["users"].find_one({"username": username})
     if not user:
-        return jsonify({"error": "Пользователь не найден"}), 404
+        return error_response("user_not_found")
 
     user["_id"] = str(user["_id"])
     user.pop("password_hash", None)
@@ -122,9 +124,10 @@ def update_user(username):
     try:
         user = app.db["users"].find_one({"username": username})
         if not user:
-            return jsonify({"error": "Пользователь не найден"}), 404
+            return error_response("user_not_found")
 
-        data = request.context.body
+        # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
+        data = request.context.body  # type: ignore[attr-defined]
         update_data = {}
 
         if data.full_name is not None:
@@ -135,19 +138,19 @@ def update_user(username):
             update_data["is_active"] = data.is_active
 
         if not update_data:
-            return jsonify({"error": "Нет данных для обновления"}), 422
+            return error_response("validation_error_no_update_data")
 
         result = app.db["users"].update_one({"username": username}, {"$set": update_data})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Пользователь не найден"}), 404
+            return error_response("user_not_found")
 
         logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
         return jsonify({"success": True, "message": "Пользователь обновлен"}), 200
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user update: username={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @users_bp.route("/api/users/<username>", methods=["DELETE"])
@@ -161,12 +164,12 @@ def delete_user(username):
     """Deactivate user (admin only)."""
     try:
         if username == ADMIN_USERNAME:
-            return jsonify({"error": "Нельзя деактивировать администратора"}), 422
+            return error_response("validation_error_admin_deactivation")
 
         result = app.db["users"].update_one({"username": username}, {"$set": {"is_active": False}})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Пользователь не найден"}), 404
+            return error_response("user_not_found")
 
         logger.info(
             f"User deactivated: username={username}, deactivated_by={getattr(request, 'current_user', 'admin')}"
@@ -175,7 +178,7 @@ def delete_user(username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for user deactivation: username={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @users_bp.route("/api/users/<username>/reset-password", methods=["POST"])
@@ -189,23 +192,23 @@ def delete_user(username):
 def reset_user_password(username):
     """Reset user password (admin only)."""
     try:
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
         new_password = data.password
 
         user = app.db["users"].find_one({"username": username})
         if not user:
-            return jsonify({"error": "Пользователь не найден"}), 404
+            return error_response("user_not_found")
 
         password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
 
         result = app.db["users"].update_one({"username": username}, {"$set": {"password_hash": password_hash}})
 
         if result.matched_count == 0:
-            return jsonify({"error": "Пользователь не найден"}), 404
+            return error_response("user_not_found")
 
         logger.info(f"Password reset: username={username}, reset_by={getattr(request, 'current_user', 'admin')}")
         return jsonify({"success": True, "message": "Пароль изменен"}), 200
 
     except ValueError as e:
         logger.warning(f"Invalid input data for password reset: username={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")

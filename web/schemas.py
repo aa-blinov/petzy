@@ -58,11 +58,16 @@ class ErrorResponse(BaseModel):
     """Standard error response."""
 
     error: str
+    code: Optional[str] = Field(
+        default=None,
+        description="Машиночитаемый код ошибки (опционально)",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "error": "Описание ошибки",
+                "code": "validation_error",
             }
         }
     )
@@ -710,7 +715,7 @@ class EyeDropsListResponse(BaseModel):
     """List of eye drops records response."""
 
     eye_drops: List[EyeDropsItem] = Field(alias="eye-drops")
-    
+
     model_config = ConfigDict(populate_by_name=True)
 
 

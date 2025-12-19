@@ -11,6 +11,7 @@ from web.app import api, logger  # shared logger and api
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
 from web.helpers import get_pet_and_validate, parse_date
+from web.errors import error_response
 from web.schemas import (
     PetCreate,
     PetUpdate,
@@ -30,9 +31,9 @@ pets_bp = Blueprint("pets", __name__)
 @api.validate(resp=Response(HTTP_200=PetListResponse), tags=["pets"])
 def get_pets():
     """Get list of all pets accessible to current user."""
-    username, error_response = get_current_user()
-    if error_response:
-        return error_response[0], error_response[1]
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
 
     pets = list(app.db["pets"].find({"$or": [{"owner": username}, {"shared_with": username}]}).sort("created_at", -1))
 
@@ -62,7 +63,7 @@ def create_pet():
     try:
         username = getattr(request, "current_user", None)
         if not username:
-            return jsonify({"error": "Не авторизован"}), 401
+            return error_response("unauthorized")
 
         # Manual validation instead of @api.validate(body=...) to support multipart/form-data
         if request.content_type and "multipart/form-data" in request.content_type:
@@ -70,14 +71,9 @@ def create_pet():
                 # Validate form data using Pydantic
                 data_dict = request.form.to_dict()
                 data = PetCreate.model_validate(data_dict)
-            except Exception as e:
-                # Extract the first error message from Pydantic
-                error_msg = "Неверные данные"
-                if hasattr(e, "errors") and callable(e.errors):
-                    errors = e.errors()
-                    if errors:
-                        error_msg = f"{errors[0]['loc'][0]}: {errors[0]['msg']}"
-                return jsonify({"error": error_msg}), 422
+            except Exception:
+                # Pydantic validation errors are handled by the global error handler
+                return error_response("validation_error")
 
             name = data.name
             photo_file_id = None
@@ -110,7 +106,7 @@ def create_pet():
             try:
                 data = PetCreate.model_validate(request.get_json())
             except Exception:
-                return jsonify({"error": "Неверные данные"}), 422
+                return error_response("validation_error")
 
             name = data.name
             birth_date = parse_date(data.birth_date, allow_future=False)
@@ -139,7 +135,7 @@ def create_pet():
 
     except ValueError as e:
         logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["GET"])
@@ -157,13 +153,16 @@ def create_pet():
 def get_pet(pet_id):
     """Get pet information."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        pet, error_response = get_pet_and_validate(pet_id, username, require_owner=False)
-        if error_response:
-            return error_response[0], error_response[1]
+        pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+        if access_error:
+            return access_error[0], access_error[1]
+        if pet is None:
+            # Защита от некорректных/mock-результатов helper'а
+            return error_response("pet_not_found")
 
         pet["_id"] = str(pet["_id"])
         if isinstance(pet.get("birth_date"), datetime):
@@ -182,7 +181,7 @@ def get_pet(pet_id):
         logger.warning(
             f"Invalid input data for get_pet: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}"
         )
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["PUT"])
@@ -200,13 +199,13 @@ def get_pet(pet_id):
 def update_pet(pet_id):
     """Update pet information."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        pet, error_response = get_pet_and_validate(pet_id, username, require_owner=True)
-        if error_response:
-            return error_response[0], error_response[1]
+        pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
+        if access_error:
+            return access_error[0], access_error[1]
 
         # Manual validation to support multipart/form-data
         if request.content_type and "multipart/form-data" in request.content_type:
@@ -215,7 +214,7 @@ def update_pet(pet_id):
                 data_dict = request.form.to_dict()
                 data = PetUpdate.model_validate(data_dict)
             except Exception:
-                return jsonify({"error": "Неверные данные"}), 422
+                return error_response("validation_error")
 
             photo_file_id = pet.get("photo_file_id")
 
@@ -270,7 +269,7 @@ def update_pet(pet_id):
             try:
                 data = PetUpdate.model_validate(request.get_json())
             except Exception:
-                return jsonify({"error": "Неверные данные"}), 422
+                return error_response("validation_error")
 
             birth_date = parse_date(data.birth_date, allow_future=False)
 
@@ -287,7 +286,7 @@ def update_pet(pet_id):
                 update_data["photo_url"] = data.photo_url
 
         if not update_data:
-            return jsonify({"error": "Нет данных для обновления"}), 422
+            return error_response("validation_error_no_update_data")
 
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$set": update_data})
         logger.info(f"Pet updated: id={pet_id}, user={username}")
@@ -295,7 +294,7 @@ def update_pet(pet_id):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for pet update: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @pets_bp.route("/api/pets/<pet_id>/share", methods=["POST"])
@@ -314,30 +313,31 @@ def update_pet(pet_id):
 def share_pet(pet_id):
     """Share pet with another user (owner only)."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        pet, error_response = get_pet_and_validate(pet_id, username, require_owner=True)
-        if error_response:
-            return error_response[0], error_response[1]
+        pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
+        if access_error:
+            return access_error[0], access_error[1]
 
-        data = request.context.body
+        # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
+        data = request.context.body  # type: ignore[attr-defined]
         share_username = data.username.strip()
 
         if not share_username:
-            return jsonify({"error": "Имя пользователя обязательно"}), 422
+            return error_response("validation_error_username_required")
 
         user = app.db["users"].find_one({"username": share_username, "is_active": True})
         if not user:
-            return jsonify({"error": "Пользователь не найден"}), 404
+            return error_response("user_not_found")
 
         if share_username == username:
-            return jsonify({"error": "Нельзя поделиться с самим собой"}), 422
+            return error_response("validation_error_self_share")
 
         shared_with = pet.get("shared_with", [])
         if share_username in shared_with:
-            return jsonify({"error": "Доступ уже предоставлен этому пользователю"}), 422
+            return error_response("validation_error_already_shared")
 
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$addToSet": {"shared_with": share_username}})
 
@@ -346,7 +346,7 @@ def share_pet(pet_id):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for sharing pet: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @pets_bp.route("/api/pets/<pet_id>/share/<share_username>", methods=["DELETE"])
@@ -358,13 +358,13 @@ def share_pet(pet_id):
 def unshare_pet(pet_id, share_username):
     """Remove access from user (owner only)."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        pet, error_response = get_pet_and_validate(pet_id, username, require_owner=True)
-        if error_response:
-            return error_response[0], error_response[1]
+        pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
+        if access_error:
+            return access_error[0], access_error[1]
 
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$pull": {"shared_with": share_username}})
 
@@ -373,7 +373,7 @@ def unshare_pet(pet_id, share_username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for unsharing pet: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверные данные"}), 422
+        return error_response("validation_error")
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["DELETE"])
@@ -391,25 +391,25 @@ def unshare_pet(pet_id, share_username):
 def delete_pet(pet_id):
     """Delete pet."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
 
-        pet, error_response = get_pet_and_validate(pet_id, username, require_owner=True)
-        if error_response:
-            return error_response[0], error_response[1]
+        pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
+        if access_error:
+            return access_error[0], access_error[1]
 
         result = app.db["pets"].delete_one({"_id": ObjectId(pet_id)})
 
         if result.deleted_count == 0:
-            return jsonify({"error": "Животное не найдено"}), 404
+            return error_response("pet_not_found")
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
         return jsonify({"success": True, "message": "Питомец удален"}), 200
 
     except ValueError as e:
         logger.warning(f"Invalid pet_id for deletion: id={pet_id}, user={username}, error={e}")
-        return jsonify({"error": "Неверный формат pet_id"}), 422
+        return error_response("invalid_pet_id")
 
 
 @pets_bp.route("/api/pets/<pet_id>/photo", methods=["GET"])
@@ -430,18 +430,18 @@ def get_pet_photo(pet_id):
     try:
         username = getattr(request, "current_user", None)
         if not username:
-            return jsonify({"error": "Не авторизован"}), 401
+            return error_response("unauthorized")
 
         pet = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
         if not pet:
-            return jsonify({"error": "Животное не найдено"}), 404
+            return error_response("pet_not_found")
 
         if pet.get("owner") != username and username not in pet.get("shared_with", []):
-            return jsonify({"error": "Нет доступа"}), 403
+            return error_response("pet_forbidden")
 
         photo_file_id = pet.get("photo_file_id")
         if not photo_file_id:
-            return jsonify({"error": "Фото не найдено"}), 404
+            return error_response("photo_not_found")
 
         try:
             photo_file = app.fs.get(ObjectId(photo_file_id))
@@ -456,10 +456,10 @@ def get_pet_photo(pet_id):
             return response
         except Exception as e:
             logger.error(f"Error retrieving pet photo: pet_id={pet_id}, user={username}, error={e}", exc_info=True)
-            return jsonify({"error": "Ошибка загрузки фото"}), 404
+            return error_response("upload_error")
 
     except (InvalidId, TypeError, ValueError) as e:
         logger.warning(
             f"Invalid pet_id for photo: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}"
         )
-        return jsonify({"error": "Неверный формат pet_id"}), 422
+        return error_response("invalid_pet_id")
