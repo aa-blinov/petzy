@@ -554,11 +554,15 @@ if (userForm) {
                 const result = await response.json();
                 if (response.ok) {
                     showAlert('success', result.message || 'Пользователь обновлен');
-                    resetUserForm();
+                    // Синхронизируем с анимацией: slideIn (0.3s) + небольшая задержка для восприятия
+                    const alertAnimationDuration = 300; // slideIn animation duration
+                    const perceptionDelay = 300; // время для восприятия сообщения
+                    const totalDelay = alertAnimationDuration + perceptionDelay;
                     setTimeout(() => {
+                        resetUserForm();
                         showScreen('admin-panel');
                         loadUsersList();
-                    }, 500);
+                    }, totalDelay);
                 } else {
                     showAlert('error', result.error || 'Ошибка при сохранении');
                 }
@@ -585,11 +589,15 @@ if (userForm) {
                 const result = await response.json();
                 if (response.ok) {
                     showAlert('success', result.message || 'Пользователь создан');
-                    resetUserForm();
+                    // Синхронизируем с анимацией: slideIn (0.3s) + небольшая задержка для восприятия
+                    const alertAnimationDuration = 300; // slideIn animation duration
+                    const perceptionDelay = 300; // время для восприятия сообщения
+                    const totalDelay = alertAnimationDuration + perceptionDelay;
                     setTimeout(() => {
+                        resetUserForm();
                         showScreen('admin-panel');
                         loadUsersList();
-                    }, 500);
+                    }, totalDelay);
                 } else {
                     showAlert('error', result.error || 'Ошибка при сохранении');
                 }
@@ -805,9 +813,6 @@ document.getElementById('pet-form-element').addEventListener('submit', async fun
         if (response.ok) {
             showAlert('success', result.message || (recordId ? 'Питомец обновлен' : 'Питомец создан'));
             
-            // Reset form
-            resetPetForm();
-            
             // If new pet created, set it as selected
             if (!recordId && result.pet && result.pet._id && result.pet.name) {
                 try {
@@ -824,10 +829,17 @@ document.getElementById('pet-form-element').addEventListener('submit', async fun
                 console.error('Error rendering pets list:', renderError);
             }
             
-            // Return to pet selector screen (same as events)
+            // Синхронизируем с анимацией: slideIn (0.3s) + небольшая задержка для восприятия
+            const alertAnimationDuration = 300; // slideIn animation duration
+            const screenTransitionDuration = 300; // fadeIn animation duration (--duration-slow)
+            const perceptionDelay = 300; // время для восприятия сообщения
+            const totalDelay = alertAnimationDuration + perceptionDelay;
+            
+            // Reset form and return to pet selector screen after animation completes
             setTimeout(() => {
+                resetPetForm();
                 showScreen('pet-selector');
-            }, 150);
+            }, totalDelay);
         } else {
             showAlert('error', result.error || result);
         }
