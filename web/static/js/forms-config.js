@@ -387,16 +387,26 @@ async function handleFormSubmit(formType, formElement) {
         const result = await response.json();
         if (response.ok) {
             showAlert('success', result.message || config.successMessage(!!recordId));
-            formElement.reset();
-            formElement.querySelector('[name="record_id"]').value = '';
-            resetFormDefaults();
+            // Синхронизируем с анимацией: slideIn (0.3s) + небольшая задержка для восприятия
+            const alertAnimationDuration = 300; // slideIn animation duration
+            const screenTransitionDuration = 300; // fadeIn animation duration (--duration-slow)
+            const perceptionDelay = 300; // время для восприятия сообщения
+            const totalDelay = alertAnimationDuration + perceptionDelay;
+            
+            // Сбрасываем форму и переходим на другой экран после завершения анимации алерта
             setTimeout(() => {
+                formElement.reset();
+                const recordIdInput = formElement.querySelector('[name="record_id"]');
+                if (recordIdInput) {
+                    recordIdInput.value = '';
+                }
+                resetFormDefaults();
                 showScreen('main-menu');
                 if (recordId) {
                     showScreen('history');
                     showHistoryTab(formType);
                 }
-            }, 150);
+            }, totalDelay);
         } else {
             showAlert('error', result.error || result);
         }
