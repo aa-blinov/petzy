@@ -1,4 +1,9 @@
-"""Pydantic schemas for request/response validation and OpenAPI documentation."""
+"""Pydantic schemas for request/response validation and OpenAPI documentation.
+
+Naming Convention:
+- All JSON fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops)
+- See docs/api-naming-conventions.md for full naming rules
+"""
 
 from datetime import datetime, timedelta
 from typing import Optional, List, Annotated
@@ -714,7 +719,7 @@ class EyeDropsItem(BaseModel):
 class EyeDropsListResponse(BaseModel):
     """List of eye drops records response."""
 
-    eye_drops: List[EyeDropsItem] = Field(alias="eye-drops")
+    eye_drops: List[EyeDropsItem]
 
     model_config = ConfigDict(populate_by_name=True)
 

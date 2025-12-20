@@ -370,7 +370,7 @@
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('asthma')">Приступы астмы</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('defecation')">Дефекации</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('litter')">Смена лотка</button>
-                    <button class="btn btn-secondary btn-block" onclick="selectExportType('eye-drops')">Закапывание глаз</button>
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('eye_drops')">Закапывание глаз</button>
                 </div>
                 <div id="export-format-selection" class="export-options" style="display: none;">
                     <button class="btn btn-secondary btn-block" onclick="exportData('csv')">CSV</button>
@@ -388,7 +388,7 @@
             <button class="tab-btn" data-tab="asthma" onclick="showHistoryTab('asthma'); return false;">Приступы астмы</button>
             <button class="tab-btn" data-tab="defecation" onclick="showHistoryTab('defecation'); return false;">Дефекации</button>
             <button class="tab-btn" data-tab="litter" onclick="showHistoryTab('litter'); return false;">Смена лотка</button>
-            <button class="tab-btn" data-tab="eye-drops" onclick="showHistoryTab('eye-drops'); return false;">Глаза</button>
+            <button class="tab-btn" data-tab="eye_drops" onclick="showHistoryTab('eye_drops'); return false;">Глаза</button>
         </div>
         <div id="history-content" class="history-content">
             <div class="loading">Загрузка...</div>
@@ -433,10 +433,10 @@ function resetFormDefaults() {
             time: timeStr,
             food: settings.weight.food
         },
-        'eye-drops': {
+        'eye_drops': {
             date: dateStr,
             time: timeStr,
-            drops_type: settings['eye-drops']?.drops_type || 'Обычные'
+            drops_type: settings['eye_drops']?.drops_type || 'Обычные'
         }
     };
     
@@ -465,9 +465,9 @@ document.addEventListener('click', function(event) {
 
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализируем формы при загрузке
-    const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye-drops'];
+    const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye_drops'];
     formTypes.forEach(formType => {
-        const containerIdSuffix = formType === 'eye-drops' ? 'eye-drops' : formType;
+        const containerIdSuffix = formType === 'eye_drops' ? 'eye-drops' : formType;
         const container = document.getElementById(`${containerIdSuffix}-form-container`);
         if (container) {
             container.innerHTML = createFormHTML(formType);
@@ -889,7 +889,7 @@ document.getElementById('settings-form').addEventListener('submit', function(e) 
         weight: {
             food: document.getElementById('default-weight-food').value
         },
-        'eye-drops': {
+        'eye_drops': {
             drops_type: document.getElementById('default-eye-drops-type').value
         }
     };
@@ -943,8 +943,8 @@ async function editRecord(type, recordId) {
         endpoint = `/api/defecation?pet_id=${petId}`;
     } else if (type === 'litter') {
         endpoint = `/api/litter?pet_id=${petId}`;
-    } else if (type === 'eye-drops') {
-        endpoint = `/api/eye-drops?pet_id=${petId}`;
+    } else if (type === 'eye_drops') {
+        endpoint = `/api/eye_drops?pet_id=${petId}`;
     } else {
         endpoint = `/api/weight?pet_id=${petId}`;
     }
@@ -963,8 +963,8 @@ async function editRecord(type, recordId) {
             items = data.defecations;
         } else if (type === 'litter') {
             items = data.litter_changes;
-        } else if (type === 'eye-drops') {
-            items = data['eye-drops'];
+        } else if (type === 'eye_drops') {
+            items = data['eye_drops'];
         } else {
             items = data.weights;
         }
@@ -1000,6 +1000,11 @@ async function deleteRecord(type, recordId) {
         return;
     }
 
+    // Find the element to remove (for preserving scroll position)
+    const historyItem = document.querySelector(`.history-item[data-id="${recordId}"]`);
+    const historyList = historyItem?.parentElement;
+    const historyContent = document.getElementById('history-content');
+
     const endpoint = `/api/${type}/${recordId}`;
 
     try {
@@ -1011,39 +1016,35 @@ async function deleteRecord(type, recordId) {
         const result = await response.json();
         if (response.ok) {
             showAlert('success', result.message || 'Запись удалена');
-            // Reload history
-            const currentTab = document.querySelector('.tab-btn.active');
-            if (currentTab.textContent.includes('Дневные порции')) {
-                showHistoryTab('feeding');
-            } else if (currentTab.textContent.includes('астмы')) {
-                showHistoryTab('asthma');
-            } else if (currentTab.textContent.includes('Дефекации')) {
-                showHistoryTab('defecation');
-            } else if (currentTab.textContent.includes('Смена лотка')) {
-                showHistoryTab('litter');
-            } else if (currentTab.textContent.includes('глаз')) {
-                showHistoryTab('eye-drops');
-            } else if (currentTab.textContent.includes('Вес')) {
-                showHistoryTab('weight');
+            
+            // Remove element from DOM to preserve scroll position
+            if (historyItem && historyList) {
+                historyItem.remove();
+                
+                // If list is now empty, show "no data" message
+                const remainingItems = historyList.querySelectorAll('.history-item');
+                if (remainingItems.length === 0 && historyContent) {
+                    historyContent.innerHTML = '<p class="no-data">Нет записей</p>';
+                }
+            } else {
+                // Fallback: reload if element not found
+                showHistoryTab(type);
             }
         } else if (response.status === 404) {
             // Record already deleted (race condition: another user deleted it)
-            // Treat as success and refresh history
             showAlert('info', 'Запись уже была удалена');
-            // Reload history
-            const currentTab = document.querySelector('.tab-btn.active');
-            if (currentTab.textContent.includes('Дневные порции')) {
-                showHistoryTab('feeding');
-            } else if (currentTab.textContent.includes('астмы')) {
-                showHistoryTab('asthma');
-            } else if (currentTab.textContent.includes('Дефекации')) {
-                showHistoryTab('defecation');
-            } else if (currentTab.textContent.includes('Смена лотка')) {
-                showHistoryTab('litter');
-            } else if (currentTab.textContent.includes('глаз')) {
-                showHistoryTab('eye-drops');
-            } else if (currentTab.textContent.includes('Вес')) {
-                showHistoryTab('weight');
+            
+            // Remove element from DOM if it exists
+            if (historyItem && historyList) {
+                historyItem.remove();
+                
+                const remainingItems = historyList.querySelectorAll('.history-item');
+                if (remainingItems.length === 0 && historyContent) {
+                    historyContent.innerHTML = '<p class="no-data">Нет записей</p>';
+                }
+            } else {
+                // Fallback: reload if element not found
+                showHistoryTab(type);
             }
         } else {
             showAlert('error', result.error || 'Ошибка при удалении');

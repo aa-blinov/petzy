@@ -1452,7 +1452,7 @@ body {
     background: var(--bg-orange-light);
 }
 
-.tab-btn[data-tab="eye-drops"].active {
+.tab-btn[data-tab="eye_drops"].active {
     border-left: 3px solid var(--ios-teal);
     background: var(--bg-teal-light);
 }

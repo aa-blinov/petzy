@@ -91,7 +91,7 @@ def export_data(export_type, format_type):
                 ("food", "Корм"),
                 ("comment", "Комментарий"),
             ]
-        elif export_type == "eye-drops":
+        elif export_type == "eye_drops":
             collection = app.db["eye_drops"]
             title = "Закапывание глаз"
             fields = [

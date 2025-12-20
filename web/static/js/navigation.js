@@ -35,14 +35,14 @@ const NavigationModule = {
             window.scrollTo(0, 0);
             
             // Генерируем формы динамически для типов записей
-            const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye-drops'];
+            const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye_drops'];
             const formType = formTypes.find(type => {
-                const expectedScreenId = type === 'eye-drops' ? 'eye-drops-form' : `${type}-form`;
+                const expectedScreenId = type === 'eye_drops' ? 'eye-drops-form' : `${type}-form`;
                 return screenId === expectedScreenId;
             });
             
             if (formType) {
-                const containerIdSuffix = formType === 'eye-drops' ? 'eye-drops' : formType;
+                const containerIdSuffix = formType === 'eye_drops' ? 'eye-drops' : formType;
                 const container = document.getElementById(`${containerIdSuffix}-form-container`);
                 if (container) {
                     const formElement = document.getElementById(`${formType}-form-element`);
