@@ -115,9 +115,9 @@ const FORM_CONFIGS = {
         }),
         successMessage: (isEdit) => isEdit ? 'Вес обновлен' : 'Вес записан'
     },
-    'eye-drops': {
+    'eye_drops': {
         title: 'Записать закапывание глаз',
-        endpoint: '/api/eye-drops',
+        endpoint: '/api/eye_drops',
         fields: [
             { name: 'date', type: 'date', label: 'Дата', required: true, id: 'eye-drops-date' },
             { name: 'time', type: 'time', label: 'Время', required: true, id: 'eye-drops-time' },
@@ -173,7 +173,7 @@ function getFormSettings() {
         weight: {
             food: 'Royal Canin Fibre Response'
         },
-        'eye-drops': {
+        'eye_drops': {
             drops_type: 'Обычные'
         }
     };

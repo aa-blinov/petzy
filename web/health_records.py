@@ -1,4 +1,9 @@
-"""Health records endpoints (asthma, defecation, litter, weight, feeding)."""
+"""Health records endpoints (asthma, defecation, litter, weight, feeding, eye drops).
+
+JSON Naming Convention:
+- All fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops)
+- See docs/api-naming-conventions.md for full naming rules
+"""
 
 from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
@@ -883,7 +888,7 @@ def delete_feeding(record_id):
 
 
 # Eye drops routes
-@health_records_bp.route("/api/eye-drops", methods=["POST"])
+@health_records_bp.route("/api/eye_drops", methods=["POST"])
 @login_required
 @api.validate(
     body=Request(EyeDropsCreate),
@@ -927,7 +932,7 @@ def add_eye_drops():
         return error_response("validation_error")
 
 
-@health_records_bp.route("/api/eye-drops", methods=["GET"])
+@health_records_bp.route("/api/eye_drops", methods=["GET"])
 @login_required
 @api.validate(
     query=PetIdQuery,
@@ -953,10 +958,10 @@ def get_eye_drops():
         if isinstance(item.get("date_time"), datetime):
             item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"eye-drops": eye_drops})
+    return jsonify({"eye_drops": eye_drops})
 
 
-@health_records_bp.route("/api/eye-drops/<record_id>", methods=["PUT"])
+@health_records_bp.route("/api/eye_drops/<record_id>", methods=["PUT"])
 @login_required
 @api.validate(
     body=Request(EyeDropsUpdate),
@@ -1011,7 +1016,7 @@ def update_eye_drops(record_id):
         return error_response("validation_error")
 
 
-@health_records_bp.route("/api/eye-drops/<record_id>", methods=["DELETE"])
+@health_records_bp.route("/api/eye_drops/<record_id>", methods=["DELETE"])
 @login_required
 @api.validate(
     resp=Response(

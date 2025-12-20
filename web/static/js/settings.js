@@ -14,7 +14,7 @@ const SettingsModule = {
         weight: {
             food: 'Royal Canin Fibre Response'
         },
-        'eye-drops': {
+        'eye_drops': {
             drops_type: 'Обычные'
         }
     },
@@ -53,7 +53,7 @@ const SettingsModule = {
         document.getElementById('default-defecation-color').value = settings.defecation.color || 'Коричневый';
         document.getElementById('default-defecation-food').value = settings.defecation.food;
         document.getElementById('default-weight-food').value = settings.weight.food;
-        document.getElementById('default-eye-drops-type').value = settings['eye-drops']?.drops_type || 'Обычные';
+        document.getElementById('default-eye-drops-type').value = settings['eye_drops']?.drops_type || 'Обычные';
     },
 
     resetSettingsToDefaults() {

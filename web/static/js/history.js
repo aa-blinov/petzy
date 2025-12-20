@@ -81,9 +81,9 @@ const HistoryModule = {
                 return html;
             }
         },
-        'eye-drops': {
-            endpoint: 'eye-drops',
-            dataKey: 'eye-drops',
+        'eye_drops': {
+            endpoint: 'eye_drops',
+            dataKey: 'eye_drops',
             displayName: 'Глаза',
             color: 'teal',
             renderDetails: (item) => {

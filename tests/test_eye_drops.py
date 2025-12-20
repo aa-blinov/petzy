@@ -7,7 +7,7 @@ def test_add_eye_drops_success(client, mock_db, admin_token, admin_pet):
     """Test successful creation of eye drops record."""
     now = datetime.now(timezone.utc)
     response = client.post(
-        "/api/eye-drops",
+        "/api/eye_drops",
         json={
             "pet_id": str(admin_pet["_id"]),
             "date": now.strftime("%Y-%m-%d"),
@@ -43,15 +43,15 @@ def test_get_eye_drops_success(client, mock_db, admin_token, admin_pet):
     )
 
     response = client.get(
-        f"/api/eye-drops?pet_id={admin_pet['_id']}",
+        f"/api/eye_drops?pet_id={admin_pet['_id']}",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
 
     assert response.status_code == 200
     data = response.get_json()
-    assert "eye-drops" in data
-    assert len(data["eye-drops"]) == 1
-    assert data["eye-drops"][0]["drops_type"] == "Обычные"
+    assert "eye_drops" in data
+    assert len(data["eye_drops"]) == 1
+    assert data["eye_drops"][0]["drops_type"] == "Обычные"
 
 
 def test_update_eye_drops_success(client, mock_db, admin_token, admin_pet):
@@ -68,7 +68,7 @@ def test_update_eye_drops_success(client, mock_db, admin_token, admin_pet):
     record_id = str(result.inserted_id)
 
     response = client.put(
-        f"/api/eye-drops/{record_id}",
+        f"/api/eye_drops/{record_id}",
         json={
             "drops_type": "Гелевые",
             "comment": "Updated comment",
@@ -100,7 +100,7 @@ def test_delete_eye_drops_success(client, mock_db, admin_token, admin_pet):
     record_id = str(result.inserted_id)
 
     response = client.delete(
-        f"/api/eye-drops/{record_id}",
+        f"/api/eye_drops/{record_id}",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
 
@@ -115,7 +115,7 @@ def test_delete_eye_drops_success(client, mock_db, admin_token, admin_pet):
 def test_eye_drops_require_pet_id(client, admin_token):
     """Test that pet_id is required for adding eye drops."""
     response = client.post(
-        "/api/eye-drops",
+        "/api/eye_drops",
         json={
             "date": "2024-01-15",
             "time": "14:30",
