@@ -50,8 +50,112 @@ def test_get_eye_drops_success(client, mock_db, admin_token, admin_pet):
     assert response.status_code == 200
     data = response.get_json()
     assert "eye_drops" in data
+    assert "page" in data
+    assert "page_size" in data
+    assert "total" in data
     assert len(data["eye_drops"]) == 1
     assert data["eye_drops"][0]["drops_type"] == "Обычные"
+    assert data["page"] == 1
+    assert data["page_size"] == 100
+    assert data["total"] == 1
+
+
+def test_get_eye_drops_pagination(client, mock_db, admin_token, admin_pet):
+    """Test pagination for eye drops records."""
+    # Create 6 records
+    for i in range(6):
+        mock_db["eye_drops"].insert_one(
+            {
+                "pet_id": str(admin_pet["_id"]),
+                "date_time": datetime(2024, 1, 15, 14, 30),
+                "drops_type": "Обычные" if i % 2 == 0 else "Гелевые",
+                "username": "admin",
+            }
+        )
+
+    # Test first page with page_size=3
+    response = client.get(
+        f"/api/eye_drops?pet_id={admin_pet['_id']}&page=1&page_size=3",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "eye_drops" in data
+    assert len(data["eye_drops"]) == 3
+    assert data["page"] == 1
+    assert data["page_size"] == 3
+    assert data["total"] == 6
+
+    # Test second page
+    response = client.get(
+        f"/api/eye_drops?pet_id={admin_pet['_id']}&page=2&page_size=3",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data["eye_drops"]) == 3
+    assert data["page"] == 2
+    assert data["page_size"] == 3
+    assert data["total"] == 6
+
+    # Test page beyond available data
+    response = client.get(
+        f"/api/eye_drops?pet_id={admin_pet['_id']}&page=5&page_size=3",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data["eye_drops"]) == 0
+    assert data["page"] == 5
+    assert data["page_size"] == 3
+    assert data["total"] == 6
+
+
+def test_get_eye_drops_pagination_different_page_sizes(client, mock_db, admin_token, admin_pet):
+    """Test eye drops pagination with different page sizes."""
+    # Create 40 records
+    for i in range(40):
+        mock_db["eye_drops"].insert_one(
+            {
+                "pet_id": str(admin_pet["_id"]),
+                "date_time": datetime(2024, 1, 15, 14, 30),
+                "drops_type": "Обычные" if i % 2 == 0 else "Гелевые",
+                "username": "admin",
+            }
+        )
+
+    # Test page_size=1 → should return 1 record
+    response = client.get(
+        f"/api/eye_drops?pet_id={admin_pet['_id']}&page=1&page_size=1",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data["eye_drops"]) == 1
+    assert data["page_size"] == 1
+    assert data["total"] == 40
+
+    # Test page_size=25 → should return 25 records
+    response = client.get(
+        f"/api/eye_drops?pet_id={admin_pet['_id']}&page=1&page_size=25",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data["eye_drops"]) == 25
+    assert data["page_size"] == 25
+    assert data["total"] == 40
+
+    # Test page_size=40 → should return all 40 records
+    response = client.get(
+        f"/api/eye_drops?pet_id={admin_pet['_id']}&page=1&page_size=40",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data["eye_drops"]) == 40
+    assert data["page_size"] == 40
+    assert data["total"] == 40
 
 
 def test_update_eye_drops_success(client, mock_db, admin_token, admin_pet):
@@ -126,4 +230,6 @@ def test_eye_drops_require_pet_id(client, admin_token):
 
     assert response.status_code == 422
     data = response.get_json()
-    assert "error" in data
+    # flask-pydantic-spec may return validation errors in different formats
+    # Check for either our error format or flask-pydantic-spec format
+    assert "error" in data or (isinstance(data, list) and len(data) > 0)

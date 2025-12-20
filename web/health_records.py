@@ -39,7 +39,7 @@ from web.schemas import (
     EyeDropsCreate,
     EyeDropsUpdate,
     EyeDropsListResponse,
-    PetIdQuery,
+    PetIdPaginationQuery,
     SuccessResponse,
     ErrorResponse,
 )
@@ -98,14 +98,17 @@ def add_asthma_attack():
 @health_records_bp.route("/api/asthma", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=PetIdPaginationQuery,
     resp=Response(HTTP_200=AsthmaAttackListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
 def get_asthma_attacks():
-    """Get asthma attacks for current pet."""
+    """Get asthma attacks for current pet with pagination."""
     # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
-    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
 
     username, auth_error = get_current_user()
     if auth_error:
@@ -115,7 +118,15 @@ def get_asthma_attacks():
     if not success and access_error:
         return access_error[0], access_error[1]
 
-    attacks = list(app.db["asthma_attacks"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    # Get total count
+    total = app.db["asthma_attacks"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    from web.helpers import apply_pagination
+
+    base_query = app.db["asthma_attacks"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    attacks = list(paginated_query)
 
     for attack in attacks:
         attack["_id"] = str(attack["_id"])
@@ -126,7 +137,7 @@ def get_asthma_attacks():
         elif attack.get("inhalation") is False:
             attack["inhalation"] = "Нет"
 
-    return jsonify({"attacks": attacks})
+    return jsonify({"attacks": attacks, "page": page, "page_size": page_size, "total": total})
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["PUT"])
@@ -276,13 +287,16 @@ def add_defecation():
 @health_records_bp.route("/api/defecation", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=PetIdPaginationQuery,
     resp=Response(HTTP_200=DefecationListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
 def get_defecations():
-    """Get defecations for current pet."""
-    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
+    """Get defecations for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
 
     username, auth_error = get_current_user()
     if auth_error:
@@ -292,14 +306,22 @@ def get_defecations():
     if not success and access_error:
         return access_error[0], access_error[1]
 
-    defecations = list(app.db["defecations"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    # Get total count
+    total = app.db["defecations"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    from web.helpers import apply_pagination
+
+    base_query = app.db["defecations"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    defecations = list(paginated_query)
 
     for defecation in defecations:
         defecation["_id"] = str(defecation["_id"])
         if isinstance(defecation.get("date_time"), datetime):
             defecation["date_time"] = defecation["date_time"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"defecations": defecations})
+    return jsonify({"defecations": defecations, "page": page, "page_size": page_size, "total": total})
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["PUT"])
@@ -446,13 +468,16 @@ def add_litter():
 @health_records_bp.route("/api/litter", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=PetIdPaginationQuery,
     resp=Response(HTTP_200=LitterChangeListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
 def get_litter_changes():
-    """Get litter changes for current pet."""
-    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
+    """Get litter changes for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
 
     username, auth_error = get_current_user()
     if auth_error:
@@ -462,14 +487,22 @@ def get_litter_changes():
     if not success and access_error:
         return access_error[0], access_error[1]
 
-    litter_changes = list(app.db["litter_changes"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    # Get total count
+    total = app.db["litter_changes"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    from web.helpers import apply_pagination
+
+    base_query = app.db["litter_changes"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    litter_changes = list(paginated_query)
 
     for change in litter_changes:
         change["_id"] = str(change["_id"])
         if isinstance(change.get("date_time"), datetime):
             change["date_time"] = change["date_time"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"litter_changes": litter_changes})
+    return jsonify({"litter_changes": litter_changes, "page": page, "page_size": page_size, "total": total})
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["PUT"])
@@ -612,13 +645,16 @@ def add_weight():
 @health_records_bp.route("/api/weight", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=PetIdPaginationQuery,
     resp=Response(HTTP_200=WeightRecordListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
 def get_weights():
-    """Get weight measurements for current pet."""
-    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
+    """Get weight measurements for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
 
     username, auth_error = get_current_user()
     if auth_error:
@@ -628,14 +664,22 @@ def get_weights():
     if not success and access_error:
         return access_error[0], access_error[1]
 
-    weights = list(app.db["weights"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    # Get total count
+    total = app.db["weights"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    from web.helpers import apply_pagination
+
+    base_query = app.db["weights"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    weights = list(paginated_query)
 
     for weight in weights:
         weight["_id"] = str(weight["_id"])
         if isinstance(weight.get("date_time"), datetime):
             weight["date_time"] = weight["date_time"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"weights": weights})
+    return jsonify({"weights": weights, "page": page, "page_size": page_size, "total": total})
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["PUT"])
@@ -774,13 +818,16 @@ def add_feeding():
 @health_records_bp.route("/api/feeding", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=PetIdPaginationQuery,
     resp=Response(HTTP_200=FeedingListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
 def get_feedings():
-    """Get feedings for current pet."""
-    pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
+    """Get feedings for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
 
     username, auth_error = get_current_user()
     if auth_error:
@@ -790,14 +837,22 @@ def get_feedings():
     if not success and access_error:
         return access_error[0], access_error[1]
 
-    feedings = list(app.db["feedings"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    # Get total count
+    total = app.db["feedings"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    from web.helpers import apply_pagination
+
+    base_query = app.db["feedings"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    feedings = list(paginated_query)
 
     for feeding in feedings:
         feeding["_id"] = str(feeding["_id"])
         if isinstance(feeding.get("date_time"), datetime):
             feeding["date_time"] = feeding["date_time"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"feedings": feedings})
+    return jsonify({"feedings": feedings, "page": page, "page_size": page_size, "total": total})
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["PUT"])
@@ -898,7 +953,7 @@ def delete_feeding(record_id):
 def add_eye_drops():
     """Add eye drops record."""
     try:
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
         pet_id = request.args.get("pet_id") or data.pet_id
 
         username, auth_error = get_current_user()
@@ -935,13 +990,16 @@ def add_eye_drops():
 @health_records_bp.route("/api/eye_drops", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=PetIdPaginationQuery,
     resp=Response(HTTP_200=EyeDropsListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
 def get_eye_drops():
-    """Get eye drops records for current pet."""
-    pet_id = request.context.query.pet_id
+    """Get eye drops records for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
 
     username, auth_error = get_current_user()
     if auth_error:
@@ -951,14 +1009,22 @@ def get_eye_drops():
     if not success and access_error:
         return access_error[0], access_error[1]
 
-    eye_drops = list(app.db["eye_drops"].find({"pet_id": pet_id}).sort("date_time", -1).limit(100))
+    # Get total count
+    total = app.db["eye_drops"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    from web.helpers import apply_pagination
+
+    base_query = app.db["eye_drops"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    eye_drops = list(paginated_query)
 
     for item in eye_drops:
         item["_id"] = str(item["_id"])
         if isinstance(item.get("date_time"), datetime):
             item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"eye_drops": eye_drops})
+    return jsonify({"eye_drops": eye_drops, "page": page, "page_size": page_size, "total": total})
 
 
 @health_records_bp.route("/api/eye_drops/<record_id>", methods=["PUT"])
@@ -985,7 +1051,7 @@ def update_eye_drops(record_id):
         if access_error:
             return access_error[0], access_error[1]
 
-        data = request.context.body
+        data = request.context.body  # type: ignore[attr-defined]
 
         date_str = data.date
         time_str = data.time

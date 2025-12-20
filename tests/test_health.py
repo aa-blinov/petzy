@@ -103,7 +103,13 @@ class TestHealthTracking:
         assert response.status_code == 200
         data = response.get_json()
         assert "attacks" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "total" in data
         assert len(data["attacks"]) == 2
+        assert data["page"] == 1
+        assert data["page_size"] == 100
+        assert data["total"] == 2
 
     def test_update_asthma_attack_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating an asthma attack."""
@@ -222,7 +228,13 @@ class TestHealthTracking:
         assert response.status_code == 200
         data = response.get_json()
         assert "defecations" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "total" in data
         assert len(data["defecations"]) == 1
+        assert data["page"] == 1
+        assert data["page_size"] == 100
+        assert data["total"] == 1
 
     def test_update_defecation_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a defecation record."""
@@ -315,7 +327,13 @@ class TestHealthTracking:
         assert response.status_code == 200
         data = response.get_json()
         assert "litter_changes" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "total" in data
         assert len(data["litter_changes"]) == 1
+        assert data["page"] == 1
+        assert data["page_size"] == 100
+        assert data["total"] == 1
 
     def test_update_litter_change_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a litter change record."""
@@ -407,7 +425,13 @@ class TestHealthTracking:
         assert response.status_code == 200
         data = response.get_json()
         assert "weights" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "total" in data
         assert len(data["weights"]) == 2
+        assert data["page"] == 1
+        assert data["page_size"] == 100
+        assert data["total"] == 2
 
     def test_update_weight_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a weight measurement."""
@@ -507,7 +531,13 @@ class TestHealthTracking:
         assert response.status_code == 200
         data = response.get_json()
         assert "feedings" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "total" in data
         assert len(data["feedings"]) == 2
+        assert data["page"] == 1
+        assert data["page_size"] == 100
+        assert data["total"] == 2
 
     def test_update_feeding_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating a feeding record."""
