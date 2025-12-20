@@ -57,6 +57,7 @@ def get_pets():
 @pets_bp.route("/api/pets", methods=["POST"])
 @login_required
 @api.validate(
+    body=Request(PetCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["pets"],
 )
@@ -68,13 +69,19 @@ def create_pet():
             return error_response("unauthorized")
 
         # Validate request data (supports both JSON and multipart/form-data)
-        data, validation_error = validate_request_data(request, PetCreate, context="pet creation")
-        if validation_error or data is None:
-            return validation_error if validation_error else error_response("validation_error")
+        # For JSON: use request.context.body (validated by @api.validate)
+        # For multipart: use validate_request_data helper
+        is_multipart = request.content_type and "multipart/form-data" in request.content_type
+        if is_multipart:
+            data, validation_error = validate_request_data(request, PetCreate, context="pet creation")
+            if validation_error or data is None:
+                return validation_error if validation_error else error_response("validation_error")
+        else:
+            # JSON request - already validated by @api.validate(body=Request(PetCreate))
+            data = request.context.body  # type: ignore[attr-defined]
 
         # Handle photo file upload (only for multipart/form-data)
         photo_file_id = None
-        is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart and "photo_file" in request.files:
             photo_file = request.files["photo_file"]
             if photo_file.filename:
@@ -169,6 +176,7 @@ def get_pet(pet_id):
 @pets_bp.route("/api/pets/<pet_id>", methods=["PUT"])
 @login_required
 @api.validate(
+    body=Request(PetUpdate),
     resp=Response(
         HTTP_200=SuccessResponse,
         HTTP_422=ErrorResponse,
@@ -190,11 +198,16 @@ def update_pet(pet_id):
             return access_error[0], access_error[1]
 
         # Validate request data (supports both JSON and multipart/form-data)
-        data, validation_error = validate_request_data(request, PetUpdate, context="pet update")
-        if validation_error or data is None:
-            return validation_error if validation_error else error_response("validation_error")
-
+        # For JSON: use request.context.body (validated by @api.validate)
+        # For multipart: use validate_request_data helper
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
+        if is_multipart:
+            data, validation_error = validate_request_data(request, PetUpdate, context="pet update")
+            if validation_error or data is None:
+                return validation_error if validation_error else error_response("validation_error")
+        else:
+            # JSON request - already validated by @api.validate(body=Request(PetUpdate))
+            data = request.context.body  # type: ignore[attr-defined]
 
         # Handle photo file upload/removal (only for multipart/form-data)
         photo_file_id = pet.get("photo_file_id") if pet else None
