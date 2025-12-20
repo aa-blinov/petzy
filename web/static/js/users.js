@@ -59,7 +59,7 @@ const UsersModule = {
             
             if (response.ok) {
                 const result = await response.json();
-                const isAdmin = result.isAdmin === true;
+                const isAdmin = result.is_admin === true;
                 this.saveAdminStatus(isAdmin);
                 return isAdmin;
             } else {
