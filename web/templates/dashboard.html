@@ -1021,6 +1021,17 @@ async function deleteRecord(type, recordId) {
             if (historyItem && historyList) {
                 historyItem.remove();
                 
+                // Update pagination total
+                if (typeof HistoryModule !== 'undefined' && HistoryModule.pagination) {
+                    HistoryModule.pagination.total = Math.max(0, HistoryModule.pagination.total - 1);
+                    HistoryModule.pagination.hasMore = (HistoryModule.pagination.currentPage * HistoryModule.pagination.pageSize) < HistoryModule.pagination.total;
+                    
+                    // Update pagination controls
+                    if (historyContent) {
+                        HistoryModule.updatePaginationControls(historyContent, type);
+                    }
+                }
+                
                 // If list is now empty, show "no data" message
                 const remainingItems = historyList.querySelectorAll('.history-item');
                 if (remainingItems.length === 0 && historyContent) {
@@ -1037,6 +1048,17 @@ async function deleteRecord(type, recordId) {
             // Remove element from DOM if it exists
             if (historyItem && historyList) {
                 historyItem.remove();
+                
+                // Update pagination total
+                if (typeof HistoryModule !== 'undefined' && HistoryModule.pagination) {
+                    HistoryModule.pagination.total = Math.max(0, HistoryModule.pagination.total - 1);
+                    HistoryModule.pagination.hasMore = (HistoryModule.pagination.currentPage * HistoryModule.pagination.pageSize) < HistoryModule.pagination.total;
+                    
+                    // Update pagination controls
+                    if (historyContent) {
+                        HistoryModule.updatePaginationControls(historyContent, type);
+                    }
+                }
                 
                 const remainingItems = historyList.querySelectorAll('.history-item');
                 if (remainingItems.length === 0 && historyContent) {
