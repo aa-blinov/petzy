@@ -83,7 +83,9 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <h1 class="nav-title">🐾 Petzy</h1>
+            <h1 class="nav-title">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="Petzy" style="display: inline-block; vertical-align: middle; width: 56px; height: 56px;">
+            </h1>
             {% block nav_user %}
             <div class="nav-user">
                 <button class="btn btn-secondary btn-small nav-btn" onclick="showScreen('settings')" title="Настройки">⚙️</button>

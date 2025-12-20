@@ -1,9 +1,10 @@
 """Flask web application for pet health tracking - Petzy."""
 
 import logging
+import os
 import sys
 
-from flask import Flask, make_response, redirect, render_template, request, url_for
+from flask import Flask, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
 from flask_limiter.errors import RateLimitExceeded
 from flask_limiter.util import get_remote_address
@@ -167,6 +168,34 @@ def handle_rate_limit_exceeded(e):
     else:
         # For HTML requests, render login page with error
         return render_template("login.html", error=str(e.description)), 429
+
+
+@app.route("/favicon.ico")
+def favicon():
+    """Serve favicon.ico to prevent 404 errors."""
+    # Return optimized SVG version of icon-192.svg as favicon
+    # Get the absolute path to static folder
+    static_folder = app.static_folder
+    if static_folder and not os.path.isabs(static_folder):
+        # If relative path, make it absolute relative to app root
+        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        static_folder = os.path.join(app_root, "web", static_folder)
+    elif not static_folder:
+        # Fallback to config
+        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        static_folder = os.path.join(app_root, "web", FLASK_CONFIG["static_folder"])
+    
+    # Try to serve optimized favicon.svg, fallback to icon-192.svg
+    favicon_path = os.path.join(static_folder, "favicon.svg")
+    if os.path.exists(favicon_path):
+        return send_from_directory(
+            static_folder, "favicon.svg", mimetype="image/svg+xml"
+        )
+    else:
+        # Fallback to icon-192.svg if favicon.svg doesn't exist
+        return send_from_directory(
+            static_folder, "icon-192.svg", mimetype="image/svg+xml"
+        )
 
 
 @app.route("/")
