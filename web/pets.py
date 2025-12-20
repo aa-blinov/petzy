@@ -13,6 +13,7 @@ import web.app as app  # to access patched app.db/app.fs in tests
 from web.helpers import get_pet_and_validate, parse_date
 from web.errors import error_response
 from web.messages import get_message
+from web.pydantic_helpers import validate_request_data
 from web.schemas import (
     PetCreate,
     PetUpdate,
@@ -66,63 +67,43 @@ def create_pet():
         if not username:
             return error_response("unauthorized")
 
-        # Manual validation instead of @api.validate(body=...) to support multipart/form-data
-        if request.content_type and "multipart/form-data" in request.content_type:
-            try:
-                # Validate form data using Pydantic
-                data_dict = request.form.to_dict()
-                data = PetCreate.model_validate(data_dict)
-            except Exception:
-                # Pydantic validation errors are handled by the global error handler
-                return error_response("validation_error")
+        # Validate request data (supports both JSON and multipart/form-data)
+        data, validation_error = validate_request_data(request, PetCreate, context="pet creation")
+        if validation_error or data is None:
+            return validation_error if validation_error else error_response("validation_error")
 
-            name = data.name
-            photo_file_id = None
-            if "photo_file" in request.files:
-                photo_file = request.files["photo_file"]
-                if photo_file.filename:
-                    photo_file_id = str(
-                        app.fs.put(
-                            photo_file,
-                            filename=photo_file.filename,
-                            content_type=photo_file.content_type,
-                        )
+        # Handle photo file upload (only for multipart/form-data)
+        photo_file_id = None
+        is_multipart = request.content_type and "multipart/form-data" in request.content_type
+        if is_multipart and "photo_file" in request.files:
+            photo_file = request.files["photo_file"]
+            if photo_file.filename:
+                photo_file_id = str(
+                    app.fs.put(
+                        photo_file,
+                        filename=photo_file.filename,
+                        content_type=photo_file.content_type,
                     )
+                )
 
-            birth_date = parse_date(data.birth_date, allow_future=False)
+        birth_date = parse_date(data.birth_date, allow_future=False)
 
-            pet_data = {
-                "name": name,
-                "breed": data.breed or "",
-                "birth_date": birth_date,
-                "gender": data.gender or "",
-                "photo_file_id": photo_file_id,
-                "owner": username,
-                "shared_with": [],
-                "created_at": datetime.now(timezone.utc),
-                "created_by": username,
-            }
+        pet_data = {
+            "name": data.name,
+            "breed": data.breed or "",
+            "birth_date": birth_date,
+            "gender": data.gender or "",
+            "owner": username,
+            "shared_with": [],
+            "created_at": datetime.now(timezone.utc),
+            "created_by": username,
+        }
+
+        # Add photo_file_id for multipart or photo_url for JSON
+        if is_multipart:
+            pet_data["photo_file_id"] = photo_file_id
         else:
-            # JSON request
-            try:
-                data = PetCreate.model_validate(request.get_json())
-            except Exception:
-                return error_response("validation_error")
-
-            name = data.name
-            birth_date = parse_date(data.birth_date, allow_future=False)
-
-            pet_data = {
-                "name": name,
-                "breed": data.breed or "",
-                "birth_date": birth_date,
-                "gender": data.gender or "",
-                "photo_url": data.photo_url or "",
-                "owner": username,
-                "shared_with": [],
-                "created_at": datetime.now(timezone.utc),
-                "created_by": username,
-            }
+            pet_data["photo_url"] = data.photo_url or ""
 
         result = app.db["pets"].insert_one(pet_data)
         pet_data["_id"] = str(result.inserted_id)
@@ -208,22 +189,21 @@ def update_pet(pet_id):
         if access_error:
             return access_error[0], access_error[1]
 
-        # Manual validation to support multipart/form-data
-        if request.content_type and "multipart/form-data" in request.content_type:
-            try:
-                # Validate form data using Pydantic
-                data_dict = request.form.to_dict()
-                data = PetUpdate.model_validate(data_dict)
-            except Exception:
-                return error_response("validation_error")
+        # Validate request data (supports both JSON and multipart/form-data)
+        data, validation_error = validate_request_data(request, PetUpdate, context="pet update")
+        if validation_error or data is None:
+            return validation_error if validation_error else error_response("validation_error")
 
-            photo_file_id = pet.get("photo_file_id")
+        is_multipart = request.content_type and "multipart/form-data" in request.content_type
 
+        # Handle photo file upload/removal (only for multipart/form-data)
+        photo_file_id = pet.get("photo_file_id") if pet else None
+        if is_multipart:
             if "photo_file" in request.files:
                 photo_file = request.files["photo_file"]
-
                 if photo_file.filename:
-                    old_photo_id = pet.get("photo_file_id")
+                    # Delete old photo if exists
+                    old_photo_id = pet.get("photo_file_id") if pet else None
                     if old_photo_id:
                         try:
                             app.fs.delete(ObjectId(old_photo_id))
@@ -232,6 +212,7 @@ def update_pet(pet_id):
                                 f"Failed to delete old photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
                             )
 
+                    # Upload new photo
                     photo_file_id = str(
                         app.fs.put(
                             photo_file,
@@ -240,7 +221,8 @@ def update_pet(pet_id):
                         )
                     )
                 elif request.form.get("remove_photo") == "true":
-                    old_photo_id = pet.get("photo_file_id")
+                    # Remove photo
+                    old_photo_id = pet.get("photo_file_id") if pet else None
                     if old_photo_id:
                         try:
                             app.fs.delete(ObjectId(old_photo_id))
@@ -250,39 +232,27 @@ def update_pet(pet_id):
                             )
                     photo_file_id = None
 
-            birth_date = parse_date(data.birth_date, allow_future=False)
+        birth_date = parse_date(data.birth_date, allow_future=False)
 
-            update_data = {}
-            if data.name:
-                update_data["name"] = data.name.strip()
-            if data.breed is not None:
-                update_data["breed"] = data.breed.strip()
-            if birth_date is not None:
-                update_data["birth_date"] = birth_date
-            if data.gender is not None:
-                update_data["gender"] = data.gender.strip()
+        # Build update data
+        update_data = {}
+        if data.name is not None:
+            update_data["name"] = data.name.strip() if is_multipart else data.name
+        if data.breed is not None:
+            update_data["breed"] = data.breed.strip() if is_multipart else data.breed
+        if birth_date is not None:
+            update_data["birth_date"] = birth_date
+        if data.gender is not None:
+            update_data["gender"] = data.gender.strip() if is_multipart else data.gender
+
+        # Handle photo fields based on request type
+        if is_multipart:
             if photo_file_id is not None:
                 update_data["photo_file_id"] = photo_file_id
             elif "photo_file_id" in request.form and request.form.get("photo_file_id") == "":
                 update_data["photo_file_id"] = None
         else:
-            # JSON request
-            try:
-                data = PetUpdate.model_validate(request.get_json())
-            except Exception:
-                return error_response("validation_error")
-
-            birth_date = parse_date(data.birth_date, allow_future=False)
-
-            update_data = {}
-            if data.name is not None:
-                update_data["name"] = data.name
-            if data.breed is not None:
-                update_data["breed"] = data.breed
-            if birth_date is not None:
-                update_data["birth_date"] = birth_date
-            if data.gender is not None:
-                update_data["gender"] = data.gender
+            # JSON request - handle photo_url
             if data.photo_url is not None:
                 update_data["photo_url"] = data.photo_url
 
@@ -336,7 +306,7 @@ def share_pet(pet_id):
         if share_username == username:
             return error_response("validation_error_self_share")
 
-        shared_with = pet.get("shared_with", [])
+        shared_with = pet.get("shared_with", []) if pet else []
         if share_username in shared_with:
             return error_response("validation_error_already_shared")
 
@@ -449,7 +419,8 @@ def get_pet_photo(pet_id):
             photo_data = photo_file.read()
 
             response = make_response(photo_data)
-            response.headers.set("Content-Type", photo_file.content_type)
+            content_type = photo_file.content_type or "image/jpeg"
+            response.headers.set("Content-Type", content_type)
             response.headers.set("Content-Disposition", "inline")
             response.headers.set("Cache-Control", "public, max-age=3600, must-revalidate")
             response.headers.set("ETag", f'"{photo_file_id}"')
