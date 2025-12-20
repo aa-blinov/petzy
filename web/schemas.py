@@ -77,6 +77,14 @@ class ErrorResponse(BaseModel):
     )
 
 
+class PaginatedResponse(BaseModel):
+    """Base class for paginated list responses."""
+
+    page: int = Field(..., description="Текущая страница")
+    page_size: int = Field(..., description="Размер страницы")
+    total: int = Field(..., description="Общее количество записей")
+
+
 # ============================================================================
 # Auth Schemas
 # ============================================================================
@@ -501,8 +509,8 @@ class AsthmaAttackItem(BaseModel):
     comment: Optional[str] = None
 
 
-class AsthmaAttackListResponse(BaseModel):
-    """List of asthma attacks response."""
+class AsthmaAttackListResponse(PaginatedResponse):
+    """List of asthma attacks response with pagination."""
 
     attacks: List[AsthmaAttackItem]
 
@@ -568,8 +576,8 @@ class DefecationItem(BaseModel):
     comment: Optional[str] = None
 
 
-class DefecationListResponse(BaseModel):
-    """List of defecations response."""
+class DefecationListResponse(PaginatedResponse):
+    """List of defecations response with pagination."""
 
     defecations: List[DefecationItem]
 
@@ -618,8 +626,8 @@ class LitterChangeItem(BaseModel):
     comment: Optional[str] = None
 
 
-class LitterChangeListResponse(BaseModel):
-    """List of litter changes response."""
+class LitterChangeListResponse(PaginatedResponse):
+    """List of litter changes response with pagination."""
 
     litter_changes: List[LitterChangeItem]
 
@@ -680,8 +688,8 @@ class WeightRecordItem(BaseModel):
     comment: Optional[str] = None
 
 
-class WeightRecordListResponse(BaseModel):
-    """List of weight records response."""
+class WeightRecordListResponse(PaginatedResponse):
+    """List of weight records response with pagination."""
 
     weights: List[WeightRecordItem]
 
@@ -737,8 +745,8 @@ class FeedingItem(BaseModel):
     comment: Optional[str] = None
 
 
-class FeedingListResponse(BaseModel):
-    """List of feedings response."""
+class FeedingListResponse(PaginatedResponse):
+    """List of feedings response with pagination."""
 
     feedings: List[FeedingItem]
 
@@ -794,8 +802,8 @@ class EyeDropsItem(BaseModel):
     comment: Optional[str] = None
 
 
-class EyeDropsListResponse(BaseModel):
-    """List of eye drops records response."""
+class EyeDropsListResponse(PaginatedResponse):
+    """List of eye drops records response with pagination."""
 
     eye_drops: List[EyeDropsItem]
 
@@ -803,6 +811,22 @@ class EyeDropsListResponse(BaseModel):
 # ============================================================================
 # Query Parameter Schemas
 # ============================================================================
+
+
+class PaginationQuery(BaseModel):
+    """Pagination query parameters."""
+
+    page: int = Field(1, ge=1, description="Номер страницы (начиная с 1)")
+    page_size: int = Field(100, ge=1, le=1000, description="Количество элементов на странице (1-1000)")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "page": 1,
+                "page_size": 100,
+            }
+        }
+    )
 
 
 class PetIdQuery(BaseModel):
@@ -814,6 +838,20 @@ class PetIdQuery(BaseModel):
         json_schema_extra={
             "example": {
                 "pet_id": "507f1f77bcf86cd799439011",
+            }
+        }
+    )
+
+
+class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
+    """Query parameters for pet_id with pagination."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1f77bcf86cd799439011",
+                "page": 1,
+                "page_size": 100,
             }
         }
     )

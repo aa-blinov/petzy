@@ -215,3 +215,19 @@ def get_pet_and_validate(pet_id, username, require_owner=False):
         return pet, None
     except (InvalidId, TypeError, ValueError):
         return None, error_response("invalid_pet_id")
+
+
+def apply_pagination(query, page: int, page_size: int):
+    """
+    Apply pagination to MongoDB query.
+
+    Args:
+        query: MongoDB query object
+        page: Page number (1-based)
+        page_size: Number of items per page
+
+    Returns:
+        tuple: (paginated_query, skip_value) where paginated_query has limit and skip applied
+    """
+    skip = (page - 1) * page_size
+    return query.skip(skip).limit(page_size), skip

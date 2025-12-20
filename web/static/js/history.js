@@ -2,6 +2,12 @@
 const HistoryModule = {
     currentHistoryType: 'asthma',
     selectedExportType: null,
+    pagination: {
+        currentPage: 1,
+        pageSize: 100,
+        total: 0,
+        hasMore: false
+    },
 
     // Конфигурация типов записей для истории
     typeConfig: {
@@ -107,10 +113,17 @@ const HistoryModule = {
         return `${day}.${month}.${year} ${timePart}`;
     },
 
-    showHistoryTab(type) {
+    showHistoryTab(type, resetPagination = true) {
         this.currentHistoryType = type;
         const config = this.typeConfig[type];
         if (!config) return;
+        
+        // Reset pagination if starting fresh
+        if (resetPagination) {
+            this.pagination.currentPage = 1;
+            this.pagination.total = 0;
+            this.pagination.hasMore = false;
+        }
         
         // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -129,9 +142,12 @@ const HistoryModule = {
             return;
         }
         
-        content.innerHTML = '<div class="loading">Загрузка...</div>';
+        // Show loading only on first page
+        if (this.pagination.currentPage === 1) {
+            content.innerHTML = '<div class="loading">Загрузка...</div>';
+        }
         
-        const endpoint = `/api/${config.endpoint}?pet_id=${petId}`;
+        const endpoint = `/api/${config.endpoint}?pet_id=${petId}&page=${this.pagination.currentPage}&page_size=${this.pagination.pageSize}`;
         
         fetch(endpoint, { credentials: 'include' })
             .then(response => {
@@ -147,30 +163,91 @@ const HistoryModule = {
             .then(data => {
                 const items = data[config.dataKey] || [];
                 
-                if (!items || items.length === 0) {
+                // Update pagination state
+                this.pagination.total = data.total || 0;
+                this.pagination.hasMore = (this.pagination.currentPage * this.pagination.pageSize) < this.pagination.total;
+                
+                if (this.pagination.currentPage === 1 && (!items || items.length === 0)) {
                     content.innerHTML = '<p class="no-data">Нет записей</p>';
                     return;
                 }
                 
-                let html = '<div class="history-list">';
+                // Get existing list or create new one
+                let listContainer = content.querySelector('.history-list');
+                if (!listContainer) {
+                    listContainer = document.createElement('div');
+                    listContainer.className = 'history-list';
+                    content.innerHTML = '';
+                    content.appendChild(listContainer);
+                }
+                
+                // Append new items
                 items.forEach(item => {
-                    html += `<div class="history-item" data-color="${config.color}" data-id="${item._id}">`;
-                    html += `<div class="history-date">${this.formatDateTime(item.date_time)}</div>`;
-                    const username = item.username || '-';
-                    html += `<div class="history-user"><strong>Пользователь:</strong> ${username}</div>`;
-                    html += `<div class="history-details">${config.renderDetails(item)}</div>`;
-                    html += `<div class="history-actions">`;
-                    html += `<button class="btn btn-secondary btn-small" onclick="editRecord('${type}', '${item._id}')">Редактировать</button>`;
-                    html += `<button class="btn btn-secondary btn-small" onclick="deleteRecord('${type}', '${item._id}')">Удалить</button>`;
-                    html += `</div></div>`;
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'history-item';
+                    itemElement.setAttribute('data-color', config.color);
+                    itemElement.setAttribute('data-id', item._id);
+                    itemElement.innerHTML = `
+                        <div class="history-date">${this.formatDateTime(item.date_time)}</div>
+                        <div class="history-user"><strong>Пользователь:</strong> ${item.username || '-'}</div>
+                        <div class="history-details">${config.renderDetails(item)}</div>
+                        <div class="history-actions">
+                            <button class="btn btn-secondary btn-small" onclick="editRecord('${type}', '${item._id}')">Редактировать</button>
+                            <button class="btn btn-secondary btn-small" onclick="deleteRecord('${type}', '${item._id}')">Удалить</button>
+                        </div>
+                    `;
+                    listContainer.appendChild(itemElement);
                 });
-                html += '</div>';
-                content.innerHTML = html;
+                
+                // Update or create pagination controls
+                this.updatePaginationControls(content, type);
             })
             .catch(error => {
-                content.innerHTML = '<p class="error">Ошибка загрузки данных</p>';
+                if (this.pagination.currentPage === 1) {
+                    content.innerHTML = '<p class="error">Ошибка загрузки данных</p>';
+                }
                 console.error('Error:', error);
             });
+    },
+
+    loadMoreHistory() {
+        if (!this.pagination.hasMore) return;
+        
+        this.pagination.currentPage++;
+        this.showHistoryTab(this.currentHistoryType, false);
+    },
+
+    updatePaginationControls(container, type) {
+        // Remove existing pagination controls
+        const existingControls = container.querySelector('.history-pagination');
+        if (existingControls) {
+            existingControls.remove();
+        }
+        
+        // Add pagination controls if there are more records
+        if (this.pagination.hasMore) {
+            const controls = document.createElement('div');
+            controls.className = 'history-pagination';
+            controls.innerHTML = `
+                <div class="pagination-info">
+                    Показано ${Math.min(this.pagination.currentPage * this.pagination.pageSize, this.pagination.total)} из ${this.pagination.total} записей
+                </div>
+                <button class="btn btn-primary btn-block" onclick="HistoryModule.loadMoreHistory()">
+                    Загрузить еще
+                </button>
+            `;
+            container.appendChild(controls);
+        } else if (this.pagination.total > 0) {
+            // Show total count if all records loaded
+            const controls = document.createElement('div');
+            controls.className = 'history-pagination';
+            controls.innerHTML = `
+                <div class="pagination-info">
+                    Всего записей: ${this.pagination.total}
+                </div>
+            `;
+            container.appendChild(controls);
+        }
     },
 
     showExportMenu() {
