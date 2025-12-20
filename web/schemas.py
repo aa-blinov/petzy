@@ -62,16 +62,15 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Standard error response."""
 
+    success: bool = False
     error: str
-    code: Optional[str] = Field(
-        default=None,
-        description="Машиночитаемый код ошибки (опционально)",
-    )
+    code: Optional[str] = None
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "error": "Описание ошибки",
+                "success": False,
+                "error": "Произошла ошибка",
                 "code": "validation_error",
             }
         }
@@ -94,6 +93,20 @@ class AuthLoginRequest(BaseModel):
             "example": {
                 "username": "admin",
                 "password": "password123",
+            }
+        }
+    )
+
+
+class AuthRefreshRequest(BaseModel):
+    """Refresh token request model (optional - token can be in cookies)."""
+
+    refresh_token: Optional[str] = Field(None, description="Refresh token (optional if provided in cookies)")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
             }
         }
     )
@@ -138,12 +151,12 @@ class AuthRefreshResponse(BaseModel):
 class AdminStatusResponse(BaseModel):
     """Admin status check response."""
 
-    isAdmin: bool
+    is_admin: bool
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "isAdmin": True,
+                "is_admin": True,
             }
         }
     )
@@ -157,7 +170,7 @@ class AdminStatusResponse(BaseModel):
 class UserCreate(BaseModel):
     """User creation request model."""
 
-    username: str = Field(..., min_length=3, max_length=50, description="Имя пользователя")
+    username: str = Field(..., min_length=1, max_length=50, description="Имя пользователя")
     password: str = Field(..., min_length=6, max_length=100, description="Пароль")
     full_name: Optional[str] = Field(None, max_length=100, description="Полное имя")
     email: Optional[str] = Field(None, max_length=100, description="Email")
@@ -165,7 +178,7 @@ class UserCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "username": "newuser",
+                "username": "user1",
                 "password": "securepass123",
                 "full_name": "Иван Иванов",
                 "email": "ivan@example.com",
@@ -184,8 +197,8 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "full_name": "Иван Петров",
-                "email": "ivan.new@example.com",
+                "full_name": "Иван Иванов",
+                "email": "ivan@example.com",
                 "is_active": True,
             }
         }
@@ -193,9 +206,9 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """User response model (without password_hash)."""
+    """User response model."""
 
-    id: str = Field(alias="_id")
+    _id: str
     username: str
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -308,15 +321,18 @@ class PetUpdate(BaseModel):
 class PetResponse(BaseModel):
     """Pet response model."""
 
-    id: str = Field(alias="_id")
+    _id: str
     name: str
-    breed: Optional[str] = None
+    breed: str
     birth_date: Optional[str] = None
-    gender: Optional[str] = None
-    owner: str
+    gender: str
     photo_url: Optional[str] = None
+    photo_file_id: Optional[str] = None
+    owner: str
+    shared_with: List[str]
+    created_at: str
+    created_by: str
     current_user_is_owner: bool
-    created_at: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -327,10 +343,12 @@ class PetResponse(BaseModel):
                 "breed": "Британская короткошерстная",
                 "birth_date": "2020-03-15",
                 "gender": "Мужской",
+                "photo_url": "",
                 "owner": "admin",
-                "photo_url": "/api/pets/507f1f77bcf86cd799439011/photo",
-                "current_user_is_owner": True,
+                "shared_with": [],
                 "created_at": "2024-01-15 14:30",
+                "created_by": "admin",
+                "current_user_is_owner": True,
             }
         },
     )
@@ -349,7 +367,7 @@ class PetListResponse(BaseModel):
 
 
 class PetShareRequest(BaseModel):
-    """Pet share request model."""
+    """Pet sharing request model."""
 
     username: str = Field(..., min_length=1, max_length=50, description="Имя пользователя для предоставления доступа")
 
@@ -368,53 +386,57 @@ class PetShareRequest(BaseModel):
 
 
 class HealthRecordBase(BaseModel):
-    """Base model for health records with common fields."""
+    """Base schema for health records."""
 
-    pet_id: Optional[ObjectIdString] = Field(None, description="ID питомца (может быть в query params)")
-    date: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD")
-    time: Optional[str] = Field(None, description="Время в формате HH:MM")
-    comment: Optional[str] = Field(None, max_length=1000, description="Комментарий")
+    pet_id: ObjectIdString = Field(..., description="ID питомца")
+    date: str = Field(..., description="Дата в формате YYYY-MM-DD")
+    time: str = Field(..., description="Время в формате HH:MM")
+    comment: Optional[str] = Field(None, max_length=500, description="Комментарий")
 
     @field_validator("date")
     @classmethod
     def validate_date(cls, v):
-        """Validate date format and logic (up to 1 day in future)."""
+        """Validate date format and logic."""
         return validate_date_logic(v, allow_future=True, max_future_days=1)
 
     @field_validator("time")
     @classmethod
     def validate_time(cls, v):
         """Validate time format."""
-        if v:
-            try:
-                datetime.strptime(v, "%H:%M")
-            except ValueError:
-                raise ValueError("Неверный формат времени. Используйте HH:MM")
+        if not v:
+            return v
+        try:
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Неверный формат времени. Используйте HH:MM")
         return v
 
 
 class HealthRecordUpdateBase(BaseModel):
-    """Base model for health record updates with common fields."""
+    """Base schema for health record updates."""
 
-    date: Optional[str] = None
-    time: Optional[str] = None
-    comment: Optional[str] = Field(None, max_length=1000)
+    date: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD")
+    time: Optional[str] = Field(None, description="Время в формате HH:MM")
+    comment: Optional[str] = Field(None, max_length=500, description="Комментарий")
 
     @field_validator("date")
     @classmethod
     def validate_date(cls, v):
-        """Validate date format and logic (up to 1 day in future)."""
-        return validate_date_logic(v, allow_future=True, max_future_days=1)
+        """Validate date format and logic."""
+        if v:
+            return validate_date_logic(v, allow_future=True, max_future_days=1)
+        return v
 
     @field_validator("time")
     @classmethod
     def validate_time(cls, v):
         """Validate time format."""
-        if v:
-            try:
-                datetime.strptime(v, "%H:%M")
-            except ValueError:
-                raise ValueError("Неверный формат времени. Используйте HH:MM")
+        if not v:
+            return v
+        try:
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Неверный формат времени. Используйте HH:MM")
         return v
 
 
@@ -427,8 +449,8 @@ class AsthmaAttackCreate(HealthRecordBase):
     """Asthma attack creation request model."""
 
     duration: Optional[str] = Field(None, max_length=50, description="Длительность приступа")
-    reason: Optional[str] = Field(None, max_length=200, description="Причина")
-    inhalation: bool = Field(False, description="Использование ингалятора")
+    reason: Optional[str] = Field(None, max_length=200, description="Причина приступа")
+    inhalation: Optional[bool] = Field(None, description="Была ли проведена ингаляция")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -439,7 +461,7 @@ class AsthmaAttackCreate(HealthRecordBase):
                 "duration": "5 минут",
                 "reason": "Стресс",
                 "inhalation": True,
-                "comment": "Приступ был несильным",
+                "comment": "Приступ был легким",
             }
         }
     )
@@ -450,21 +472,33 @@ class AsthmaAttackUpdate(HealthRecordUpdateBase):
 
     duration: Optional[str] = Field(None, max_length=50)
     reason: Optional[str] = Field(None, max_length=200)
-    inhalation: bool = False
+    inhalation: Optional[bool] = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "duration": "5 минут",
+                "reason": "Стресс",
+                "inhalation": True,
+                "comment": "Приступ был легким",
+            }
+        }
+    )
 
 
 class AsthmaAttackItem(BaseModel):
     """Asthma attack item in list response."""
 
-    id: str = Field(alias="_id")
+    _id: str
     pet_id: str
     date_time: str
+    username: str
     duration: Optional[str] = None
     reason: Optional[str] = None
-    inhalation: str  # "Да" or "Нет"
+    inhalation: Optional[bool] = None
     comment: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
 
 
 class AsthmaAttackListResponse(BaseModel):
@@ -482,8 +516,8 @@ class DefecationCreate(HealthRecordBase):
     """Defecation creation request model."""
 
     stool_type: Optional[str] = Field(None, max_length=50, description="Тип стула")
-    color: str = Field("Коричневый", max_length=50, description="Цвет")
-    food: Optional[str] = Field(None, max_length=200, description="Еда")
+    color: Optional[str] = Field(None, max_length=50, description="Цвет стула")
+    food: Optional[str] = Field(None, max_length=200, description="Корм")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -504,22 +538,34 @@ class DefecationUpdate(HealthRecordUpdateBase):
     """Defecation update request model."""
 
     stool_type: Optional[str] = Field(None, max_length=50)
-    color: str = Field("Коричневый", max_length=50)
+    color: Optional[str] = Field(None, max_length=50)
     food: Optional[str] = Field(None, max_length=200)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "stool_type": "Нормальный",
+                "color": "Коричневый",
+                "food": "Сухой корм",
+                "comment": "Все в порядке",
+            }
+        }
+    )
 
 
 class DefecationItem(BaseModel):
     """Defecation item in list response."""
 
-    id: str = Field(alias="_id")
+    _id: str
     pet_id: str
     date_time: str
+    username: str
     stool_type: Optional[str] = None
     color: Optional[str] = None
     food: Optional[str] = None
     comment: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
 
 
 class DefecationListResponse(BaseModel):
@@ -529,7 +575,7 @@ class DefecationListResponse(BaseModel):
 
 
 # ============================================================================
-# Litter Schemas
+# Litter Change Schemas
 # ============================================================================
 
 
@@ -542,7 +588,7 @@ class LitterChangeCreate(HealthRecordBase):
                 "pet_id": "507f1f77bcf86cd799439011",
                 "date": "2024-01-15",
                 "time": "14:30",
-                "comment": "Лоток полностью заменен",
+                "comment": "Полная замена наполнителя",
             }
         }
     )
@@ -551,18 +597,25 @@ class LitterChangeCreate(HealthRecordBase):
 class LitterChangeUpdate(HealthRecordUpdateBase):
     """Litter change update request model."""
 
-    pass
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "comment": "Полная замена наполнителя",
+            }
+        }
+    )
 
 
 class LitterChangeItem(BaseModel):
     """Litter change item in list response."""
 
-    id: str = Field(alias="_id")
+    _id: str
     pet_id: str
     date_time: str
+    username: str
     comment: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
 
 
 class LitterChangeListResponse(BaseModel):
@@ -579,44 +632,52 @@ class LitterChangeListResponse(BaseModel):
 class WeightRecordCreate(HealthRecordBase):
     """Weight record creation request model."""
 
-    weight: Optional[str | float | int] = Field(None, description="Вес")
-    food: Optional[str] = Field(None, max_length=200, description="Еда")
+    weight: Optional[float] = Field(None, gt=0, description="Вес в килограммах")
+    food: Optional[str] = Field(None, max_length=200, description="Корм")
 
     model_config = ConfigDict(
-        coerce_numbers_to_str=True,
         json_schema_extra={
             "example": {
                 "pet_id": "507f1f77bcf86cd799439011",
                 "date": "2024-01-15",
                 "time": "14:30",
-                "weight": "4.5",
+                "weight": 4.5,
                 "food": "Сухой корм",
                 "comment": "Вес в норме",
             }
-        },
+        }
     )
 
 
 class WeightRecordUpdate(HealthRecordUpdateBase):
     """Weight record update request model."""
 
-    weight: Optional[str | float | int] = None
+    weight: Optional[float] = Field(None, gt=0)
     food: Optional[str] = Field(None, max_length=200)
 
-    model_config = ConfigDict(coerce_numbers_to_str=True)
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "weight": 4.5,
+                "food": "Сухой корм",
+                "comment": "Вес в норме",
+            }
+        }
+    )
 
 
 class WeightRecordItem(BaseModel):
     """Weight record item in list response."""
 
-    id: str = Field(alias="_id")
+    _id: str
     pet_id: str
     date_time: str
-    weight: Optional[str | float | int] = None
+    username: str
+    weight: Optional[float] = None
     food: Optional[str] = None
     comment: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True, coerce_numbers_to_str=True)
 
 
 class WeightRecordListResponse(BaseModel):
@@ -633,40 +694,47 @@ class WeightRecordListResponse(BaseModel):
 class FeedingCreate(HealthRecordBase):
     """Feeding creation request model."""
 
-    food_weight: Optional[str | float | int] = Field(None, description="Вес еды")
+    food_weight: Optional[float] = Field(None, gt=0, description="Вес корма в граммах")
 
     model_config = ConfigDict(
-        coerce_numbers_to_str=True,
         json_schema_extra={
             "example": {
                 "pet_id": "507f1f77bcf86cd799439011",
                 "date": "2024-01-15",
                 "time": "14:30",
-                "food_weight": "100 г",
-                "comment": "Дневная порция",
+                "food_weight": 50.0,
+                "comment": "Обычная порция",
             }
-        },
+        }
     )
 
 
 class FeedingUpdate(HealthRecordUpdateBase):
     """Feeding update request model."""
 
-    food_weight: Optional[str | float | int] = None
+    food_weight: Optional[float] = Field(None, gt=0)
 
-    model_config = ConfigDict(coerce_numbers_to_str=True)
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "food_weight": 50.0,
+                "comment": "Обычная порция",
+            }
+        }
+    )
 
 
 class FeedingItem(BaseModel):
     """Feeding item in list response."""
 
-    id: str = Field(alias="_id")
+    _id: str
     pet_id: str
     date_time: str
-    food_weight: Optional[str | float | int] = None
+    username: str
+    food_weight: Optional[float] = None
     comment: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True, coerce_numbers_to_str=True)
 
 
 class FeedingListResponse(BaseModel):
@@ -681,9 +749,9 @@ class FeedingListResponse(BaseModel):
 
 
 class EyeDropsCreate(HealthRecordBase):
-    """Eye drops record creation request model."""
+    """Eye drops creation request model."""
 
-    drops_type: str = Field("Обычные", max_length=50, description="Тип капель")
+    drops_type: Optional[str] = Field(None, max_length=50, description="Тип капель")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -692,28 +760,38 @@ class EyeDropsCreate(HealthRecordBase):
                 "date": "2024-01-15",
                 "time": "14:30",
                 "drops_type": "Обычные",
-                "comment": "Закапали утром",
+                "comment": "Закапано в оба глаза",
             }
         }
     )
 
 
 class EyeDropsUpdate(HealthRecordUpdateBase):
-    """Eye drops record update request model."""
+    """Eye drops update request model."""
 
     drops_type: Optional[str] = Field(None, max_length=50)
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "drops_type": "Обычные",
+                "comment": "Закапано в оба глаза",
+            }
+        }
+    )
+
 
 class EyeDropsItem(BaseModel):
-    """Eye drops record item in list response."""
+    """Eye drops item in list response."""
 
-    id: str = Field(alias="_id")
+    _id: str
     pet_id: str
     date_time: str
-    drops_type: str
+    username: str
+    drops_type: Optional[str] = None
     comment: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
 
 
 class EyeDropsListResponse(BaseModel):
@@ -721,28 +799,21 @@ class EyeDropsListResponse(BaseModel):
 
     eye_drops: List[EyeDropsItem]
 
-    model_config = ConfigDict(populate_by_name=True)
-
 
 # ============================================================================
-# Export Schemas
+# Query Parameter Schemas
 # ============================================================================
 
 
 class PetIdQuery(BaseModel):
-    """Query parameters for requests requiring pet_id."""
+    """Query parameter for pet_id."""
 
     pet_id: ObjectIdString = Field(..., description="ID питомца")
 
-
-class ExportPathParams(BaseModel):
-    """Export path parameters."""
-
-    export_type: str = Field(..., description="Тип данных для экспорта")
-    format_type: str = Field(..., description="Формат экспорта (csv, tsv, html, md)")
-
-
-class ExportQueryParams(BaseModel):
-    """Export query parameters."""
-
-    pet_id: ObjectIdString = Field(..., description="ID питомца")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1f77bcf86cd799439011",
+            }
+        }
+    )

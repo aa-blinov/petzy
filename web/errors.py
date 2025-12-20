@@ -92,6 +92,6 @@ def error_response(key: str) -> Tuple[Response, int]:
     if err is None:
         # Fallback for unknown error keys (should not happen in production)
         logger.warning(f"Unknown error key: {key}")
-        return jsonify({"error": "Неизвестная ошибка", "code": key}), 500
+        return jsonify({"success": False, "error": "Неизвестная ошибка", "code": key}), 500
 
-    return jsonify({"error": err.message, "code": err.code}), err.status
+    return jsonify({"success": False, "error": err.message, "code": err.code}), err.status

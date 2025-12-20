@@ -228,11 +228,11 @@ class TestAuthentication:
         response = client.get("/api/auth/check-admin", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == 200
         data = response.get_json()
-        assert data["isAdmin"] is True
+        assert data["is_admin"] is True
 
     def test_check_admin_returns_false_for_regular_user(self, client, mock_db, regular_user_token):
         """Test that check-admin returns false for regular user."""
         response = client.get("/api/auth/check-admin", headers={"Authorization": f"Bearer {regular_user_token}"})
         assert response.status_code == 200
         data = response.get_json()
-        assert data["isAdmin"] is False
+        assert data["is_admin"] is False

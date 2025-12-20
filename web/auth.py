@@ -30,6 +30,7 @@ from web.security import (
 )
 from web.schemas import (
     AuthLoginRequest,
+    AuthRefreshRequest,
     AuthTokensResponse,
     AuthRefreshResponse,
     AdminStatusResponse,
@@ -147,12 +148,18 @@ def api_login():
 
 @auth_bp.route("/api/auth/refresh", methods=["POST"])
 @api.validate(
+    body=Request(AuthRefreshRequest),
     resp=Response(HTTP_200=AuthRefreshResponse, HTTP_401=ErrorResponse),
     tags=["auth"],
 )
 def api_refresh():
     """Refresh access token using refresh token."""
-    refresh_token = request.cookies.get("refresh_token") or (request.get_json() or {}).get("refresh_token")
+    # Try to get refresh_token from body (validated by @api.validate) or cookies
+    refresh_token = None
+    if hasattr(request, "context") and hasattr(request.context, "body") and request.context.body:  # type: ignore[attr-defined]
+        refresh_token = request.context.body.refresh_token  # type: ignore[attr-defined]
+    if not refresh_token:
+        refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
         return error_response("unauthorized_refresh_token_required")
@@ -224,13 +231,13 @@ def check_admin():
 
         is_admin_flag = is_admin_check(username)
 
-        return jsonify({"isAdmin": is_admin_flag}), 200
+        return jsonify({"is_admin": is_admin_flag}), 200
     except Exception as e:
         logger.error(
             f"Error checking admin status: user={getattr(request, 'current_user', None)}, error={e}",
             exc_info=True,
         )
-        return jsonify({"isAdmin": False}), 200  # Return false instead of error
+        return jsonify({"is_admin": False}), 200  # Return false instead of error
 
 
 @auth_bp.route("/login", methods=["GET", "POST"], endpoint="login")
