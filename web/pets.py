@@ -10,7 +10,7 @@ from flask_pydantic_spec import Request, Response
 from web.app import api, logger  # shared logger and api
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
-from web.helpers import get_pet_and_validate, parse_date
+from web.helpers import get_pet_and_validate, parse_date, optimize_image
 from web.errors import error_response
 from web.messages import get_message
 from web.pydantic_helpers import validate_request_data
@@ -85,13 +85,31 @@ def create_pet():
         if is_multipart and "photo_file" in request.files:
             photo_file = request.files["photo_file"]
             if photo_file.filename:
-                photo_file_id = str(
-                    app.fs.put(
-                        photo_file,
-                        filename=photo_file.filename,
-                        content_type=photo_file.content_type,
+                # Optimize image to WebP format
+                optimized_result = optimize_image(photo_file)
+                if optimized_result:
+                    optimized_file, content_type = optimized_result
+                    # Generate filename with .webp extension
+                    original_filename = photo_file.filename
+                    filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                    optimized_filename = f"{filename_without_ext}.webp"
+                    
+                    photo_file_id = str(
+                        app.fs.put(
+                            optimized_file,
+                            filename=optimized_filename,
+                            content_type=content_type,
+                        )
                     )
-                )
+                else:
+                    # Fallback to original file if optimization fails
+                    photo_file_id = str(
+                        app.fs.put(
+                            photo_file,
+                            filename=photo_file.filename,
+                            content_type=photo_file.content_type,
+                        )
+                    )
 
         birth_date = parse_date(data.birth_date, allow_future=False)
 
@@ -225,14 +243,31 @@ def update_pet(pet_id):
                                 f"Failed to delete old photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
                             )
 
-                    # Upload new photo
-                    photo_file_id = str(
-                        app.fs.put(
-                            photo_file,
-                            filename=photo_file.filename,
-                            content_type=photo_file.content_type,
+                    # Optimize image to WebP format
+                    optimized_result = optimize_image(photo_file)
+                    if optimized_result:
+                        optimized_file, content_type = optimized_result
+                        # Generate filename with .webp extension
+                        original_filename = photo_file.filename
+                        filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                        optimized_filename = f"{filename_without_ext}.webp"
+                        
+                        photo_file_id = str(
+                            app.fs.put(
+                                optimized_file,
+                                filename=optimized_filename,
+                                content_type=content_type,
+                            )
                         )
-                    )
+                    else:
+                        # Fallback to original file if optimization fails
+                        photo_file_id = str(
+                            app.fs.put(
+                                photo_file,
+                                filename=photo_file.filename,
+                                content_type=photo_file.content_type,
+                            )
+                        )
                 elif request.form.get("remove_photo") == "true":
                     # Remove photo
                     old_photo_id = pet.get("photo_file_id") if pet else None

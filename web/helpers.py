@@ -5,9 +5,18 @@ Helpers are imported into `web.app` and used by blueprints via `web.app.*`.
 """
 
 from datetime import datetime, timedelta
+from io import BytesIO
+from typing import Optional, Tuple
 
 from bson import ObjectId
 from bson.errors import InvalidId
+from werkzeug.datastructures import FileStorage
+
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
 from web.errors import error_response
@@ -231,3 +240,54 @@ def apply_pagination(query, page: int, page_size: int):
     """
     skip = (page - 1) * page_size
     return query.skip(skip).limit(page_size), skip
+
+
+def optimize_image(file_storage: FileStorage, max_width: int = 1920, max_height: int = 1920, quality: int = 85) -> Optional[Tuple[BytesIO, str]]:
+    """
+    Optimize image by converting to WebP format and resizing if necessary.
+
+    Args:
+        file_storage: Werkzeug FileStorage object containing the image
+        max_width: Maximum width for the image (default: 1920)
+        max_height: Maximum height for the image (default: 1920)
+        quality: WebP quality (0-100, default: 85)
+
+    Returns:
+        Tuple of (BytesIO object with optimized image, content_type) or None if optimization fails
+    """
+    if not PIL_AVAILABLE:
+        logger.warning("Pillow not available, skipping image optimization")
+        return None
+
+    try:
+        # Read the original image
+        file_storage.seek(0)
+        image = Image.open(file_storage)
+        
+        # Convert RGBA to RGB if necessary (WebP supports both, but RGB is smaller)
+        if image.mode in ("RGBA", "LA", "P"):
+            # Create white background for transparency
+            rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+            if image.mode == "P":
+                image = image.convert("RGBA")
+            rgb_image.paste(image, mask=image.split()[-1] if image.mode in ("RGBA", "LA") else None)
+            image = rgb_image
+        elif image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Resize if image is too large
+        if image.width > max_width or image.height > max_height:
+            image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+
+        # Save to WebP format
+        output = BytesIO()
+        image.save(output, format="WEBP", quality=quality, method=6)
+        output.seek(0)
+
+        # Reset original file position
+        file_storage.seek(0)
+
+        return output, "image/webp"
+    except Exception as e:
+        logger.warning(f"Failed to optimize image: {e}", exc_info=True)
+        return None
