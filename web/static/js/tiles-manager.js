@@ -9,7 +9,7 @@ const TilesManager = {
         { id: 'litter', title: 'Смена лотка', subtitle: 'Записать смену лотка', color: 'purple', screen: 'litter-form' },
         { id: 'eye_drops', title: 'Закапывание глаз', subtitle: 'Записать капли', color: 'teal', screen: 'eye-drops-form' },
         { id: 'tooth_brushing', title: 'Чистка зубов', subtitle: 'Записать чистку', color: 'cyan', screen: 'tooth-brushing-form' },
-        { id: 'ear_cleaning', title: 'Чистка ушей', subtitle: 'Записать чистку', color: 'purple', screen: 'ear-cleaning-form' },
+        { id: 'ear_cleaning', title: 'Чистка ушей', subtitle: 'Записать чистку', color: 'yellow', screen: 'ear-cleaning-form' },
         { id: 'history', title: 'История', subtitle: 'Просмотр записей', color: 'blue', screen: 'history' },
         { id: 'admin', title: 'Админ-панель', subtitle: 'Управление пользователями', color: 'pink', screen: 'admin-panel', isAdmin: true }
     ],
