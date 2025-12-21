@@ -99,6 +99,19 @@ const HistoryModule = {
                 }
                 return html;
             }
+        },
+        'tooth_brushing': {
+            endpoint: 'tooth_brushing',
+            dataKey: 'tooth_brushing',
+            displayName: 'Зубы',
+            color: 'cyan',
+            renderDetails: (item) => {
+                let html = `<span><strong>Способ чистки:</strong> ${item.brushing_type}</span>`;
+                if (item.comment && item.comment !== '-') {
+                    html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                }
+                return html;
+            }
         }
     },
 

@@ -745,3 +745,120 @@ class TestDataExport:
         content = response.data.decode("utf-8")
         # Pipes should be escaped in markdown
         assert "\\|" in content
+
+    def test_export_tooth_brushing_csv(self, client, mock_db, regular_user_token, test_pet):
+        """Test exporting tooth brushing records as CSV."""
+        from web.app import db
+
+        db["tooth_brushing"].insert_many(
+            [
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "date_time": datetime(2024, 1, 15, 14, 30),
+                    "brushing_type": "Щетка",
+                    "comment": "Morning brushing",
+                    "username": "testuser",
+                },
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "date_time": datetime(2024, 1, 16, 20, 0),
+                    "brushing_type": "Марля",
+                    "comment": "Evening brushing",
+                    "username": "testuser",
+                },
+            ]
+        )
+
+        response = client.get(
+            f"/api/export/tooth_brushing/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.content_type == "text/csv"
+        assert "attachment" in response.headers.get("Content-Disposition", "")
+
+        # Verify CSV content
+        content = response.data.decode("utf-8-sig")
+        reader = csv.reader(io.StringIO(content))
+        rows = list(reader)
+        assert len(rows) == 3  # Header + 2 data rows
+        assert "Дата и время" in rows[0]
+        assert "Пользователь" in rows[0]
+        assert "Способ чистки" in rows[0]
+        assert "Комментарий" in rows[0]
+
+    def test_export_tooth_brushing_tsv(self, client, mock_db, regular_user_token, test_pet):
+        """Test exporting tooth brushing records as TSV."""
+        from web.app import db
+
+        db["tooth_brushing"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "date_time": datetime(2024, 1, 15, 14, 30),
+                "brushing_type": "Щетка",
+                "comment": "Test",
+                "username": "testuser",
+            }
+        )
+
+        response = client.get(
+            f"/api/export/tooth_brushing/tsv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.content_type == "text/tab-separated-values"
+        content = response.data.decode("utf-8")
+        assert "Пользователь" in content
+        assert "Способ чистки" in content
+
+    def test_export_tooth_brushing_html(self, client, mock_db, regular_user_token, test_pet):
+        """Test exporting tooth brushing records as HTML."""
+        from web.app import db
+
+        db["tooth_brushing"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "date_time": datetime(2024, 1, 15, 14, 30),
+                "brushing_type": "Щетка",
+                "comment": "Test",
+                "username": "testuser",
+            }
+        )
+
+        response = client.get(
+            f"/api/export/tooth_brushing/html?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.content_type == "text/html"
+        assert b"<html" in response.data
+        assert "Чистка зубов".encode("utf-8") in response.data
+        assert "Пользователь".encode("utf-8") in response.data
+
+    def test_export_tooth_brushing_markdown(self, client, mock_db, regular_user_token, test_pet):
+        """Test exporting tooth brushing records as Markdown."""
+        from web.app import db
+
+        db["tooth_brushing"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "date_time": datetime(2024, 1, 15, 14, 30),
+                "brushing_type": "Марля",
+                "comment": "Test change",
+                "username": "testuser",
+            }
+        )
+
+        response = client.get(
+            f"/api/export/tooth_brushing/md?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.content_type == "text/markdown"
+        assert b"# " in response.data
+        assert "Чистка зубов".encode("utf-8") in response.data
+        assert "Пользователь".encode("utf-8") in response.data
