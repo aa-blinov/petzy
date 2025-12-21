@@ -153,8 +153,8 @@
     --bg-blue-hover: rgba(10, 132, 255, 0.25);
     --bg-blue-badge: rgba(10, 132, 255, 0.2);
     --bg-blue-focus: rgba(10, 132, 255, 0.1);
-    --bg-yellow-light: rgba(255, 214, 10, 0.05);
-    --bg-yellow-hover: rgba(255, 214, 10, 0.15);
+    --bg-yellow-light: rgba(255, 214, 10, 0.15);
+    --bg-yellow-hover: rgba(255, 214, 10, 0.25);
     --bg-pink-light: rgba(255, 55, 95, 0.15);
     --bg-pink-hover: rgba(255, 55, 95, 0.25);
     --bg-teal-light: rgba(102, 212, 207, 0.15);
@@ -1650,8 +1650,8 @@ body {
 }
 
 .tab-btn[data-tab="ear_cleaning"].active {
-    border-left: 3px solid var(--ios-purple);
-    background: var(--bg-purple-light);
+    border-left: 3px solid var(--ios-yellow);
+    background: var(--bg-yellow-light);
 }
 
 .history-content {
@@ -1708,6 +1708,10 @@ body {
 
 .history-item[data-color="cyan"] {
     border-left-color: var(--ios-cyan);
+}
+
+.history-item[data-color="yellow"] {
+    border-left-color: var(--ios-yellow);
 }
 
 .history-pagination {

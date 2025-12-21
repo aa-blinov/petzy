@@ -117,7 +117,7 @@ const HistoryModule = {
             endpoint: 'ear_cleaning',
             dataKey: 'ear_cleaning',
             displayName: 'Уши',
-            color: 'purple',
+            color: 'yellow',
             renderDetails: (item) => {
                 let html = `<span><strong>Способ чистки:</strong> ${item.cleaning_type}</span>`;
                 if (item.comment && item.comment !== '-') {
