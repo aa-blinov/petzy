@@ -124,7 +124,9 @@ class TestErrorHandling:
         assert "error" in data or isinstance(data, list)
 
     def test_create_record_missing_datetime(self, client, mock_db, regular_user_token, test_pet):
-        """Test creating record with missing date/time uses current datetime."""
+        """Test creating record - date/time are required by schema."""
+        # Date and time are required fields in HealthRecordBase schema
+        # This test verifies that missing date/time returns validation error
         response = client.post(
             "/api/asthma",
             json={
@@ -135,10 +137,10 @@ class TestErrorHandling:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        # Should succeed and use current datetime
-        assert response.status_code == 201
+        # Should fail validation because date and time are required
+        assert response.status_code == 422
         data = response.get_json()
-        assert data["success"] is True
+        assert "error" in data or isinstance(data, list)
 
     def test_update_pet_exception_handling(self, client, mock_db, regular_user_token, test_pet):
         """Test exception handling in update_pet endpoint."""

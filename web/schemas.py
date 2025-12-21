@@ -1,7 +1,7 @@
 """Pydantic schemas for request/response validation and OpenAPI documentation.
 
 Naming Convention:
-- All JSON fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops)
+- All JSON fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops, tooth_brushing)
 - See docs/api-naming-conventions.md for full naming rules
 """
 
@@ -505,7 +505,7 @@ class AsthmaAttackItem(BaseModel):
     username: str
     duration: Optional[str] = None
     reason: Optional[str] = None
-    inhalation: Optional[bool] = None
+    inhalation: Optional[str] = None  # "Да" or "Нет" as returned by API
     comment: Optional[str] = None
 
 
@@ -806,6 +806,63 @@ class EyeDropsListResponse(PaginatedResponse):
     """List of eye drops records response with pagination."""
 
     eye_drops: List[EyeDropsItem]
+
+
+# ============================================================================
+# Tooth Brushing Schemas
+# ============================================================================
+
+
+class ToothBrushingCreate(HealthRecordBase):
+    """Tooth brushing creation request model."""
+
+    brushing_type: Optional[str] = Field(None, max_length=50, description="Способ чистки")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1f77bcf86cd799439011",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "brushing_type": "Щетка",
+                "comment": "Чистка верхних зубов",
+            }
+        }
+    )
+
+
+class ToothBrushingUpdate(HealthRecordUpdateBase):
+    """Tooth brushing update request model."""
+
+    brushing_type: Optional[str] = Field(None, max_length=50)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "brushing_type": "Щетка",
+                "comment": "Чистка верхних зубов",
+            }
+        }
+    )
+
+
+class ToothBrushingItem(BaseModel):
+    """Tooth brushing item in list response."""
+
+    _id: str
+    pet_id: str
+    date_time: str
+    username: str
+    brushing_type: Optional[str] = None
+    comment: Optional[str] = None
+
+
+class ToothBrushingListResponse(PaginatedResponse):
+    """List of tooth brushing records response with pagination."""
+
+    tooth_brushing: List[ToothBrushingItem]
 
 
 # ============================================================================

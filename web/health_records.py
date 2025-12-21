@@ -1,7 +1,7 @@
-"""Health records endpoints (asthma, defecation, litter, weight, feeding, eye drops).
+"""Health records endpoints (asthma, defecation, litter, weight, feeding, eye drops, tooth brushing).
 
 JSON Naming Convention:
-- All fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops)
+- All fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops, tooth_brushing)
 - See docs/api-naming-conventions.md for full naming rules
 """
 
@@ -19,6 +19,7 @@ from web.helpers import (
     validate_pet_access,
     parse_event_datetime_safe,
     get_record_and_validate_access,
+    apply_pagination,
 )
 from web.schemas import (
     AsthmaAttackCreate,
@@ -39,6 +40,9 @@ from web.schemas import (
     EyeDropsCreate,
     EyeDropsUpdate,
     EyeDropsListResponse,
+    ToothBrushingCreate,
+    ToothBrushingUpdate,
+    ToothBrushingListResponse,
     PetIdPaginationQuery,
     SuccessResponse,
     ErrorResponse,
@@ -1116,5 +1120,181 @@ def delete_eye_drops(record_id):
     except ValueError as e:
         app.logger.warning(
             f"Invalid record_id for eye drops deletion: record_id={record_id}, user={username}, error={e}"
+        )
+        return error_response("invalid_record_id")
+
+
+# Tooth brushing routes
+@health_records_bp.route("/api/tooth_brushing", methods=["POST"])
+@login_required
+@api.validate(
+    body=Request(ToothBrushingCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
+def add_tooth_brushing():
+    """Add tooth brushing record."""
+    try:
+        data = request.context.body  # type: ignore[attr-defined]
+        pet_id = request.args.get("pet_id") or data.pet_id
+
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
+
+        date_str = data.date
+        time_str = data.time
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "tooth brushing", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
+
+        tooth_brushing_data = {
+            "pet_id": pet_id,
+            "date_time": event_dt,
+            "brushing_type": data.brushing_type or "Щетка",
+            "comment": data.comment or "",
+            "username": username,
+        }
+
+        app.db["tooth_brushing"].insert_one(tooth_brushing_data)
+        app.logger.info(f"Tooth brushing recorded: pet_id={pet_id}, user={username}")
+        return get_message("tooth_brushing_created", status=201)
+
+    except ValueError as e:
+        app.logger.warning(f"Invalid input data for tooth brushing: pet_id={pet_id}, user={username}, error={e}")
+        return error_response("validation_error")
+
+
+@health_records_bp.route("/api/tooth_brushing", methods=["GET"])
+@login_required
+@api.validate(
+    query=PetIdPaginationQuery,
+    resp=Response(HTTP_200=ToothBrushingListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_tooth_brushing():
+    """Get tooth brushing records for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
+
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
+
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
+
+    # Get total count
+    total = app.db["tooth_brushing"].count_documents({"pet_id": pet_id})
+
+    # Apply pagination
+    base_query = app.db["tooth_brushing"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    tooth_brushing = list(paginated_query)
+
+    for item in tooth_brushing:
+        item["_id"] = str(item["_id"])
+        if isinstance(item.get("date_time"), datetime):
+            item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
+
+    return jsonify({"tooth_brushing": tooth_brushing, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(ToothBrushingUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
+def update_tooth_brushing(record_id):
+    """Update tooth brushing record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "tooth_brushing", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        data = request.context.body  # type: ignore[attr-defined]
+
+        date_str = data.date
+        time_str = data.time
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "tooth brushing update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
+
+        tooth_brushing_data = {}
+        if event_dt is not None:
+            tooth_brushing_data["date_time"] = event_dt
+        if data.brushing_type is not None:
+            tooth_brushing_data["brushing_type"] = data.brushing_type
+        if data.comment is not None:
+            tooth_brushing_data["comment"] = data.comment
+
+        result = app.db["tooth_brushing"].update_one({"_id": ObjectId(record_id)}, {"$set": tooth_brushing_data})
+
+        if result.matched_count == 0:
+            return error_response("record_not_found")
+
+        app.logger.info(f"Tooth brushing updated: record_id={record_id}, pet_id={pet_id}, user={username}")
+        return get_message("tooth_brushing_updated")
+
+    except ValueError as e:
+        app.logger.warning(
+            f"Invalid input data for tooth brushing update: record_id={record_id}, user={username}, error={e}"
+        )
+        return error_response("validation_error")
+
+
+@health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["DELETE"])
+@login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
+def delete_tooth_brushing(record_id):
+    """Delete tooth brushing record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "tooth_brushing", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        result = app.db["tooth_brushing"].delete_one({"_id": ObjectId(record_id)})
+
+        if result.deleted_count == 0:
+            return error_response("record_not_found")
+
+        app.logger.info(f"Tooth brushing deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
+        return get_message("tooth_brushing_deleted")
+
+    except ValueError as e:
+        app.logger.warning(
+            f"Invalid record_id for tooth brushing deletion: record_id={record_id}, user={username}, error={e}"
         )
         return error_response("invalid_record_id")

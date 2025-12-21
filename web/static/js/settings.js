@@ -16,6 +16,9 @@ const SettingsModule = {
         },
         'eye_drops': {
             drops_type: 'Обычные'
+        },
+        'tooth_brushing': {
+            brushing_type: 'Щетка'
         }
     },
 
@@ -54,6 +57,7 @@ const SettingsModule = {
         document.getElementById('default-defecation-food').value = settings.defecation.food;
         document.getElementById('default-weight-food').value = settings.weight.food;
         document.getElementById('default-eye-drops-type').value = settings['eye_drops']?.drops_type || 'Обычные';
+        document.getElementById('default-tooth-brushing-type').value = settings['tooth_brushing']?.brushing_type || 'Щетка';
     },
 
     resetSettingsToDefaults() {

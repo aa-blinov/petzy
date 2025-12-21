@@ -135,6 +135,28 @@ const FORM_CONFIGS = {
             comment: formData.get('comment') || ''
         }),
         successMessage: (isEdit) => isEdit ? 'Запись о каплях обновлена' : 'Запись о каплях создана'
+    },
+    'tooth_brushing': {
+        title: 'Записать чистку зубов',
+        endpoint: '/api/tooth_brushing',
+        fields: [
+            { name: 'date', type: 'date', label: 'Дата', required: true, id: 'tooth-brushing-date' },
+            { name: 'time', type: 'time', label: 'Время', required: true, id: 'tooth-brushing-time' },
+            { name: 'brushing_type', type: 'select', label: 'Способ чистки', required: true, options: [
+                { value: 'Щетка', text: 'Щетка' },
+                { value: 'Марля', text: 'Марля' },
+                { value: 'Игрушка', text: 'Игрушка' }
+            ], value: 'Щетка', id: 'tooth-brushing-type' },
+            { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'tooth-brushing-comment' }
+        ],
+        transformData: (formData) => ({
+            pet_id: formData.get('pet_id'),
+            date: formData.get('date'),
+            time: formData.get('time'),
+            brushing_type: formData.get('brushing_type'),
+            comment: formData.get('comment') || ''
+        }),
+        successMessage: (isEdit) => isEdit ? 'Запись о чистке зубов обновлена' : 'Запись о чистке зубов создана'
     }
 };
 
@@ -175,6 +197,9 @@ function getFormSettings() {
         },
         'eye_drops': {
             drops_type: 'Обычные'
+        },
+        'tooth_brushing': {
+            brushing_type: 'Щетка'
         }
     };
 }
@@ -298,7 +323,13 @@ function populateForm(formType, recordData, recordId) {
     const config = FORM_CONFIGS[formType];
     if (!config) return;
     
-    const container = document.getElementById(`${formType}-form-container`);
+    let containerId = `${formType}-form-container`;
+    if (formType === 'eye_drops') {
+        containerId = 'eye-drops-form-container';
+    } else if (formType === 'tooth_brushing') {
+        containerId = 'tooth-brushing-form-container';
+    }
+    const container = document.getElementById(containerId);
     if (!container) return;
     
     // Парсим дату и время

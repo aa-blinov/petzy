@@ -54,6 +54,10 @@ MESSAGES: Dict[str, MessageDef] = {
     "eye_drops_created": MessageDef("Запись о каплях создана"),
     "eye_drops_updated": MessageDef("Запись о каплях обновлена"),
     "eye_drops_deleted": MessageDef("Запись о каплях удалена"),
+    # Health records - Tooth Brushing
+    "tooth_brushing_created": MessageDef("Запись о чистке зубов создана"),
+    "tooth_brushing_updated": MessageDef("Запись о чистке зубов обновлена"),
+    "tooth_brushing_deleted": MessageDef("Запись о чистке зубов удалена"),
 }
 
 

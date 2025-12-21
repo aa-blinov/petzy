@@ -14,6 +14,7 @@ class TestHealthTracking:
         response = client.post(
             "/api/asthma?pet_id=" + str(test_pet["_id"]),
             json={
+                "pet_id": str(test_pet["_id"]),
                 "date": "2024-01-15",
                 "time": "14:30",
                 "duration": "5 minutes",
@@ -40,7 +41,7 @@ class TestHealthTracking:
         """Test adding asthma attack without pet access."""
         response = client.post(
             "/api/asthma?pet_id=" + str(admin_pet["_id"]),
-            json={"date": "2024-01-15", "time": "14:30"},
+            json={"pet_id": str(admin_pet["_id"]), "date": "2024-01-15", "time": "14:30"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -84,6 +85,7 @@ class TestHealthTracking:
                     "reason": "Stress",
                     "inhalation": True,
                     "comment": "Attack 1",
+                    "username": "testuser",
                 },
                 {
                     "pet_id": str(test_pet["_id"]),
@@ -92,6 +94,7 @@ class TestHealthTracking:
                     "reason": "Exercise",
                     "inhalation": False,
                     "comment": "Attack 2",
+                    "username": "testuser",
                 },
             ]
         )
@@ -182,6 +185,7 @@ class TestHealthTracking:
         response = client.post(
             "/api/defecation?pet_id=" + str(test_pet["_id"]),
             json={
+                "pet_id": str(test_pet["_id"]),
                 "date": "2024-01-15",
                 "time": "14:30",
                 "stool_type": "Normal",
@@ -217,6 +221,7 @@ class TestHealthTracking:
                     "color": "Brown",
                     "food": "Dry food",
                     "comment": "Record 1",
+                    "username": "testuser",
                 }
             ]
         )
@@ -297,7 +302,7 @@ class TestHealthTracking:
         """Test adding a litter change record."""
         response = client.post(
             "/api/litter?pet_id=" + str(test_pet["_id"]),
-            json={"date": "2024-01-15", "time": "14:30", "comment": "Full change"},
+            json={"pet_id": str(test_pet["_id"]), "date": "2024-01-15", "time": "14:30", "comment": "Full change"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -317,7 +322,7 @@ class TestHealthTracking:
         from web.app import db
 
         db["litter_changes"].insert_one(
-            {"pet_id": str(test_pet["_id"]), "date_time": datetime(2024, 1, 15, 14, 30), "comment": "Change 1"}
+            {"pet_id": str(test_pet["_id"]), "date_time": datetime(2024, 1, 15, 14, 30), "comment": "Change 1", "username": "testuser"}
         )
 
         response = client.get(
@@ -374,9 +379,10 @@ class TestHealthTracking:
         response = client.post(
             "/api/weight?pet_id=" + str(test_pet["_id"]),
             json={
+                "pet_id": str(test_pet["_id"]),
                 "date": "2024-01-15",
                 "time": "14:30",
-                "weight": "4.5",
+                "weight": 4.5,
                 "food": "Dry food",
                 "comment": "Regular check",
             },
@@ -392,7 +398,8 @@ class TestHealthTracking:
 
         weights = list(db["weights"].find({"pet_id": str(test_pet["_id"])}))
         assert len(weights) == 1
-        assert weights[0]["weight"] == "4.5"
+        # API stores weight as float (number), not string
+        assert weights[0]["weight"] == 4.5
         assert weights[0]["username"] == "testuser"
 
     def test_get_weights_success(self, client, mock_db, regular_user_token, test_pet):
@@ -404,16 +411,18 @@ class TestHealthTracking:
                 {
                     "pet_id": str(test_pet["_id"]),
                     "date_time": datetime(2024, 1, 15, 14, 30),
-                    "weight": "4.5",
+                    "weight": 4.5,  # Store as number for consistency
                     "food": "Dry food",
                     "comment": "Weight 1",
+                    "username": "testuser",
                 },
                 {
                     "pet_id": str(test_pet["_id"]),
                     "date_time": datetime(2024, 1, 20, 10, 0),
-                    "weight": "4.7",
+                    "weight": 4.7,  # Store as number for consistency
                     "food": "Wet food",
                     "comment": "Weight 2",
+                    "username": "testuser",
                 },
             ]
         )
@@ -441,7 +450,7 @@ class TestHealthTracking:
             {
                 "pet_id": str(test_pet["_id"]),
                 "date_time": datetime(2024, 1, 15, 14, 30),
-                "weight": "4.5",
+                "weight": 4.5,  # Store as number for consistency
                 "food": "Dry food",
                 "comment": "Original",
             }
@@ -450,7 +459,7 @@ class TestHealthTracking:
 
         response = client.put(
             f"/api/weight/{record_id}",
-            json={"date": "2024-01-15", "time": "15:00", "weight": "4.6", "food": "Wet food", "comment": "Updated"},
+            json={"date": "2024-01-15", "time": "15:00", "weight": 4.6, "food": "Wet food", "comment": "Updated"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -458,9 +467,9 @@ class TestHealthTracking:
         data = response.get_json()
         assert data["success"] is True
 
-        # Verify update
+        # Verify update - API stores weight as float (number), not string
         weight = db["weights"].find_one({"_id": ObjectId(record_id)})
-        assert weight["weight"] == "4.6"
+        assert weight["weight"] == 4.6
 
     def test_delete_weight_success(self, client, mock_db, regular_user_token, test_pet):
         """Test deleting a weight measurement."""
@@ -487,7 +496,7 @@ class TestHealthTracking:
         """Test adding a feeding record."""
         response = client.post(
             "/api/feeding?pet_id=" + str(test_pet["_id"]),
-            json={"date": "2024-01-15", "time": "14:30", "food_weight": "100", "comment": "Morning feeding"},
+            json={"pet_id": str(test_pet["_id"]), "date": "2024-01-15", "time": "14:30", "food_weight": 100, "comment": "Morning feeding"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -500,7 +509,8 @@ class TestHealthTracking:
 
         feedings = list(db["feedings"].find({"pet_id": str(test_pet["_id"])}))
         assert len(feedings) == 1
-        assert feedings[0]["food_weight"] == "100"
+        # API stores food_weight as float (number), not string
+        assert feedings[0]["food_weight"] == 100.0
         assert feedings[0]["username"] == "testuser"
 
     def test_get_feedings_success(self, client, mock_db, regular_user_token, test_pet):
@@ -512,14 +522,16 @@ class TestHealthTracking:
                 {
                     "pet_id": str(test_pet["_id"]),
                     "date_time": datetime(2024, 1, 15, 8, 0),
-                    "food_weight": "100",
+                    "food_weight": 100.0,  # Store as number for consistency
                     "comment": "Morning",
+                    "username": "testuser",
                 },
                 {
                     "pet_id": str(test_pet["_id"]),
                     "date_time": datetime(2024, 1, 15, 18, 0),
-                    "food_weight": "150",
+                    "food_weight": 150.0,  # Store as number for consistency
                     "comment": "Evening",
+                    "username": "testuser",
                 },
             ]
         )
@@ -547,7 +559,7 @@ class TestHealthTracking:
             {
                 "pet_id": str(test_pet["_id"]),
                 "date_time": datetime(2024, 1, 15, 8, 0),
-                "food_weight": "100",
+                "food_weight": 100.0,  # Store as number for consistency
                 "comment": "Original",
             }
         )
@@ -555,7 +567,7 @@ class TestHealthTracking:
 
         response = client.put(
             f"/api/feeding/{record_id}",
-            json={"date": "2024-01-15", "time": "9:00", "food_weight": "120", "comment": "Updated"},
+            json={"date": "2024-01-15", "time": "9:00", "food_weight": 120, "comment": "Updated"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -563,9 +575,9 @@ class TestHealthTracking:
         data = response.get_json()
         assert data["success"] is True
 
-        # Verify update
+        # Verify update - API stores food_weight as float (number), not string
         feeding = db["feedings"].find_one({"_id": ObjectId(record_id)})
-        assert feeding["food_weight"] == "120"
+        assert feeding["food_weight"] == 120.0
 
     def test_delete_feeding_success(self, client, mock_db, regular_user_token, test_pet):
         """Test deleting a feeding record."""
