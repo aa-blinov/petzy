@@ -41,6 +41,11 @@
                 <h3>Чистка зубов</h3>
                 <p>Записать чистку</p>
             </div>
+
+            <div class="card action-card" data-color="purple" onclick="showScreen('ear-cleaning-form')">
+                <h3>Чистка ушей</h3>
+                <p>Записать чистку</p>
+            </div>
             
             <div class="card action-card" data-color="blue" onclick="showScreen('history')">
                 <h3>История</h3>
@@ -115,6 +120,15 @@
             <h2>Записать чистку зубов</h2>
         </div>
         <div id="tooth-brushing-form-container"></div>
+    </div>
+
+    <!-- Ear Cleaning Form -->
+    <div id="ear-cleaning-form" class="screen">
+        <div class="form-header">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Назад</button>
+            <h2>Записать чистку ушей</h2>
+        </div>
+        <div id="ear-cleaning-form-container"></div>
     </div>
     
     <!-- Settings Screen -->
@@ -199,6 +213,17 @@
                             <option value="Щетка">Щетка</option>
                             <option value="Марля">Марля</option>
                             <option value="Игрушка">Игрушка</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Чистка ушей</h3>
+                    <div class="form-group">
+                        <label for="default-ear-cleaning-type">Способ чистки по умолчанию</label>
+                        <select id="default-ear-cleaning-type" name="default_ear_cleaning_type">
+                            <option value="Салфетка/Марля">Салфетка/Марля</option>
+                            <option value="Капли">Капли</option>
                         </select>
                     </div>
                 </div>
@@ -398,6 +423,7 @@
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('litter')">Смена лотка</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('eye_drops')">Закапывание глаз</button>
                     <button class="btn btn-secondary btn-block" onclick="selectExportType('tooth_brushing')">Чистка зубов</button>
+                    <button class="btn btn-secondary btn-block" onclick="selectExportType('ear_cleaning')">Чистка ушей</button>
                 </div>
                 <div id="export-format-selection" class="export-options" style="display: none;">
                     <button class="btn btn-secondary btn-block" onclick="exportData('csv')">CSV</button>
@@ -417,6 +443,7 @@
             <button class="tab-btn" data-tab="litter" onclick="showHistoryTab('litter'); return false;">Смена лотка</button>
             <button class="tab-btn" data-tab="eye_drops" onclick="showHistoryTab('eye_drops'); return false;">Глаза</button>
             <button class="tab-btn" data-tab="tooth_brushing" onclick="showHistoryTab('tooth_brushing'); return false;">Зубы</button>
+            <button class="tab-btn" data-tab="ear_cleaning" onclick="showHistoryTab('ear_cleaning'); return false;">Уши</button>
         </div>
         <div id="history-content" class="history-content">
             <div class="loading">Загрузка...</div>
@@ -470,6 +497,11 @@ function resetFormDefaults() {
             date: dateStr,
             time: timeStr,
             brushing_type: settings['tooth_brushing']?.brushing_type || 'Щетка'
+        },
+        'ear_cleaning': {
+            date: dateStr,
+            time: timeStr,
+            cleaning_type: settings['ear_cleaning']?.cleaning_type || 'Салфетка/Марля'
         }
     };
     
@@ -932,6 +964,9 @@ document.getElementById('settings-form').addEventListener('submit', function(e) 
         },
         'tooth_brushing': {
             brushing_type: document.getElementById('default-tooth-brushing-type').value
+        },
+        'ear_cleaning': {
+            cleaning_type: document.getElementById('default-ear-cleaning-type').value
         }
     };
     
@@ -988,6 +1023,8 @@ async function editRecord(type, recordId) {
         endpoint = `/api/eye_drops?pet_id=${petId}`;
     } else if (type === 'tooth_brushing') {
         endpoint = `/api/tooth_brushing?pet_id=${petId}`;
+    } else if (type === 'ear_cleaning') {
+        endpoint = `/api/ear_cleaning?pet_id=${petId}`;
     } else {
         endpoint = `/api/weight?pet_id=${petId}`;
     }
@@ -1010,6 +1047,8 @@ async function editRecord(type, recordId) {
             items = data['eye_drops'];
         } else if (type === 'tooth_brushing') {
             items = data['tooth_brushing'];
+        } else if (type === 'ear_cleaning') {
+            items = data['ear_cleaning'];
         } else {
             items = data.weights;
         }
@@ -1038,6 +1077,8 @@ async function editRecord(type, recordId) {
             screenId = 'eye-drops-form';
         } else if (type === 'tooth_brushing') {
             screenId = 'tooth-brushing-form';
+        } else if (type === 'ear_cleaning') {
+            screenId = 'ear-cleaning-form';
         } else {
             screenId = `${type}-form`;
         }

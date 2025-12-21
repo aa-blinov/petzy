@@ -866,6 +866,62 @@ class ToothBrushingListResponse(PaginatedResponse):
 
 
 # ============================================================================
+# Ear Cleaning Schemas
+# ============================================================================
+
+class EarCleaningCreate(HealthRecordBase):
+    """Ear cleaning creation request model."""
+
+    cleaning_type: Optional[str] = Field(None, max_length=50, description="Способ чистки")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1f77bcf86cd799439011",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "cleaning_type": "Салфетка/Марля",
+                "comment": "Чистка левого уха",
+            }
+        }
+    )
+
+
+class EarCleaningUpdate(HealthRecordUpdateBase):
+    """Ear cleaning update request model."""
+
+    cleaning_type: Optional[str] = Field(None, max_length=50)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "date": "2024-01-15",
+                "time": "14:30",
+                "cleaning_type": "Салфетка/Марля",
+                "comment": "Чистка левого уха",
+            }
+        }
+    )
+
+
+class EarCleaningItem(BaseModel):
+    """Ear cleaning item in list response."""
+
+    _id: str
+    pet_id: str
+    date_time: str
+    username: str
+    cleaning_type: Optional[str] = None
+    comment: Optional[str] = None
+
+
+class EarCleaningListResponse(PaginatedResponse):
+    """List of ear cleaning records response with pagination."""
+
+    ear_cleaning: List[EarCleaningItem]
+
+
+# ============================================================================
 # Query Parameter Schemas
 # ============================================================================
 

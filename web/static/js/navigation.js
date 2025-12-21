@@ -10,6 +10,7 @@ const NavigationModule = {
             'weight-form',
             'eye-drops-form',
             'tooth-brushing-form',
+            'ear-cleaning-form',
             'history'
         ];
 
@@ -36,13 +37,15 @@ const NavigationModule = {
             window.scrollTo(0, 0);
             
             // Генерируем формы динамически для типов записей
-            const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye_drops', 'tooth_brushing'];
+            const formTypes = ['feeding', 'asthma', 'defecation', 'litter', 'weight', 'eye_drops', 'tooth_brushing', 'ear_cleaning'];
             const formType = formTypes.find(type => {
                 let expectedScreenId;
                 if (type === 'eye_drops') {
                     expectedScreenId = 'eye-drops-form';
                 } else if (type === 'tooth_brushing') {
                     expectedScreenId = 'tooth-brushing-form';
+                } else if (type === 'ear_cleaning') {
+                    expectedScreenId = 'ear-cleaning-form';
                 } else {
                     expectedScreenId = `${type}-form`;
                 }
@@ -55,6 +58,8 @@ const NavigationModule = {
                     containerIdSuffix = 'eye-drops';
                 } else if (formType === 'tooth_brushing') {
                     containerIdSuffix = 'tooth-brushing';
+                } else if (formType === 'ear_cleaning') {
+                    containerIdSuffix = 'ear-cleaning';
                 }
                 const container = document.getElementById(`${containerIdSuffix}-form-container`);
                 if (container) {

@@ -157,6 +157,27 @@ const FORM_CONFIGS = {
             comment: formData.get('comment') || ''
         }),
         successMessage: (isEdit) => isEdit ? 'Запись о чистке зубов обновлена' : 'Запись о чистке зубов создана'
+    },
+    'ear_cleaning': {
+        title: 'Записать чистку ушей',
+        endpoint: '/api/ear_cleaning',
+        fields: [
+            { name: 'date', type: 'date', label: 'Дата', required: true, id: 'ear-cleaning-date' },
+            { name: 'time', type: 'time', label: 'Время', required: true, id: 'ear-cleaning-time' },
+            { name: 'cleaning_type', type: 'select', label: 'Способ чистки', required: true, options: [
+                { value: 'Салфетка/Марля', text: 'Салфетка/Марля' },
+                { value: 'Капли', text: 'Капли' }
+            ], value: 'Салфетка/Марля', id: 'ear-cleaning-type' },
+            { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'ear-cleaning-comment' }
+        ],
+        transformData: (formData) => ({
+            pet_id: formData.get('pet_id'),
+            date: formData.get('date'),
+            time: formData.get('time'),
+            cleaning_type: formData.get('cleaning_type'),
+            comment: formData.get('comment') || ''
+        }),
+        successMessage: (isEdit) => isEdit ? 'Запись о чистке ушей обновлена' : 'Запись о чистке ушей создана'
     }
 };
 
@@ -200,6 +221,9 @@ function getFormSettings() {
         },
         'tooth_brushing': {
             brushing_type: 'Щетка'
+        },
+        'ear_cleaning': {
+            cleaning_type: 'Салфетка/Марля'
         }
     };
 }

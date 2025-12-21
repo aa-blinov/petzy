@@ -109,6 +109,15 @@ def export_data(export_type, format_type):
                 ("brushing_type", "Способ чистки"),
                 ("comment", "Комментарий"),
             ]
+        elif export_type == "ear_cleaning":
+            collection = app.db["ear_cleaning"]
+            title = "Чистка ушей"
+            fields = [
+                ("date_time", "Дата и время"),
+                ("username", "Пользователь"),
+                ("cleaning_type", "Способ чистки"),
+                ("comment", "Комментарий"),
+            ]
         else:
             return error_response("export_invalid_type")
 

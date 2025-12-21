@@ -1,7 +1,7 @@
-"""Health records endpoints (asthma, defecation, litter, weight, feeding, eye drops, tooth brushing).
+"""Health records endpoints (asthma, defecation, litter, weight, feeding, eye drops, tooth brushing, ear cleaning).
 
 JSON Naming Convention:
-- All fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops, tooth_brushing)
+- All fields use snake_case (e.g., pet_id, date_time, food_weight, eye_drops, tooth_brushing, ear_cleaning)
 - See docs/api-naming-conventions.md for full naming rules
 """
 
@@ -43,6 +43,9 @@ from web.schemas import (
     ToothBrushingCreate,
     ToothBrushingUpdate,
     ToothBrushingListResponse,
+    EarCleaningCreate,
+    EarCleaningUpdate,
+    EarCleaningListResponse,
     PetIdPaginationQuery,
     SuccessResponse,
     ErrorResponse,
@@ -1296,5 +1299,179 @@ def delete_tooth_brushing(record_id):
     except ValueError as e:
         app.logger.warning(
             f"Invalid record_id for tooth brushing deletion: record_id={record_id}, user={username}, error={e}"
+        )
+        return error_response("invalid_record_id")
+
+
+# Ear cleaning routes
+@health_records_bp.route("/api/ear_cleaning", methods=["POST"])
+@login_required
+@api.validate(
+    body=Request(EarCleaningCreate),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["health-records"],
+)
+def add_ear_cleaning():
+    """Add ear cleaning record."""
+    try:
+        data = request.context.body  # type: ignore[attr-defined]
+        pet_id = request.args.get("pet_id") or data.pet_id
+
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        success, access_error = validate_pet_access(pet_id, username)
+        if not success and access_error:
+            return access_error[0], access_error[1]
+
+        date_str = data.date
+        time_str = data.time
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "ear cleaning", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
+
+        ear_cleaning_data = {
+            "pet_id": pet_id,
+            "date_time": event_dt,
+            "cleaning_type": data.cleaning_type or "Салфетка/Марля",
+            "comment": data.comment or "",
+            "username": username,
+        }
+
+        app.db["ear_cleaning"].insert_one(ear_cleaning_data)
+        app.logger.info(f"Ear cleaning recorded: pet_id={pet_id}, user={username}")
+        return get_message("ear_cleaning_created", status=201)
+
+    except ValueError as e:
+        app.logger.warning(f"Invalid input data for ear cleaning: pet_id={pet_id}, user={username}, error={e}")
+        return error_response("validation_error")
+
+
+@health_records_bp.route("/api/ear_cleaning", methods=["GET"])
+@login_required
+@api.validate(
+    query=PetIdPaginationQuery,
+    resp=Response(HTTP_200=EarCleaningListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_ear_cleaning():
+    """Get ear cleaning records for current pet with pagination."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
+
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
+
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
+
+    total = app.db["ear_cleaning"].count_documents({"pet_id": pet_id})
+
+    base_query = app.db["ear_cleaning"].find({"pet_id": pet_id}).sort("date_time", -1)
+    paginated_query, _ = apply_pagination(base_query, page, page_size)
+    ear_cleaning_records = list(paginated_query)
+
+    for item in ear_cleaning_records:
+        item["_id"] = str(item["_id"])
+        if isinstance(item.get("date_time"), datetime):
+            item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
+
+    return jsonify({"ear_cleaning": ear_cleaning_records, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(EarCleaningUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
+def update_ear_cleaning(record_id):
+    """Update ear cleaning record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "ear_cleaning", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        data = request.context.body  # type: ignore[attr-defined]
+
+        date_str = data.date
+        time_str = data.time
+        event_dt, dt_error = parse_event_datetime_safe(date_str, time_str, "ear cleaning update", pet_id, username)
+        if dt_error:
+            return dt_error[0], dt_error[1]
+
+        ear_cleaning_data = {}
+        if event_dt is not None:
+            ear_cleaning_data["date_time"] = event_dt
+        if data.cleaning_type is not None:
+            ear_cleaning_data["cleaning_type"] = data.cleaning_type
+        if data.comment is not None:
+            ear_cleaning_data["comment"] = data.comment
+
+        result = app.db["ear_cleaning"].update_one({"_id": ObjectId(record_id)}, {"$set": ear_cleaning_data})
+
+        if result.matched_count == 0:
+            return error_response("record_not_found")
+
+        app.logger.info(f"Ear cleaning updated: record_id={record_id}, pet_id={pet_id}, user={username}")
+        return get_message("ear_cleaning_updated")
+
+    except ValueError as e:
+        app.logger.warning(
+            f"Invalid input data for ear cleaning update: record_id={record_id}, user={username}, error={e}"
+        )
+        return error_response("validation_error")
+
+
+@health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["DELETE"])
+@login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["health-records"],
+)
+def delete_ear_cleaning(record_id):
+    """Delete ear cleaning record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "ear_cleaning", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        result = app.db["ear_cleaning"].delete_one({"_id": ObjectId(record_id)})
+
+        if result.deleted_count == 0:
+            return error_response("record_not_found")
+
+        app.logger.info(f"Ear cleaning deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
+        return get_message("ear_cleaning_deleted")
+
+    except ValueError as e:
+        app.logger.warning(
+            f"Invalid record_id for ear cleaning deletion: record_id={record_id}, user={username}, error={e}"
         )
         return error_response("invalid_record_id")

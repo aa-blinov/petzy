@@ -112,6 +112,19 @@ const HistoryModule = {
                 }
                 return html;
             }
+        },
+        'ear_cleaning': {
+            endpoint: 'ear_cleaning',
+            dataKey: 'ear_cleaning',
+            displayName: 'Уши',
+            color: 'purple',
+            renderDetails: (item) => {
+                let html = `<span><strong>Способ чистки:</strong> ${item.cleaning_type}</span>`;
+                if (item.comment && item.comment !== '-') {
+                    html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+                }
+                return html;
+            }
         }
     },
 
