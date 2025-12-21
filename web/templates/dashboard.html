@@ -6,53 +6,53 @@
 <div class="dashboard">
     <!-- Main Menu -->
     <div id="main-menu" class="screen active">
-        <div class="action-cards">
-            <div class="card action-card" data-color="brown" onclick="showScreen('feeding-form')">
+        <div class="action-cards" id="action-cards-container">
+            <div class="card action-card" data-tile-id="feeding" data-color="brown" onclick="showScreen('feeding-form')">
                 <h3>Дневная порция корма</h3>
                 <p>Записать порцию</p>
             </div>
             
-            <div class="card action-card" data-color="orange" onclick="showScreen('weight-form')">
+            <div class="card action-card" data-tile-id="weight" data-color="orange" onclick="showScreen('weight-form')">
                 <h3>Вес</h3>
                 <p>Записать вес</p>
             </div>
             
-            <div class="card action-card" data-color="red" onclick="showScreen('asthma-form')">
+            <div class="card action-card" data-tile-id="asthma" data-color="red" onclick="showScreen('asthma-form')">
                 <h3>Приступ астмы</h3>
                 <p>Записать приступ</p>
             </div>
             
-            <div class="card action-card" data-color="green" onclick="showScreen('defecation-form')">
+            <div class="card action-card" data-tile-id="defecation" data-color="green" onclick="showScreen('defecation-form')">
                 <h3>Дефекация</h3>
                 <p>Записать дефекацию</p>
             </div>
             
-            <div class="card action-card" data-color="purple" onclick="showScreen('litter-form')">
+            <div class="card action-card" data-tile-id="litter" data-color="purple" onclick="showScreen('litter-form')">
                 <h3>Смена лотка</h3>
                 <p>Записать смену лотка</p>
             </div>
 
-            <div class="card action-card" data-color="teal" onclick="showScreen('eye-drops-form')">
+            <div class="card action-card" data-tile-id="eye_drops" data-color="teal" onclick="showScreen('eye-drops-form')">
                 <h3>Закапывание глаз</h3>
                 <p>Записать капли</p>
             </div>
 
-            <div class="card action-card" data-color="cyan" onclick="showScreen('tooth-brushing-form')">
+            <div class="card action-card" data-tile-id="tooth_brushing" data-color="cyan" onclick="showScreen('tooth-brushing-form')">
                 <h3>Чистка зубов</h3>
                 <p>Записать чистку</p>
             </div>
 
-            <div class="card action-card" data-color="purple" onclick="showScreen('ear-cleaning-form')">
+            <div class="card action-card" data-tile-id="ear_cleaning" data-color="purple" onclick="showScreen('ear-cleaning-form')">
                 <h3>Чистка ушей</h3>
                 <p>Записать чистку</p>
             </div>
             
-            <div class="card action-card" data-color="blue" onclick="showScreen('history')">
+            <div class="card action-card" data-tile-id="history" data-color="blue" onclick="showScreen('history')">
                 <h3>История</h3>
                 <p>Просмотр записей</p>
             </div>
             
-            <div class="card action-card admin-link" data-color="pink" onclick="showScreen('admin-panel')" style="display: none;">
+            <div class="card action-card admin-link" data-tile-id="admin" data-color="pink" onclick="showScreen('admin-panel')" style="display: none;">
                 <h3>Админ-панель</h3>
                 <p>Управление пользователями</p>
             </div>
@@ -225,6 +225,14 @@
                             <option value="Салфетка/Марля">Салфетка/Марля</option>
                             <option value="Капли">Капли</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Настройка тайлов дашборда</h3>
+                    <p class="settings-hint">Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.</p>
+                    <div id="tiles-settings-list" class="tiles-settings-list">
+                        <!-- Tiles will be dynamically generated here -->
                     </div>
                 </div>
             </div>
@@ -562,6 +570,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Инициализируем статус админа (загрузит из кеша и обновит в фоне)
     UsersModule.init();
+    
+    // Применить настройки тайлов при загрузке (после инициализации UsersModule)
+    if (typeof TilesManager !== 'undefined') {
+        TilesManager.applyTilesSettings();
+        // Обновить видимость админ-панели после применения настроек
+        if (typeof UsersModule !== 'undefined' && UsersModule.updateAdminUI) {
+            UsersModule.updateAdminUI();
+        }
+    }
     
     // Проверяем и выбираем питомца
     PetsModule.checkAndSelectPet().then(() => {
@@ -971,6 +988,14 @@ document.getElementById('settings-form').addEventListener('submit', function(e) 
     };
     
     saveSettings(settings);
+    
+    // Сохранить настройки тайлов
+    if (typeof TilesManager !== 'undefined') {
+        TilesManager.saveTilesSettingsFromForm();
+        // Применить настройки тайлов к дашборду
+        TilesManager.applyTilesSettings();
+    }
+    
     showAlert('success', 'Настройки сохранены');
     setTimeout(() => {
         showScreen('main-menu');
