@@ -129,7 +129,6 @@ const TilesManager = {
             const item = document.createElement('div');
             item.className = 'tile-settings-item';
             item.setAttribute('data-tile-id', tileId);
-            // draggable устанавливается только на иконке перетаскивания
             item.innerHTML = `
                 <div class="tile-settings-drag-handle" data-drag-handle="true">☰</div>
                 <div class="tile-settings-content">
@@ -156,21 +155,67 @@ const TilesManager = {
         const container = document.getElementById('tiles-settings-list');
         if (!container) return;
 
-        let draggedElement = null;
-        let touchStartY = 0;
-        let touchStartX = 0;
-        let touchCurrentY = 0;
-        let isDragging = false;
-        let touchTarget = null;
-        let rafId = null; // Для requestAnimationFrame
-        let pendingY = null; // Сохраняем последнюю позицию для обновления
-        let scrollInterval = null; // Для автоскролла
-        let currentScrollY = 0; // Текущая координата Y для автоскролла
-        let isInScrollZone = false; // Флаг, что мы в зоне скролла
+        // Используем IIFE для изоляции состояния и предотвращения утечек памяти
+        const dragState = (() => {
+            let draggedElement = null;
+            let touchStartY = 0;
+            let touchStartX = 0;
+            let touchCurrentY = 0;
+            let isDragging = false;
+            let touchTarget = null;
+            let rafId = null;
+            let pendingY = null;
+            let scrollInterval = null;
+            let currentScrollY = 0;
+            let isInScrollZone = false;
+            
+            return {
+                get draggedElement() { return draggedElement; },
+                set draggedElement(val) { draggedElement = val; },
+                get touchStartY() { return touchStartY; },
+                set touchStartY(val) { touchStartY = val; },
+                get touchStartX() { return touchStartX; },
+                set touchStartX(val) { touchStartX = val; },
+                get touchCurrentY() { return touchCurrentY; },
+                set touchCurrentY(val) { touchCurrentY = val; },
+                get isDragging() { return isDragging; },
+                set isDragging(val) { isDragging = val; },
+                get touchTarget() { return touchTarget; },
+                set touchTarget(val) { touchTarget = val; },
+                get rafId() { return rafId; },
+                set rafId(val) { rafId = val; },
+                get pendingY() { return pendingY; },
+                set pendingY(val) { pendingY = val; },
+                get scrollInterval() { return scrollInterval; },
+                set scrollInterval(val) { scrollInterval = val; },
+                get currentScrollY() { return currentScrollY; },
+                set currentScrollY(val) { currentScrollY = val; },
+                get isInScrollZone() { return isInScrollZone; },
+                set isInScrollZone(val) { isInScrollZone = val; },
+                clearAll() {
+                    draggedElement = null;
+                    touchStartY = 0;
+                    touchStartX = 0;
+                    touchCurrentY = 0;
+                    isDragging = false;
+                    touchTarget = null;
+                    if (rafId !== null) {
+                        cancelAnimationFrame(rafId);
+                        rafId = null;
+                    }
+                    if (scrollInterval !== null) {
+                        clearInterval(scrollInterval);
+                        scrollInterval = null;
+                    }
+                    isInScrollZone = false;
+                    currentScrollY = 0;
+                    pendingY = null;
+                }
+            };
+        })();
 
         // Функция для очистки визуальных эффектов
         const clearIndicators = () => {
-            // Используем children для оптимизации (быстрее чем querySelectorAll)
             Array.from(container.children).forEach(el => {
                 if (el.classList.contains('tile-settings-item')) {
                     el.classList.remove('drag-over-top', 'drag-over-bottom');
@@ -180,7 +225,6 @@ const TilesManager = {
 
         // Функция для определения элемента под курсором/пальцем
         const getElementAtPosition = (y) => {
-            // Используем children для оптимизации (быстрее чем querySelectorAll)
             const items = Array.from(container.children);
             for (const item of items) {
                 if (!item.classList.contains('tile-settings-item') || item.classList.contains('dragging')) {
@@ -196,49 +240,43 @@ const TilesManager = {
 
         // Функция для автоскролла страницы при перетаскивании к краю экрана
         const handleAutoScroll = (y) => {
-            if (!draggedElement) {
+            if (!dragState.draggedElement) {
                 stopAutoScroll();
                 return;
             }
             
-            // Обновляем текущую координату
-            currentScrollY = y;
+            dragState.currentScrollY = y;
             
-            const scrollThreshold = 100; // Расстояние от края viewport для начала скролла
+            const scrollThreshold = 100;
             const viewportHeight = window.innerHeight;
             
-            // Проверяем, находимся ли мы в зоне скролла
             const inTopZone = y < scrollThreshold;
             const inBottomZone = y > viewportHeight - scrollThreshold;
             const shouldScroll = inTopZone || inBottomZone;
             
-            // Если вошли в зону скролла и интервал еще не запущен
-            if (shouldScroll && !isInScrollZone) {
-                isInScrollZone = true;
+            if (shouldScroll && !dragState.isInScrollZone) {
+                dragState.isInScrollZone = true;
                 startAutoScroll();
-            }
-            // Если вышли из зоны скролла
-            else if (!shouldScroll && isInScrollZone) {
+            } else if (!shouldScroll && dragState.isInScrollZone) {
                 stopAutoScroll();
             }
         };
         
         // Запуск автоскролла (интервал создается один раз)
         const startAutoScroll = () => {
-            if (scrollInterval !== null) return; // Уже запущен
+            if (dragState.scrollInterval !== null) return;
             
-            const scrollSpeed = 15; // Базовая скорость скролла
+            const scrollSpeed = 15;
             const scrollThreshold = 100;
             const viewportHeight = window.innerHeight;
             
-            scrollInterval = setInterval(() => {
-                if (!draggedElement) {
+            dragState.scrollInterval = setInterval(() => {
+                if (!dragState.draggedElement) {
                     stopAutoScroll();
                     return;
                 }
                 
-                // Используем актуальную координату
-                const y = currentScrollY;
+                const y = dragState.currentScrollY;
                 
                 // Скролл вверх
                 if (y < scrollThreshold) {
@@ -267,206 +305,191 @@ const TilesManager = {
                 else {
                     stopAutoScroll();
                 }
-            }, 16); // ~60fps
+            }, 16);
         };
         
         // Остановка автоскролла
         const stopAutoScroll = () => {
-            if (scrollInterval !== null) {
-                clearInterval(scrollInterval);
-                scrollInterval = null;
+            if (dragState.scrollInterval !== null) {
+                clearInterval(dragState.scrollInterval);
+                dragState.scrollInterval = null;
             }
-            isInScrollZone = false;
+            dragState.isInScrollZone = false;
         };
 
-        // Функция для обновления индикаторов при перетаскивании (с requestAnimationFrame для поддержки 60/120Hz)
-        const updateDragIndicator = (y) => {
-            if (!draggedElement) return;
+        // Оптимизированное обновление индикаторов с троттлингом
+        const updateDragIndicator = (() => {
+            let lastUpdate = 0;
+            const UPDATE_INTERVAL = 16; // ~60fps
             
-            // Сохраняем последнюю позицию
-            pendingY = y;
-            
-            // Обрабатываем автоскролл
-            handleAutoScroll(y);
-            
-            // Если уже есть pending requestAnimationFrame, не создаем новый
-            // requestAnimationFrame автоматически синхронизируется с частотой дисплея
-            if (rafId === null) {
-                rafId = requestAnimationFrame(() => {
-                    if (pendingY !== null && draggedElement) {
-                        clearIndicators();
-                        const targetItem = getElementAtPosition(pendingY);
-                        
-                        if (targetItem && targetItem !== draggedElement) {
-                            const rect = targetItem.getBoundingClientRect();
-                            const midpoint = rect.top + rect.height / 2;
+            return (y) => {
+                if (!dragState.draggedElement) return;
+                
+                const now = performance.now();
+                dragState.pendingY = y;
+                
+                // Обрабатываем автоскролл
+                handleAutoScroll(y);
+                
+                // Троттлинг через requestAnimationFrame
+                if (dragState.rafId === null) {
+                    dragState.rafId = requestAnimationFrame(() => {
+                        if (dragState.pendingY !== null && dragState.draggedElement) {
+                            clearIndicators();
+                            const targetItem = getElementAtPosition(dragState.pendingY);
                             
-                            if (pendingY < midpoint) {
-                                targetItem.classList.add('drag-over-top');
-                            } else {
-                                const nextSibling = targetItem.nextElementSibling;
-                                if (nextSibling && nextSibling !== draggedElement) {
-                                    nextSibling.classList.add('drag-over-top');
+                            if (targetItem && targetItem !== dragState.draggedElement) {
+                                const rect = targetItem.getBoundingClientRect();
+                                const midpoint = rect.top + rect.height / 2;
+                                
+                                if (dragState.pendingY < midpoint) {
+                                    targetItem.classList.add('drag-over-top');
                                 } else {
-                                    targetItem.classList.add('drag-over-bottom');
+                                    const nextSibling = targetItem.nextElementSibling;
+                                    if (nextSibling && nextSibling !== dragState.draggedElement) {
+                                        nextSibling.classList.add('drag-over-top');
+                                    } else {
+                                        targetItem.classList.add('drag-over-bottom');
+                                    }
                                 }
                             }
                         }
-                    }
-                    rafId = null;
-                    pendingY = null;
-                });
-            }
-        };
+                        dragState.rafId = null;
+                        dragState.pendingY = null;
+                    });
+                }
+            };
+        })();
 
         // Функция для завершения перетаскивания
         const finishDrag = (y, isTouch = false) => {
-            if (!draggedElement) return;
-            // Для touch событий проверяем isDragging, для mouse - нет
-            if (isTouch && !isDragging) return;
+            if (!dragState.draggedElement) return;
+            if (isTouch && !dragState.isDragging) return;
+            
+            // Проверка границ контейнера
+            const containerRect = container.getBoundingClientRect();
+            if (y < containerRect.top - 50 || y > containerRect.bottom + 50) {
+                // Отмена перетаскивания при выходе за пределы
+                clearIndicators();
+                if (dragState.draggedElement) {
+                    dragState.draggedElement.classList.remove('dragging');
+                }
+                dragState.clearAll();
+                return;
+            }
             
             const targetItem = getElementAtPosition(y);
-            if (targetItem && targetItem !== draggedElement) {
+            if (targetItem && targetItem !== dragState.draggedElement) {
                 const rect = targetItem.getBoundingClientRect();
                 const midpoint = rect.top + rect.height / 2;
                 
                 if (y < midpoint) {
-                    container.insertBefore(draggedElement, targetItem);
+                    container.insertBefore(dragState.draggedElement, targetItem);
                 } else {
-                    container.insertBefore(draggedElement, targetItem.nextSibling);
+                    container.insertBefore(dragState.draggedElement, targetItem.nextSibling);
                 }
                 
                 this.saveTilesOrder();
             }
             
             clearIndicators();
-            if (draggedElement) {
-                draggedElement.classList.remove('dragging');
+            if (dragState.draggedElement) {
+                dragState.draggedElement.classList.remove('dragging');
             }
-            draggedElement = null;
-            isDragging = false;
-            touchTarget = null;
+            dragState.clearAll();
         };
 
+        // Обработчики событий для каждого элемента
         container.querySelectorAll('.tile-settings-item').forEach(item => {
             const dragHandle = item.querySelector('.tile-settings-drag-handle');
             if (!dragHandle) return;
             
-            // Desktop: HTML5 drag and drop - только на иконке перетаскивания
+            // Desktop: HTML5 drag and drop
             dragHandle.setAttribute('draggable', 'true');
+            
             dragHandle.addEventListener('dragstart', (e) => {
-                draggedElement = item;
+                dragState.draggedElement = item;
                 item.classList.add('dragging');
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/html', item.innerHTML);
             });
 
             dragHandle.addEventListener('dragend', () => {
-                // Останавливаем автоскролл
                 stopAutoScroll();
-                // Отменяем pending requestAnimationFrame
-                if (rafId !== null) {
-                    cancelAnimationFrame(rafId);
-                    rafId = null;
-                }
                 item.classList.remove('dragging');
-                draggedElement = null;
+                dragState.clearAll();
                 clearIndicators();
             });
 
-            item.addEventListener('dragover', (e) => {
+            // Обработчики для контейнера (для drag&drop)
+            container.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 updateDragIndicator(e.clientY);
-                // Автоскролл для desktop тоже
-                handleAutoScroll(e.clientY);
             });
 
-            item.addEventListener('dragleave', () => {
-                // Не очищаем здесь, чтобы индикатор оставался видимым
+            container.addEventListener('dragleave', (e) => {
+                if (!container.contains(e.relatedTarget)) {
+                    clearIndicators();
+                }
             });
 
-            item.addEventListener('drop', (e) => {
+            container.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                finishDrag(e.clientY, false); // false = mouse event
+                finishDrag(e.clientY, false);
             });
 
-            // Mobile: Touch events - только на иконке перетаскивания
+            // Mobile: Touch events
             dragHandle.addEventListener('touchstart', (e) => {
                 const touch = e.touches[0];
                 const target = e.target;
                 
-                // Проверяем, что касание именно на иконке перетаскивания
                 if (!target.closest('.tile-settings-drag-handle')) {
                     return;
                 }
                 
-                // Сохраняем начальные данные, но не блокируем прокрутку пока
-                draggedElement = item;
-                touchStartY = touch.clientY;
-                touchStartX = touch.clientX;
-                touchCurrentY = touchStartY;
-                touchTarget = target;
-                isDragging = false;
-                
-                // НЕ вызываем preventDefault здесь - позволяем прокрутке работать
+                dragState.draggedElement = item;
+                dragState.touchStartY = touch.clientY;
+                dragState.touchStartX = touch.clientX;
+                dragState.touchCurrentY = dragState.touchStartY;
+                dragState.touchTarget = target;
+                dragState.isDragging = false;
             }, { passive: true });
 
             item.addEventListener('touchmove', (e) => {
-                // Если перетаскивание не началось или элемент не тот, не обрабатываем
-                // Это позволяет скроллу работать нормально
-                if (!draggedElement || draggedElement !== item) {
-                    return; // Не блокируем скролл - просто выходим
+                if (!dragState.draggedElement || dragState.draggedElement !== item) {
+                    return;
                 }
                 
                 const touch = e.touches[0];
                 const currentY = touch.clientY;
                 const currentX = touch.clientX;
-                const deltaY = currentY - touchStartY;
-                const deltaX = currentX - touchStartX;
+                const deltaY = currentY - dragState.touchStartY;
+                const deltaX = currentX - dragState.touchStartX;
                 const absDeltaY = Math.abs(deltaY);
                 const absDeltaX = Math.abs(deltaX);
                 
-                // Если перетаскивание еще не началось, проверяем, нужно ли его начать
-                if (!isDragging) {
-                    // Начинаем перетаскивание если:
-                    // 1. Вертикальное перемещение больше 10px (уменьшено для более быстрого отклика)
-                    // 2. Вертикальное перемещение больше горизонтального (чтобы отличить от скролла)
-                    // ИЛИ горизонтальное перемещение очень маленькое (менее 20px) - это точно перетаскивание
+                if (!dragState.isDragging) {
                     const isVerticalDrag = absDeltaY > 10 && absDeltaY > absDeltaX;
                     const isSmallHorizontal = absDeltaX < 20 && absDeltaY > 5;
                     
                     if (isVerticalDrag || isSmallHorizontal) {
-                        isDragging = true;
+                        dragState.isDragging = true;
                         item.classList.add('dragging');
-                        touchCurrentY = currentY;
-                        // Только теперь блокируем прокрутку, если событие можно отменить
+                        dragState.touchCurrentY = currentY;
                         if (e.cancelable) {
                             e.preventDefault();
                         }
                     } else if (absDeltaY > 30 || absDeltaX > 40) {
-                        // Если перемещение большое, но не соответствует условиям перетаскивания,
-                        // это скорее всего скролл - сбрасываем состояние
-                        draggedElement = null;
-                        touchTarget = null;
-                        isDragging = false;
-                        touchStartY = 0;
-                        touchStartX = 0;
-                        touchCurrentY = 0;
-                        // НЕ вызываем preventDefault - позволяем скроллу работать
+                        dragState.clearAll();
                         return;
                     }
-                    // Если перемещение маленькое (меньше порогов), просто ждем дальше
-                    // Не сбрасываем состояние, чтобы дать возможность начать перетаскивание
                 }
                 
-                // Если перетаскивание активно, обновляем позицию и блокируем скролл
-                if (isDragging) {
-                    touchCurrentY = currentY;
-                    // requestAnimationFrame автоматически синхронизируется с частотой дисплея (60/120Hz)
-                    updateDragIndicator(touchCurrentY);
-                    // Блокируем прокрутку только во время активного перетаскивания
+                if (dragState.isDragging) {
+                    dragState.touchCurrentY = currentY;
+                    updateDragIndicator(dragState.touchCurrentY);
                     if (e.cancelable) {
                         e.preventDefault();
                     }
@@ -474,66 +497,49 @@ const TilesManager = {
             }, { passive: false });
 
             item.addEventListener('touchend', (e) => {
-                // Если перетаскивание не началось или элемент не тот, просто сбрасываем состояние
-                if (!draggedElement || draggedElement !== item) {
-                    // Сбрасываем на всякий случай
-                    draggedElement = null;
-                    touchTarget = null;
-                    isDragging = false;
+                if (!dragState.draggedElement || dragState.draggedElement !== item) {
+                    dragState.clearAll();
                     return;
                 }
                 
-                const wasDragging = isDragging;
-                
-                if (wasDragging) {
-                    finishDrag(touchCurrentY, true); // true = touch event
-                    // Предотвращаем действие по умолчанию только если событие можно отменить
+                if (dragState.isDragging) {
+                    finishDrag(dragState.touchCurrentY, true);
                     if (e.cancelable) {
                         e.preventDefault();
                     }
                 }
                 
-                // Останавливаем автоскролл
                 stopAutoScroll();
-                
-                // Отменяем pending requestAnimationFrame
-                if (rafId !== null) {
-                    cancelAnimationFrame(rafId);
-                    rafId = null;
-                }
-                
-                // Полностью сбрасываем состояние сразу (не ждем задержку)
-                draggedElement = null;
-                touchTarget = null;
-                isDragging = false;
-                touchStartY = 0;
-                touchStartX = 0;
-                touchCurrentY = 0;
+                dragState.clearAll();
             });
 
             item.addEventListener('touchcancel', () => {
-                if (draggedElement === item) {
-                    // Останавливаем автоскролл
-                    stopAutoScroll();
-                    // Отменяем pending requestAnimationFrame
-                    if (rafId !== null) {
-                        cancelAnimationFrame(rafId);
-                        rafId = null;
-                    }
+                if (dragState.draggedElement === item) {
                     clearIndicators();
-                    if (draggedElement) {
-                        draggedElement.classList.remove('dragging');
+                    if (dragState.draggedElement) {
+                        dragState.draggedElement.classList.remove('dragging');
                     }
-                    // Полностью сбрасываем состояние
-                    draggedElement = null;
-                    isDragging = false;
-                    touchTarget = null;
-                    touchStartY = 0;
-                    touchStartX = 0;
-                    touchCurrentY = 0;
+                    dragState.clearAll();
                 }
             });
         });
+        
+        // Очистка при уничтожении компонента
+        const cleanup = () => {
+            dragState.clearAll();
+            clearIndicators();
+        };
+        
+        // Сохраняем cleanup для внешнего вызова
+        this._cleanupDragAndDrop = cleanup;
+    },
+
+    // Функция для очистки ресурсов
+    cleanup() {
+        if (this._cleanupDragAndDrop) {
+            this._cleanupDragAndDrop();
+            this._cleanupDragAndDrop = null;
+        }
     },
 
     // Сохранить порядок тайлов
@@ -555,8 +561,6 @@ const TilesManager = {
         const settings = this.getTilesSettings();
         settings.visible[tileId] = visible;
         this.saveTilesSettings(settings);
-        // Применить изменения сразу (опционально, можно убрать для применения только при сохранении)
-        // this.applyTilesSettings();
     },
 
     // Сохранить настройки тайлов из формы
@@ -578,4 +582,3 @@ const TilesManager = {
         this.saveTilesSettings({ order, visible });
     }
 };
-

@@ -120,6 +120,11 @@ const NavigationModule = {
                     showHistoryTab('feeding');
                 }
             }
+            
+            // При переходе на любой экран кроме settings очищаем ресурсы drag and drop
+            if (screenId !== 'settings' && typeof TilesManager !== 'undefined' && TilesManager.cleanup) {
+                TilesManager.cleanup();
+            }
         }
     }
 };
