@@ -580,5 +580,21 @@ const TilesManager = {
         });
 
         this.saveTilesSettings({ order, visible });
+    },
+
+    // Сбросить настройки тайлов к значениям по умолчанию
+    resetTilesSettings() {
+        // Удаляем сохраненные настройки тайлов
+        try {
+            localStorage.removeItem('tilesSettings');
+        } catch (e) {
+            console.error('Error resetting tiles settings:', e);
+        }
+        
+        // Переинициализируем UI тайлов с настройками по умолчанию
+        this.initTilesSettingsUI();
+        
+        // Применяем настройки к дашборду
+        this.applyTilesSettings();
     }
 };
