@@ -89,6 +89,10 @@ const NavigationModule = {
                 if (typeof loadSettingsForm === 'function') {
                     loadSettingsForm();
                 }
+                // Инициализировать UI настроек тайлов
+                if (typeof TilesManager !== 'undefined') {
+                    TilesManager.initTilesSettingsUI();
+                }
             } else if (screenId === 'pet-selector') {
                 if (typeof PetsModule !== 'undefined' && PetsModule.renderPetsList) {
                     PetsModule.renderPetsList();
