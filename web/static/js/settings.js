@@ -64,9 +64,22 @@ const SettingsModule = {
         if (confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?')) {
             this.saveSettings(this.DEFAULT_SETTINGS);
             this.loadSettingsForm();
+            
+            // Сбрасываем настройки тайлов
+            if (typeof TilesManager !== 'undefined' && TilesManager.resetTilesSettings) {
+                TilesManager.resetTilesSettings();
+            }
+            
             if (typeof showAlert === 'function') {
                 showAlert('success', 'Настройки сброшены к значениям по умолчанию');
             }
+            
+            // Переход на дашборд после сброса (такой же тайминг как при сохранении)
+            setTimeout(() => {
+                if (typeof showScreen === 'function') {
+                    showScreen('main-menu');
+                }
+            }, 500);
         }
     }
 };
