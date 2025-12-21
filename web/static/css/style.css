@@ -1304,6 +1304,14 @@ body {
 .tile-settings-item.dragging {
     opacity: 0.5;
     transform: scale(0.98);
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    width: calc(100% - 2rem);
+    max-width: 600px;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
 }
 
 .tile-settings-drag-handle {
