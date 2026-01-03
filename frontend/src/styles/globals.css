@@ -25,40 +25,24 @@ html[data-prefers-color-scheme='dark'] {
 }
 
 html {
-    /* HTML background fills the entire viewport including safe areas */
     background-color: var(--app-card-background);
     height: 100%;
-    min-height: 100%;
     width: 100%;
 }
 
 body {
-    /* Body sits on top of html */
     background-color: var(--app-page-background);
     color: var(--app-text-color);
-    
-    /* Use min-height instead of fixed positioning for better iOS compatibility */
     min-height: 100vh;
-    min-height: -webkit-fill-available; /* iOS fallback */
+    min-height: -webkit-fill-available;
     width: 100%;
     margin: 0;
     padding: 0;
-    
-    /* System font stack */
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-    
-    transition: background-color 0.3s ease, color 0.3s ease;
-    
-    /* Crucial for iOS PWA to avoid white bars on rotate or scroll */
-    overscroll-behavior: none;
-    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    
-    /* Enable touch gestures for PWA */
+    overscroll-behavior: none;
     touch-action: none;
-    
-    /* Prevent text selection on touch devices for better UX */
     -webkit-user-select: none;
     user-select: none;
 }
@@ -66,13 +50,9 @@ body {
 #root {
     width: 100%;
     min-height: 100vh;
-    min-height: -webkit-fill-available;
-    /* Allow scrolling inside the root app container */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    position: relative;
-    z-index: 1;
 }
 
 /* Fix Dropdown title styling in dark mode and mobile */
@@ -119,7 +99,7 @@ body {
     font-weight: 500;
 }
 
-/* iOS PWA Safe Area fix - use CSS class with fallbacks */
+/* TabBar fixed positioning with GPU acceleration to prevent layout shifts */
 .bottom-tab-bar-container {
     position: fixed !important;
     bottom: 0 !important;
@@ -129,13 +109,17 @@ body {
     background-color: var(--app-card-background) !important;
     border-top: 1px solid var(--app-border-color);
     
-    /* Fallback for all iOS versions */
-    padding-bottom: 34px; /* Hardcoded fallback for iPhone X+ */
-    padding-bottom: constant(safe-area-inset-bottom); /* iOS 11.0-11.2 */
-    padding-bottom: env(safe-area-inset-bottom); /* iOS 11.2+ */
+    /* Fixed height to prevent jumps during navigation */
+    height: 84px; /* 50px bar + 34px safe area fallback */
+    height: calc(50px + env(safe-area-inset-bottom, 34px));
+    
+    /* GPU acceleration to prevent reflows */
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
-/* Allow text selection in input fields and text areas */
+/* TabBar icons styling */
 input,
 textarea,
 [contenteditable] {
