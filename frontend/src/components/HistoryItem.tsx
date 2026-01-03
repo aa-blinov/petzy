@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Button, Toast, Dialog, Form, Input, DatePicker, Selector, TextArea } from 'antd-mobile';
+import { Card, Button, Toast, Dialog, Form, Input, DatePicker, Picker, TextArea } from 'antd-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
 import { formatDateTime } from '../utils/historyConfig';
@@ -32,6 +32,7 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
   const backgroundColor = pastelColorMap[config.color] || '#D4E8FF';
   const [editVisible, setEditVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pickerVisible, setPickerVisible] = useState<string | null>(null);
   const [form] = Form.useForm();
   const formConfig = formConfigs[type as HealthRecordType];
 
@@ -158,17 +159,34 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
         );
 
       case 'select':
+        const options = field.options?.map(opt => ({ label: opt.text, value: opt.value })) || [];
+        const currentValue = form.getFieldValue(field.name);
+        const selectedOption = options.find(opt => opt.value === currentValue);
         return (
-          <Form.Item
-            key={field.name}
-            name={field.name}
-            label={field.label}
-            rules={[{ required: field.required, message: `${field.label} обязательно` }]}
-          >
-            <Selector
-              options={field.options?.map(opt => ({ label: opt.text, value: opt.value })) || []}
+          <>
+            <Form.Item
+              key={field.name}
+              name={field.name}
+              label={field.label}
+              rules={[{ required: field.required, message: `${field.label} обязательно` }]}
+              onClick={() => setPickerVisible(field.name)}
+              arrow
+            >
+              {selectedOption?.label || 'Выберите...'}
+            </Form.Item>
+            <Picker
+              columns={[options]}
+              visible={pickerVisible === field.name}
+              onClose={() => setPickerVisible(null)}
+              value={currentValue ? [currentValue] : []}
+              onConfirm={(val) => {
+                form.setFieldValue(field.name, val[0] as string || '');
+                setPickerVisible(null);
+              }}
+              cancelText="Отмена"
+              confirmText="Сохранить"
             />
-          </Form.Item>
+          </>
         );
 
       case 'textarea':
@@ -271,11 +289,19 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
             form={form}
             layout="vertical"
             footer={
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                <Button onClick={() => setEditVisible(false)}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button 
+                  onClick={() => setEditVisible(false)}
+                  style={{ flex: 1 }}
+                >
                   Отмена
                 </Button>
-                <Button color="primary" onClick={handleSave} loading={loading}>
+                <Button 
+                  color="primary" 
+                  onClick={handleSave} 
+                  loading={loading}
+                  style={{ flex: 1 }}
+                >
                   Сохранить
                 </Button>
               </div>

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { Input, TextArea, Selector, Form } from 'antd-mobile';
+import { Input, TextArea, Picker, Form } from 'antd-mobile';
+import { RightOutline } from 'antd-mobile-icons';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 
 interface FormFieldProps {
@@ -12,6 +14,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
   const error = errors?.[field.name];
   const isHalfWidth = field.name === 'date' || field.name === 'time';
   const value = watch(field.name);
+  const [pickerVisible, setPickerVisible] = useState(false);
   // Use provided defaultValue or fallback to first option
   const defaultVal = defaultValue || (field.options && field.options.length > 0 ? field.options[0].value : '');
 
@@ -22,16 +25,23 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
           label: opt.text,
           value: opt.value,
         })) || [];
+        const selectedOption = options.find(opt => opt.value === value) || options[0];
         return (
-          <div>
-            <Selector
-              options={options}
-              value={value ? [String(value)] : []}
-              onChange={(arr) => {
-                setValue(field.name, arr[0] || '', { shouldValidate: true });
+          <>
+            <div 
+              onClick={() => setPickerVisible(true)}
+              style={{ 
+                padding: '8px 0',
+                cursor: 'pointer',
+                color: 'var(--adm-color-text)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
               }}
-              style={{ width: '100%' }}
-            />
+            >
+              <span>{selectedOption?.label || 'Выберите...'}</span>
+              <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
+            </div>
             {value === defaultVal && (
               <div style={{ 
                 fontSize: '12px', 
@@ -42,7 +52,19 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                 Значение по умолчанию
               </div>
             )}
-          </div>
+            <Picker
+              columns={[options]}
+              visible={pickerVisible}
+              onClose={() => setPickerVisible(false)}
+              value={value ? [value] : []}
+              onConfirm={(val) => {
+                setValue(field.name, val[0] as string || '', { shouldValidate: true });
+                setPickerVisible(false);
+              }}
+              cancelText="Отмена"
+              confirmText="Сохранить"
+            />
+          </>
         );
 
       case 'textarea':

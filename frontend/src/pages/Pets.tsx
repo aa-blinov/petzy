@@ -229,13 +229,14 @@ export function Pets() {
             form={form}
             layout="vertical"
             footer={
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <Button
                   onClick={() => {
                     setShowForm(false);
                     form.resetFields();
                     setEditingPet(null);
                   }}
+                  style={{ flex: 1 }}
                 >
                   Отмена
                 </Button>
@@ -243,6 +244,7 @@ export function Pets() {
                   color="primary"
                   onClick={handleSubmit}
                   loading={loading}
+                  style={{ flex: 1 }}
                 >
                   {editingPet ? 'Сохранить' : 'Добавить'}
                 </Button>
