@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TabBar } from 'antd-mobile';
+import { TabBar, SafeArea } from 'antd-mobile';
 import { AppOutline, SetOutline, UserOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 
@@ -53,7 +53,6 @@ export function BottomTabBar() {
       right: 0, 
       backgroundColor: 'var(--app-card-background)', 
       borderTop: '1px solid var(--app-border-color)',
-      paddingBottom: 'env(safe-area-inset-bottom)',
       zIndex: 1000,
     }}>
       <TabBar 
@@ -73,6 +72,7 @@ export function BottomTabBar() {
           />
         ))}
       </TabBar>
+      <SafeArea position='bottom' />
     </div>
   );
 }
