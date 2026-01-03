@@ -42,7 +42,7 @@ export function Dashboard() {
   return (
     <div style={{ 
       minHeight: '100vh', 
-      paddingTop: 'calc(env(safe-area-inset-top) + 50px)', 
+      paddingTop: 'calc(env(safe-area-inset-top) + 88px)', 
       backgroundColor: 'var(--app-page-background)'
     }}>
       <div style={{ 

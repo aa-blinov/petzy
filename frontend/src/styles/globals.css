@@ -49,7 +49,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
     
     /* Enable touch gestures for PWA */
-    touch-action: none; /* Disable all browser-handled gestures on body */
+    touch-action: none;
     
     /* Prevent text selection on touch devices for better UX */
     -webkit-user-select: none;
@@ -62,37 +62,53 @@ body {
     /* Allow scrolling inside the root app container instead of body */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y; /* Re-enable vertical scroll for the content */
-    
-    padding-top: 0;
-}
-
-/* Fix for iOS PWA status bar overlay */
-@supports (padding: env(safe-area-inset-top)) {
-    #root {
-        padding-top: 0;
-    }
+    touch-action: pan-y;
+    position: relative;
+    z-index: 1;
 }
 
 /* Fix Dropdown title styling in dark mode and mobile */
 .adm-dropdown-item-title {
     padding: 0 !important;
     background: transparent !important;
+    font-size: 14px !important;
 }
 
 .adm-dropdown-nav {
     border-bottom: none !important;
+    background-color: transparent !important;
 }
 
+/* NavBar styling */
 .adm-nav-bar {
-    padding-left: env(safe-area-inset-left) !important;
-    padding-right: env(safe-area-inset-right) !important;
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+    background-color: transparent !important;
 }
 
-#root {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+.adm-nav-bar-left {
+    padding-left: 0 !important;
+    flex: 1;
+}
+
+.adm-nav-bar-right {
+    flex: 2;
+    padding-right: 0 !important;
+}
+
+.adm-nav-bar-title {
+    display: none !important;
+}
+
+/* TabBar styling */
+.adm-tab-bar-item-icon {
+    font-size: 24px !important;
+    margin-bottom: 2px !important;
+}
+
+.adm-tab-bar-item-title {
+    font-size: 10px !important;
+    font-weight: 500;
 }
 
 /* Allow text selection in input fields and text areas */
