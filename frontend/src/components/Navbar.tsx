@@ -46,19 +46,23 @@ export function Navbar() {
     <img
       src="/logo.svg"
       alt="Petzy"
-      style={{ width: '44px', height: '44px', display: 'inline-block', verticalAlign: 'middle' }}
+      style={{ 
+        width: '38px', 
+        height: '38px', 
+        display: 'block',
+      }}
     />
   );
 
   // На главной странице - только логотип, на других - используем встроенную кнопку назад + логотип
   const leftContent = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+    <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
       {logo}
     </div>
   );
 
   const rightContent = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', height: '100%' }}>
       {pets.length > 0 && (
         <Dropdown
           activeKey={dropdownActiveKey}
@@ -130,13 +134,13 @@ export function Navbar() {
       zIndex: 1000,
       backgroundColor: 'var(--app-card-background)',
       paddingTop: 'env(safe-area-inset-top)',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+      boxShadow: '0 1px 10px rgba(0, 0, 0, 0.2)',
     }}>
       <NavBar
         style={{
-          '--height': '50px',
+          '--height': '64px',
           borderBottom: 'none',
-        }}
+        } as React.CSSProperties}
         back={isMainTab ? null : true}
         onBack={handleBack}
         left={leftContent}
