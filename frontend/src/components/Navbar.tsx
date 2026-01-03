@@ -8,7 +8,7 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { selectedPetName, selectPet, pets } = usePet();
+  const { selectedPetName, selectPet, pets, selectedPetId } = usePet();
   const [dropdownActiveKey, setDropdownActiveKey] = useState<string | null>(null);
 
   const handleLogout = async () => {
@@ -59,7 +59,7 @@ export function Navbar() {
 
   const rightContent = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', width: '100%' }}>
-      {selectedPetName && pets.length > 0 && (
+      {pets.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', height: '100%', fontSize: '14px' }}>
           <Dropdown
             activeKey={dropdownActiveKey}
@@ -70,7 +70,7 @@ export function Navbar() {
           >
             <Dropdown.Item
               key="pets"
-              title={<span style={{ fontSize: '14px' }}>{selectedPetName}</span>}
+              title={<span style={{ fontSize: '14px' }}>{selectedPetName || 'Выбрать...'}</span>}
               arrow
               style={{
                 height: '100%',
@@ -88,6 +88,7 @@ export function Navbar() {
                     style={{
                       padding: '12px 16px',
                       cursor: 'pointer',
+                      backgroundColor: selectedPetId === pet._id ? 'var(--adm-color-primary-light)' : 'transparent',
                       borderBottom: '1px solid var(--app-border-color)',
                     }}
                   >

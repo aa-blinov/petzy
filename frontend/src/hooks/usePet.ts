@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalStorage } from './useLocalStorage';
 import { petsService, type Pet } from '../services/pets.service';
@@ -28,6 +28,13 @@ export function usePet() {
       setSelectedPetName(null);
     }
   };
+
+  // Auto-select first pet if none selected and pets are available
+  useEffect(() => {
+    if (pets.length > 0 && !selectedPetId) {
+      selectPet(pets[0]);
+    }
+  }, [pets, selectedPetId]);
 
   const getSelectedPet = useMemo((): Pet | null => {
     if (!selectedPetId) return null;

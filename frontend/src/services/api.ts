@@ -1,12 +1,20 @@
 import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Base URL for API requests. 
+// Use relative path by default to work with proxy/Nginx.
+let API_URL = import.meta.env.VITE_API_URL || '/api';
+
+// Safeguard: if API_URL is hardcoded to localhost:3000 but we are on a real domain,
+// force it to be relative '/api'
+if (API_URL.includes('localhost:3000') && !window.location.href.includes('localhost:3000')) {
+  API_URL = '/api';
+}
 
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // Important for httpOnly cookies
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
