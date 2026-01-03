@@ -159,9 +159,6 @@ export function HealthRecordForm() {
     );
   }
 
-  const dateTimeFields = config.fields.filter((f: any) => f.name === 'date' || f.name === 'time');
-  const otherFields = config.fields.filter((f: any) => f.name !== 'date' && f.name !== 'time');
-
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -196,24 +193,7 @@ export function HealthRecordForm() {
               </div>
             }
           >
-            {dateTimeFields.length === 2 && (
-              <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'flex-start', padding: '0 16px' }}>
-                {dateTimeFields.map((field: any) => (
-                  <div 
-                    key={field.id} 
-                    style={{ 
-                      flex: '1 1 0',
-                      minWidth: 0, 
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <FormField field={field} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {otherFields.map((field: any) => (
+            {config.fields.map((field: any) => (
               <FormField 
                 key={field.id} 
                 field={field} 

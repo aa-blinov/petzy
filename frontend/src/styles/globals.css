@@ -180,3 +180,73 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     line-height: 1.2 !important;
     text-align: center;
 }
+
+/* Mobile form text size adjustments */
+.adm-form-item-label {
+    font-size: 14px !important;
+}
+
+.adm-form-item-description {
+    font-size: 12px !important;
+}
+
+.adm-input {
+    font-size: 14px !important;
+    text-align: left !important;
+}
+
+.adm-text-area {
+    font-size: 14px !important;
+    text-align: left !important;
+}
+
+.adm-selector-item {
+    font-size: 14px !important;
+}
+
+.adm-form-header {
+    font-size: 15px !important;
+    font-weight: 500 !important;
+}
+
+/* Fix input alignment in forms */
+.adm-input {
+    justify-content: flex-start !important;
+}
+
+/* Date/time input containers should not stretch */
+.adm-input:has(input[type="date"]),
+.adm-input:has(input[type="time"]) {
+    width: auto !important;
+    max-width: fit-content !important;
+}
+
+.adm-input-element {
+    text-align: left !important;
+}
+
+/* Specific fix for date/time/number native inputs */
+input.adm-input-element[type="date"],
+input.adm-input-element[type="time"] {
+    text-align: left !important;
+    width: auto !important;
+    min-width: 130px;
+}
+
+input.adm-input-element[type="number"] {
+    text-align: left !important;
+    width: 100% !important;
+}
+
+.adm-form-item-child-inner {
+    justify-content: flex-start !important;
+}
+
+/* Dialog content text size */
+.adm-dialog-content {
+    font-size: 14px !important;
+}
+
+.adm-dialog-title {
+    font-size: 17px !important;
+}
