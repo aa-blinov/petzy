@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TabBar, SafeArea } from 'antd-mobile';
+import { TabBar } from 'antd-mobile';
 import { AppOutline, SetOutline, UserOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 
@@ -46,18 +46,7 @@ export function BottomTabBar() {
   }
 
   return (
-    <div 
-      className="bottom-tab-bar-container"
-      style={{ 
-        position: 'fixed', 
-        bottom: 0, 
-        left: 0, 
-        right: 0, 
-        backgroundColor: 'var(--app-card-background)', 
-        borderTop: '1px solid var(--app-border-color)',
-        zIndex: 1000,
-      }}
-    >
+    <div className="bottom-tab-bar-container">
       <TabBar 
         activeKey={pathname} 
         onChange={value => setRouteActive(value)}
@@ -75,7 +64,6 @@ export function BottomTabBar() {
           />
         ))}
       </TabBar>
-      <SafeArea position='bottom' />
     </div>
   );
 }
