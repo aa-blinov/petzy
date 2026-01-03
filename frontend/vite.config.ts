@@ -12,16 +12,16 @@ export default defineConfig(() => {
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg'],
+      includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg', 'logo.svg'],
       manifest: {
         name: 'Petzy',
         short_name: 'Petzy',
         description: 'Pet health tracking application',
-        theme_color: '#0A84FF',
+        theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
-        orientation: 'portrait',
-        start_url: basePath,
+        scope: '/',
+        start_url: '/',
         icons: [
           {
             src: `${basePath}icon-192.svg`,

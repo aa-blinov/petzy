@@ -42,7 +42,7 @@ export function History() {
   return (
     <div style={{ 
       minHeight: '100vh', 
-      paddingTop: 'calc(env(safe-area-inset-top) + 60px)',
+      paddingTop: 'calc(env(safe-area-inset-top) + 50px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
       backgroundColor: 'var(--app-page-background)',
       color: 'var(--app-text-color)'

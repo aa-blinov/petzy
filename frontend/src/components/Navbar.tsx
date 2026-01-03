@@ -58,53 +58,63 @@ export function Navbar() {
   );
 
   const rightContent = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', width: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
       {pets.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%', fontSize: '14px' }}>
-          <Dropdown
-            activeKey={dropdownActiveKey}
-            onChange={(key) => setDropdownActiveKey(key)}
-            style={{
-              '--adm-font-size-main': '14px',
-            } as React.CSSProperties}
-          >
-            <Dropdown.Item
-              key="pets"
-              title={<span style={{ fontSize: '14px' }}>{selectedPetName || 'Выбрать...'}</span>}
-              arrow
-              style={{
-                height: '100%',
+        <Dropdown
+          activeKey={dropdownActiveKey}
+          onChange={(key) => setDropdownActiveKey(key)}
+          style={{
+            '--adm-font-size-main': '14px',
+          } as React.CSSProperties}
+        >
+          <Dropdown.Item
+            key="pets"
+            title={
+              <div style={{ 
+                fontSize: '14px', 
+                padding: '4px 8px', 
+                borderRadius: '16px', 
+                backgroundColor: 'var(--app-page-background)',
+                border: '1px solid var(--app-border-color)',
                 display: 'flex',
                 alignItems: 'center',
-                fontSize: '14px',
-                '--adm-font-size-main': '14px',
-              } as React.CSSProperties}
-            >
-              <div style={{ padding: '8px 0' }}>
-                {pets.map(pet => (
-                  <div
-                    key={pet._id}
-                    onClick={() => handlePetSelect(pet._id)}
-                    style={{
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      backgroundColor: selectedPetId === pet._id ? 'var(--adm-color-primary-light)' : 'transparent',
-                      borderBottom: '1px solid var(--app-border-color)',
-                    }}
-                  >
-                    {pet.name}
-                  </div>
-                ))}
+                color: 'var(--app-text-color)'
+              }}>
+                {selectedPetName || 'Выбрать'}
               </div>
-            </Dropdown.Item>
-          </Dropdown>
-        </div>
+            }
+            arrow
+          >
+            <div style={{ padding: '8px 0', backgroundColor: 'var(--app-card-background)' }}>
+              {pets.map(pet => (
+                <div
+                  key={pet._id}
+                  onClick={() => handlePetSelect(pet._id)}
+                  style={{
+                    padding: '12px 20px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    backgroundColor: selectedPetId === pet._id ? 'var(--adm-color-primary-light)' : 'transparent',
+                    borderBottom: '1px solid var(--app-border-color)',
+                    color: 'var(--app-text-color)'
+                  }}
+                >
+                  {pet.name}
+                </div>
+              ))}
+            </div>
+          </Dropdown.Item>
+        </Dropdown>
       )}
       <Button
         fill="none"
         size="small"
         onClick={handleLogout}
-        style={{ padding: '8px', minWidth: '44px' }}
+        style={{ 
+          padding: '4px 8px', 
+          color: 'var(--app-text-secondary)',
+          fontSize: '14px'
+        }}
       >
         Выйти
       </Button>
@@ -112,24 +122,27 @@ export function Navbar() {
   );
 
   return (
-    <>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      backgroundColor: 'var(--app-card-background)',
+      paddingTop: 'env(safe-area-inset-top)',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+    }}>
       <NavBar
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-          paddingTop: 'env(safe-area-inset-top)',
-          backgroundColor: 'var(--app-card-background)',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          '--height': '50px',
+          borderBottom: 'none',
         }}
         back={isMainTab ? null : true}
         onBack={handleBack}
         left={leftContent}
         right={rightContent}
       />
-    </>
+    </div>
   );
 }
 
