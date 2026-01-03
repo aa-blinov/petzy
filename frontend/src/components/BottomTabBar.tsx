@@ -53,12 +53,12 @@ export function BottomTabBar() {
       right: 0, 
       backgroundColor: 'var(--app-card-background)', 
       borderTop: '1px solid var(--app-border-color)',
-      paddingBottom: 'env(safe-area-inset-bottom)',
       zIndex: 1000,
     }}>
       <TabBar 
         activeKey={pathname} 
         onChange={value => setRouteActive(value)}
+        safeArea
         style={{
           '--height': '50px',
         } as React.CSSProperties}
