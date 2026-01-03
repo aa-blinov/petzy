@@ -109,15 +109,13 @@ export function AdminPanel() {
     <div style={{ 
       minHeight: '100vh',
       backgroundColor: 'var(--app-page-background)',
+      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
+      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
       color: 'var(--app-text-color)'
     }}>
       <div style={{ 
         maxWidth: '800px', 
-        margin: '0 auto', 
-        paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-        paddingLeft: 'max(16px, env(safe-area-inset-left))',
-        paddingRight: 'max(16px, env(safe-area-inset-right))',
+        margin: '0 auto'
       }}>
         <div style={{ 
           marginBottom: '16px', 

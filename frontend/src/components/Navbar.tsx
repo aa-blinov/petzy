@@ -88,7 +88,7 @@ export function Navbar() {
               setPickerVisible(false);
             }}
             cancelText="Отмена"
-            confirmText="Готово"
+            confirmText="Выбрать"
           />
         </>
       )}

@@ -43,19 +43,29 @@ export function Dashboard() {
     <div style={{ 
       minHeight: '100vh', 
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)', 
-      backgroundColor: 'var(--app-page-background)'
+      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+      backgroundColor: 'var(--app-page-background)',
+      color: 'var(--app-text-color)'
     }}>
       <div style={{ 
         maxWidth: '800px', 
-        margin: '0 auto',
-        paddingLeft: 'max(16px, env(safe-area-inset-left))',
-        paddingRight: 'max(16px, env(safe-area-inset-right))',
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '12px',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)'
+        margin: '0 auto'
       }}>
-        {visibleTiles.map(tile => {
+        <div style={{ 
+          marginBottom: '16px', 
+          paddingLeft: 'max(16px, env(safe-area-inset-left))', 
+          paddingRight: 'max(16px, env(safe-area-inset-right))' 
+        }}>
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Дашборд</h2>
+        </div>
+        <div style={{ 
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))',
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '12px'
+        }}>
+          {visibleTiles.map(tile => {
           const backgroundColor = pastelColorMap[tile.color] || '#D4E8FF';
           return (
             <Card
@@ -81,6 +91,7 @@ export function Dashboard() {
             </Card>
           );
         })}
+        </div>
       </div>
     </div>
   );

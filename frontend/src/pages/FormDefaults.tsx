@@ -158,7 +158,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         <Picker
@@ -174,7 +174,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         <Picker
@@ -191,7 +191,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         <Picker
@@ -209,7 +209,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         <Picker
@@ -225,7 +225,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         <Picker
@@ -242,7 +242,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         <Picker
@@ -258,7 +258,7 @@ export function FormDefaults() {
             setVisiblePicker(null);
           }}
           cancelText="Отмена"
-          confirmText="Готово"
+          confirmText="Сохранить"
         />
 
         {/* Action Buttons */}
