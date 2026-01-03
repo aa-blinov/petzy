@@ -24,27 +24,38 @@ html[data-prefers-color-scheme='dark'] {
     --adm-safe-area-right: env(safe-area-inset-right);
 }
 
-html, body {
+html {
+    /* HTML background fills the entire viewport including safe areas */
+    background-color: var(--app-card-background);
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    /* Body background is the page color, sits on top of html */
+    background-color: var(--app-page-background);
+    color: var(--app-text-color);
+    
     /* Prevent scrolling of the background */
     height: 100%;
     width: 100%;
     overflow: hidden;
     position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0;
     
     /* System font stack */
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     
-    background-color: var(--app-page-background);
-    color: var(--app-text-color);
     transition: background-color 0.3s ease, color 0.3s ease;
     
     /* Crucial for iOS PWA to avoid white bars on rotate or scroll */
     overscroll-behavior: none;
-}
-
-body {
-    margin: 0;
-    padding: 0;
+    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     
