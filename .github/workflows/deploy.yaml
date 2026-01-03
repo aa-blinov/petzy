@@ -16,9 +16,15 @@ jobs:
           username: ${{ secrets.SERVER_PETZY_USER }}
           key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
           script: |
-            cd ~/services/cat-health-control
+            echo "--- Debug Info ---"
+            pwd
+            ls -la
+            echo "--- Navigating to project ---"
+            cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
+            pwd
+            ls -la
+            echo "--- Deployment ---"
             git pull origin master
-            docker compose build frontend web
-            docker compose up -d --no-deps nginx
-            docker compose up -d --no-deps --force-recreate frontend web
+            docker compose build frontend
+            docker compose up -d --remove-orphans
             docker compose ps
