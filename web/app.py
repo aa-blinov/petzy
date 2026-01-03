@@ -5,6 +5,7 @@ import os
 import sys
 
 from flask import Flask, make_response, redirect, render_template, request, send_from_directory, url_for
+from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.errors import RateLimitExceeded
 from flask_limiter.util import get_remote_address
@@ -55,6 +56,7 @@ app = Flask(
     template_folder=FLASK_CONFIG["template_folder"],
     static_folder=FLASK_CONFIG["static_folder"],
 )
+CORS(app, supports_credentials=True)
 app.secret_key = FLASK_CONFIG["secret_key"]
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = FLASK_CONFIG["jsonify_prettyprint_regular"]
 app.config["JSON_AS_ASCII"] = FLASK_CONFIG["json_as_ascii"]

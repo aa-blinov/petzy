@@ -16,6 +16,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   web:
     build: .
@@ -31,6 +33,33 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - static_content:/usr/share/nginx/html
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    volumes:
+      - static_content:/usr/share/nginx/html:ro
+    depends_on:
+      - web
+      - frontend
+    restart: unless-stopped
+    networks:
+      - app-network
 
   mongo-backup:
     image: mongo:latest
@@ -44,6 +73,13 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   mongodata:
+  static_content:
+
+networks:
+  app-network:
+    driver: bridge

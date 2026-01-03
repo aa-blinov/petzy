@@ -25,27 +25,35 @@ from web.schemas import (
     AsthmaAttackCreate,
     AsthmaAttackUpdate,
     AsthmaAttackListResponse,
+    AsthmaAttackItem,
     DefecationCreate,
     DefecationUpdate,
     DefecationListResponse,
+    DefecationItem,
     LitterChangeCreate,
     LitterChangeUpdate,
     LitterChangeListResponse,
+    LitterChangeItem,
     WeightRecordCreate,
     WeightRecordUpdate,
     WeightRecordListResponse,
+    WeightRecordItem,
     FeedingCreate,
     FeedingUpdate,
     FeedingListResponse,
+    FeedingItem,
     EyeDropsCreate,
     EyeDropsUpdate,
     EyeDropsListResponse,
+    EyeDropsItem,
     ToothBrushingCreate,
     ToothBrushingUpdate,
     ToothBrushingListResponse,
+    ToothBrushingItem,
     EarCleaningCreate,
     EarCleaningUpdate,
     EarCleaningListResponse,
+    EarCleaningItem,
     PetIdPaginationQuery,
     SuccessResponse,
     ErrorResponse,
@@ -137,14 +145,53 @@ def get_asthma_attacks():
 
     for attack in attacks:
         attack["_id"] = str(attack["_id"])
+        attack["pet_id"] = str(attack.get("pet_id", ""))
+        attack["username"] = attack.get("username", "")
         if isinstance(attack.get("date_time"), datetime):
             attack["date_time"] = attack["date_time"].strftime("%Y-%m-%d %H:%M")
         if attack.get("inhalation") is True:
             attack["inhalation"] = "Да"
         elif attack.get("inhalation") is False:
             attack["inhalation"] = "Нет"
+    
+    # Debug logging
+    # app.logger.info(f"Asthma attacks returning: {attacks}")
 
     return jsonify({"attacks": attacks, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/asthma/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=AsthmaAttackItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_asthma_attack(record_id):
+    """Get single asthma attack event."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "asthma_attacks", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+        if record.get("inhalation") is True:
+            record["inhalation"] = "Да"
+        elif record.get("inhalation") is False:
+            record["inhalation"] = "Нет"
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["PUT"])
@@ -325,10 +372,42 @@ def get_defecations():
 
     for defecation in defecations:
         defecation["_id"] = str(defecation["_id"])
+        defecation["pet_id"] = str(defecation.get("pet_id", ""))
+        defecation["username"] = defecation.get("username", "")
         if isinstance(defecation.get("date_time"), datetime):
             defecation["date_time"] = defecation["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"defecations": defecations, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/defecation/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=DefecationItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_defecation(record_id):
+    """Get single defecation event."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "defecations", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["PUT"])
@@ -506,10 +585,42 @@ def get_litter_changes():
 
     for change in litter_changes:
         change["_id"] = str(change["_id"])
+        change["pet_id"] = str(change.get("pet_id", ""))
+        change["username"] = change.get("username", "")
         if isinstance(change.get("date_time"), datetime):
             change["date_time"] = change["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"litter_changes": litter_changes, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/litter/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=LitterChangeItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_litter(record_id):
+    """Get single litter change event."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "litter_changes", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["PUT"])
@@ -683,10 +794,42 @@ def get_weights():
 
     for weight in weights:
         weight["_id"] = str(weight["_id"])
+        weight["pet_id"] = str(weight.get("pet_id", ""))
+        weight["username"] = weight.get("username", "")
         if isinstance(weight.get("date_time"), datetime):
             weight["date_time"] = weight["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"weights": weights, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/weight/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=WeightRecordItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_weight(record_id):
+    """Get single weight measurement."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "weights", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["PUT"])
@@ -856,10 +999,42 @@ def get_feedings():
 
     for feeding in feedings:
         feeding["_id"] = str(feeding["_id"])
+        feeding["pet_id"] = str(feeding.get("pet_id", ""))
+        feeding["username"] = feeding.get("username", "")
         if isinstance(feeding.get("date_time"), datetime):
             feeding["date_time"] = feeding["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"feedings": feedings, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/feeding/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=FeedingItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_feeding(record_id):
+    """Get single feeding event."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "feedings", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["PUT"])
@@ -1028,10 +1203,42 @@ def get_eye_drops():
 
     for item in eye_drops:
         item["_id"] = str(item["_id"])
+        item["pet_id"] = str(item.get("pet_id", ""))
+        item["username"] = item.get("username", "")
         if isinstance(item.get("date_time"), datetime):
             item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"eye_drops": eye_drops, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/eye_drops/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=EyeDropsItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_eye_drop(record_id):
+    """Get single eye drops record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "eye_drops", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/eye_drops/<record_id>", methods=["PUT"])
@@ -1204,10 +1411,42 @@ def get_tooth_brushing():
 
     for item in tooth_brushing:
         item["_id"] = str(item["_id"])
+        item["pet_id"] = str(item.get("pet_id", ""))
+        item["username"] = item.get("username", "")
         if isinstance(item.get("date_time"), datetime):
             item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"tooth_brushing": tooth_brushing, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=ToothBrushingItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_tooth_brushing_record(record_id):
+    """Get single tooth brushing record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "tooth_brushing", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["PUT"])
@@ -1378,10 +1617,42 @@ def get_ear_cleaning():
 
     for item in ear_cleaning_records:
         item["_id"] = str(item["_id"])
+        item["pet_id"] = str(item.get("pet_id", ""))
+        item["username"] = item.get("username", "")
         if isinstance(item.get("date_time"), datetime):
             item["date_time"] = item["date_time"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"ear_cleaning": ear_cleaning_records, "page": page, "page_size": page_size, "total": total})
+
+
+@health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=EarCleaningItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+def get_ear_cleaning_record(record_id):
+    """Get single ear cleaning record."""
+    try:
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+
+        existing, pet_id, access_error = get_record_and_validate_access(record_id, "ear_cleaning", username)
+        if access_error:
+            return access_error[0], access_error[1]
+
+        record = existing
+        record["_id"] = str(record["_id"])
+        record["pet_id"] = str(record.get("pet_id", ""))
+        record["username"] = record.get("username", "")
+        if isinstance(record.get("date_time"), datetime):
+            record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+
+        return jsonify(record)
+    except Exception as e:
+        app.logger.error(f"Error fetching record: {e}")
+        return error_response("internal_error")
 
 
 @health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["PUT"])
