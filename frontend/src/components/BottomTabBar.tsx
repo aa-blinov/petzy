@@ -47,23 +47,30 @@ export function BottomTabBar() {
 
   return (
     <div className="bottom-tab-bar-container">
-      <TabBar 
-        activeKey={pathname} 
-        onChange={value => setRouteActive(value)}
-        safeArea={false}
-        style={{
-          '--height': '50px',
-          backgroundColor: 'transparent',
-        } as React.CSSProperties}
-      >
-        {tabs.map(item => (
-          <TabBar.Item 
-            key={item.key} 
-            icon={item.icon} 
-            title={item.title}
-          />
-        ))}
-      </TabBar>
+      <div style={{ 
+        height: '50px',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        <TabBar 
+          activeKey={pathname} 
+          onChange={value => setRouteActive(value)}
+          safeArea={false}
+          style={{
+            '--height': '50px',
+            backgroundColor: 'transparent',
+            width: '100%',
+          } as React.CSSProperties}
+        >
+          {tabs.map(item => (
+            <TabBar.Item 
+              key={item.key} 
+              icon={item.icon} 
+              title={item.title}
+            />
+          ))}
+        </TabBar>
+      </div>
     </div>
   );
 }
