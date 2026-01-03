@@ -53,8 +53,9 @@ export function useAuth() {
       const response = await authService.login(credentials);
       // After successful login, tokens are set in httpOnly cookies
       setUsername(credentials.username);
-      // Invalidate pets query to refetch with new auth
+      // Invalidate all auth-related queries to refetch with new user context
       queryClient.invalidateQueries({ queryKey: ['pets'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-status'] });
       return response;
     } catch (error: any) {
       setUsername(null);

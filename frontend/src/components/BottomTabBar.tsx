@@ -6,7 +6,7 @@ import { useAdmin } from '../hooks/useAdmin';
 export function BottomTabBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin } = useAdmin();
+  const { isAdmin, isLoading } = useAdmin();
 
   const { pathname } = location;
 
@@ -37,7 +37,8 @@ export function BottomTabBar() {
     },
   ];
 
-  if (isAdmin) {
+  // Only add admin tab after loading to prevent flickering
+  if (!isLoading && isAdmin) {
     tabs.push({
       key: '/admin',
       title: 'Админ',
