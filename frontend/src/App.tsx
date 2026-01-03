@@ -1,16 +1,19 @@
-import { BrowserRouter, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { History } from './pages/History';
-import { HealthRecordForm } from './pages/HealthRecordForm';
-import { AdminPanel } from './pages/AdminPanel';
-import { Settings } from './pages/Settings';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
-import { PageTransition } from './components/PageTransition';
 import { BottomTabBar } from './components/BottomTabBar';
 import { ThemeProvider } from './components/ThemeProvider';
+import { LoadingSpinner } from './components/LoadingSpinner';
+
+// Lazy load pages for code splitting
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
+const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
+const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,58 +37,60 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
-      <PageTransition>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <History />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/form/:type"
-          element={
-            <ProtectedRoute>
-              <HealthRecordForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/form/:type/:id"
-          element={
-            <ProtectedRoute>
-              <HealthRecordForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </PageTransition>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <History />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/form/:type"
+            element={
+              <ProtectedRoute>
+                <HealthRecordForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/form/:type/:id"
+            element={
+              <ProtectedRoute>
+                <HealthRecordForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
       <BottomTabBar />
     </>
   );

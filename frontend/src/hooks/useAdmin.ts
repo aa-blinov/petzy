@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 
 interface AdminStatusResponse {
@@ -6,25 +6,24 @@ interface AdminStatusResponse {
 }
 
 export function useAdmin() {
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Check admin status only once per session (until cache is cleared)
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-status'],
+    queryFn: async () => {
+      const response = await api.get<AdminStatusResponse>('/auth/check-admin');
+      return response.data.is_admin === true;
+    },
+    staleTime: Infinity, // Never consider stale - valid for entire session
+    gcTime: Infinity, // Keep in cache forever (until logout clears it)
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
+  });
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const response = await api.get<AdminStatusResponse>('/auth/check-admin');
-        setIsAdmin(response.data.is_admin === true);
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAdmin();
-  }, []);
-
-  return { isAdmin, isLoading };
+  return { 
+    isAdmin: data ?? false, 
+    isLoading 
+  };
 }
 

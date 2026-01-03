@@ -99,24 +99,19 @@ body {
     font-weight: 500;
 }
 
-/* TabBar fixed positioning with GPU acceleration to prevent layout shifts */
+/* TabBar fixed positioning */
 .bottom-tab-bar-container {
     position: fixed !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    z-index: 1000 !important;
+    z-index: 100 !important; /* Lower z-index to not block page animations */
     background-color: var(--app-card-background) !important;
     border-top: 1px solid var(--app-border-color);
     
     /* Fixed height to prevent jumps during navigation */
     height: 84px; /* 50px bar + 34px safe area fallback */
     height: calc(50px + env(safe-area-inset-bottom, 34px));
-    
-    /* GPU acceleration to prevent reflows */
-    transform: translateZ(0);
-    will-change: transform;
-    backface-visibility: hidden;
 }
 
 /* TabBar icons styling */

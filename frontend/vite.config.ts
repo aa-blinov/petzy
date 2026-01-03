@@ -41,11 +41,29 @@ export default defineConfig(() => {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
+            urlPattern: /^\/api\/(pets|auth\/check-admin)/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'api-static-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 5 * 60, // 5 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
             urlPattern: /^\/api\/.*/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
+              cacheName: 'api-dynamic-cache',
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60, // 1 minute for other API calls
+              },
               cacheableResponse: {
                 statuses: [0, 200]
               }
@@ -57,6 +75,31 @@ export default defineConfig(() => {
   ],
   // Use root path everywhere
   base: basePath,
+  build: {
+    // Enable chunk splitting for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor code
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-antd': ['antd-mobile', 'antd-mobile-icons'],
+          'vendor-form': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+        },
+      },
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 600,
+    // Minification
+    minify: 'terser' as const,
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.log in production
+        drop_debugger: true,
+      },
+    },
+  },
   css: {
     preprocessorOptions: {
       less: {
