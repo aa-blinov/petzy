@@ -18,11 +18,10 @@ jobs:
           script: |
             echo "--- Debug Info ---"
             pwd
-            ls -la
+            ls -la ~/services
             echo "--- Navigating to project ---"
-            cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
+            cd ~/services/cat-health-control-bot || cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
             pwd
-            ls -la
             echo "--- Deployment ---"
             git pull origin master
             docker compose build frontend
