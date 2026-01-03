@@ -17,7 +17,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
   const [pickerVisible, setPickerVisible] = useState(false);
   // Use provided defaultValue or fallback to first option
   const defaultVal = defaultValue || (field.options && field.options.length > 0 ? field.options[0].value : '');
-
+  
   const renderInput = () => {
     switch (field.type) {
       case 'select':

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,16 +25,20 @@ export function HealthRecordForm() {
   }
 
   const settings = getFormSettings();
-  const defaultValues: Record<string, any> = {
-    date: getCurrentDate(),
-    time: getCurrentTime(),
-    pet_id: selectedPetId || ''
-  };
+  const defaultValues = useMemo(() => {
+    const values: Record<string, any> = {
+      date: getCurrentDate(),
+      time: getCurrentTime(),
+      pet_id: selectedPetId || ''
+    };
 
-  // Apply default values from settings
-  if (!id && type && type in settings && settings[type as keyof typeof settings]) {
-    Object.assign(defaultValues, settings[type as keyof typeof settings]);
-  }
+    // Apply default values from settings
+    if (!id && type && type in settings && settings[type as keyof typeof settings]) {
+      Object.assign(values, settings[type as keyof typeof settings]);
+    }
+
+    return values;
+  }, [id, type, selectedPetId, settings]);
 
   // Create Zod schema dynamically
   const schema = z.object(
@@ -64,13 +68,12 @@ export function HealthRecordForm() {
     reset
   } = methods;
 
+  // Initial check for selected pet
   useEffect(() => {
     if (!selectedPetId) {
       navigate('/');
-    } else if (!id) {
-      setValue('pet_id', selectedPetId);
     }
-  }, [selectedPetId, navigate, setValue, id]);
+  }, [selectedPetId, navigate]);
 
   // Load data if editing
   useEffect(() => {

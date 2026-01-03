@@ -138,6 +138,7 @@ a,
 input[type="date"],
 input[type="time"] {
     padding-right: 40px !important;
+    padding-left: 0 !important;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,
@@ -152,6 +153,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     input[type="date"],
     input[type="time"] {
         padding-right: 44px !important;
+        padding-left: 0 !important;
     }
     
     input[type="date"]::-webkit-calendar-picker-indicator,
@@ -231,6 +233,7 @@ input.adm-input-element[type="time"] {
     text-align: left !important;
     width: auto !important;
     min-width: 130px;
+    padding-left: 0 !important;
 }
 
 input.adm-input-element[type="number"] {
