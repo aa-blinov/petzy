@@ -55,16 +55,12 @@ export function BottomTabBar() {
       borderTop: '1px solid var(--app-border-color)',
       paddingBottom: 'env(safe-area-inset-bottom)',
       zIndex: 1000,
-      height: 'calc(50px + env(safe-area-inset-bottom))',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center'
     }}>
       <TabBar 
         activeKey={pathname} 
         onChange={value => setRouteActive(value)}
         style={{
-          '--height': '50px'
+          '--height': '50px',
         } as React.CSSProperties}
       >
         {tabs.map(item => (
