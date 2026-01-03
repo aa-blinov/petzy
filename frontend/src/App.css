@@ -1,0 +1,6 @@
+/* App-specific styles */
+/* Global styles are in styles/globals.css */
+
+.app {
+  min-height: 100vh;
+}

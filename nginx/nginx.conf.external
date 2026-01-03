@@ -1,0 +1,94 @@
+# Nginx configuration for external nginx server
+# This file should be placed in your nginx sites-available directory
+# and symlinked to sites-enabled
+
+server {
+    listen 80;
+    # Replace with your actual domain
+    server_name your-domain.com;
+    
+    # Path to frontend static files (mounted from docker container)
+    root /path/to/cat-health-control/frontend/dist;
+    index index.html;
+    
+    # Error logging
+    error_log /var/log/nginx/cat-health-control-error.log warn;
+    access_log /var/log/nginx/cat-health-control-access.log;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # API proxy - forward to Flask backend (running in Docker on port 5001)
+    location /api/ {
+        proxy_pass http://localhost:5001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        # Important for cookies
+        proxy_cookie_path / /;
+        proxy_cookie_flags ~ nosecure samesite=lax;
+        # Pass cookies
+        proxy_pass_header Set-Cookie;
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Flask static files (for old implementation, if needed)
+    location /static/ {
+        proxy_pass http://localhost:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Flask login page (old implementation) - keep original /login for Flask
+    location = /login {
+        proxy_pass http://localhost:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Important for cookies
+        proxy_cookie_path / /;
+        proxy_cookie_flags ~ nosecure samesite=lax;
+        proxy_pass_header Set-Cookie;
+    }
+
+    # React app static assets (JS, CSS, images, etc.)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|webmanifest)$ {
+        root /path/to/cat-health-control/frontend/dist;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # React app routes - SPA fallback (serve index.html for all routes except API, static, login)
+    location / {
+        root /path/to/cat-health-control/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+

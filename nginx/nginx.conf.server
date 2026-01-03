@@ -1,0 +1,108 @@
+server {
+    server_name petzy.duckdns.org;
+
+    # Логи
+    access_log /var/log/nginx/cat-health-control-access.log;
+    error_log /var/log/nginx/cat-health-control-error.log;
+
+    # Увеличение размера загружаемых файлов
+    client_max_body_size 10M;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Root directory for React static files
+    root /home/justcomex/services/cat-health-control/frontend/dist;
+    index index.html;
+
+    # API proxy - forward to Flask backend
+    location /api/ {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        # Important for cookies
+        proxy_cookie_path / /;
+        proxy_cookie_flags ~ nosecure samesite=lax;
+        # Pass cookies
+        proxy_pass_header Set-Cookie;
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_buffering off;
+    }
+
+    # Flask static files (for old implementation, if needed)
+    location /static/ {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Flask login page (old implementation) - keep original /login for Flask
+    location = /login {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Important for cookies
+        proxy_cookie_path / /;
+        proxy_cookie_flags ~ nosecure samesite=lax;
+        proxy_pass_header Set-Cookie;
+    }
+
+    # React app static assets (JS, CSS, images, etc.)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|webmanifest)$ {
+        root /home/justcomex/services/cat-health-control/frontend/dist;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # React app routes - SPA fallback (serve index.html for all routes except API, static, login)
+    location / {
+        root /home/justcomex/services/cat-health-control/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/petzy.duckdns.org/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/petzy.duckdns.org/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+    if ($host = petzy.duckdns.org) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name petzy.duckdns.org;
+    return 404; # managed by Certbot
+}
+
