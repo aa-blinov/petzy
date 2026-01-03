@@ -46,15 +46,18 @@ export function BottomTabBar() {
   }
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      bottom: 0, 
-      left: 0, 
-      right: 0, 
-      backgroundColor: 'var(--app-card-background)', 
-      borderTop: '1px solid var(--app-border-color)',
-      zIndex: 1000,
-    }}>
+    <div 
+      className="bottom-tab-bar-container"
+      style={{ 
+        position: 'fixed', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        backgroundColor: 'var(--app-card-background)', 
+        borderTop: '1px solid var(--app-border-color)',
+        zIndex: 1000,
+      }}
+    >
       <TabBar 
         activeKey={pathname} 
         onChange={value => setRouteActive(value)}

@@ -111,6 +111,24 @@ body {
     font-weight: 500;
 }
 
+/* iOS PWA Safe Area fix - pseudo-element extends beyond container */
+.bottom-tab-bar-container {
+    position: relative;
+}
+
+.bottom-tab-bar-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px; /* Large value to cover any safe area size */
+    background-color: var(--app-card-background);
+    z-index: -1;
+    transform: translateY(100%);
+    pointer-events: none;
+}
+
 /* Allow text selection in input fields and text areas */
 input,
 textarea,
