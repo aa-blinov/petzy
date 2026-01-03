@@ -60,34 +60,20 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
         );
 
       default:
-        const isDateTime = field.type === 'date' || field.type === 'time';
         return (
-          <div style={{ 
-            position: 'relative',
-            width: '100%',
-            overflow: 'visible'
-          }}>
-            <Input
-              type={field.type}
-              id={field.id}
-              value={value || ''}
-              onChange={(val) => {
-                const numValue = field.type === 'number' ? parseFloat(val) || 0 : val;
-                setValue(field.name, numValue, { shouldValidate: true });
-              }}
-              placeholder={field.placeholder}
-              step={field.step}
-              min={field.min}
-              max={field.max}
-              style={{ 
-                width: '100%',
-                paddingRight: isDateTime ? '40px' : undefined,
-                boxSizing: 'border-box',
-                WebkitAppearance: 'none',
-                fontSize: isDateTime ? '16px' : undefined, // Prevent zoom on iOS
-              }}
-            />
-          </div>
+          <Input
+            type={field.type}
+            id={field.id}
+            value={value || ''}
+            onChange={(val) => {
+              const numValue = field.type === 'number' ? parseFloat(val) || 0 : val;
+              setValue(field.name, numValue, { shouldValidate: true });
+            }}
+            placeholder={field.placeholder}
+            step={field.step}
+            min={field.min}
+            max={field.max}
+          />
         );
     }
   };

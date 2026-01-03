@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { NavBar, Button, Dropdown } from 'antd-mobile';
+import { NavBar, Button, Picker } from 'antd-mobile';
 import { useAuth } from '../hooks/useAuth';
 import { usePet } from '../hooks/usePet';
 
@@ -9,20 +9,18 @@ export function Navbar() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { selectedPetName, selectPet, pets, selectedPetId } = usePet();
-  const [dropdownActiveKey, setDropdownActiveKey] = useState<string | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const handleLogout = async () => {
     await logout();
   };
 
-  const handlePetSelect = (petId: string) => {
+  const handlePetSelect = (value: (string | number | null)[]) => {
+    const petId = value[0] as string;
+    if (!petId) return;
     const pet = pets.find(p => p._id === petId);
     if (pet) {
       selectPet(pet);
-      // Добавляем небольшую задержку для плавной анимации закрытия
-      setTimeout(() => {
-        setDropdownActiveKey(null);
-      }, 250);
     }
   };
 
@@ -64,51 +62,35 @@ export function Navbar() {
   const rightContent = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', height: '100%' }}>
       {pets.length > 0 && (
-        <Dropdown
-          activeKey={dropdownActiveKey}
-          onChange={(key) => setDropdownActiveKey(key)}
-          style={{
-            '--adm-font-size-main': '14px',
-          } as React.CSSProperties}
-        >
-          <Dropdown.Item
-            key="pets"
-            title={
-              <div style={{ 
-                fontSize: '14px', 
-                padding: '4px 8px', 
-                borderRadius: '16px', 
-                backgroundColor: 'var(--app-page-background)',
-                border: '1px solid var(--app-border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                color: 'var(--app-text-color)'
-              }}>
-                {selectedPetName || 'Выбрать'}
-              </div>
-            }
-            arrow
+        <>
+          <Button
+            fill="none"
+            size="small"
+            onClick={() => setPickerVisible(true)}
+            style={{ 
+              padding: '4px 8px',
+              fontSize: '14px',
+              borderRadius: '16px', 
+              backgroundColor: 'var(--app-page-background)',
+              border: '1px solid var(--app-border-color)',
+              color: 'var(--app-text-color)'
+            }}
           >
-            <div style={{ padding: '8px 0', backgroundColor: 'var(--app-card-background)' }}>
-              {pets.map(pet => (
-                <div
-                  key={pet._id}
-                  onClick={() => handlePetSelect(pet._id)}
-                  style={{
-                    padding: '12px 20px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    backgroundColor: selectedPetId === pet._id ? 'var(--adm-color-primary-light)' : 'transparent',
-                    borderBottom: '1px solid var(--app-border-color)',
-                    color: 'var(--app-text-color)'
-                  }}
-                >
-                  {pet.name}
-                </div>
-              ))}
-            </div>
-          </Dropdown.Item>
-        </Dropdown>
+            {selectedPetName || 'Выбрать'}
+          </Button>
+          <Picker
+            columns={[pets.map(pet => ({ label: pet.name, value: pet._id }))]}
+            visible={pickerVisible}
+            onClose={() => setPickerVisible(false)}
+            value={selectedPetId ? [selectedPetId] : []}
+            onConfirm={(val) => {
+              handlePetSelect(val);
+              setPickerVisible(false);
+            }}
+            cancelText="Отмена"
+            confirmText="Готово"
+          />
+        </>
       )}
       <Button
         fill="none"

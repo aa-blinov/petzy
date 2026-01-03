@@ -14,6 +14,9 @@ const History = lazy(() => import('./pages/History').then(m => ({ default: m.His
 const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })));
+const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
+const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +60,14 @@ function AppRoutes() {
             }
           />
           <Route
+            path="/pets"
+            element={
+              <ProtectedRoute>
+                <Pets />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/form/:type"
             element={
               <ProtectedRoute>
@@ -85,6 +96,22 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/form-defaults"
+            element={
+              <ProtectedRoute>
+                <FormDefaults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tiles-settings"
+            element={
+              <ProtectedRoute>
+                <TilesSettings />
               </ProtectedRoute>
             }
           />
