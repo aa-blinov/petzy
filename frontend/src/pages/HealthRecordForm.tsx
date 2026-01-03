@@ -166,7 +166,7 @@ export function HealthRecordForm() {
     <div style={{ 
       minHeight: '100vh', 
       backgroundColor: 'var(--app-page-background)',
-      paddingTop: 'calc(env(safe-area-inset-top) + 50px)',
+      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
       color: 'var(--app-text-color)'
     }}>
