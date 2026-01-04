@@ -137,6 +137,10 @@ def update_user(username):
             update_data["email"] = data.email
         if data.is_active is not None:
             update_data["is_active"] = data.is_active
+        if data.password is not None:
+            # Hash the new password
+            password_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+            update_data["password_hash"] = password_hash
 
         if not update_data:
             return error_response("validation_error_no_update_data")

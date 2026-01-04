@@ -201,6 +201,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=100)
     email: Optional[str] = Field(None, max_length=100)
     is_active: Optional[bool] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=100, description="Новый пароль (опционально)")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -208,6 +209,7 @@ class UserUpdate(BaseModel):
                 "full_name": "Иван Иванов",
                 "email": "ivan@example.com",
                 "is_active": True,
+                "password": "newsecurepass123",
             }
         }
     )

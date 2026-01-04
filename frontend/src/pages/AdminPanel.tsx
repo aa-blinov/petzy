@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Input, Modal, Switch, Toast, Form, Tag } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
@@ -25,11 +25,15 @@ export function AdminPanel() {
     mutationFn: (data: UserCreate) => usersService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSuccess('Пользователь успешно создан');
+      Toast.show({ 
+        icon: 'success', 
+        content: 'Пользователь успешно создан',
+        duration: 1500,
+      });
+      // Small delay to let Toast render before unmounting
       setTimeout(() => {
-        setSuccess(null);
         setShowUserForm(false);
-      }, 100);
+      }, 200);
     },
     onError: (err: any) => {
       const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при создании пользователя';
@@ -43,12 +47,16 @@ export function AdminPanel() {
       usersService.updateUser(username, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSuccess('Пользователь успешно обновлен');
+      Toast.show({ 
+        icon: 'success', 
+        content: 'Пользователь успешно обновлен',
+        duration: 1500,
+      });
+      // Small delay to let Toast render before unmounting
       setTimeout(() => {
-        setSuccess(null);
         setShowUserForm(false);
         setEditingUser(null);
-      }, 100);
+      }, 200);
     },
     onError: (err: any) => {
       const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при обновлении пользователя';
@@ -271,6 +279,15 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
   const [email, setEmail] = useState(user?.email || '');
   const [isActive, setIsActive] = useState(user?.is_active !== false);
 
+  // Reset form when user changes
+  useEffect(() => {
+    setUsername(user?.username || '');
+    setPassword(''); // Always reset password to empty
+    setFullName(user?.full_name || '');
+    setEmail(user?.email || '');
+    setIsActive(user?.is_active !== false);
+  }, [user]);
+
   const handleSubmit = () => {
     if (!user && (!username || !password)) {
       Toast.show({ 
@@ -283,6 +300,7 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
 
     const data: UserCreate | UserUpdate = {
       ...(user ? {} : { username, password }),
+      ...(user && password && password.trim() && { password: password.trim() }), // Include password only if provided and not empty when editing
       ...(fullName && { full_name: fullName }),
       ...(email && { email }),
       is_active: isActive,
@@ -340,7 +358,7 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
           </Form.Item>
         )}
         
-        {!user && (
+        {!user ? (
           <Form.Item
             label="Пароль *"
             name="password"
@@ -355,6 +373,33 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
               autoComplete="new-password"
             />
           </Form.Item>
+        ) : (
+          <>
+            {/* Hidden username field for password form accessibility */}
+            <input
+              type="text"
+              value={user.username}
+              autoComplete="username"
+              readOnly
+              style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+            <Form.Item
+              label="Новый пароль"
+              name="password"
+            >
+              <Input
+                type="password"
+                value={password}
+                onChange={(val) => setPassword(val)}
+                disabled={isLoading}
+                placeholder="Оставьте пустым, чтобы не менять пароль"
+                clearable
+                autoComplete="new-password"
+              />
+            </Form.Item>
+          </>
         )}
         
         <Form.Item
