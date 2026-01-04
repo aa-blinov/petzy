@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Card, Button, List, Dialog, Form, Input, DatePicker, ImageUploader, Toast } from 'antd-mobile';
-import { AddOutline, EditSOutline } from 'antd-mobile-icons';
-import { petsService, type Pet, type PetCreate } from '../services/pets.service';
+import { Button, Dialog, Form, Input, ImageUploader, Toast, ImageViewer, Card } from 'antd-mobile';
+import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
+import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -9,50 +9,78 @@ export function Pets() {
   const { pets, selectPet, getSelectedPet } = usePet();
   const [showForm, setShowForm] = useState(false);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
+  const [fileList, setFileList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // State for Delete Confirmation Dialog
+  const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({ 
+    visible: false, 
+    pet: null 
+  });
+
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
-
-  const handleAddPet = () => {
-    setEditingPet(null);
-    form.resetFields();
-    setShowForm(true);
-  };
 
   const handleEditPet = (pet: Pet) => {
     setEditingPet(pet);
     form.setFieldsValue({
       name: pet.name,
       breed: pet.breed || '',
-      birth_date: pet.birth_date ? new Date(pet.birth_date) : null,
+      birth_date: pet.birth_date || '',
       gender: pet.gender || '',
+      species: pet.species || '',
     });
+    if (pet.photo_url) {
+      setFileList([{ url: pet.photo_url }]);
+    } else {
+      setFileList([]);
+    }
     setShowForm(true);
   };
 
-  const handleDeletePet = async (pet: Pet) => {
-    const result = await Dialog.confirm({
-      content: `Вы уверены, что хотите удалить "${pet.name}"?`,
-    });
+  const handleAddPet = () => {
+    setEditingPet(null);
+    form.resetFields();
+    setFileList([]);
+    setShowForm(true);
+  };
 
-    if (result) {
-      try {
-        await petsService.deletePet(pet._id);
-        Toast.show({ icon: 'success', content: 'Питомец удален' });
-        
-        // Invalidate pets cache to refresh the list
-        queryClient.invalidateQueries({ queryKey: ['pets'] });
-        
-        // If deleted pet was selected, clear selection
-        if (getSelectedPet?._id === pet._id) {
-          selectPet(null);
-        }
-      } catch (error: any) {
-        Toast.show({
-          icon: 'fail',
-          content: error?.response?.data?.error || 'Ошибка при удалении',
-        });
+  // Just open the dialog via state
+  const handleDeleteClick = (pet: Pet) => {
+    setDeleteDialog({ visible: true, pet });
+  };
+
+  // Actual delete logic
+  const confirmDelete = async () => {
+    const pet = deleteDialog.pet;
+    if (!pet) return;
+
+    try {
+      await petsService.deletePet(pet._id);
+      Toast.show({ 
+        icon: 'success', 
+        content: 'Питомец удален',
+        duration: 1500,
+      });
+      
+      await queryClient.invalidateQueries({ queryKey: ['pets'] });
+      
+      if (getSelectedPet?._id === pet._id) {
+        selectPet(null);
       }
+      
+      // Small delay to let Toast render before unmounting
+      setTimeout(() => {
+        setDeleteDialog({ visible: false, pet: null });
+      }, 100);
+    } catch (error: any) {
+      console.error('Delete pet error:', error);
+      Toast.show({
+        icon: 'fail',
+        content: error?.response?.data?.error || 'Ошибка при удалении',
+        duration: 2000,
+      });
+      setDeleteDialog({ visible: false, pet: null });
     }
   };
 
@@ -62,44 +90,28 @@ export function Pets() {
       const values = form.getFieldsValue();
       setLoading(true);
 
-      const petData: PetCreate = {
-        name: values.name,
-        breed: values.breed || '',
-        birth_date: values.birth_date
-          ? new Date(values.birth_date).toISOString().split('T')[0]
-          : '',
-        gender: values.gender || '',
+      const petData = {
+        ...values,
+        photo_file: fileList[0]?.file,
+        photo_url: fileList[0]?.url,
+        remove_photo: fileList.length === 0 && editingPet?.photo_url ? true : undefined,
       };
 
-      // Handle photo upload if present
-      if (values.photo && values.photo.length > 0) {
-        petData.photo_file = values.photo[0].originFileObj;
-      }
-
       if (editingPet) {
-        // Update existing pet
         await petsService.updatePet(editingPet._id, petData);
         Toast.show({ icon: 'success', content: 'Питомец обновлен' });
       } else {
-        // Create new pet
-        const newPet = await petsService.createPet(petData);
+        await petsService.createPet(petData);
         Toast.show({ icon: 'success', content: 'Питомец добавлен' });
-        
-        // Auto-select newly created pet
-        selectPet(newPet);
       }
 
-      // Invalidate pets cache to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['pets'] });
-
+      await queryClient.invalidateQueries({ queryKey: ['pets'] });
+      
       setShowForm(false);
       form.resetFields();
       setEditingPet(null);
+      setFileList([]);
     } catch (error: any) {
-      if (error?.errorFields) {
-        // Form validation error
-        return;
-      }
       Toast.show({
         icon: 'fail',
         content: error?.response?.data?.error || 'Ошибка при сохранении',
@@ -110,56 +122,82 @@ export function Pets() {
   };
 
   return (
-    <div
-      style={{
-        paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 84px)',
-        minHeight: '100vh',
-        backgroundColor: 'var(--app-page-background)',
-      }}
-    >
-      <div style={{ padding: '16px' }}>
-        <Card
-          title="Мои питомцы"
-          extra={
-            <Button
-              size="small"
-              color="primary"
-              fill="none"
-              onClick={handleAddPet}
-            >
-              <AddOutline /> Добавить
-            </Button>
-          }
-        >
-          {pets.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--adm-color-weak)' }}>
-              <p>У вас пока нет питомцев</p>
-              <Button
-                color="primary"
-                onClick={handleAddPet}
-                style={{ marginTop: '16px' }}
+    <div style={{ 
+      minHeight: '100vh', 
+      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
+      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+      backgroundColor: 'var(--app-page-background)',
+      color: 'var(--app-text-color)'
+    }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ 
+          marginBottom: '16px', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))'
+        }}>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: 'var(--app-text-color)' }}>Мои питомцы</h2>
+          <Button color="primary" fill="none" onClick={handleAddPet}>
+            <AddOutline style={{ marginRight: '4px' }} />
+            Добавить
+          </Button>
+        </div>
+
+        {pets.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--adm-color-weak)', padding: '20px' }}>
+            Нет питомцев. Добавьте первого!
+          </div>
+        ) : (
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '8px',
+            paddingLeft: 'max(16px, env(safe-area-inset-left))',
+            paddingRight: 'max(16px, env(safe-area-inset-right))'
+          }}>
+            {pets.map(pet => (
+              <Card
+                key={pet._id}
+                style={{
+                  borderRadius: '12px',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                }}
               >
-                Добавить первого питомца
-              </Button>
-            </div>
-          ) : (
-            <List>
-              {pets.map((pet) => (
-                <List.Item
-                  key={pet._id}
-                  prefix={
-                    pet.photo_url ? (
-                      <img
-                        src={pet.photo_url}
-                        alt={pet.name}
+                <div style={{ padding: '16px' }}>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                    {/* Avatar */}
+                    {pet.photo_url ? (
+                      <div
                         style={{
                           width: '48px',
                           height: '48px',
                           borderRadius: '50%',
-                          objectFit: 'cover',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '2px solid var(--adm-color-border)',
+                          flexShrink: 0,
                         }}
-                      />
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (pet.photo_url) {
+                            ImageViewer.show({ image: pet.photo_url });
+                          }
+                        }}
+                      >
+                        <img
+                          src={pet.photo_url}
+                          alt={pet.name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      </div>
                     ) : (
                       <div
                         style={{
@@ -170,50 +208,82 @@ export function Pets() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '20px',
+                          fontSize: '24px',
+                          flexShrink: 0,
                         }}
                       >
                         🐱
                       </div>
-                    )
-                  }
-                  description={
-                    <div>
-                      {pet.breed && <div>{pet.breed}</div>}
-                      {pet.birth_date && (
-                        <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
-                          Дата рождения: {pet.birth_date}
+                    )}
+
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '16px' }}>{pet.name}</span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <Button
+                            size="mini"
+                            fill="outline"
+                            onClick={() => handleEditPet(pet)}
+                            style={{
+                              '--text-color': '#000000',
+                              '--border-color': 'rgba(0, 0, 0, 0.3)',
+                            } as React.CSSProperties}
+                          >
+                            <EditSOutline style={{ color: '#000000' }} />
+                          </Button>
+                          <Button
+                            size="mini"
+                            color="danger"
+                            fill="outline"
+                            onClick={() => handleDeleteClick(pet)}
+                          >
+                            <DeleteOutline />
+                          </Button>
                         </div>
-                      )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {pet.breed && <span>{pet.breed}</span>}
+                        {pet.birth_date && (
+                          <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Дата рождения: {pet.birth_date}</span>
+                        )}
+                        {pet.gender && (
+                          <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Пол: {pet.gender}</span>
+                        )}
+                        {pet.species && (
+                          <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Вид: {pet.species}</span>
+                        )}
+                      </div>
                     </div>
-                  }
-                  extra={
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <Button
-                        size="small"
-                        fill="none"
-                        onClick={() => handleEditPet(pet)}
-                      >
-                        <EditSOutline />
-                      </Button>
-                      <Button
-                        size="small"
-                        color="danger"
-                        fill="none"
-                        onClick={() => handleDeletePet(pet)}
-                      >
-                        Удалить
-                      </Button>
-                    </div>
-                  }
-                >
-                  {pet.name}
-                </List.Item>
-              ))}
-            </List>
-          )}
-        </Card>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Declarative Delete Dialog */}
+      <Dialog
+        visible={deleteDialog.visible}
+        title="Удаление питомца"
+        content={deleteDialog.pet ? `Вы уверены, что хотите удалить "${deleteDialog.pet.name}"?` : ''}
+        closeOnAction
+        onClose={() => setDeleteDialog({ visible: false, pet: null })}
+        actions={[
+          {
+            key: 'delete',
+            text: 'Удалить',
+            danger: true,
+            onClick: confirmDelete,
+          },
+          {
+            key: 'cancel',
+            text: 'Отмена',
+            onClick: () => setDeleteDialog({ visible: false, pet: null }),
+          },
+        ]}
+      />
 
       {/* Pet Form Dialog */}
       <Dialog
@@ -264,32 +334,31 @@ export function Pets() {
             </Form.Item>
 
             <Form.Item name="birth_date" label="Дата рождения">
-              <DatePicker max={new Date()}>
-                {(value) =>
-                  value ? value.toLocaleDateString('ru-RU') : 'Выберите дату'
-                }
-              </DatePicker>
+              <Input type="date" />
             </Form.Item>
-
+            
             <Form.Item name="gender" label="Пол">
-              <Input placeholder="Мальчик / Девочка" />
+               <Input placeholder="Пол (необязательно)" />
             </Form.Item>
 
             <Form.Item name="photo" label="Фото">
               <ImageUploader
-                maxCount={1}
+                value={fileList}
+                onChange={setFileList}
                 upload={async (file) => {
-                  // Return a mock result - actual upload happens on form submit
                   return {
                     url: URL.createObjectURL(file),
                   };
                 }}
+                maxCount={1}
+                deletable={true}
               />
             </Form.Item>
           </Form>
         }
+        closeOnAction={false}
+        closeOnMaskClick={false}
       />
     </div>
   );
 }
-

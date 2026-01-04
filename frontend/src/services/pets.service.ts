@@ -79,11 +79,11 @@ export const petsService = {
     const formData = new FormData();
     if (data.name) formData.append('name', data.name);
     if (data.species) formData.append('species', data.species);
-    if (data.breed) formData.append('breed', data.breed);
-    if (data.birth_date) formData.append('birth_date', data.birth_date);
-    if (data.gender) formData.append('gender', data.gender);
+    if (data.breed !== undefined) formData.append('breed', data.breed);
+    if (data.birth_date !== undefined) formData.append('birth_date', data.birth_date);
+    if (data.gender !== undefined) formData.append('gender', data.gender);
     if (data.photo_file) formData.append('photo_file', data.photo_file);
-    if (data.photo_url) formData.append('photo_url', data.photo_url);
+    if (data.photo_url !== undefined) formData.append('photo_url', data.photo_url);
     if (data.remove_photo) formData.append('remove_photo', 'true');
 
     const response = await api.put<{ message: string; pet: Pet }>(`/pets/${petId}`, formData, {

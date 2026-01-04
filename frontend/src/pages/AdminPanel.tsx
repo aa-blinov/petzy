@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, List, Input, Modal, Switch, Toast, Form, Tag } from 'antd-mobile';
+import { Button, Card, Input, Modal, Switch, Toast, Form, Tag } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User, type UserCreate, type UserUpdate } from '../services/users.service';
@@ -25,12 +25,16 @@ export function AdminPanel() {
     mutationFn: (data: UserCreate) => usersService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setShowUserForm(false);
       setSuccess('Пользователь успешно создан');
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => {
+        setSuccess(null);
+        setShowUserForm(false);
+      }, 100);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error || 'Ошибка при создании пользователя');
+      const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при создании пользователя';
+      setError(errorMessage);
+      console.error('Create user error:', err.response?.data);
     },
   });
 
@@ -39,13 +43,17 @@ export function AdminPanel() {
       usersService.updateUser(username, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setShowUserForm(false);
-      setEditingUser(null);
       setSuccess('Пользователь успешно обновлен');
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => {
+        setSuccess(null);
+        setShowUserForm(false);
+        setEditingUser(null);
+      }, 100);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error || 'Ошибка при обновлении пользователя');
+      const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при обновлении пользователя';
+      setError(errorMessage);
+      console.error('Update user error:', err.response?.data);
     },
   });
 
@@ -157,22 +165,41 @@ export function AdminPanel() {
         {usersLoading ? (
           <LoadingSpinner />
         ) : (
-          <div style={{ marginTop: '8px' }}>
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '8px',
+            paddingLeft: 'max(16px, env(safe-area-inset-left))',
+            paddingRight: 'max(16px, env(safe-area-inset-right))'
+          }}>
             {users.length === 0 ? (
               <p style={{ color: 'var(--app-text-secondary)', padding: '12px 16px' }}>Пользователи не найдены</p>
             ) : (
-              <List mode="card">
-                {users.map((user) => (
-                  <List.Item
-                    key={user._id}
-                    extra={
+              users.map((user) => (
+                <Card
+                  key={user._id}
+                  style={{
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                  }}
+                >
+                  <div style={{ padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '16px' }}>{user.username}</span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <Button
                           size="mini"
                           fill="outline"
                           onClick={() => handleEdit(user)}
+                          style={{
+                            '--text-color': '#FFFFFF',
+                            '--border-color': 'rgba(255, 255, 255, 0.5)',
+                            backgroundColor: 'transparent',
+                          } as React.CSSProperties}
                         >
-                          <EditSOutline />
+                          <EditSOutline style={{ color: '#FFFFFF', fontSize: '16px' }} />
                         </Button>
                         <Button
                           size="mini"
@@ -184,24 +211,20 @@ export function AdminPanel() {
                           <DeleteOutline />
                         </Button>
                       </div>
-                    }
-                    description={
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                        {user.full_name && <span>{user.full_name}</span>}
-                        {user.email && <span style={{ fontSize: '12px' }}>{user.email}</span>}
-                        <div style={{ marginTop: '4px' }}>
-                          <Tag color={user.is_active !== false ? 'success' : 'danger'}>
-                            {user.is_active !== false ? 'Активен' : 'Неактивен'}
-                          </Tag>
-                        </div>
-                        {user.created_at && <span style={{ fontSize: '12px', color: '#999' }}>Создан: {user.created_at}</span>}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {user.full_name && <span>{user.full_name}</span>}
+                      {user.email && <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>{user.email}</span>}
+                      <div style={{ marginTop: '4px' }}>
+                        <Tag color={user.is_active !== false ? 'success' : 'danger'}>
+                          {user.is_active !== false ? 'Активен' : 'Неактивен'}
+                        </Tag>
                       </div>
-                    }
-                  >
-                    <span style={{ fontWeight: 600 }}>{user.username}</span>
-                  </List.Item>
-                ))}
-              </List>
+                      {user.created_at && <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Создан: {user.created_at}</span>}
+                    </div>
+                  </div>
+                </Card>
+              ))
             )}
           </div>
         )}
@@ -250,7 +273,11 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
 
   const handleSubmit = () => {
     if (!user && (!username || !password)) {
-      Toast.show({ icon: 'fail', content: 'Имя пользователя и пароль обязательны для нового пользователя' });
+      Toast.show({ 
+        icon: 'fail', 
+        content: 'Имя пользователя и пароль обязательны для нового пользователя',
+        duration: 2000,
+      });
       return;
     }
 
@@ -308,6 +335,7 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
               disabled={isLoading}
               placeholder="Введите имя пользователя *"
               clearable
+              autoComplete="username"
             />
           </Form.Item>
         )}
@@ -324,6 +352,7 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
               disabled={isLoading}
               placeholder="Введите пароль *"
               clearable
+              autoComplete="new-password"
             />
           </Form.Item>
         )}
@@ -339,6 +368,7 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
             disabled={isLoading}
             placeholder="Введите полное имя"
             clearable
+            autoComplete="name"
           />
         </Form.Item>
         
@@ -353,6 +383,7 @@ function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
             disabled={isLoading}
             placeholder="Введите email"
             clearable
+            autoComplete="email"
           />
         </Form.Item>
         

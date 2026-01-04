@@ -93,9 +93,9 @@ def handle_unprocessable_entity(err):
     if data and "messages" in data:
         # flask-pydantic-spec puts errors in 'messages'
         messages = data["messages"]
+        logger.warning(f"Validation error (422): {messages}")
         if isinstance(messages, list) and len(messages) > 0:
             # Format the first error nicely
-            # Pydantic validation errors are detailed enough, use generic error
             return error_response("validation_error")
 
     # Fallback for other 422 errors

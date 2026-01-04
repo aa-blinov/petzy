@@ -77,6 +77,7 @@ export function History() {
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || '#D4E8FF',
             '--active-title-color': 'var(--app-text-color)',
             '--title-font-size': '16px',
+            '--content-padding': '0',
           } as React.CSSProperties}
         >
           {tabs.map(tab => (
@@ -84,9 +85,7 @@ export function History() {
               key={tab.key} 
               title={tab.title}
             >
-              <div style={{ minHeight: '200px', paddingTop: '16px' }}>
-                <HistoryTab type={tab.key} petId={selectedPetId} />
-              </div>
+              <HistoryTab type={tab.key} petId={selectedPetId} />
             </Tabs.Tab>
           ))}
         </Tabs>
