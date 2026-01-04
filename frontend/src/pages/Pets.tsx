@@ -18,6 +18,12 @@ export function Pets() {
     pet: null 
   });
 
+  // State for Image Viewer
+  const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null }>({
+    visible: false,
+    image: null,
+  });
+
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
@@ -184,7 +190,7 @@ export function Pets() {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (pet.photo_url) {
-                            ImageViewer.show({ image: pet.photo_url });
+                            setImageViewer({ visible: true, image: pet.photo_url });
                           }
                         }}
                       >
@@ -359,6 +365,20 @@ export function Pets() {
         closeOnAction={false}
         closeOnMaskClick={false}
       />
+
+      {/* Image Viewer */}
+      {imageViewer.image && (
+        <ImageViewer
+          image={imageViewer.image}
+          visible={imageViewer.visible}
+          onClose={() => {
+            // Small delay to prevent race condition
+            setTimeout(() => {
+              setImageViewer({ visible: false, image: null });
+            }, 100);
+          }}
+        />
+      )}
     </div>
   );
 }
