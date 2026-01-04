@@ -68,11 +68,12 @@ export function HistoryTab({ type, petId }: HistoryTabProps) {
 
   return (
     <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+      display: 'flex',
+      flexDirection: 'column',
       gap: '12px',
       paddingLeft: 'max(16px, env(safe-area-inset-left))',
-      paddingRight: 'max(16px, env(safe-area-inset-right))'
+      paddingRight: 'max(16px, env(safe-area-inset-right))',
+      paddingTop: '16px'
     }}>
       {allItems.map(item => (
         <HistoryItem

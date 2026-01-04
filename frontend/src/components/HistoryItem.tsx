@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Button, Toast, Dialog, Form, Input, DatePicker, Picker, TextArea } from 'antd-mobile';
+import { Button, Toast, Dialog, Form, Input, DatePicker, Picker, TextArea, Card } from 'antd-mobile';
+import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
 import { formatDateTime } from '../utils/historyConfig';
@@ -31,6 +32,7 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
   const queryClient = useQueryClient();
   const backgroundColor = pastelColorMap[config.color] || '#D4E8FF';
   const [editVisible, setEditVisible] = useState(false);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pickerVisible, setPickerVisible] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -99,16 +101,19 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
   };
 
   const handleDelete = async () => {
-    const confirmed = window.confirm('Вы уверены, что хотите удалить эту запись?');
-    if (confirmed) {
-      try {
-        await healthRecordsService.delete(type as HealthRecordType, item._id);
-        await queryClient.invalidateQueries({ queryKey: ['history'] });
-        Toast.show({ content: 'Запись удалена', icon: 'success' });
-      } catch (error) {
-        console.error('Error deleting record:', error);
-        Toast.show({ content: 'Ошибка при удалении', icon: 'fail' });
-      }
+    try {
+      await healthRecordsService.delete(type as HealthRecordType, item._id);
+      await queryClient.invalidateQueries({ queryKey: ['history'] });
+      Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
+      
+      // Small delay to let Toast render before unmounting
+      setTimeout(() => {
+        setDeleteDialogVisible(false);
+      }, 100);
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      Toast.show({ content: 'Ошибка при удалении', icon: 'fail', duration: 2000 });
+      setDeleteDialogVisible(false);
     }
   };
 
@@ -229,55 +234,68 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
         }}
       >
         <div style={{ padding: '16px' }}>
-          <div style={{ 
-            color: '#000000', 
-            fontWeight: 500, 
-            marginBottom: '8px', 
-            fontSize: '16px' 
-          }}>
-            {formatDateTime(item.date_time)}
-          </div>
-          {item.username && (
-            <div style={{ color: '#666666', fontSize: '14px', marginBottom: '12px' }}>
-              <strong>Пользователь:</strong> {item.username}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <span style={{ fontWeight: 600, color: '#000000', fontSize: '16px' }}>{formatDateTime(item.date_time)}</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <Button
+                size="mini"
+                fill="outline"
+                onClick={handleEdit}
+                style={{
+                  '--text-color': '#000000',
+                  '--border-color': 'rgba(0, 0, 0, 0.3)',
+                } as React.CSSProperties}
+              >
+                <EditSOutline style={{ color: '#000000', fontSize: '16px' }} />
+              </Button>
+              <Button
+                size="mini"
+                color="danger"
+                fill="outline"
+                onClick={() => setDeleteDialogVisible(true)}
+              >
+                <DeleteOutline />
+              </Button>
             </div>
-          )}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              marginBottom: '16px',
-              color: '#000000',
-            }}
-            dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
-          />
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-            <Button
-              size="small"
-              fill="outline"
-              onClick={handleEdit}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {item.username && (
+              <span style={{ fontSize: '12px', color: '#666666' }}>Пользователь: {item.username}</span>
+            )}
+            <div
               style={{
-                '--text-color': '#000000',
-                '--border-color': 'rgba(0, 0, 0, 0.15)',
-              } as React.CSSProperties}
-            >
-              Редактировать
-            </Button>
-            <Button
-              size="small"
-              fill="outline"
-              onClick={handleDelete}
-              style={{
-                '--text-color': '#FF453A',
-                '--border-color': 'rgba(255, 69, 58, 0.3)',
-              } as React.CSSProperties}
-            >
-              Удалить
-            </Button>
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                color: '#000000',
+              }}
+              dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
+            />
           </div>
         </div>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        visible={deleteDialogVisible}
+        title="Удаление записи"
+        content="Вы уверены, что хотите удалить эту запись?"
+        closeOnAction
+        onClose={() => setDeleteDialogVisible(false)}
+        actions={[
+          {
+            key: 'delete',
+            text: 'Удалить',
+            danger: true,
+            onClick: handleDelete,
+          },
+          {
+            key: 'cancel',
+            text: 'Отмена',
+            onClick: () => setDeleteDialogVisible(false),
+          },
+        ]}
+      />
 
       {/* Edit Modal */}
       <Dialog
