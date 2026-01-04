@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Input, TextArea, Picker, Form } from 'antd-mobile';
 import { RightOutline } from 'antd-mobile-icons';
@@ -15,11 +15,165 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
   const isHalfWidth = field.name === 'date' || field.name === 'time';
   const value = watch(field.name);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  
+  // Internal state for date picker to calculate dynamic days while scrolling
+  const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
+  
   // Use provided defaultValue or fallback to first option
   const defaultVal = defaultValue || (field.options && field.options.length > 0 ? field.options[0].value : '');
+
+  // Generate time columns for Picker (HH:MM)
+  const timeColumns = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, i) => ({
+      label: i.toString().padStart(2, '0'),
+      value: i.toString().padStart(2, '0'),
+    }));
+    const minutes = Array.from({ length: 60 }, (_, i) => ({
+      label: i.toString().padStart(2, '0'),
+      value: i.toString().padStart(2, '0'),
+    }));
+    return [hours, minutes];
+  }, []);
+
+  // Generate date columns dynamically [Day, Month, Year]
+  const dateColumns = useMemo(() => {
+    // Determine which month and year to use for day calculation
+    let month = new Date().getMonth();
+    let year = new Date().getFullYear();
+
+    if (internalPickerDate.length === 3) {
+      month = parseInt(internalPickerDate[1]);
+      year = parseInt(internalPickerDate[2]);
+    } else if (value) {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        month = d.getMonth();
+        year = d.getFullYear();
+      }
+    }
+
+    // Get days in current selected month/year
+    const daysCount = new Date(year, month + 1, 0).getDate();
+
+    const days = Array.from({ length: daysCount }, (_, i) => ({
+      label: String(i + 1).padStart(2, '0'),
+      value: String(i + 1),
+    }));
+    
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ].map((m, i) => ({ label: m, value: String(i) }));
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 21 }, (_, i) => {
+      const y = currentYear - 10 + i;
+      return { label: String(y), value: String(y) };
+    });
+
+    return [days, months, years];
+  }, [internalPickerDate, value]);
   
   const renderInput = () => {
     switch (field.type) {
+      case 'date':
+        // Initial value for the picker drums
+        let pickerValue: string[] = [];
+        if (value) {
+          const d = new Date(value);
+          pickerValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
+        } else {
+          const now = new Date();
+          pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
+        }
+
+        const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : 'Выберите дату';
+        
+        return (
+          <>
+            <div 
+              onClick={() => {
+                setInternalPickerDate(pickerValue);
+                setDatePickerVisible(true);
+              }}
+              style={{ 
+                padding: '8px 0',
+                cursor: 'pointer',
+                color: 'var(--adm-color-text)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                justifyContent: 'flex-start'
+              }}
+            >
+              <span>{displayDate}</span>
+              <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
+            </div>
+            <Picker
+              columns={dateColumns}
+              visible={datePickerVisible}
+              onClose={() => setDatePickerVisible(false)}
+              value={internalPickerDate.length ? internalPickerDate : pickerValue}
+              onSelect={(val) => {
+                setInternalPickerDate(val as string[]);
+              }}
+              onConfirm={(val) => {
+                const day = val[0];
+                const month = parseInt(val[1] as string);
+                const year = val[2];
+                
+                const monthStr = String(month + 1).padStart(2, '0');
+                const dayStr = String(day).padStart(2, '0');
+                const formattedDate = `${year}-${monthStr}-${dayStr}`;
+                
+                setValue(field.name, formattedDate, { shouldValidate: true });
+                setDatePickerVisible(false);
+                setInternalPickerDate([]); // Clear temp state
+              }}
+              cancelText="Отмена"
+              confirmText="Сохранить"
+            />
+          </>
+        );
+
+      case 'time':
+        const timeValue = value ? value.split(':') : (defaultValue ? defaultValue.split(':') : []);
+        const displayTime = value || 'Выберите время';
+
+        return (
+          <>
+            <div 
+              onClick={() => setPickerVisible(true)}
+              style={{ 
+                padding: '8px 0',
+                cursor: 'pointer',
+                color: 'var(--adm-color-text)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                justifyContent: 'flex-start'
+              }}
+            >
+              <span>{displayTime}</span>
+              <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
+            </div>
+            <Picker
+              columns={timeColumns}
+              visible={pickerVisible}
+              onClose={() => setPickerVisible(false)}
+              value={timeValue}
+              onConfirm={(val) => {
+                const formattedTime = `${String(val[0] || '00')}:${String(val[1] || '00')}`;
+                setValue(field.name, formattedTime, { shouldValidate: true });
+                setPickerVisible(false);
+              }}
+              cancelText="Отмена"
+              confirmText="Сохранить"
+            />
+          </>
+        );
+
       case 'select':
         const options = field.options?.map(opt => ({
           label: opt.text,
@@ -36,7 +190,8 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                 color: 'var(--adm-color-text)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                gap: '8px',
+                justifyContent: 'flex-start'
               }}
             >
               <span>{selectedOption?.label || 'Выберите...'}</span>
