@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Input, Modal, Switch, Toast, Form, Tag } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
+import { useTheme } from '../hooks/useTheme';
 import { usersService, type User, type UserCreate, type UserUpdate } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -10,10 +11,14 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 export function AdminPanel() {
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { theme } = useTheme();
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Determine if dark theme is active
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
@@ -202,12 +207,12 @@ export function AdminPanel() {
                           fill="outline"
                           onClick={() => handleEdit(user)}
                           style={{
-                            '--text-color': '#FFFFFF',
-                            '--border-color': 'rgba(255, 255, 255, 0.5)',
+                            '--text-color': isDark ? '#FFFFFF' : '#000000',
+                            '--border-color': isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.15)',
                             backgroundColor: 'transparent',
                           } as React.CSSProperties}
                         >
-                          <EditSOutline style={{ color: '#FFFFFF', fontSize: '16px' }} />
+                          <EditSOutline style={{ color: isDark ? '#FFFFFF' : '#000000', fontSize: '16px' }} />
                         </Button>
                         <Button
                           size="mini"
