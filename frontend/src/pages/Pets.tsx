@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Dialog, Form, Input, ImageUploader, Toast, ImageViewer, Card } from 'antd-mobile';
+import { useNavigate } from 'react-router-dom';
+import { Button, Dialog, Toast, ImageViewer, Card } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
@@ -7,15 +8,12 @@ import { useTheme } from '../hooks/useTheme';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function Pets() {
+  const navigate = useNavigate();
   const { pets, selectPet, getSelectedPet } = usePet();
   const { theme } = useTheme();
-  const [showForm, setShowForm] = useState(false);
 
   // Determine if dark theme is active
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const [editingPet, setEditingPet] = useState<Pet | null>(null);
-  const [fileList, setFileList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   
   // State for Delete Confirmation Dialog
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({ 
@@ -29,31 +27,14 @@ export function Pets() {
     image: null,
   });
 
-  const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
   const handleEditPet = (pet: Pet) => {
-    setEditingPet(pet);
-    form.setFieldsValue({
-      name: pet.name,
-      breed: pet.breed || '',
-      birth_date: pet.birth_date || '',
-      gender: pet.gender || '',
-      species: pet.species || '',
-    });
-    if (pet.photo_url) {
-      setFileList([{ url: pet.photo_url }]);
-    } else {
-      setFileList([]);
-    }
-    setShowForm(true);
+    navigate(`/pets/${pet._id}/edit`);
   };
 
   const handleAddPet = () => {
-    setEditingPet(null);
-    form.resetFields();
-    setFileList([]);
-    setShowForm(true);
+    navigate('/pets/new');
   };
 
   // Just open the dialog via state
@@ -95,42 +76,6 @@ export function Pets() {
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      await form.validateFields();
-      const values = form.getFieldsValue();
-      setLoading(true);
-
-      const petData = {
-        ...values,
-        photo_file: fileList[0]?.file,
-        photo_url: fileList[0]?.url,
-        remove_photo: fileList.length === 0 && editingPet?.photo_url ? true : undefined,
-      };
-
-      if (editingPet) {
-        await petsService.updatePet(editingPet._id, petData);
-        Toast.show({ icon: 'success', content: 'Питомец обновлен' });
-      } else {
-        await petsService.createPet(petData);
-        Toast.show({ icon: 'success', content: 'Питомец добавлен' });
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ['pets'] });
-      
-      setShowForm(false);
-      form.resetFields();
-      setEditingPet(null);
-      setFileList([]);
-    } catch (error: any) {
-      Toast.show({
-        icon: 'fail',
-        content: error?.response?.data?.error || 'Ошибка при сохранении',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div style={{ 
@@ -294,81 +239,6 @@ export function Pets() {
             onClick: () => setDeleteDialog({ visible: false, pet: null }),
           },
         ]}
-      />
-
-      {/* Pet Form Dialog */}
-      <Dialog
-        visible={showForm}
-        onClose={() => {
-          setShowForm(false);
-          form.resetFields();
-          setEditingPet(null);
-        }}
-        title={editingPet ? 'Редактировать питомца' : 'Добавить питомца'}
-        content={
-          <Form
-            form={form}
-            layout="vertical"
-            footer={
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <Button
-                  onClick={() => {
-                    setShowForm(false);
-                    form.resetFields();
-                    setEditingPet(null);
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  Отмена
-                </Button>
-                <Button
-                  color="primary"
-                  onClick={handleSubmit}
-                  loading={loading}
-                  style={{ flex: 1 }}
-                >
-                  {editingPet ? 'Сохранить' : 'Добавить'}
-                </Button>
-              </div>
-            }
-          >
-            <Form.Item
-              name="name"
-              label="Имя"
-              rules={[{ required: true, message: 'Введите имя питомца' }]}
-            >
-              <Input placeholder="Имя питомца" />
-            </Form.Item>
-
-            <Form.Item name="breed" label="Порода">
-              <Input placeholder="Порода (необязательно)" />
-            </Form.Item>
-
-            <Form.Item name="birth_date" label="Дата рождения">
-              <Input type="date" />
-            </Form.Item>
-            
-            <Form.Item name="gender" label="Пол">
-               <Input placeholder="Пол (необязательно)" />
-            </Form.Item>
-
-            <Form.Item name="photo" label="Фото">
-              <ImageUploader
-                value={fileList}
-                onChange={setFileList}
-                upload={async (file) => {
-                  return {
-                    url: URL.createObjectURL(file),
-                  };
-                }}
-                maxCount={1}
-                deletable={true}
-              />
-            </Form.Item>
-          </Form>
-        }
-        closeOnAction={false}
-        closeOnMaskClick={false}
       />
 
       {/* Image Viewer */}

@@ -4,6 +4,7 @@ This module provides helpers to unify validation of JSON and multipart/form-data
 requests using Pydantic models, avoiding code duplication.
 """
 
+import json
 from typing import TypeVar, Type, Tuple, Optional
 from flask import Request
 from pydantic import BaseModel, ValidationError
@@ -45,6 +46,13 @@ def validate_request_data(
         if request.content_type and "multipart/form-data" in request.content_type:
             # Validate form data
             data_dict = request.form.to_dict()
+            # Parse JSON strings in form data (e.g., tiles_settings)
+            for key, value in data_dict.items():
+                if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+                    try:
+                        data_dict[key] = json.loads(value)
+                    except (json.JSONDecodeError, ValueError):
+                        pass  # Keep as string if not valid JSON
             validated_data = model_class.model_validate(data_dict)
         else:
             # Validate JSON data

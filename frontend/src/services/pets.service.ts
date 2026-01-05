@@ -1,4 +1,5 @@
 import api from './api';
+import type { TilesSettings } from '../utils/tilesConfig';
 
 export interface Pet {
   _id: string;
@@ -9,6 +10,7 @@ export interface Pet {
   gender?: string;
   photo_url?: string;
   photo_file_id?: string;
+  tiles_settings?: TilesSettings;
   owner: string;
   shared_with?: string[];
   created_at?: string;
@@ -23,6 +25,7 @@ export interface PetCreate {
   gender?: string;
   photo_file?: File;
   photo_url?: string;
+  tiles_settings?: TilesSettings;
 }
 
 export interface PetUpdate {
@@ -34,6 +37,7 @@ export interface PetUpdate {
   photo_file?: File;
   photo_url?: string;
   remove_photo?: boolean;
+  tiles_settings?: TilesSettings;
 }
 
 export interface PetListResponse {
@@ -68,6 +72,9 @@ export const petsService = {
     if (data.gender) formData.append('gender', data.gender);
     if (data.photo_file) formData.append('photo_file', data.photo_file);
     if (data.photo_url) formData.append('photo_url', data.photo_url);
+    if (data.tiles_settings) {
+      formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
+    }
 
     const response = await api.post<{ message: string; pet: Pet }>('/pets', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -85,6 +92,9 @@ export const petsService = {
     if (data.photo_file) formData.append('photo_file', data.photo_file);
     if (data.photo_url !== undefined) formData.append('photo_url', data.photo_url);
     if (data.remove_photo) formData.append('remove_photo', 'true');
+    if (data.tiles_settings !== undefined) {
+      formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
+    }
 
     const response = await api.put<{ message: string; pet: Pet }>(`/pets/${petId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
