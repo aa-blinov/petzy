@@ -3,11 +3,16 @@ import { Button, Dialog, Form, Input, ImageUploader, Toast, ImageViewer, Card } 
 import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
+import { useTheme } from '../hooks/useTheme';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function Pets() {
   const { pets, selectPet, getSelectedPet } = usePet();
+  const { theme } = useTheme();
   const [showForm, setShowForm] = useState(false);
+
+  // Determine if dark theme is active
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [fileList, setFileList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -232,11 +237,11 @@ export function Pets() {
                             fill="outline"
                             onClick={() => handleEditPet(pet)}
                             style={{
-                              '--text-color': '#000000',
-                              '--border-color': 'rgba(0, 0, 0, 0.3)',
+                              '--text-color': isDark ? '#FFFFFF' : '#000000',
+                              '--border-color': isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.15)',
                             } as React.CSSProperties}
                           >
-                            <EditSOutline style={{ color: '#000000' }} />
+                            <EditSOutline style={{ color: isDark ? '#FFFFFF' : '#000000', fontSize: '16px' }} />
                           </Button>
                           <Button
                             size="mini"
