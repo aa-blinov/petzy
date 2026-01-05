@@ -26,7 +26,18 @@ export interface TilesSettings {
 }
 
 export const DEFAULT_TILES_SETTINGS: TilesSettings = {
-  order: tilesConfig.map(tile => tile.id),
+  // Sort tiles alphabetically by title by default (Russian alphabet order)
+  // Order: Вес, Дефекация, Дневная порция корма, Закапывание глаз, Приступ астмы, Смена лотка, Чистка ушей, Чистка зубов
+  order: [
+    'weight',        // Вес
+    'defecation',    // Дефекация
+    'feeding',       // Дневная порция корма
+    'eye_drops',     // Закапывание глаз
+    'asthma',        // Приступ астмы
+    'litter',        // Смена лотка
+    'ear_cleaning',  // Чистка ушей
+    'tooth_brushing' // Чистка зубов
+  ],
   visible: tilesConfig.reduce((acc, tile) => {
     acc[tile.id] = true;
     return acc;

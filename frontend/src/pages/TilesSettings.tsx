@@ -139,7 +139,7 @@ export function TilesSettings() {
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '16px', paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройка тайлов дашборда</h2>
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройка тайлов дневника</h2>
           <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: 'var(--adm-color-weak)' }}>
             Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
           </p>
