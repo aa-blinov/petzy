@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from 'antd-mobile';
 import { tilesConfig } from '../utils/tilesConfig';
-import { useTilesSettings } from '../hooks/useTilesSettings';
+import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
+import { usePet } from '../hooks/usePet';
 
 // Пастельные цвета для кнопок
 const pastelColorMap: Record<string, string> = {
@@ -19,7 +20,8 @@ const pastelColorMap: Record<string, string> = {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tilesSettings } = useTilesSettings();
+  const { selectedPetId } = usePet();
+  const { tilesSettings } = usePetTilesSettings(selectedPetId);
 
   // Filter and sort tiles based on settings
   const visibleTiles = tilesConfig

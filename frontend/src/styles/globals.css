@@ -196,6 +196,18 @@ input.adm-input-element[type="number"] {
     width: 100% !important;
 }
 
+/* Fix date input spacing - remove large gap between date text and calendar icon */
+input.adm-input-element[type="date"] {
+    padding-right: 8px !important;
+    width: 100% !important;
+}
+
+input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
+    margin-left: 4px !important;
+    padding: 0 !important;
+    cursor: pointer;
+}
+
 .adm-form-item-child-inner {
     justify-content: flex-start !important;
 }

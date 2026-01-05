@@ -273,6 +273,31 @@ class UserPasswordResetRequest(BaseModel):
 # ============================================================================
 
 
+class TilesSettings(BaseModel):
+    """Tiles settings model for pet dashboard."""
+
+    order: List[str] = Field(..., description="Order of tiles (list of tile IDs)")
+    visible: dict[str, bool] = Field(..., description="Visibility of each tile")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                "visible": {
+                    "weight": True,
+                    "defecation": True,
+                    "feeding": True,
+                    "eye_drops": True,
+                    "asthma": True,
+                    "litter": True,
+                    "ear_cleaning": True,
+                    "tooth_brushing": True,
+                },
+            }
+        }
+    )
+
+
 class PetCreate(BaseModel):
     """Pet creation request model."""
 
@@ -281,6 +306,7 @@ class PetCreate(BaseModel):
     birth_date: Optional[str] = Field(None, description="Дата рождения в формате YYYY-MM-DD")
     gender: Optional[str] = Field(None, max_length=20, description="Пол")
     photo_url: Optional[str] = Field(None, description="URL фотографии")
+    tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
     @field_validator("birth_date")
     @classmethod
@@ -309,6 +335,7 @@ class PetUpdate(BaseModel):
     birth_date: Optional[str] = Field(None, description="Дата рождения в формате YYYY-MM-DD")
     gender: Optional[str] = Field(None, max_length=20)
     photo_url: Optional[str] = None
+    tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
     @field_validator("birth_date")
     @classmethod
@@ -338,6 +365,7 @@ class PetResponse(BaseModel):
     gender: str
     photo_url: Optional[str] = None
     photo_file_id: Optional[str] = None
+    tiles_settings: Optional[TilesSettings] = None
     owner: str
     shared_with: List[str]
     created_at: str

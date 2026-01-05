@@ -27,6 +27,48 @@ from web.schemas import (
 
 pets_bp = Blueprint("pets", __name__)
 
+# Default tiles settings (alphabetical order in Russian)
+DEFAULT_TILES_SETTINGS = {
+    "order": [
+        "weight",        # Вес
+        "defecation",    # Дефекация
+        "feeding",       # Дневная порция корма
+        "eye_drops",     # Закапывание глаз
+        "asthma",        # Приступ астмы
+        "litter",        # Смена лотка
+        "ear_cleaning",  # Чистка ушей
+        "tooth_brushing" # Чистка зубов
+    ],
+    "visible": {
+        "weight": True,
+        "defecation": True,
+        "feeding": True,
+        "eye_drops": True,
+        "asthma": True,
+        "litter": True,
+        "ear_cleaning": True,
+        "tooth_brushing": True,
+    }
+}
+
+
+def get_tiles_settings(pet: dict) -> dict:
+    """Get tiles settings from pet, or return default if not set."""
+    if pet and pet.get("tiles_settings"):
+        return pet["tiles_settings"]
+    return DEFAULT_TILES_SETTINGS
+
+
+def convert_objectid_to_str(obj):
+    """Recursively convert all ObjectId instances to strings."""
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: convert_objectid_to_str(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_objectid_to_str(item) for item in obj]
+    return obj
+
 
 @pets_bp.route("/api/pets", methods=["GET"])
 @login_required
@@ -39,19 +81,41 @@ def get_pets():
 
     pets = list(app.db["pets"].find({"$or": [{"owner": username}, {"shared_with": username}]}).sort("created_at", -1))
 
+    processed_pets = []
     for pet in pets:
+        # Convert all ObjectId instances to strings recursively
+        pet = convert_objectid_to_str(pet)
+        
+        # Ensure _id is string (already converted by convert_objectid_to_str, but double-check)
         pet["_id"] = str(pet["_id"])
+        
+        # Convert photo_file_id to string if it exists
+        if pet.get("photo_file_id"):
+            pet["photo_file_id"] = str(pet["photo_file_id"])
+            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False)
+        
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
         if isinstance(pet.get("created_at"), datetime):
             pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
 
-        if pet.get("photo_file_id"):
-            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False)
-
         pet["current_user_is_owner"] = pet.get("owner") == username
+        
+        # Ensure tiles_settings is present (use default if missing)
+        tiles_settings = get_tiles_settings(pet)
+        # Convert any ObjectId in tiles_settings to string
+        pet["tiles_settings"] = convert_objectid_to_str(tiles_settings)
+        
+        # Convert any ObjectId in shared_with to string (if present)
+        if pet.get("shared_with"):
+            pet["shared_with"] = [str(uid) if isinstance(uid, ObjectId) else uid for uid in pet["shared_with"]]
+        
+        # Final pass: convert any remaining ObjectId instances
+        pet = convert_objectid_to_str(pet)
+        
+        processed_pets.append(pet)
 
-    return jsonify({"pets": pets})
+    return jsonify({"pets": processed_pets})
 
 
 @pets_bp.route("/api/pets", methods=["POST"])
@@ -130,6 +194,12 @@ def create_pet():
         else:
             pet_data["photo_url"] = data.photo_url or ""
 
+        # Add tiles_settings if provided, otherwise use default
+        if data.tiles_settings:
+            pet_data["tiles_settings"] = data.tiles_settings.model_dump()
+        else:
+            pet_data["tiles_settings"] = DEFAULT_TILES_SETTINGS
+
         result = app.db["pets"].insert_one(pet_data)
         pet_data["_id"] = str(result.inserted_id)
         if isinstance(pet_data.get("birth_date"), datetime):
@@ -181,6 +251,9 @@ def get_pet(pet_id):
             pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False)
 
         pet["current_user_is_owner"] = pet.get("owner") == username
+        
+        # Ensure tiles_settings is present (use default if missing)
+        pet["tiles_settings"] = get_tiles_settings(pet)
 
         return jsonify({"pet": pet})
 
@@ -292,6 +365,8 @@ def update_pet(pet_id):
             update_data["birth_date"] = birth_date
         if data.gender is not None:
             update_data["gender"] = data.gender.strip() if is_multipart else data.gender
+        if data.tiles_settings is not None:
+            update_data["tiles_settings"] = data.tiles_settings.model_dump()
 
         # Handle photo fields based on request type
         if is_multipart:

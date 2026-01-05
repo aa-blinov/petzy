@@ -44,16 +44,6 @@ export function Settings() {
           </List.Item>
         </List>
 
-        {/* Dashboard Section */}
-        <List header="Дневник" mode="card">
-          <List.Item
-            onClick={() => navigate('/tiles-settings')}
-            clickable
-            arrow
-          >
-            Настройка тайлов
-          </List.Item>
-        </List>
 
         {/* Form Defaults Section */}
         <List header="Значения по умолчанию" mode="card">
