@@ -45,7 +45,7 @@ export function Settings() {
         </List>
 
         {/* Dashboard Section */}
-        <List header="Дашборд" mode="card">
+        <List header="Дневник" mode="card">
           <List.Item
             onClick={() => navigate('/tiles-settings')}
             clickable
