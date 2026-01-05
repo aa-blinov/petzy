@@ -14,7 +14,7 @@ interface HistoryItemProps {
   type: string;
 }
 
-// Пастельные цвета для карточек истории (соответствуют дашборду)
+// Пастельные цвета для карточек истории (соответствуют дневнику)
 const pastelColorMap: Record<string, string> = {
   brown: '#E8D5C4',
   orange: '#FFE5B4',

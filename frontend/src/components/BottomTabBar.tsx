@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TabBar } from 'antd-mobile';
-import { AppOutline, SetOutline, UserOutline, ClockCircleOutline } from 'antd-mobile-icons';
+import { FileOutline, SetOutline, UserOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 
 export function BottomTabBar() {
@@ -22,8 +22,8 @@ export function BottomTabBar() {
   const tabs = [
     {
       key: '/',
-      title: 'Дашборд',
-      icon: <AppOutline />,
+      title: 'Дневник',
+      icon: <FileOutline />,
     },
     {
       key: '/history',

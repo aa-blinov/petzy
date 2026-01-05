@@ -5,7 +5,7 @@ import { historyConfig } from '../utils/historyConfig';
 import { HistoryTab } from '../components/HistoryTab';
 import { ExportModal } from '../components/ExportModal';
 
-// Пастельные цвета для вкладок (соответствуют дашборду)
+// Пастельные цвета для вкладок (соответствуют дневнику)
 const pastelColorMap: Record<string, string> = {
   brown: '#E8D5C4',    // Пастельный коричневый
   orange: '#FFE5B4',   // Пастельный оранжевый
