@@ -19,6 +19,22 @@
     <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
     <link rel="manifest" href="/manifest.json" />
     <title>Petzy</title>
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme') || 'system';
+          var root = document.documentElement;
+          var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            root.setAttribute('data-prefers-color-scheme', 'dark');
+            root.classList.add('dark');
+          } else {
+            root.setAttribute('data-prefers-color-scheme', 'light');
+            root.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
