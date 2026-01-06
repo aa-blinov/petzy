@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Input, Modal, Switch, Toast, Form, Tag } from 'antd-mobile';
+import { Button, Card, Modal, Tag } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 import { useTheme } from '../hooks/useTheme';
-import { usersService, type User, type UserCreate, type UserUpdate } from '../services/users.service';
+import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export function AdminPanel() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
   const { theme } = useTheme();
-  const [showUserForm, setShowUserForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -26,49 +26,6 @@ export function AdminPanel() {
     enabled: isAdmin,
   });
 
-  const createUserMutation = useMutation({
-    mutationFn: (data: UserCreate) => usersService.createUser(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      Toast.show({ 
-        icon: 'success', 
-        content: 'Пользователь успешно создан',
-        duration: 1500,
-      });
-      // Small delay to let Toast render before unmounting
-      setTimeout(() => {
-        setShowUserForm(false);
-      }, 200);
-    },
-    onError: (err: any) => {
-      const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при создании пользователя';
-      setError(errorMessage);
-      console.error('Create user error:', err.response?.data);
-    },
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: ({ username, data }: { username: string; data: UserUpdate }) =>
-      usersService.updateUser(username, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      Toast.show({ 
-        icon: 'success', 
-        content: 'Пользователь успешно обновлен',
-        duration: 1500,
-      });
-      // Small delay to let Toast render before unmounting
-      setTimeout(() => {
-        setShowUserForm(false);
-        setEditingUser(null);
-      }, 200);
-    },
-    onError: (err: any) => {
-      const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при обновлении пользователя';
-      setError(errorMessage);
-      console.error('Update user error:', err.response?.data);
-    },
-  });
 
   const deleteUserMutation = useMutation({
     mutationFn: (username: string) => usersService.deleteUser(username),
@@ -92,13 +49,11 @@ export function AdminPanel() {
   };
 
   const handleEdit = (user: User) => {
-    setEditingUser(user);
-    setShowUserForm(true);
+    navigate(`/admin/users/${user.username}/edit`);
   };
 
   const handleNewUser = () => {
-    setEditingUser(null);
-    setShowUserForm(true);
+    navigate('/admin/users/new');
   };
 
   if (isAdminLoading) {
@@ -242,212 +197,6 @@ export function AdminPanel() {
           </div>
         )}
       </div>
-
-      <Modal
-        visible={showUserForm}
-        content={<UserForm
-          user={editingUser}
-          onClose={() => {
-            setShowUserForm(false);
-            setEditingUser(null);
-          }}
-          onSave={(data) => {
-            if (editingUser) {
-              updateUserMutation.mutate({ username: editingUser.username, data });
-            } else {
-              createUserMutation.mutate(data as UserCreate);
-            }
-          }}
-          isLoading={createUserMutation.isPending || updateUserMutation.isPending}
-        />}
-        closeOnAction
-        onClose={() => {
-          setShowUserForm(false);
-          setEditingUser(null);
-        }}
-      />
-    </div>
-  );
-}
-
-interface UserFormProps {
-  user: User | null;
-  onClose: () => void;
-  onSave: (data: UserCreate | UserUpdate) => void;
-  isLoading: boolean;
-}
-
-function UserForm({ user, onClose, onSave, isLoading }: UserFormProps) {
-  const [username, setUsername] = useState(user?.username || '');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState(user?.full_name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [isActive, setIsActive] = useState(user?.is_active !== false);
-
-  // Reset form when user changes
-  useEffect(() => {
-    setUsername(user?.username || '');
-    setPassword(''); // Always reset password to empty
-    setFullName(user?.full_name || '');
-    setEmail(user?.email || '');
-    setIsActive(user?.is_active !== false);
-  }, [user]);
-
-  const handleSubmit = () => {
-    if (!user && (!username || !password)) {
-      Toast.show({ 
-        icon: 'fail', 
-        content: 'Имя пользователя и пароль обязательны для нового пользователя',
-        duration: 2000,
-      });
-      return;
-    }
-
-    const data: UserCreate | UserUpdate = {
-      ...(user ? {} : { username, password }),
-      ...(user && password && password.trim() && { password: password.trim() }), // Include password only if provided and not empty when editing
-      ...(fullName && { full_name: fullName }),
-      ...(email && { email }),
-      is_active: isActive,
-    };
-
-    onSave(data);
-  };
-
-  return (
-    <div style={{ padding: '16px' }}>
-      <h3 style={{ margin: 0, marginBottom: '24px', fontSize: '18px', fontWeight: 600, color: 'var(--app-text-color)' }}>
-        {user ? 'Редактировать пользователя' : 'Создать пользователя'}
-      </h3>
-      
-      <Form
-        layout="vertical"
-        onFinish={handleSubmit}
-        footer={
-          <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
-            <Button
-              type="submit"
-              color="primary"
-              block
-              loading={isLoading}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Сохранение...' : 'Сохранить'}
-            </Button>
-            <Button
-              type="button"
-              fill="outline"
-              block
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Отмена
-            </Button>
-          </div>
-        }
-      >
-        {!user && (
-          <Form.Item
-            label="Имя пользователя *"
-            name="username"
-          >
-            <Input
-              type="text"
-              value={username}
-              onChange={(val) => setUsername(val)}
-              disabled={isLoading}
-              placeholder="Введите имя пользователя *"
-              clearable
-              autoComplete="username"
-            />
-          </Form.Item>
-        )}
-        
-        {!user ? (
-          <Form.Item
-            label="Пароль *"
-            name="password"
-          >
-            <Input
-              type="password"
-              value={password}
-              onChange={(val) => setPassword(val)}
-              disabled={isLoading}
-              placeholder="Введите пароль *"
-              clearable
-              autoComplete="new-password"
-            />
-          </Form.Item>
-        ) : (
-          <>
-            {/* Hidden username field for password form accessibility */}
-            <input
-              type="text"
-              value={user.username}
-              autoComplete="username"
-              readOnly
-              style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
-              tabIndex={-1}
-              aria-hidden="true"
-            />
-            <Form.Item
-              label="Новый пароль"
-              name="password"
-            >
-              <Input
-                type="password"
-                value={password}
-                onChange={(val) => setPassword(val)}
-                disabled={isLoading}
-                placeholder="Оставьте пустым, чтобы не менять пароль"
-                clearable
-                autoComplete="new-password"
-              />
-            </Form.Item>
-          </>
-        )}
-        
-        <Form.Item
-          label="Полное имя"
-          name="fullName"
-        >
-          <Input
-            type="text"
-            value={fullName}
-            onChange={(val) => setFullName(val)}
-            disabled={isLoading}
-            placeholder="Введите полное имя"
-            clearable
-            autoComplete="name"
-          />
-        </Form.Item>
-        
-        <Form.Item
-          label="Email"
-          name="email"
-        >
-          <Input
-            type="email"
-            value={email}
-            onChange={(val) => setEmail(val)}
-            disabled={isLoading}
-            placeholder="Введите email"
-            clearable
-            autoComplete="email"
-          />
-        </Form.Item>
-        
-        <Form.Item
-          label="Активен"
-          name="isActive"
-        >
-          <Switch
-            checked={isActive}
-            onChange={(checked) => setIsActive(checked)}
-            disabled={isLoading}
-          />
-        </Form.Item>
-      </Form>
     </div>
   );
 }

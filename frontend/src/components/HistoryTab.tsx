@@ -8,9 +8,10 @@ import type { HealthRecordType } from '../utils/constants';
 interface HistoryTabProps {
   type: string;
   petId: string;
+  activeTab: string;
 }
 
-export function HistoryTab({ type, petId }: HistoryTabProps) {
+export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
   const config = historyConfig[type as keyof typeof historyConfig];
   const pageSize = 100;
 
@@ -81,6 +82,7 @@ export function HistoryTab({ type, petId }: HistoryTabProps) {
           item={item}
           config={config}
           type={type}
+          activeTab={activeTab}
         />
       ))}
 
