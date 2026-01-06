@@ -88,22 +88,21 @@ export function HealthRecordForm() {
   const normalizeData = useCallback((data: any) => {
     if (!config) return {};
 
+    console.log('Normalize input data:', data);
+
     const formData: Record<string, any> = {
-      pet_id: data.pet_id || selectedPetId || '',
+      pet_id: data.pet_id || data.petId || selectedPetId || '',
     };
 
     // Date/Time handling
-    // First prefer combined date_time, but also support legacy separate date/time fields
     if (data.date_time) {
-      const [datePart, timePart] = String(data.date_time).split(' ');
-      formData.date = datePart || '';
-      formData.time = timePart ? String(timePart).substring(0, 5) : '';
+      const parts = String(data.date_time).split(' ');
+      formData.date = parts[0] || '';
+      formData.time = parts[1] ? String(parts[1]).substring(0, 5) : '';
     } else if (data.date || data.time) {
-      // Support records that store date and time separately
       formData.date = data.date ? String(data.date) : '';
       formData.time = data.time ? String(data.time) : '';
     } else {
-      // If there's no date in DB, explicitly clear values so defaultValues won't remain
       formData.date = '';
       formData.time = '';
     }
@@ -112,75 +111,66 @@ export function HealthRecordForm() {
     config.fields.forEach((field: any) => {
       if (field.name === 'date' || field.name === 'time') return;
 
-      // Try exact match first, then case-insensitive match
+      // Robust field searching: exact, then case-insensitive, then ignoring underscores
       let raw = data[field.name];
       if (raw === undefined) {
+        const keys = Object.keys(data);
         const lowerName = field.name.toLowerCase();
-        const foundKey = Object.keys(data).find(k => k.toLowerCase() === lowerName);
+        const simpleName = lowerName.replace(/_/g, '');
+
+        const foundKey = keys.find(k => {
+          const lk = k.toLowerCase();
+          return lk === lowerName || lk.replace(/_/g, '') === simpleName;
+        });
+
         if (foundKey) {
           raw = data[foundKey];
         }
       }
 
-      // Unwrap objects like { value: 'x' } or { id: 'x' }
+      // Unwrap objects
       if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
         if (raw.value !== undefined && raw.value !== null) raw = raw.value;
         else if (raw.id !== undefined && raw.id !== null) raw = raw.id;
       }
 
-      // Default empty
       let finalValue: any = raw ?? '';
 
       if (field.type === 'select' && field.options) {
-        // Normalize string for comparisons
-        const norm = raw !== undefined && raw !== null ? String(raw).trim() : '';
-
-        // Generic boolean-like select handling if options are 'true'/'false'
+        const norm = String(raw !== undefined && raw !== null ? raw : '').trim().toLowerCase();
         const optsLower = field.options.map((o: any) => String(o.value).toLowerCase());
         const isBoolSelect = optsLower.includes('true') && optsLower.includes('false');
-        if (isBoolSelect) {
-          const v = String(norm).toLowerCase();
-          if (['true', '1', 'yes', 'да'].includes(v)) finalValue = 'true';
-          else if (['false', '0', 'no', 'нет'].includes(v)) finalValue = 'false';
+
+        if (isBoolSelect && norm !== '') {
+          if (['true', '1', 'yes', 'да', 'true'].includes(norm)) finalValue = 'true';
+          else if (['false', '0', 'no', 'нет', 'false'].includes(norm)) finalValue = 'false';
           else finalValue = '';
         } else if (norm !== '') {
-          // Find option by value or text (case-insensitive)
           const matchingOption = field.options.find((opt: any) => {
             const optVal = String(opt.value).trim().toLowerCase();
             const optText = String(opt.text || '').trim().toLowerCase();
-            const rawNorm = String(norm).trim().toLowerCase();
-            return optVal === rawNorm || optText === rawNorm;
+            return optVal === norm || optText === norm;
           });
           if (matchingOption) finalValue = String(matchingOption.value);
-          else {
-            finalValue = String(raw);
-          }
+          else finalValue = String(raw);
         } else {
           finalValue = '';
         }
       } else if (field.type === 'number') {
         if (raw !== undefined && raw !== null && raw !== '') {
-          if (typeof raw === 'number') {
-            finalValue = raw;
-          } else {
-            const rawStr = String(raw).replace(',', '.');
-            const match = rawStr.match(/-?\d+(?:\.\d+)?/);
-            const numValue = match ? parseFloat(match[0]) : NaN;
-            if (!isNaN(numValue) && isFinite(numValue)) finalValue = numValue;
-            else finalValue = '';
-          }
+          const numValue = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(',', '.'));
+          finalValue = !isNaN(numValue) && isFinite(numValue) ? numValue : '';
         } else {
           finalValue = '';
         }
       } else {
-        // For text and textarea, ensure it's a string
         finalValue = raw !== undefined && raw !== null ? String(raw) : '';
       }
 
-      // Всегда добавляем ключ в formData, даже если значение пустое
       formData[field.name] = finalValue;
     });
 
+    console.log('Normalize output data:', formData);
     return formData;
   }, [config, selectedPetId]);
 
@@ -191,46 +181,37 @@ export function HealthRecordForm() {
     }
   }, [selectedPetId, navigate]);
 
-  // Эффект загрузки данных при редактировании
+  // Эффект загрузки данных при редактировании или сброса для новой записи
   useEffect(() => {
-    if (!isEditing || !type) return;
-
-    const loadData = async () => {
-      try {
-        let data = location.state?.recordData;
-
-        if (!data) {
-          setIsLoading(true);
-          data = await healthRecordsService.get(type as HealthRecordType, id!);
-        }
-
-        const formData = normalizeData(data);
-
-        console.log('Resetting form with:', formData);
-
-        // Ensure all values are properly typed for react-hook-form
-        const safeFormData: Record<string, any> = {};
-        Object.keys(formData).forEach(key => {
-          const value = formData[key];
-          if (value === undefined || value === null) {
-            safeFormData[key] = '';
-          } else {
-            safeFormData[key] = value;
+    if (isEditing) {
+      if (!type) return;
+      const loadData = async () => {
+        try {
+          let data = location.state?.recordData;
+          if (!data) {
+            setIsLoading(true);
+            data = await healthRecordsService.get(type as HealthRecordType, id!);
           }
-        });
-
-        reset(safeFormData);
-      } catch (err) {
-        console.error('Error loading record:', err);
-        Toast.show({ content: 'Ошибка загрузки записи', icon: 'fail' });
-        navigate('/history');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [isEditing, type, id, location.state, normalizeData, reset, navigate]);
+          const formData = normalizeData(data);
+          const safeFormData: Record<string, any> = {};
+          Object.keys(formData).forEach(key => {
+            safeFormData[key] = formData[key] ?? '';
+          });
+          reset(safeFormData);
+        } catch (err) {
+          console.error('Error loading record:', err);
+          Toast.show({ content: 'Ошибка загрузки записи', icon: 'fail' });
+          navigate('/history');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadData();
+    } else {
+      // Для новой записи сбрасываем форму в дефолтные значения
+      reset(defaultValues);
+    }
+  }, [isEditing, type, id, location.state, normalizeData, reset, navigate, defaultValues]);
 
   const onSubmit = async (data: Record<string, any>) => {
     if (!selectedPetId || !type) {
@@ -319,7 +300,11 @@ export function HealthRecordForm() {
               } as any}
             >
               {config.fields.map((field) => (
-                <FormField key={field.id} field={field} />
+                <FormField
+                  key={field.id}
+                  field={field}
+                  defaultValue={defaultValues[field.name]}
+                />
               ))}
             </Form>
           </FormProvider>

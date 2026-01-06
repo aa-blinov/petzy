@@ -178,7 +178,7 @@ export function PetForm() {
               name="name"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item name="name" label="Имя *" help={error?.message}>
+                <Form.Item label={<label htmlFor="name">Имя *</label>} help={error?.message}>
                   <Input {...field} id="name" aria-label="Имя питомца" placeholder="Имя питомца" />
                 </Form.Item>
               )}
@@ -188,7 +188,7 @@ export function PetForm() {
               name="breed"
               control={control}
               render={({ field }) => (
-                <Form.Item name="breed" label="Порода">
+                <Form.Item label={<label htmlFor="breed">Порода</label>}>
                   <Input {...field} id="breed" aria-label="Порода" placeholder="Порода (необязательно)" />
                 </Form.Item>
               )}
@@ -211,7 +211,7 @@ export function PetForm() {
 
                 const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
                 return (
-                  <Form.Item name="birth_date" label="Дата рождения">
+                  <Form.Item label={<label htmlFor="birth_date">Дата рождения</label>}>
                     <Input
                       id="birth_date"
                       readOnly
@@ -251,7 +251,7 @@ export function PetForm() {
               name="gender"
               control={control}
               render={({ field }) => (
-                <Form.Item name="gender" label="Пол">
+                <Form.Item label={<label htmlFor="gender">Пол</label>}>
                   <Input {...field} id="gender" aria-label="Пол" placeholder="Пол (необязательно)" />
                 </Form.Item>
               )}

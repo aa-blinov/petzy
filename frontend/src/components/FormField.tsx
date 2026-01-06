@@ -10,8 +10,6 @@ interface FormFieldProps {
 
 export function FormField({ field, defaultValue }: FormFieldProps) {
   const { control } = useFormContext();
-  const isHalfWidth = field.name === 'date' || field.name === 'time';
-
   const [pickerVisible, setPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
@@ -230,10 +228,13 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
         return (
           <Form.Item
-            name={field.name}
-            label={field.label + (field.required ? ' *' : '')}
+            label={
+              <label htmlFor={field.name} style={{ cursor: 'pointer' }}>
+                {field.label}{field.required ? ' *' : ''}
+              </label>
+            }
             style={{
-              width: isHalfWidth ? '100%' : '100%',
+              width: '100%',
             }}
             help={error ? (error.message as string) : undefined}
           >

@@ -152,7 +152,7 @@ export function UserForm() {
                 name="username"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <Form.Item name="username" label="Имя пользователя *" help={error?.message}>
+                  <Form.Item label={<label htmlFor="username">Имя пользователя *</label>} help={error?.message}>
                     <Input
                       {...field}
                       id="username"
@@ -183,7 +183,7 @@ export function UserForm() {
                       aria-label="Username for password managers"
                     />
                   )}
-                  <Form.Item name="password" label={isEditing ? "Новый пароль" : "Пароль *"}>
+                  <Form.Item label={<label htmlFor="password">{isEditing ? "Новый пароль" : "Пароль *"}</label>}>
                     <Input
                       {...field}
                       id="password"
@@ -202,7 +202,7 @@ export function UserForm() {
               name="full_name"
               control={control}
               render={({ field }) => (
-                <Form.Item name="full_name" label="Полное имя">
+                <Form.Item label={<label htmlFor="full_name">Полное имя</label>}>
                   <Input
                     {...field}
                     id="full_name"
@@ -219,7 +219,7 @@ export function UserForm() {
               name="email"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item name="email" label="Email" help={error?.message}>
+                <Form.Item label={<label htmlFor="email">Email</label>} help={error?.message}>
                   <Input
                     {...field}
                     id="email"
