@@ -227,7 +227,7 @@ export function UserForm() {
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
             <Button onClick={() => navigate('/admin')} style={{ flex: 1 }}>Отмена</Button>
-            <Button color="primary" onClick={handleSubmit(onSubmit)} loading={isLoading} style={{ flex: 1 }}>
+            <Button color="primary" onClick={() => handleSubmit(onSubmit)()} loading={isLoading} style={{ flex: 1 }}>
               {isEditing ? 'Сохранить' : 'Создать'}
             </Button>
           </div>

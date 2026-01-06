@@ -4,11 +4,11 @@ import { useTheme } from '../hooks/useTheme';
 
 export function Settings() {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, isDark } = useTheme();
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       backgroundColor: 'var(--app-page-background)',
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
@@ -18,19 +18,27 @@ export function Settings() {
         <div style={{ marginBottom: '16px', paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройки</h2>
         </div>
-        
-        {/* Theme Section */}
+
         <List header="Внешний вид" mode="card">
           <List.Item
             extra={
               <Switch
-                checked={theme === 'dark'}
+                checked={isDark}
                 onChange={(checked) => setTheme(checked ? 'dark' : 'light')}
               />
             }
+            description={theme === 'system' ? 'Следует за настройками системы' : undefined}
           >
             Темная тема
           </List.Item>
+          {theme !== 'system' && (
+            <List.Item
+              onClick={() => setTheme('system')}
+              clickable
+            >
+              Использовать системную тему
+            </List.Item>
+          )}
         </List>
 
         {/* Management Section */}

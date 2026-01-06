@@ -244,10 +244,10 @@ export function HealthRecordForm() {
 
       if (id) {
         await healthRecordsService.update(type as HealthRecordType, id, transformedData);
-        Toast.show({ content: 'Запись обновлена', icon: 'success', duration: 1500 });
+        Toast.show({ content: config.successMessage(true), icon: 'success', duration: 1500 });
       } else {
         await healthRecordsService.create(type as HealthRecordType, transformedData);
-        Toast.show({ content: 'Запись создана', icon: 'success', duration: 1500 });
+        Toast.show({ content: config.successMessage(false), icon: 'success', duration: 1500 });
       }
 
       await queryClient.invalidateQueries({ queryKey: ['history'] });
@@ -310,7 +310,6 @@ export function HealthRecordForm() {
         }}>
           <FormProvider {...methods}>
             <Form
-              onFinish={handleSubmit(onSubmit)}
               style={{
                 '--background-color': 'var(--app-card-background)',
                 '--border-top': 'none',
@@ -342,7 +341,7 @@ export function HealthRecordForm() {
               Отмена
             </Button>
             <Button
-              onClick={handleSubmit(onSubmit)}
+              onClick={() => handleSubmit(onSubmit)()}
               color="primary"
               loading={isSubmitting}
               style={{ flex: 1 }}

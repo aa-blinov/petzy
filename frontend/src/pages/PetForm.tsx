@@ -281,7 +281,7 @@ export function PetForm() {
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
             <Button onClick={() => navigate('/pets')} style={{ flex: 1 }}>Отмена</Button>
-            <Button color="primary" onClick={handleSubmit(onSubmit)} loading={loading} style={{ flex: 1 }}>
+            <Button color="primary" onClick={() => handleSubmit(onSubmit)()} loading={loading} style={{ flex: 1 }}>
               {isEditing ? 'Сохранить' : 'Добавить'}
             </Button>
           </div>
