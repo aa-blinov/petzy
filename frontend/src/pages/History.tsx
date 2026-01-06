@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, Button } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { historyConfig } from '../utils/historyConfig';
 import { HistoryTab } from '../components/HistoryTab';
 import { ExportModal } from '../components/ExportModal';
+import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
+import { tilesConfig } from '../utils/tilesConfig';
 
 // Пастельные цвета для вкладок (соответствуют дневнику)
 const pastelColorMap: Record<string, string> = {
@@ -22,15 +24,32 @@ const pastelColorMap: Record<string, string> = {
 
 export function History() {
   const { selectedPetId } = usePet();
+  const { tilesSettings } = usePetTilesSettings(selectedPetId);
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
+  // Получаем вкладки, отсортированные и отфильтрованные так же, как в дневнике
+  const tabs = useMemo(() => {
+    return tilesConfig
+      .filter(tile => tilesSettings.visible[tile.id] !== false)
+      .sort((a, b) => {
+        const aIndex = tilesSettings.order.indexOf(a.id);
+        const bIndex = tilesSettings.order.indexOf(b.id);
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      })
+      .map(tile => ({
+        key: tile.id,
+        title: historyConfig[tile.id as keyof typeof historyConfig]?.displayName || tile.title,
+        color: tile.color,
+      }));
+  }, [tilesSettings]);
+
   // Получаем активную вкладку из URL параметра или используем первую по умолчанию
   const getActiveTabFromUrl = (): string => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && tabFromUrl in historyConfig) {
       return tabFromUrl;
     }
-    return Object.keys(historyConfig)[0] || 'feeding';
+    return tabs[0]?.key || 'feeding';
   };
 
   const [activeTab, setActiveTab] = useState<string>(getActiveTabFromUrl);
@@ -61,28 +80,23 @@ export function History() {
     );
   }
 
-  const tabs = Object.entries(historyConfig).map(([key, config]) => ({
-    key,
-    title: config.displayName,
-    color: config.color,
-  }));
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
       backgroundColor: 'var(--app-page-background)',
       color: 'var(--app-text-color)'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ 
-          marginBottom: '16px', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <div style={{
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))' 
+          paddingRight: 'max(16px, env(safe-area-inset-right))'
         }}>
           <h2 style={{ fontSize: '24px', margin: 0, fontWeight: 600, color: 'var(--app-text-color)' }}>История записей</h2>
           <Button
@@ -98,7 +112,7 @@ export function History() {
         <Tabs
           activeKey={activeTab}
           onChange={handleTabChange}
-          style={{ 
+          style={{
             marginBottom: '24px',
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || '#D4E8FF',
             '--active-title-color': 'var(--app-text-color)',
@@ -107,8 +121,8 @@ export function History() {
           } as React.CSSProperties}
         >
           {tabs.map(tab => (
-            <Tabs.Tab 
-              key={tab.key} 
+            <Tabs.Tab
+              key={tab.key}
               title={tab.title}
             >
               <HistoryTab type={tab.key} petId={selectedPetId} activeTab={activeTab} />

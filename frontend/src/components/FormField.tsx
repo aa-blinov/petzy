@@ -238,7 +238,6 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
             label={field.label + (field.required ? ' *' : '')}
             style={{
               width: isHalfWidth ? '100%' : '100%',
-              marginBottom: '16px'
             }}
             help={error ? (error.message as string) : undefined}
           >
