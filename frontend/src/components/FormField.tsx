@@ -300,6 +300,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
           <Form.Item
             clickable
             onClick={handleRowClick}
+            arrow={['date', 'time', 'select'].includes(field.type)}
             label={
               <label htmlFor={field.name} style={{ cursor: 'pointer' }}>
                 {field.label}{field.required ? ' *' : ''}
