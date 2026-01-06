@@ -14,6 +14,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { petsService } from '../services/pets.service';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const petSchema = z.object({
   name: z.string().min(1, 'Имя питомца обязательно'),
@@ -145,14 +146,7 @@ export function PetForm() {
   };
 
   if (isEditing && isLoadingPet) {
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'var(--app-page-background)', color: 'var(--app-text-color)'
-      }}>
-        Загрузка...
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (

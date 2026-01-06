@@ -4,13 +4,14 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Form, SpinLoading, Toast } from 'antd-mobile';
+import { Button, Form, Toast } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { formConfigs, getFormSettings } from '../utils/formsConfig';
 import type { HealthRecordType } from '../utils/constants';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { FormField } from '../components/FormField';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export function HealthRecordForm() {
   const { type, id } = useParams<{ type: HealthRecordType; id?: string }>();
@@ -276,11 +277,7 @@ export function HealthRecordForm() {
   }
 
   if (isLoading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--app-page-background)' }}>
-        <SpinLoading />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
