@@ -149,10 +149,6 @@ def get_asthma_attacks():
         attack["username"] = attack.get("username", "")
         if isinstance(attack.get("date_time"), datetime):
             attack["date_time"] = attack["date_time"].strftime("%Y-%m-%d %H:%M")
-        if attack.get("inhalation") is True:
-            attack["inhalation"] = "Да"
-        elif attack.get("inhalation") is False:
-            attack["inhalation"] = "Нет"
     
     # Debug logging
     # app.logger.info(f"Asthma attacks returning: {attacks}")
@@ -183,10 +179,6 @@ def get_asthma_attack(record_id):
         record["username"] = record.get("username", "")
         if isinstance(record.get("date_time"), datetime):
             record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
-        if record.get("inhalation") is True:
-            record["inhalation"] = "Да"
-        elif record.get("inhalation") is False:
-            record["inhalation"] = "Нет"
 
         return jsonify(record)
     except Exception as e:
