@@ -37,7 +37,8 @@ export const historyConfig: Record<HealthRecordType | 'asthma', HistoryTypeConfi
     renderDetails: (item) => {
       let html = `<span><strong>Длительность:</strong> ${item.duration}</span>`;
       html += `<span><strong>Причина:</strong> ${item.reason}</span>`;
-      html += `<span><strong>Ингаляция:</strong> ${item.inhalation}</span>`;
+      const inhalationText = [true, 'true', 'Да'].includes(item.inhalation) ? 'Да' : 'Нет';
+      html += `<span><strong>Ингаляция:</strong> ${inhalationText}</span>`;
       if (item.comment && item.comment !== '-') {
         html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
       }

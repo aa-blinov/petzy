@@ -535,7 +535,7 @@ class AsthmaAttackItem(BaseModel):
     username: str
     duration: Optional[str] = None
     reason: Optional[str] = None
-    inhalation: Optional[str] = None  # "Да" or "Нет" as returned by API
+    inhalation: Optional[bool] = None  # Boolean value (true/false) as stored in DB
     comment: Optional[str] = None
 
 
