@@ -74,8 +74,8 @@ export function FormDefaults() {
   }, []);
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       backgroundColor: 'var(--app-page-background)',
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
@@ -89,14 +89,27 @@ export function FormDefaults() {
         {/* Form Defaults Section */}
         <Form layout="horizontal" mode="card">
           <Form.Header>Приступ астмы</Form.Header>
-          <Form.Item label="Длительность" onClick={() => setVisiblePicker('asthma_duration')} arrow>
-            {formSettings.asthma?.duration || 'Короткий'}
-          </Form.Item>
-          <Form.Item label="Ингаляция" onClick={() => setVisiblePicker('asthma_inhalation')} arrow>
-            {formSettings.asthma?.inhalation === 'true' ? 'Да' : 'Нет'}
-          </Form.Item>
-          <Form.Item label="Причина">
+          <Form.Item name="asthma_duration" label="Длительность">
             <Input
+              id="asthma_duration"
+              readOnly
+              value={formSettings.asthma?.duration || 'Короткий'}
+              onClick={() => setVisiblePicker('asthma_duration')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
+          </Form.Item>
+          <Form.Item name="asthma_inhalation" label="Ингаляция">
+            <Input
+              id="asthma_inhalation"
+              readOnly
+              value={formSettings.asthma?.inhalation === 'true' ? 'Да' : 'Нет'}
+              onClick={() => setVisiblePicker('asthma_inhalation')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
+          </Form.Item>
+          <Form.Item name="asthma_reason" label="Причина">
+            <Input
+              id="asthma_reason"
               value={formSettings.asthma?.reason || ''}
               onChange={(val) => updateFormSetting('asthma', 'reason', val)}
               placeholder="Пил"
@@ -104,14 +117,27 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Дефекация</Form.Header>
-          <Form.Item label="Тип стула" onClick={() => setVisiblePicker('defecation_stool_type')} arrow>
-            {formSettings.defecation?.stool_type || 'Обычный'}
-          </Form.Item>
-          <Form.Item label="Цвет стула" onClick={() => setVisiblePicker('defecation_color')} arrow>
-            {formSettings.defecation?.color || 'Коричневый'}
-          </Form.Item>
-          <Form.Item label="Корм">
+          <Form.Item name="defecation_stool_type" label="Тип стула">
             <Input
+              id="defecation_stool_type"
+              readOnly
+              value={formSettings.defecation?.stool_type || 'Обычный'}
+              onClick={() => setVisiblePicker('defecation_stool_type')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
+          </Form.Item>
+          <Form.Item name="defecation_color" label="Цвет стула">
+            <Input
+              id="defecation_color"
+              readOnly
+              value={formSettings.defecation?.color || 'Коричневый'}
+              onClick={() => setVisiblePicker('defecation_color')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
+          </Form.Item>
+          <Form.Item name="defecation_food" label="Корм">
+            <Input
+              id="defecation_food"
               value={formSettings.defecation?.food || ''}
               onChange={(val) => updateFormSetting('defecation', 'food', val)}
               placeholder="Royal Canin Fibre Response"
@@ -119,8 +145,9 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Вес</Form.Header>
-          <Form.Item label="Корм">
+          <Form.Item name="weight_food" label="Корм">
             <Input
+              id="weight_food"
               value={formSettings.weight?.food || ''}
               onChange={(val) => updateFormSetting('weight', 'food', val)}
               placeholder="Royal Canin Fibre Response"
@@ -128,18 +155,36 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Закапывание глаз</Form.Header>
-          <Form.Item label="Тип капель" onClick={() => setVisiblePicker('eye_drops_type')} arrow>
-            {formSettings.eye_drops?.drops_type || 'Обычные'}
+          <Form.Item name="eye_drops_type" label="Тип капель">
+            <Input
+              id="eye_drops_type"
+              readOnly
+              value={formSettings.eye_drops?.drops_type || 'Обычные'}
+              onClick={() => setVisiblePicker('eye_drops_type')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
           </Form.Item>
 
           <Form.Header>Чистка зубов</Form.Header>
-          <Form.Item label="Способ чистки" onClick={() => setVisiblePicker('tooth_brushing_type')} arrow>
-            {formSettings.tooth_brushing?.brushing_type || 'Щетка'}
+          <Form.Item name="tooth_brushing_type" label="Способ чистки">
+            <Input
+              id="tooth_brushing_type"
+              readOnly
+              value={formSettings.tooth_brushing?.brushing_type || 'Щетка'}
+              onClick={() => setVisiblePicker('tooth_brushing_type')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
           </Form.Item>
 
           <Form.Header>Чистка ушей</Form.Header>
-          <Form.Item label="Способ чистки" onClick={() => setVisiblePicker('ear_cleaning_type')} arrow>
-            {formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля'}
+          <Form.Item name="ear_cleaning_type" label="Способ чистки">
+            <Input
+              id="ear_cleaning_type"
+              readOnly
+              value={formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля'}
+              onClick={() => setVisiblePicker('ear_cleaning_type')}
+              style={{ '--text-align': 'right', cursor: 'pointer' }}
+            />
           </Form.Item>
         </Form>
 

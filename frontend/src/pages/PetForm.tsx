@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Form, Input, ImageUploader, Toast, Picker, List, Switch } from 'antd-mobile';
-import { RightOutline } from 'antd-mobile-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -179,8 +178,8 @@ export function PetForm() {
               name="name"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label="Имя *" help={error?.message}>
-                  <Input {...field} placeholder="Имя питомца" />
+                <Form.Item name="name" label="Имя *" help={error?.message}>
+                  <Input {...field} id="name" aria-label="Имя питомца" placeholder="Имя питомца" />
                 </Form.Item>
               )}
             />
@@ -189,8 +188,8 @@ export function PetForm() {
               name="breed"
               control={control}
               render={({ field }) => (
-                <Form.Item label="Порода">
-                  <Input {...field} placeholder="Порода (необязательно)" />
+                <Form.Item name="breed" label="Порода">
+                  <Input {...field} id="breed" aria-label="Порода" placeholder="Порода (необязательно)" />
                 </Form.Item>
               )}
             />
@@ -210,22 +209,20 @@ export function PetForm() {
                   pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
                 }
 
-                const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : 'Выберите дату';
+                const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
                 return (
-                  <Form.Item label="Дата рождения">
-                    <div
+                  <Form.Item name="birth_date" label="Дата рождения">
+                    <Input
+                      id="birth_date"
+                      readOnly
+                      value={displayDate}
+                      placeholder="Выберите дату"
                       onClick={() => {
                         setInternalPickerDate(pickerValue);
                         setDatePickerVisible(true);
                       }}
-                      style={{
-                        padding: '8px 0', cursor: 'pointer', color: 'var(--adm-color-text)',
-                        display: 'flex', alignItems: 'center', gap: '8px'
-                      }}
-                    >
-                      <span>{displayDate}</span>
-                      <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
-                    </div>
+                      style={{ '--font-size': '16px' }}
+                    />
                     <Picker
                       columns={dateColumns}
                       visible={datePickerVisible}
@@ -254,21 +251,31 @@ export function PetForm() {
               name="gender"
               control={control}
               render={({ field }) => (
-                <Form.Item label="Пол">
-                  <Input {...field} placeholder="Пол (необязательно)" />
+                <Form.Item name="gender" label="Пол">
+                  <Input {...field} id="gender" aria-label="Пол" placeholder="Пол (необязательно)" />
                 </Form.Item>
               )}
             />
 
-            <Form.Item label="Фото">
-              <ImageUploader
-                value={fileList}
-                onChange={setFileList}
-                upload={async (file) => ({ url: URL.createObjectURL(file) })}
-                maxCount={1}
-                deletable={true}
-              />
-            </Form.Item>
+            <div style={{ marginTop: '16px' }}>
+              <div style={{
+                fontSize: 'var(--adm-font-size-main)',
+                color: 'var(--adm-color-weak)',
+                padding: '0 12px 8px'
+              }}>
+                Фото
+              </div>
+              <Form.Item>
+                <ImageUploader
+                  value={fileList}
+                  onChange={setFileList}
+                  upload={async (file) => ({ url: URL.createObjectURL(file) })}
+                  maxCount={1}
+                  deletable={true}
+                  aria-label="Загрузить фото"
+                />
+              </Form.Item>
+            </div>
 
             {isEditing && id && <PetTilesSettingsSection petId={id} />}
           </Form>
@@ -320,7 +327,7 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
               ☰
             </div>
           }
-          extra={<Switch checked={visible} onChange={(checked) => onToggle(id, checked)} />}
+          extra={<Switch checked={visible} onChange={(checked) => onToggle(id, checked)} aria-label={`Показать ${title}`} />}
         >
           {title}
         </List.Item>
@@ -329,7 +336,14 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
   }
 
   return (
-    <Form.Item label="Настройки тайлов дневника">
+    <div style={{ marginTop: '24px' }}>
+      <div style={{
+        fontSize: 'var(--adm-font-size-main)',
+        color: 'var(--adm-color-weak)',
+        padding: '0 12px 8px'
+      }}>
+        Настройки тайлов дневника
+      </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={tilesSettings.order} strategy={verticalListSortingStrategy}>
           <List>
@@ -349,10 +363,10 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
           </List>
         </SortableContext>
       </DndContext>
-      <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--adm-color-weak)' }}>
+      <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--adm-color-weak)', padding: '0 12px' }}>
         Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
       </p>
-    </Form.Item>
+    </div>
   );
 }
 

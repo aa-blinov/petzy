@@ -152,8 +152,15 @@ export function UserForm() {
                 name="username"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <Form.Item label="Имя пользователя *" help={error?.message}>
-                    <Input {...field} placeholder="Введите имя пользователя *" clearable autoComplete="username" />
+                  <Form.Item name="username" label="Имя пользователя *" help={error?.message}>
+                    <Input
+                      {...field}
+                      id="username"
+                      aria-label="Имя пользователя"
+                      placeholder="Введите имя пользователя *"
+                      clearable
+                      autoComplete="username"
+                    />
                   </Form.Item>
                 )}
               />
@@ -173,11 +180,14 @@ export function UserForm() {
                       style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
                       tabIndex={-1}
                       aria-hidden="true"
+                      aria-label="Username for password managers"
                     />
                   )}
-                  <Form.Item label={isEditing ? "Новый пароль" : "Пароль *"}>
+                  <Form.Item name="password" label={isEditing ? "Новый пароль" : "Пароль *"}>
                     <Input
                       {...field}
+                      id="password"
+                      aria-label={isEditing ? "Новый пароль" : "Пароль"}
                       type="password"
                       placeholder={isEditing ? "Оставьте пустым, чтобы не менять" : "Введите пароль *"}
                       clearable
@@ -192,8 +202,15 @@ export function UserForm() {
               name="full_name"
               control={control}
               render={({ field }) => (
-                <Form.Item label="Полное имя">
-                  <Input {...field} placeholder="Введите полное имя" clearable autoComplete="name" />
+                <Form.Item name="full_name" label="Полное имя">
+                  <Input
+                    {...field}
+                    id="full_name"
+                    aria-label="Полное имя"
+                    placeholder="Введите полное имя"
+                    clearable
+                    autoComplete="name"
+                  />
                 </Form.Item>
               )}
             />
@@ -202,8 +219,16 @@ export function UserForm() {
               name="email"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label="Email" help={error?.message}>
-                  <Input {...field} type="email" placeholder="Введите email" clearable autoComplete="email" />
+                <Form.Item name="email" label="Email" help={error?.message}>
+                  <Input
+                    {...field}
+                    id="email"
+                    aria-label="Email"
+                    type="email"
+                    placeholder="Введите email"
+                    clearable
+                    autoComplete="email"
+                  />
                 </Form.Item>
               )}
             />
@@ -213,7 +238,11 @@ export function UserForm() {
               control={control}
               render={({ field: { value, onChange } }) => (
                 <Form.Item label="Активен">
-                  <Switch checked={value} onChange={onChange} />
+                  <Switch
+                    aria-label="Активен"
+                    checked={value}
+                    onChange={onChange}
+                  />
                 </Form.Item>
               )}
             />
