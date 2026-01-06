@@ -141,10 +141,10 @@ export function HealthRecordForm() {
         const optsLower = field.options.map((o: any) => String(o.value).toLowerCase());
         const isBoolSelect = optsLower.includes('true') && optsLower.includes('false');
 
-        if (isBoolSelect && norm !== '') {
-          if (['true', '1', 'yes', 'да', 'true'].includes(norm)) finalValue = 'true';
-          else if (['false', '0', 'no', 'нет', 'false'].includes(norm)) finalValue = 'false';
-          else finalValue = '';
+        if (isBoolSelect) {
+          const isTrue = [true, 'true', '1', 'yes', 'да'].includes(norm) || raw === true;
+          const isFalse = [false, 'false', '0', 'no', 'нет'].includes(norm) || raw === false;
+          finalValue = isTrue ? 'true' : (isFalse ? 'false' : '');
         } else if (norm !== '') {
           const matchingOption = field.options.find((opt: any) => {
             const optVal = String(opt.value).trim().toLowerCase();
