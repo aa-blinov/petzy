@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usersService, type UserCreate, type UserUpdate } from '../services/users.service';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const userSchema = z.object({
   username: z.string().min(1, 'Имя пользователя обязательно'),
@@ -115,14 +116,7 @@ export function UserForm() {
   };
 
   if (isEditing && isLoadingUser) {
-    return (
-      <div style={{
-        minHeight: '100vh', padding: '32px', display: 'flex', justifyContent: 'center',
-        alignItems: 'center', backgroundColor: 'var(--app-page-background)', color: 'var(--app-text-color)'
-      }}>
-        Загрузка...
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   const isLoading = isSubmitting || createUserMutation.isPending || updateUserMutation.isPending;
