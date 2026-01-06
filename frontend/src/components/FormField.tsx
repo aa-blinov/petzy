@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input, TextArea, Picker, Form, Toast } from 'antd-mobile';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
@@ -14,6 +14,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
+  const inputRef = useRef<any>(null);
 
   // Use provided defaultValue or fallback to first option for select
   const defaultVal = defaultValue || (field.options && field.options.length > 0 ? field.options[0].value : '');
@@ -91,6 +92,30 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
     return [hours, minutes];
   };
 
+  const handleRowClick = () => {
+    if (field.type === 'date') {
+      const currentVal = getValues(field.name);
+      let pValue: string[] = [];
+      if (currentVal) {
+        const d = new Date(currentVal);
+        pValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
+      } else {
+        const now = new Date();
+        pValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
+      }
+      setInternalPickerDate(pValue);
+      setDatePickerVisible(true);
+    } else if (field.type === 'time') {
+      const currentVal = getValues(field.name) || defaultValue || getCurrentTime();
+      setInternalPickerDate(currentVal.split(':'));
+      setPickerVisible(true);
+    } else if (field.type === 'select') {
+      setPickerVisible(true);
+    } else if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   return (
     <Controller
       name={field.name}
@@ -99,34 +124,23 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
         const renderInput = () => {
           switch (field.type) {
             case 'date':
-              let pickerValue: string[] = [];
-              if (value) {
-                const d = new Date(value);
-                pickerValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
-              } else {
-                const now = new Date();
-                pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
-              }
               const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
 
               return (
                 <>
                   <Input
+                    ref={inputRef}
                     id={field.name}
                     readOnly
                     value={displayDate}
                     placeholder="Выберите дату"
-                    onClick={() => {
-                      setInternalPickerDate(pickerValue);
-                      setDatePickerVisible(true);
-                    }}
                     style={{ '--font-size': '16px' }}
                   />
                   <Picker
                     columns={dateColumns(value)}
                     visible={datePickerVisible}
                     onClose={() => setDatePickerVisible(false)}
-                    value={internalPickerDate.length ? internalPickerDate : pickerValue}
+                    value={internalPickerDate.length ? internalPickerDate : []}
                     onSelect={(val) => setInternalPickerDate(val as string[])}
                     onConfirm={(val) => {
                       const day = val[0];
@@ -136,9 +150,6 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                       const dayStr = String(day).padStart(2, '0');
                       const formattedDate = `${year}-${monthStr}-${dayStr}`;
 
-                      // Prevent future date
-                      // Normalize now to start of next day for date-only comparison would be too much, 
-                      // but we can just compare the strings or date objects
                       const todayStr = getCurrentDate();
                       if (formattedDate > todayStr) {
                         Toast.show({ content: 'Дата не может быть в будущем', icon: 'fail' });
@@ -165,14 +176,11 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               return (
                 <>
                   <Input
+                    ref={inputRef}
                     id={field.name}
                     readOnly
                     value={displayTime}
                     placeholder="Выберите время"
-                    onClick={() => {
-                      setInternalPickerDate(timeValue);
-                      setPickerVisible(true);
-                    }}
                     style={{ '--font-size': '16px' }}
                   />
                   <Picker
@@ -187,18 +195,15 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     onConfirm={(val) => {
                       const formattedTime = `${String(val[0] || '00')}:${String(val[1] || '00')}`;
 
-                      // Prevent future time if date is today
                       const now = new Date();
                       const currentDate = getValues('date') || getCurrentDate();
                       const selectedDateTime = parseDateTime(currentDate, formattedTime);
 
                       if (selectedDateTime > now) {
                         Toast.show({ content: 'Время не может быть в будущем', icon: 'fail' });
-                        // If it's today, set to current time. If it's a past date (shouldn't happen with future date check), keep it.
                         if (currentDate === getCurrentDate()) {
                           onChange(getCurrentTime());
                         } else {
-                          // This case won't be hit because we check date first, but for safety:
                           onChange(formattedTime);
                         }
                       } else {
@@ -222,11 +227,11 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               return (
                 <>
                   <Input
+                    ref={inputRef}
                     id={field.name}
                     readOnly
                     value={selectedOption?.label || ''}
                     placeholder="Выберите..."
-                    onClick={() => setPickerVisible(true)}
                     style={{ '--font-size': '16px' }}
                   />
                   {value === defaultVal && (
@@ -252,6 +257,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
             case 'textarea':
               return (
                 <TextArea
+                  ref={inputRef}
                   id={field.name}
                   aria-label={field.label}
                   value={value !== undefined && value !== null ? String(value) : ''}
@@ -268,6 +274,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                 : (value !== undefined && value !== null ? String(value) : '');
               return (
                 <Input
+                  ref={inputRef}
                   type={field.type}
                   id={field.name}
                   aria-label={field.label}
@@ -291,6 +298,8 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
         return (
           <Form.Item
+            clickable
+            onClick={handleRowClick}
             label={
               <label htmlFor={field.name} style={{ cursor: 'pointer' }}>
                 {field.label}{field.required ? ' *' : ''}
@@ -298,6 +307,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
             }
             style={{
               width: '100%',
+              cursor: 'pointer'
             }}
             help={error ? (error.message as string) : undefined}
           >
@@ -308,4 +318,3 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
     />
   );
 }
-
