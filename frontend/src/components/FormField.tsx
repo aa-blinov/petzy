@@ -237,14 +237,23 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
         );
 
       default:
+        // For number fields, ensure we display the value correctly
+        const displayValue = field.type === 'number' 
+          ? (value !== undefined && value !== null && value !== '' ? String(value) : '')
+          : (value || '');
+
         return (
           <Input
             type={field.type}
             id={field.id}
-            value={value || ''}
+            value={displayValue}
             onChange={(val) => {
-              const numValue = field.type === 'number' ? parseFloat(val) || 0 : val;
-              setValue(field.name, numValue, { shouldValidate: true });
+              if (field.type === 'number') {
+                const numValue = val === '' ? undefined : parseFloat(val);
+                setValue(field.name, isNaN(numValue as number) ? undefined : numValue, { shouldValidate: true });
+              } else {
+                setValue(field.name, val, { shouldValidate: true });
+              }
             }}
             placeholder={field.placeholder}
             step={field.step}

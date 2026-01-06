@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, Button } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { historyConfig } from '../utils/historyConfig';
@@ -21,9 +22,36 @@ const pastelColorMap: Record<string, string> = {
 
 export function History() {
   const { selectedPetId } = usePet();
-  // Устанавливаем первую вкладку из конфигурации (feeding - Дневные порции)
-  const [activeTab, setActiveTab] = useState<string>(Object.keys(historyConfig)[0] || 'feeding');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Получаем активную вкладку из URL параметра или используем первую по умолчанию
+  const getActiveTabFromUrl = (): string => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && tabFromUrl in historyConfig) {
+      return tabFromUrl;
+    }
+    return Object.keys(historyConfig)[0] || 'feeding';
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getActiveTabFromUrl);
   const [exportVisible, setExportVisible] = useState(false);
+
+  // Синхронизируем активную вкладку с URL при изменении параметра
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && tabFromUrl in historyConfig && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    } else if (!tabFromUrl && activeTab !== Object.keys(historyConfig)[0]) {
+      // Если параметра нет, но активная вкладка не первая, обновляем URL
+      setSearchParams({ tab: activeTab });
+    }
+  }, [searchParams, activeTab, setSearchParams]);
+
+  // Обновляем URL при изменении вкладки
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setSearchParams({ tab: key });
+  };
 
   if (!selectedPetId) {
     return (
@@ -69,9 +97,7 @@ export function History() {
 
         <Tabs
           activeKey={activeTab}
-          onChange={(key) => {
-            setActiveTab(key);
-          }}
+          onChange={handleTabChange}
           style={{ 
             marginBottom: '24px',
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || '#D4E8FF',
@@ -85,7 +111,7 @@ export function History() {
               key={tab.key} 
               title={tab.title}
             >
-              <HistoryTab type={tab.key} petId={selectedPetId} />
+              <HistoryTab type={tab.key} petId={selectedPetId} activeTab={activeTab} />
             </Tabs.Tab>
           ))}
         </Tabs>

@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { Button, Toast, Dialog, Form, Input, DatePicker, Picker, TextArea, Card } from 'antd-mobile';
+import { useNavigate } from 'react-router-dom';
+import { Button, Toast, Dialog, Card } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
 import { formatDateTime } from '../utils/historyConfig';
 import { healthRecordsService } from '../services/healthRecords.service';
 import type { HealthRecordType } from '../utils/constants';
-import { formConfigs } from '../utils/formsConfig';
 
 interface HistoryItemProps {
   item: HistoryItemType;
   config: HistoryTypeConfig;
   type: string;
+  activeTab: string;
 }
 
 // Пастельные цвета для карточек истории (соответствуют дневнику)
@@ -28,76 +29,16 @@ const pastelColorMap: Record<string, string> = {
   pink: '#FFE5EB',
 };
 
-export function HistoryItem({ item, config, type }: HistoryItemProps) {
+export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const backgroundColor = pastelColorMap[config.color] || '#D4E8FF';
-  const [editVisible, setEditVisible] = useState(false);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [pickerVisible, setPickerVisible] = useState<string | null>(null);
-  const [form] = Form.useForm();
-  const formConfig = formConfigs[type as HealthRecordType];
 
   const handleEdit = () => {
-    // Parse date_time to date and time
-    const dateTime = new Date(item.date_time);
-    const dateStr = dateTime.toISOString().split('T')[0];
-    const timeStr = dateTime.toTimeString().split(' ')[0].substring(0, 5);
-
-    // Prepare form values
-    const formValues: any = {
-      date: new Date(dateStr),
-      time: timeStr,
-    };
-
-    // Populate other fields based on item data
-    formConfig.fields.forEach(field => {
-      if (field.name !== 'date' && field.name !== 'time' && item[field.name] !== undefined) {
-        formValues[field.name] = item[field.name];
-      }
-    });
-
-    form.setFieldsValue(formValues);
-    setEditVisible(true);
-  };
-
-  const handleSave = async () => {
-    try {
-      await form.validateFields();
-      const values = form.getFieldsValue();
-      setLoading(true);
-
-      // Transform form data
-      const dateStr = values.date instanceof Date 
-        ? values.date.toISOString().split('T')[0]
-        : values.date;
-
-      const updateData: any = {
-        date: dateStr,
-        time: values.time,
-      };
-
-      // Add other fields
-      formConfig.fields.forEach(field => {
-        if (field.name !== 'date' && field.name !== 'time' && values[field.name] !== undefined) {
-          updateData[field.name] = values[field.name];
-        }
-      });
-
-      await healthRecordsService.update(type as HealthRecordType, item._id, updateData);
-      await queryClient.invalidateQueries({ queryKey: ['history'] });
-      Toast.show({ content: formConfig.successMessage(true), icon: 'success' });
-      setEditVisible(false);
-    } catch (error: any) {
-      if (error?.errorFields) {
-        // Form validation error
-        return;
-      }
-      console.error('Error updating record:', error);
-      Toast.show({ content: 'Ошибка при сохранении', icon: 'fail' });
-    } finally {
-      setLoading(false);
-    }
+    // Pass item data via state to avoid extra API call
+    // ActiveTab is now in URL, so we pass it as query parameter
+    navigate(`/form/${type}/${item._id}?tab=${activeTab}`, { state: { recordData: item } });
   };
 
   const handleDelete = async () => {
@@ -114,112 +55,6 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
       console.error('Error deleting record:', error);
       Toast.show({ content: 'Ошибка при удалении', icon: 'fail', duration: 2000 });
       setDeleteDialogVisible(false);
-    }
-  };
-
-  const renderFormField = (field: typeof formConfig.fields[0]) => {
-    switch (field.type) {
-      case 'date':
-        return (
-          <Form.Item
-            key={field.name}
-            name={field.name}
-            label={field.label}
-            rules={[{ required: field.required, message: `${field.label} обязательно` }]}
-          >
-            <DatePicker max={new Date()}>
-              {(value) => value ? value.toLocaleDateString('ru-RU') : 'Выберите дату'}
-            </DatePicker>
-          </Form.Item>
-        );
-
-      case 'time':
-        return (
-          <Form.Item
-            key={field.name}
-            name={field.name}
-            label={field.label}
-            rules={[{ required: field.required, message: `${field.label} обязательно` }]}
-          >
-            <Input type="time" placeholder={field.placeholder} />
-          </Form.Item>
-        );
-
-      case 'number':
-        return (
-          <Form.Item
-            key={field.name}
-            name={field.name}
-            label={field.label}
-            rules={[{ required: field.required, message: `${field.label} обязательно` }]}
-          >
-            <Input 
-              type="number" 
-              placeholder={field.placeholder}
-              min={field.min}
-              max={field.max}
-              step={field.step}
-            />
-          </Form.Item>
-        );
-
-      case 'select':
-        const options = field.options?.map(opt => ({ label: opt.text, value: opt.value })) || [];
-        const currentValue = form.getFieldValue(field.name);
-        const selectedOption = options.find(opt => opt.value === currentValue);
-        return (
-          <>
-            <Form.Item
-              key={field.name}
-              name={field.name}
-              label={field.label}
-              rules={[{ required: field.required, message: `${field.label} обязательно` }]}
-              onClick={() => setPickerVisible(field.name)}
-              arrow
-            >
-              {selectedOption?.label || 'Выберите...'}
-            </Form.Item>
-            <Picker
-              columns={[options]}
-              visible={pickerVisible === field.name}
-              onClose={() => setPickerVisible(null)}
-              value={currentValue ? [currentValue] : []}
-              onConfirm={(val) => {
-                form.setFieldValue(field.name, val[0] as string || '');
-                setPickerVisible(null);
-              }}
-              cancelText="Отмена"
-              confirmText="Сохранить"
-            />
-          </>
-        );
-
-      case 'textarea':
-        return (
-          <Form.Item
-            key={field.name}
-            name={field.name}
-            label={field.label}
-          >
-            <TextArea 
-              placeholder={field.placeholder}
-              rows={field.rows || 3}
-            />
-          </Form.Item>
-        );
-
-      case 'text':
-      default:
-        return (
-          <Form.Item
-            key={field.name}
-            name={field.name}
-            label={field.label}
-            rules={[{ required: field.required, message: `${field.label} обязательно` }]}
-          >
-            <Input placeholder={field.placeholder} />
-          </Form.Item>
-        );
     }
   };
 
@@ -297,38 +132,6 @@ export function HistoryItem({ item, config, type }: HistoryItemProps) {
         ]}
       />
 
-      {/* Edit Modal */}
-      <Dialog
-        visible={editVisible}
-        onClose={() => setEditVisible(false)}
-        title={formConfig.title}
-        content={
-          <Form
-            form={form}
-            layout="vertical"
-            footer={
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <Button 
-                  onClick={() => setEditVisible(false)}
-                  style={{ flex: 1 }}
-                >
-                  Отмена
-                </Button>
-                <Button 
-                  color="primary" 
-                  onClick={handleSave} 
-                  loading={loading}
-                  style={{ flex: 1 }}
-                >
-                  Сохранить
-                </Button>
-              </div>
-            }
-          >
-            {formConfig.fields.map(field => renderFormField(field))}
-          </Form>
-        }
-      />
     </>
   );
 }

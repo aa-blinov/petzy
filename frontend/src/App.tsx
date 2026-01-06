@@ -13,6 +13,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m
 const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
 const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const UserForm = lazy(() => import('./pages/UserForm').then(m => ({ default: m.UserForm })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })));
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
@@ -105,6 +106,22 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users/new"
+            element={
+              <ProtectedRoute>
+                <UserForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users/:username/edit"
+            element={
+              <ProtectedRoute>
+                <UserForm />
               </ProtectedRoute>
             }
           />
