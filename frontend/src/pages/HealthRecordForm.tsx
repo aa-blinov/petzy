@@ -311,39 +311,45 @@ export function HealthRecordForm() {
           <FormProvider {...methods}>
             <Form
               onFinish={handleSubmit(onSubmit)}
-              footer={
-                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                  <Button
-                    onClick={() => {
-                      if (id) {
-                        // При редактировании возвращаемся на историю с сохранением активной вкладки из URL
-                        const activeTab = searchParams.get('tab');
-                        navigate(activeTab ? `/history?tab=${activeTab}` : '/history');
-                      } else {
-                        // При создании новой записи возвращаемся на главную
-                        navigate('/');
-                      }
-                    }}
-                    style={{ flex: 1 }}
-                  >
-                    Отмена
-                  </Button>
-                  <Button
-                    type="submit"
-                    color="primary"
-                    loading={isSubmitting}
-                    style={{ flex: 1 }}
-                  >
-                    {id ? 'Сохранить' : 'Создать'}
-                  </Button>
-                </div>
-              }
+              style={{
+                '--background-color': 'var(--app-card-background)',
+                '--border-top': 'none',
+                '--border-bottom': 'none',
+                '--border-inner': '1px solid var(--app-border-color)',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              } as any}
             >
               {config.fields.map((field) => (
                 <FormField key={field.id} field={field} />
               ))}
             </Form>
           </FormProvider>
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+            <Button
+              onClick={() => {
+                if (id) {
+                  const activeTab = searchParams.get('tab');
+                  navigate(activeTab ? `/history?tab=${activeTab}` : '/history');
+                } else {
+                  navigate('/');
+                }
+              }}
+              style={{ flex: 1 }}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleSubmit(onSubmit)}
+              color="primary"
+              loading={isSubmitting}
+              style={{ flex: 1 }}
+            >
+              {id ? 'Сохранить' : 'Создать'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
