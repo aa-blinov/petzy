@@ -20,7 +20,7 @@ export function HealthRecordForm() {
   const { selectedPetId } = usePet();
   const queryClient = useQueryClient();
   const config = type && type in formConfigs ? formConfigs[type as HealthRecordType] : null;
-  
+
   // Если мы редактируем, нам не нужны дефолтные значения "сейчас", 
   // иначе может быть скачок данных.
   const isEditing = !!id;
@@ -48,22 +48,29 @@ export function HealthRecordForm() {
     );
   }, [config]);
 
-  // Дефолтные значения только для НОВОЙ записи
+  // При редактировании начальные значения помогут react-hook-form инициализировать поля,
+  // а затем они будут обновлены вызовом reset() в useEffect когда данные будут загружены.
   const defaultValues = useMemo(() => {
-    if (isEditing) return undefined; // При редактировании данные придут из reset()
-
     const settings = getFormSettings();
     const values: Record<string, any> = {
-      date: getCurrentDate(),
-      time: getCurrentTime(),
+      date: isEditing ? '' : getCurrentDate(),
+      time: isEditing ? '' : getCurrentTime(),
       pet_id: selectedPetId || ''
     };
 
-    if (type && type in settings && settings[type as keyof typeof settings]) {
+    // Добавляем поля из конфига, чтобы RHF знал о них
+    if (config) {
+      config.fields.forEach(field => {
+        if (field.name === 'date' || field.name === 'time') return;
+        values[field.name] = field.type === 'number' ? undefined : '';
+      });
+    }
+
+    if (!isEditing && type && type in settings && settings[type as keyof typeof settings]) {
       Object.assign(values, settings[type as keyof typeof settings]);
     }
     return values;
-  }, [isEditing, type, selectedPetId]);
+  }, [isEditing, type, selectedPetId, config]);
 
   const methods = useForm({
     resolver: zodResolver(schema),
@@ -85,66 +92,91 @@ export function HealthRecordForm() {
     };
 
     // Date/Time handling
+    // First prefer combined date_time, but also support legacy separate date/time fields
     if (data.date_time) {
-      const [datePart, timePart] = data.date_time.split(' ');
+      const [datePart, timePart] = String(data.date_time).split(' ');
       formData.date = datePart || '';
-      formData.time = timePart ? timePart.substring(0, 5) : '';
+      formData.time = timePart ? String(timePart).substring(0, 5) : '';
+    } else if (data.date || data.time) {
+      // Support records that store date and time separately
+      formData.date = data.date ? String(data.date) : '';
+      formData.time = data.time ? String(data.time) : '';
     } else {
-      // Важно: если даты нет в БД, явно сбрасываем, чтобы не осталось defaultValues
+      // If there's no date in DB, explicitly clear values so defaultValues won't remain
       formData.date = '';
       formData.time = '';
     }
 
+    // Process only fields defined in form config
     config.fields.forEach((field: any) => {
       if (field.name === 'date' || field.name === 'time') return;
 
-      const value = data[field.name];
+      // Try exact match first, then case-insensitive match
+      let raw = data[field.name];
+      if (raw === undefined) {
+        const lowerName = field.name.toLowerCase();
+        const foundKey = Object.keys(data).find(k => k.toLowerCase() === lowerName);
+        if (foundKey) {
+          raw = data[foundKey];
+        }
+      }
 
-      // Важно: По умолчанию ставим пустую строку или null, если значения нет,
-      // чтобы перезаписать возможные старые значения формы
-      let finalValue: any = value ?? '';
+      // Unwrap objects like { value: 'x' } or { id: 'x' }
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        if (raw.value !== undefined && raw.value !== null) raw = raw.value;
+        else if (raw.id !== undefined && raw.id !== null) raw = raw.id;
+      }
+
+      // Default empty
+      let finalValue: any = raw ?? '';
 
       if (field.type === 'select' && field.options) {
-        if (field.name === 'inhalation') {
-          if (String(value) === 'true' || value === true || value === 'Да') {
-            finalValue = 'true';
-          } else if (String(value) === 'false' || value === false || value === 'Нет') {
-            finalValue = 'false';
-          } else {
-            finalValue = '';
-          }
-        } else if (value) {
-          const matchingOption = field.options.find((opt: any) => 
-            opt.text === value || opt.value === value
-          );
-          if (matchingOption) {
-            finalValue = matchingOption.value;
-          } else {
-            console.warn(`No matching option found for field ${field.name} with value:`, value);
-            finalValue = value;
+        // Normalize string for comparisons
+        const norm = raw !== undefined && raw !== null ? String(raw).trim() : '';
+
+        // Generic boolean-like select handling if options are 'true'/'false'
+        const optsLower = field.options.map((o: any) => String(o.value).toLowerCase());
+        const isBoolSelect = optsLower.includes('true') && optsLower.includes('false');
+        if (isBoolSelect) {
+          const v = String(norm).toLowerCase();
+          if (['true', '1', 'yes', 'да'].includes(v)) finalValue = 'true';
+          else if (['false', '0', 'no', 'нет'].includes(v)) finalValue = 'false';
+          else finalValue = '';
+        } else if (norm !== '') {
+          // Find option by value or text (case-insensitive)
+          const matchingOption = field.options.find((opt: any) => {
+            const optVal = String(opt.value).trim().toLowerCase();
+            const optText = String(opt.text || '').trim().toLowerCase();
+            const rawNorm = String(norm).trim().toLowerCase();
+            return optVal === rawNorm || optText === rawNorm;
+          });
+          if (matchingOption) finalValue = String(matchingOption.value);
+          else {
+            finalValue = String(raw);
           }
         } else {
           finalValue = '';
         }
       } else if (field.type === 'number') {
-        if (value !== undefined && value !== null && value !== '') {
-          const numValue = typeof value === 'number' ? value : parseFloat(String(value));
-          if (!isNaN(numValue) && isFinite(numValue)) {
-            finalValue = numValue;
+        if (raw !== undefined && raw !== null && raw !== '') {
+          if (typeof raw === 'number') {
+            finalValue = raw;
           } else {
-            console.warn(`Invalid number value for field ${field.name}:`, value);
-            finalValue = '';
+            const rawStr = String(raw).replace(',', '.');
+            const match = rawStr.match(/-?\d+(?:\.\d+)?/);
+            const numValue = match ? parseFloat(match[0]) : NaN;
+            if (!isNaN(numValue) && isFinite(numValue)) finalValue = numValue;
+            else finalValue = '';
           }
         } else {
           finalValue = '';
         }
       } else {
-        // Text and textarea - allow empty strings (they should be reset)
-        finalValue = value ?? '';
+        // For text and textarea, ensure it's a string
+        finalValue = raw !== undefined && raw !== null ? String(raw) : '';
       }
 
       // Всегда добавляем ключ в formData, даже если значение пустое
-      // Это важно для правильного сброса defaultValues
       formData[field.name] = finalValue;
     });
 
@@ -169,14 +201,24 @@ export function HealthRecordForm() {
         if (!data) {
           setIsLoading(true);
           data = await healthRecordsService.get(type as HealthRecordType, id!);
-        } else {
-          setIsLoading(false);
         }
 
         const formData = normalizeData(data);
-        
+
         console.log('Resetting form with:', formData);
-        reset(formData); // Вызываем синхронно, без setTimeout
+
+        // Ensure all values are properly typed for react-hook-form
+        const safeFormData: Record<string, any> = {};
+        Object.keys(formData).forEach(key => {
+          const value = formData[key];
+          if (value === undefined || value === null) {
+            safeFormData[key] = '';
+          } else {
+            safeFormData[key] = value;
+          }
+        });
+
+        reset(safeFormData);
       } catch (err) {
         console.error('Error loading record:', err);
         Toast.show({ content: 'Ошибка загрузки записи', icon: 'fail' });
@@ -207,9 +249,9 @@ export function HealthRecordForm() {
         await healthRecordsService.create(type as HealthRecordType, transformedData);
         Toast.show({ content: 'Запись создана', icon: 'success', duration: 1500 });
       }
-      
+
       await queryClient.invalidateQueries({ queryKey: ['history'] });
-      
+
       // Навигация
       if (id) {
         // При редактировании возвращаемся на историю с сохранением активной вкладки из URL
@@ -252,17 +294,17 @@ export function HealthRecordForm() {
       }}
     >
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ 
-          marginBottom: '16px', 
-          paddingLeft: 'max(16px, env(safe-area-inset-left))', 
-          paddingRight: 'max(16px, env(safe-area-inset-right))' 
+        <div style={{
+          marginBottom: '16px',
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))'
         }}>
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>
             {id ? 'Редактировать запись' : config.title}
           </h2>
         </div>
 
-        <div style={{ 
+        <div style={{
           paddingLeft: 'max(16px, env(safe-area-inset-left))',
           paddingRight: 'max(16px, env(safe-area-inset-right))'
         }}>
