@@ -951,7 +951,7 @@ def add_feeding():
         feeding_data = {
             "pet_id": pet_id,
             "date_time": event_dt,
-            "food_weight": data.food_weight or "",
+            "food_weight": data.food_weight if data.food_weight is not None else None,
             "comment": data.comment or "",
             "username": username,
         }
@@ -1071,7 +1071,7 @@ def update_feeding(record_id):
 
         feeding_data = {
             "date_time": event_dt,
-            "food_weight": data.food_weight or "",
+            "food_weight": data.food_weight if data.food_weight is not None else None,
             "comment": data.comment or "",
         }
 
