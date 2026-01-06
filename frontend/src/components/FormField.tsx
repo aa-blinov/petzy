@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input, TextArea, Picker, Form } from 'antd-mobile';
-import { RightOutline } from 'antd-mobile-icons';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 
 interface FormFieldProps {
@@ -86,23 +85,21 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                 const now = new Date();
                 pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
               }
-              const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : 'Выберите дату';
+              const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
 
               return (
                 <>
-                  <div
+                  <Input
+                    id={field.name}
+                    readOnly
+                    value={displayDate}
+                    placeholder="Выберите дату"
                     onClick={() => {
                       setInternalPickerDate(pickerValue);
                       setDatePickerVisible(true);
                     }}
-                    style={{
-                      padding: '8px 0', cursor: 'pointer', color: 'var(--adm-color-text)',
-                      display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start'
-                    }}
-                  >
-                    <span>{displayDate}</span>
-                    <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
-                  </div>
+                    style={{ '--font-size': '16px' }}
+                  />
                   <Picker
                     columns={dateColumns(value)}
                     visible={datePickerVisible}
@@ -128,19 +125,17 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
             case 'time':
               const timeValue = value ? value.split(':') : (defaultValue ? defaultValue.split(':') : []);
-              const displayTime = value || 'Выберите время';
+              const displayTime = value || '';
               return (
                 <>
-                  <div
+                  <Input
+                    id={field.name}
+                    readOnly
+                    value={displayTime}
+                    placeholder="Выберите время"
                     onClick={() => setPickerVisible(true)}
-                    style={{
-                      padding: '8px 0', cursor: 'pointer', color: 'var(--adm-color-text)',
-                      display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start'
-                    }}
-                  >
-                    <span>{displayTime}</span>
-                    <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
-                  </div>
+                    style={{ '--font-size': '16px' }}
+                  />
                   <Picker
                     columns={timeColumns}
                     visible={pickerVisible}
@@ -165,16 +160,14 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               const selectedOption = options.find(opt => String(opt.value) === String(value)) || options[0];
               return (
                 <>
-                  <div
+                  <Input
+                    id={field.name}
+                    readOnly
+                    value={selectedOption?.label || ''}
+                    placeholder="Выберите..."
                     onClick={() => setPickerVisible(true)}
-                    style={{
-                      padding: '8px 0', cursor: 'pointer', color: 'var(--adm-color-text)',
-                      display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start'
-                    }}
-                  >
-                    <span>{selectedOption?.label || 'Выберите...'}</span>
-                    <RightOutline style={{ color: 'var(--adm-color-weak)', fontSize: '14px' }} />
-                  </div>
+                    style={{ '--font-size': '16px' }}
+                  />
                   {value === defaultVal && (
                     <div style={{ fontSize: '12px', color: '#666666', marginTop: '4px', fontStyle: 'italic' }}>
                       Значение по умолчанию
@@ -198,7 +191,8 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
             case 'textarea':
               return (
                 <TextArea
-                  id={field.id}
+                  id={field.name}
+                  aria-label={field.label}
                   value={value !== undefined && value !== null ? String(value) : ''}
                   onChange={onChange}
                   placeholder={field.placeholder}
@@ -214,7 +208,8 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               return (
                 <Input
                   type={field.type}
-                  id={field.id}
+                  id={field.name}
+                  aria-label={field.label}
                   value={displayValue}
                   onChange={(val) => {
                     if (field.type === 'number') {
@@ -235,6 +230,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
         return (
           <Form.Item
+            name={field.name}
             label={field.label + (field.required ? ' *' : '')}
             style={{
               width: isHalfWidth ? '100%' : '100%',
