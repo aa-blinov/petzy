@@ -107,7 +107,7 @@ def add_asthma_attack():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for asthma attack: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/asthma", methods=["GET"])
@@ -250,7 +250,7 @@ def update_asthma_attack(record_id):
         app.logger.warning(
             f"Invalid input data for asthma attack update: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["DELETE"])
@@ -335,7 +335,7 @@ def add_defecation():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for defecation: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/defecation", methods=["GET"])
@@ -466,7 +466,7 @@ def update_defecation(record_id):
         app.logger.warning(
             f"Invalid input data for defecation update: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["DELETE"])
@@ -504,7 +504,7 @@ def delete_defecation(record_id):
         app.logger.warning(
             f"Invalid record_id for defecation deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("invalid_record_id")
+        return error_response("invalid_record_id", str(e))
 
 
 # Litter routes
@@ -548,7 +548,7 @@ def add_litter():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for litter change: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/litter", methods=["GET"])
@@ -673,7 +673,7 @@ def update_litter(record_id):
         app.logger.warning(
             f"Invalid input data for litter change update: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["DELETE"])
@@ -711,7 +711,7 @@ def delete_litter(record_id):
         app.logger.warning(
             f"Invalid record_id for litter change deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("invalid_record_id")
+        return error_response("invalid_record_id", str(e))
 
 
 # Weight routes
@@ -757,7 +757,7 @@ def add_weight():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/weight", methods=["GET"])
@@ -881,7 +881,7 @@ def update_weight(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for weight update: record_id={record_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["DELETE"])
@@ -917,7 +917,7 @@ def delete_weight(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for weight deletion: record_id={record_id}, user={username}, error={e}")
-        return error_response("invalid_record_id")
+        return error_response("invalid_record_id", str(e))
 
 
 # Feeding routes
@@ -962,7 +962,7 @@ def add_feeding():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/feeding", methods=["GET"])
@@ -1085,7 +1085,7 @@ def update_feeding(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for feeding update: record_id={record_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["DELETE"])
@@ -1121,7 +1121,7 @@ def delete_feeding(record_id):
 
     except ValueError as e:
         app.logger.warning(f"Invalid record_id for feeding deletion: record_id={record_id}, user={username}, error={e}")
-        return error_response("invalid_record_id")
+        return error_response("invalid_record_id", str(e))
 
 
 # Eye drops routes
@@ -1166,7 +1166,7 @@ def add_eye_drops():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for eye drops: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/eye_drops", methods=["GET"])
@@ -1293,7 +1293,7 @@ def update_eye_drops(record_id):
         app.logger.warning(
             f"Invalid input data for eye drops update: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/eye_drops/<record_id>", methods=["DELETE"])
@@ -1331,7 +1331,7 @@ def delete_eye_drops(record_id):
         app.logger.warning(
             f"Invalid record_id for eye drops deletion: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("invalid_record_id")
+        return error_response("invalid_record_id", str(e))
 
 
 # Tooth brushing routes
@@ -1376,7 +1376,7 @@ def add_tooth_brushing():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for tooth brushing: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/tooth_brushing", methods=["GET"])
@@ -1501,7 +1501,7 @@ def update_tooth_brushing(record_id):
         app.logger.warning(
             f"Invalid input data for tooth brushing update: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["DELETE"])
@@ -1584,7 +1584,7 @@ def add_ear_cleaning():
 
     except ValueError as e:
         app.logger.warning(f"Invalid input data for ear cleaning: pet_id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/ear_cleaning", methods=["GET"])
@@ -1707,7 +1707,7 @@ def update_ear_cleaning(record_id):
         app.logger.warning(
             f"Invalid input data for ear cleaning update: record_id={record_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["DELETE"])

@@ -68,14 +68,21 @@ def validate_request_data(
         # but we return a generic validation error here for consistency
         if context:
             from web.app import logger
-
             logger.warning(f"Validation error in {context}: {e}")
-        return None, error_response("validation_error")
+        
+        # Get first error message
+        errors = e.errors()
+        if errors and len(errors) > 0:
+            msg = errors[0].get("msg", str(e))
+            if msg.startswith("Value error, "):
+                msg = msg[len("Value error, ") :]
+            return None, error_response("validation_error", msg)
+            
+        return None, error_response("validation_error", str(e))
     except Exception as e:
         # Handle other unexpected errors
         if context:
             from web.app import logger
-
             logger.warning(f"Unexpected error validating {context}: {e}")
-        return None, error_response("validation_error")
+        return None, error_response("validation_error", str(e))
 

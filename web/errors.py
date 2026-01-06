@@ -76,11 +76,12 @@ ERRORS: Dict[str, ErrorDef] = {
 }
 
 
-def error_response(key: str) -> Tuple[Response, int]:
+def error_response(key: str, custom_message: str = None) -> Tuple[Response, int]:
     """Build a JSON error response using predefined error definitions.
 
     Args:
         key: Error key from ERRORS dictionary.
+        custom_message: Optional custom message to override the default one.
 
     Returns:
         Tuple of (Response, status_code) with JSON error response.
@@ -92,6 +93,6 @@ def error_response(key: str) -> Tuple[Response, int]:
     if err is None:
         # Fallback for unknown error keys (should not happen in production)
         logger.warning(f"Unknown error key: {key}")
-        return jsonify({"success": False, "error": "Неизвестная ошибка", "code": key}), 500
+        return jsonify({"success": False, "error": custom_message or "Неизвестная ошибка", "code": key}), 500
 
-    return jsonify({"success": False, "error": err.message, "code": err.code}), err.status
+    return jsonify({"success": False, "error": custom_message or err.message, "code": err.code}), err.status
