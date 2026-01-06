@@ -89,7 +89,7 @@ export function FormDefaults() {
         {/* Form Defaults Section */}
         <Form layout="horizontal" mode="card">
           <Form.Header>Приступ астмы</Form.Header>
-          <Form.Item name="asthma_duration" label="Длительность">
+          <Form.Item label={<label htmlFor="asthma_duration">Длительность</label>}>
             <Input
               id="asthma_duration"
               readOnly
@@ -98,7 +98,7 @@ export function FormDefaults() {
               style={{ '--text-align': 'right', cursor: 'pointer' }}
             />
           </Form.Item>
-          <Form.Item name="asthma_inhalation" label="Ингаляция">
+          <Form.Item label={<label htmlFor="asthma_inhalation">Ингаляция</label>}>
             <Input
               id="asthma_inhalation"
               readOnly
@@ -107,7 +107,7 @@ export function FormDefaults() {
               style={{ '--text-align': 'right', cursor: 'pointer' }}
             />
           </Form.Item>
-          <Form.Item name="asthma_reason" label="Причина">
+          <Form.Item label={<label htmlFor="asthma_reason">Причина</label>}>
             <Input
               id="asthma_reason"
               value={formSettings.asthma?.reason || ''}
@@ -117,7 +117,7 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Дефекация</Form.Header>
-          <Form.Item name="defecation_stool_type" label="Тип стула">
+          <Form.Item label={<label htmlFor="defecation_stool_type">Тип стула</label>}>
             <Input
               id="defecation_stool_type"
               readOnly
@@ -126,7 +126,7 @@ export function FormDefaults() {
               style={{ '--text-align': 'right', cursor: 'pointer' }}
             />
           </Form.Item>
-          <Form.Item name="defecation_color" label="Цвет стула">
+          <Form.Item label={<label htmlFor="defecation_color">Цвет стула</label>}>
             <Input
               id="defecation_color"
               readOnly
@@ -135,7 +135,7 @@ export function FormDefaults() {
               style={{ '--text-align': 'right', cursor: 'pointer' }}
             />
           </Form.Item>
-          <Form.Item name="defecation_food" label="Корм">
+          <Form.Item label={<label htmlFor="defecation_food">Корм</label>}>
             <Input
               id="defecation_food"
               value={formSettings.defecation?.food || ''}
@@ -145,7 +145,7 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Вес</Form.Header>
-          <Form.Item name="weight_food" label="Корм">
+          <Form.Item label={<label htmlFor="weight_food">Корм</label>}>
             <Input
               id="weight_food"
               value={formSettings.weight?.food || ''}
@@ -155,7 +155,7 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Закапывание глаз</Form.Header>
-          <Form.Item name="eye_drops_type" label="Тип капель">
+          <Form.Item label={<label htmlFor="eye_drops_type">Тип капель</label>}>
             <Input
               id="eye_drops_type"
               readOnly
@@ -166,7 +166,7 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Чистка зубов</Form.Header>
-          <Form.Item name="tooth_brushing_type" label="Способ чистки">
+          <Form.Item label={<label htmlFor="tooth_brushing_type">Способ чистки</label>}>
             <Input
               id="tooth_brushing_type"
               readOnly
@@ -177,7 +177,7 @@ export function FormDefaults() {
           </Form.Item>
 
           <Form.Header>Чистка ушей</Form.Header>
-          <Form.Item name="ear_cleaning_type" label="Способ чистки">
+          <Form.Item label={<label htmlFor="ear_cleaning_type">Способ чистки</label>}>
             <Input
               id="ear_cleaning_type"
               readOnly
