@@ -138,8 +138,9 @@ def create_pet():
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart:
             data, validation_error = validate_request_data(request, PetCreate, context="pet creation")
-            if validation_error or data is None:
-                return validation_error if validation_error else error_response("validation_error")
+            if validation_error:
+                # validation_error is already a (jsonify, status) tuple
+                return validation_error[0], validation_error[1]
         else:
             # JSON request - already validated by @api.validate(body=Request(PetCreate))
             data = request.context.body  # type: ignore[attr-defined]
@@ -211,8 +212,8 @@ def create_pet():
         return get_message("pet_created", status=201, pet=pet_data)
 
     except ValueError as e:
-        logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
-        return error_response("validation_error")
+        app.logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
+        return error_response("validation_error", str(e))
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["GET"])
@@ -261,7 +262,7 @@ def get_pet(pet_id):
         logger.warning(
             f"Invalid input data for get_pet: id={pet_id}, user={getattr(request, 'current_user', None)}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["PUT"])
@@ -288,14 +289,12 @@ def update_pet(pet_id):
         if access_error:
             return access_error[0], access_error[1]
 
-        # Validate request data (supports both JSON and multipart/form-data)
-        # For JSON: use request.context.body (validated by @api.validate)
-        # For multipart: use validate_request_data helper
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart:
             data, validation_error = validate_request_data(request, PetUpdate, context="pet update")
-            if validation_error or data is None:
-                return validation_error if validation_error else error_response("validation_error")
+            if validation_error:
+                # validation_error is already a (jsonify, status) tuple
+                return validation_error[0], validation_error[1]
         else:
             # JSON request - already validated by @api.validate(body=Request(PetUpdate))
             data = request.context.body  # type: ignore[attr-defined]
@@ -387,8 +386,8 @@ def update_pet(pet_id):
         return get_message("pet_updated")
 
     except ValueError as e:
-        logger.warning(f"Invalid input data for pet update: id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        app.logger.warning(f"Invalid pet_id for pet retrieval: pet_id={pet_id}, user={username}, error={e}")
+        return error_response("validation_error", str(e))
 
 
 @pets_bp.route("/api/pets/<pet_id>/share", methods=["POST"])
@@ -440,7 +439,7 @@ def share_pet(pet_id):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for sharing pet: id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @pets_bp.route("/api/pets/<pet_id>/share/<share_username>", methods=["DELETE"])
@@ -467,7 +466,7 @@ def unshare_pet(pet_id, share_username):
 
     except ValueError as e:
         logger.warning(f"Invalid input data for unsharing pet: id={pet_id}, user={username}, error={e}")
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["DELETE"])

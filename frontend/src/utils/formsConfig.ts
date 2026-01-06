@@ -55,14 +55,18 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'asthma-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'asthma-time' },
-      { name: 'duration', type: 'select', label: 'Длительность', required: true, options: [
-        { value: 'Короткий', text: 'Короткий' },
-        { value: 'Длительный', text: 'Длительный' }
-      ], value: 'Короткий', id: 'asthma-duration' },
-      { name: 'inhalation', type: 'select', label: 'Ингаляция', required: true, options: [
-        { value: 'false', text: 'Нет' },
-        { value: 'true', text: 'Да' }
-      ], value: 'false', id: 'asthma-inhalation' },
+      {
+        name: 'duration', type: 'select', label: 'Длительность', required: true, options: [
+          { value: 'Короткий', text: 'Короткий' },
+          { value: 'Длительный', text: 'Длительный' }
+        ], value: 'Короткий', id: 'asthma-duration'
+      },
+      {
+        name: 'inhalation', type: 'select', label: 'Ингаляция', required: true, options: [
+          { value: 'false', text: 'Нет' },
+          { value: 'true', text: 'Да' }
+        ], value: 'false', id: 'asthma-inhalation'
+      },
       { name: 'reason', type: 'text', label: 'Причина', required: true, placeholder: 'Пил после сна', value: 'Пил', id: 'asthma-reason' },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'asthma-comment' }
     ],
@@ -83,17 +87,21 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'defecation-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'defecation-time' },
-      { name: 'stool_type', type: 'select', label: 'Тип стула', required: true, options: [
-        { value: 'Обычный', text: 'Обычный' },
-        { value: 'Твердый', text: 'Твердый' },
-        { value: 'Жидкий', text: 'Жидкий' }
-      ], value: 'Обычный', id: 'defecation-stool-type' },
-      { name: 'color', type: 'select', label: 'Цвет стула', required: true, options: [
-        { value: 'Коричневый', text: 'Коричневый' },
-        { value: 'Темно-коричневый', text: 'Темно-коричневый' },
-        { value: 'Светло-коричневый', text: 'Светло-коричневый' },
-        { value: 'Другой', text: 'Другой' }
-      ], value: 'Коричневый', id: 'defecation-color' },
+      {
+        name: 'stool_type', type: 'select', label: 'Тип стула', required: true, options: [
+          { value: 'Обычный', text: 'Обычный' },
+          { value: 'Твердый', text: 'Твердый' },
+          { value: 'Жидкий', text: 'Жидкий' }
+        ], value: 'Обычный', id: 'defecation-stool-type'
+      },
+      {
+        name: 'color', type: 'select', label: 'Цвет стула', required: true, options: [
+          { value: 'Коричневый', text: 'Коричневый' },
+          { value: 'Темно-коричневый', text: 'Темно-коричневый' },
+          { value: 'Светло-коричневый', text: 'Светло-коричневый' },
+          { value: 'Другой', text: 'Другой' }
+        ], value: 'Коричневый', id: 'defecation-color'
+      },
       { name: 'food', type: 'text', label: 'Корм', placeholder: 'Royal Canin Fibre Response', value: 'Royal Canin Fibre Response', id: 'defecation-food' },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'defecation-comment' }
     ],
@@ -130,7 +138,7 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'weight-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'weight-time' },
-      { name: 'weight', type: 'number', label: 'Вес (кг)', required: true, placeholder: '4.5', step: 0.01, min: 0, max: 20, id: 'weight-value' },
+      { name: 'weight', type: 'number', label: 'Вес (кг)', required: true, placeholder: '4.5', step: 0.01, min: 0, id: 'weight-value' },
       { name: 'food', type: 'text', label: 'Корм', placeholder: 'Royal Canin Fibre Response', value: 'Royal Canin Fibre Response', id: 'weight-food' },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'weight-comment' }
     ],
@@ -150,10 +158,12 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'eye-drops-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'eye-drops-time' },
-      { name: 'drops_type', type: 'select', label: 'Тип капель', required: true, options: [
-        { value: 'Обычные', text: 'Обычные' },
-        { value: 'Гелевые', text: 'Гелевые' }
-      ], value: 'Обычные', id: 'eye-drops-type' },
+      {
+        name: 'drops_type', type: 'select', label: 'Тип капель', required: true, options: [
+          { value: 'Обычные', text: 'Обычные' },
+          { value: 'Гелевые', text: 'Гелевые' }
+        ], value: 'Обычные', id: 'eye-drops-type'
+      },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'eye-drops-comment' }
     ],
     transformData: (data) => ({
@@ -171,11 +181,13 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'tooth-brushing-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'tooth-brushing-time' },
-      { name: 'brushing_type', type: 'select', label: 'Способ чистки', required: true, options: [
-        { value: 'Щетка', text: 'Щетка' },
-        { value: 'Марля', text: 'Марля' },
-        { value: 'Игрушка', text: 'Игрушка' }
-      ], value: 'Щетка', id: 'tooth-brushing-type' },
+      {
+        name: 'brushing_type', type: 'select', label: 'Способ чистки', required: true, options: [
+          { value: 'Щетка', text: 'Щетка' },
+          { value: 'Марля', text: 'Марля' },
+          { value: 'Игрушка', text: 'Игрушка' }
+        ], value: 'Щетка', id: 'tooth-brushing-type'
+      },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'tooth-brushing-comment' }
     ],
     transformData: (data) => ({
@@ -193,10 +205,12 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'ear-cleaning-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'ear-cleaning-time' },
-      { name: 'cleaning_type', type: 'select', label: 'Способ чистки', required: true, options: [
-        { value: 'Салфетка/Марля', text: 'Салфетка/Марля' },
-        { value: 'Капли', text: 'Капли' }
-      ], value: 'Салфетка/Марля', id: 'ear-cleaning-type' },
+      {
+        name: 'cleaning_type', type: 'select', label: 'Способ чистки', required: true, options: [
+          { value: 'Салфетка/Марля', text: 'Салфетка/Марля' },
+          { value: 'Капли', text: 'Капли' }
+        ], value: 'Салфетка/Марля', id: 'ear-cleaning-type'
+      },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'ear-cleaning-comment' }
     ],
     transformData: (data) => ({

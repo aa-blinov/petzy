@@ -262,9 +262,10 @@ export function HealthRecordForm() {
         // При создании новой записи возвращаемся на главную
         navigate('/');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting form:', error);
-      Toast.show({ content: 'Ошибка при сохранении', icon: 'fail' });
+      const errorMessage = error.response?.data?.error || 'Ошибка при сохранении';
+      Toast.show({ content: errorMessage, icon: 'fail' });
     }
   };
 

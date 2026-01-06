@@ -169,7 +169,7 @@ def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, usern
         except ValueError as e:
             log_context = f"pet_id={pet_id}, user={username}" if pet_id and username else ""
             logger.warning(f"Invalid datetime format for {context}: {log_context}, error={e}")
-            return None, error_response("validation_error")
+            return None, error_response("validation_error", str(e))
     else:
         return datetime.now(), None
 
