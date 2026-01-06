@@ -96,7 +96,15 @@ def handle_unprocessable_entity(err):
         logger.warning(f"Validation error (422): {messages}")
         if isinstance(messages, list) and len(messages) > 0:
             # Format the first error nicely
-            return error_response("validation_error")
+            # Each message is usually like {'loc': ['body', 'date'], 'msg': '...', 'type': '...'}
+            error = messages[0]
+            if isinstance(error, dict) and "msg" in error:
+                msg = error["msg"]
+                # Pydantic errors often look like "Value error, ..."
+                if msg.startswith("Value error, "):
+                    msg = msg[len("Value error, ") :]
+                return error_response("validation_error", msg)
+            return error_response("validation_error", str(error))
 
     # Fallback for other 422 errors
     return error_response("validation_error")

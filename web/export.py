@@ -244,4 +244,4 @@ def export_data(export_type, format_type):
         app.logger.warning(
             f"Invalid input data for export: type={export_type}, format={format_type}, pet_id={pet_id}, user={username}, error={e}"
         )
-        return error_response("validation_error")
+        return error_response("validation_error", str(e))
