@@ -269,24 +269,16 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               );
 
             default:
-              const displayValue = field.type === 'number'
-                ? (value !== undefined && value !== null && value !== '' ? String(value) : '')
-                : (value !== undefined && value !== null ? String(value) : '');
+              const displayValue = value !== undefined && value !== null ? String(value) : '';
               return (
                 <Input
                   ref={inputRef}
-                  type={field.type}
+                  type={field.type === 'number' ? 'text' : field.type}
+                  inputMode={field.type === 'number' ? 'decimal' : undefined}
                   id={field.name}
                   aria-label={field.label}
                   value={displayValue}
-                  onChange={(val) => {
-                    if (field.type === 'number') {
-                      const numValue = val === '' ? undefined : parseFloat(val);
-                      onChange(isNaN(numValue as number) ? undefined : numValue);
-                    } else {
-                      onChange(val);
-                    }
-                  }}
+                  onChange={onChange}
                   placeholder={field.placeholder}
                   step={field.step}
                   min={field.min}

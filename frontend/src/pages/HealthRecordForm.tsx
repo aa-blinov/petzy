@@ -36,9 +36,10 @@ export function HealthRecordForm() {
     return z.object(
       config.fields.reduce((acc: Record<string, any>, field: any) => {
         if (field.type === 'number') {
+          const numberSchema = z.coerce.number().min(field.min || 0);
           acc[field.name] = field.required
-            ? z.number().min(field.min || 0)
-            : z.number().min(field.min || 0).optional();
+            ? numberSchema
+            : z.union([numberSchema, z.literal(''), z.null(), z.undefined()]).optional();
         } else {
           acc[field.name] = field.required
             ? z.string().min(1)
