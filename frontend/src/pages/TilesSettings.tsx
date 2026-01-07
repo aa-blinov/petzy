@@ -176,7 +176,7 @@ export function TilesSettings() {
         </List>
 
         {/* Action Buttons */}
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ marginLeft: '16px', marginRight: '16px', paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Button block color="primary" size="large" onClick={handleSave}>
             Сохранить
           </Button>

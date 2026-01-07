@@ -134,7 +134,7 @@ export function UserForm() {
           </h2>
         </div>
 
-        <div style={{ padding: '0 max(16px, env(safe-area-inset-left))' }}>
+        <div>
           <Form
             layout="horizontal"
             mode="card"
@@ -243,7 +243,9 @@ export function UserForm() {
             flexDirection: 'column',
             gap: '12px',
             marginTop: '24px',
-            paddingBottom: '24px'
+            paddingBottom: '24px',
+            marginLeft: '16px',
+            marginRight: '16px'
           }}>
             <button
               style={{ display: 'none' }}

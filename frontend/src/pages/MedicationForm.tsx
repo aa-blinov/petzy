@@ -145,7 +145,7 @@ export function MedicationForm() {
                     Toast.show({ icon: 'fail', content: 'Текущий остаток не может быть отрицательным' });
                     return;
                 }
-                if (data.inventory_total !== null && data.inventory_total !== undefined && 
+                if (data.inventory_total !== null && data.inventory_total !== undefined &&
                     data.inventory_current > data.inventory_total) {
                     Toast.show({ icon: 'fail', content: 'Текущий остаток не может превышать общее количество' });
                     return;
@@ -170,8 +170,8 @@ export function MedicationForm() {
             backgroundColor: 'var(--app-page-background)',
             color: 'var(--app-text-color)'
         }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 16px' }}>
-                <h2 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 600 }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <h2 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 600, padding: '0 16px' }}>
                     {isEditing ? 'Редактировать курс' : 'Новый прием препаратов'}
                 </h2>
 
@@ -459,7 +459,9 @@ export function MedicationForm() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '12px',
-                    padding: '0 16px 20px'
+                    paddingBottom: '20px',
+                    marginLeft: '16px',
+                    marginRight: '16px'
                 }}>
                     <Button
                         block
