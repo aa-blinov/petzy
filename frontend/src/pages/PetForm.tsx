@@ -458,7 +458,7 @@ export function PetForm() {
                 borderRadius: '12px',
                 overflow: 'hidden',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-              } as any}>
+              } as React.CSSProperties}>
                 <List.Item>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <SearchBar

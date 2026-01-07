@@ -3,28 +3,24 @@
 from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
-from datetime import datetime, timedelta
+from bson.errors import InvalidId
+from datetime import datetime
 
 import web.app as app
 from web.app import api
 from web.errors import error_response
-from web.messages import get_message
 from web.security import get_current_user, login_required
 from web.helpers import (
     validate_pet_access,
     parse_event_datetime_safe,
-    get_record_and_validate_access,
     apply_pagination,
 )
 from web.schemas import (
     MedicationCreate,
     MedicationUpdate,
-    MedicationItem,
     MedicationListResponse,
     MedicationIntakeCreate,
-    MedicationIntakeItem,
     MedicationIntakeListResponse,
-    UpcomingDoseItem,
     UpcomingDosesResponse,
     SuccessResponse,
     ErrorResponse,
@@ -88,38 +84,59 @@ def get_medications():
             return access_error[0], access_error[1]
 
         cursor = app.db.medications.find({"pet_id": pet_id}).sort("created_at", -1)
-        meds = []
-        for doc in cursor:
-            doc["_id"] = str(doc["_id"])
-            
-            # Get last intake
-            last_intake = app.db.medication_intakes.find_one(
-                {"medication_id": doc["_id"]},
-                sort=[("date_time", -1)]
-            )
-            
-            # Count intakes today
-            now = datetime.utcnow() # UTC
-            # Note: This simple check assumes UTC for "today". Ideally we need user timezone.
-            # But the app seems to rely on server time or UTC generally. 
-            # Ideally we'd use the offset if known, but let's stick to UTC start of day for consistency with other parts if any.
-            # actually better: check against 24h window or just same calendar day?
-            # Let's try same calendar day in UTC for now.
-            today_start = datetime(now.year, now.month, now.day)
-            
-            intakes_today = app.db.medication_intakes.count_documents({
-                "medication_id": doc["_id"],
+        meds = list(cursor)
+        
+        if not meds:
+            return jsonify({"medications": []})
+        
+        # Optimize: batch fetch all intake data at once
+        med_ids = [str(med["_id"]) for med in meds]
+        now = datetime.utcnow()
+        today_start = datetime(now.year, now.month, now.day)
+        
+        # Get all last intakes in one query using aggregation
+        last_intakes_pipeline = [
+            {"$match": {"medication_id": {"$in": med_ids}}},
+            {"$sort": {"date_time": -1}},
+            {"$group": {
+                "_id": "$medication_id",
+                "last_intake": {"$first": "$$ROOT"}
+            }}
+        ]
+        last_intakes = {
+            item["_id"]: item["last_intake"]
+            for item in app.db.medication_intakes.aggregate(last_intakes_pipeline)
+        }
+        
+        # Count intakes today for all medications in one aggregation
+        today_intakes_pipeline = [
+            {"$match": {
+                "medication_id": {"$in": med_ids},
                 "date_time": {"$gte": today_start}
-            })
-            doc["intakes_today"] = intakes_today
-
+            }},
+            {"$group": {
+                "_id": "$medication_id",
+                "count": {"$sum": 1}
+            }}
+        ]
+        today_counts = {
+            item["_id"]: item["count"]
+            for item in app.db.medication_intakes.aggregate(today_intakes_pipeline)
+        }
+        
+        # Process results
+        for doc in meds:
+            doc["_id"] = str(doc["_id"])
+            med_id_str = doc["_id"]
+            
+            last_intake = last_intakes.get(med_id_str)
             if last_intake and last_intake.get("date_time"):
                 dt = last_intake["date_time"]
                 doc["last_taken_at"] = dt.strftime("%Y-%m-%d %H:%M")
             else:
                 doc["last_taken_at"] = None
-
-            meds.append(doc)
+            
+            doc["intakes_today"] = today_counts.get(med_id_str, 0)
 
         return jsonify({"medications": meds})
     except Exception as e:
@@ -137,17 +154,22 @@ def get_medications():
 def update_medication(id):
     """Update a medication course."""
     try:
+        try:
+            medication_id = ObjectId(id)
+        except (InvalidId, TypeError, ValueError):
+            return error_response("invalid_record_id")
+        
         data = request.context.body  # type: ignore[attr-defined]
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         
         if not update_data:
-            return error_response("bad_request", "No data to update")
+            return error_response("validation_error_no_update_data")
 
         username, auth_error = get_current_user()
         if auth_error:
             return auth_error[0], auth_error[1]
 
-        medication = app.db.medications.find_one({"_id": ObjectId(id)})
+        medication = app.db.medications.find_one({"_id": medication_id})
         if not medication:
             return error_response("not_found")
 
@@ -155,7 +177,7 @@ def update_medication(id):
         if not success:
             return access_error[0], access_error[1]
 
-        app.db.medications.update_one({"_id": ObjectId(id)}, {"$set": update_data})
+        app.db.medications.update_one({"_id": medication_id}, {"$set": update_data})
         
         return jsonify({"message": "Medication updated"})
     except Exception as e:
@@ -172,11 +194,16 @@ def update_medication(id):
 def delete_medication(id):
     """Delete a medication course."""
     try:
+        try:
+            medication_id = ObjectId(id)
+        except (InvalidId, TypeError, ValueError):
+            return error_response("invalid_record_id")
+        
         username, auth_error = get_current_user()
         if auth_error:
             return auth_error[0], auth_error[1]
 
-        medication = app.db.medications.find_one({"_id": ObjectId(id)})
+        medication = app.db.medications.find_one({"_id": medication_id})
         if not medication:
             return error_response("not_found")
 
@@ -184,9 +211,9 @@ def delete_medication(id):
         if not success:
             return access_error[0], access_error[1]
 
-        app.db.medications.delete_one({"_id": ObjectId(id)})
-        # Also cleanup intakes? Usually good practice
+        # Delete intakes first, then medication (better for referential integrity)
         app.db.medication_intakes.delete_many({"medication_id": id})
+        app.db.medications.delete_one({"_id": medication_id})
         
         return jsonify({"message": "Medication course and history deleted"})
     except Exception as e:
@@ -204,12 +231,17 @@ def delete_medication(id):
 def log_intake(id):
     """Log a medication intake."""
     try:
+        try:
+            medication_id = ObjectId(id)
+        except (InvalidId, TypeError, ValueError):
+            return error_response("invalid_record_id")
+        
         data = request.context.body  # type: ignore[attr-defined]
         username, auth_error = get_current_user()
         if auth_error:
             return auth_error[0], auth_error[1]
 
-        medication = app.db.medications.find_one({"_id": ObjectId(id)})
+        medication = app.db.medications.find_one({"_id": medication_id})
         if not medication:
             return error_response("not_found")
 
@@ -220,6 +252,30 @@ def log_intake(id):
         event_dt, dt_error = parse_event_datetime_safe(data.date, data.time, "medication intake", medication["pet_id"], username)
         if dt_error:
             return dt_error[0], dt_error[1]
+
+        # Update inventory if enabled (before inserting intake to maintain consistency)
+        if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
+            current_inventory = medication["inventory_current"]
+            if current_inventory < data.dose_taken:
+                return error_response("validation_error", "Недостаточно лекарства в остатке")
+            new_inventory = current_inventory - data.dose_taken
+            # Use atomic update with condition to prevent race conditions
+            result = app.db.medications.update_one(
+                {"_id": medication_id, "inventory_current": current_inventory},
+                {"$set": {"inventory_current": new_inventory}}
+            )
+            if result.matched_count == 0:
+                # Inventory was changed by another request, refetch and retry once
+                medication = app.db.medications.find_one({"_id": medication_id})
+                if medication and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
+                    current_inventory = medication["inventory_current"]
+                    if current_inventory < data.dose_taken:
+                        return error_response("validation_error", "Недостаточно лекарства в остатке")
+                    new_inventory = current_inventory - data.dose_taken
+                    app.db.medications.update_one(
+                        {"_id": medication_id},
+                        {"$set": {"inventory_current": new_inventory}}
+                    )
 
         intake_data = {
             "medication_id": id,
@@ -232,14 +288,6 @@ def log_intake(id):
         }
 
         app.db.medication_intakes.insert_one(intake_data)
-
-        # Update inventory if enabled
-        if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
-            new_inventory = max(0, medication["inventory_current"] - data.dose_taken)
-            app.db.medications.update_one(
-                {"_id": ObjectId(id)},
-                {"$set": {"inventory_current": new_inventory}}
-            )
 
         return jsonify({"message": "Intake logged"}), 201
     except Exception as e:
@@ -306,11 +354,16 @@ def get_medication_intakes():
 def delete_intake(id):
     """Delete a medication intake record."""
     try:
+        try:
+            intake_id = ObjectId(id)
+        except (InvalidId, TypeError, ValueError):
+            return error_response("invalid_record_id")
+        
         username, auth_error = get_current_user()
         if auth_error:
             return auth_error[0], auth_error[1]
 
-        intake = app.db.medication_intakes.find_one({"_id": ObjectId(id)})
+        intake = app.db.medication_intakes.find_one({"_id": intake_id})
         if not intake:
             return error_response("not_found")
 
@@ -321,16 +374,19 @@ def delete_intake(id):
         # Restore inventory if applicable
         medication = app.db.medications.find_one({"_id": ObjectId(intake["medication_id"])})
         if medication and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
-            # We don't cap at total because total might have changed or been unset, 
-            # and it's better to have more than less if logic was wrong.
-            # But realistically, just adding back the dose is correct inverse operation.
-            new_inventory = (medication.get("inventory_current") or 0) + intake.get("dose_taken", 0)
+            # Restore the dose, but cap at inventory_total if it exists
+            current_inventory = medication.get("inventory_current") or 0
+            dose_to_restore = intake.get("dose_taken", 0)
+            new_inventory = current_inventory + dose_to_restore
+            # Cap at inventory_total if it's set
+            if medication.get("inventory_total") is not None:
+                new_inventory = min(new_inventory, medication["inventory_total"])
             app.db.medications.update_one(
                 {"_id": ObjectId(intake["medication_id"])},
                 {"$set": {"inventory_current": new_inventory}}
             )
 
-        app.db.medication_intakes.delete_one({"_id": ObjectId(id)})
+        app.db.medication_intakes.delete_one({"_id": intake_id})
         
         return jsonify({"message": "Intake deleted"})
     except Exception as e:
@@ -360,14 +416,30 @@ def get_upcoming_doses():
         # Fetch only active medications
         medications = list(app.db.medications.find({"pet_id": pet_id, "is_active": True}))
         
-        upcoming = []
-        now = datetime.utcnow() # Note: App uses UTC for some things but local for dates?
-        # Actually backend usually stores UTC datetime.
-        # Front-end sends localized YYYY-MM-DD strings often.
+        if not medications:
+            return jsonify({"doses": []})
         
-        # Simplified logic for now: check current day of week and times
-        # 0=Monday, 6=Sunday
-        current_day = now.weekday() 
+        upcoming = []
+        now = datetime.utcnow()
+        current_day = now.weekday()
+        today_start = datetime(now.year, now.month, now.day)
+        
+        # Optimize: batch fetch all today's intakes in one query
+        med_ids = [str(med["_id"]) for med in medications]
+        today_intakes_all = list(app.db.medication_intakes.find({
+            "medication_id": {"$in": med_ids},
+            "date_time": {"$gte": today_start}
+        }))
+        
+        # Group intakes by medication_id
+        taken_times_by_med = {}
+        for intake in today_intakes_all:
+            med_id = intake.get("medication_id")
+            if med_id not in taken_times_by_med:
+                taken_times_by_med[med_id] = set()
+            if intake.get("date_time"):
+                intake_time = intake["date_time"].strftime("%H:%M")
+                taken_times_by_med[med_id].add(intake_time)
         
         for med in medications:
             schedule = med.get("schedule", {})
@@ -377,20 +449,32 @@ def get_upcoming_doses():
             if not sched_days or not sched_times:
                 continue
                 
+            med_id_str = str(med["_id"])
+            taken_times = taken_times_by_med.get(med_id_str, set())
+            
             # Find next occurrence
-            # This is a bit complex for a simple endpoint without a robust task scheduler
-            # We'll just return all doses for 'today' for now as a start.
+            # We'll return all doses for 'today' that haven't been taken yet
             if current_day in sched_days:
                 for t in sched_times:
-                    # Check if already taken today?
-                    # For simplicity, we just return the schedule
+                    # Skip if already taken today
+                    if t in taken_times:
+                        continue
+                    
+                    # Check if time is overdue
+                    try:
+                        dose_hour, dose_min = map(int, t.split(':'))
+                        dose_time = now.replace(hour=dose_hour, minute=dose_min, second=0, microsecond=0)
+                        is_overdue = now > dose_time
+                    except (ValueError, TypeError):
+                        is_overdue = False
+                    
                     upcoming.append({
-                        "medication_id": str(med["_id"]),
+                        "medication_id": med_id_str,
                         "name": med["name"],
                         "type": med.get("type", "pill"),
                         "time": t,
                         "date": now.strftime("%Y-%m-%d"),
-                        "is_overdue": False, # Logic to compare with now
+                        "is_overdue": is_overdue,
                         "inventory_warning": bool(
                             med.get("inventory_enabled", False) and 
                             (med.get("inventory_current") or 0) <= (med.get("inventory_warning_threshold") or 0)
