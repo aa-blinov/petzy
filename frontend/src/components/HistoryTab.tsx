@@ -1,9 +1,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Button, SpinLoading } from 'antd-mobile';
+import { Button } from 'antd-mobile';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { historyConfig } from '../utils/historyConfig';
 import { HistoryItem } from './HistoryItem';
 import type { HealthRecordType } from '../utils/constants';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface HistoryTabProps {
   type: string;
@@ -42,11 +43,7 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
   });
 
   if (isLoading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
-        <SpinLoading />
-      </div>
-    );
+    return <LoadingSpinner fullscreen={false} />;
   }
 
   if (error) {
@@ -68,7 +65,7 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
   }
 
   return (
-    <div style={{ 
+    <div style={{
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
@@ -87,9 +84,9 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
       ))}
 
       {hasNextPage && (
-        <div style={{ 
-          marginTop: '24px', 
-          paddingTop: '24px', 
+        <div style={{
+          marginTop: '24px',
+          paddingTop: '24px',
           borderTop: '1px solid var(--app-border-color)',
           display: 'flex',
           justifyContent: 'center'
