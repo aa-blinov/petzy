@@ -41,6 +41,11 @@ export const usersService = {
     return response.data.users;
   },
 
+  async searchUsers(query: string): Promise<{ username: string }[]> {
+    const response = await api.get<{ users: { username: string }[] }>(`/users/search?q=${encodeURIComponent(query)}`);
+    return response.data.users;
+  },
+
   async getUser(username: string): Promise<User> {
     const response = await api.get<UserResponse>(`/users/${username}`);
     return response.data.user;

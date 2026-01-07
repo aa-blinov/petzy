@@ -16,6 +16,7 @@ from web.schemas import (
     UserUpdate,
     UserResponseWrapper,
     UserListResponse,
+    UserSearchResponse,
     UserPasswordResetRequest,
     SuccessResponse,
     ErrorResponse,
@@ -41,6 +42,26 @@ def get_users():
             user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
 
     return jsonify({"users": users})
+
+
+@users_bp.route("/api/users/search", methods=["GET"])
+@login_required
+@api.validate(resp=Response(HTTP_200=UserSearchResponse), tags=["users"])
+def search_users():
+    """Get list of active usernames for autocomplete (any logged-in user)."""
+    # Use a query parameter to filter if provided, or just return some/all active usernames
+    query = request.args.get("q", "").strip()
+    
+    find_query = {"is_active": True}
+    if query:
+        find_query["username"] = {"$regex": query, "$options": "i"}
+        
+    users = list(app.db["users"].find(find_query, {"username": 1}).limit(20))
+    
+    # Format for response
+    results = [{"username": u["username"]} for u in users]
+    
+    return jsonify({"users": results})
 
 
 @users_bp.route("/api/users", methods=["POST"])
