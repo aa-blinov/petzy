@@ -46,7 +46,7 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
       await healthRecordsService.delete(type as HealthRecordType, item._id);
       await queryClient.invalidateQueries({ queryKey: ['history'] });
       Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
-      
+
       // Small delay to let Toast render before unmounting
       setTimeout(() => {
         setDeleteDialogVisible(false);
@@ -72,17 +72,19 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
             <span style={{ fontWeight: 600, color: '#000000', fontSize: '16px' }}>{formatDateTime(item.date_time)}</span>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Button
-                size="mini"
-                fill="outline"
-                onClick={handleEdit}
-                style={{
-                  '--text-color': '#000000',
-                  '--border-color': 'rgba(0, 0, 0, 0.3)',
-                } as React.CSSProperties}
-              >
-                <EditSOutline style={{ color: '#000000', fontSize: '16px' }} />
-              </Button>
+              {type !== 'medications' && (
+                <Button
+                  size="mini"
+                  fill="outline"
+                  onClick={handleEdit}
+                  style={{
+                    '--text-color': '#000000',
+                    '--border-color': 'rgba(0, 0, 0, 0.3)',
+                  } as React.CSSProperties}
+                >
+                  <EditSOutline style={{ color: '#000000', fontSize: '16px' }} />
+                </Button>
+              )}
               <Button
                 size="mini"
                 color="danger"

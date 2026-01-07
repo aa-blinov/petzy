@@ -311,15 +311,8 @@ export function HealthRecordForm() {
         }}>
           <FormProvider {...methods}>
             <Form
-              style={{
-                '--background-color': 'var(--app-card-background)',
-                '--border-top': 'none',
-                '--border-bottom': 'none',
-                '--border-inner': '1px solid var(--app-border-color)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-              } as any}
+              layout="horizontal"
+              mode="card"
             >
               {config.fields.map((field) => (
                 <FormField
@@ -331,8 +324,31 @@ export function HealthRecordForm() {
             </Form>
           </FormProvider>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '24px',
+            paddingBottom: '24px'
+          }}>
+            <button
+              style={{ display: 'none' }}
+              type="submit"
+              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+            />
             <Button
+              block
+              color="primary"
+              size="large"
+              onClick={() => handleSubmit(onSubmit)()}
+              loading={isSubmitting}
+              style={{ borderRadius: '12px', fontWeight: 600 }}
+            >
+              {id ? 'Сохранить' : 'Создать'}
+            </Button>
+            <Button
+              block
+              size="large"
               onClick={() => {
                 if (id) {
                   const activeTab = searchParams.get('tab');
@@ -341,17 +357,9 @@ export function HealthRecordForm() {
                   navigate('/');
                 }
               }}
-              style={{ flex: 1 }}
+              style={{ borderRadius: '12px', fontWeight: 500 }}
             >
               Отмена
-            </Button>
-            <Button
-              onClick={() => handleSubmit(onSubmit)()}
-              color="primary"
-              loading={isSubmitting}
-              style={{ flex: 1 }}
-            >
-              {id ? 'Сохранить' : 'Создать'}
             </Button>
           </div>
         </div>

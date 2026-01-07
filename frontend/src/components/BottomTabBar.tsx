@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TabBar } from 'antd-mobile';
-import { FileOutline, SetOutline, UserOutline, ClockCircleOutline } from 'antd-mobile-icons';
+import { FileOutline, SetOutline, UserOutline, ClockCircleOutline, HeartOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 
 export function BottomTabBar() {
@@ -26,6 +26,11 @@ export function BottomTabBar() {
       icon: <FileOutline />,
     },
     {
+      key: '/medications',
+      title: 'Прием',
+      icon: <HeartOutline />,
+    },
+    {
       key: '/history',
       title: 'История',
       icon: <ClockCircleOutline />,
@@ -48,13 +53,13 @@ export function BottomTabBar() {
 
   return (
     <div className="bottom-tab-bar-container">
-      <div style={{ 
+      <div style={{
         height: '50px',
         display: 'flex',
         alignItems: 'center'
       }}>
-        <TabBar 
-          activeKey={pathname} 
+        <TabBar
+          activeKey={pathname}
           onChange={value => setRouteActive(value)}
           safeArea={false}
           style={{
@@ -64,9 +69,9 @@ export function BottomTabBar() {
           } as React.CSSProperties}
         >
           {tabs.map(item => (
-            <TabBar.Item 
-              key={item.key} 
-              icon={item.icon} 
+            <TabBar.Item
+              key={item.key}
+              icon={item.icon}
               title={item.title}
             />
           ))}

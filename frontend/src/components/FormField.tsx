@@ -134,7 +134,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     readOnly
                     value={displayDate}
                     placeholder="Выберите дату"
-                    style={{ '--font-size': '16px' }}
+                    style={{ '--text-align': 'right' }}
                   />
                   <Picker
                     columns={dateColumns(value)}
@@ -181,7 +181,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     readOnly
                     value={displayTime}
                     placeholder="Выберите время"
-                    style={{ '--font-size': '16px' }}
+                    style={{ '--text-align': 'right' }}
                   />
                   <Picker
                     columns={getTimeColumns(currentDateForTime, currentTimeSelection)}
@@ -232,10 +232,10 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     readOnly
                     value={selectedOption?.label || ''}
                     placeholder="Выберите..."
-                    style={{ '--font-size': '16px' }}
+                    style={{ '--text-align': 'right' }}
                   />
                   {value === defaultVal && (
-                    <div style={{ fontSize: '12px', color: '#666666', marginTop: '4px', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: '12px', color: '#666666', marginTop: '4px', fontStyle: 'italic', textAlign: 'right' }}>
                       Значение по умолчанию
                     </div>
                   )}
@@ -259,7 +259,6 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                 <TextArea
                   ref={inputRef}
                   id={field.name}
-                  aria-label={field.label}
                   value={value !== undefined && value !== null ? String(value) : ''}
                   onChange={onChange}
                   placeholder={field.placeholder}
@@ -276,13 +275,13 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   type={field.type === 'number' ? 'text' : field.type}
                   inputMode={field.type === 'number' ? 'decimal' : undefined}
                   id={field.name}
-                  aria-label={field.label}
                   value={displayValue}
                   onChange={onChange}
                   placeholder={field.placeholder}
                   step={field.step}
                   min={field.min}
                   max={field.max}
+                  style={{ '--text-align': 'right' }}
                 />
               );
           }
@@ -293,11 +292,9 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
             clickable
             onClick={handleRowClick}
             arrow={['date', 'time', 'select'].includes(field.type)}
-            label={
-              <label htmlFor={field.name} style={{ cursor: 'pointer' }}>
-                {field.label}{field.required ? ' *' : ''}
-              </label>
-            }
+            label={field.label}
+            required={field.required}
+            layout={field.type === 'textarea' ? 'vertical' : undefined}
             style={{
               width: '100%',
               cursor: 'pointer'

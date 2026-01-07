@@ -19,6 +19,8 @@ const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })))
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
+const MedicationsList = lazy(() => import('./pages/MedicationsList').then(m => ({ default: m.MedicationsList })));
+const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ default: m.MedicationForm })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -122,6 +124,30 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <UserForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medications"
+            element={
+              <ProtectedRoute>
+                <MedicationsList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medications/new"
+            element={
+              <ProtectedRoute>
+                <MedicationForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medications/:id/edit"
+            element={
+              <ProtectedRoute>
+                <MedicationForm />
               </ProtectedRoute>
             }
           />
