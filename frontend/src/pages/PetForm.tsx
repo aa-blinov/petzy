@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, ImageUploader, Toast, Picker, List, Switch } from 'antd-mobile';
+import { Button, Form, Input, ImageUploader, Toast, Picker, List, Switch, TextArea, SearchBar } from 'antd-mobile';
+import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +12,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 
 import { petsService } from '../services/pets.service';
+import { usersService } from '../services/users.service';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -18,9 +20,11 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 const petSchema = z.object({
   name: z.string().min(1, 'Имя питомца обязательно'),
   breed: z.string().optional(),
+  species: z.string().optional(),
   birth_date: z.string().optional(),
   gender: z.string().optional(),
-  species: z.string().optional(),
+  is_neutered: z.boolean().optional(),
+  health_notes: z.string().optional(),
 });
 
 type PetFormData = z.infer<typeof petSchema>;
@@ -34,7 +38,15 @@ export function PetForm() {
   const [fileList, setFileList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
+
+  // Refs for focusing inputs on row click
+  const nameInputRef = useRef<any>(null);
+  const speciesInputRef = useRef<any>(null);
+  const breedInputRef = useRef<any>(null);
+  const genderInputRef = useRef<any>(null);
+  const healthNotesInputRef = useRef<any>(null);
 
   const { control, handleSubmit, reset, watch } = useForm<PetFormData>({
     resolver: zodResolver(petSchema),
@@ -44,12 +56,19 @@ export function PetForm() {
       birth_date: '',
       gender: '',
       species: '',
+      is_neutered: false,
+      health_notes: '',
     }
   });
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<{ username: string }[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const [localSharedWith, setLocalSharedWith] = useState<string[]>([]);
+
   const birthDateValue = watch('birth_date');
 
-  // Fetch pet data if editing
   const { data: pet, isLoading: isLoadingPet } = useQuery({
     queryKey: ['pets', id],
     queryFn: async () => {
@@ -60,7 +79,6 @@ export function PetForm() {
     enabled: isEditing && !!id,
   });
 
-  // Load pet data into form when editing
   useEffect(() => {
     if (pet) {
       reset({
@@ -69,19 +87,30 @@ export function PetForm() {
         birth_date: pet.birth_date || '',
         gender: pet.gender || '',
         species: pet.species || '',
+        is_neutered: pet.is_neutered || false,
+        health_notes: pet.health_notes || '',
       });
+      setLocalSharedWith(pet.shared_with || []);
       if (pet.photo_url) {
         setFileList([{ url: pet.photo_url }]);
       } else {
         setFileList([]);
       }
     } else if (!isEditing) {
-      reset({ name: '', breed: '', birth_date: '', gender: '', species: '' });
+      reset({
+        name: '',
+        breed: '',
+        birth_date: '',
+        gender: '',
+        species: '',
+        is_neutered: false,
+        health_notes: '',
+      });
+      setLocalSharedWith([]);
       setFileList([]);
     }
   }, [pet, isEditing, reset]);
 
-  // Generate date columns dynamically [Day, Month, Year]
   const dateColumns = useMemo(() => {
     let month = new Date().getMonth();
     let year = new Date().getFullYear();
@@ -107,12 +136,48 @@ export function PetForm() {
       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
     ].map((m, i) => ({ label: m, value: String(i) }));
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 21 }, (_, i) => {
-      const y = currentYear - 10 + i;
+    const years = Array.from({ length: 51 }, (_, i) => {
+      const y = currentYear - 50 + i;
       return { label: String(y), value: String(y) };
     });
     return [days, months, years];
   }, [internalPickerDate, birthDateValue]);
+
+  const neuteredOptions = [
+    { label: 'Да', value: 'true' },
+    { label: 'Нет', value: 'false' },
+  ];
+
+  const handleSearch = async (val: string) => {
+    setSearchTerm(val);
+    if (val.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const results = await usersService.searchUsers(val);
+      const currentUsername = localStorage.getItem('username');
+      const filtered = results.filter(u => u.username !== currentUsername && !localSharedWith.includes(u.username));
+      setSearchResults(filtered);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleAddSharedUser = (username: string) => {
+    if (!localSharedWith.includes(username)) {
+      setLocalSharedWith(prev => [...prev, username]);
+      setSearchTerm('');
+      setSearchResults([]);
+    }
+  };
+
+  const handleRemoveSharedUser = (username: string) => {
+    setLocalSharedWith(prev => prev.filter(u => u !== username));
+  };
 
   const onSubmit = async (values: PetFormData) => {
     try {
@@ -124,14 +189,26 @@ export function PetForm() {
         remove_photo: fileList.length === 0 && pet?.photo_url ? true : undefined,
       };
 
+      let petId = id;
       if (isEditing && id) {
         await petsService.updatePet(id, petData);
-        Toast.show({ icon: 'success', content: 'Питомец обновлен' });
       } else {
-        await petsService.createPet(petData);
-        Toast.show({ icon: 'success', content: 'Питомец добавлен' });
+        const newPet = await petsService.createPet(petData);
+        petId = newPet._id;
       }
 
+      if (petId) {
+        const initialShared = pet?.shared_with || [];
+        const toAdd = localSharedWith.filter(u => !initialShared.includes(u));
+        const toRemove = initialShared.filter(u => !localSharedWith.includes(u));
+
+        await Promise.all([
+          ...toAdd.map(username => petsService.sharePet(petId!, username)),
+          ...toRemove.map(username => petsService.unsharePet(petId!, username))
+        ]);
+      }
+
+      Toast.show({ icon: 'success', content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен' });
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
       setTimeout(() => navigate('/pets'), 500);
     } catch (error: any) {
@@ -178,8 +255,29 @@ export function PetForm() {
               name="name"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label={<label htmlFor="name">Имя *</label>} help={error?.message}>
-                  <Input {...field} id="name" aria-label="Имя питомца" placeholder="Имя питомца" />
+                <Form.Item
+                  label={<label htmlFor="name">Имя *</label>}
+                  help={error?.message}
+                  clickable
+                  onClick={() => nameInputRef.current?.focus()}
+                  arrow={false}
+                >
+                  <Input {...field} ref={nameInputRef} id="name" aria-label="Имя питомца" placeholder="Имя питомца" />
+                </Form.Item>
+              )}
+            />
+
+            <Controller
+              name="species"
+              control={control}
+              render={({ field }) => (
+                <Form.Item
+                  label={<label htmlFor="species">Вид питомца</label>}
+                  clickable
+                  onClick={() => speciesInputRef.current?.focus()}
+                  arrow={false}
+                >
+                  <Input {...field} ref={speciesInputRef} id="species" aria-label="Вид питомца" placeholder="Например: Кот, Собака" />
                 </Form.Item>
               )}
             />
@@ -188,8 +286,13 @@ export function PetForm() {
               name="breed"
               control={control}
               render={({ field }) => (
-                <Form.Item label={<label htmlFor="breed">Порода</label>}>
-                  <Input {...field} id="breed" aria-label="Порода" placeholder="Порода (необязательно)" />
+                <Form.Item
+                  label={<label htmlFor="breed">Порода</label>}
+                  clickable
+                  onClick={() => breedInputRef.current?.focus()}
+                  arrow={false}
+                >
+                  <Input {...field} ref={breedInputRef} id="breed" aria-label="Порода" placeholder="Порода (необязательно)" />
                 </Form.Item>
               )}
             />
@@ -211,16 +314,20 @@ export function PetForm() {
 
                 const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
                 return (
-                  <Form.Item label={<label htmlFor="birth_date">Дата рождения</label>}>
+                  <Form.Item
+                    label={<label htmlFor="birth_date">Дата рождения</label>}
+                    clickable
+                    onClick={() => {
+                      setInternalPickerDate(pickerValue);
+                      setDatePickerVisible(true);
+                    }}
+                    arrow
+                  >
                     <Input
                       id="birth_date"
                       readOnly
                       value={displayDate}
                       placeholder="Выберите дату"
-                      onClick={() => {
-                        setInternalPickerDate(pickerValue);
-                        setDatePickerVisible(true);
-                      }}
                       style={{ '--font-size': '16px' }}
                     />
                     <Picker
@@ -251,36 +358,168 @@ export function PetForm() {
               name="gender"
               control={control}
               render={({ field }) => (
-                <Form.Item label={<label htmlFor="gender">Пол</label>}>
-                  <Input {...field} id="gender" aria-label="Пол" placeholder="Пол (необязательно)" />
+                <Form.Item
+                  label={<label htmlFor="gender">Пол</label>}
+                  clickable
+                  onClick={() => genderInputRef.current?.focus()}
+                  arrow={false}
+                >
+                  <Input {...field} ref={genderInputRef} id="gender" aria-label="Пол" placeholder="Пол (необязательно)" />
                 </Form.Item>
               )}
             />
 
-            <div style={{ marginTop: '16px' }}>
+            <Controller
+              name="is_neutered"
+              control={control}
+              render={({ field: { value, onChange } }) => (
+                <Form.Item
+                  label="Кастрирован / Стерилизована"
+                  clickable
+                  onClick={() => setNeuteredPickerVisible(true)}
+                  arrow
+                >
+                  <Input
+                    readOnly
+                    value={value ? 'Да' : 'Нет'}
+                    style={{ '--font-size': '16px' }}
+                  />
+                  <Picker
+                    columns={[neuteredOptions]}
+                    visible={neuteredPickerVisible}
+                    onClose={() => setNeuteredPickerVisible(false)}
+                    value={[String(value)]}
+                    onConfirm={(val) => {
+                      onChange(val[0] === 'true');
+                      setNeuteredPickerVisible(false);
+                    }}
+                    cancelText="Отмена"
+                    confirmText="Сохранить"
+                  />
+                </Form.Item>
+              )}
+            />
+
+            <Controller
+              name="health_notes"
+              control={control}
+              render={({ field }) => (
+                <Form.Item
+                  label="Особенности здоровья / Аллергии"
+                  clickable
+                  onClick={() => healthNotesInputRef.current?.focus()}
+                  arrow={false}
+                >
+                  <TextArea
+                    {...field}
+                    ref={healthNotesInputRef}
+                    placeholder="Укажите важную информацию о здоровье питомца"
+                    autoSize={{ minRows: 2, maxRows: 5 }}
+                  />
+                </Form.Item>
+              )}
+            />
+
+            <div style={{ marginTop: '16px', padding: '0 12px 16px' }}>
               <div style={{
                 fontSize: 'var(--adm-font-size-main)',
                 color: 'var(--adm-color-weak)',
-                padding: '0 12px 8px'
+                marginBottom: '8px'
               }}>
                 Фото
               </div>
-              <Form.Item>
-                <ImageUploader
-                  value={fileList}
-                  onChange={setFileList}
-                  upload={async (file) => ({ url: URL.createObjectURL(file) })}
-                  maxCount={1}
-                  deletable={true}
-                  aria-label="Загрузить фото"
-                />
-              </Form.Item>
+              <ImageUploader
+                value={fileList}
+                onChange={setFileList}
+                upload={async (file) => ({ url: URL.createObjectURL(file) })}
+                maxCount={1}
+                deletable={true}
+                aria-label="Загрузить фото"
+              />
             </div>
 
             {isEditing && id && <PetTilesSettingsSection petId={id} />}
           </Form>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          {isEditing && (
+            <div style={{ marginTop: '24px' }}>
+              <div style={{
+                fontSize: 'var(--adm-font-size-main)',
+                color: 'var(--adm-color-weak)',
+                padding: '0 12px 8px'
+              }}>
+                Поделиться доступом
+              </div>
+              <List style={{
+                '--background-color': 'var(--app-card-background)',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              } as any}>
+                <List.Item>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <SearchBar
+                      placeholder="Введите имя пользователя"
+                      value={searchTerm}
+                      onChange={handleSearch}
+                      onClear={() => {
+                        setSearchTerm('');
+                        setSearchResults([]);
+                      }}
+                    />
+                    {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
+                    {!searchLoading && searchResults.length > 0 && (
+                      <div style={{
+                        border: '1px solid var(--app-border-color)',
+                        borderRadius: '8px',
+                        maxHeight: '150px',
+                        overflowY: 'auto'
+                      }}>
+                        {searchResults.map(u => (
+                          <div
+                            key={u.username}
+                            onClick={() => handleAddSharedUser(u.username)}
+                            style={{
+                              padding: '12px',
+                              borderBottom: '1px solid var(--app-border-color)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            <span>{u.username}</span>
+                            <UserAddOutline color='var(--adm-color-primary)' />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </List.Item>
+                {localSharedWith.length > 0 && (
+                  localSharedWith.map(username => (
+                    <List.Item
+                      key={username}
+                      extra={
+                        <Button
+                          size="mini"
+                          color="danger"
+                          fill="none"
+                          onClick={() => handleRemoveSharedUser(username)}
+                        >
+                          <DeleteOutline />
+                        </Button>
+                      }
+                    >
+                      {username}
+                    </List.Item>
+                  ))
+                )}
+              </List>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
             <Button onClick={() => navigate('/pets')} style={{ flex: 1 }}>Отмена</Button>
             <Button color="primary" onClick={() => handleSubmit(onSubmit)()} loading={loading} style={{ flex: 1 }}>
               {isEditing ? 'Сохранить' : 'Добавить'}
@@ -339,14 +578,14 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
     <div style={{ marginTop: '24px' }}>
       <div style={{
         fontSize: 'var(--adm-font-size-main)',
-        color: 'var(--adm-color-weak)',
+        color: 'var(--app-text-secondary)',
         padding: '0 12px 8px'
       }}>
         Настройки тайлов дневника
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={tilesSettings.order} strategy={verticalListSortingStrategy}>
-          <List>
+          <List style={{ '--background-color': 'transparent' } as any}>
             {tilesSettings.order.map((tileId) => {
               const tile = tilesConfig.find((t) => t.id === tileId);
               if (!tile) return null;
@@ -369,4 +608,3 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
     </div>
   );
 }
-

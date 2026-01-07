@@ -170,6 +170,14 @@ class AdminStatusResponse(BaseModel):
     )
 
 
+class UserSearchItem(BaseModel):
+    """Simple user item for search/autocomplete."""
+    username: str
+
+class UserSearchResponse(BaseModel):
+    """List of usernames for autocomplete."""
+    users: List[UserSearchItem]
+
 # ============================================================================
 # User Schemas
 # ============================================================================
@@ -303,8 +311,11 @@ class PetCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="Имя питомца")
     breed: Optional[str] = Field(None, max_length=100, description="Порода")
+    species: Optional[str] = Field(None, max_length=50, description="Вид животного (кот, собака и т.д.)")
     birth_date: Optional[str] = Field(None, description="Дата рождения в формате YYYY-MM-DD")
     gender: Optional[str] = Field(None, max_length=20, description="Пол")
+    is_neutered: Optional[bool] = Field(None, description="Кастрирован/Стерилизована")
+    health_notes: Optional[str] = Field(None, max_length=1000, description="Особенности здоровья, аллергии")
     photo_url: Optional[str] = Field(None, description="URL фотографии")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
@@ -332,8 +343,11 @@ class PetUpdate(BaseModel):
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     breed: Optional[str] = Field(None, max_length=100)
+    species: Optional[str] = Field(None, max_length=50)
     birth_date: Optional[str] = Field(None, description="Дата рождения в формате YYYY-MM-DD")
     gender: Optional[str] = Field(None, max_length=20)
+    is_neutered: Optional[bool] = None
+    health_notes: Optional[str] = Field(None, max_length=1000)
     photo_url: Optional[str] = None
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
@@ -361,8 +375,11 @@ class PetResponse(BaseModel):
     _id: str
     name: str
     breed: str
+    species: Optional[str] = None
     birth_date: Optional[str] = None
     gender: str
+    is_neutered: Optional[bool] = None
+    health_notes: Optional[str] = None
     photo_url: Optional[str] = None
     photo_file_id: Optional[str] = None
     tiles_settings: Optional[TilesSettings] = None

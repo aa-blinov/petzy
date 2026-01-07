@@ -8,6 +8,8 @@ export interface Pet {
   breed?: string;
   birth_date?: string;
   gender?: string;
+  is_neutered?: boolean;
+  health_notes?: string;
   photo_url?: string;
   photo_file_id?: string;
   tiles_settings?: TilesSettings;
@@ -23,6 +25,8 @@ export interface PetCreate {
   breed?: string;
   birth_date?: string;
   gender?: string;
+  is_neutered?: boolean;
+  health_notes?: string;
   photo_file?: File;
   photo_url?: string;
   tiles_settings?: TilesSettings;
@@ -34,6 +38,8 @@ export interface PetUpdate {
   breed?: string;
   birth_date?: string;
   gender?: string;
+  is_neutered?: boolean;
+  health_notes?: string;
   photo_file?: File;
   photo_url?: string;
   remove_photo?: boolean;
@@ -68,8 +74,11 @@ export const petsService = {
     formData.append('name', data.name);
     if (data.species) formData.append('species', data.species);
     if (data.breed) formData.append('breed', data.breed);
+    if (data.species) formData.append('species', data.species);
     if (data.birth_date) formData.append('birth_date', data.birth_date);
     if (data.gender) formData.append('gender', data.gender);
+    if (data.is_neutered !== undefined) formData.append('is_neutered', String(data.is_neutered));
+    if (data.health_notes) formData.append('health_notes', data.health_notes);
     if (data.photo_file) formData.append('photo_file', data.photo_file);
     if (data.photo_url) formData.append('photo_url', data.photo_url);
     if (data.tiles_settings) {
@@ -87,8 +96,11 @@ export const petsService = {
     if (data.name) formData.append('name', data.name);
     if (data.species) formData.append('species', data.species);
     if (data.breed !== undefined) formData.append('breed', data.breed);
+    if (data.species !== undefined) formData.append('species', data.species);
     if (data.birth_date !== undefined) formData.append('birth_date', data.birth_date);
     if (data.gender !== undefined) formData.append('gender', data.gender);
+    if (data.is_neutered !== undefined) formData.append('is_neutered', String(data.is_neutered));
+    if (data.health_notes !== undefined) formData.append('health_notes', data.health_notes);
     if (data.photo_file) formData.append('photo_file', data.photo_file);
     if (data.photo_url !== undefined) formData.append('photo_url', data.photo_url);
     if (data.remove_photo) formData.append('remove_photo', 'true');
