@@ -4,6 +4,7 @@ import { Tabs, Button } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { historyConfig } from '../utils/historyConfig';
 import { HistoryTab } from '../components/HistoryTab';
+import { HistoryChart } from '../components/HistoryChart';
 import { ExportModal } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
@@ -54,17 +55,17 @@ export function History() {
 
   const [activeTab, setActiveTab] = useState<string>(getActiveTabFromUrl);
   const [exportVisible, setExportVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
 
   // Синхронизируем активную вкладку с URL при изменении параметра
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && tabFromUrl in historyConfig && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
-    } else if (!tabFromUrl && activeTab !== Object.keys(historyConfig)[0]) {
-      // Если параметра нет, но активная вкладка не первая, обновляем URL
+    } else if (!tabFromUrl && tabs.length > 0 && activeTab !== tabs[0].key) {
       setSearchParams({ tab: activeTab });
     }
-  }, [searchParams, activeTab, setSearchParams]);
+  }, [searchParams, activeTab, setSearchParams, tabs]);
 
   // Обновляем URL при изменении вкладки
   const handleTabChange = (key: string) => {
@@ -79,7 +80,6 @@ export function History() {
       </div>
     );
   }
-
 
   return (
     <div style={{
@@ -113,7 +113,7 @@ export function History() {
           activeKey={activeTab}
           onChange={handleTabChange}
           style={{
-            marginBottom: '24px',
+            marginBottom: '16px',
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || '#D4E8FF',
             '--active-title-color': 'var(--app-text-color)',
             '--title-font-size': '16px',
@@ -124,11 +124,54 @@ export function History() {
             <Tabs.Tab
               key={tab.key}
               title={tab.title}
-            >
-              <HistoryTab type={tab.key} petId={selectedPetId} activeTab={activeTab} />
-            </Tabs.Tab>
+            />
           ))}
         </Tabs>
+
+        {/* View mode toggle */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '16px',
+          padding: '0 16px'
+        }}>
+          <div style={{
+            display: 'flex',
+            backgroundColor: 'var(--app-card-background)',
+            padding: '4px',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <Button
+              size="mini"
+              fill={viewMode === 'list' ? 'solid' : 'none'}
+              color={viewMode === 'list' ? 'primary' : 'default'}
+              onClick={() => setViewMode('list')}
+              style={{ borderRadius: '6px', padding: '4px 12px' }}
+            >
+              Список
+            </Button>
+            <Button
+              size="mini"
+              fill={viewMode === 'chart' ? 'solid' : 'none'}
+              color={viewMode === 'chart' ? 'primary' : 'default'}
+              onClick={() => setViewMode('chart')}
+              style={{ borderRadius: '6px', padding: '4px 12px' }}
+            >
+              График
+            </Button>
+          </div>
+        </div>
+
+        <div style={{ minHeight: '400px' }}>
+          {viewMode === 'list' ? (
+            <HistoryTab type={activeTab} petId={selectedPetId} activeTab={activeTab} />
+          ) : (
+            <div style={{ paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
+              <HistoryChart type={activeTab} petId={selectedPetId} />
+            </div>
+          )}
+        </div>
       </div>
 
       <ExportModal
@@ -140,4 +183,3 @@ export function History() {
     </div>
   );
 }
-
