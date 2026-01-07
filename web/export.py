@@ -118,6 +118,25 @@ def export_data(export_type, format_type):
                 ("cleaning_type", "Способ чистки"),
                 ("comment", "Комментарий"),
             ]
+        elif export_type == "ear_cleaning":
+            collection = app.db["ear_cleaning"]
+            title = "Чистка ушей"
+            fields = [
+                ("date_time", "Дата и время"),
+                ("username", "Пользователь"),
+                ("cleaning_type", "Способ чистки"),
+                ("comment", "Комментарий"),
+            ]
+        elif export_type == "medications":
+            collection = app.db["medication_intakes"]
+            title = "Прием препаратов"
+            fields = [
+                ("date_time", "Дата и время"),
+                ("username", "Пользователь"),
+                ("medication_name", "Препарат"),
+                ("dose_taken", "Доза"),
+                ("comment", "Комментарий"),
+            ]
         else:
             return error_response("export_invalid_type")
 
@@ -127,6 +146,13 @@ def export_data(export_type, format_type):
             return error_response("no_data_for_export")
 
         # Prepare records
+        if export_type == "medications":
+            from bson import ObjectId
+            med_ids = list(set(r["medication_id"] for r in records))
+            meds = {str(m["_id"]): m["name"] for m in app.db.medications.find({"_id": {"$in": [ObjectId(mid) for mid in med_ids]}})}
+            for r in records:
+                r["medication_name"] = meds.get(r["medication_id"], "Unknown")
+
         for r in records:
             if isinstance(r.get("date_time"), datetime):
                 r["date_time"] = r["date_time"].strftime("%d.%m.%Y %H:%M")

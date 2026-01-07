@@ -22,7 +22,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
         if (!data?.data) return [];
 
         // Aggregation logic for counts (asthma, defecation, etc.)
-        const isCountType = ['asthma', 'defecation', 'litter', 'eye_drops', 'tooth_brushing', 'ear_cleaning'].includes(type);
+        const isCountType = ['asthma', 'defecation', 'litter', 'eye_drops', 'tooth_brushing', 'ear_cleaning', 'medications'].includes(type);
 
         if (isCountType) {
             const aggregated: Record<string, number> = {};

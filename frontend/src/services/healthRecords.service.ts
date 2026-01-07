@@ -86,6 +86,13 @@ export interface EarCleaningListResponse {
   total: number;
 }
 
+export interface MedicationIntakeListResponse {
+  intakes: HealthRecord[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
 type ListResponseMap = {
   feeding: FeedingListResponse;
   asthma: AsthmaListResponse;
@@ -95,6 +102,7 @@ type ListResponseMap = {
   eye_drops: EyeDropsListResponse;
   tooth_brushing: ToothBrushingListResponse;
   ear_cleaning: EarCleaningListResponse;
+  medications: MedicationIntakeListResponse;
 };
 
 export const healthRecordsService = {
@@ -114,7 +122,8 @@ export const healthRecordsService = {
     page: number = 1,
     pageSize: number = 100
   ): Promise<ListResponseMap[T]> {
-    const response = await api.get<ListResponseMap[T]>(`/${type}`, {
+    const endpoint = type === 'medications' ? '/medications/intakes' : `/${type}`;
+    const response = await api.get<ListResponseMap[T]>(endpoint, {
       params: { pet_id: petId, page, page_size: pageSize }
     });
     return response.data;
@@ -142,7 +151,8 @@ export const healthRecordsService = {
     type: T,
     recordId: string
   ): Promise<void> {
-    await api.delete(`/${type}/${recordId}`);
+    const endpoint = type === 'medications' ? `/medications/intakes/${recordId}` : `/${type}/${recordId}`;
+    await api.delete(endpoint);
   },
 
   async getStats(

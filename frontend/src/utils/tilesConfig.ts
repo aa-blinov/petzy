@@ -7,6 +7,7 @@ export interface TileConfig {
   color: TileColor;
   screen: string;
   isAdmin?: boolean;
+  isTile?: boolean; // If false, won't show on Dashboard grid or in Tiles Settings
 }
 
 export const tilesConfig: TileConfig[] = [
@@ -17,7 +18,8 @@ export const tilesConfig: TileConfig[] = [
   { id: 'litter', title: 'Смена лотка', subtitle: 'Записать смену лотка', color: 'purple', screen: 'litter-form' },
   { id: 'eye_drops', title: 'Закапывание глаз', subtitle: 'Записать капли', color: 'teal', screen: 'eye-drops-form' },
   { id: 'tooth_brushing', title: 'Чистка зубов', subtitle: 'Записать чистку', color: 'cyan', screen: 'tooth-brushing-form' },
-  { id: 'ear_cleaning', title: 'Чистка ушей', subtitle: 'Записать чистку', color: 'yellow', screen: 'ear-cleaning-form' }
+  { id: 'ear_cleaning', title: 'Чистка ушей', subtitle: 'Записать чистку', color: 'yellow', screen: 'ear-cleaning-form' },
+  { id: 'medications', title: 'Препараты', subtitle: 'Список препаратов', color: 'purple', screen: 'medications', isTile: false }
 ];
 
 export interface TilesSettings {
@@ -36,11 +38,10 @@ export const DEFAULT_TILES_SETTINGS: TilesSettings = {
     'asthma',        // Приступ астмы
     'litter',        // Смена лотка
     'ear_cleaning',  // Чистка ушей
-    'tooth_brushing' // Чистка зубов
+    'tooth_brushing', // Чистка зубов
   ],
   visible: tilesConfig.reduce((acc, tile) => {
     acc[tile.id] = true;
     return acc;
   }, {} as Record<string, boolean>)
 };
-

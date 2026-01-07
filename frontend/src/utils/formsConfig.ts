@@ -221,6 +221,13 @@ export const formConfigs: FormConfigs = {
       comment: data.comment || ''
     }),
     successMessage: (isEdit) => isEdit ? 'Запись о чистке ушей обновлена' : 'Запись о чистке ушей создана'
+  },
+  medications: {
+    title: 'Препараты',
+    endpoint: '/api/medications',
+    fields: [], // Medications has its own complex form MedicationForm.tsx
+    transformData: (data) => data,
+    successMessage: (isEdit) => isEdit ? 'Препарат обновлен' : 'Препарат добавлен'
   }
 };
 

@@ -26,9 +26,9 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
   } = useInfiniteQuery({
     queryKey: ['history', type, petId],
     queryFn: async ({ pageParam = 1 }) => {
-      const response = await healthRecordsService.getList(type as HealthRecordType, petId, pageParam as number, pageSize);
-      const dataKey = config.dataKey as keyof typeof response;
-      const items = Array.isArray(response[dataKey]) ? (response[dataKey] as any[]) : [];
+      const response = await healthRecordsService.getList(type as HealthRecordType, petId, pageParam as number, pageSize) as any;
+      const dataKey = config.dataKey;
+      const items = Array.isArray(response[dataKey]) ? response[dataKey] : [];
       return {
         items,
         page: response.page,
