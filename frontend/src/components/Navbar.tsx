@@ -38,7 +38,9 @@ export function Navbar() {
   }
 
   // Show back button only on pages that are not main tabs
-  const isMainTab = ['/', '/settings', '/admin', '/history'].includes(location.pathname) || location.pathname === '';
+  const isMainTab = ['/', '/settings', '/admin', '/history'].includes(location.pathname) || 
+                    location.pathname === '' ||
+                    location.pathname.startsWith('/medications');
 
   const logo = (
     <img
