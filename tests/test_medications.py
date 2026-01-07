@@ -287,3 +287,117 @@ class TestMedicationManagement:
         med = data["medications"][0]
         assert med["intakes_today"] == 1
         assert med["last_taken_at"] is not None
+
+    def test_log_intake_insufficient_inventory(self, client, mock_db, regular_user_token, test_pet):
+        """Test that logging intake fails when inventory is insufficient."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Antibiotic",
+            "dosage": "1.0",
+            "inventory_enabled": True,
+            "inventory_current": 0.5,  # Less than dose_taken
+            "owner": "testuser"
+        })
+
+        now = datetime.now(timezone.utc)
+        log_data = {
+            "date": now.strftime("%Y-%m-%d"),
+            "time": now.strftime("%H:%M"),
+            "dose_taken": 1.0,
+            "comment": "Trying to take more than available"
+        }
+
+        response = client.post(
+            f"/api/medications/{med_id}/log",
+            json=log_data,
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 422  # validation_error
+        data = response.get_json()
+        assert "error" in data or "message" in data
+
+    def test_delete_intake_with_inventory_total_limit(self, client, mock_db, regular_user_token, test_pet):
+        """Test that deleting intake restores inventory but caps at inventory_total."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Antibiotic",
+            "dosage": "1.0",
+            "inventory_enabled": True,
+            "inventory_current": 9.0,
+            "inventory_total": 10.0,  # Set total limit
+            "owner": "testuser"
+        })
+
+        intake_id = ObjectId()
+        mock_db["medication_intakes"].insert_one({
+            "_id": intake_id,
+            "medication_id": str(med_id),
+            "pet_id": str(test_pet["_id"]),
+            "dose_taken": 2.0,  # More than would fit in total
+            "date_time": datetime.now(timezone.utc),
+            "username": "testuser"
+        })
+
+        response = client.delete(
+            f"/api/medications/intakes/{str(intake_id)}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 200
+        
+        # Verify intake deleted
+        intake = mock_db["medication_intakes"].find_one({"_id": intake_id})
+        assert intake is None
+
+        # Verify inventory restored but capped at total (9.0 + 2.0 = 11.0, but capped at 10.0)
+        med = mock_db["medications"].find_one({"_id": med_id})
+        assert med["inventory_current"] == 10.0
+
+    def test_get_upcoming_doses_excludes_taken(self, client, mock_db, regular_user_token, test_pet):
+        """Test that upcoming doses excludes already taken doses today."""
+        now = datetime.now(timezone.utc)
+        current_day = now.weekday()
+        
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Daily Med",
+            "type": "pill",
+            "schedule": {
+                "days": [current_day],  # Today
+                "times": ["08:00", "20:00"]
+            },
+            "inventory_enabled": False,
+            "is_active": True,
+            "owner": "testuser"
+        })
+
+        # Insert an intake for today at 08:00
+        today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        mock_db["medication_intakes"].insert_one({
+            "medication_id": str(med_id),
+            "pet_id": str(test_pet["_id"]),
+            "dose_taken": 1.0,
+            "date_time": today_start.replace(hour=8, minute=0),
+            "username": "testuser"
+        })
+
+        response = client.get(
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "doses" in data
+        # Should only return 20:00, not 08:00 (already taken)
+        doses = data["doses"]
+        times = [d["time"] for d in doses if d["medication_id"] == str(med_id)]
+        assert "08:00" not in times
+        assert "20:00" in times

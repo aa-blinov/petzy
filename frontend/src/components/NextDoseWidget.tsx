@@ -84,7 +84,7 @@ export function NextDoseWidget() {
                             '--background-color': '#ffffff',
                             '--text-color': 'var(--adm-color-primary)',
                             fontWeight: 600
-                        }}
+                        } as React.CSSProperties}
                         onClick={() => intakeMutation.mutate(nextDose)}
                         loading={intakeMutation.isPending}
                     >

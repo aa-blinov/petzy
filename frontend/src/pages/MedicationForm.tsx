@@ -134,6 +134,29 @@ export function MedicationForm() {
     });
 
     const onSubmit = (data: MedicationFormData) => {
+        // Validate inventory constraints
+        if (data.inventory_enabled) {
+            if (data.inventory_total !== null && data.inventory_total !== undefined && data.inventory_total <= 0) {
+                Toast.show({ icon: 'fail', content: 'Общее количество должно быть больше 0' });
+                return;
+            }
+            if (data.inventory_current !== null && data.inventory_current !== undefined) {
+                if (data.inventory_current < 0) {
+                    Toast.show({ icon: 'fail', content: 'Текущий остаток не может быть отрицательным' });
+                    return;
+                }
+                if (data.inventory_total !== null && data.inventory_total !== undefined && 
+                    data.inventory_current > data.inventory_total) {
+                    Toast.show({ icon: 'fail', content: 'Текущий остаток не может превышать общее количество' });
+                    return;
+                }
+            }
+            if (data.inventory_warning_threshold !== null && data.inventory_warning_threshold !== undefined &&
+                data.inventory_warning_threshold < 0) {
+                Toast.show({ icon: 'fail', content: 'Порог предупреждения не может быть отрицательным' });
+                return;
+            }
+        }
         mutation.mutate(data);
     };
 
@@ -353,7 +376,10 @@ export function MedicationForm() {
                                     <Form.Item label="Всего в упаковке (доз)">
                                         <Input
                                             value={field.value?.toString() || ''}
-                                            onChange={(val) => field.onChange(val === '' ? null : Number(val))}
+                                            onChange={(val) => {
+                                                const num = val === '' ? null : Number(val);
+                                                field.onChange(isNaN(num as number) ? null : num);
+                                            }}
                                             type="number"
                                             placeholder="Количество"
                                             style={{ '--text-align': 'right' }}
@@ -368,7 +394,10 @@ export function MedicationForm() {
                                     <Form.Item label="Текущий остаток">
                                         <Input
                                             value={field.value?.toString() || ''}
-                                            onChange={(val) => field.onChange(val === '' ? null : Number(val))}
+                                            onChange={(val) => {
+                                                const num = val === '' ? null : Number(val);
+                                                field.onChange(isNaN(num as number) ? null : num);
+                                            }}
                                             type="number"
                                             placeholder="Осталось в наличии"
                                             style={{ '--text-align': 'right' }}
@@ -383,7 +412,10 @@ export function MedicationForm() {
                                     <Form.Item label="Предупредить, когда останется">
                                         <Input
                                             value={field.value?.toString() || ''}
-                                            onChange={(val) => field.onChange(val === '' ? null : Number(val))}
+                                            onChange={(val) => {
+                                                const num = val === '' ? null : Number(val);
+                                                field.onChange(isNaN(num as number) ? null : num);
+                                            }}
                                             type="number"
                                             placeholder="Порог предупреждения"
                                             style={{ '--text-align': 'right' }}
