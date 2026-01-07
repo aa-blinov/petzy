@@ -8,7 +8,7 @@ JSON Naming Convention:
 from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import web.app as app  # Import app module to access db and logger
 from web.app import api
@@ -55,6 +55,8 @@ from web.schemas import (
     EarCleaningListResponse,
     EarCleaningItem,
     PetIdPaginationQuery,
+    HealthStatsQuery,
+    HealthStatsResponse,
     SuccessResponse,
     ErrorResponse,
 )
@@ -1738,3 +1740,73 @@ def delete_ear_cleaning(record_id):
             f"Invalid record_id for ear cleaning deletion: record_id={record_id}, user={username}, error={e}"
         )
         return error_response("invalid_record_id")
+
+
+# Statistics routes
+@health_records_bp.route("/api/stats/health", methods=["GET"])
+@login_required
+@api.validate(
+    query=HealthStatsQuery,
+    resp=Response(HTTP_200=HealthStatsResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["stats"],
+)
+def get_health_stats():
+    """Get health statistics for charts."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = query_params.pet_id
+    record_type = query_params.type
+    days = query_params.days or 30
+
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
+
+    success, access_error = validate_pet_access(pet_id, username)
+    if not success and access_error:
+        return access_error[0], access_error[1]
+
+    # Map record types to collection names and value fields
+    type_mapping = {
+        "feeding": ("feedings", "food_weight"),
+        "asthma": ("asthma_attacks", "count"),
+        "defecation": ("defecations", "count"),
+        "litter": ("litter_changes", "count"),
+        "weight": ("weights", "weight"),
+        "eye_drops": ("eye_drops", "count"),
+        "tooth_brushing": ("tooth_brushing", "count"),
+        "ear_cleaning": ("ear_cleaning", "count"),
+    }
+
+    if record_type not in type_mapping:
+        return error_response("invalid_type", f"Unsupported record type: {record_type}")
+
+    collection_name, value_field = type_mapping[record_type]
+    
+    # Calculate date range
+    since_date = datetime.now() - timedelta(days=days)
+    
+    # Fetch records
+    records = list(app.db[collection_name].find({
+        "pet_id": pet_id,
+        "date_time": {"$gte": since_date}
+    }).sort("date_time", 1))
+
+    stats_data = []
+    for record in records:
+        dt = record.get("date_time")
+        if isinstance(dt, datetime):
+            date_str = dt.strftime("%Y-%m-%d %H:%M")
+        else:
+            date_str = str(dt)
+
+        if value_field == "count":
+            value = 1
+        else:
+            value = record.get(value_field, 0)
+
+        stats_data.append({
+            "date": date_str,
+            "value": value
+        })
+
+    return jsonify({"data": stats_data})

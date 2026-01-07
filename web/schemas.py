@@ -6,7 +6,7 @@ Naming Convention:
 """
 
 from datetime import datetime, timedelta
-from typing import Optional, List, Annotated
+from typing import Optional, List, Annotated, Any
 from pydantic import BaseModel, Field, field_validator, ConfigDict, StringConstraints
 
 # Custom type for ObjectId strings
@@ -1015,3 +1015,23 @@ class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
             }
         }
     )
+
+
+class HealthStatsQuery(PetIdQuery):
+    """Query parameters for statistics."""
+
+    type: str = Field(..., description="Тип записи (feeding, asthma, weight и т.д.)")
+    days: Optional[int] = Field(30, description="Количество дней")
+
+
+class HealthStatsItem(BaseModel):
+    """Simplified health record item for charts."""
+
+    date: str
+    value: Any
+
+
+class HealthStatsResponse(BaseModel):
+    """Statistics response for charts."""
+
+    data: List[HealthStatsItem]
