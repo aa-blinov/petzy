@@ -45,6 +45,13 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
     try {
       await healthRecordsService.delete(type as HealthRecordType, item._id);
       await queryClient.invalidateQueries({ queryKey: ['history'] });
+      
+      // If deleting medication intake, also invalidate medications cache to update intakes_today
+      if (type === 'medications') {
+        await queryClient.invalidateQueries({ queryKey: ['medications'] });
+        await queryClient.invalidateQueries({ queryKey: ['medications', 'upcoming'] });
+      }
+      
       Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
 
       // Small delay to let Toast render before unmounting
