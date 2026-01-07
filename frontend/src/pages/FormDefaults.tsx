@@ -86,8 +86,12 @@ export function FormDefaults() {
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h2>
         </div>
 
-        {/* Form Defaults Section */}
-        <Form layout="horizontal" mode="card">
+        <div style={{
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))'
+        }}>
+          {/* Form Defaults Section */}
+          <Form layout="horizontal" mode="card">
           <Form.Header>Приступ астмы</Form.Header>
           <Form.Item label={<label htmlFor="asthma_duration">Длительность</label>}>
             <Input
@@ -306,14 +310,15 @@ export function FormDefaults() {
           confirmText="Сохранить"
         />
 
-        {/* Action Buttons */}
-        <div style={{ marginLeft: '16px', marginRight: '16px', paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Button block color="primary" size="large" onClick={handleSave}>
-            Сохранить
-          </Button>
-          <Button block color="default" size="large" onClick={handleReset}>
-            Сбросить к значениям по умолчанию
-          </Button>
+          {/* Action Buttons */}
+          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Button block color="primary" size="large" onClick={handleSave}>
+              Сохранить
+            </Button>
+            <Button block color="default" size="large" onClick={handleReset}>
+              Сбросить к значениям по умолчанию
+            </Button>
+          </div>
         </div>
       </div>
     </div>

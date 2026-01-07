@@ -19,50 +19,58 @@ export function Settings() {
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройки</h2>
         </div>
 
-        <List header="Внешний вид" mode="card">
-          <List.Item
-            extra={
-              <Switch
-                checked={isDark}
-                onChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-              />
-            }
-            description={theme === 'system' ? 'Следует за настройками системы' : undefined}
-          >
-            Темная тема
-          </List.Item>
-          {theme !== 'system' && (
-            <List.Item
-              onClick={() => setTheme('system')}
-              clickable
-            >
-              Использовать системную тему
-            </List.Item>
-          )}
-        </List>
+        <div style={{
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))'
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <List header="Внешний вид" mode="card">
+              <List.Item
+                extra={
+                  <Switch
+                    checked={isDark}
+                    onChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                  />
+                }
+                description={theme === 'system' ? 'Следует за настройками системы' : undefined}
+              >
+                Темная тема
+              </List.Item>
+              {theme !== 'system' && (
+                <List.Item
+                  onClick={() => setTheme('system')}
+                  clickable
+                >
+                  Использовать системную тему
+                </List.Item>
+              )}
+            </List>
 
-        {/* Management Section */}
-        <List header="Управление" mode="card">
-          <List.Item
-            onClick={() => navigate('/pets')}
-            clickable
-            arrow
-          >
-            Мои питомцы
-          </List.Item>
-        </List>
+            <List header="Управление" mode="card">
+              <List.Item
+                onClick={() => navigate('/pets')}
+                clickable
+                arrow
+              >
+                Мои питомцы
+              </List.Item>
+            </List>
 
-
-        {/* Form Defaults Section */}
-        <List header="Значения по умолчанию" mode="card">
-          <List.Item
-            onClick={() => navigate('/form-defaults')}
-            clickable
-            arrow
-          >
-            Настройки форм
-          </List.Item>
-        </List>
+            <List header="Значения по умолчанию" mode="card">
+              <List.Item
+                onClick={() => navigate('/form-defaults')}
+                clickable
+                arrow
+              >
+                Настройки форм
+              </List.Item>
+            </List>
+          </div>
+        </div>
       </div>
     </div>
   );

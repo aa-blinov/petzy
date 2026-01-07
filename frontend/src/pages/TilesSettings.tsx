@@ -145,44 +145,52 @@ export function TilesSettings() {
           </p>
         </div>
 
-        {/* Tiles Drag and Drop */}
-        <List mode="card">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={tilesSettings.order}
-              strategy={verticalListSortingStrategy}
+        <div style={{
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {/* Tiles Drag and Drop */}
+          <List mode="card">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              {tilesSettings.order.map((tileId) => {
-                const tile = tilesConfig.find((t) => t.id === tileId);
-                if (!tile || tile.isTile === false) return null;
+              <SortableContext
+                items={tilesSettings.order}
+                strategy={verticalListSortingStrategy}
+              >
+                {tilesSettings.order.map((tileId) => {
+                  const tile = tilesConfig.find((t) => t.id === tileId);
+                  if (!tile || tile.isTile === false) return null;
 
-                return (
-                  <SortableTileItem
-                    key={tile.id}
-                    id={tile.id}
-                    title={tile.title}
-                    visible={tilesSettings.visible[tile.id] !== false}
-                    onToggle={toggleVisibility}
-                    disabled={tile.id === 'history'}
-                  />
-                );
-              })}
-            </SortableContext>
-          </DndContext>
-        </List>
+                  return (
+                    <SortableTileItem
+                      key={tile.id}
+                      id={tile.id}
+                      title={tile.title}
+                      visible={tilesSettings.visible[tile.id] !== false}
+                      onToggle={toggleVisibility}
+                      disabled={tile.id === 'history'}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+          </List>
 
-        {/* Action Buttons */}
-        <div style={{ marginLeft: '16px', marginRight: '16px', paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Button block color="primary" size="large" onClick={handleSave}>
-            Сохранить
-          </Button>
-          <Button block color="default" size="large" onClick={handleReset}>
-            Сбросить к значениям по умолчанию
-          </Button>
+          {/* Action Buttons */}
+          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Button block color="primary" size="large" onClick={handleSave}>
+              Сохранить
+            </Button>
+            <Button block color="default" size="large" onClick={handleReset}>
+              Сбросить к значениям по умолчанию
+            </Button>
+          </div>
         </div>
       </div>
     </div>

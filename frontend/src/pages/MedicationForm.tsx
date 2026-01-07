@@ -171,15 +171,25 @@ export function MedicationForm() {
             color: 'var(--app-text-color)'
         }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <h2 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 600, padding: '0 16px' }}>
-                    {isEditing ? 'Редактировать курс' : 'Новый прием препаратов'}
-                </h2>
+                <div style={{ 
+                    marginBottom: '16px',
+                    paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                    paddingRight: 'max(16px, env(safe-area-inset-right))'
+                }}>
+                    <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
+                        {isEditing ? 'Редактировать курс' : 'Новый прием препаратов'}
+                    </h2>
+                </div>
 
-                <Form
-                    layout="horizontal"
-                    mode="card"
-                    onFinish={handleSubmit(onSubmit)}
-                >
+                <div style={{
+                    paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                    paddingRight: 'max(16px, env(safe-area-inset-right))'
+                }}>
+                    <Form
+                        layout="horizontal"
+                        mode="card"
+                        onFinish={handleSubmit(onSubmit)}
+                    >
                     <Form.Header>Основная информация</Form.Header>
                     <Controller
                         name="name"
@@ -452,34 +462,39 @@ export function MedicationForm() {
                             </Form.Item>
                         )}
                     />
-                </Form>
+                    </Form>
 
-                <div style={{
-                    marginTop: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
-                    paddingBottom: '20px',
-                    marginLeft: '16px',
-                    marginRight: '16px'
-                }}>
-                    <Button
-                        block
-                        color="primary"
-                        size="large"
-                        onClick={handleSubmit(onSubmit)}
-                        loading={mutation.isPending || isSubmitting}
-                        style={{ borderRadius: '12px', fontWeight: 600 }}
-                    >
-                        {isEditing ? 'Сохранить' : 'Создать'}
-                    </Button>
-                    <Button
-                        block
-                        onClick={() => navigate('/medications')}
-                        style={{ borderRadius: '12px', fontWeight: 500 }}
-                    >
-                        Отмена
-                    </Button>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        marginTop: '24px',
+                        paddingBottom: '24px'
+                    }}>
+                        <button
+                            style={{ display: 'none' }}
+                            type="submit"
+                            onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+                        />
+                        <Button
+                            block
+                            color="primary"
+                            size="large"
+                            onClick={() => handleSubmit(onSubmit)()}
+                            loading={mutation.isPending || isSubmitting}
+                            style={{ borderRadius: '12px', fontWeight: 600 }}
+                        >
+                            {isEditing ? 'Сохранить' : 'Создать'}
+                        </Button>
+                        <Button
+                            block
+                            size="large"
+                            onClick={() => navigate('/medications')}
+                            style={{ borderRadius: '12px', fontWeight: 500 }}
+                        >
+                            Отмена
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
