@@ -20,35 +20,47 @@ export function HealthRecordForm() {
   const [searchParams] = useSearchParams();
   const { selectedPetId } = usePet();
   const queryClient = useQueryClient();
-  const config = type && type in formConfigs ? formConfigs[type as HealthRecordType] : null;
+  const config = useMemo(() =>
+    type && type in formConfigs ? formConfigs[type as HealthRecordType] : null
+    , [type]);
+
+  // Create Zod schema dynamically
+  const schema = useMemo(() => {
+    // Используем базовое поле, чтобы объект не был пустым (Record<string, never>)
+    const baseFields: Record<string, any> = {
+      pet_id: z.string().min(1)
+    };
+
+    if (!config) return z.object(baseFields);
+
+    return z.object(
+      config.fields.reduce((acc: Record<string, any>, field: any) => {
+        if (field.type === 'number') {
+          // Для обязательных чисел: не разрешаем пустую строку
+          const baseSchema = z.preprocess((val) => {
+            if (val === '' || val === undefined || val === null) return undefined;
+            return val;
+          }, z.coerce.number({
+            error: 'Введите число'
+          }).min(field.min || 0, `Минимум ${field.min || 0}`));
+
+          acc[field.name] = field.required
+            ? baseSchema
+            : baseSchema.optional().nullable();
+        } else {
+          acc[field.name] = field.required
+            ? z.string().min(1, 'Обязательное поле')
+            : z.string().optional();
+        }
+        return acc;
+      }, baseFields)
+    );
+  }, [config]);
 
   // Если мы редактируем, нам не нужны дефолтные значения "сейчас", 
   // иначе может быть скачок данных.
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(isEditing);
-
-  if (!type || !config) {
-    return <div>Неизвестный тип записи</div>;
-  }
-
-  // Create Zod schema dynamically
-  const schema = useMemo(() => {
-    return z.object(
-      config.fields.reduce((acc: Record<string, any>, field: any) => {
-        if (field.type === 'number') {
-          const numberSchema = z.coerce.number().min(field.min || 0);
-          acc[field.name] = field.required
-            ? numberSchema
-            : z.union([numberSchema, z.literal(''), z.null(), z.undefined()]).optional();
-        } else {
-          acc[field.name] = field.required
-            ? z.string().min(1)
-            : z.string().optional();
-        }
-        return acc;
-      }, {} as Record<string, any>)
-    );
-  }, [config]);
 
   // При редактировании начальные значения помогут react-hook-form инициализировать поля,
   // а затем они будут обновлены вызовом reset() в useEffect когда данные будут загружены.
@@ -84,6 +96,15 @@ export function HealthRecordForm() {
     formState: { isSubmitting },
     reset
   } = methods;
+
+  if (!type || !config) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <p>Неизвестный тип записи или конфигурация отсутствует</p>
+        <Button onClick={() => navigate('/')}>На главную</Button>
+      </div>
+    );
+  }
 
   // Единая функция нормализации данных
   const normalizeData = useCallback((data: any) => {
