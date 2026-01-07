@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Empty, ProgressBar, Toast, Tag, Dialog } from 'antd-mobile';
+import { Button, Card, ProgressBar, Toast, Tag, Dialog } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { medicationsService, type Medication } from '../services/medications.service';
@@ -92,8 +92,15 @@ export function MedicationsList() {
             backgroundColor: 'var(--app-page-background)',
             color: 'var(--app-text-color)'
         }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '16px',
+                    paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                    paddingRight: 'max(16px, env(safe-area-inset-right))'
+                }}>
                     <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Прием препаратов</h2>
                     <Button
                         color="primary"
@@ -113,13 +120,30 @@ export function MedicationsList() {
                 </div>
 
                 {medications.length === 0 ? (
-                    <Card style={{ padding: '32px 0', textAlign: 'center' }}>
-                        <Empty description="Нет назначенных лекарств" />
-                    </Card>
+                    <div style={{ 
+                        textAlign: 'center', 
+                        color: 'var(--adm-color-weak)', 
+                        padding: '20px',
+                        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                        paddingRight: 'max(16px, env(safe-area-inset-right))'
+                    }}>
+                        Нет назначенных лекарств
+                    </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '12px',
+                        marginTop: '8px',
+                        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                        paddingRight: 'max(16px, env(safe-area-inset-right))'
+                    }}>
                         {medications.map(med => (
-                            <Card key={med._id} style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                            <Card key={med._id} style={{ 
+                                borderRadius: '12px', 
+                                border: 'none',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' 
+                            }}>
                                 <div style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
