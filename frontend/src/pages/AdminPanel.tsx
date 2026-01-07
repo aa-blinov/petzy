@@ -62,15 +62,15 @@ export function AdminPanel() {
 
   if (!isAdmin) {
     return (
-    <div style={{ 
-      minHeight: '100vh', 
-      margin: '0 auto', 
-      paddingTop: '60px',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      paddingLeft: 'max(16px, env(safe-area-inset-left))',
-      paddingRight: 'max(16px, env(safe-area-inset-right))',
-      color: 'var(--app-text-color)'
-    }}>
+      <div style={{
+        minHeight: '100vh',
+        margin: '0 auto',
+        paddingTop: '60px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+        paddingRight: 'max(16px, env(safe-area-inset-right))',
+        color: 'var(--app-text-color)'
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '20px', margin: 0 }}>Админ-панель</h2>
         </div>
@@ -82,19 +82,19 @@ export function AdminPanel() {
   }
 
   return (
-    <div style={{ 
+    <div style={{
       minHeight: '100vh',
       backgroundColor: 'var(--app-page-background)',
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
       color: 'var(--app-text-color)'
     }}>
-      <div style={{ 
-        maxWidth: '800px', 
+      <div style={{
+        maxWidth: '800px',
         margin: '0 auto'
       }}>
-        <div style={{ 
-          marginBottom: '16px', 
+        <div style={{
+          marginBottom: '16px',
           paddingLeft: 'max(16px, env(safe-area-inset-left))',
           paddingRight: 'max(16px, env(safe-area-inset-right))'
         }}>
@@ -112,7 +112,7 @@ export function AdminPanel() {
           </div>
         )}
 
-        <div style={{ 
+        <div style={{
           paddingLeft: 'max(16px, env(safe-area-inset-left))',
           paddingRight: 'max(16px, env(safe-area-inset-right))',
           marginBottom: '16px',
@@ -131,9 +131,9 @@ export function AdminPanel() {
         </div>
 
         {usersLoading ? (
-          <LoadingSpinner />
+          <LoadingSpinner fullscreen={false} />
         ) : (
-          <div style={{ 
+          <div style={{
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',

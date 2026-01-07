@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { SpinLoading } from 'antd-mobile';
+import { LoadingSpinner } from './LoadingSpinner';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     AreaChart, Area
@@ -54,11 +54,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
     }, [type]);
 
     if (isLoading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
-                <SpinLoading />
-            </div>
-        );
+        return <LoadingSpinner fullscreen={false} />;
     }
 
     if (error || !data) {
