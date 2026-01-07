@@ -305,14 +305,14 @@ export function HealthRecordForm() {
           </h2>
         </div>
 
-        <div style={{
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
-        }}>
+        <div>
           <FormProvider {...methods}>
             <Form
               layout="horizontal"
               mode="card"
+              style={{
+                '--prefix-width': '6em'
+              } as React.CSSProperties}
             >
               {config.fields.map((field) => (
                 <FormField
@@ -329,7 +329,9 @@ export function HealthRecordForm() {
             flexDirection: 'column',
             gap: '12px',
             marginTop: '24px',
-            paddingBottom: '24px'
+            paddingBottom: '24px',
+            marginLeft: '16px',
+            marginRight: '16px'
           }}>
             <button
               style={{ display: 'none' }}
