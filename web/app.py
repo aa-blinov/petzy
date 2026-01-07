@@ -144,12 +144,14 @@ from web.auth import auth_bp, page_login_required  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
 from web.health_records import health_records_bp  # noqa: E402
+from web.medications import medications_bp  # noqa: E402
 from web.export import export_bp  # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(pets_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(health_records_bp)
+app.register_blueprint(medications_bp)
 app.register_blueprint(export_bp)
 
 # Register API spec after all blueprints are registered

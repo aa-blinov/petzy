@@ -1035,3 +1035,97 @@ class HealthStatsResponse(BaseModel):
     """Statistics response for charts."""
 
     data: List[HealthStatsItem]
+
+
+# ============================================================================
+# Medication Schemas
+# ============================================================================
+
+class MedicationSchedule(BaseModel):
+    days: List[int] = Field(..., description="Дни недели (0-6, где 0 - Пн, 6 - Вс)")
+    times: List[str] = Field(..., description="Время приема (HH:mm)")
+
+
+class MedicationCreate(PetIdQuery):
+    name: str = Field(..., max_length=100)
+    type: str = Field(..., max_length=50, description="Ингаляция, Таблетка, Капли и т.д.")
+    dosage: Optional[str] = Field(None, max_length=50)
+    unit: Optional[str] = Field(None, max_length=20)
+    schedule: MedicationSchedule
+    inventory_enabled: bool = False
+    inventory_total: Optional[float] = None
+    inventory_current: Optional[float] = None
+    inventory_warning_threshold: Optional[float] = None
+    is_active: bool = True
+    comment: Optional[str] = None
+
+
+class MedicationUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    dosage: Optional[str] = None
+    unit: Optional[str] = None
+    schedule: Optional[MedicationSchedule] = None
+    inventory_enabled: Optional[bool] = None
+    inventory_total: Optional[float] = None
+    inventory_current: Optional[float] = None
+    inventory_warning_threshold: Optional[float] = None
+    is_active: Optional[bool] = None
+    comment: Optional[str] = None
+
+
+class MedicationItem(BaseModel):
+    _id: str
+    pet_id: str
+    name: str
+    type: str
+    dosage: Optional[str] = None
+    unit: Optional[str] = None
+    schedule: MedicationSchedule
+    inventory_enabled: bool
+    inventory_total: Optional[float] = None
+    inventory_current: Optional[float] = None
+    inventory_warning_threshold: Optional[float] = None
+    is_active: bool
+    comment: Optional[str] = None
+    last_taken_at: Optional[str] = None
+    intakes_today: int = 0
+
+
+class MedicationListResponse(BaseModel):
+    medications: List[MedicationItem]
+
+
+class MedicationIntakeCreate(BaseModel):
+    date: str
+    time: str
+    dose_taken: float = 1.0
+    comment: Optional[str] = None
+
+
+class MedicationIntakeItem(BaseModel):
+    _id: str
+    medication_id: str
+    pet_id: str
+    date_time: str
+    dose_taken: float
+    username: str
+    comment: Optional[str] = None
+
+
+class MedicationIntakeListResponse(PaginatedResponse):
+    intakes: List[MedicationIntakeItem]
+
+
+class UpcomingDoseItem(BaseModel):
+    medication_id: str
+    name: str
+    type: str = "pill"
+    time: str
+    date: str
+    is_overdue: bool
+    inventory_warning: bool
+
+
+class UpcomingDosesResponse(BaseModel):
+    doses: List[UpcomingDoseItem]

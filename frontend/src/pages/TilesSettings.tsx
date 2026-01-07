@@ -130,8 +130,8 @@ export function TilesSettings() {
   }, [resetSettings]);
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       backgroundColor: 'var(--app-page-background)',
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
@@ -158,7 +158,7 @@ export function TilesSettings() {
             >
               {tilesSettings.order.map((tileId) => {
                 const tile = tilesConfig.find((t) => t.id === tileId);
-                if (!tile) return null;
+                if (!tile || tile.isTile === false) return null;
 
                 return (
                   <SortableTileItem

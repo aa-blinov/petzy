@@ -131,6 +131,20 @@ export const historyConfig: Record<HealthRecordType | 'asthma', HistoryTypeConfi
       }
       return html;
     }
+  },
+  medications: {
+    endpoint: 'medications/intakes',
+    dataKey: 'intakes',
+    displayName: 'Препараты',
+    color: 'purple',
+    renderDetails: (item: HistoryItem) => {
+      let html = `<span><strong>Препарат:</strong> ${item.medication_name || 'Неизвестно'}</span>`;
+      html += `<span><strong>Доза:</strong> ${item.dose_taken}</span>`;
+      if (item.comment && item.comment !== '-') {
+        html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
+      }
+      return html;
+    }
   }
 };
 

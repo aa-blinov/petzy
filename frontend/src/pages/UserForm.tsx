@@ -136,30 +136,22 @@ export function UserForm() {
 
         <div style={{ padding: '0 max(16px, env(safe-area-inset-left))' }}>
           <Form
-            layout="vertical"
-            style={{
-              '--background-color': 'var(--app-card-background)',
-              '--border-top': 'none',
-              '--border-bottom': 'none',
-              '--border-inner': '1px solid var(--app-border-color)',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-            } as any}
+            layout="horizontal"
+            mode="card"
           >
             {!isEditing && (
               <Controller
                 name="username"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <Form.Item label={<label htmlFor="username">Имя пользователя *</label>} help={error?.message}>
+                  <Form.Item label="Имя пользователя" required help={error?.message}>
                     <Input
                       {...field}
                       id="username"
-                      aria-label="Имя пользователя"
-                      placeholder="Введите имя пользователя *"
+                      placeholder="Введите имя пользователя"
                       clearable
                       autoComplete="username"
+                      style={{ '--text-align': 'right' }}
                     />
                   </Form.Item>
                 )}
@@ -180,18 +172,17 @@ export function UserForm() {
                       style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
                       tabIndex={-1}
                       aria-hidden="true"
-                      aria-label="Username for password managers"
                     />
                   )}
-                  <Form.Item label={<label htmlFor="password">{isEditing ? "Новый пароль" : "Пароль *"}</label>}>
+                  <Form.Item label={isEditing ? "Новый пароль" : "Пароль"} required={!isEditing}>
                     <Input
                       {...field}
                       id="password"
-                      aria-label={isEditing ? "Новый пароль" : "Пароль"}
                       type="password"
-                      placeholder={isEditing ? "Оставьте пустым, чтобы не менять" : "Введите пароль *"}
+                      placeholder={isEditing ? "Оставьте пустым" : "Введите пароль"}
                       clearable
                       autoComplete="new-password"
+                      style={{ '--text-align': 'right' }}
                     />
                   </Form.Item>
                 </>
@@ -202,14 +193,14 @@ export function UserForm() {
               name="full_name"
               control={control}
               render={({ field }) => (
-                <Form.Item label={<label htmlFor="full_name">Полное имя</label>}>
+                <Form.Item label="Полное имя">
                   <Input
                     {...field}
                     id="full_name"
-                    aria-label="Полное имя"
                     placeholder="Введите полное имя"
                     clearable
                     autoComplete="name"
+                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -219,15 +210,15 @@ export function UserForm() {
               name="email"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label={<label htmlFor="email">Email</label>} help={error?.message}>
+                <Form.Item label="Email" help={error?.message}>
                   <Input
                     {...field}
                     id="email"
-                    aria-label="Email"
                     type="email"
                     placeholder="Введите email"
                     clearable
                     autoComplete="email"
+                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -239,7 +230,6 @@ export function UserForm() {
               render={({ field: { value, onChange } }) => (
                 <Form.Item label="Активен">
                   <Switch
-                    aria-label="Активен"
                     checked={value}
                     onChange={onChange}
                   />
@@ -248,10 +238,35 @@ export function UserForm() {
             />
           </Form>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-            <Button onClick={() => navigate('/admin')} style={{ flex: 1 }}>Отмена</Button>
-            <Button color="primary" onClick={() => handleSubmit(onSubmit)()} loading={isLoading} style={{ flex: 1 }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '24px',
+            paddingBottom: '24px'
+          }}>
+            <button
+              style={{ display: 'none' }}
+              type="submit"
+              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+            />
+            <Button
+              block
+              color="primary"
+              size="large"
+              onClick={() => handleSubmit(onSubmit)()}
+              loading={isLoading}
+              style={{ borderRadius: '12px', fontWeight: 600 }}
+            >
               {isEditing ? 'Сохранить' : 'Создать'}
+            </Button>
+            <Button
+              block
+              size="large"
+              onClick={() => navigate('/admin')}
+              style={{ borderRadius: '12px', fontWeight: 500 }}
+            >
+              Отмена
             </Button>
           </div>
         </div>

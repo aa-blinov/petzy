@@ -1775,6 +1775,7 @@ def get_health_stats():
         "eye_drops": ("eye_drops", "count"),
         "tooth_brushing": ("tooth_brushing", "count"),
         "ear_cleaning": ("ear_cleaning", "count"),
+        "medications": ("medication_intakes", "count"),
     }
 
     if record_type not in type_mapping:

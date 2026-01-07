@@ -22,6 +22,7 @@ export const HEALTH_RECORD_TYPES = {
   eye_drops: 'eye_drops',
   tooth_brushing: 'tooth_brushing',
   ear_cleaning: 'ear_cleaning',
+  medications: 'medications',
 } as const;
 
 export type TileColor = typeof TILE_COLORS[keyof typeof TILE_COLORS];

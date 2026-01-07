@@ -48,6 +48,8 @@ def mock_db():
         mock_db["litter_changes"].delete_many({})
         mock_db["weights"].delete_many({})
         mock_db["feedings"].delete_many({})
+        mock_db["medications"].delete_many({})
+        mock_db["medication_intakes"].delete_many({})
 
         # Create default admin user
         admin_password_hash = os.environ["ADMIN_PASSWORD_HASH"]

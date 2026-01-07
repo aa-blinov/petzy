@@ -240,29 +240,27 @@ export function PetForm() {
 
         <div style={{ padding: '0 max(16px, env(safe-area-inset-left))' }}>
           <Form
-            layout="vertical"
-            style={{
-              '--background-color': 'var(--app-card-background)',
-              '--border-top': 'none',
-              '--border-bottom': 'none',
-              '--border-inner': '1px solid var(--app-border-color)',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-            } as any}
+            layout="horizontal"
+            mode="card"
           >
             <Controller
               name="name"
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <Form.Item
-                  label={<label htmlFor="name">Имя *</label>}
+                  label="Имя"
+                  required
                   help={error?.message}
                   clickable
                   onClick={() => nameInputRef.current?.focus()}
-                  arrow={false}
                 >
-                  <Input {...field} ref={nameInputRef} id="name" aria-label="Имя питомца" placeholder="Имя питомца" />
+                  <Input
+                    {...field}
+                    ref={nameInputRef}
+                    id="name"
+                    placeholder="Имя питомца"
+                    style={{ '--text-align': 'right' }}
+                  />
                 </Form.Item>
               )}
             />
@@ -272,12 +270,17 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label={<label htmlFor="species">Вид питомца</label>}
+                  label="Вид питомца"
                   clickable
                   onClick={() => speciesInputRef.current?.focus()}
-                  arrow={false}
                 >
-                  <Input {...field} ref={speciesInputRef} id="species" aria-label="Вид питомца" placeholder="Например: Кот, Собака" />
+                  <Input
+                    {...field}
+                    ref={speciesInputRef}
+                    id="species"
+                    placeholder="Кот, Собака..."
+                    style={{ '--text-align': 'right' }}
+                  />
                 </Form.Item>
               )}
             />
@@ -287,12 +290,17 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label={<label htmlFor="breed">Порода</label>}
+                  label="Порода"
                   clickable
                   onClick={() => breedInputRef.current?.focus()}
-                  arrow={false}
                 >
-                  <Input {...field} ref={breedInputRef} id="breed" aria-label="Порода" placeholder="Порода (необязательно)" />
+                  <Input
+                    {...field}
+                    ref={breedInputRef}
+                    id="breed"
+                    placeholder="Необязательно"
+                    style={{ '--text-align': 'right' }}
+                  />
                 </Form.Item>
               )}
             />
@@ -315,7 +323,7 @@ export function PetForm() {
                 const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
                 return (
                   <Form.Item
-                    label={<label htmlFor="birth_date">Дата рождения</label>}
+                    label="Дата рождения"
                     clickable
                     onClick={() => {
                       setInternalPickerDate(pickerValue);
@@ -328,7 +336,7 @@ export function PetForm() {
                       readOnly
                       value={displayDate}
                       placeholder="Выберите дату"
-                      style={{ '--font-size': '16px' }}
+                      style={{ '--text-align': 'right' }}
                     />
                     <Picker
                       columns={dateColumns}
@@ -359,12 +367,17 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label={<label htmlFor="gender">Пол</label>}
+                  label="Пол"
                   clickable
                   onClick={() => genderInputRef.current?.focus()}
-                  arrow={false}
                 >
-                  <Input {...field} ref={genderInputRef} id="gender" aria-label="Пол" placeholder="Пол (необязательно)" />
+                  <Input
+                    {...field}
+                    ref={genderInputRef}
+                    id="gender"
+                    placeholder="Необязательно"
+                    style={{ '--text-align': 'right' }}
+                  />
                 </Form.Item>
               )}
             />
@@ -374,7 +387,7 @@ export function PetForm() {
               control={control}
               render={({ field: { value, onChange } }) => (
                 <Form.Item
-                  label="Кастрирован / Стерилизована"
+                  label="Стерилизация"
                   clickable
                   onClick={() => setNeuteredPickerVisible(true)}
                   arrow
@@ -382,7 +395,7 @@ export function PetForm() {
                   <Input
                     readOnly
                     value={value ? 'Да' : 'Нет'}
-                    style={{ '--font-size': '16px' }}
+                    style={{ '--text-align': 'right' }}
                   />
                   <Picker
                     columns={[neuteredOptions]}
@@ -405,38 +418,28 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label="Особенности здоровья / Аллергии"
-                  clickable
-                  onClick={() => healthNotesInputRef.current?.focus()}
-                  arrow={false}
+                  label="Здоровье / Аллергии"
+                  layout="vertical"
                 >
                   <TextArea
                     {...field}
                     ref={healthNotesInputRef}
-                    placeholder="Укажите важную информацию о здоровье питомца"
+                    placeholder="Важная информация о здоровье"
                     autoSize={{ minRows: 2, maxRows: 5 }}
                   />
                 </Form.Item>
               )}
             />
 
-            <div style={{ marginTop: '16px', padding: '0 12px 16px' }}>
-              <div style={{
-                fontSize: 'var(--adm-font-size-main)',
-                color: 'var(--adm-color-weak)',
-                marginBottom: '8px'
-              }}>
-                Фото
-              </div>
+            <Form.Item label="Фото" layout="vertical">
               <ImageUploader
                 value={fileList}
                 onChange={setFileList}
                 upload={async (file) => ({ url: URL.createObjectURL(file) })}
                 maxCount={1}
                 deletable={true}
-                aria-label="Загрузить фото"
               />
-            </div>
+            </Form.Item>
 
             {isEditing && id && <PetTilesSettingsSection petId={id} />}
           </Form>
@@ -519,10 +522,35 @@ export function PetForm() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
-            <Button onClick={() => navigate('/pets')} style={{ flex: 1 }}>Отмена</Button>
-            <Button color="primary" onClick={() => handleSubmit(onSubmit)()} loading={loading} style={{ flex: 1 }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '24px',
+            paddingBottom: '24px'
+          }}>
+            <button
+              style={{ display: 'none' }}
+              type="submit"
+              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+            />
+            <Button
+              block
+              color="primary"
+              size="large"
+              onClick={() => handleSubmit(onSubmit)()}
+              loading={loading}
+              style={{ borderRadius: '12px', fontWeight: 600 }}
+            >
               {isEditing ? 'Сохранить' : 'Добавить'}
+            </Button>
+            <Button
+              block
+              size="large"
+              onClick={() => navigate('/pets')}
+              style={{ borderRadius: '12px', fontWeight: 500 }}
+            >
+              Отмена
             </Button>
           </div>
         </div>
@@ -588,7 +616,7 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
           <List style={{ '--background-color': 'transparent' } as any}>
             {tilesSettings.order.map((tileId) => {
               const tile = tilesConfig.find((t) => t.id === tileId);
-              if (!tile) return null;
+              if (!tile || tile.isTile === false) return null;
               return (
                 <SortableTileItem
                   key={tile.id}
