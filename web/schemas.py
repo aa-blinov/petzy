@@ -1049,8 +1049,12 @@ class MedicationSchedule(BaseModel):
 class MedicationCreate(PetIdQuery):
     name: str = Field(..., max_length=100)
     type: str = Field(..., max_length=50, description="Ингаляция, Таблетка, Капли и т.д.")
-    dosage: Optional[str] = Field(None, max_length=50)
-    unit: Optional[str] = Field(None, max_length=20)
+    form_factor: Optional[str] = Field(None, max_length=20, description="tablet, liquid, injection, other")
+    strength: Optional[str] = Field(None, max_length=50, description="50 mg, 5 mg/ml")
+    dosage: Optional[str] = Field(None, max_length=50, description="Legacy dosage string")
+    unit: Optional[str] = Field(None, max_length=20, description="Legacy unit string")
+    dose_unit: Optional[str] = Field(None, max_length=20, description="tablet, ml, etc")
+    default_dose: float = Field(1.0, description="Default amount to subtract from inventory")
     schedule: MedicationSchedule
     inventory_enabled: bool = False
     inventory_total: Optional[float] = None
@@ -1063,8 +1067,12 @@ class MedicationCreate(PetIdQuery):
 class MedicationUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
+    form_factor: Optional[str] = None
+    strength: Optional[str] = None
     dosage: Optional[str] = None
     unit: Optional[str] = None
+    dose_unit: Optional[str] = None
+    default_dose: Optional[float] = None
     schedule: Optional[MedicationSchedule] = None
     inventory_enabled: Optional[bool] = None
     inventory_total: Optional[float] = None
@@ -1079,8 +1087,12 @@ class MedicationItem(BaseModel):
     pet_id: str
     name: str
     type: str
+    form_factor: Optional[str] = None
+    strength: Optional[str] = None
     dosage: Optional[str] = None
     unit: Optional[str] = None
+    dose_unit: Optional[str] = None
+    default_dose: float = 1.0
     schedule: MedicationSchedule
     inventory_enabled: bool
     inventory_total: Optional[float] = None
@@ -1099,7 +1111,7 @@ class MedicationListResponse(BaseModel):
 class MedicationIntakeCreate(BaseModel):
     date: str
     time: str
-    dose_taken: float = 1.0
+    dose_taken: Optional[float] = None # Uses default_dose if not provided
     comment: Optional[str] = None
 
 
