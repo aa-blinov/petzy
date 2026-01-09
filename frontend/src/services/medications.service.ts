@@ -10,8 +10,12 @@ export interface Medication {
     pet_id: string;
     name: string;
     type: string;
-    dosage?: string;
-    unit?: string;
+    form_factor?: 'tablet' | 'liquid' | 'injection' | 'other';
+    strength?: string;
+    dose_unit?: string;
+    default_dose?: number;
+    dosage?: string; // legacy
+    unit?: string; // legacy
     schedule: MedicationSchedule;
     inventory_enabled: boolean;
     inventory_total?: number;
@@ -27,6 +31,10 @@ export interface MedicationCreate {
     pet_id: string;
     name: string;
     type: string;
+    form_factor?: string;
+    strength?: string;
+    dose_unit?: string;
+    default_dose?: number;
     dosage?: string;
     unit?: string;
     schedule: MedicationSchedule;
@@ -37,6 +45,16 @@ export interface MedicationCreate {
     is_active?: boolean;
     comment?: string;
 }
+
+export const COMMON_MEDICATIONS = [
+    { name: 'Синулокс 50мг', type: 'Таблетка', form_factor: 'tablet', strength: '50 мг', dose_unit: 'таб', default_dose: 1 },
+    { name: 'Синулокс 250мг', type: 'Таблетка', form_factor: 'tablet', strength: '250 мг', dose_unit: 'таб', default_dose: 0.5 },
+    { name: 'Габапентин', type: 'Капсула', form_factor: 'tablet', strength: '300 мг', dose_unit: 'капс', default_dose: 0.1 },
+    { name: 'Мелоксидил', type: 'Суспензия', form_factor: 'liquid', strength: '0.5 мг/мл', dose_unit: 'мл', default_dose: 2.5 },
+    { name: 'Преднизолон', type: 'Таблетка', form_factor: 'tablet', strength: '5 мг', dose_unit: 'таб', default_dose: 1 },
+    { name: 'Онсиор', type: 'Таблетка', form_factor: 'tablet', strength: '6 мг', dose_unit: 'таб', default_dose: 1 },
+    { name: 'Доксициклин', type: 'Таблетка', form_factor: 'tablet', strength: '100 мг', dose_unit: 'таб', default_dose: 0.5 },
+];
 
 export interface MedicationIntake {
     _id: string;
@@ -79,7 +97,7 @@ export const medicationsService = {
         await api.delete(`/medications/${id}`);
     },
 
-    async logIntake(id: string, data: { date: string; time: string; dose_taken: number; comment?: string }): Promise<void> {
+    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string }): Promise<void> {
         await api.post(`/medications/${id}/log`, data);
     },
 
