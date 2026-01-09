@@ -1099,7 +1099,7 @@ class MedicationListResponse(BaseModel):
 class MedicationIntakeCreate(BaseModel):
     date: str
     time: str
-    dose_taken: float = 1.0
+    dose_taken: Optional[float] = None # Uses default_dose if not provided
     comment: Optional[str] = None
 
 

@@ -401,3 +401,40 @@ class TestMedicationManagement:
         times = [d["time"] for d in doses if d["medication_id"] == str(med_id)]
         assert "08:00" not in times
         assert "20:00" in times
+
+    def test_log_intake_default_dose_success(self, client, mock_db, regular_user_token, test_pet):
+        """Test logging a medication intake uses default dose when not provided."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Half pill",
+            "default_dose": 0.5,
+            "inventory_enabled": True,
+            "inventory_current": 10.0,
+            "owner": "testuser"
+        })
+
+        now = datetime.now(timezone.utc)
+        log_data = {
+            "date": now.strftime("%Y-%m-%d"),
+            "time": now.strftime("%H:%M")
+            # dose_taken is missing
+        }
+
+        response = client.post(
+            f"/api/medications/{med_id}/log",
+            json=log_data,
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 201
+        
+        # Verify intake record
+        intake = mock_db["medication_intakes"].find_one({"medication_id": str(med_id)})
+        assert intake is not None
+        assert intake["dose_taken"] == 0.5
+
+        # Verify inventory decreased
+        med = mock_db["medications"].find_one({"_id": med_id})
+        assert med["inventory_current"] == 9.5

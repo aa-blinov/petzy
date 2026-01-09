@@ -253,12 +253,16 @@ def log_intake(id):
         if dt_error:
             return dt_error[0], dt_error[1]
 
+        dose_taken = data.dose_taken
+        if dose_taken is None:
+            dose_taken = medication.get("default_dose", 1.0)
+
         # Update inventory if enabled (before inserting intake to maintain consistency)
         if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
             current_inventory = medication["inventory_current"]
-            if current_inventory < data.dose_taken:
+            if current_inventory < dose_taken:
                 return error_response("validation_error", "Недостаточно лекарства в остатке")
-            new_inventory = current_inventory - data.dose_taken
+            new_inventory = current_inventory - dose_taken
             # Use atomic update with condition to prevent race conditions
             result = app.db.medications.update_one(
                 {"_id": medication_id, "inventory_current": current_inventory},
@@ -269,9 +273,9 @@ def log_intake(id):
                 medication = app.db.medications.find_one({"_id": medication_id})
                 if medication and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
                     current_inventory = medication["inventory_current"]
-                    if current_inventory < data.dose_taken:
+                    if current_inventory < dose_taken:
                         return error_response("validation_error", "Недостаточно лекарства в остатке")
-                    new_inventory = current_inventory - data.dose_taken
+                    new_inventory = current_inventory - dose_taken
                     app.db.medications.update_one(
                         {"_id": medication_id},
                         {"$set": {"inventory_current": new_inventory}}
@@ -281,7 +285,7 @@ def log_intake(id):
             "medication_id": id,
             "pet_id": medication["pet_id"],
             "date_time": event_dt,
-            "dose_taken": data.dose_taken,
+            "dose_taken": dose_taken,
             "comment": data.comment or "",
             "username": username,
             "created_at": datetime.utcnow()
