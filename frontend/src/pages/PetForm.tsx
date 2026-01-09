@@ -232,7 +232,15 @@ export function PetForm() {
       backgroundColor: 'var(--app-page-background)', color: 'var(--app-text-color)'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
+        <div style={{
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          minHeight: '40px',
+          paddingLeft: 'max(16px, env(safe-area-inset-left))',
+          paddingRight: 'max(16px, env(safe-area-inset-right))'
+        }}>
           <h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать питомца' : 'Добавить питомца'}
           </h2>
