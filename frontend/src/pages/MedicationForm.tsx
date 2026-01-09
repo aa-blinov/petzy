@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Switch, Toast, Selector, Picker, Popup, List, Stepper } from 'antd-mobile';
+import { Button, Form, Input, Switch, Toast, Selector, Picker, Popup, List } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +52,13 @@ export function MedicationForm() {
     const [typePickerVisible, setTypePickerVisible] = useState(false);
     const [showCustomType, setShowCustomType] = useState(false);
     const [showCommonMeds, setShowCommonMeds] = useState(false);
+    const [activeTimeIndex, setActiveTimeIndex] = useState<number | null>(null);
+    const [timePickerVisible, setTimePickerVisible] = useState(false);
     const [unitPickerVisible, setUnitPickerVisible] = useState(false);
+
+    // Time picker columns
+    const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
+    const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
     const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormData>({
         resolver: zodResolver(medicationSchema) as any,
@@ -154,7 +160,6 @@ export function MedicationForm() {
     });
 
     const onSubmit = (data: MedicationFormData) => {
-        // Validate inventory constraints
         if (data.inventory_enabled) {
             if (data.inventory_total !== null && data.inventory_total !== undefined && data.inventory_total <= 0) {
                 Toast.show({ icon: 'fail', content: 'Общее количество должно быть больше 0' });
@@ -270,7 +275,6 @@ export function MedicationForm() {
                                                 setShowCustomType(false);
                                                 field.onChange(selected);
 
-                                                // Auto-detect form factor logic could go here
                                                 if (selected === 'Таблетка' || selected === 'Капсула') setValue('form_factor', 'tablet');
                                                 else if (selected === 'Сироп' || selected === 'Суспензия' || selected === 'Капли') setValue('form_factor', 'liquid');
                                                 else if (selected === 'Укол') setValue('form_factor', 'injection');
@@ -306,14 +310,20 @@ export function MedicationForm() {
                             render={({ field }) => (
                                 <Form.Item label="Разовый прием" required help={errors.default_dose?.message}>
                                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                        <Stepper
-                                            value={field.value}
-                                            onChange={val => field.onChange(val)}
-                                            min={0.0001}
-                                            step={0.1}
-                                            digits={2}
-                                            style={{ '--input-width': '60px' }}
+                                        <Input
+                                            value={field.value?.toString()}
+                                            onChange={val => {
+                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                    field.onChange(val);
+                                                }
+                                            }}
+                                            type="text"
+                                            inputMode="decimal"
+                                            style={{ '--text-align': 'right', width: '80px' }}
                                         />
+
+                                        <div style={{ width: '1px', height: '24px', backgroundColor: '#e5e5e5', margin: '0 4px' }} />
+
                                         <div style={{ width: '80px' }}>
                                             <Controller
                                                 name="dose_unit"
@@ -326,7 +336,8 @@ export function MedicationForm() {
                                                             placeholder="ед."
                                                             style={{
                                                                 '--text-align': 'center',
-                                                                color: 'var(--adm-color-primary)'
+                                                                color: 'var(--adm-color-primary)',
+                                                                cursor: 'pointer'
                                                             }}
                                                         />
                                                     </div>
@@ -373,24 +384,33 @@ export function MedicationForm() {
 
                             {timeFields.map((timeField: any, index) => (
                                 <div key={timeField.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                    <Controller
-                                        name={`schedule.times.${index}` as any}
-                                        control={control}
-                                        render={({ field: tField }) => (
-                                            <Input
-                                                value={tField.value}
-                                                onChange={tField.onChange}
-                                                type="time"
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '8px 12px',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--app-border-color)',
-                                                    backgroundColor: 'transparent'
-                                                }}
-                                            />
-                                        )}
-                                    />
+                                    <div
+                                        style={{ flex: 1, cursor: 'pointer' }}
+                                        onClick={() => {
+                                            setActiveTimeIndex(index);
+                                            setTimePickerVisible(true);
+                                        }}
+                                    >
+                                        <Controller
+                                            name={`schedule.times.${index}` as any}
+                                            control={control}
+                                            render={({ field: tField }) => (
+                                                <Input
+                                                    value={tField.value}
+                                                    readOnly
+                                                    placeholder="Выберите время"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px 12px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid var(--app-border-color)',
+                                                        backgroundColor: 'transparent',
+                                                        pointerEvents: 'none'
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                    </div>
                                     {timeFields.length > 1 && (
                                         <Button
                                             size="small"
@@ -412,6 +432,27 @@ export function MedicationForm() {
                             >
                                 + Время
                             </Button>
+
+                            <Picker
+                                columns={[hours, minutes]}
+                                visible={timePickerVisible}
+                                onClose={() => {
+                                    setTimePickerVisible(false);
+                                    setActiveTimeIndex(null);
+                                }}
+                                value={activeTimeIndex !== null ? (watch(`schedule.times.${activeTimeIndex}`) || '08:00').split(':') : ['08', '00']}
+                                onConfirm={(val) => {
+                                    if (activeTimeIndex !== null) {
+                                        const newTime = `${val[0]}:${val[1]}`;
+                                        setValue(`schedule.times.${activeTimeIndex}`, newTime);
+                                    }
+                                    setTimePickerVisible(false);
+                                    setActiveTimeIndex(null);
+                                }}
+                                cancelText="Отмена"
+                                confirmText="Выбрать"
+                                title="Выберите время"
+                            />
                         </Form.Item>
 
                         <Form.Header>Учет остатков</Form.Header>
@@ -434,13 +475,17 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field }) => (
                                         <Form.Item label={`Остаток (${doseUnit})`}>
-                                            <Stepper
-                                                value={field.value ?? 0}
-                                                onChange={val => field.onChange(val)}
-                                                min={0}
-                                                step={1}
-                                                digits={2}
-                                                style={{ '--input-width': '60px', textAlign: 'center' }}
+                                            <Input
+                                                value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
+                                                onChange={val => {
+                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                        field.onChange(val === '' ? null : val);
+                                                    }
+                                                }}
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="0"
+                                                style={{ '--text-align': 'right' }}
                                             />
                                         </Form.Item>
                                     )}
@@ -450,13 +495,17 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field }) => (
                                         <Form.Item label="Напомнить, когда <">
-                                            <Stepper
-                                                value={field.value ?? 0}
-                                                onChange={val => field.onChange(val)}
-                                                min={0}
-                                                step={1}
-                                                digits={2}
-                                                style={{ '--input-width': '60px', textAlign: 'center' }}
+                                            <Input
+                                                value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
+                                                onChange={val => {
+                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                        field.onChange(val === '' ? null : val);
+                                                    }
+                                                }}
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="0"
+                                                style={{ '--text-align': 'right' }}
                                             />
                                         </Form.Item>
                                     )}
