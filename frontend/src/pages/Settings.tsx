@@ -50,16 +50,6 @@ export function Settings() {
               )}
             </List>
 
-            <List header="Управление" mode="card">
-              <List.Item
-                onClick={() => navigate('/pets')}
-                clickable
-                arrow
-              >
-                Мои питомцы
-              </List.Item>
-            </List>
-
             <List header="Значения по умолчанию" mode="card">
               <List.Item
                 onClick={() => navigate('/form-defaults')}

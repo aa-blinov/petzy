@@ -11,7 +11,7 @@ export function Login() {
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    
+
     // Frontend validation
     if (!username.trim()) {
       Toast.show({
@@ -20,7 +20,7 @@ export function Login() {
       });
       return;
     }
-    
+
     if (!password) {
       Toast.show({
         icon: 'fail',
@@ -28,7 +28,7 @@ export function Login() {
       });
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
@@ -40,11 +40,11 @@ export function Login() {
     } catch (err: any) {
       // Extract error message from response
       let errorMessage = 'Ошибка входа. Проверьте соединение или учетные данные.';
-      
+
       if (err.response) {
         const status = err.response.status;
         const data = err.response.data;
-        
+
         if (status === 422) {
           // Validation error
           errorMessage = data?.error || data?.message || 'Неверные данные. Проверьте введенные данные.';
@@ -64,7 +64,7 @@ export function Login() {
           errorMessage = err.message;
         }
       }
-      
+
       Toast.show({
         icon: 'fail',
         content: errorMessage,
@@ -77,11 +77,11 @@ export function Login() {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       padding: '16px',
       backgroundColor: 'var(--app-page-background)',
       paddingTop: 'env(safe-area-inset-top)',
@@ -89,18 +89,24 @@ export function Login() {
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
         <Card style={{ padding: '32px', backgroundColor: 'var(--app-card-background)' }}>
-          <h1 style={{ 
-            textAlign: 'center', 
-            marginBottom: '8px', 
-            fontSize: '1.64706rem',
-            color: 'var(--app-text-color)',
-            fontWeight: 600
-          }}>
+          <div
+            style={{
+              fontFamily: 'var(--app-font-bubble)',
+              fontSize: '48px',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #FF9A3E 0%, #3E9AFF 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textAlign: 'center',
+              marginBottom: '16px',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))'
+            }}
+          >
             Petzy
-          </h1>
-          <p style={{ 
-            textAlign: 'center', 
-            marginBottom: '32px', 
+          </div>
+          <p style={{
+            textAlign: 'center',
+            marginBottom: '32px',
             fontSize: '1rem',
             color: 'var(--app-text-secondary)',
             fontWeight: 400

@@ -7,7 +7,9 @@
     --app-card-background: #FFFFFF;
     --app-border-color: #EEEEEE;
     --app-border-radius: 12px;
+    --app-font-bubble: 'DynaPuff', system-ui, sans-serif;
 }
+
 
 html[data-prefers-color-scheme='dark'] {
     --app-page-background: #000000;

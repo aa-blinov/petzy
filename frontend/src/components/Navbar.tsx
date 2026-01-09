@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { NavBar, Button, Picker } from 'antd-mobile';
+import { NavBar, Button, Popup } from 'antd-mobile';
 import { useAuth } from '../hooks/useAuth';
 import { usePet } from '../hooks/usePet';
+import { CheckOutline, DownOutline } from 'antd-mobile-icons';
 
 export function Navbar() {
   const location = useLocation();
@@ -15,13 +16,9 @@ export function Navbar() {
     await logout();
   };
 
-  const handlePetSelect = (value: (string | number | null)[]) => {
-    const petId = value[0] as string;
-    if (!petId) return;
-    const pet = pets.find(p => p._id === petId);
-    if (pet) {
-      selectPet(pet);
-    }
+  const handlePetSelect = (pet: any) => {
+    selectPet(pet);
+    setPickerVisible(false);
   };
 
   const handleBack = () => {
@@ -41,20 +38,27 @@ export function Navbar() {
   // Medications: show back only on edit page, not on list or new
   const isMedicationsPage = location.pathname.startsWith('/medications');
   const isMedicationsEdit = isMedicationsPage && location.pathname.includes('/edit');
-  const isMainTab = ['/', '/settings', '/admin', '/history'].includes(location.pathname) || 
-                    location.pathname === '' ||
-                    (isMedicationsPage && !isMedicationsEdit);
+  const isMainTab = ['/', '/settings', '/admin', '/history'].includes(location.pathname) ||
+    location.pathname === '' ||
+    (isMedicationsPage && !isMedicationsEdit);
 
   const logo = (
-    <img
-      src="/logo.svg"
-      alt="Petzy"
-      style={{ 
-        width: '38px', 
-        height: '38px', 
-        display: 'block',
+    <div
+      style={{
+        fontFamily: 'var(--app-font-bubble)',
+        fontSize: '28px',
+        fontWeight: 700,
+        background: 'linear-gradient(135deg, #FF9A3E 0%, #3E9AFF 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        letterSpacing: '-0.5px',
+        display: 'flex',
+        alignItems: 'center',
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
       }}
-    />
+    >
+      Petzy
+    </div>
   );
 
   // На главной странице - только логотип, на других - используем встроенную кнопку назад + логотип
@@ -65,50 +69,139 @@ export function Navbar() {
   );
 
   const rightContent = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', height: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>
       {pets.length > 0 && (
         <>
-          <Button
-            fill="none"
-            size="small"
+          <div
             onClick={() => setPickerVisible(true)}
-            style={{ 
-              padding: '4px 8px',
-              fontSize: '14px',
-              borderRadius: '16px', 
+            style={{
+              height: '36px',
+              padding: '0 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              borderRadius: '24px',
               backgroundColor: 'var(--app-page-background)',
               border: '1px solid var(--app-border-color)',
-              color: 'var(--app-text-color)'
+              transition: 'all 0.2s ease',
+              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.1)',
             }}
           >
-            {selectedPetName || 'Выбрать'}
-          </Button>
-          <Picker
-            columns={[pets.map(pet => ({ label: pet.name, value: pet._id }))]}
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--app-text-color)' }}>
+              {selectedPetName}
+            </span>
+            <DownOutline style={{ fontSize: '10px', color: 'var(--app-text-secondary)' }} />
+          </div>
+
+          <Popup
             visible={pickerVisible}
+            onMaskClick={() => setPickerVisible(false)}
             onClose={() => setPickerVisible(false)}
-            value={selectedPetId ? [selectedPetId] : []}
-            onConfirm={(val) => {
-              handlePetSelect(val);
-              setPickerVisible(false);
+            bodyStyle={{
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+              minHeight: '30vh',
+              backgroundColor: 'var(--app-page-background)',
             }}
-            cancelText="Отмена"
-            confirmText="Выбрать"
-          />
+          >
+            <div style={{ padding: '20px' }}>
+              <div style={{
+                fontSize: '18px',
+                fontWeight: 600,
+                marginBottom: '20px',
+                textAlign: 'center',
+                color: 'var(--app-text-color)'
+              }}>
+                Выбрать питомца
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {pets.map(pet => (
+                  <div
+                    key={pet._id}
+                    onClick={() => handlePetSelect(pet)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      backgroundColor: 'var(--app-card-background)',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      border: pet._id === selectedPetId ? '2px solid var(--adm-color-primary)' : '1px solid var(--app-border-color)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {pet.photo_url ? (
+                        <img
+                          src={pet.photo_url}
+                          alt={pet.name}
+                          style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--adm-color-border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '20px'
+                        }}>
+                          🐱
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
+                        <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || pet.species || 'Питомец'}</span>
+                      </div>
+                    </div>
+                    {pet._id === selectedPetId && (
+                      <CheckOutline style={{ fontSize: '20px', color: 'var(--adm-color-primary)' }} />
+                    )}
+                  </div>
+                ))}
+                <Button
+                  block
+                  fill="none"
+                  color="primary"
+                  onClick={() => {
+                    setPickerVisible(false);
+                    navigate('/pets');
+                  }}
+                  style={{ marginTop: '8px', fontSize: '15px' }}
+                >
+                  Управление питомцами
+                </Button>
+              </div>
+            </div>
+          </Popup>
         </>
       )}
-      <Button
-        fill="none"
-        size="small"
+      <div
         onClick={handleLogout}
-        style={{ 
-          padding: '4px 8px', 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          cursor: 'pointer',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
           color: 'var(--app-text-secondary)',
-          fontSize: '14px'
+          transition: 'all 0.2s ease',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
         }}
       >
-        Выйти
-      </Button>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </div>
     </div>
   );
 
