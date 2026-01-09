@@ -215,14 +215,12 @@ export function MedicationForm() {
                     )}
                 </div>
 
-                <div style={{
-                    paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                    paddingRight: 'max(16px, env(safe-area-inset-right))'
-                }}>
+                <div>
                     <Form
                         layout="horizontal"
                         mode="card"
                         onFinish={handleSubmit(onSubmit)}
+                        style={{ '--prefix-width': '6em' } as React.CSSProperties}
                     >
                         <Form.Header>Препарат</Form.Header>
                         <Controller
@@ -247,7 +245,7 @@ export function MedicationForm() {
                             render={({ field }) => (
                                 <>
                                     <Form.Item
-                                        label="Форма выпуска"
+                                        label="Форма"
                                         required
                                         onClick={() => setTypePickerVisible(true)}
                                         help={errors.type?.message}
@@ -292,7 +290,7 @@ export function MedicationForm() {
                             name="strength"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Дозировка (на упаковке)">
+                                <Form.Item label="Дозировка">
                                     <Input
                                         value={field.value}
                                         onChange={field.onChange}
@@ -308,7 +306,7 @@ export function MedicationForm() {
                             name="default_dose"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Разовый прием" required help={errors.default_dose?.message}>
+                                <Form.Item label="Разовая" required help={errors.default_dose?.message}>
                                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                         <Input
                                             value={field.value?.toString()}
@@ -360,7 +358,7 @@ export function MedicationForm() {
                             )}
                         />
 
-                        <Form.Item label="Как часто?" required layout="vertical">
+                        <Form.Item label="Частота" required layout="vertical">
                             <div style={{ marginBottom: '12px' }}>
                                 <Controller
                                     name="schedule.days"
@@ -461,7 +459,7 @@ export function MedicationForm() {
                             control={control}
                             render={({ field }) => (
                                 <Form.Item
-                                    label="Включить учет"
+                                    label="Включить"
                                     extra={<Switch checked={field.value} onChange={field.onChange} />}
                                     description={field.value ? `Будем списывать по ${watch('default_dose') || 1} ${doseUnit} за прием` : undefined}
                                 />
@@ -494,7 +492,7 @@ export function MedicationForm() {
                                     name="inventory_warning_threshold"
                                     control={control}
                                     render={({ field }) => (
-                                        <Form.Item label="Напомнить, когда <">
+                                        <Form.Item label="Мин. остаток">
                                             <Input
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
@@ -540,7 +538,12 @@ export function MedicationForm() {
                         />
                     </Form>
 
-                    <div style={{ marginTop: '24px', paddingBottom: '24px' }}>
+                    <div style={{
+                        marginTop: '24px',
+                        paddingBottom: '24px',
+                        marginLeft: '12px',
+                        marginRight: '12px'
+                    }}>
                         <Button
                             block
                             color="primary"

@@ -244,8 +244,8 @@ export function UserForm() {
             gap: '12px',
             marginTop: '24px',
             paddingBottom: '24px',
-            marginLeft: '16px',
-            marginRight: '16px'
+            marginLeft: '12px',
+            marginRight: '12px'
           }}>
             <button
               style={{ display: 'none' }}
