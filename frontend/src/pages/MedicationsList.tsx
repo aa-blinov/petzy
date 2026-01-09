@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ProgressBar, Toast, Tag, Dialog, Stepper } from 'antd-mobile';
+import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { medicationsService, type Medication } from '../services/medications.service';
@@ -195,11 +195,6 @@ export function MedicationsList() {
                                                 <span style={{ fontSize: '20px' }}>{getFormFactorIcon(med.form_factor)}</span>
                                                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{med.name}</h3>
                                                 {!med.is_active && <Tag color="default">Архив</Tag>}
-                                                {med.is_active && (med.intakes_today || 0) >= med.schedule.times.length && (
-                                                    <Tag color="success">
-                                                        На сегодня всё
-                                                    </Tag>
-                                                )}
                                             </div>
                                             <p style={{ margin: 0, fontSize: '14px', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
@@ -270,7 +265,7 @@ export function MedicationsList() {
                                                 disabled={(med.intakes_today || 0) >= med.schedule.times.length}
                                                 style={{ borderRadius: '8px' }}
                                             >
-                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'Принято на сегодня' : `Отметить прием (${med.default_dose || 1} ${med.dose_unit || ''})`}
+                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить прием (${med.default_dose || 1} ${med.dose_unit || ''})`}
                                             </Button>
                                         </div>
                                     )}
@@ -294,13 +289,23 @@ export function MedicationsList() {
                                 Сколько дали?
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                                <Stepper
-                                    value={logIntakeDialog.dose}
-                                    min={0}
-                                    step={0.1}
-                                    digits={2}
-                                    onChange={val => setLogIntakeDialog(prev => ({ ...prev, dose: val }))}
-                                    style={{ '--button-font-size': '20px', '--input-font-size': '18px', '--input-width': '80px' }}
+                                <Input
+                                    value={logIntakeDialog.dose.toString()}
+                                    type="text"
+                                    inputMode="decimal"
+                                    onChange={val => {
+                                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                            setLogIntakeDialog(prev => ({ ...prev, dose: val === '' ? 0 : parseFloat(val) }));
+                                        }
+                                    }}
+                                    style={{
+                                        '--text-align': 'center',
+                                        width: '80px',
+                                        fontSize: '18px',
+                                        border: '1px solid var(--adm-color-border)',
+                                        borderRadius: '4px',
+                                        padding: '4px'
+                                    }}
                                 />
                                 <span style={{ fontSize: '16px', fontWeight: 500 }}>
                                     {logIntakeDialog.medication.dose_unit || 'ед.'}
