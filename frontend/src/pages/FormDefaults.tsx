@@ -86,232 +86,229 @@ export function FormDefaults() {
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h2>
         </div>
 
-        <div style={{
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
-        }}>
+        <div style={{ marginBottom: '16px' }}>
           {/* Form Defaults Section */}
           <Form layout="horizontal" mode="card">
-          <Form.Header>Приступ астмы</Form.Header>
-          <Form.Item label={<label htmlFor="asthma_duration">Длительность</label>}>
-            <Input
-              id="asthma_duration"
-              readOnly
-              value={formSettings.asthma?.duration || 'Короткий'}
-              onClick={() => setVisiblePicker('asthma_duration')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
-          <Form.Item label={<label htmlFor="asthma_inhalation">Ингаляция</label>}>
-            <Input
-              id="asthma_inhalation"
-              readOnly
-              value={formSettings.asthma?.inhalation === 'true' ? 'Да' : 'Нет'}
-              onClick={() => setVisiblePicker('asthma_inhalation')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
-          <Form.Item label={<label htmlFor="asthma_reason">Причина</label>}>
-            <Input
-              id="asthma_reason"
-              value={formSettings.asthma?.reason || ''}
-              onChange={(val) => updateFormSetting('asthma', 'reason', val)}
-              placeholder="Пил"
-            />
-          </Form.Item>
+            <Form.Header>Приступ астмы</Form.Header>
+            <Form.Item label={<label htmlFor="asthma_duration">Длительность</label>}>
+              <Input
+                id="asthma_duration"
+                readOnly
+                value={formSettings.asthma?.duration || 'Короткий'}
+                onClick={() => setVisiblePicker('asthma_duration')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
+            <Form.Item label={<label htmlFor="asthma_inhalation">Ингаляция</label>}>
+              <Input
+                id="asthma_inhalation"
+                readOnly
+                value={formSettings.asthma?.inhalation === 'true' ? 'Да' : 'Нет'}
+                onClick={() => setVisiblePicker('asthma_inhalation')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
+            <Form.Item label={<label htmlFor="asthma_reason">Причина</label>}>
+              <Input
+                id="asthma_reason"
+                value={formSettings.asthma?.reason || ''}
+                onChange={(val) => updateFormSetting('asthma', 'reason', val)}
+                placeholder="Пил"
+              />
+            </Form.Item>
 
-          <Form.Header>Дефекация</Form.Header>
-          <Form.Item label={<label htmlFor="defecation_stool_type">Тип стула</label>}>
-            <Input
-              id="defecation_stool_type"
-              readOnly
-              value={formSettings.defecation?.stool_type || 'Обычный'}
-              onClick={() => setVisiblePicker('defecation_stool_type')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
-          <Form.Item label={<label htmlFor="defecation_color">Цвет стула</label>}>
-            <Input
-              id="defecation_color"
-              readOnly
-              value={formSettings.defecation?.color || 'Коричневый'}
-              onClick={() => setVisiblePicker('defecation_color')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
-          <Form.Item label={<label htmlFor="defecation_food">Корм</label>}>
-            <Input
-              id="defecation_food"
-              value={formSettings.defecation?.food || ''}
-              onChange={(val) => updateFormSetting('defecation', 'food', val)}
-              placeholder="Royal Canin Fibre Response"
-            />
-          </Form.Item>
+            <Form.Header>Дефекация</Form.Header>
+            <Form.Item label={<label htmlFor="defecation_stool_type">Тип стула</label>}>
+              <Input
+                id="defecation_stool_type"
+                readOnly
+                value={formSettings.defecation?.stool_type || 'Обычный'}
+                onClick={() => setVisiblePicker('defecation_stool_type')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
+            <Form.Item label={<label htmlFor="defecation_color">Цвет стула</label>}>
+              <Input
+                id="defecation_color"
+                readOnly
+                value={formSettings.defecation?.color || 'Коричневый'}
+                onClick={() => setVisiblePicker('defecation_color')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
+            <Form.Item label={<label htmlFor="defecation_food">Корм</label>}>
+              <Input
+                id="defecation_food"
+                value={formSettings.defecation?.food || ''}
+                onChange={(val) => updateFormSetting('defecation', 'food', val)}
+                placeholder="Royal Canin Fibre Response"
+              />
+            </Form.Item>
 
-          <Form.Header>Вес</Form.Header>
-          <Form.Item label={<label htmlFor="weight_food">Корм</label>}>
-            <Input
-              id="weight_food"
-              value={formSettings.weight?.food || ''}
-              onChange={(val) => updateFormSetting('weight', 'food', val)}
-              placeholder="Royal Canin Fibre Response"
-            />
-          </Form.Item>
+            <Form.Header>Вес</Form.Header>
+            <Form.Item label={<label htmlFor="weight_food">Корм</label>}>
+              <Input
+                id="weight_food"
+                value={formSettings.weight?.food || ''}
+                onChange={(val) => updateFormSetting('weight', 'food', val)}
+                placeholder="Royal Canin Fibre Response"
+              />
+            </Form.Item>
 
-          <Form.Header>Закапывание глаз</Form.Header>
-          <Form.Item label={<label htmlFor="eye_drops_type">Тип капель</label>}>
-            <Input
-              id="eye_drops_type"
-              readOnly
-              value={formSettings.eye_drops?.drops_type || 'Обычные'}
-              onClick={() => setVisiblePicker('eye_drops_type')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
+            <Form.Header>Закапывание глаз</Form.Header>
+            <Form.Item label={<label htmlFor="eye_drops_type">Тип капель</label>}>
+              <Input
+                id="eye_drops_type"
+                readOnly
+                value={formSettings.eye_drops?.drops_type || 'Обычные'}
+                onClick={() => setVisiblePicker('eye_drops_type')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
 
-          <Form.Header>Чистка зубов</Form.Header>
-          <Form.Item label={<label htmlFor="tooth_brushing_type">Способ чистки</label>}>
-            <Input
-              id="tooth_brushing_type"
-              readOnly
-              value={formSettings.tooth_brushing?.brushing_type || 'Щетка'}
-              onClick={() => setVisiblePicker('tooth_brushing_type')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
+            <Form.Header>Чистка зубов</Form.Header>
+            <Form.Item label={<label htmlFor="tooth_brushing_type">Способ чистки</label>}>
+              <Input
+                id="tooth_brushing_type"
+                readOnly
+                value={formSettings.tooth_brushing?.brushing_type || 'Щетка'}
+                onClick={() => setVisiblePicker('tooth_brushing_type')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
 
-          <Form.Header>Чистка ушей</Form.Header>
-          <Form.Item label={<label htmlFor="ear_cleaning_type">Способ чистки</label>}>
-            <Input
-              id="ear_cleaning_type"
-              readOnly
-              value={formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля'}
-              onClick={() => setVisiblePicker('ear_cleaning_type')}
-              style={{ '--text-align': 'right', cursor: 'pointer' }}
-            />
-          </Form.Item>
-        </Form>
+            <Form.Header>Чистка ушей</Form.Header>
+            <Form.Item label={<label htmlFor="ear_cleaning_type">Способ чистки</label>}>
+              <Input
+                id="ear_cleaning_type"
+                readOnly
+                value={formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля'}
+                onClick={() => setVisiblePicker('ear_cleaning_type')}
+                style={{ '--text-align': 'right', cursor: 'pointer' }}
+              />
+            </Form.Item>
+          </Form>
 
-        {/* Pickers */}
-        <Picker
-          columns={[[
-            { label: 'Короткий', value: 'Короткий' },
-            { label: 'Средний', value: 'Средний' },
-            { label: 'Длинный', value: 'Длинный' },
-          ]]}
-          visible={visiblePicker === 'asthma_duration'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.asthma?.duration || 'Короткий']}
-          onConfirm={(val) => {
-            updateFormSetting('asthma', 'duration', val[0] as string || 'Короткий');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          {/* Pickers */}
+          <Picker
+            columns={[[
+              { label: 'Короткий', value: 'Короткий' },
+              { label: 'Средний', value: 'Средний' },
+              { label: 'Длинный', value: 'Длинный' },
+            ]]}
+            visible={visiblePicker === 'asthma_duration'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.asthma?.duration || 'Короткий']}
+            onConfirm={(val) => {
+              updateFormSetting('asthma', 'duration', val[0] as string || 'Короткий');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
-        <Picker
-          columns={[[
-            { label: 'Нет', value: 'false' },
-            { label: 'Да', value: 'true' },
-          ]]}
-          visible={visiblePicker === 'asthma_inhalation'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.asthma?.inhalation || 'false']}
-          onConfirm={(val) => {
-            updateFormSetting('asthma', 'inhalation', val[0] as string || 'false');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          <Picker
+            columns={[[
+              { label: 'Нет', value: 'false' },
+              { label: 'Да', value: 'true' },
+            ]]}
+            visible={visiblePicker === 'asthma_inhalation'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.asthma?.inhalation || 'false']}
+            onConfirm={(val) => {
+              updateFormSetting('asthma', 'inhalation', val[0] as string || 'false');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
-        <Picker
-          columns={[[
-            { label: 'Обычный', value: 'Обычный' },
-            { label: 'Твердый', value: 'Твердый' },
-            { label: 'Жидкий', value: 'Жидкий' },
-          ]]}
-          visible={visiblePicker === 'defecation_stool_type'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.defecation?.stool_type || 'Обычный']}
-          onConfirm={(val) => {
-            updateFormSetting('defecation', 'stool_type', val[0] as string || 'Обычный');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          <Picker
+            columns={[[
+              { label: 'Обычный', value: 'Обычный' },
+              { label: 'Твердый', value: 'Твердый' },
+              { label: 'Жидкий', value: 'Жидкий' },
+            ]]}
+            visible={visiblePicker === 'defecation_stool_type'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.defecation?.stool_type || 'Обычный']}
+            onConfirm={(val) => {
+              updateFormSetting('defecation', 'stool_type', val[0] as string || 'Обычный');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
-        <Picker
-          columns={[[
-            { label: 'Коричневый', value: 'Коричневый' },
-            { label: 'Темно-коричневый', value: 'Темно-коричневый' },
-            { label: 'Светло-коричневый', value: 'Светло-коричневый' },
-            { label: 'Другой', value: 'Другой' },
-          ]]}
-          visible={visiblePicker === 'defecation_color'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.defecation?.color || 'Коричневый']}
-          onConfirm={(val) => {
-            updateFormSetting('defecation', 'color', val[0] as string || 'Коричневый');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          <Picker
+            columns={[[
+              { label: 'Коричневый', value: 'Коричневый' },
+              { label: 'Темно-коричневый', value: 'Темно-коричневый' },
+              { label: 'Светло-коричневый', value: 'Светло-коричневый' },
+              { label: 'Другой', value: 'Другой' },
+            ]]}
+            visible={visiblePicker === 'defecation_color'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.defecation?.color || 'Коричневый']}
+            onConfirm={(val) => {
+              updateFormSetting('defecation', 'color', val[0] as string || 'Коричневый');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
-        <Picker
-          columns={[[
-            { label: 'Обычные', value: 'Обычные' },
-            { label: 'Гелевые', value: 'Гелевые' },
-          ]]}
-          visible={visiblePicker === 'eye_drops_type'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.eye_drops?.drops_type || 'Обычные']}
-          onConfirm={(val) => {
-            updateFormSetting('eye_drops', 'drops_type', val[0] as string || 'Обычные');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          <Picker
+            columns={[[
+              { label: 'Обычные', value: 'Обычные' },
+              { label: 'Гелевые', value: 'Гелевые' },
+            ]]}
+            visible={visiblePicker === 'eye_drops_type'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.eye_drops?.drops_type || 'Обычные']}
+            onConfirm={(val) => {
+              updateFormSetting('eye_drops', 'drops_type', val[0] as string || 'Обычные');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
-        <Picker
-          columns={[[
-            { label: 'Щетка', value: 'Щетка' },
-            { label: 'Марля', value: 'Марля' },
-            { label: 'Игрушка', value: 'Игрушка' },
-          ]]}
-          visible={visiblePicker === 'tooth_brushing_type'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.tooth_brushing?.brushing_type || 'Щетка']}
-          onConfirm={(val) => {
-            updateFormSetting('tooth_brushing', 'brushing_type', val[0] as string || 'Щетка');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          <Picker
+            columns={[[
+              { label: 'Щетка', value: 'Щетка' },
+              { label: 'Марля', value: 'Марля' },
+              { label: 'Игрушка', value: 'Игрушка' },
+            ]]}
+            visible={visiblePicker === 'tooth_brushing_type'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.tooth_brushing?.brushing_type || 'Щетка']}
+            onConfirm={(val) => {
+              updateFormSetting('tooth_brushing', 'brushing_type', val[0] as string || 'Щетка');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
-        <Picker
-          columns={[[
-            { label: 'Салфетка/Марля', value: 'Салфетка/Марля' },
-            { label: 'Капли', value: 'Капли' },
-          ]]}
-          visible={visiblePicker === 'ear_cleaning_type'}
-          onClose={() => setVisiblePicker(null)}
-          value={[formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля']}
-          onConfirm={(val) => {
-            updateFormSetting('ear_cleaning', 'cleaning_type', val[0] as string || 'Салфетка/Марля');
-            setVisiblePicker(null);
-          }}
-          cancelText="Отмена"
-          confirmText="Сохранить"
-        />
+          <Picker
+            columns={[[
+              { label: 'Салфетка/Марля', value: 'Салфетка/Марля' },
+              { label: 'Капли', value: 'Капли' },
+            ]]}
+            visible={visiblePicker === 'ear_cleaning_type'}
+            onClose={() => setVisiblePicker(null)}
+            value={[formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля']}
+            onConfirm={(val) => {
+              updateFormSetting('ear_cleaning', 'cleaning_type', val[0] as string || 'Салфетка/Марля');
+              setVisiblePicker(null);
+            }}
+            cancelText="Отмена"
+            confirmText="Сохранить"
+          />
 
           {/* Action Buttons */}
-          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 12px' }}>
             <Button block color="primary" size="large" onClick={handleSave}>
               Сохранить
             </Button>

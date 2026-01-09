@@ -145,13 +145,7 @@ export function TilesSettings() {
           </p>
         </div>
 
-        <div style={{
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
+        <div>
           {/* Tiles Drag and Drop */}
           <List mode="card">
             <DndContext
@@ -183,7 +177,7 @@ export function TilesSettings() {
           </List>
 
           {/* Action Buttons */}
-          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 12px' }}>
             <Button block color="primary" size="large" onClick={handleSave}>
               Сохранить
             </Button>
