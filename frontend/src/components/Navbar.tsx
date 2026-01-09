@@ -35,12 +35,8 @@ export function Navbar() {
   }
 
   // Show back button only on pages that are not main tabs
-  // Medications: show back only on edit page, not on list or new
-  const isMedicationsPage = location.pathname.startsWith('/medications');
-  const isMedicationsEdit = isMedicationsPage && location.pathname.includes('/edit');
-  const isMainTab = ['/', '/settings', '/admin', '/history'].includes(location.pathname) ||
-    location.pathname === '' ||
-    (isMedicationsPage && !isMedicationsEdit);
+  const mainTabs = ['/', '/medications', '/settings', '/admin', '/history'];
+  const isMainTab = mainTabs.includes(location.pathname) || location.pathname === '';
 
   const logo = (
     <div
