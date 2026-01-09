@@ -14,7 +14,10 @@ export function MedicationsList() {
 
     const { data: medications = [], isLoading } = useQuery({
         queryKey: ['medications', selectedPetId],
-        queryFn: () => medicationsService.getList(selectedPetId!),
+        queryFn: () => {
+            const clientDate = new Date().toISOString().split('T')[0];
+            return medicationsService.getList(selectedPetId!, clientDate);
+        },
         enabled: !!selectedPetId,
     });
 

@@ -1046,6 +1046,16 @@ class MedicationSchedule(BaseModel):
     times: List[str] = Field(..., description="Время приема (HH:mm)")
 
 
+class MedicationListQuery(PetIdQuery):
+    """Query parameters for listing medications with timezone support."""
+    client_date: Optional[str] = Field(None, description="Client local date (YYYY-MM-DD)")
+
+
+class UpcomingDosesQuery(PetIdQuery):
+    """Query parameters for upcoming doses with timezone support."""
+    client_datetime: Optional[str] = Field(None, description="Client local datetime (ISO format)")
+
+
 class MedicationCreate(PetIdQuery):
     name: str = Field(..., max_length=100)
     type: str = Field(..., max_length=50, description="Ингаляция, Таблетка, Капли и т.д.")

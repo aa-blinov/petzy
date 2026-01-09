@@ -77,9 +77,12 @@ export interface UpcomingDose {
 }
 
 export const medicationsService = {
-    async getList(petId: string): Promise<Medication[]> {
+    async getList(petId: string, clientDate?: string): Promise<Medication[]> {
         const response = await api.get<{ medications: Medication[] }>('/medications', {
-            params: { pet_id: petId }
+            params: {
+                pet_id: petId,
+                client_date: clientDate
+            }
         });
         return response.data.medications;
     },
@@ -101,9 +104,12 @@ export const medicationsService = {
         await api.post(`/medications/${id}/log`, data);
     },
 
-    async getUpcoming(petId: string): Promise<UpcomingDose[]> {
+    async getUpcoming(petId: string, clientDatetime?: string): Promise<UpcomingDose[]> {
         const response = await api.get<{ doses: UpcomingDose[] }>('/medications/upcoming', {
-            params: { pet_id: petId }
+            params: {
+                pet_id: petId,
+                client_datetime: clientDatetime
+            }
         });
         return response.data.doses;
     }

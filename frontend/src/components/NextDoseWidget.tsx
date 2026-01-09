@@ -10,7 +10,14 @@ export function NextDoseWidget() {
 
     const { data: upcoming = [], isLoading } = useQuery({
         queryKey: ['medications', 'upcoming', selectedPetId],
-        queryFn: () => medicationsService.getUpcoming(selectedPetId!),
+        queryFn: () => {
+            const now = new Date();
+            // ISO string format: YYYY-MM-DDTHH:mm:ss.sssZ
+            // We want to pass the local time representation or just the ISO string.
+            // Backend expects ISO-like usage or YYYY-MM-DD HH:MM.
+            // Let's pass ISO string, backend handles checking T.
+            return medicationsService.getUpcoming(selectedPetId!, now.toISOString());
+        },
         enabled: !!selectedPetId,
         refetchInterval: 60000, // Refresh every minute
     });
