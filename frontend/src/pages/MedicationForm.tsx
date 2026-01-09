@@ -320,7 +320,7 @@ export function MedicationForm() {
                                             style={{ '--text-align': 'right', width: '80px' }}
                                         />
 
-                                        <div style={{ width: '1px', height: '24px', backgroundColor: '#e5e5e5', margin: '0 4px' }} />
+                                        <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--adm-color-border)', margin: '0 4px' }} />
 
                                         <div style={{ width: '80px' }}>
                                             <Controller
@@ -359,7 +359,7 @@ export function MedicationForm() {
                         />
 
                         <Form.Item label="Частота" required layout="vertical">
-                            <div style={{ marginBottom: '12px' }}>
+                            <div style={{ marginBottom: '18px' }}>
                                 <Controller
                                     name="schedule.days"
                                     control={control}
@@ -399,11 +399,13 @@ export function MedicationForm() {
                                                     placeholder="Выберите время"
                                                     style={{
                                                         width: '100%',
-                                                        padding: '8px 12px',
+                                                        padding: '10px 12px',
                                                         borderRadius: '8px',
-                                                        border: '1px solid var(--app-border-color)',
-                                                        backgroundColor: 'transparent',
-                                                        pointerEvents: 'none'
+                                                        backgroundColor: 'var(--adm-color-fill-content)',
+                                                        pointerEvents: 'none',
+                                                        fontSize: '16px',
+                                                        fontWeight: 500,
+                                                        '--text-align': 'center'
                                                     }}
                                                 />
                                             )}
