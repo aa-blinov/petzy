@@ -19,10 +19,7 @@ export function Settings() {
           <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройки</h2>
         </div>
 
-        <div style={{
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
-        }}>
+        <div>
           <div style={{
             display: 'flex',
             flexDirection: 'column',
