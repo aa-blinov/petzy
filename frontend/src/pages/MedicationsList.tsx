@@ -142,6 +142,7 @@ export function MedicationsList() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: '16px',
+                    minHeight: '40px',
                     paddingLeft: 'max(16px, env(safe-area-inset-left))',
                     paddingRight: 'max(16px, env(safe-area-inset-right))'
                 }}>
@@ -149,11 +150,11 @@ export function MedicationsList() {
                     <Button
                         color="primary"
                         fill="solid"
+                        size="small"
                         onClick={() => navigate('/medications/new')}
                         style={{
                             borderRadius: '12px',
                             fontWeight: 500,
-                            padding: '8px 16px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px'

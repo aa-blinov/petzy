@@ -58,6 +58,10 @@ export function Dashboard() {
       }}>
         <div style={{
           marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          minHeight: '40px',
           paddingLeft: 'max(16px, env(safe-area-inset-left))',
           paddingRight: 'max(16px, env(safe-area-inset-right))'
         }}>
