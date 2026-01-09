@@ -9,17 +9,17 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 
 // Lazy load pages for code splitting
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
+import { Dashboard } from './pages/Dashboard';
+import { History } from './pages/History';
 const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
-const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
+import { AdminPanel } from './pages/AdminPanel';
 const UserForm = lazy(() => import('./pages/UserForm').then(m => ({ default: m.UserForm })));
-const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+import { Settings } from './pages/Settings';
 const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })));
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
-const MedicationsList = lazy(() => import('./pages/MedicationsList').then(m => ({ default: m.MedicationsList })));
+import { MedicationsList } from './pages/MedicationsList';
 const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ default: m.MedicationForm })));
 
 const queryClient = new QueryClient({
