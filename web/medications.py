@@ -26,6 +26,8 @@ from web.schemas import (
     ErrorResponse,
     PetIdQuery,
     PetIdPaginationQuery,
+    MedicationListQuery,
+    UpcomingDosesQuery,
 )
 
 medications_bp = Blueprint("medications", __name__)
@@ -67,14 +69,17 @@ def add_medication():
 @medications_bp.route("/api/medications", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=MedicationListQuery,
     resp=Response(HTTP_200=MedicationListResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
 def get_medications():
     """List medication courses for a pet."""
     try:
-        pet_id = request.args.get("pet_id")
+        query_params = request.context.query
+        pet_id = query_params.pet_id
+        client_date_str = query_params.client_date
+        
         username, auth_error = get_current_user()
         if auth_error:
             return auth_error[0], auth_error[1]
@@ -91,8 +96,17 @@ def get_medications():
         
         # Optimize: batch fetch all intake data at once
         med_ids = [str(med["_id"]) for med in meds]
-        now = datetime.utcnow()
-        today_start = datetime(now.year, now.month, now.day)
+        
+        # Determine "today" based on client date if provided
+        now_utc = datetime.utcnow()
+        if client_date_str:
+            try:
+                today_start = datetime.strptime(client_date_str, "%Y-%m-%d")
+            except ValueError:
+                # Fallback to UTC if invalid
+                today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
+        else:
+            today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
         
         # Get all last intakes in one query using aggregation
         last_intakes_pipeline = [
@@ -376,19 +390,41 @@ def delete_intake(id):
             return access_error[0], access_error[1]
 
         # Restore inventory if applicable
-        medication = app.db.medications.find_one({"_id": ObjectId(intake["medication_id"])})
+        medication_id = ObjectId(intake["medication_id"])
+        medication = app.db.medications.find_one({"_id": medication_id})
         if medication and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
-            # Restore the dose, but cap at inventory_total if it exists
-            current_inventory = medication.get("inventory_current") or 0
-            dose_to_restore = intake.get("dose_taken", 0)
-            new_inventory = current_inventory + dose_to_restore
-            # Cap at inventory_total if it's set
-            if medication.get("inventory_total") is not None:
-                new_inventory = min(new_inventory, medication["inventory_total"])
-            app.db.medications.update_one(
-                {"_id": ObjectId(intake["medication_id"])},
-                {"$set": {"inventory_current": new_inventory}}
-            )
+            # Optimistic concurrency control for inventory restoration
+            # Retry loop to handle concurrent updates
+            max_retries = 3
+            for _ in range(max_retries):
+                # Fetch current state
+                current_med = app.db.medications.find_one({"_id": medication_id})
+                if not current_med:
+                    break
+                
+                current_inventory = current_med.get("inventory_current")
+                if current_inventory is None:
+                    break
+                    
+                dose_to_restore = intake.get("dose_taken", 0)
+                new_inventory = current_inventory + dose_to_restore
+                
+                # Cap at inventory_total if set
+                if current_med.get("inventory_total") is not None:
+                    new_inventory = min(new_inventory, current_med["inventory_total"])
+                
+                # Try to update with version check (using current inventory value as version)
+                result = app.db.medications.update_one(
+                    {
+                        "_id": medication_id,
+                        "inventory_current": current_inventory
+                    },
+                    {"$set": {"inventory_current": new_inventory}}
+                )
+                
+                if result.matched_count > 0:
+                    break
+                # If matched_count == 0, Loop will retry fetch and update
 
         app.db.medication_intakes.delete_one({"_id": intake_id})
         
@@ -401,14 +437,17 @@ def delete_intake(id):
 @medications_bp.route("/api/medications/upcoming", methods=["GET"])
 @login_required
 @api.validate(
-    query=PetIdQuery,
+    query=UpcomingDosesQuery,
     resp=Response(HTTP_200=UpcomingDosesResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
 def get_upcoming_doses():
     """Get the next doses for the dashboard."""
     try:
-        pet_id = request.args.get("pet_id")
+        query_params = request.context.query
+        pet_id = query_params.pet_id
+        client_datetime_str = query_params.client_datetime
+        
         username, auth_error = get_current_user()
         if auth_error:
             return auth_error[0], auth_error[1]
@@ -423,8 +462,24 @@ def get_upcoming_doses():
         if not medications:
             return jsonify({"doses": []})
         
+        
         upcoming = []
-        now = datetime.utcnow()
+        
+        # Determine "now" and "today" based on client datetime
+        if client_datetime_str:
+            try:
+                # Handle ISO format including potentially 'T' and maybe timezone 
+                # Simplest is to assume frontend sends ISO string
+                if 'T' in client_datetime_str:
+                    now = datetime.fromisoformat(client_datetime_str.replace('Z', '+00:00'))
+                else:
+                    # Fallback or simple format
+                    now = datetime.strptime(client_datetime_str, "%Y-%m-%d %H:%M")
+            except ValueError:
+                now = datetime.utcnow()
+        else:
+            now = datetime.utcnow()
+
         current_day = now.weekday()
         today_start = datetime(now.year, now.month, now.day)
         

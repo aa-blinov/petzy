@@ -438,3 +438,93 @@ class TestMedicationManagement:
         # Verify inventory decreased
         med = mock_db["medications"].find_one({"_id": med_id})
         assert med["inventory_current"] == 9.5
+
+    def test_get_medications_timezone_logic(self, client, mock_db, regular_user_token, test_pet):
+        """Test that client_date affects 'intakes_today' calculation."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Local Time Med",
+            "type": "pill",
+            "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": ["12:00"]},
+            "is_active": True,
+            "owner": "testuser",
+            "inventory_enabled": False
+        })
+
+        # Let's use specific dates.
+        fixed_dt = datetime(2024, 1, 1, 12, 0, 0)
+        mock_db["medication_intakes"].insert_one({
+            "medication_id": str(med_id),
+            "pet_id": str(test_pet["_id"]),
+            "dose_taken": 1.0,
+            "date_time": fixed_dt,
+            "username": "testuser"
+        })
+        
+        # Case 1: Client date matches intake date
+        response = client.get(
+            f"/api/medications?pet_id={test_pet['_id']}&client_date=2024-01-01",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 200
+        assert response.get_json()["medications"][0]["intakes_today"] == 1
+
+        # Case 2: Client date is next day
+        response = client.get(
+            f"/api/medications?pet_id={test_pet['_id']}&client_date=2024-01-02",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.get_json()["medications"][0]["intakes_today"] == 0
+
+    def test_get_upcoming_doses_timezone_logic(self, client, mock_db, regular_user_token, test_pet):
+        """Test that client_datetime affects upcoming doses logic."""
+        # This test ensures we use client time for "current day of week" and "current time".
+        
+        # Create a med scheduled for Mondays (0).
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Monday Med",
+            "schedule": {"days": [0], "times": ["10:00"]},
+            "is_active": True,
+            "owner": "testuser",
+            "inventory_enabled": False
+        })
+        
+        # Case 1: Client time is Monday 09:00. Should see dose at 10:00.
+        # 2024-01-01 was a Monday.
+        client_dt_mon = "2024-01-01T09:00:00"
+        
+        response = client.get(
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_mon}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["doses"]) == 1
+        assert data["doses"][0]["time"] == "10:00"
+        # In logic, is_overdue compares now (09:00) with dose_time (Today 10:00). 
+        # Since now < dose_time, overdue should be false.
+        assert not data["doses"][0]["is_overdue"]
+
+        # Case 2: Client time is Monday 11:00. Dose visible but overdue?
+        client_dt_mon_late = "2024-01-01T11:00:00"
+        response = client.get(
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_mon_late}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        data = response.get_json()
+        assert len(data["doses"]) == 1
+        assert data["doses"][0]["is_overdue"] is True
+
+        # Case 3: Client time is Tuesday. Should see nothing.
+        client_dt_tue = "2024-01-02T09:00:00"
+        response = client.get(
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_tue}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        data = response.get_json()
+        assert len(data["doses"]) == 0
