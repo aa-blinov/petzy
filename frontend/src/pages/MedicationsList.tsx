@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ProgressBar, Toast, Tag, Dialog } from 'antd-mobile';
+import { Button, Card, ProgressBar, Toast, Tag, Dialog, Stepper } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { medicationsService, type Medication } from '../services/medications.service';
@@ -15,6 +16,24 @@ export function MedicationsList() {
         queryKey: ['medications', selectedPetId],
         queryFn: () => medicationsService.getList(selectedPetId!),
         enabled: !!selectedPetId,
+    });
+
+    const [logIntakeDialog, setLogIntakeDialog] = useState<{
+        visible: boolean;
+        medication: Medication | null;
+        dose: number;
+    }>({
+        visible: false,
+        medication: null,
+        dose: 1
+    });
+
+    const [deleteDialog, setDeleteDialog] = useState<{
+        visible: boolean;
+        medication: Medication | null;
+    }>({
+        visible: false,
+        medication: null
     });
 
     const intakeMutation = useMutation({
@@ -52,14 +71,27 @@ export function MedicationsList() {
     });
 
     const handleDelete = (med: Medication) => {
-        Dialog.confirm({
-            content: `Удалить курс "${med.name}" и всю его историю?`,
-            onConfirm: () => deleteMutation.mutate(med._id),
+        setDeleteDialog({
+            visible: true,
+            medication: med
         });
     };
 
     const handleLogIntake = (med: Medication) => {
-        intakeMutation.mutate({ id: med._id, dose: 1 }); // Default to 1 dose
+        setLogIntakeDialog({
+            visible: true,
+            medication: med,
+            dose: med.default_dose || 1
+        });
+    };
+
+    const confirmLogIntake = () => {
+        if (!logIntakeDialog.medication) return;
+        intakeMutation.mutate({
+            id: logIntakeDialog.medication._id,
+            dose: logIntakeDialog.dose
+        });
+        setLogIntakeDialog(prev => ({ ...prev, visible: false }));
     };
 
     const formatRelativeTime = (dateStr?: string) => {
@@ -82,6 +114,15 @@ export function MedicationsList() {
         }
     };
 
+    const getFormFactorIcon = (formFactor?: string) => {
+        switch (formFactor) {
+            case 'tablet': return '💊';
+            case 'liquid': return '💧';
+            case 'injection': return '💉';
+            default: return '💊';
+        }
+    };
+
     if (isLoading) return <LoadingSpinner />;
 
     return (
@@ -93,10 +134,10 @@ export function MedicationsList() {
             color: 'var(--app-text-color)'
         }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     marginBottom: '16px',
                     paddingLeft: 'max(16px, env(safe-area-inset-left))',
                     paddingRight: 'max(16px, env(safe-area-inset-right))'
@@ -120,9 +161,9 @@ export function MedicationsList() {
                 </div>
 
                 {medications.length === 0 ? (
-                    <div style={{ 
-                        textAlign: 'center', 
-                        color: 'var(--adm-color-weak)', 
+                    <div style={{
+                        textAlign: 'center',
+                        color: 'var(--adm-color-weak)',
                         padding: '20px',
                         paddingLeft: 'max(16px, env(safe-area-inset-left))',
                         paddingRight: 'max(16px, env(safe-area-inset-right))'
@@ -130,24 +171,25 @@ export function MedicationsList() {
                         Нет назначенных лекарств
                     </div>
                 ) : (
-                    <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: '12px',
                         marginTop: '8px',
                         paddingLeft: 'max(16px, env(safe-area-inset-left))',
                         paddingRight: 'max(16px, env(safe-area-inset-right))'
                     }}>
                         {medications.map(med => (
-                            <Card key={med._id} style={{ 
-                                borderRadius: '12px', 
+                            <Card key={med._id} style={{
+                                borderRadius: '12px',
                                 border: 'none',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' 
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
                             }}>
                                 <div style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '20px' }}>{getFormFactorIcon(med.form_factor)}</span>
                                                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{med.name}</h3>
                                                 {!med.is_active && <Tag color="default">Архив</Tag>}
                                                 {med.is_active && (med.intakes_today || 0) >= med.schedule.times.length && (
@@ -157,7 +199,9 @@ export function MedicationsList() {
                                                 )}
                                             </div>
                                             <p style={{ margin: 0, fontSize: '14px', color: 'var(--app-text-secondary)' }}>
-                                                {med.type} {med.dosage && `• ${med.dosage} ${med.unit || ''}`}
+                                                {med.strength ? `${med.strength}` : med.type}
+                                                <span style={{ margin: '0 6px', color: '#ddd' }}>|</span>
+                                                По {med.default_dose || 1} {med.dose_unit || 'ед.'}
                                             </p>
                                         </div>
                                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -196,7 +240,7 @@ export function MedicationsList() {
                                         {med.inventory_enabled && med.inventory_current !== undefined && (
                                             <div style={{ marginTop: '12px' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                    <span>Остаток: {med.inventory_current} {med.unit || 'доз'}</span>
+                                                    <span>Остаток: {med.inventory_current} {med.dose_unit || 'доз'}</span>
                                                     {med.inventory_total && (
                                                         <span>{Math.round((med.inventory_current / med.inventory_total) * 100)}%</span>
                                                     )}
@@ -223,7 +267,7 @@ export function MedicationsList() {
                                                 disabled={(med.intakes_today || 0) >= med.schedule.times.length}
                                                 style={{ borderRadius: '8px' }}
                                             >
-                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'Принято на сегодня' : 'Отметить прием'}
+                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'Принято на сегодня' : `Отметить прием (${med.default_dose || 1} ${med.dose_unit || ''})`}
                                             </Button>
                                         </div>
                                     )}
@@ -233,6 +277,81 @@ export function MedicationsList() {
                     </div>
                 )}
             </div>
+
+            <Dialog
+                visible={logIntakeDialog.visible}
+                title="Подтвердите прием"
+                content={
+                    logIntakeDialog.medication && (
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ marginBottom: '16px', fontSize: '15px' }}>
+                                {logIntakeDialog.medication.name} {logIntakeDialog.medication.strength}
+                            </div>
+                            <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
+                                Сколько дали?
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                                <Stepper
+                                    value={logIntakeDialog.dose}
+                                    min={0}
+                                    step={0.1}
+                                    digits={2}
+                                    onChange={val => setLogIntakeDialog(prev => ({ ...prev, dose: val }))}
+                                    style={{ '--button-font-size': '20px', '--input-font-size': '18px', '--input-width': '80px' }}
+                                />
+                                <span style={{ fontSize: '16px', fontWeight: 500 }}>
+                                    {logIntakeDialog.medication.dose_unit || 'ед.'}
+                                </span>
+                            </div>
+                        </div>
+                    )
+                }
+                closeOnAction
+                onClose={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}
+                actions={[
+                    {
+                        key: 'cancel',
+                        text: 'Отмена',
+                        onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
+                    },
+                    {
+                        key: 'confirm',
+                        text: 'Записать',
+                        bold: true,
+                        onClick: confirmLogIntake
+                    },
+                ]}
+            />
+
+            <Dialog
+                visible={deleteDialog.visible}
+                title="Удаление курса"
+                content={
+                    deleteDialog.medication && (
+                        <span>Удалить курс "{deleteDialog.medication.name}" и всю его историю?</span>
+                    )
+                }
+                closeOnAction
+                onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
+                actions={[
+                    {
+                        key: 'delete',
+                        text: 'Удалить',
+                        danger: true,
+                        onClick: () => {
+                            if (deleteDialog.medication) {
+                                deleteMutation.mutate(deleteDialog.medication._id);
+                            }
+                            setDeleteDialog(prev => ({ ...prev, visible: false }));
+                        }
+                    },
+                    {
+                        key: 'cancel',
+                        text: 'Отмена',
+                        onClick: () => setDeleteDialog(prev => ({ ...prev, visible: false }))
+                    },
+                ]}
+            />
         </div>
     );
 }

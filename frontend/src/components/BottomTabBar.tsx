@@ -27,7 +27,7 @@ export function BottomTabBar() {
     },
     {
       key: '/medications',
-      title: 'Прием',
+      title: 'Лекарства',
       icon: <HeartOutline />,
     },
     {

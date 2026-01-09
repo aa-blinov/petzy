@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Switch, Toast, Selector, Picker } from 'antd-mobile';
+import { Button, Form, Input, Switch, Toast, Selector, Picker, Popup, List, Stepper } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AddOutline, DeleteOutline } from 'antd-mobile-icons';
-import { medicationsService, type MedicationCreate } from '../services/medications.service';
+import { DeleteOutline, SearchOutline } from 'antd-mobile-icons';
+import { medicationsService, type MedicationCreate, COMMON_MEDICATIONS } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const medicationSchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
     type: z.string().min(1, 'Тип обязателен'),
-    dosage: z.string().optional(),
-    unit: z.string().optional(),
+    form_factor: z.string().optional(),
+    strength: z.string().optional(),
+    dose_unit: z.string().optional(),
+    default_dose: z.coerce.number().min(0.0001, 'Доза должна быть больше 0'),
     schedule: z.object({
         days: z.array(z.number()).min(1, 'Выберите хотя бы один день'),
         times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Некорректное время')).min(1, 'Добавьте хотя бы одно время'),
@@ -39,7 +41,7 @@ const DAYS_OF_WEEK = [
     { label: 'Вс', value: 6 },
 ];
 
-const COMMON_TYPES = ['Таблетка', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Сироп', 'Другое...'];
+const COMMON_TYPES = ['Таблетка', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Сироп', 'Суспензия'];
 
 export function MedicationForm() {
     const { id } = useParams<{ id: string }>();
@@ -49,14 +51,18 @@ export function MedicationForm() {
     const queryClient = useQueryClient();
     const [typePickerVisible, setTypePickerVisible] = useState(false);
     const [showCustomType, setShowCustomType] = useState(false);
+    const [showCommonMeds, setShowCommonMeds] = useState(false);
+    const [unitPickerVisible, setUnitPickerVisible] = useState(false);
 
-    const { control, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<MedicationFormData>({
+    const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormData>({
         resolver: zodResolver(medicationSchema) as any,
         defaultValues: {
             name: '',
             type: '',
-            dosage: '',
-            unit: '',
+            form_factor: 'other',
+            strength: '',
+            dose_unit: '',
+            default_dose: 1,
             schedule: {
                 days: [0, 1, 2, 3, 4, 5, 6],
                 times: ['08:00'],
@@ -73,6 +79,7 @@ export function MedicationForm() {
     });
 
     const inventoryEnabled = watch('inventory_enabled');
+    const doseUnit = watch('dose_unit') || 'ед.';
 
     const { data: med, isLoading: isLoadingMed } = useQuery({
         queryKey: ['medication', id],
@@ -89,8 +96,10 @@ export function MedicationForm() {
             reset({
                 name: med.name,
                 type: med.type,
-                dosage: med.dosage || '',
-                unit: med.unit || '',
+                form_factor: med.form_factor || 'other',
+                strength: med.strength || '',
+                dose_unit: med.dose_unit || med.unit || '',
+                default_dose: med.default_dose || 1,
                 schedule: {
                     days: med.schedule.days,
                     times: med.schedule.times,
@@ -107,6 +116,17 @@ export function MedicationForm() {
             }
         }
     }, [med, reset]);
+
+    const handleCommonMedSelect = (common: typeof COMMON_MEDICATIONS[0]) => {
+        setValue('name', common.name);
+        setValue('type', common.type);
+        setValue('form_factor', common.form_factor);
+        setValue('strength', common.strength);
+        setValue('dose_unit', common.dose_unit);
+        setValue('default_dose', common.default_dose);
+        setShowCommonMeds(false);
+        Toast.show({ content: 'Данные заполнены', icon: 'success' });
+    };
 
     const mutation = useMutation({
         mutationFn: async (data: MedicationFormData) => {
@@ -151,11 +171,6 @@ export function MedicationForm() {
                     return;
                 }
             }
-            if (data.inventory_warning_threshold !== null && data.inventory_warning_threshold !== undefined &&
-                data.inventory_warning_threshold < 0) {
-                Toast.show({ icon: 'fail', content: 'Порог предупреждения не может быть отрицательным' });
-                return;
-            }
         }
         mutation.mutate(data);
     };
@@ -171,14 +186,28 @@ export function MedicationForm() {
             color: 'var(--app-text-color)'
         }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{ 
+                <div style={{
                     marginBottom: '16px',
                     paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                    paddingRight: 'max(16px, env(safe-area-inset-right))'
+                    paddingRight: 'max(16px, env(safe-area-inset-right))',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                 }}>
                     <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
-                        {isEditing ? 'Редактировать курс' : 'Новый прием препаратов'}
+                        {isEditing ? 'Редактировать курс' : 'Новый курс'}
                     </h2>
+                    {!isEditing && (
+                        <Button
+                            size="small"
+                            color="primary"
+                            fill="outline"
+                            onClick={() => setShowCommonMeds(true)}
+                            style={{ borderRadius: '16px', fontSize: '13px' }}
+                        >
+                            <SearchOutline /> Шаблоны
+                        </Button>
+                    )}
                 </div>
 
                 <div style={{
@@ -190,133 +219,160 @@ export function MedicationForm() {
                         mode="card"
                         onFinish={handleSubmit(onSubmit)}
                     >
-                    <Form.Header>Основная информация</Form.Header>
-                    <Controller
-                        name="name"
-                        control={control}
-                        render={({ field }) => (
-                            <Form.Item label="Название" required help={errors.name?.message}>
-                                <Input
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    placeholder="Напр. Сальбутамол"
-                                    clearable
-                                    style={{ '--text-align': 'right' }}
-                                />
-                            </Form.Item>
-                        )}
-                    />
-
-                    <Controller
-                        name="type"
-                        control={control}
-                        render={({ field }) => (
-                            <>
-                                <Form.Item
-                                    label="Тип препарата"
-                                    required
-                                    onClick={() => setTypePickerVisible(true)}
-                                    help={errors.type?.message}
-                                    style={{ cursor: 'pointer' }}
-                                    arrow
-                                >
-                                    <Input
-                                        readOnly
-                                        value={field.value}
-                                        placeholder="Выберите тип"
-                                        style={{ pointerEvents: 'none', '--text-align': 'right' }}
-                                    />
-                                </Form.Item>
-                                <Picker
-                                    columns={[COMMON_TYPES.map(t => ({ label: t, value: t }))]}
-                                    visible={typePickerVisible}
-                                    onClose={() => setTypePickerVisible(false)}
-                                    value={[showCustomType ? 'Другое...' : field.value]}
-                                    onConfirm={(val) => {
-                                        const selected = val[0] as string;
-                                        if (selected === 'Другое...') {
-                                            setShowCustomType(true);
-                                            field.onChange('');
-                                        } else {
-                                            setShowCustomType(false);
-                                            field.onChange(selected);
-                                        }
-                                        setTypePickerVisible(false);
-                                    }}
-                                    cancelText="Отмена"
-                                    confirmText="Выбрать"
-                                />
-                                {showCustomType && (
-                                    <Form.Item label="Свой тип препарата">
-                                        <Input
-                                            value={field.value}
-                                            onChange={field.onChange}
-                                            placeholder="Введите тип препарата"
-                                            clearable
-                                            style={{ '--text-align': 'right' }}
-                                        />
-                                    </Form.Item>
-                                )}
-                            </>
-                        )}
-                    />
-
-                    <Controller
-                        name="dosage"
-                        control={control}
-                        render={({ field }) => (
-                            <Form.Item label="Дозировка">
-                                <Input
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    placeholder="Напр. 100"
-                                    style={{ '--text-align': 'right' }}
-                                />
-                            </Form.Item>
-                        )}
-                    />
-                    <Controller
-                        name="unit"
-                        control={control}
-                        render={({ field }) => (
-                            <Form.Item label="Единица измерения">
-                                <Input
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    placeholder="Напр. мкг, мл, таб"
-                                    style={{ '--text-align': 'right' }}
-                                />
-                            </Form.Item>
-                        )}
-                    />
-
-                    <Form.Header>Расписание</Form.Header>
-                    <Form.Item
-                        label="Дни приема"
-                        required
-                        help={errors.schedule?.days?.message}
-                        layout="vertical"
-                    >
+                        <Form.Header>Препарат</Form.Header>
                         <Controller
-                            name="schedule.days"
+                            name="name"
                             control={control}
                             render={({ field }) => (
-                                <Selector
-                                    columns={4}
-                                    options={DAYS_OF_WEEK}
-                                    multiple
-                                    value={field.value}
-                                    onChange={(val) => field.onChange(val)}
-                                    style={{ '--border-radius': '8px', padding: '4px 0' }}
-                                />
+                                <Form.Item label="Название" required help={errors.name?.message}>
+                                    <Input
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Напр. Синулокс"
+                                        clearable
+                                        style={{ '--text-align': 'right' }}
+                                    />
+                                </Form.Item>
                             )}
                         />
-                    </Form.Item>
 
-                    <Form.Item label="Время приема" required layout="vertical">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 0' }}>
+                        <Controller
+                            name="type"
+                            control={control}
+                            render={({ field }) => (
+                                <>
+                                    <Form.Item
+                                        label="Форма выпуска"
+                                        required
+                                        onClick={() => setTypePickerVisible(true)}
+                                        help={errors.type?.message}
+                                        style={{ cursor: 'pointer' }}
+                                        arrow
+                                    >
+                                        <Input
+                                            readOnly
+                                            value={field.value}
+                                            placeholder="Выберите тип"
+                                            style={{ pointerEvents: 'none', '--text-align': 'right' }}
+                                        />
+                                    </Form.Item>
+                                    <Picker
+                                        columns={[COMMON_TYPES.map(t => ({ label: t, value: t }))]}
+                                        visible={typePickerVisible}
+                                        onClose={() => setTypePickerVisible(false)}
+                                        value={[showCustomType ? 'Другое...' : field.value]}
+                                        onConfirm={(val) => {
+                                            const selected = val[0] as string;
+                                            if (selected === 'Другое...') {
+                                                setShowCustomType(true);
+                                                field.onChange('');
+                                            } else {
+                                                setShowCustomType(false);
+                                                field.onChange(selected);
+
+                                                // Auto-detect form factor logic could go here
+                                                if (selected === 'Таблетка' || selected === 'Капсула') setValue('form_factor', 'tablet');
+                                                else if (selected === 'Сироп' || selected === 'Суспензия' || selected === 'Капли') setValue('form_factor', 'liquid');
+                                                else if (selected === 'Укол') setValue('form_factor', 'injection');
+                                            }
+                                            setTypePickerVisible(false);
+                                        }}
+                                        cancelText="Отмена"
+                                        confirmText="Выбрать"
+                                    />
+                                </>
+                            )}
+                        />
+
+                        <Controller
+                            name="strength"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item label="Дозировка (на упаковке)">
+                                    <Input
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Напр. 50 мг или 0.5 мг/мл"
+                                        style={{ '--text-align': 'right' }}
+                                    />
+                                </Form.Item>
+                            )}
+                        />
+
+                        <Form.Header>Схема приема</Form.Header>
+                        <Controller
+                            name="default_dose"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item label="Разовый прием" required help={errors.default_dose?.message}>
+                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                        <Stepper
+                                            value={field.value}
+                                            onChange={val => field.onChange(val)}
+                                            min={0.0001}
+                                            step={0.1}
+                                            digits={2}
+                                            style={{ '--input-width': '60px' }}
+                                        />
+                                        <div style={{ width: '80px' }}>
+                                            <Controller
+                                                name="dose_unit"
+                                                control={control}
+                                                render={({ field: unitField }) => (
+                                                    <div onClick={() => setUnitPickerVisible(true)}>
+                                                        <Input
+                                                            value={unitField.value}
+                                                            readOnly
+                                                            placeholder="ед."
+                                                            style={{
+                                                                '--text-align': 'center',
+                                                                color: 'var(--adm-color-primary)'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            />
+                                        </div>
+                                        <Picker
+                                            columns={[['таб', 'мл', 'мг', 'капс', 'шт', 'ед'].map(u => ({ label: u, value: u }))]}
+                                            visible={unitPickerVisible}
+                                            onClose={() => setUnitPickerVisible(false)}
+                                            value={[watch('dose_unit') || 'ед']}
+                                            onConfirm={v => {
+                                                if (v[0]) setValue('dose_unit', v[0] as string);
+                                            }}
+                                            cancelText="Отмена"
+                                            confirmText="Выбрать"
+                                        />
+                                    </div>
+                                </Form.Item>
+                            )}
+                        />
+
+                        <Form.Item label="Как часто?" required layout="vertical">
+                            <div style={{ marginBottom: '12px' }}>
+                                <Controller
+                                    name="schedule.days"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Selector
+                                            columns={7}
+                                            options={DAYS_OF_WEEK}
+                                            multiple
+                                            value={field.value}
+                                            onChange={(val) => field.onChange(val)}
+                                            style={{
+                                                '--border-radius': '8px',
+                                                '--padding': '4px 0',
+                                                '--gap': '4px'
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </div>
+
                             {timeFields.map((timeField: any, index) => (
-                                <div key={timeField.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div key={timeField.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                                     <Controller
                                         name={`schedule.times.${index}` as any}
                                         control={control}
@@ -341,7 +397,6 @@ export function MedicationForm() {
                                             color="danger"
                                             fill="none"
                                             onClick={() => removeTime(index)}
-                                            style={{ padding: '0 8px' }}
                                         >
                                             <DeleteOutline fontSize={20} />
                                         </Button>
@@ -349,140 +404,101 @@ export function MedicationForm() {
                                 </div>
                             ))}
                             <Button
-                                size="small"
+                                size="mini"
                                 fill="outline"
                                 color="primary"
                                 onClick={() => appendTime('08:00')}
-                                style={{ borderRadius: '8px', marginTop: '4px' }}
+                                style={{ borderRadius: '12px', marginTop: '4px' }}
                             >
-                                <AddOutline /> Добавить время
+                                + Время
                             </Button>
-                        </div>
-                        {errors.schedule?.times?.message && (
-                            <div style={{ color: 'var(--adm-color-danger)', fontSize: '12px', marginTop: '4px' }}>
-                                {errors.schedule.times.message}
-                            </div>
-                        )}
-                    </Form.Item>
+                        </Form.Item>
 
-                    <Form.Header>Инвентарь</Form.Header>
-                    <Controller
-                        name="inventory_enabled"
-                        control={control}
-                        render={({ field }) => (
-                            <Form.Item
-                                label="Следить за остатком"
-                                extra={<Switch checked={field.value} onChange={field.onChange} />}
-                            />
-                        )}
-                    />
-
-                    {inventoryEnabled && (
-                        <>
-                            <Controller
-                                name="inventory_total"
-                                control={control}
-                                render={({ field }) => (
-                                    <Form.Item label="Всего в упаковке (доз)">
-                                        <Input
-                                            value={field.value?.toString() || ''}
-                                            onChange={(val) => {
-                                                const num = val === '' ? null : Number(val);
-                                                field.onChange(isNaN(num as number) ? null : num);
-                                            }}
-                                            type="number"
-                                            placeholder="Количество"
-                                            style={{ '--text-align': 'right' }}
-                                        />
-                                    </Form.Item>
-                                )}
-                            />
-                            <Controller
-                                name="inventory_current"
-                                control={control}
-                                render={({ field }) => (
-                                    <Form.Item label="Текущий остаток">
-                                        <Input
-                                            value={field.value?.toString() || ''}
-                                            onChange={(val) => {
-                                                const num = val === '' ? null : Number(val);
-                                                field.onChange(isNaN(num as number) ? null : num);
-                                            }}
-                                            type="number"
-                                            placeholder="Осталось в наличии"
-                                            style={{ '--text-align': 'right' }}
-                                        />
-                                    </Form.Item>
-                                )}
-                            />
-                            <Controller
-                                name="inventory_warning_threshold"
-                                control={control}
-                                render={({ field }) => (
-                                    <Form.Item label="Предупредить, когда останется">
-                                        <Input
-                                            value={field.value?.toString() || ''}
-                                            onChange={(val) => {
-                                                const num = val === '' ? null : Number(val);
-                                                field.onChange(isNaN(num as number) ? null : num);
-                                            }}
-                                            type="number"
-                                            placeholder="Порог предупреждения"
-                                            style={{ '--text-align': 'right' }}
-                                        />
-                                    </Form.Item>
-                                )}
-                            />
-                        </>
-                    )}
-
-                    <Form.Header>Дополнительно</Form.Header>
-                    <Controller
-                        name="is_active"
-                        control={control}
-                        render={({ field }) => (
-                            <Form.Item
-                                label="Активный курс"
-                                extra={<Switch checked={field.value} onChange={field.onChange} />}
-                            />
-                        )}
-                    />
-                    <Controller
-                        name="comment"
-                        control={control}
-                        render={({ field }) => (
-                            <Form.Item label="Комментарий">
-                                <Input
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    placeholder="Любые заметки"
-                                    clearable
-                                    style={{ '--text-align': 'right' }}
+                        <Form.Header>Учет остатков</Form.Header>
+                        <Controller
+                            name="inventory_enabled"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item
+                                    label="Включить учет"
+                                    extra={<Switch checked={field.value} onChange={field.onChange} />}
+                                    description={field.value ? `Будем списывать по ${watch('default_dose') || 1} ${doseUnit} за прием` : undefined}
                                 />
-                            </Form.Item>
+                            )}
+                        />
+
+                        {inventoryEnabled && (
+                            <>
+                                <Controller
+                                    name="inventory_current"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Form.Item label={`Остаток (${doseUnit})`}>
+                                            <Stepper
+                                                value={field.value ?? 0}
+                                                onChange={val => field.onChange(val)}
+                                                min={0}
+                                                step={1}
+                                                digits={2}
+                                                style={{ '--input-width': '60px', textAlign: 'center' }}
+                                            />
+                                        </Form.Item>
+                                    )}
+                                />
+                                <Controller
+                                    name="inventory_warning_threshold"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Form.Item label="Напомнить, когда <">
+                                            <Stepper
+                                                value={field.value ?? 0}
+                                                onChange={val => field.onChange(val)}
+                                                min={0}
+                                                step={1}
+                                                digits={2}
+                                                style={{ '--input-width': '60px', textAlign: 'center' }}
+                                            />
+                                        </Form.Item>
+                                    )}
+                                />
+                            </>
                         )}
-                    />
+
+                        <Form.Header />
+                        <Controller
+                            name="is_active"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item
+                                    label="Активный курс"
+                                    extra={<Switch checked={field.value} onChange={field.onChange} />}
+                                />
+                            )}
+                        />
+                        <Controller
+                            name="comment"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item label="Комментарий">
+                                    <Input
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Заметки..."
+                                        style={{ '--text-align': 'right' }}
+                                    />
+                                </Form.Item>
+                            )}
+                        />
                     </Form>
 
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                        marginTop: '24px',
-                        paddingBottom: '24px'
-                    }}>
-                        <button
-                            style={{ display: 'none' }}
-                            type="submit"
-                            onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
-                        />
+                    <div style={{ marginTop: '24px', paddingBottom: '24px' }}>
                         <Button
                             block
                             color="primary"
                             size="large"
                             onClick={() => handleSubmit(onSubmit)()}
                             loading={mutation.isPending || isSubmitting}
-                            style={{ borderRadius: '12px', fontWeight: 600 }}
+                            style={{ borderRadius: '12px', fontWeight: 600, marginBottom: '12px' }}
                         >
                             {isEditing ? 'Сохранить' : 'Создать'}
                         </Button>
@@ -497,6 +513,35 @@ export function MedicationForm() {
                     </div>
                 </div>
             </div>
+
+            <Popup
+                visible={showCommonMeds}
+                onMaskClick={() => setShowCommonMeds(false)}
+                bodyStyle={{ height: '60vh', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                        <span style={{ fontSize: '18px', fontWeight: 600 }}>Популярные препараты</span>
+                        <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
+                    </div>
+                    <div style={{ overflowY: 'auto', flex: 1 }}>
+                        <List>
+                            {COMMON_MEDICATIONS.map((med, idx) => (
+                                <List.Item
+                                    key={idx}
+                                    onClick={() => handleCommonMedSelect(med)}
+                                    arrow
+                                >
+                                    <div style={{ fontWeight: 500 }}>{med.name}</div>
+                                    <div style={{ fontSize: '12px', color: '#888' }}>
+                                        {med.type}, {med.strength} ({med.default_dose} {med.dose_unit})
+                                    </div>
+                                </List.Item>
+                            ))}
+                        </List>
+                    </div>
+                </div>
+            </Popup>
         </div>
     );
 }
