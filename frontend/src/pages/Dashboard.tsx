@@ -7,16 +7,16 @@ import { usePet } from '../hooks/usePet';
 
 // Пастельные цвета для кнопок
 const pastelColorMap: Record<string, string> = {
-  brown: '#E8D5C4',    // Пастельный коричневый
-  orange: '#FFE5B4',   // Пастельный оранжевый
-  red: '#FFD1CC',      // Пастельный красный
-  green: '#D4F4DD',    // Пастельный зеленый
-  purple: '#E8D5F2',   // Пастельный фиолетовый
-  teal: '#D4F4F1',     // Пастельный бирюзовый
-  cyan: '#D4F0FF',     // Пастельный голубой
-  yellow: '#FFF9D4',   // Пастельный желтый
-  blue: '#D4E8FF',     // Пастельный синий
-  pink: '#FFE5EB',     // Пастельный розовый
+  brown: 'var(--tile-brown)',
+  orange: 'var(--tile-orange)',
+  red: 'var(--tile-red)',
+  green: 'var(--tile-green)',
+  purple: 'var(--tile-purple)',
+  teal: 'var(--tile-teal)',
+  cyan: 'var(--tile-cyan)',
+  yellow: 'var(--tile-yellow)',
+  blue: 'var(--tile-blue)',
+  pink: 'var(--tile-pink)',
 };
 
 export function Dashboard() {
@@ -76,7 +76,7 @@ export function Dashboard() {
           gap: '12px'
         }}>
           {visibleTiles.map(tile => {
-            const backgroundColor = pastelColorMap[tile.color] || '#D4E8FF';
+            const backgroundColor = pastelColorMap[tile.color] || 'var(--tile-blue)';
             return (
               <Card
                 key={tile.id}
@@ -86,15 +86,15 @@ export function Dashboard() {
                   WebkitTapHighlightColor: 'transparent',
                   borderRadius: '12px',
                   border: 'none',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                  boxShadow: 'var(--app-shadow)',
                 }}
                 onClick={() => handleTileClick(tile)}
               >
                 <div style={{ padding: '16px' }}>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#000000' }}>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: 'var(--app-text-on-tile)' }}>
                     {tile.title}
                   </h3>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#666666' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--app-text-secondary)' }}>
                     {tile.subtitle}
                   </p>
                 </div>

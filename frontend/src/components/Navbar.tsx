@@ -44,13 +44,13 @@ export function Navbar() {
         fontFamily: 'var(--app-font-bubble)',
         fontSize: '28px',
         fontWeight: 700,
-        background: 'linear-gradient(135deg, #FF9A3E 0%, #3E9AFF 100%)',
+        background: 'var(--app-brand-gradient)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         letterSpacing: '-0.5px',
         display: 'flex',
         alignItems: 'center',
-        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+        filter: 'drop-shadow(var(--app-shadow-light))'
       }}
     >
       Petzy
@@ -81,7 +81,7 @@ export function Navbar() {
               backgroundColor: 'var(--app-page-background)',
               border: '1px solid var(--app-border-color)',
               transition: 'all 0.2s ease',
-              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.1)',
+              boxShadow: 'inset 0 1px 2px var(--app-white-05), var(--app-shadow-light)',
             }}
           >
             <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--app-text-color)' }}>
@@ -124,7 +124,7 @@ export function Navbar() {
                       backgroundColor: 'var(--app-card-background)',
                       borderRadius: '12px',
                       cursor: 'pointer',
-                      border: pet._id === selectedPetId ? '2px solid var(--adm-color-primary)' : '1px solid var(--app-border-color)',
+                      border: pet._id === selectedPetId ? '2px solid var(--app-primary-color)' : '1px solid var(--app-border-color)',
                       transition: 'all 0.2s ease'
                     }}
                   >
@@ -186,10 +186,10 @@ export function Navbar() {
           height: '36px',
           borderRadius: '50%',
           cursor: 'pointer',
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backgroundColor: 'var(--app-white-05)',
           color: 'var(--app-text-secondary)',
           transition: 'all 0.2s ease',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
+          border: '1px solid var(--app-white-10)'
         }}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -210,7 +210,7 @@ export function Navbar() {
       zIndex: 1000,
       backgroundColor: 'var(--app-card-background)',
       paddingTop: 'env(safe-area-inset-top)',
-      boxShadow: '0 1px 10px rgba(0, 0, 0, 0.2)',
+      boxShadow: 'var(--app-shadow)',
     }}>
       <NavBar
         style={{

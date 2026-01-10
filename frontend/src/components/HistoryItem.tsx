@@ -17,22 +17,22 @@ interface HistoryItemProps {
 
 // Пастельные цвета для карточек истории (соответствуют дневнику)
 const pastelColorMap: Record<string, string> = {
-  brown: '#E8D5C4',
-  orange: '#FFE5B4',
-  red: '#FFD1CC',
-  green: '#D4F4DD',
-  purple: '#E8D5F2',
-  teal: '#D4F4F1',
-  cyan: '#D4F0FF',
-  yellow: '#FFF9D4',
-  blue: '#D4E8FF',
-  pink: '#FFE5EB',
+  brown: 'var(--tile-brown)',
+  orange: 'var(--tile-orange)',
+  red: 'var(--tile-red)',
+  green: 'var(--tile-green)',
+  purple: 'var(--tile-purple)',
+  teal: 'var(--tile-teal)',
+  cyan: 'var(--tile-cyan)',
+  yellow: 'var(--tile-yellow)',
+  blue: 'var(--tile-blue)',
+  pink: 'var(--tile-pink)',
 };
 
 export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const backgroundColor = pastelColorMap[config.color] || '#D4E8FF';
+  const backgroundColor = pastelColorMap[config.color] || 'var(--tile-blue)';
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
   const handleEdit = () => {
@@ -45,13 +45,13 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
     try {
       await healthRecordsService.delete(type as HealthRecordType, item._id);
       await queryClient.invalidateQueries({ queryKey: ['history'] });
-      
+
       // If deleting medication intake, also invalidate medications cache to update intakes_today
       if (type === 'medications') {
         await queryClient.invalidateQueries({ queryKey: ['medications'] });
         await queryClient.invalidateQueries({ queryKey: ['medications', 'upcoming'] });
       }
-      
+
       Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
 
       // Small delay to let Toast render before unmounting
@@ -72,12 +72,12 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
           backgroundColor: backgroundColor,
           borderRadius: '12px',
           border: 'none',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          boxShadow: 'var(--app-shadow)',
         }}
       >
         <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 600, color: '#000000', fontSize: '16px' }}>{formatDateTime(item.date_time)}</span>
+            <span style={{ fontWeight: 600, color: 'var(--app-text-on-tile)', fontSize: '16px' }}>{formatDateTime(item.date_time)}</span>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {type !== 'medications' && (
                 <Button
@@ -85,11 +85,11 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
                   fill="outline"
                   onClick={handleEdit}
                   style={{
-                    '--text-color': '#000000',
-                    '--border-color': 'rgba(0, 0, 0, 0.3)',
+                    '--text-color': 'var(--app-text-on-tile)',
+                    '--border-color': 'var(--app-black-20)',
                   } as React.CSSProperties}
                 >
-                  <EditSOutline style={{ color: '#000000', fontSize: '16px' }} />
+                  <EditSOutline style={{ color: 'var(--app-text-on-tile)', fontSize: '16px' }} />
                 </Button>
               )}
               <Button
@@ -104,14 +104,14 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {item.username && (
-              <span style={{ fontSize: '12px', color: '#666666' }}>Пользователь: {item.username}</span>
+              <span style={{ fontSize: '12px', color: 'var(--app-text-secondary-on-tile)' }}>Пользователь: {item.username}</span>
             )}
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                color: '#000000',
+                color: 'var(--app-text-on-tile)',
               }}
               dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
             />

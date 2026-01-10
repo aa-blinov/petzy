@@ -94,12 +94,12 @@ export function Login() {
               fontFamily: 'var(--app-font-bubble)',
               fontSize: '48px',
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #FF9A3E 0%, #3E9AFF 100%)',
+              background: 'var(--app-brand-gradient)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               textAlign: 'center',
               marginBottom: '16px',
-              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))'
+              filter: 'drop-shadow(var(--app-shadow))'
             }}
           >
             Petzy

@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Modal, Tag } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
-import { useTheme } from '../hooks/useTheme';
 import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -13,12 +12,9 @@ export function AdminPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
-  const { theme } = useTheme();
+  // State for alert messages
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // Determine if dark theme is active
-  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
@@ -150,7 +146,7 @@ export function AdminPanel() {
                   style={{
                     borderRadius: '12px',
                     border: 'none',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                    boxShadow: 'var(--app-shadow)',
                   }}
                 >
                   <div style={{ padding: '16px' }}>
@@ -162,12 +158,12 @@ export function AdminPanel() {
                           fill="outline"
                           onClick={() => handleEdit(user)}
                           style={{
-                            '--text-color': isDark ? '#FFFFFF' : '#000000',
-                            '--border-color': isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.15)',
+                            '--text-color': 'var(--app-text-primary)',
+                            '--border-color': 'var(--app-border-color)',
                             backgroundColor: 'transparent',
                           } as React.CSSProperties}
                         >
-                          <EditSOutline style={{ color: isDark ? '#FFFFFF' : '#000000', fontSize: '16px' }} />
+                          <EditSOutline style={{ color: 'var(--app-text-primary)', fontSize: '16px' }} />
                         </Button>
                         <Button
                           size="mini"

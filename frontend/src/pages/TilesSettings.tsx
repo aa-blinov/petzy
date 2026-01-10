@@ -44,7 +44,7 @@ function SortableTileItem({ id, title, visible, onToggle, disabled = false }: So
           <div
             {...attributes}
             {...listeners}
-            style={{ cursor: 'grab', color: '#999', fontSize: '20px', paddingRight: '8px', touchAction: 'none' }}
+            style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', fontSize: '20px', paddingRight: '8px', touchAction: 'none' }}
           >
             ☰
           </div>

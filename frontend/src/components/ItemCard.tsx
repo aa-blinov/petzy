@@ -20,13 +20,13 @@ export function ItemCard({
   onEdit,
   onDelete,
   style,
-  backgroundColor = 'var(--adm-color-background)',
+  backgroundColor = 'var(--app-card-background)',
   editText = 'Редактировать',
   deleteText = 'Удалить',
-  editTextColor = 'var(--adm-color-text)',
-  editBorderColor = 'var(--adm-color-border)',
-  deleteTextColor = '#FF453A',
-  deleteBorderColor = 'rgba(255, 69, 58, 0.3)',
+  editTextColor = 'var(--app-text-primary)',
+  editBorderColor = 'var(--app-border-color)',
+  deleteTextColor = 'var(--app-danger-color)',
+  deleteBorderColor = 'var(--app-black-10)',
 }: ItemCardProps) {
   return (
     <Card
@@ -34,13 +34,13 @@ export function ItemCard({
         backgroundColor,
         borderRadius: '12px',
         border: 'none',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        boxShadow: 'var(--app-shadow)',
         ...style,
       }}
     >
       <div style={{ padding: '16px' }}>
         {children}
-        
+
         <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
           <Button
             size="small"

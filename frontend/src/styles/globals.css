@@ -1,22 +1,78 @@
 /* Global styles - only minimal custom styles, using Ant Design Mobile for everything else */
 
 :root {
-    --app-page-background: #F5F5F5;
-    --app-text-color: #000000;
+    /* Brand & Primary Colors */
+    --app-primary-color: var(--adm-color-primary, #1677ff);
+    --app-danger-color: #FF453A;
+    --app-success-color: #34C759;
+    --app-warning-color: #FF9F0A;
+
+    /* Neutral / Text Colors */
+    --app-text-primary: #000000;
     --app-text-secondary: #666666;
+    --app-text-tertiary: #999999;
+    --app-text-on-dark: #FFFFFF;
+
+    /* Layout Colors */
+    --app-page-background: #F5F5F5;
     --app-card-background: #FFFFFF;
     --app-border-color: #EEEEEE;
+    --app-divider-color: #DDDDDD;
+
+    /* Specific UI Elements */
+    --app-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --app-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+    /* Fixed Colors (won't change in dark mode) */
+    --color-white: #FFFFFF;
+    --color-black: #000000;
+    --color-gray-dark: #666666;
+    --color-gray-light: #EEEEEE;
+
+    /* Translucent Colors */
+    --app-white-10: rgba(255, 255, 255, 0.1);
+    --app-white-20: rgba(255, 255, 255, 0.2);
+    --app-white-05: rgba(255, 255, 255, 0.05);
+    --app-black-10: rgba(0, 0, 0, 0.1);
+    --app-black-20: rgba(0, 0, 0, 0.2);
+    --app-black-05: rgba(0, 0, 0, 0.05);
+    --app-black-08: rgba(0, 0, 0, 0.08);
+
+    /* Text on Tile (always dark as tiles are light) */
+    --app-text-on-tile: #000000;
+    --app-text-secondary-on-tile: #666666;
+
+    /* Tile Pastel Colors */
+    --tile-brown: #E8D5C4;
+    --tile-orange: #FFE5B4;
+    --tile-red: #FFD1CC;
+    --tile-green: #D4F4DD;
+    --tile-purple: #E8D5F2;
+    --tile-teal: #D4F4F1;
+    --tile-cyan: #D4F0FF;
+    --tile-yellow: #FFF9D4;
+    --tile-blue: #D4E8FF;
+    --tile-pink: #FFE5EB;
+
+    /* Other */
     --app-border-radius: 12px;
     --app-font-bubble: 'DynaPuff', system-ui, sans-serif;
-}
+    --app-brand-gradient: linear-gradient(135deg, #FF9A3E 0%, #3E9AFF 100%);
+    --app-blue-gradient: linear-gradient(135deg, var(--app-primary-color) 0%, #4a90e2 100%);
 
+    /* Compatibility with old variable names */
+    --app-text-color: var(--app-text-primary);
+}
 
 html[data-prefers-color-scheme='dark'] {
     --app-page-background: #000000;
-    --app-text-color: #FFFFFF;
-    --app-text-secondary: #8E8E93;
     --app-card-background: #1C1C1E;
+    --app-text-primary: #FFFFFF;
+    --app-text-secondary: #8E8E93;
+    --app-text-tertiary: #636366;
     --app-border-color: #38383A;
+    --app-divider-color: #2C2C2E;
+    --app-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* iOS Safe Area Overrides for antd-mobile components */
