@@ -40,7 +40,7 @@ export function Alert({ type, message, onClose, duration = 3000 }: AlertProps) {
         handlerRef.current = null;
       }
     };
-  }, [type, message, duration]); 
+  }, [type, message, duration]);
 
   return null; // Toast is rendered by antd-mobile
 }

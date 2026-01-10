@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Picker, List, Switch, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
+import { Button, Form, Input, Picker, List, Switch, TextArea, SearchBar, ImageViewer, Toast } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -239,13 +239,18 @@ export function PetForm() {
         await queryClient.invalidateQueries({ queryKey: ['pet', petId] });
       }
 
-      // Use alert instead of Toast to avoid React 19 compatibility issues
-      alert(isEditing ? 'Питомец обновлен' : 'Питомец добавлен');
-      navigate('/pets');
+      Toast.show({
+        icon: 'success',
+        content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен',
+        duration: 1500,
+        afterClose: () => navigate('/pets')
+      });
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || 'Ошибка при сохранении';
-      // Use alert instead of Toast to avoid React 19 compatibility issues with imperative APIs
-      alert(errorMessage);
+      Toast.show({
+        icon: 'fail',
+        content: errorMessage
+      });
     } finally {
       setLoading(false);
     }
