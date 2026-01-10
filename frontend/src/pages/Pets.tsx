@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Dialog, ImageViewer, Card } from 'antd-mobile';
+import { Button, Dialog, ImageViewer, Card, Toast } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
@@ -50,8 +50,8 @@ export function Pets() {
       // Delete the pet
       await petsService.deletePet(pet._id);
 
-      // Close dialog first to avoid React 19 + antd-mobile issues
-      setDeleteDialog({ visible: false, pet: null });
+      // Close dialog first
+      setDeleteDialog(prev => ({ ...prev, visible: false }));
 
       // Fetch fresh data directly
       const updatedPets = await petsService.getPets();
@@ -68,10 +68,21 @@ export function Pets() {
         // No pets left, clear selection
         selectPet(null);
       }
+
+      Toast.show({
+        icon: 'success',
+        content: 'Питомец удален'
+      });
     } catch (error: any) {
       console.error('Delete pet error:', error);
       // Close dialog on error
-      setDeleteDialog({ visible: false, pet: null });
+      setDeleteDialog(prev => ({ ...prev, visible: false }));
+
+      const errorMessage = error?.response?.data?.error || 'Ошибка при удалении';
+      Toast.show({
+        icon: 'fail',
+        content: errorMessage
+      });
     }
   };
 
@@ -230,12 +241,8 @@ export function Pets() {
       <ImageViewer
         image={imageViewer.image || ''}
         visible={imageViewer.visible}
-        onClose={() => {
-          setImageViewer(prev => ({ ...prev, visible: false }));
-        }}
-        afterClose={() => {
-          setImageViewer({ visible: false, image: null });
-        }}
+        onClose={() => setImageViewer(prev => ({ ...prev, visible: false }))}
+        afterClose={() => setImageViewer({ visible: false, image: null })}
       />
     </div>
   );
