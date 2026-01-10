@@ -12,11 +12,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from werkzeug.datastructures import FileStorage
 
-try:
-    from PIL import Image
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
+from PIL import Image
 
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
 from web.errors import error_response
@@ -255,9 +251,6 @@ def optimize_image(file_storage: FileStorage, max_width: int = 1920, max_height:
     Returns:
         Tuple of (BytesIO object with optimized image, content_type) or None if optimization fails
     """
-    if not PIL_AVAILABLE:
-        logger.warning("Pillow not available, skipping image optimization")
-        return None
 
     try:
         # Read the original image
