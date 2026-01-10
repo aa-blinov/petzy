@@ -248,23 +248,25 @@ export function HealthRecordForm() {
 
       if (id) {
         await healthRecordsService.update(type as HealthRecordType, id, transformedData);
-        Toast.show({ content: config.successMessage(true), icon: 'success', duration: 1500 });
       } else {
         await healthRecordsService.create(type as HealthRecordType, transformedData);
-        Toast.show({ content: config.successMessage(false), icon: 'success', duration: 1500 });
       }
 
       await queryClient.invalidateQueries({ queryKey: ['history'] });
 
-      // Навигация
-      if (id) {
-        // При редактировании возвращаемся на историю с сохранением активной вкладки из URL
-        const activeTab = searchParams.get('tab');
-        navigate(activeTab ? `/history?tab=${activeTab}` : '/history');
-      } else {
-        // При создании новой записи возвращаемся на главную
-        navigate('/');
-      }
+      Toast.show({
+        content: id ? config.successMessage(true) : config.successMessage(false),
+        icon: 'success',
+        duration: 1500,
+        afterClose: () => {
+          if (id) {
+            const activeTab = searchParams.get('tab');
+            navigate(activeTab ? `/history?tab=${activeTab}` : '/history');
+          } else {
+            navigate('/');
+          }
+        }
+      });
     } catch (error: any) {
       console.error('Error submitting form:', error);
       const errorMessage = error.response?.data?.error || 'Ошибка при сохранении';

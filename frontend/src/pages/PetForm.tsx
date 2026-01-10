@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, ImageUploader, Toast, Picker, List, Switch, TextArea, SearchBar } from 'antd-mobile';
+import { Button, Form, Input, ImageUploader, Toast, Picker, List, Switch, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -40,6 +40,12 @@ export function PetForm() {
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
+
+  // State for Image Viewer to avoid imperative ImageViewer.show()
+  const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null }>({
+    visible: false,
+    image: null,
+  });
 
   // Refs for focusing inputs on row click
   const nameInputRef = useRef<any>(null);
@@ -208,9 +214,13 @@ export function PetForm() {
         ]);
       }
 
-      Toast.show({ icon: 'success', content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен' });
+      Toast.show({
+        icon: 'success',
+        content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен',
+        duration: 1500,
+        afterClose: () => navigate('/pets')
+      });
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
-      setTimeout(() => navigate('/pets'), 500);
     } catch (error: any) {
       Toast.show({
         icon: 'fail',
@@ -431,6 +441,9 @@ export function PetForm() {
               <ImageUploader
                 value={fileList}
                 onChange={setFileList}
+                onPreview={(_, item) => {
+                  setImageViewer({ visible: true, image: item.url });
+                }}
                 upload={async (file) => ({ url: URL.createObjectURL(file) })}
                 maxCount={1}
                 deletable={true}
@@ -551,6 +564,12 @@ export function PetForm() {
           </div>
         </div>
       </div>
+      <ImageViewer
+        image={imageViewer.image || ''}
+        visible={imageViewer.visible}
+        onClose={() => setImageViewer(prev => ({ ...prev, visible: false }))}
+        afterClose={() => setImageViewer({ visible: false, image: null })}
+      />
     </div>
   );
 }

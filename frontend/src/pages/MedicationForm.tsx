@@ -151,8 +151,12 @@ export function MedicationForm() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({ icon: 'success', content: isEditing ? 'Курс обновлен' : 'Курс создан' });
-            navigate('/medications');
+            Toast.show({
+                icon: 'success',
+                content: isEditing ? 'Курс обновлен' : 'Курс создан',
+                duration: 1500,
+                afterClose: () => navigate('/medications')
+            });
         },
         onError: (err: any) => {
             Toast.show({ icon: 'fail', content: err?.response?.data?.error || 'Ошибка при сохранении' });

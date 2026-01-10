@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Modal, Tag } from 'antd-mobile';
+import { Button, Card, Dialog, Tag } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
@@ -35,13 +35,13 @@ export function AdminPanel() {
     },
   });
 
+  const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; username: string | null }>({
+    visible: false,
+    username: null
+  });
+
   const handleDelete = (username: string) => {
-    Modal.confirm({
-      content: `Вы уверены, что хотите удалить пользователя "${username}"?`,
-      onConfirm: () => {
-        deleteUserMutation.mutate(username);
-      },
-    });
+    setDeleteDialog({ visible: true, username });
   };
 
   const handleEdit = (user: User) => {
@@ -179,6 +179,32 @@ export function AdminPanel() {
           </div>
         )}
       </div>
+
+      <Dialog
+        visible={deleteDialog.visible}
+        title="Удаление пользователя"
+        content={deleteDialog.username ? `Вы уверены, что хотите удалить пользователя "${deleteDialog.username}"?` : ''}
+        onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
+        afterClose={() => setDeleteDialog({ visible: false, username: null })}
+        actions={[
+          {
+            key: 'delete',
+            text: 'Удалить',
+            danger: true,
+            onClick: () => {
+              if (deleteDialog.username) {
+                deleteUserMutation.mutate(deleteDialog.username);
+              }
+              setDeleteDialog(prev => ({ ...prev, visible: false }));
+            },
+          },
+          {
+            key: 'cancel',
+            text: 'Отмена',
+            onClick: () => setDeleteDialog(prev => ({ ...prev, visible: false })),
+          },
+        ]}
+      />
     </div>
   );
 }

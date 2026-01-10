@@ -304,8 +304,8 @@ export function MedicationsList() {
                         </div>
                     )
                 }
-                closeOnAction
                 onClose={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}
+                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: 1 })}
                 actions={[
                     {
                         key: 'cancel',
@@ -329,8 +329,8 @@ export function MedicationsList() {
                         <span>Удалить курс "{deleteDialog.medication.name}" и всю его историю?</span>
                     )
                 }
-                closeOnAction
                 onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
+                afterClose={() => setDeleteDialog({ visible: false, medication: null })}
                 actions={[
                     {
                         key: 'delete',
