@@ -5,6 +5,7 @@ import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
 import { useQueryClient } from '@tanstack/react-query';
+import { PetImage } from '../components/PetImage';
 
 export function Pets() {
   const navigate = useNavigate();
@@ -115,12 +116,7 @@ export function Pets() {
                     {pet.photo_url ? (
                       <div
                         style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          overflow: 'hidden',
                           cursor: 'pointer',
-                          border: '2px solid var(--adm-color-border)',
                           flexShrink: 0,
                         }}
                         onClick={(e) => {
@@ -130,13 +126,13 @@ export function Pets() {
                           }
                         }}
                       >
-                        <img
+                        <PetImage
                           src={pet.photo_url}
                           alt={pet.name}
+                          size={48}
                           style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
+                            borderRadius: '50%',
+                            border: '2px solid var(--adm-color-border)',
                           }}
                         />
                       </div>

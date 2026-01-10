@@ -1,7 +1,9 @@
 """Pets management routes (API)."""
 
 from datetime import datetime, timezone
+from io import BytesIO
 
+from PIL import Image
 from bson import ObjectId
 from bson.errors import InvalidId
 from flask import Blueprint, jsonify, make_response, request, url_for
@@ -528,7 +530,7 @@ def delete_pet(pet_id):
     tags=["pets"],
 )
 def get_pet_photo(pet_id):
-    """Get pet photo file."""
+    """Get pet photo file with optional resizing."""
     try:
         username = getattr(request, "current_user", None)
         if not username:
@@ -545,17 +547,45 @@ def get_pet_photo(pet_id):
         if not photo_file_id:
             return error_response("photo_not_found")
 
+        # Get optional width and height for resizing
+        width = request.args.get("w", type=int)
+        height = request.args.get("h", type=int)
+
         try:
             photo_file = app.fs.get(ObjectId(photo_file_id))
             photo_data = photo_file.read()
+            content_type = photo_file.content_type or "image/jpeg"
+
+            # If resizing requested
+            if (width or height) and content_type.startswith("image/"):
+                try:
+                    img = Image.open(BytesIO(photo_data))
+                    
+                    # Calculate aspect ratio if only one dimension is provided
+                    if width and not height:
+                        height = int(img.height * (width / img.width))
+                    elif height and not width:
+                        width = int(img.width * (height / img.height))
+                    
+                    if width and height:
+                        img.thumbnail((width, height), Image.Resampling.LANCZOS)
+                        
+                        output = BytesIO()
+                        # Use WebP if requested or keep original format (but WebP is better for optimization)
+                        format_to_save = "WEBP"
+                        img.save(output, format=format_to_save, quality=85, method=6)
+                        photo_data = output.getvalue()
+                        content_type = "image/webp"
+                except Exception as resize_err:
+                    logger.warning(f"Resizing failed: {resize_err}")
+                    # Fallback to original data if resizing fails
 
             response = make_response(photo_data)
-            content_type = photo_file.content_type or "image/jpeg"
             response.headers.set("Content-Type", content_type)
             response.headers.set("Content-Disposition", "inline")
-            response.headers.set("Cache-Control", "public, max-age=3600, must-revalidate")
-            response.headers.set("ETag", f'"{photo_file_id}"')
-            logger.info(f"Pet photo retrieved: pet_id={pet_id}, user={username}")
+            response.headers.set("Cache-Control", "public, max-age=31536000, immutable")
+            response.headers.set("ETag", f'"{photo_file_id}_{width}_{height}"')
+            logger.info(f"Pet photo retrieved: pet_id={pet_id}, user={username}, size={width}x{height}")
             return response
         except Exception as e:
             logger.error(f"Error retrieving pet photo: pet_id={pet_id}, user={username}, error={e}", exc_info=True)

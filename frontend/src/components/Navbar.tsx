@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePet } from '../hooks/usePet';
 import { CheckOutline, DownOutline } from 'antd-mobile-icons';
 import { hapticFeedback } from '../utils/haptic';
+import { PetImage } from './PetImage';
 
 export function Navbar() {
   const location = useLocation();
@@ -138,10 +139,11 @@ export function Navbar() {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {pet.photo_url ? (
-                        <img
+                        <PetImage
                           src={pet.photo_url}
                           alt={pet.name}
-                          style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                          size={40}
+                          style={{ borderRadius: '50%' }}
                         />
                       ) : (
                         <div style={{
