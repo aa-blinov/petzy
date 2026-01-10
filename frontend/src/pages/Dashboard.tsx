@@ -3,6 +3,7 @@ import { Card } from 'antd-mobile';
 import { tilesConfig } from '../utils/tilesConfig';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { usePet } from '../hooks/usePet';
+import { hapticFeedback } from '../utils/haptic';
 
 
 // Пастельные цвета для кнопок
@@ -38,6 +39,7 @@ export function Dashboard() {
     });
 
   const handleTileClick = (tile: typeof tilesConfig[0]) => {
+    hapticFeedback('light');
     if (tile.screen.includes('-form')) {
       const formType = tile.id;
       navigate(`/form/${formType}`);
@@ -73,6 +75,7 @@ export function Dashboard() {
             return (
               <Card
                 key={tile.id}
+                className="tap-feedback"
                 style={{
                   backgroundColor: backgroundColor,
                   cursor: 'pointer',

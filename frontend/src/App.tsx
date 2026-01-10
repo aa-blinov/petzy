@@ -7,6 +7,7 @@ import { BottomTabBar } from './components/BottomTabBar';
 import { ThemeProvider } from './components/ThemeProvider';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { HapticListener } from './components/HapticListener';
 
 // Lazy load pages for code splitting
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
@@ -192,6 +193,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={basename}>
         <ThemeProvider>
+          <HapticListener />
           <ErrorBoundary>
             <AppRoutes />
           </ErrorBoundary>
