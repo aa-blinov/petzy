@@ -234,6 +234,8 @@ export function Navbar() {
       <NavBar
         style={{
           '--height': '64px',
+          paddingLeft: 0,
+          paddingRight: 0,
           borderBottom: 'none',
         } as React.CSSProperties}
         back={isMainTab ? null : true}
