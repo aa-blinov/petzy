@@ -321,27 +321,50 @@ def log_intake(id):
 
         # Update inventory if enabled (before inserting intake to maintain consistency)
         if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
-            current_inventory = medication["inventory_current"]
-            if current_inventory < dose_taken:
-                return error_response("validation_error", "Недостаточно лекарства в остатке")
-            new_inventory = current_inventory - dose_taken
-            # Use atomic update with condition to prevent race conditions
-            result = app.db.medications.update_one(
-                {"_id": medication_id, "inventory_current": current_inventory},
-                {"$set": {"inventory_current": new_inventory}}
-            )
-            if result.matched_count == 0:
-                # Inventory was changed by another request, refetch and retry once
-                medication = app.db.medications.find_one({"_id": medication_id})
-                if medication and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
-                    current_inventory = medication["inventory_current"]
-                    if current_inventory < dose_taken:
-                        return error_response("validation_error", "Недостаточно лекарства в остатке")
-                    new_inventory = current_inventory - dose_taken
-                    app.db.medications.update_one(
-                        {"_id": medication_id},
-                        {"$set": {"inventory_current": new_inventory}}
-                    )
+            # Optimistic concurrency control with retry loop (similar to delete_intake)
+            max_retries = 3
+            inventory_updated = False
+            
+            for retry_attempt in range(max_retries):
+                # Fetch current state on each retry (skip on first attempt, use cached medication)
+                if retry_attempt > 0:
+                    medication = app.db.medications.find_one({"_id": medication_id})
+                    if not medication:
+                        return error_response("not_found")
+                    if not medication.get("inventory_enabled") or medication.get("inventory_current") is None:
+                        # Inventory was disabled during retry, skip inventory update
+                        inventory_updated = True
+                        break
+                
+                current_inventory = medication["inventory_current"]
+                if current_inventory < dose_taken:
+                    return error_response("validation_error", "Недостаточно лекарства в остатке")
+                
+                new_inventory = current_inventory - dose_taken
+                
+                # Use atomic update with condition to prevent race conditions
+                result = app.db.medications.update_one(
+                    {"_id": medication_id, "inventory_current": current_inventory},
+                    {"$set": {"inventory_current": new_inventory}}
+                )
+                
+                if result.matched_count > 0:
+                    inventory_updated = True
+                    break
+                # If matched_count == 0, inventory was changed by concurrent request, retry
+                app.logger.warning(
+                    f"Inventory update conflict for medication {id}, attempt {retry_attempt + 1}/{max_retries}"
+                )
+            
+            if not inventory_updated:
+                # All retries exhausted, return error to user instead of silently proceeding
+                app.logger.error(
+                    f"Failed to update inventory for medication {id} after {max_retries} retries"
+                )
+                return error_response(
+                    "conflict", 
+                    "Не удалось обновить остаток лекарства из-за конкуренции запросов. Попробуйте снова."
+                )
 
         intake_data = {
             "medication_id": id,
