@@ -4,21 +4,16 @@ import { Button, Dialog, Toast, ImageViewer, Card } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
-import { useTheme } from '../hooks/useTheme';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function Pets() {
   const navigate = useNavigate();
   const { pets, selectPet, getSelectedPet } = usePet();
-  const { theme } = useTheme();
 
-  // Determine if dark theme is active
-  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  
   // State for Delete Confirmation Dialog
-  const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({ 
-    visible: false, 
-    pet: null 
+  const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({
+    visible: false,
+    pet: null
   });
 
   // State for Image Viewer
@@ -49,18 +44,18 @@ export function Pets() {
 
     try {
       await petsService.deletePet(pet._id);
-      Toast.show({ 
-        icon: 'success', 
+      Toast.show({
+        icon: 'success',
         content: 'Питомец удален',
         duration: 1500,
       });
-      
+
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
-      
+
       if (getSelectedPet?._id === pet._id) {
         selectPet(null);
       }
-      
+
       // Small delay to let Toast render before unmounting
       setTimeout(() => {
         setDeleteDialog({ visible: false, pet: null });
@@ -78,18 +73,18 @@ export function Pets() {
 
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
       paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
       backgroundColor: 'var(--app-page-background)',
       color: 'var(--app-text-color)'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ 
-          marginBottom: '16px', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           paddingLeft: 'max(16px, env(safe-area-inset-left))',
           paddingRight: 'max(16px, env(safe-area-inset-right))'
@@ -106,7 +101,7 @@ export function Pets() {
             Нет питомцев. Добавьте первого!
           </div>
         ) : (
-          <div style={{ 
+          <div style={{
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
@@ -120,7 +115,7 @@ export function Pets() {
                 style={{
                   borderRadius: '12px',
                   border: 'none',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                  boxShadow: 'var(--app-shadow)',
                 }}
               >
                 <div style={{ padding: '16px' }}>
@@ -182,11 +177,11 @@ export function Pets() {
                             fill="outline"
                             onClick={() => handleEditPet(pet)}
                             style={{
-                              '--text-color': isDark ? '#FFFFFF' : '#000000',
-                              '--border-color': isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.15)',
+                              '--text-color': 'var(--app-text-primary)',
+                              '--border-color': 'var(--app-border-color)',
                             } as React.CSSProperties}
                           >
-                            <EditSOutline style={{ color: isDark ? '#FFFFFF' : '#000000', fontSize: '16px' }} />
+                            <EditSOutline style={{ color: 'var(--app-text-primary)', fontSize: '16px' }} />
                           </Button>
                           <Button
                             size="mini"

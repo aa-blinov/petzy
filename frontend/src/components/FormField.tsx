@@ -235,7 +235,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     style={{ '--text-align': 'right' }}
                   />
                   {value === defaultVal && (
-                    <div style={{ fontSize: '12px', color: '#666666', marginTop: '4px', fontStyle: 'italic', textAlign: 'right' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'right' }}>
                       Значение по умолчанию
                     </div>
                   )}

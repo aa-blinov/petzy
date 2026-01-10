@@ -187,7 +187,7 @@ export function MedicationsList() {
                             <Card key={med._id} style={{
                                 borderRadius: '12px',
                                 border: 'none',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                                boxShadow: 'var(--app-shadow)'
                             }}>
                                 <div style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -199,7 +199,7 @@ export function MedicationsList() {
                                             </div>
                                             <p style={{ margin: 0, fontSize: '14px', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
-                                                <span style={{ margin: '0 6px', color: '#ddd' }}>|</span>
+                                                <span style={{ margin: '0 6px', color: 'var(--app-divider-color)' }}>|</span>
                                                 По {med.default_dose || 1} {med.dose_unit || 'ед.'}
                                             </p>
                                         </div>
@@ -231,7 +231,7 @@ export function MedicationsList() {
                                         </div>
 
                                         {med.last_taken_at && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: 'var(--adm-color-primary)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: 'var(--app-primary-color)' }}>
                                                 <span>Последний прием: {formatRelativeTime(med.last_taken_at)}</span>
                                             </div>
                                         )}
@@ -248,7 +248,7 @@ export function MedicationsList() {
                                                     percent={med.inventory_total ? (med.inventory_current / med.inventory_total) * 100 : 0}
                                                     style={{
                                                         '--track-width': '6px',
-                                                        '--fill-color': med.inventory_current <= (med.inventory_warning_threshold || 0) ? 'var(--adm-color-danger)' : 'var(--adm-color-primary)'
+                                                        '--fill-color': med.inventory_current <= (med.inventory_warning_threshold || 0) ? 'var(--app-danger-color)' : 'var(--app-primary-color)'
                                                     }}
                                                 />
                                             </div>
@@ -303,7 +303,7 @@ export function MedicationsList() {
                                         '--text-align': 'center',
                                         width: '80px',
                                         fontSize: '18px',
-                                        border: '1px solid var(--adm-color-border)',
+                                        border: '1px solid var(--app-border-color)',
                                         borderRadius: '4px',
                                         padding: '4px'
                                     }}

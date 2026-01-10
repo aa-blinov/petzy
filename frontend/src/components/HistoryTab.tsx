@@ -48,7 +48,7 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
 
   if (error) {
     return (
-      <p style={{ color: '#FF453A', textAlign: 'center', padding: '32px 0' }}>
+      <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
         Ошибка загрузки данных
       </p>
     );

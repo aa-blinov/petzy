@@ -11,16 +11,16 @@ import { tilesConfig } from '../utils/tilesConfig';
 
 // Пастельные цвета для вкладок (соответствуют дневнику)
 const pastelColorMap: Record<string, string> = {
-  brown: '#E8D5C4',    // Пастельный коричневый
-  orange: '#FFE5B4',   // Пастельный оранжевый
-  red: '#FFD1CC',      // Пастельный красный
-  green: '#D4F4DD',    // Пастельный зеленый
-  purple: '#E8D5F2',   // Пастельный фиолетовый
-  teal: '#D4F4F1',     // Пастельный бирюзовый
-  cyan: '#D4F0FF',     // Пастельный голубой
-  yellow: '#FFF9D4',   // Пастельный желтый
-  blue: '#D4E8FF',     // Пастельный синий
-  pink: '#FFE5EB',     // Пастельный розовый
+  brown: 'var(--tile-brown)',
+  orange: 'var(--tile-orange)',
+  red: 'var(--tile-red)',
+  green: 'var(--tile-green)',
+  purple: 'var(--tile-purple)',
+  teal: 'var(--tile-teal)',
+  cyan: 'var(--tile-cyan)',
+  yellow: 'var(--tile-yellow)',
+  blue: 'var(--tile-blue)',
+  pink: 'var(--tile-pink)',
 };
 
 export function History() {
@@ -115,7 +115,7 @@ export function History() {
           onChange={handleTabChange}
           style={{
             marginBottom: '16px',
-            '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || '#D4E8FF',
+            '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || 'var(--tile-blue)',
             '--active-title-color': 'var(--app-text-color)',
             '--title-font-size': '16px',
             '--content-padding': '0',
@@ -141,7 +141,7 @@ export function History() {
             backgroundColor: 'var(--app-card-background)',
             padding: '4px',
             borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            boxShadow: 'var(--app-shadow-light)'
           }}>
             <Button
               size="mini"

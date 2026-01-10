@@ -59,7 +59,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
 
     if (error || !data) {
         return (
-            <p style={{ color: '#FF453A', textAlign: 'center', padding: '32px 0' }}>
+            <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
                 Ошибка загрузки данных для графика
             </p>
         );
@@ -81,15 +81,15 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
             backgroundColor: 'var(--app-card-background)',
             borderRadius: '12px',
             marginTop: '16px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+            boxShadow: 'var(--app-shadow-light)'
         }}>
             <ResponsiveContainer width="100%" height="100%">
                 {isLineChart ? (
                     <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--adm-color-primary)" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="var(--adm-color-primary)" stopOpacity={0} />
+                                <stop offset="5%" stopColor="var(--app-primary-color)" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="var(--app-primary-color)" stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--app-border-color)" />
@@ -114,13 +114,13 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 borderRadius: '8px',
                                 color: 'var(--app-text-color)'
                             }}
-                            itemStyle={{ color: 'var(--adm-color-primary)' }}
+                            itemStyle={{ color: 'var(--app-primary-color)' }}
                         />
                         <Area
                             type="monotone"
                             dataKey="value"
                             name={valueLabel}
-                            stroke="var(--adm-color-primary)"
+                            stroke="var(--app-primary-color)"
                             fillOpacity={1}
                             fill="url(#colorValue)"
                             strokeWidth={2}
@@ -150,12 +150,12 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 borderRadius: '8px',
                                 color: 'var(--app-text-color)'
                             }}
-                            cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                            cursor={{ fill: 'var(--app-white-05)' }}
                         />
                         <Bar
                             dataKey="value"
                             name={valueLabel}
-                            fill="var(--adm-color-primary)"
+                            fill="var(--app-primary-color)"
                             radius={[4, 4, 0, 0]}
                             barSize={20}
                         />

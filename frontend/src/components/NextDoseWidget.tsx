@@ -46,8 +46,8 @@ export function NextDoseWidget() {
             style={{
                 marginBottom: '16px',
                 borderRadius: '16px',
-                background: 'linear-gradient(135deg, var(--adm-color-primary) 0%, #4a90e2 100%)',
-                color: '#ffffff',
+                background: 'var(--app-blue-gradient)',
+                color: 'var(--color-white)',
                 border: 'none'
             }}
         >
@@ -62,7 +62,7 @@ export function NextDoseWidget() {
                             {nextDose.type} • {nextDose.time}
                         </div>
                     </div>
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '8px', borderRadius: '12px' }}>
+                    <div style={{ backgroundColor: 'var(--app-white-20)', padding: '8px', borderRadius: '12px' }}>
                         <ClockCircleOutline style={{ fontSize: '24px' }} />
                     </div>
                 </div>
@@ -70,7 +70,7 @@ export function NextDoseWidget() {
                 {nextDose.inventory_warning && (
                     <div style={{
                         marginTop: '12px',
-                        backgroundColor: 'rgba(255, 100, 100, 0.3)',
+                        backgroundColor: 'var(--app-black-20)',
                         padding: '8px',
                         borderRadius: '8px',
                         display: 'flex',
@@ -88,8 +88,8 @@ export function NextDoseWidget() {
                         block
                         shape="rounded"
                         style={{
-                            '--background-color': '#ffffff',
-                            '--text-color': 'var(--adm-color-primary)',
+                            '--background-color': 'var(--color-white)',
+                            '--text-color': 'var(--app-primary-color)',
                             fontWeight: 600
                         } as React.CSSProperties}
                         onClick={() => intakeMutation.mutate(nextDose)}

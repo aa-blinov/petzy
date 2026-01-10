@@ -465,7 +465,7 @@ export function PetForm() {
                 '--background-color': 'var(--app-card-background)',
                 borderRadius: '12px',
                 overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+                boxShadow: 'var(--app-shadow)',
               } as React.CSSProperties}>
                 <List.Item>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -600,7 +600,7 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
       <div ref={setNodeRef} style={style}>
         <List.Item
           prefix={
-            <div {...attributes} {...listeners} style={{ cursor: 'grab', color: '#999', fontSize: '20px', paddingRight: '8px', touchAction: 'none' }}>
+            <div {...attributes} {...listeners} style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', fontSize: '20px', paddingRight: '8px', touchAction: 'none' }}>
               ☰
             </div>
           }

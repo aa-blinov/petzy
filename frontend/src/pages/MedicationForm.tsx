@@ -321,7 +321,7 @@ export function MedicationForm() {
                                             style={{ '--text-align': 'right', width: '80px' }}
                                         />
 
-                                        <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--adm-color-border)', margin: '0 4px' }} />
+                                        <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: '0 4px' }} />
 
                                         <div style={{ width: '80px' }}>
                                             <Controller
@@ -335,7 +335,7 @@ export function MedicationForm() {
                                                             placeholder="ед."
                                                             style={{
                                                                 '--text-align': 'center',
-                                                                color: 'var(--adm-color-primary)',
+                                                                color: 'var(--app-primary-color)',
                                                                 cursor: 'pointer'
                                                             }}
                                                         />
@@ -402,7 +402,7 @@ export function MedicationForm() {
                                                         width: '100%',
                                                         padding: '10px 12px',
                                                         borderRadius: '8px',
-                                                        backgroundColor: 'var(--adm-color-fill-content)',
+                                                        backgroundColor: 'var(--app-page-background)',
                                                         pointerEvents: 'none',
                                                         fontSize: '16px',
                                                         fontWeight: 500,
@@ -575,7 +575,7 @@ export function MedicationForm() {
                 bodyStyle={{ height: '60vh', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                    <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--app-border-color)' }}>
                         <span style={{ fontSize: '18px', fontWeight: 600 }}>Популярные препараты</span>
                         <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
                     </div>
@@ -588,7 +588,7 @@ export function MedicationForm() {
                                     arrow
                                 >
                                     <div style={{ fontWeight: 500 }}>{med.name}</div>
-                                    <div style={{ fontSize: '12px', color: '#888' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--app-text-tertiary)' }}>
                                         {med.type}, {med.strength} ({med.default_dose} {med.dose_unit})
                                     </div>
                                 </List.Item>
