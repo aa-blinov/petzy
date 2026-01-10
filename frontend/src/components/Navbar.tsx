@@ -4,6 +4,7 @@ import { NavBar, Button, Popup } from 'antd-mobile';
 import { useAuth } from '../hooks/useAuth';
 import { usePet } from '../hooks/usePet';
 import { CheckOutline, DownOutline } from 'antd-mobile-icons';
+import { hapticFeedback } from '../utils/haptic';
 
 export function Navbar() {
   const location = useLocation();
@@ -13,10 +14,12 @@ export function Navbar() {
   const [pickerVisible, setPickerVisible] = useState(false);
 
   const handleLogout = async () => {
+    hapticFeedback('medium');
     await logout();
   };
 
   const handlePetSelect = (pet: any) => {
+    hapticFeedback('light');
     selectPet(pet);
     setPickerVisible(false);
   };
@@ -69,7 +72,11 @@ export function Navbar() {
       {pets.length > 0 && (
         <>
           <div
-            onClick={() => setPickerVisible(true)}
+            className="tap-feedback"
+            onClick={() => {
+              hapticFeedback('light');
+              setPickerVisible(true);
+            }}
             style={{
               height: '36px',
               padding: '0 12px',
@@ -115,6 +122,7 @@ export function Navbar() {
                 {pets.map(pet => (
                   <div
                     key={pet._id}
+                    className="tap-feedback active-dim"
                     onClick={() => handlePetSelect(pet)}
                     style={{
                       display: 'flex',
@@ -164,6 +172,7 @@ export function Navbar() {
                   fill="none"
                   color="primary"
                   onClick={() => {
+                    hapticFeedback('light');
                     setPickerVisible(false);
                     navigate('/pets');
                   }}
@@ -177,6 +186,7 @@ export function Navbar() {
         </>
       )}
       <div
+        className="tap-feedback"
         onClick={handleLogout}
         style={{
           display: 'flex',

@@ -130,6 +130,34 @@
     margin: 0 auto;
 }
 
+.tap-feedback,
+.adm-button,
+.adm-list-item-clickable,
+.adm-list-item-active-allow,
+.adm-tab-bar-item,
+.adm-picker-header-button,
+[role="button"] {
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out !important;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.tap-feedback:active,
+.adm-button:active,
+.adm-list-item-clickable:active,
+.adm-list-item-active-allow:active,
+.adm-tab-bar-item:active,
+.adm-picker-header-button:active,
+[role="button"]:active {
+    transform: scale(0.98) !important;
+    opacity: 0.85 !important;
+}
+
+.active-dim:active {
+    opacity: 0.7 !important;
+    background-color: var(--app-black-05) !important;
+}
+
 html[data-prefers-color-scheme='dark'] {
     --app-page-background: #000000;
     --app-card-background: #1C1C1E;
