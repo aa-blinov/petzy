@@ -307,6 +307,7 @@ a,
 .adm-input {
     font-size: var(--text-sm) !important;
     text-align: left !important;
+    --text-align: left;
 }
 
 .adm-text-area {

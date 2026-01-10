@@ -226,7 +226,6 @@ export function MedicationForm() {
                                         onChange={field.onChange}
                                         placeholder="Напр. Синулокс"
                                         clearable
-                                        style={{ '--text-align': 'right' }}
                                     />
                                 </Form.Item>
                             )}
@@ -249,7 +248,7 @@ export function MedicationForm() {
                                             readOnly
                                             value={field.value}
                                             placeholder="Выберите тип"
-                                            style={{ pointerEvents: 'none', '--text-align': 'right' }}
+                                            style={{ pointerEvents: 'none' }}
                                         />
                                     </Form.Item>
                                     <Picker
@@ -288,7 +287,6 @@ export function MedicationForm() {
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. 50 мг или 0.5 мг/мл"
-                                        style={{ '--text-align': 'right' }}
                                     />
                                 </Form.Item>
                             )}
@@ -310,7 +308,7 @@ export function MedicationForm() {
                                             }}
                                             type="text"
                                             inputMode="decimal"
-                                            style={{ '--text-align': 'right', width: '80px' }}
+                                            style={{ width: '80px' }}
                                         />
 
                                         <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: `0 var(--spacing-xs)` }} />
@@ -478,7 +476,6 @@ export function MedicationForm() {
                                                 type="text"
                                                 inputMode="decimal"
                                                 placeholder="0"
-                                                style={{ '--text-align': 'right' }}
                                             />
                                         </Form.Item>
                                     )}
@@ -498,7 +495,6 @@ export function MedicationForm() {
                                                 type="text"
                                                 inputMode="decimal"
                                                 placeholder="0"
-                                                style={{ '--text-align': 'right' }}
                                             />
                                         </Form.Item>
                                     )}
@@ -526,7 +522,6 @@ export function MedicationForm() {
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Заметки..."
-                                        style={{ '--text-align': 'right' }}
                                     />
                                 </Form.Item>
                             )}

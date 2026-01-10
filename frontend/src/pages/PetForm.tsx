@@ -261,7 +261,6 @@ export function PetForm() {
                     ref={nameInputRef}
                     id="name"
                     placeholder="Имя питомца"
-                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -281,7 +280,6 @@ export function PetForm() {
                     ref={speciesInputRef}
                     id="species"
                     placeholder="Кот, Собака..."
-                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -301,7 +299,6 @@ export function PetForm() {
                     ref={breedInputRef}
                     id="breed"
                     placeholder="Необязательно"
-                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -338,7 +335,6 @@ export function PetForm() {
                       readOnly
                       value={displayDate}
                       placeholder="Выберите дату"
-                      style={{ '--text-align': 'right' }}
                     />
                     <Picker
                       columns={dateColumns}
@@ -378,7 +374,6 @@ export function PetForm() {
                     ref={genderInputRef}
                     id="gender"
                     placeholder="Необязательно"
-                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -397,7 +392,6 @@ export function PetForm() {
                   <Input
                     readOnly
                     value={value ? 'Да' : 'Нет'}
-                    style={{ '--text-align': 'right' }}
                   />
                   <Picker
                     columns={[neuteredOptions]}

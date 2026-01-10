@@ -134,7 +134,6 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     readOnly
                     value={displayDate}
                     placeholder="Выберите дату"
-                    style={{ '--text-align': 'right' }}
                   />
                   <Picker
                     columns={dateColumns(value)}
@@ -181,7 +180,6 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     readOnly
                     value={displayTime}
                     placeholder="Выберите время"
-                    style={{ '--text-align': 'right' }}
                   />
                   <Picker
                     columns={getTimeColumns(currentDateForTime, currentTimeSelection)}
@@ -232,10 +230,9 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                     readOnly
                     value={selectedOption?.label || ''}
                     placeholder="Выберите..."
-                    style={{ '--text-align': 'right' }}
                   />
                   {value === defaultVal && (
-                    <div style={{ fontSize: '12px', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'right' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'left' }}>
                       Значение по умолчанию
                     </div>
                   )}
@@ -281,7 +278,6 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   step={field.step}
                   min={field.min}
                   max={field.max}
-                  style={{ '--text-align': 'right' }}
                 />
               );
           }
