@@ -129,35 +129,27 @@ export function MedicationsList() {
     if (isLoading) return <LoadingSpinner />;
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-            paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-            backgroundColor: 'var(--app-page-background)',
-            color: 'var(--app-text-color)'
-        }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{
+        <div className="page-container">
+            <div className="max-width-container">
+                <div className="safe-area-padding" style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: '16px',
+                    marginBottom: 'var(--spacing-lg)',
                     minHeight: '40px',
-                    paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                    paddingRight: 'max(16px, env(safe-area-inset-right))'
                 }}>
-                    <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Прием препаратов</h2>
+                    <h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>Прием препаратов</h2>
                     <Button
                         color="primary"
                         fill="solid"
                         size="small"
                         onClick={() => navigate('/medications/new')}
                         style={{
-                            borderRadius: '12px',
+                            borderRadius: 'var(--radius-md)',
                             fontWeight: 500,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: 'var(--spacing-xs)'
                         }}
                     >
                         <AddOutline style={{ fontSize: '18px' }} /> Добавить
@@ -165,45 +157,42 @@ export function MedicationsList() {
                 </div>
 
                 {medications.length === 0 ? (
-                    <div style={{
+                    <div className="safe-area-padding" style={{
                         textAlign: 'center',
                         color: 'var(--adm-color-weak)',
-                        padding: '20px',
-                        paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                        paddingRight: 'max(16px, env(safe-area-inset-right))'
+                        paddingTop: 'var(--spacing-xl)',
+                        paddingBottom: 'var(--spacing-xl)',
                     }}>
                         Нет назначенных лекарств
                     </div>
                 ) : (
-                    <div style={{
+                    <div className="safe-area-padding" style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px',
-                        marginTop: '8px',
-                        paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                        paddingRight: 'max(16px, env(safe-area-inset-right))'
+                        gap: 'var(--spacing-md)',
+                        marginTop: 'var(--spacing-sm)',
                     }}>
                         {medications.map(med => (
                             <Card key={med._id} style={{
-                                borderRadius: '12px',
+                                borderRadius: 'var(--radius-md)',
                                 border: 'none',
                                 boxShadow: 'var(--app-shadow)'
                             }}>
-                                <div style={{ padding: '16px' }}>
+                                <div style={{ padding: 'var(--spacing-lg)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                                                <span style={{ fontSize: '20px' }}>{getFormFactorIcon(med.form_factor)}</span>
-                                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{med.name}</h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: 'var(--text-xl)' }}>{getFormFactorIcon(med.form_factor)}</span>
+                                                <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h3>
                                                 {!med.is_active && <Tag color="default">Архив</Tag>}
                                             </div>
-                                            <p style={{ margin: 0, fontSize: '14px', color: 'var(--app-text-secondary)' }}>
+                                            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
-                                                <span style={{ margin: '0 6px', color: 'var(--app-divider-color)' }}>|</span>
+                                                <span style={{ margin: `0 var(--spacing-xs)`, color: 'var(--app-divider-color)' }}>|</span>
                                                 По {med.default_dose || 1} {med.dose_unit || 'ед.'}
                                             </p>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                                             <Button
                                                 size="mini"
                                                 fill="outline"
@@ -222,8 +211,8 @@ export function MedicationsList() {
                                         </div>
                                     </div>
 
-                                    <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--app-text-secondary)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                    <div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', lineHeight: 'var(--line-height-normal)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
                                             <ClockCircleOutline />
                                             <span>
                                                 {med.schedule.days.length === 7 ? 'Ежедневно' : 'В выбранные дни'} в {med.schedule.times.join(', ')}
@@ -231,14 +220,14 @@ export function MedicationsList() {
                                         </div>
 
                                         {med.last_taken_at && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: 'var(--app-primary-color)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-color)' }}>
                                                 <span>Последний прием: {formatRelativeTime(med.last_taken_at)}</span>
                                             </div>
                                         )}
 
                                         {med.inventory_enabled && med.inventory_current !== undefined && (
-                                            <div style={{ marginTop: '12px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                            <div style={{ marginTop: 'var(--spacing-md)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
                                                     <span>Остаток: {med.inventory_current} {med.dose_unit || 'доз'}</span>
                                                     {med.inventory_total && (
                                                         <span>{Math.round((med.inventory_current / med.inventory_total) * 100)}%</span>
@@ -256,7 +245,7 @@ export function MedicationsList() {
                                     </div>
 
                                     {med.is_active && (
-                                        <div style={{ marginTop: '20px' }}>
+                                        <div style={{ marginTop: 'var(--spacing-xl)' }}>
                                             <Button
                                                 block
                                                 color="primary"
@@ -264,7 +253,7 @@ export function MedicationsList() {
                                                 onClick={() => handleLogIntake(med)}
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
                                                 disabled={(med.intakes_today || 0) >= med.schedule.times.length}
-                                                style={{ borderRadius: '8px' }}
+                                                style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
                                                 {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить прием (${med.default_dose || 1} ${med.dose_unit || ''})`}
                                             </Button>
@@ -283,10 +272,10 @@ export function MedicationsList() {
                 content={
                     logIntakeDialog.medication && (
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ marginBottom: '16px', fontSize: '15px' }}>
+                            <div style={{ marginBottom: 'var(--spacing-lg)', fontSize: 'var(--text-sm)' }}>
                                 {logIntakeDialog.medication.name} {logIntakeDialog.medication.strength}
                             </div>
-                            <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>
                                 Сколько дали?
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
@@ -302,13 +291,13 @@ export function MedicationsList() {
                                     style={{
                                         '--text-align': 'center',
                                         width: '80px',
-                                        fontSize: '18px',
+                                        fontSize: 'var(--text-lg)',
                                         border: '1px solid var(--app-border-color)',
-                                        borderRadius: '4px',
-                                        padding: '4px'
+                                        borderRadius: 'var(--radius-sm)',
+                                        padding: 'var(--spacing-xs)'
                                     }}
                                 />
-                                <span style={{ fontSize: '16px', fontWeight: 500 }}>
+                                <span style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}>
                                     {logIntakeDialog.medication.dose_unit || 'ед.'}
                                 </span>
                             </div>
