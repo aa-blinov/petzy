@@ -361,3 +361,47 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 .adm-dialog-title {
     font-size: var(--text-lg) !important;
 }
+
+/* Error Boundary Styles */
+.error-boundary-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 30vh;
+}
+
+.error-boundary-content {
+    margin-top: var(--spacing-xl);
+    width: 100%;
+    max-width: 300px;
+}
+
+.error-boundary-icon {
+    color: var(--app-danger-color);
+    font-size: 64px;
+}
+
+.error-boundary-details {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-md);
+    background: rgba(255, 69, 58, 0.1);
+    border: 1px solid rgba(255, 69, 58, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    color: var(--app-danger-color);
+    text-align: left;
+    width: 100%;
+    max-height: 200px;
+    overflow: auto;
+}
+
+.error-boundary-details pre {
+    margin: var(--spacing-xs) 0 0 0;
+    white-space: pre-wrap;
+}
+
+.error-boundary-content button {
+    border-radius: var(--radius-md) !important;
+}
