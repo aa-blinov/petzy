@@ -73,41 +73,32 @@ export function Pets() {
 
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      backgroundColor: 'var(--app-page-background)',
-      color: 'var(--app-text-color)'
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{
-          marginBottom: '16px',
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{
+          marginBottom: 'var(--spacing-lg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
+          minHeight: '40px'
         }}>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: 'var(--app-text-color)' }}>Мои питомцы</h2>
+          <h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600, color: 'var(--app-text-color)' }}>Мои питомцы</h2>
           <Button color="primary" fill="none" onClick={handleAddPet}>
-            <AddOutline style={{ marginRight: '4px' }} />
+            <AddOutline style={{ marginRight: 'var(--spacing-xs)' }} />
             Добавить
           </Button>
         </div>
 
         {pets.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--adm-color-weak)', padding: '20px' }}>
+          <div className="safe-area-padding" style={{ textAlign: 'center', color: 'var(--adm-color-weak)', padding: 'var(--spacing-xl)' }}>
             Нет питомцев. Добавьте первого!
           </div>
         ) : (
-          <div style={{
+          <div className="safe-area-padding" style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            marginTop: '8px',
-            paddingLeft: 'max(16px, env(safe-area-inset-left))',
-            paddingRight: 'max(16px, env(safe-area-inset-right))'
+            gap: 'var(--spacing-md)',
+            marginTop: 'var(--spacing-sm)',
           }}>
             {pets.map(pet => (
               <Card

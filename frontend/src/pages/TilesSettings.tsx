@@ -130,17 +130,11 @@ export function TilesSettings() {
   }, [resetSettings]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--app-page-background)',
-      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      color: 'var(--app-text-color)'
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '16px', paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройка тайлов дневника</h2>
-          <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: 'var(--adm-color-weak)' }}>
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Настройка тайлов дневника</h2>
+          <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--adm-color-weak)' }}>
             Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
           </p>
         </div>
@@ -176,12 +170,17 @@ export function TilesSettings() {
             </DndContext>
           </List>
 
-          {/* Action Buttons */}
-          <div style={{ paddingTop: '16px', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 12px' }}>
-            <Button block color="primary" size="large" onClick={handleSave}>
+          <div className="safe-area-padding" style={{
+            paddingTop: 'var(--spacing-lg)',
+            paddingBottom: 'var(--spacing-lg)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-md)'
+          }}>
+            <Button block color="primary" size="large" onClick={handleSave} style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}>
               Сохранить
             </Button>
-            <Button block color="default" size="large" onClick={handleReset}>
+            <Button block color="default" size="large" onClick={handleReset} style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}>
               Сбросить к значениям по умолчанию
             </Button>
           </div>

@@ -75,31 +75,23 @@ export function History() {
 
   if (!selectedPetId) {
     return (
-      <div style={{ minHeight: '100vh', padding: '16px' }}>
+      <div style={{ minHeight: '100vh', padding: 'var(--spacing-lg)' }}>
         <p>Выберите животное в меню навигации для просмотра истории</p>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      backgroundColor: 'var(--app-page-background)',
-      color: 'var(--app-text-color)'
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{
-          marginBottom: '16px',
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{
+          marginBottom: 'var(--spacing-lg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           minHeight: '40px',
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
         }}>
-          <h2 style={{ fontSize: '24px', margin: 0, fontWeight: 600, color: 'var(--app-text-color)' }}>История записей</h2>
+          <h2 style={{ fontSize: 'var(--text-xxl)', margin: 0, fontWeight: 600, color: 'var(--app-text-color)' }}>История записей</h2>
           <Button
             size="small"
             fill="outline"
@@ -114,10 +106,10 @@ export function History() {
           activeKey={activeTab}
           onChange={handleTabChange}
           style={{
-            marginBottom: '16px',
+            marginBottom: 'var(--spacing-lg)',
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || 'var(--tile-blue)',
             '--active-title-color': 'var(--app-text-color)',
-            '--title-font-size': '16px',
+            '--title-font-size': 'var(--text-md)',
             '--content-padding': '0',
           } as React.CSSProperties}
         >
@@ -133,14 +125,14 @@ export function History() {
         <div style={{
           display: 'flex',
           justifyContent: 'center',
-          marginBottom: '16px',
-          padding: '0 16px'
+          marginBottom: 'var(--spacing-lg)',
+          padding: `0 var(--spacing-lg)`
         }}>
           <div style={{
             display: 'flex',
             backgroundColor: 'var(--app-card-background)',
-            padding: '4px',
-            borderRadius: '8px',
+            padding: 'var(--spacing-xs)',
+            borderRadius: 'var(--radius-sm)',
             boxShadow: 'var(--app-shadow-light)'
           }}>
             <Button
@@ -148,7 +140,7 @@ export function History() {
               fill={viewMode === 'list' ? 'solid' : 'none'}
               color={viewMode === 'list' ? 'primary' : 'default'}
               onClick={() => setViewMode('list')}
-              style={{ borderRadius: '6px', padding: '4px 12px' }}
+              style={{ borderRadius: '6px', padding: `var(--spacing-xs) var(--spacing-md)` }}
             >
               Список
             </Button>
@@ -157,7 +149,7 @@ export function History() {
               fill={viewMode === 'chart' ? 'solid' : 'none'}
               color={viewMode === 'chart' ? 'primary' : 'default'}
               onClick={() => setViewMode('chart')}
-              style={{ borderRadius: '6px', padding: '4px 12px' }}
+              style={{ borderRadius: '6px', padding: `var(--spacing-xs) var(--spacing-md)` }}
             >
               График
             </Button>
@@ -168,7 +160,7 @@ export function History() {
           {viewMode === 'list' ? (
             <HistoryTab type={activeTab} petId={selectedPetId} activeTab={activeTab} />
           ) : (
-            <div style={{ paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
+            <div className="safe-area-padding">
               <HistoryChart type={activeTab} petId={selectedPetId} />
             </div>
           )}

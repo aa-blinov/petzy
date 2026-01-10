@@ -32,16 +32,16 @@ export function ItemCard({
     <Card
       style={{
         backgroundColor,
-        borderRadius: '12px',
+        borderRadius: 'var(--radius-md)',
         border: 'none',
         boxShadow: 'var(--app-shadow)',
         ...style,
       }}
     >
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: 'var(--spacing-lg)' }}>
         {children}
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-lg)' }}>
           <Button
             size="small"
             fill="outline"

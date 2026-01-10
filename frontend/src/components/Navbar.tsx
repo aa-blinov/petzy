@@ -209,7 +209,7 @@ export function Navbar() {
       right: 0,
       zIndex: 1000,
       backgroundColor: 'var(--app-card-background)',
-      paddingTop: 'env(safe-area-inset-top)',
+      paddingTop: 'var(--safe-area-top)',
       boxShadow: 'var(--app-shadow)',
     }}>
       <NavBar

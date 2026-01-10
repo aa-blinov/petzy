@@ -285,26 +285,16 @@ export function HealthRecordForm() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-        backgroundColor: 'var(--app-page-background)',
-        color: 'var(--app-text-color)'
-      }}
-    >
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{
-          marginBottom: '16px',
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{
+          marginBottom: 'var(--spacing-lg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          minHeight: '40px',
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
+          minHeight: '40px'
         }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {id ? 'Редактировать запись' : config.title}
           </h2>
         </div>
@@ -328,14 +318,12 @@ export function HealthRecordForm() {
             </Form>
           </FormProvider>
 
-          <div style={{
+          <div className="safe-area-padding" style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            marginTop: '24px',
-            paddingBottom: '24px',
-            marginLeft: '12px',
-            marginRight: '12px'
+            gap: 'var(--spacing-md)',
+            marginTop: 'var(--spacing-xl)',
+            paddingBottom: 'var(--spacing-xl)',
           }}>
             <button
               style={{ display: 'none' }}
@@ -348,7 +336,7 @@ export function HealthRecordForm() {
               size="large"
               onClick={() => handleSubmit(onSubmit)()}
               loading={isSubmitting}
-              style={{ borderRadius: '12px', fontWeight: 600 }}
+              style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
             >
               {id ? 'Сохранить' : 'Создать'}
             </Button>
@@ -363,7 +351,7 @@ export function HealthRecordForm() {
                   navigate('/');
                 }
               }}
-              style={{ borderRadius: '12px', fontWeight: 500 }}
+              style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
             >
               Отмена
             </Button>

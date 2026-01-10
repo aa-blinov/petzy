@@ -183,24 +183,16 @@ export function MedicationForm() {
     if (isEditing && isLoadingMed) return <LoadingSpinner />;
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-            paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-            backgroundColor: 'var(--app-page-background)',
-            color: 'var(--app-text-color)'
-        }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{
-                    marginBottom: '16px',
+        <div className="page-container">
+            <div className="max-width-container">
+                <div className="safe-area-padding" style={{
+                    marginBottom: 'var(--spacing-lg)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     minHeight: '40px',
-                    paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                    paddingRight: 'max(16px, env(safe-area-inset-right))'
                 }}>
-                    <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
+                    <h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
                         {isEditing ? 'Редактировать курс' : 'Новый курс'}
                     </h2>
                     {!isEditing && (
@@ -209,7 +201,7 @@ export function MedicationForm() {
                             color="primary"
                             fill="outline"
                             onClick={() => setShowCommonMeds(true)}
-                            style={{ borderRadius: '16px', fontSize: '13px' }}
+                            style={{ borderRadius: 'var(--radius-xl)', fontSize: 'var(--text-xs)' }}
                         >
                             <SearchOutline /> Шаблоны
                         </Button>
@@ -308,7 +300,7 @@ export function MedicationForm() {
                             control={control}
                             render={({ field }) => (
                                 <Form.Item label="Разовая" required help={errors.default_dose?.message}>
-                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
                                         <Input
                                             value={field.value?.toString()}
                                             onChange={val => {
@@ -321,7 +313,7 @@ export function MedicationForm() {
                                             style={{ '--text-align': 'right', width: '80px' }}
                                         />
 
-                                        <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: '0 4px' }} />
+                                        <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: `0 var(--spacing-xs)` }} />
 
                                         <div style={{ width: '80px' }}>
                                             <Controller
@@ -360,7 +352,7 @@ export function MedicationForm() {
                         />
 
                         <Form.Item label="Частота" required layout="vertical">
-                            <div style={{ marginBottom: '18px' }}>
+                            <div style={{ marginBottom: 'var(--spacing-lg)' }}>
                                 <Controller
                                     name="schedule.days"
                                     control={control}
@@ -372,9 +364,9 @@ export function MedicationForm() {
                                             value={field.value}
                                             onChange={(val) => field.onChange(val)}
                                             style={{
-                                                '--border-radius': '8px',
-                                                '--padding': '4px 0',
-                                                '--gap': '4px'
+                                                '--border-radius': 'var(--radius-sm)',
+                                                '--padding': 'var(--spacing-xs) 0',
+                                                '--gap': 'var(--spacing-xs)'
                                             }}
                                         />
                                     )}
@@ -400,11 +392,11 @@ export function MedicationForm() {
                                                     placeholder="Выберите время"
                                                     style={{
                                                         width: '100%',
-                                                        padding: '10px 12px',
-                                                        borderRadius: '8px',
+                                                        padding: '10px 12px', /* Roughly var(--spacing-md) */
+                                                        borderRadius: 'var(--radius-sm)',
                                                         backgroundColor: 'var(--app-page-background)',
                                                         pointerEvents: 'none',
-                                                        fontSize: '16px',
+                                                        fontSize: 'var(--text-md)',
                                                         fontWeight: 500,
                                                         '--text-align': 'center'
                                                     }}
@@ -429,7 +421,7 @@ export function MedicationForm() {
                                 fill="outline"
                                 color="primary"
                                 onClick={() => appendTime('08:00')}
-                                style={{ borderRadius: '12px', marginTop: '4px' }}
+                                style={{ borderRadius: 'var(--radius-md)', marginTop: 'var(--spacing-xs)' }}
                             >
                                 + Время
                             </Button>
@@ -542,10 +534,10 @@ export function MedicationForm() {
                     </Form>
 
                     <div style={{
-                        marginTop: '24px',
-                        paddingBottom: '24px',
-                        marginLeft: '12px',
-                        marginRight: '12px'
+                        marginTop: 'var(--spacing-xl)',
+                        paddingBottom: 'var(--spacing-xl)',
+                        marginLeft: 'var(--spacing-md)',
+                        marginRight: 'var(--spacing-md)'
                     }}>
                         <Button
                             block
@@ -553,7 +545,7 @@ export function MedicationForm() {
                             size="large"
                             onClick={() => handleSubmit(onSubmit)()}
                             loading={mutation.isPending || isSubmitting}
-                            style={{ borderRadius: '12px', fontWeight: 600, marginBottom: '12px' }}
+                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}
                         >
                             {isEditing ? 'Сохранить' : 'Создать'}
                         </Button>
@@ -561,7 +553,7 @@ export function MedicationForm() {
                             block
                             size="large"
                             onClick={() => navigate('/medications')}
-                            style={{ borderRadius: '12px', fontWeight: 500 }}
+                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
                         >
                             Отмена
                         </Button>
@@ -572,11 +564,11 @@ export function MedicationForm() {
             <Popup
                 visible={showCommonMeds}
                 onMaskClick={() => setShowCommonMeds(false)}
-                bodyStyle={{ height: '60vh', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
+                bodyStyle={{ height: '60vh', borderTopLeftRadius: 'var(--radius-md)', borderTopRightRadius: 'var(--radius-md)' }}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--app-border-color)' }}>
-                        <span style={{ fontSize: '18px', fontWeight: 600 }}>Популярные препараты</span>
+                    <div style={{ padding: 'var(--spacing-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--app-border-color)' }}>
+                        <span style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Популярные препараты</span>
                         <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
                     </div>
                     <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -588,7 +580,7 @@ export function MedicationForm() {
                                     arrow
                                 >
                                     <div style={{ fontWeight: 500 }}>{med.name}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--app-text-tertiary)' }}>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
                                         {med.type}, {med.strength} ({med.default_dose} {med.dose_unit})
                                     </div>
                                 </List.Item>
