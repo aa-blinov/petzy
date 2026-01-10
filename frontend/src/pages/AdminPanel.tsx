@@ -78,49 +78,37 @@ export function AdminPanel() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--app-page-background)',
-      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      color: 'var(--app-text-color)'
-    }}>
-      <div style={{
-        maxWidth: '800px',
-        margin: '0 auto'
-      }}>
-        <div style={{
-          marginBottom: '16px',
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{
+          marginBottom: 'var(--spacing-lg)',
         }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Админ-панель</h2>
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Админ-панель</h2>
         </div>
 
         {error && (
-          <div style={{ paddingBottom: '16px', paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
+          <div className="safe-area-padding" style={{ paddingBottom: 'var(--spacing-lg)' }}>
             <Alert type="error" message={error} onClose={() => setError(null)} />
           </div>
         )}
         {success && (
-          <div style={{ paddingBottom: '16px', paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
+          <div className="safe-area-padding" style={{ paddingBottom: 'var(--spacing-lg)' }}>
             <Alert type="success" message={success} onClose={() => setSuccess(null)} />
           </div>
         )}
 
-        <div style={{
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))',
-          marginBottom: '16px',
+        <div className="safe-area-padding" style={{
+          marginBottom: 'var(--spacing-lg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--app-text-color)' }}>Пользователи</h3>
+          <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--app-text-color)' }}>Пользователи</h3>
           <Button
             color="primary"
             size="small"
             onClick={handleNewUser}
+            style={{ borderRadius: 'var(--radius-md)' }}
           >
             + Добавить
           </Button>
@@ -129,16 +117,14 @@ export function AdminPanel() {
         {usersLoading ? (
           <LoadingSpinner fullscreen={false} />
         ) : (
-          <div style={{
+          <div className="safe-area-padding" style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            marginTop: '8px',
-            paddingLeft: 'max(16px, env(safe-area-inset-left))',
-            paddingRight: 'max(16px, env(safe-area-inset-right))'
+            gap: 'var(--spacing-md)',
+            marginTop: 'var(--spacing-sm)',
           }}>
             {users.length === 0 ? (
-              <p style={{ color: 'var(--app-text-secondary)', padding: '12px 16px' }}>Пользователи не найдены</p>
+              <p style={{ color: 'var(--app-text-secondary)', padding: 'var(--spacing-md) var(--spacing-lg)' }}>Пользователи не найдены</p>
             ) : (
               users.map((user) => (
                 <Card

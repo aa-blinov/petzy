@@ -45,36 +45,29 @@ export function Dashboard() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      backgroundColor: 'var(--app-page-background)',
-      color: 'var(--app-text-color)'
-    }}>
-      <div style={{
-        maxWidth: '800px',
-        margin: '0 auto'
-      }}>
-        <div style={{
-          marginBottom: '16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          minHeight: '40px',
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))'
-        }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Дневник</h2>
+    <div className="page-container">
+      <div className="max-width-container">
+        <div
+          className="safe-area-padding"
+          style={{
+            marginBottom: 'var(--spacing-lg)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            minHeight: '40px',
+          }}
+        >
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Дневник</h2>
         </div>
 
-        <div style={{
-          paddingLeft: 'max(16px, env(safe-area-inset-left))',
-          paddingRight: 'max(16px, env(safe-area-inset-right))',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
+        <div
+          className="safe-area-padding"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-md)'
+          }}
+        >
           {visibleTiles.map(tile => {
             const backgroundColor = pastelColorMap[tile.color] || 'var(--tile-blue)';
             return (
@@ -84,17 +77,17 @@ export function Dashboard() {
                   backgroundColor: backgroundColor,
                   cursor: 'pointer',
                   WebkitTapHighlightColor: 'transparent',
-                  borderRadius: '12px',
+                  borderRadius: 'var(--radius-md)',
                   border: 'none',
                   boxShadow: 'var(--app-shadow)',
                 }}
                 onClick={() => handleTileClick(tile)}
               >
-                <div style={{ padding: '16px' }}>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: 'var(--app-text-on-tile)' }}>
+                <div style={{ padding: 'var(--spacing-lg)' }}>
+                  <h3 style={{ margin: `0 0 var(--spacing-sm) 0`, fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--app-text-on-tile)' }}>
                     {tile.title}
                   </h3>
-                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--app-text-secondary)' }}>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                     {tile.subtitle}
                   </p>
                 </div>

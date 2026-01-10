@@ -44,46 +44,46 @@ export function NextDoseWidget() {
     return (
         <Card
             style={{
-                marginBottom: '16px',
-                borderRadius: '16px',
+                marginBottom: 'var(--spacing-lg)',
+                borderRadius: 'var(--radius-lg)',
                 background: 'var(--app-blue-gradient)',
                 color: 'var(--color-white)',
                 border: 'none'
             }}
         >
-            <div style={{ padding: '16px' }}>
+            <div style={{ padding: 'var(--spacing-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                        <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', opacity: 0.9, marginBottom: 'var(--spacing-xs)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             Следующий прием
                         </div>
-                        <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>{nextDose.name}</h3>
-                        <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '2px' }}>
+                        <h3 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 700 }}>{nextDose.name}</h3>
+                        <div style={{ fontSize: 'var(--text-sm)', opacity: 0.9, marginTop: '2px' }}>
                             {nextDose.type} • {nextDose.time}
                         </div>
                     </div>
-                    <div style={{ backgroundColor: 'var(--app-white-20)', padding: '8px', borderRadius: '12px' }}>
-                        <ClockCircleOutline style={{ fontSize: '24px' }} />
+                    <div style={{ backgroundColor: 'var(--app-white-20)', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)' }}>
+                        <ClockCircleOutline style={{ fontSize: 'var(--spacing-xl)' }} />
                     </div>
                 </div>
 
                 {nextDose.inventory_warning && (
                     <div style={{
-                        marginTop: '12px',
+                        marginTop: 'var(--spacing-md)',
                         backgroundColor: 'var(--app-black-20)',
-                        padding: '8px',
-                        borderRadius: '8px',
+                        padding: 'var(--spacing-sm)',
+                        borderRadius: 'var(--radius-sm)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '12px'
+                        gap: 'var(--spacing-sm)',
+                        fontSize: 'var(--text-xs)'
                     }}>
                         <ExclamationCircleOutline />
                         <span>Мало лекарства в остатке!</span>
                     </div>
                 )}
 
-                <div style={{ marginTop: '16px' }}>
+                <div style={{ marginTop: 'var(--spacing-lg)' }}>
                     <Button
                         block
                         shape="rounded"

@@ -7,16 +7,10 @@ export function Settings() {
   const { theme, setTheme, isDark } = useTheme();
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--app-page-background)',
-      paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      color: 'var(--app-text-color)'
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '16px', paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '24px', fontWeight: 600, margin: 0 }}>Настройки</h2>
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Настройки</h2>
         </div>
 
         <div>
