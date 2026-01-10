@@ -225,8 +225,8 @@ body {
 
 /* NavBar styling */
 .adm-nav-bar {
-    padding-left: max(var(--spacing-md), env(safe-area-inset-left)) !important;
-    padding-right: max(var(--spacing-md), env(safe-area-inset-right)) !important;
+    padding-left: max(var(--spacing-lg), env(safe-area-inset-left)) !important;
+    padding-right: max(var(--spacing-lg), env(safe-area-inset-right)) !important;
     background-color: transparent !important;
 }
 
