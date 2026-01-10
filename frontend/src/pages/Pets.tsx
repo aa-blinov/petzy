@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Dialog, Toast, ImageViewer, Card } from 'antd-mobile';
+import { Button, Dialog, ImageViewer, Card } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
@@ -44,27 +44,33 @@ export function Pets() {
     if (!pet) return;
 
     try {
+      const wasSelected = getSelectedPet?._id === pet._id;
+      const currentPetIndex = pets.findIndex(p => p._id === pet._id);
+
+      // Delete the pet
       await petsService.deletePet(pet._id);
-      Toast.show({
-        icon: 'success',
-        content: 'Питомец удален',
-        duration: 1500,
-      });
 
-      await queryClient.invalidateQueries({ queryKey: ['pets'] });
+      // Close dialog first to avoid React 19 + antd-mobile issues
+      setDeleteDialog({ visible: false, pet: null });
 
-      if (getSelectedPet?._id === pet._id) {
+      // Fetch fresh data directly
+      const updatedPets = await petsService.getPets();
+
+      // Update the cache
+      queryClient.setQueryData(['pets'], updatedPets);
+
+      // If the deleted pet was selected, select another pet from the fresh list
+      if (wasSelected && updatedPets.length > 0) {
+        // Try to select the pet at the same index, or the previous one if we deleted the last pet
+        const nextPetIndex = currentPetIndex >= updatedPets.length ? updatedPets.length - 1 : currentPetIndex;
+        selectPet(updatedPets[nextPetIndex]);
+      } else if (updatedPets.length === 0) {
+        // No pets left, clear selection
         selectPet(null);
       }
-
-      setDeleteDialog(prev => ({ ...prev, visible: false }));
     } catch (error: any) {
       console.error('Delete pet error:', error);
-      Toast.show({
-        icon: 'fail',
-        content: error?.response?.data?.error || 'Ошибка при удалении',
-        duration: 2000,
-      });
+      // Close dialog on error
       setDeleteDialog({ visible: false, pet: null });
     }
   };

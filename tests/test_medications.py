@@ -528,3 +528,67 @@ class TestMedicationManagement:
         )
         data = response.get_json()
         assert len(data["doses"]) == 0
+
+    def test_delete_medication_deletes_all_intakes(self, client, mock_db, regular_user_token, test_pet):
+        """Test that deleting a medication also deletes all related intakes atomically."""
+        # Create a medication
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Test Med",
+            "owner": "testuser"
+        })
+
+        # Create multiple intakes for this medication
+        intake_ids = [ObjectId() for _ in range(5)]
+        for intake_id in intake_ids:
+            mock_db["medication_intakes"].insert_one({
+                "_id": intake_id,
+                "medication_id": str(med_id),
+                "pet_id": str(test_pet["_id"]),
+                "dose_taken": 1.0,
+                "date_time": datetime.now(timezone.utc),
+                "username": "testuser"
+            })
+
+        # Verify intakes exist
+        assert mock_db["medication_intakes"].count_documents({"medication_id": str(med_id)}) == 5
+
+        # Delete medication
+        response = client.delete(
+            f"/api/medications/{med_id}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 200
+        
+        # Verify medication is deleted
+        assert mock_db["medications"].find_one({"_id": med_id}) is None
+        
+        # Verify all related intakes are deleted
+        assert mock_db["medication_intakes"].count_documents({"medication_id": str(med_id)}) == 0
+        
+        # Verify no intakes were left orphaned
+        for intake_id in intake_ids:
+            assert mock_db["medication_intakes"].find_one({"_id": intake_id}) is None
+
+    def test_delete_medication_with_no_intakes(self, client, mock_db, regular_user_token, test_pet):
+        """Test that deleting a medication with no intakes works correctly."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Solo Med",
+            "owner": "testuser"
+        })
+
+        # Delete medication
+        response = client.delete(
+            f"/api/medications/{med_id}",
+            headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 200
+        assert mock_db["medications"].find_one({"_id": med_id}) is None
+

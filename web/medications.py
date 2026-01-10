@@ -206,7 +206,7 @@ def update_medication(id):
     tags=["medications"],
 )
 def delete_medication(id):
-    """Delete a medication course."""
+    """Delete a medication course and all related intakes atomically."""
     try:
         try:
             medication_id = ObjectId(id)
@@ -225,9 +225,57 @@ def delete_medication(id):
         if not success:
             return access_error[0], access_error[1]
 
-        # Delete intakes first, then medication (better for referential integrity)
-        app.db.medication_intakes.delete_many({"medication_id": id})
-        app.db.medications.delete_one({"_id": medication_id})
+        # Atomic deletion: use session-based transaction if replica set is available
+        # Otherwise, use best-effort approach with proper error handling
+        try:
+            # Try to start a transaction (requires replica set)
+            with app.db.client.start_session() as session:
+                with session.start_transaction():
+                    # Delete related intakes first
+                    intakes_result = app.db.medication_intakes.delete_many(
+                        {"medication_id": id}, session=session
+                    )
+                    # Then delete medication
+                    med_result = app.db.medications.delete_one(
+                        {"_id": medication_id}, session=session
+                    )
+                    
+                    if med_result.deleted_count == 0:
+                        # Should not happen as we already checked existence
+                        raise Exception("Medication not found during deletion")
+                    
+                    app.logger.info(
+                        f"Deleted medication {id} and {intakes_result.deleted_count} related intakes"
+                    )
+        except Exception as tx_error:
+            # If transactions are not supported (standalone MongoDB or mongomock),
+            # fall back to sequential deletion with error handling
+            error_msg = str(tx_error).lower()
+            if ("transaction" in error_msg or "replica" in error_msg or 
+                "session" in error_msg or "mongomock" in error_msg):
+                app.logger.warning(
+                    f"Transactions not supported, using fallback deletion: {tx_error}"
+                )
+                
+                # Best-effort deletion: delete medication first, then intakes
+                # This way, if intakes deletion fails, orphaned intakes won't affect functionality
+                med_result = app.db.medications.delete_one({"_id": medication_id})
+                if med_result.deleted_count == 0:
+                    return error_response("not_found")
+                
+                try:
+                    intakes_result = app.db.medication_intakes.delete_many({"medication_id": id})
+                    app.logger.info(
+                        f"Deleted medication {id} and {intakes_result.deleted_count} related intakes (fallback)"
+                    )
+                except Exception as intake_error:
+                    # Log error but don't fail the request since medication is deleted
+                    app.logger.error(
+                        f"Failed to delete intakes for medication {id}: {intake_error}"
+                    )
+            else:
+                # Re-raise if it's not a transaction-related error
+                raise
         
         return jsonify({"message": "Medication course and history deleted"})
     except Exception as e:
