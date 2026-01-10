@@ -57,10 +57,7 @@ export function Pets() {
         selectPet(null);
       }
 
-      // Small delay to let Toast render before unmounting
-      setTimeout(() => {
-        setDeleteDialog({ visible: false, pet: null });
-      }, 100);
+      setDeleteDialog(prev => ({ ...prev, visible: false }));
     } catch (error: any) {
       console.error('Delete pet error:', error);
       Toast.show({
@@ -206,8 +203,8 @@ export function Pets() {
         visible={deleteDialog.visible}
         title="Удаление питомца"
         content={deleteDialog.pet ? `Вы уверены, что хотите удалить "${deleteDialog.pet.name}"?` : ''}
-        closeOnAction
-        onClose={() => setDeleteDialog({ visible: false, pet: null })}
+        onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
+        afterClose={() => setDeleteDialog({ visible: false, pet: null })}
         actions={[
           {
             key: 'delete',
@@ -218,24 +215,22 @@ export function Pets() {
           {
             key: 'cancel',
             text: 'Отмена',
-            onClick: () => setDeleteDialog({ visible: false, pet: null }),
+            onClick: () => setDeleteDialog(prev => ({ ...prev, visible: false })),
           },
         ]}
       />
 
       {/* Image Viewer */}
-      {imageViewer.image && (
-        <ImageViewer
-          image={imageViewer.image}
-          visible={imageViewer.visible}
-          onClose={() => {
-            // Small delay to prevent race condition
-            setTimeout(() => {
-              setImageViewer({ visible: false, image: null });
-            }, 100);
-          }}
-        />
-      )}
+      <ImageViewer
+        image={imageViewer.image || ''}
+        visible={imageViewer.visible}
+        onClose={() => {
+          setImageViewer(prev => ({ ...prev, visible: false }));
+        }}
+        afterClose={() => {
+          setImageViewer({ visible: false, image: null });
+        }}
+      />
     </div>
   );
 }

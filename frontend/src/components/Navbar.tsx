@@ -13,6 +13,7 @@ export function Navbar() {
   const { logout } = useAuth();
   const { selectedPetName, selectPet, pets, selectedPetId } = usePet();
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [pendingNavigate, setPendingNavigate] = useState<string | null>(null);
 
   const handleLogout = async () => {
     hapticFeedback('medium');
@@ -102,6 +103,12 @@ export function Navbar() {
             visible={pickerVisible}
             onMaskClick={() => setPickerVisible(false)}
             onClose={() => setPickerVisible(false)}
+            afterClose={() => {
+              if (pendingNavigate) {
+                navigate(pendingNavigate);
+                setPendingNavigate(null);
+              }
+            }}
             bodyStyle={{
               borderTopLeftRadius: '16px',
               borderTopRightRadius: '16px',
@@ -176,7 +183,7 @@ export function Navbar() {
                   onClick={() => {
                     hapticFeedback('light');
                     setPickerVisible(false);
-                    navigate('/pets');
+                    setPendingNavigate('/pets');
                   }}
                   style={{ marginTop: '8px', fontSize: '15px' }}
                 >
