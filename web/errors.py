@@ -71,6 +71,8 @@ ERRORS: Dict[str, ErrorDef] = {
     "upload_error": ErrorDef("upload_error", "Ошибка при загрузке файла", 404),
     # Rate limit (429)
     "rate_limit_exceeded": ErrorDef("rate_limit_exceeded", "Превышен лимит запросов", 429),
+    # Conflict (409)
+    "conflict": ErrorDef("conflict", "Конфликт при обновлении данных", 409),
     # Method not allowed (405)
     "method_not_allowed": ErrorDef("method_not_allowed", "Метод не разрешен", 405),
 }
