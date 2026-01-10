@@ -255,6 +255,7 @@ export function PetForm() {
             layout="horizontal"
             mode="card"
           >
+            <Form.Header>Общие настройки</Form.Header>
             <Controller
               name="name"
               control={control}
@@ -449,87 +450,80 @@ export function PetForm() {
                 deletable={true}
               />
             </Form.Item>
-
-            {isEditing && id && <PetTilesSettingsSection petId={id} />}
           </Form>
 
-          {isEditing && (
-            <div style={{ marginTop: '24px' }}>
-              <div style={{
-                fontSize: 'var(--adm-font-size-main)',
-                color: 'var(--adm-color-weak)',
-                padding: '0 12px 8px'
-              }}>
-                Поделиться доступом
-              </div>
-              <List style={{
-                '--background-color': 'var(--app-card-background)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: 'var(--app-shadow)',
-              } as React.CSSProperties}>
-                <List.Item>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <SearchBar
-                      placeholder="Введите имя пользователя"
-                      value={searchTerm}
-                      onChange={handleSearch}
-                      onClear={() => {
-                        setSearchTerm('');
-                        setSearchResults([]);
-                      }}
-                    />
-                    {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
-                    {!searchLoading && searchResults.length > 0 && (
-                      <div style={{
-                        border: '1px solid var(--app-border-color)',
-                        borderRadius: '8px',
-                        maxHeight: '150px',
-                        overflowY: 'auto'
-                      }}>
-                        {searchResults.map(u => (
-                          <div
-                            key={u.username}
-                            onClick={() => handleAddSharedUser(u.username)}
-                            style={{
-                              padding: '12px',
-                              borderBottom: '1px solid var(--app-border-color)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between'
-                            }}
-                          >
-                            <span>{u.username}</span>
-                            <UserAddOutline color='var(--adm-color-primary)' />
-                          </div>
-                        ))}
+          <Form layout="horizontal" mode="card">
+            <Form.Header>Поделиться доступом</Form.Header>
+            <Form.Item layout="vertical">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <SearchBar
+                  placeholder="Введите имя пользователя"
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  onClear={() => {
+                    setSearchTerm('');
+                    setSearchResults([]);
+                  }}
+                />
+                {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
+                {!searchLoading && searchResults.length > 0 && (
+                  <div style={{
+                    marginTop: '4px',
+                    border: '1px solid var(--app-border-color)',
+                    borderRadius: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    backgroundColor: 'var(--app-page-background)'
+                  }}>
+                    {searchResults.map(u => (
+                      <div
+                        key={u.username}
+                        onClick={() => handleAddSharedUser(u.username)}
+                        style={{
+                          padding: '12px',
+                          borderBottom: '1px solid var(--app-border-color)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>{u.username}</span>
+                        <UserAddOutline color='var(--adm-color-primary)' fontSize={20} />
                       </div>
-                    )}
+                    ))}
                   </div>
-                </List.Item>
-                {localSharedWith.length > 0 && (
-                  localSharedWith.map(username => (
-                    <List.Item
-                      key={username}
-                      extra={
-                        <Button
-                          size="mini"
-                          color="danger"
-                          fill="none"
-                          onClick={() => handleRemoveSharedUser(username)}
-                        >
-                          <DeleteOutline />
-                        </Button>
-                      }
-                    >
-                      {username}
-                    </List.Item>
-                  ))
                 )}
-              </List>
-            </div>
+              </div>
+            </Form.Item>
+
+            {localSharedWith.length > 0 && localSharedWith.map(username => (
+              <Form.Item
+                key={username}
+                extra={
+                  <Button
+                    size="mini"
+                    color="danger"
+                    fill="none"
+                    onClick={() => handleRemoveSharedUser(username)}
+                  >
+                    <DeleteOutline fontSize={20} />
+                  </Button>
+                }
+              >
+                <span style={{ fontWeight: 500 }}>{username}</span>
+              </Form.Item>
+            ))}
+          </Form>
+
+          {isEditing && id && (
+            <Form layout="horizontal" mode="card">
+              <Form.Header>Настройка разделов дневника</Form.Header>
+              <PetTilesSettingsSection petId={id} />
+            </Form>
           )}
+
+
 
           <div className="safe-area-padding" style={{
             display: 'flex',
@@ -618,36 +612,36 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
   }
 
   return (
-    <div style={{ marginTop: '24px' }}>
-      <div style={{
-        fontSize: 'var(--adm-font-size-main)',
-        color: 'var(--app-text-secondary)',
-        padding: '0 12px 8px'
-      }}>
-        Настройки тайлов дневника
-      </div>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={tilesSettings.order} strategy={verticalListSortingStrategy}>
-          <List style={{ '--background-color': 'transparent' } as any}>
-            {tilesSettings.order.map((tileId) => {
-              const tile = tilesConfig.find((t) => t.id === tileId);
-              if (!tile || tile.isTile === false) return null;
-              return (
-                <SortableTileItem
-                  key={tile.id}
-                  id={tile.id}
-                  title={tile.title}
-                  visible={tilesSettings.visible[tile.id] !== false}
-                  onToggle={toggleVisibility}
-                />
-              );
-            })}
-          </List>
-        </SortableContext>
-      </DndContext>
-      <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--adm-color-weak)', padding: '0 12px' }}>
-        Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
-      </p>
-    </div>
+    <>
+      <Form.Item layout="vertical">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={tilesSettings.order} strategy={verticalListSortingStrategy}>
+            <List style={{ '--background-color': 'transparent' } as any}>
+              {tilesSettings.order.map((tileId) => {
+                const tile = tilesConfig.find((t) => t.id === tileId);
+                if (!tile || tile.isTile === false) return null;
+                return (
+                  <SortableTileItem
+                    key={tile.id}
+                    id={tile.id}
+                    title={tile.title}
+                    visible={tilesSettings.visible[tile.id] !== false}
+                    onToggle={toggleVisibility}
+                  />
+                );
+              })}
+            </List>
+          </SortableContext>
+        </DndContext>
+        <div style={{
+          marginTop: 'var(--spacing-sm)',
+          fontSize: 'var(--text-xs)',
+          color: 'var(--app-text-tertiary)',
+          lineHeight: 'var(--line-height-tight)'
+        }}>
+          Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
+        </div>
+      </Form.Item>
+    </>
   );
 }
