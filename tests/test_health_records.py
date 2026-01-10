@@ -10,14 +10,22 @@ class TestAsthmaRecords:
 
     def test_create_asthma_requires_authentication(self, client):
         """Test that creating asthma record requires authentication."""
-        response = client.post("/api/asthma", json={"pet_id": "123", "duration": "5 minutes"})
+        response = client.post(
+            "/api/asthma",
+            json={
+                "pet_id": "507f1f77bcf86cd799439011",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "duration": "5 minutes"
+            }
+        )
         assert response.status_code == 401
 
     def test_create_asthma_requires_pet_selection(self, client, regular_user_token):
         """Test that creating asthma record requires pet_id."""
         response = client.post(
             "/api/asthma",
-            json={"duration": "5 minutes", "reason": "Stress", "inhalation": "Yes"},
+            json={"duration": "5 minutes", "reason": "Stress", "inhalation": "Yes", "date": "2024-01-01", "time": "12:00"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
@@ -35,7 +43,7 @@ class TestAsthmaRecords:
                 "time": now.strftime("%H:%M"),
                 "duration": "5 minutes",
                 "reason": "Stress",
-                "inhalation": "Yes",
+                "inhalation": True,
                 "comment": "Test attack",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
@@ -61,7 +69,8 @@ class TestAsthmaRecords:
 
     def test_get_asthma_requires_authentication(self, client):
         """Test that getting asthma records requires authentication."""
-        response = client.get("/api/asthma?pet_id=123")
+        # Use valid object_id format
+        response = client.get("/api/asthma?pet_id=507f1f77bcf86cd799439011")
         assert response.status_code == 401
 
     def test_get_asthma_requires_pet_id(self, client, regular_user_token):
