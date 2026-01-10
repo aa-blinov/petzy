@@ -523,8 +523,8 @@ def delete_pet(pet_id):
             ("feedings", {"pet_id": pet_id}),
             ("litter_changes", {"pet_id": pet_id}),
             ("eye_drops", {"pet_id": pet_id}),
-            ("ear_cleanings", {"pet_id": pet_id}),
-            ("tooth_brushings", {"pet_id": pet_id}),
+            ("ear_cleaning", {"pet_id": pet_id}),
+            ("tooth_brushing", {"pet_id": pet_id}),
             ("medication_intakes", {"pet_id": pet_id}),
             ("medications", {"pet_id": pet_id}),
         ]
