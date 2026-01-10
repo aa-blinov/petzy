@@ -1,6 +1,6 @@
 """Medication management and intake logging endpoints."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -9,9 +9,8 @@ from datetime import datetime
 import web.app as app
 from web.app import api
 from web.errors import error_response
-from web.security import get_current_user, login_required
+from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
-    validate_pet_access,
     parse_event_datetime_safe,
     apply_pagination,
 )
@@ -34,25 +33,18 @@ medications_bp = Blueprint("medications", __name__)
 
 
 @medications_bp.route("/api/medications", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(MedicationCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_400=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_pet_access
 def add_medication():
     """Create a new medication course."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         medication_data = data.model_dump()
         medication_data["username"] = username
@@ -67,26 +59,19 @@ def add_medication():
 
 
 @medications_bp.route("/api/medications", methods=["GET"])
-@login_required
 @api.validate(
     query=MedicationListQuery,
     resp=Response(HTTP_200=MedicationListResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_pet_access
 def get_medications():
     """List medication courses for a pet."""
     try:
         query_params = request.context.query
-        pet_id = query_params.pet_id
+        pet_id = g.pet_id
+        username = g.username
         client_date_str = query_params.client_date
-        
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success:
-            return access_error[0], access_error[1]
 
         cursor = app.db.medications.find({"pet_id": pet_id}).sort("created_at", -1)
         meds = list(cursor)
@@ -159,37 +144,23 @@ def get_medications():
 
 
 @medications_bp.route("/api/medications/<id>", methods=["PATCH"])
-@login_required
 @api.validate(
     body=Request(MedicationUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_record_access("medications")
 def update_medication(id):
     """Update a medication course."""
     try:
-        try:
-            medication_id = ObjectId(id)
-        except (InvalidId, TypeError, ValueError):
-            return error_response("invalid_record_id")
+        medication = g.record
+        medication_id = medication["_id"]
         
         data = request.context.body  # type: ignore[attr-defined]
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         
         if not update_data:
             return error_response("validation_error_no_update_data")
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        medication = app.db.medications.find_one({"_id": medication_id})
-        if not medication:
-            return error_response("not_found")
-
-        success, access_error = validate_pet_access(medication["pet_id"], username)
-        if not success:
-            return access_error[0], access_error[1]
 
         app.db.medications.update_one({"_id": medication_id}, {"$set": update_data})
         
@@ -200,30 +171,17 @@ def update_medication(id):
 
 
 @medications_bp.route("/api/medications/<id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_record_access("medications")
 def delete_medication(id):
     """Delete a medication course and all related intakes atomically."""
     try:
-        try:
-            medication_id = ObjectId(id)
-        except (InvalidId, TypeError, ValueError):
-            return error_response("invalid_record_id")
-        
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        medication = app.db.medications.find_one({"_id": medication_id})
-        if not medication:
-            return error_response("not_found")
-
-        success, access_error = validate_pet_access(medication["pet_id"], username)
-        if not success:
-            return access_error[0], access_error[1]
+        medication = g.record
+        medication_id = medication["_id"]
+        username = g.username
 
         # Atomic deletion: use session-based transaction if replica set is available
         # Otherwise, use best-effort approach with proper error handling
@@ -284,32 +242,20 @@ def delete_medication(id):
 
 
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(MedicationIntakeCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_record_access("medications")
 def log_intake(id):
     """Log a medication intake."""
     try:
-        try:
-            medication_id = ObjectId(id)
-        except (InvalidId, TypeError, ValueError):
-            return error_response("invalid_record_id")
+        medication = g.record
+        medication_id = medication["_id"]
+        username = g.username
         
         data = request.context.body  # type: ignore[attr-defined]
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        medication = app.db.medications.find_one({"_id": medication_id})
-        if not medication:
-            return error_response("not_found")
-
-        success, access_error = validate_pet_access(medication["pet_id"], username)
-        if not success:
-            return access_error[0], access_error[1]
 
         event_dt, dt_error = parse_event_datetime_safe(data.date, data.time, "medication intake", medication["pet_id"], username)
         if dt_error:
@@ -385,27 +331,19 @@ def log_intake(id):
 
 
 @medications_bp.route("/api/medications/intakes", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=MedicationIntakeListResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_pet_access
 def get_medication_intakes():
     """Get list of medication intakes with pagination."""
     try:
         query_params = request.context.query  # type: ignore[attr-defined]
-        pet_id = query_params.pet_id
+        pet_id = g.pet_id
         page = query_params.page
         page_size = query_params.page_size
-        
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success:
-            return access_error[0], access_error[1]
 
         total = app.db.medication_intakes.count_documents({"pet_id": pet_id})
         
@@ -435,30 +373,17 @@ def get_medication_intakes():
 
 
 @medications_bp.route("/api/medications/intakes/<id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_record_access("medication_intakes")
 def delete_intake(id):
     """Delete a medication intake record."""
     try:
-        try:
-            intake_id = ObjectId(id)
-        except (InvalidId, TypeError, ValueError):
-            return error_response("invalid_record_id")
-        
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        intake = app.db.medication_intakes.find_one({"_id": intake_id})
-        if not intake:
-            return error_response("not_found")
-
-        success, access_error = validate_pet_access(intake["pet_id"], username)
-        if not success:
-            return access_error[0], access_error[1]
+        intake = g.record
+        intake_id = intake["_id"]
+        username = g.username
 
         # Restore inventory if applicable
         medication_id = ObjectId(intake["medication_id"])
@@ -506,26 +431,18 @@ def delete_intake(id):
 
 
 @medications_bp.route("/api/medications/upcoming", methods=["GET"])
-@login_required
 @api.validate(
     query=UpcomingDosesQuery,
     resp=Response(HTTP_200=UpcomingDosesResponse, HTTP_403=ErrorResponse),
     tags=["medications"],
 )
+@require_pet_access
 def get_upcoming_doses():
     """Get the next doses for the dashboard."""
     try:
         query_params = request.context.query
-        pet_id = query_params.pet_id
+        pet_id = g.pet_id
         client_datetime_str = query_params.client_datetime
-        
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success:
-            return access_error[0], access_error[1]
 
         # Fetch only active medications
         medications = list(app.db.medications.find({"pet_id": pet_id, "is_active": True}))

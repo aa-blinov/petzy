@@ -5,20 +5,17 @@ JSON Naming Convention:
 - See docs/api-naming-conventions.md for full naming rules
 """
 
-from flask import Blueprint, jsonify, request
-from flask_pydantic_spec import Request, Response
+from datetime import datetime
 from bson import ObjectId
-from datetime import datetime, timedelta
-
 import web.app as app  # Import app module to access db and logger
+from flask import Blueprint, jsonify, request, g
+from flask_pydantic_spec import Request, Response
 from web.app import api
 from web.errors import error_response
 from web.messages import get_message
-from web.security import get_current_user, login_required
+from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
-    validate_pet_access,
     parse_event_datetime_safe,
-    get_record_and_validate_access,
     apply_pagination,
 )
 from web.schemas import (
@@ -66,26 +63,19 @@ health_records_bp = Blueprint("health_records", __name__)
 
 # Asthma routes
 @health_records_bp.route("/api/asthma", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(AsthmaAttackCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_asthma_attack():
     """Add asthma attack event."""
     try:
         # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -113,27 +103,20 @@ def add_asthma_attack():
 
 
 @health_records_bp.route("/api/asthma", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=AsthmaAttackListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_asthma_attacks():
     """Get asthma attacks for current pet with pagination."""
     # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["asthma_attacks"].count_documents({"pet_id": pet_id})
@@ -159,23 +142,16 @@ def get_asthma_attacks():
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=AsthmaAttackItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("asthma_attacks")
 def get_asthma_attack(record_id):
     """Get single asthma attack event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "asthma_attacks", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -189,7 +165,6 @@ def get_asthma_attack(record_id):
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(AsthmaAttackUpdate),
     resp=Response(
@@ -201,16 +176,12 @@ def get_asthma_attack(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("asthma_attacks")
 def update_asthma_attack(record_id):
     """Update asthma attack event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "asthma_attacks", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -248,7 +219,6 @@ def update_asthma_attack(record_id):
 
 
 @health_records_bp.route("/api/asthma/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -259,16 +229,12 @@ def update_asthma_attack(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("asthma_attacks")
 def delete_asthma_attack(record_id):
     """Delete asthma attack event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "asthma_attacks", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["asthma_attacks"].delete_one({"_id": ObjectId(record_id)})
 
@@ -287,25 +253,18 @@ def delete_asthma_attack(record_id):
 
 # Defecation routes
 @health_records_bp.route("/api/defecation", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(DefecationCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_defecation():
     """Add defecation event."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -333,26 +292,19 @@ def add_defecation():
 
 
 @health_records_bp.route("/api/defecation", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=DefecationListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_defecations():
     """Get defecations for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["defecations"].count_documents({"pet_id": pet_id})
@@ -375,23 +327,16 @@ def get_defecations():
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=DefecationItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("defecations")
 def get_defecation(record_id):
     """Get single defecation event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "defecations", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -405,7 +350,6 @@ def get_defecation(record_id):
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(DefecationUpdate),
     resp=Response(
@@ -417,16 +361,12 @@ def get_defecation(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("defecations")
 def update_defecation(record_id):
     """Update defecation event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "defecations", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -464,7 +404,6 @@ def update_defecation(record_id):
 
 
 @health_records_bp.route("/api/defecation/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -475,16 +414,12 @@ def update_defecation(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("defecations")
 def delete_defecation(record_id):
     """Delete defecation event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "defecations", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["defecations"].delete_one({"_id": ObjectId(record_id)})
 
@@ -503,25 +438,18 @@ def delete_defecation(record_id):
 
 # Litter routes
 @health_records_bp.route("/api/litter", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(LitterChangeCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_litter():
     """Add litter change event."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -546,26 +474,19 @@ def add_litter():
 
 
 @health_records_bp.route("/api/litter", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=LitterChangeListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_litter_changes():
     """Get litter changes for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["litter_changes"].count_documents({"pet_id": pet_id})
@@ -588,23 +509,16 @@ def get_litter_changes():
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=LitterChangeItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("litter_changes")
 def get_litter(record_id):
     """Get single litter change event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "litter_changes", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -618,7 +532,6 @@ def get_litter(record_id):
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(LitterChangeUpdate),
     resp=Response(
@@ -630,16 +543,12 @@ def get_litter(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("litter_changes")
 def update_litter(record_id):
     """Update litter change event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "litter_changes", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -671,7 +580,6 @@ def update_litter(record_id):
 
 
 @health_records_bp.route("/api/litter/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -682,16 +590,12 @@ def update_litter(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("litter_changes")
 def delete_litter(record_id):
     """Delete litter change event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "litter_changes", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["litter_changes"].delete_one({"_id": ObjectId(record_id)})
 
@@ -710,25 +614,18 @@ def delete_litter(record_id):
 
 # Weight routes
 @health_records_bp.route("/api/weight", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(WeightRecordCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_weight():
     """Add weight measurement."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -755,26 +652,19 @@ def add_weight():
 
 
 @health_records_bp.route("/api/weight", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=WeightRecordListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_weights():
     """Get weight measurements for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["weights"].count_documents({"pet_id": pet_id})
@@ -797,23 +687,16 @@ def get_weights():
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=WeightRecordItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("weights")
 def get_weight(record_id):
     """Get single weight measurement."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "weights", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -827,7 +710,6 @@ def get_weight(record_id):
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(WeightRecordUpdate),
     resp=Response(
@@ -839,16 +721,12 @@ def get_weight(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("weights")
 def update_weight(record_id):
     """Update weight measurement."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "weights", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -879,7 +757,6 @@ def update_weight(record_id):
 
 
 @health_records_bp.route("/api/weight/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -890,16 +767,12 @@ def update_weight(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("weights")
 def delete_weight(record_id):
     """Delete weight measurement."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "weights", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["weights"].delete_one({"_id": ObjectId(record_id)})
 
@@ -916,25 +789,18 @@ def delete_weight(record_id):
 
 # Feeding routes
 @health_records_bp.route("/api/feeding", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(FeedingCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_feeding():
     """Add feeding event."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -960,26 +826,19 @@ def add_feeding():
 
 
 @health_records_bp.route("/api/feeding", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=FeedingListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_feedings():
     """Get feedings for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["feedings"].count_documents({"pet_id": pet_id})
@@ -1002,23 +861,16 @@ def get_feedings():
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=FeedingItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("feedings")
 def get_feeding(record_id):
     """Get single feeding event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "feedings", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -1032,7 +884,6 @@ def get_feeding(record_id):
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(FeedingUpdate),
     resp=Response(
@@ -1044,16 +895,12 @@ def get_feeding(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("feedings")
 def update_feeding(record_id):
     """Update feeding event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "feedings", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -1083,7 +930,6 @@ def update_feeding(record_id):
 
 
 @health_records_bp.route("/api/feeding/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -1094,16 +940,12 @@ def update_feeding(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("feedings")
 def delete_feeding(record_id):
     """Delete feeding event."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "feedings", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["feedings"].delete_one({"_id": ObjectId(record_id)})
 
@@ -1120,25 +962,18 @@ def delete_feeding(record_id):
 
 # Eye drops routes
 @health_records_bp.route("/api/eye_drops", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(EyeDropsCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_eye_drops():
     """Add eye drops record."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -1164,26 +999,19 @@ def add_eye_drops():
 
 
 @health_records_bp.route("/api/eye_drops", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=EyeDropsListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_eye_drops():
     """Get eye drops records for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["eye_drops"].count_documents({"pet_id": pet_id})
@@ -1206,23 +1034,16 @@ def get_eye_drops():
 
 
 @health_records_bp.route("/api/eye_drops/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=EyeDropsItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("eye_drops")
 def get_eye_drop(record_id):
     """Get single eye drops record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "eye_drops", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -1236,7 +1057,6 @@ def get_eye_drop(record_id):
 
 
 @health_records_bp.route("/api/eye_drops/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(EyeDropsUpdate),
     resp=Response(
@@ -1248,16 +1068,12 @@ def get_eye_drop(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("eye_drops")
 def update_eye_drops(record_id):
     """Update eye drops record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "eye_drops", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -1291,7 +1107,6 @@ def update_eye_drops(record_id):
 
 
 @health_records_bp.route("/api/eye_drops/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -1302,16 +1117,12 @@ def update_eye_drops(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("eye_drops")
 def delete_eye_drops(record_id):
     """Delete eye drops record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "eye_drops", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["eye_drops"].delete_one({"_id": ObjectId(record_id)})
 
@@ -1330,25 +1141,18 @@ def delete_eye_drops(record_id):
 
 # Tooth brushing routes
 @health_records_bp.route("/api/tooth_brushing", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(ToothBrushingCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_tooth_brushing():
     """Add tooth brushing record."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -1374,26 +1178,19 @@ def add_tooth_brushing():
 
 
 @health_records_bp.route("/api/tooth_brushing", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=ToothBrushingListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_tooth_brushing():
     """Get tooth brushing records for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Get total count
     total = app.db["tooth_brushing"].count_documents({"pet_id": pet_id})
@@ -1414,23 +1211,16 @@ def get_tooth_brushing():
 
 
 @health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=ToothBrushingItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("tooth_brushing")
 def get_tooth_brushing_record(record_id):
     """Get single tooth brushing record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "tooth_brushing", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -1444,7 +1234,6 @@ def get_tooth_brushing_record(record_id):
 
 
 @health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(ToothBrushingUpdate),
     resp=Response(
@@ -1456,16 +1245,12 @@ def get_tooth_brushing_record(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("tooth_brushing")
 def update_tooth_brushing(record_id):
     """Update tooth brushing record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "tooth_brushing", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -1499,7 +1284,6 @@ def update_tooth_brushing(record_id):
 
 
 @health_records_bp.route("/api/tooth_brushing/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -1510,16 +1294,12 @@ def update_tooth_brushing(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("tooth_brushing")
 def delete_tooth_brushing(record_id):
     """Delete tooth brushing record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "tooth_brushing", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["tooth_brushing"].delete_one({"_id": ObjectId(record_id)})
 
@@ -1538,25 +1318,18 @@ def delete_tooth_brushing(record_id):
 
 # Ear cleaning routes
 @health_records_bp.route("/api/ear_cleaning", methods=["POST"])
-@login_required
 @api.validate(
     body=Request(EarCleaningCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def add_ear_cleaning():
     """Add ear cleaning record."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = request.args.get("pet_id") or data.pet_id
-
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success and access_error:
-            return access_error[0], access_error[1]
+        pet_id = g.pet_id
+        username = g.username
 
         date_str = data.date
         time_str = data.time
@@ -1582,26 +1355,19 @@ def add_ear_cleaning():
 
 
 @health_records_bp.route("/api/ear_cleaning", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_200=EarCleaningListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_pet_access
 def get_ear_cleaning():
     """Get ear cleaning records for current pet with pagination."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     total = app.db["ear_cleaning"].count_documents({"pet_id": pet_id})
 
@@ -1620,23 +1386,16 @@ def get_ear_cleaning():
 
 
 @health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["GET"])
-@login_required
 @api.validate(
     resp=Response(HTTP_200=EarCleaningItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["health-records"],
 )
+@require_record_access("ear_cleaning")
 def get_ear_cleaning_record(record_id):
     """Get single ear cleaning record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "ear_cleaning", username)
-        if access_error:
-            return access_error[0], access_error[1]
-
-        record = existing
+        username = g.username
+        record = g.record
         record["_id"] = str(record["_id"])
         record["pet_id"] = str(record.get("pet_id", ""))
         record["username"] = record.get("username", "")
@@ -1650,7 +1409,6 @@ def get_ear_cleaning_record(record_id):
 
 
 @health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["PUT"])
-@login_required
 @api.validate(
     body=Request(EarCleaningUpdate),
     resp=Response(
@@ -1662,16 +1420,12 @@ def get_ear_cleaning_record(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("ear_cleaning")
 def update_ear_cleaning(record_id):
     """Update ear cleaning record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "ear_cleaning", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         data = request.context.body  # type: ignore[attr-defined]
 
@@ -1705,7 +1459,6 @@ def update_ear_cleaning(record_id):
 
 
 @health_records_bp.route("/api/ear_cleaning/<record_id>", methods=["DELETE"])
-@login_required
 @api.validate(
     resp=Response(
         HTTP_200=SuccessResponse,
@@ -1716,16 +1469,12 @@ def update_ear_cleaning(record_id):
     ),
     tags=["health-records"],
 )
+@require_record_access("ear_cleaning")
 def delete_ear_cleaning(record_id):
     """Delete ear cleaning record."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
-
-        existing, pet_id, access_error = get_record_and_validate_access(record_id, "ear_cleaning", username)
-        if access_error:
-            return access_error[0], access_error[1]
+        username = g.username
+        pet_id = g.pet_id
 
         result = app.db["ear_cleaning"].delete_one({"_id": ObjectId(record_id)})
 
@@ -1744,26 +1493,19 @@ def delete_ear_cleaning(record_id):
 
 # Statistics routes
 @health_records_bp.route("/api/stats/health", methods=["GET"])
-@login_required
 @api.validate(
     query=HealthStatsQuery,
     resp=Response(HTTP_200=HealthStatsResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["stats"],
 )
+@require_pet_access
 def get_health_stats():
     """Get health statistics for charts."""
     query_params = request.context.query  # type: ignore[attr-defined]
-    pet_id = query_params.pet_id
+    pet_id = g.pet_id
     record_type = query_params.type
     days = query_params.days or 30
-
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
-
-    success, access_error = validate_pet_access(pet_id, username)
-    if not success and access_error:
-        return access_error[0], access_error[1]
+    username = g.username
 
     # Map record types to collection names and value fields
     type_mapping = {

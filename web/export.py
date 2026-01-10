@@ -5,13 +5,12 @@ import io
 from datetime import datetime
 from urllib.parse import quote
 
-from flask import Blueprint, make_response, request
+from flask import Blueprint, make_response, request, g
 from flask_pydantic_spec import Response
 
 import web.app as app  # access db, logger
 from web.app import api
-from web.security import login_required
-from web.helpers import check_pet_access
+from web.decorators import require_pet_access
 from web.schemas import ErrorResponse, PetIdQuery
 from web.errors import error_response
 
@@ -20,7 +19,6 @@ export_bp = Blueprint("export", __name__)
 
 
 @export_bp.route("/api/export/<export_type>/<format_type>", methods=["GET"])
-@login_required
 @api.validate(
     query=PetIdQuery,
     resp=Response(
@@ -28,19 +26,14 @@ export_bp = Blueprint("export", __name__)
     ),
     tags=["export"],
 )
+@require_pet_access
 def export_data(export_type, format_type):
     """Export data in various formats."""
     try:
         # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
-        pet_id = request.context.query.pet_id  # type: ignore[attr-defined]
-
-        username = getattr(request, "current_user", None)
-        if not username:
-            return error_response("unauthorized")
-
-        # Check pet access
-        if not check_pet_access(pet_id, username):
-            return error_response("pet_forbidden")
+        data = request.context.query  # type: ignore[attr-defined]
+        pet_id = g.pet_id  # Provided by @require_pet_access
+        username = g.username  # Provided by @require_pet_access
 
         if export_type == "feeding":
             collection = app.db["feedings"]
