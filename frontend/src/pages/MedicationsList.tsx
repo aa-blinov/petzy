@@ -126,7 +126,7 @@ export function MedicationsList() {
         }
     };
 
-    if (isLoading) return <LoadingSpinner />;
+
 
     return (
         <div className="page-container">
@@ -156,7 +156,9 @@ export function MedicationsList() {
                     </Button>
                 </div>
 
-                {medications.length === 0 ? (
+                {isLoading ? (
+                    <LoadingSpinner fullscreen={false} />
+                ) : medications.length === 0 ? (
                     <div className="safe-area-padding" style={{
                         textAlign: 'center',
                         color: 'var(--adm-color-weak)',
@@ -308,15 +310,15 @@ export function MedicationsList() {
                 afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: 1 })}
                 actions={[
                     {
-                        key: 'cancel',
-                        text: 'Отмена',
-                        onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
-                    },
-                    {
                         key: 'confirm',
                         text: 'Записать',
                         bold: true,
                         onClick: confirmLogIntake
+                    },
+                    {
+                        key: 'cancel',
+                        text: 'Отмена',
+                        onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
                     },
                 ]}
             />

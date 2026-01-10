@@ -9,7 +9,13 @@ export function Settings() {
   return (
     <div className="page-container">
       <div className="max-width-container">
-        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding" style={{
+          marginBottom: 'var(--spacing-lg)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          minHeight: '40px',
+        }}>
           <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Настройки</h2>
         </div>
 
