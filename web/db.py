@@ -26,8 +26,20 @@ mongo_user = quote_plus(MONGO_USER)
 mongo_pass = quote_plus(MONGO_PASS)
 mongo_uri: str = f"mongodb://{mongo_user}:{mongo_pass}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin"
 
-# Create MongoDB client and database connection
-client: MongoClient = MongoClient(mongo_uri)
+# MongoDB connection pool settings
+MONGO_POOL_CONFIG = {
+    "maxPoolSize": 50,           # Maximum number of connections in the pool
+    "minPoolSize": 5,            # Minimum number of connections to maintain
+    "maxIdleTimeMS": 30000,      # Close idle connections after 30 seconds
+    "serverSelectionTimeoutMS": 5000,  # Timeout for server selection (5 seconds)
+    "connectTimeoutMS": 10000,   # Timeout for initial connection (10 seconds)
+    "socketTimeoutMS": 30000,    # Timeout for socket operations (30 seconds)
+    "retryWrites": True,         # Enable automatic retry for write operations
+    "retryReads": True,          # Enable automatic retry for read operations
+}
+
+# Create MongoDB client and database connection with pool configuration
+client: MongoClient = MongoClient(mongo_uri, **MONGO_POOL_CONFIG)
 db = client[MONGO_DB]
 
 # Export mongo_uri for use in Flask-Limiter
