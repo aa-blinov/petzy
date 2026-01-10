@@ -16,7 +16,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.90.12",
     "@types/react-transition-group": "^4.4.12",
-    "antd-mobile": "^5.41.1",
+    "antd-mobile": "^5.42.3",
     "antd-mobile-icons": "^0.3.0",
     "axios": "^1.13.2",
     "react": "^19.2.0",
