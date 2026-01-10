@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, ImageUploader, Toast, Picker, List, Switch, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
+import { Button, Form, Input, Picker, List, Switch, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -47,6 +47,9 @@ export function PetForm() {
     image: null,
   });
 
+  // Track if form was initialized for this pet to prevent overwriting user changes
+  const initializedPetId = useRef<string | null>(null);
+
   // Refs for focusing inputs on row click
   const nameInputRef = useRef<any>(null);
   const speciesInputRef = useRef<any>(null);
@@ -86,7 +89,9 @@ export function PetForm() {
   });
 
   useEffect(() => {
-    if (pet) {
+    if (pet && initializedPetId.current !== pet._id) {
+      // Only initialize once per pet to prevent overwriting user changes
+      initializedPetId.current = pet._id;
       reset({
         name: pet.name,
         breed: pet.breed || '',
@@ -188,12 +193,26 @@ export function PetForm() {
   const onSubmit = async (values: PetFormData) => {
     try {
       setLoading(true);
+      const hasNewFile = fileList[0]?.file instanceof File;
+      const photoWasRemoved = fileList.length === 0 && !!pet?.photo_url;
+
+      // Debug logging
+      console.log('=== Photo Debug ===');
+      console.log('fileList:', fileList);
+      console.log('fileList.length:', fileList.length);
+      console.log('pet?.photo_url:', pet?.photo_url);
+      console.log('hasNewFile:', hasNewFile);
+      console.log('photoWasRemoved:', photoWasRemoved);
+
       const petData = {
         ...values,
-        photo_file: fileList[0]?.file,
-        photo_url: fileList[0]?.url,
-        remove_photo: fileList.length === 0 && pet?.photo_url ? true : undefined,
+        photo_file: hasNewFile ? fileList[0].file : undefined,
+        // Don't send photo_url for new files (blob URL) - only send when no change needed
+        photo_url: undefined,
+        remove_photo: photoWasRemoved ? true : undefined,
       };
+
+      console.log('petData.remove_photo:', petData.remove_photo);
 
       let petId = id;
       if (isEditing && id) {
@@ -214,18 +233,19 @@ export function PetForm() {
         ]);
       }
 
-      Toast.show({
-        icon: 'success',
-        content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен',
-        duration: 1500,
-        afterClose: () => navigate('/pets')
-      });
+      // Invalidate cache BEFORE navigating to ensure fresh data
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
+      if (petId) {
+        await queryClient.invalidateQueries({ queryKey: ['pet', petId] });
+      }
+
+      // Use alert instead of Toast to avoid React 19 compatibility issues
+      alert(isEditing ? 'Питомец обновлен' : 'Питомец добавлен');
+      navigate('/pets');
     } catch (error: any) {
-      Toast.show({
-        icon: 'fail',
-        content: error?.response?.data?.error || 'Ошибка при сохранении',
-      });
+      const errorMessage = error?.response?.data?.error || 'Ошибка при сохранении';
+      // Use alert instead of Toast to avoid React 19 compatibility issues with imperative APIs
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -439,16 +459,139 @@ export function PetForm() {
             />
 
             <Form.Item label="Фото" layout="vertical">
-              <ImageUploader
-                value={fileList}
-                onChange={setFileList}
-                onPreview={(_, item) => {
-                  setImageViewer({ visible: true, image: item.url });
+              <input
+                type="file"
+                accept="image/*"
+                id="pet-photo-input"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setFileList([{
+                      url: URL.createObjectURL(file),
+                      file: file
+                    }]);
+                  }
+                  e.target.value = '';
                 }}
-                upload={async (file) => ({ url: URL.createObjectURL(file) })}
-                maxCount={1}
-                deletable={true}
               />
+
+              {fileList.length > 0 && fileList[0]?.url ? (
+                // Photo exists - show photo card with overlay actions
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  }}
+                >
+                  <img
+                    src={fileList[0].url}
+                    alt="Фото питомца"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setImageViewer({ visible: true, image: fileList[0].url })}
+                  />
+                  {/* Overlay with actions */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '8px',
+                      background: 'linear-gradient(transparent, rgba(0, 0, 0, 0.7))',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('pet-photo-input')?.click()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: 'rgba(255, 255, 255, 0.9)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                      }}
+                      title="Заменить фото"
+                    >
+                      📷
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFileList([])}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: 'rgba(255, 82, 82, 0.9)',
+                        color: 'white',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                      }}
+                      title="Удалить фото"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // No photo - show upload zone
+                <div
+                  onClick={() => document.getElementById('pet-photo-input')?.click()}
+                  style={{
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '16px',
+                    border: '2px dashed var(--adm-color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    background: 'var(--adm-color-fill-light)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--adm-color-primary)';
+                    e.currentTarget.style.background = 'var(--adm-color-fill-secondary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--adm-color-border)';
+                    e.currentTarget.style.background = 'var(--adm-color-fill-light)';
+                  }}
+                >
+                  <span style={{ fontSize: '32px', opacity: 0.6 }}>📷</span>
+                  <span style={{
+                    fontSize: '12px',
+                    color: 'var(--adm-color-text-secondary)',
+                    textAlign: 'center'
+                  }}>
+                    Добавить
+                  </span>
+                </div>
+              )}
             </Form.Item>
           </Form>
 

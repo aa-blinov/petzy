@@ -15,9 +15,9 @@ if (API_URL.includes('localhost:3000') && !window.location.href.includes('localh
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Don't set default Content-Type - let axios auto-detect based on data type
+  // For FormData: multipart/form-data with boundary
+  // For JSON objects: application/json
 });
 
 // Request interceptor - add auth token if needed

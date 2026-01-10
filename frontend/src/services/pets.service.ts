@@ -74,7 +74,6 @@ export const petsService = {
     formData.append('name', data.name);
     if (data.species) formData.append('species', data.species);
     if (data.breed) formData.append('breed', data.breed);
-    if (data.species) formData.append('species', data.species);
     if (data.birth_date) formData.append('birth_date', data.birth_date);
     if (data.gender) formData.append('gender', data.gender);
     if (data.is_neutered !== undefined) formData.append('is_neutered', String(data.is_neutered));
@@ -85,18 +84,15 @@ export const petsService = {
       formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
     }
 
-    const response = await api.post<{ message: string; pet: Pet }>('/pets', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const response = await api.post<{ message: string; pet: Pet }>('/pets', formData);
     return response.data.pet;
   },
 
   async updatePet(petId: string, data: PetUpdate): Promise<Pet> {
     const formData = new FormData();
     if (data.name) formData.append('name', data.name);
-    if (data.species) formData.append('species', data.species);
-    if (data.breed !== undefined) formData.append('breed', data.breed);
     if (data.species !== undefined) formData.append('species', data.species);
+    if (data.breed !== undefined) formData.append('breed', data.breed);
     if (data.birth_date !== undefined) formData.append('birth_date', data.birth_date);
     if (data.gender !== undefined) formData.append('gender', data.gender);
     if (data.is_neutered !== undefined) formData.append('is_neutered', String(data.is_neutered));
@@ -108,9 +104,7 @@ export const petsService = {
       formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
     }
 
-    const response = await api.put<{ message: string; pet: Pet }>(`/pets/${petId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const response = await api.put<{ message: string; pet: Pet }>(`/pets/${petId}`, formData);
     return response.data.pet;
   },
 

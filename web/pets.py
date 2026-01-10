@@ -94,7 +94,8 @@ def get_pets():
         # Convert photo_file_id to string if it exists
         if pet.get("photo_file_id"):
             pet["photo_file_id"] = str(pet["photo_file_id"])
-            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False)
+            # Add cache-busting parameter using photo_file_id so browser gets new image when it changes
+            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
         
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
@@ -254,7 +255,7 @@ def get_pet(pet_id):
             pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
 
         if pet.get("photo_file_id"):
-            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False)
+            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
 
         pet["current_user_is_owner"] = pet.get("owner") == username
         
@@ -380,14 +381,22 @@ def update_pet(pet_id):
 
         # Handle photo fields based on request type
         if is_multipart:
-            if photo_file_id is not None:
-                update_data["photo_file_id"] = photo_file_id
-            elif "photo_file_id" in request.form and request.form.get("photo_file_id") == "":
+            logger.info(f"Photo handling: photo_file_id={photo_file_id}, remove_photo={request.form.get('remove_photo')}")
+            # Check remove_photo FIRST - it takes precedence over any photo data
+            if request.form.get("remove_photo") == "true":
+                # Photo was explicitly removed - clear BOTH fields in database
                 update_data["photo_file_id"] = None
+                update_data["photo_url"] = None  # Also clear photo_url to remove any leftover blob URLs
+                logger.info(f"Setting photo_file_id and photo_url to None for pet {pet_id}")
+            elif photo_file_id is not None and photo_file_id != pet.get("photo_file_id"):
+                # New photo was uploaded (photo_file_id changed)
+                update_data["photo_file_id"] = photo_file_id
         else:
             # JSON request - handle photo_url
             if data.photo_url is not None:
                 update_data["photo_url"] = data.photo_url
+
+        logger.info(f"Update data for pet {pet_id}: {update_data}")
 
         if not update_data:
             return error_response("validation_error_no_update_data")
