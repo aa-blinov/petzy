@@ -151,7 +151,6 @@ export function UserForm() {
                       placeholder="Введите имя пользователя"
                       clearable
                       autoComplete="username"
-                      style={{ '--text-align': 'right' }}
                     />
                   </Form.Item>
                 )}
@@ -182,7 +181,6 @@ export function UserForm() {
                       placeholder={isEditing ? "Оставьте пустым" : "Введите пароль"}
                       clearable
                       autoComplete="new-password"
-                      style={{ '--text-align': 'right' }}
                     />
                   </Form.Item>
                 </>
@@ -200,7 +198,6 @@ export function UserForm() {
                     placeholder="Введите полное имя"
                     clearable
                     autoComplete="name"
-                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}
@@ -218,7 +215,6 @@ export function UserForm() {
                     placeholder="Введите email"
                     clearable
                     autoComplete="email"
-                    style={{ '--text-align': 'right' }}
                   />
                 </Form.Item>
               )}

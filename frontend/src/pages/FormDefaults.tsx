@@ -90,7 +90,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.asthma?.duration || 'Короткий'}
                 onClick={() => setVisiblePicker('asthma_duration')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
             <Form.Item label={<label htmlFor="asthma_inhalation">Ингаляция</label>}>
@@ -99,7 +99,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.asthma?.inhalation === 'true' ? 'Да' : 'Нет'}
                 onClick={() => setVisiblePicker('asthma_inhalation')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
             <Form.Item label={<label htmlFor="asthma_reason">Причина</label>}>
@@ -118,7 +118,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.defecation?.stool_type || 'Обычный'}
                 onClick={() => setVisiblePicker('defecation_stool_type')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
             <Form.Item label={<label htmlFor="defecation_color">Цвет стула</label>}>
@@ -127,7 +127,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.defecation?.color || 'Коричневый'}
                 onClick={() => setVisiblePicker('defecation_color')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
             <Form.Item label={<label htmlFor="defecation_food">Корм</label>}>
@@ -156,7 +156,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.eye_drops?.drops_type || 'Обычные'}
                 onClick={() => setVisiblePicker('eye_drops_type')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
 
@@ -167,7 +167,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.tooth_brushing?.brushing_type || 'Щетка'}
                 onClick={() => setVisiblePicker('tooth_brushing_type')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
 
@@ -178,7 +178,7 @@ export function FormDefaults() {
                 readOnly
                 value={formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля'}
                 onClick={() => setVisiblePicker('ear_cleaning_type')}
-                style={{ '--text-align': 'right', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
               />
             </Form.Item>
           </Form>
