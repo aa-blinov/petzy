@@ -502,7 +502,7 @@ def unshare_pet(pet_id, share_username):
     tags=["pets"],
 )
 def delete_pet(pet_id):
-    """Delete pet."""
+    """Delete pet and all related records (cascading delete)."""
     try:
         username, auth_error = get_current_user()
         if auth_error:
@@ -512,10 +512,106 @@ def delete_pet(pet_id):
         if access_error:
             return access_error[0], access_error[1]
 
-        result = app.db["pets"].delete_one({"_id": ObjectId(pet_id)})
+        pet_id_obj = ObjectId(pet_id)
+        
+        # List of collections with related records to delete
+        # Using pet_id as string for most collections
+        collections_to_clean = [
+            ("asthma_attacks", {"pet_id": pet_id}),
+            ("defecations", {"pet_id": pet_id}),
+            ("weights", {"pet_id": pet_id}),
+            ("feedings", {"pet_id": pet_id}),
+            ("litter_changes", {"pet_id": pet_id}),
+            ("eye_drops", {"pet_id": pet_id}),
+            ("ear_cleanings", {"pet_id": pet_id}),
+            ("tooth_brushings", {"pet_id": pet_id}),
+            ("medication_intakes", {"pet_id": pet_id}),
+            ("medications", {"pet_id": pet_id}),
+        ]
+        
+        # Delete photo from GridFS if exists
+        old_photo_id = pet.get("photo_file_id") if pet else None
 
-        if result.deleted_count == 0:
-            return error_response("pet_not_found")
+        # Try to use transaction if available
+        try:
+            with app.db.client.start_session() as session:
+                with session.start_transaction():
+                    # Delete all related records
+                    total_deleted = 0
+                    for collection_name, query in collections_to_clean:
+                        result = app.db[collection_name].delete_many(query, session=session)
+                        if result.deleted_count > 0:
+                            logger.info(
+                                f"Deleted {result.deleted_count} records from {collection_name} for pet {pet_id}"
+                            )
+                            total_deleted += result.deleted_count
+                    
+                    # Delete the pet itself
+                    result = app.db["pets"].delete_one({"_id": pet_id_obj}, session=session)
+                    
+                    if result.deleted_count == 0:
+                        raise Exception("Pet not found during deletion")
+                    
+                    logger.info(
+                        f"Pet deleted with transaction: id={pet_id}, user={username}, "
+                        f"total_related_records={total_deleted}"
+                    )
+        except Exception as tx_error:
+            # Fallback for standalone MongoDB (no replica set) or mongomock
+            error_msg = str(tx_error).lower()
+            if ("transaction" in error_msg or "replica" in error_msg or 
+                "session" in error_msg or "mongomock" in error_msg):
+                logger.warning(
+                    f"Transactions not supported, using fallback cascading delete: {tx_error}"
+                )
+                
+                # Delete pet first, then related records (prevents foreign key issues)
+                result = app.db["pets"].delete_one({"_id": pet_id_obj})
+                
+                if result.deleted_count == 0:
+                    return error_response("pet_not_found")
+                
+                # Best-effort deletion of related records
+                total_deleted = 0
+                failed_collections = []
+                for collection_name, query in collections_to_clean:
+                    try:
+                        result = app.db[collection_name].delete_many(query)
+                        if result.deleted_count > 0:
+                            logger.info(
+                                f"Deleted {result.deleted_count} records from {collection_name} for pet {pet_id}"
+                            )
+                            total_deleted += result.deleted_count
+                    except Exception as col_error:
+                        logger.error(
+                            f"Failed to delete from {collection_name} for pet {pet_id}: {col_error}"
+                        )
+                        failed_collections.append(collection_name)
+                
+                if failed_collections:
+                    logger.warning(
+                        f"Some related records may not have been deleted for pet {pet_id}: "
+                        f"{', '.join(failed_collections)}"
+                    )
+                
+                logger.info(
+                    f"Pet deleted (fallback): id={pet_id}, user={username}, "
+                    f"total_related_records={total_deleted}"
+                )
+            else:
+                # Re-raise if it's not a transaction-related error
+                raise
+
+        # Delete photo from GridFS (outside transaction as GridFS doesn't support transactions)
+        if old_photo_id:
+            try:
+                app.fs.delete(ObjectId(old_photo_id))
+                logger.info(f"Deleted photo {old_photo_id} for pet {pet_id}")
+            except Exception as photo_error:
+                # Log but don't fail the request
+                logger.warning(
+                    f"Failed to delete photo {old_photo_id} for pet {pet_id}: {photo_error}"
+                )
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
         return get_message("pet_deleted")
