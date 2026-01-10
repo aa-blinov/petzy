@@ -9,8 +9,8 @@
 
     /* Neutral / Text Colors */
     --app-text-primary: #000000;
-    --app-text-secondary: #666666;
-    --app-text-tertiary: #999999;
+    --app-text-secondary: #595959;
+    --app-text-tertiary: #757575;
     --app-text-on-dark: #FFFFFF;
 
     /* Layout Colors */
@@ -40,7 +40,7 @@
 
     /* Text on Tile (always dark as tiles are light) */
     --app-text-on-tile: #000000;
-    --app-text-secondary-on-tile: #666666;
+    --app-text-secondary-on-tile: #595959;
 
     /* Tile Pastel Colors */
     --tile-brown: #E8D5C4;
@@ -135,7 +135,8 @@ html[data-prefers-color-scheme='dark'] {
     --app-card-background: #1C1C1E;
     --app-text-primary: #FFFFFF;
     --app-text-secondary: #8E8E93;
-    --app-text-tertiary: #636366;
+    --app-text-tertiary: #8E8E93;
+    /* Darkened for accessibility, same as secondary for now to ensure pass */
     --app-border-color: #38383A;
     --app-divider-color: #2C2C2E;
     --app-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
