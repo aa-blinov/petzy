@@ -137,9 +137,16 @@
 .adm-tab-bar-item,
 .adm-picker-header-button,
 [role="button"] {
-    transition: transform 0.1s ease-out, opacity 0.1s ease-out !important;
+    /* Optimized for 120Hz displays - using cubic-bezier for natural motion */
+    transition: transform 80ms cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 80ms cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+
+    /* Hardware acceleration hints */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0);
 }
 
 .tap-feedback:active,
@@ -149,7 +156,8 @@
 .adm-tab-bar-item:active,
 .adm-picker-header-button:active,
 [role="button"]:active {
-    transform: scale(0.98) !important;
+    /* GPU-accelerated scale for smooth feedback */
+    transform: scale(0.98) translateZ(0) !important;
     opacity: 0.85 !important;
 }
 
@@ -184,6 +192,9 @@ html {
     background-color: var(--app-card-background);
     height: 100%;
     width: 100%;
+    /* Performance optimizations for high refresh rate displays */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -197,7 +208,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior: none;
+    overscroll-behavior-y: none;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
@@ -332,6 +343,11 @@ a,
     font-size: var(--text-xs) !important;
 }
 
+.adm-list-item-description {
+    font-size: var(--text-xs) !important;
+}
+
+
 .adm-input {
     font-size: var(--text-sm) !important;
     text-align: left !important;
@@ -434,4 +450,39 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 
 .error-boundary-content button {
     border-radius: var(--radius-md) !important;
+}
+
+/* High refresh rate display optimizations (120Hz+) */
+@media (prefers-reduced-motion: no-preference) {
+
+    /* Optimize scrolling containers for smooth 120Hz performance */
+    .page-container,
+    .adm-list,
+    .adm-infinite-scroll {
+        contain: layout style paint;
+        content-visibility: auto;
+    }
+}
+
+/* Performance optimizations for all interactive elements */
+@media (hover: none) and (pointer: coarse) {
+
+    /* Mobile/touch devices - optimize for touch interactions */
+    * {
+        /* Reduce unnecessary GPU layers, only promote animated elements */
+        will-change: auto;
+    }
+}
+
+/* Optimize for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
