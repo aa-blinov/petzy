@@ -63,11 +63,11 @@ export function Navbar() {
   );
 
   // На главной странице - только логотип, на других - используем встроенную кнопку назад + логотип
-  const leftContent = (
+  const leftContent = isMainTab ? (
     <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
       {logo}
     </div>
-  );
+  ) : null;
 
   const rightContent = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>
