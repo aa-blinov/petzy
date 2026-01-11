@@ -22,6 +22,7 @@ from web.schemas import (
     PetResponseWrapper,
     PetListResponse,
     PetShareRequest,
+    PhotoQueryParams,
     SuccessResponse,
     ErrorResponse,
 )
@@ -392,9 +393,12 @@ def update_pet(pet_id):
                 # New photo was uploaded (photo_file_id changed)
                 update_data["photo_file_id"] = photo_file_id
         else:
-            # JSON request - handle photo_url
+            # JSON request - handle photo_url and remove_photo
             if data.photo_url is not None:
                 update_data["photo_url"] = data.photo_url
+            if data.remove_photo:
+                update_data["photo_file_id"] = None
+                update_data["photo_url"] = None
 
         logger.info(f"Update data for pet {pet_id}: {update_data}")
 
@@ -624,6 +628,7 @@ def delete_pet(pet_id):
 @pets_bp.route("/api/pets/<pet_id>/photo", methods=["GET"])
 @login_required
 @api.validate(
+    query=PhotoQueryParams,
     resp=Response(
         HTTP_200=None,
         HTTP_422=ErrorResponse,
