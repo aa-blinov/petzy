@@ -139,6 +139,7 @@ export function Login() {
                 onChange={(val) => setUsername(val)}
                 disabled={isLoading}
                 clearable
+                autoComplete="username"
               />
             </Form.Item>
             <Form.Item
@@ -152,6 +153,7 @@ export function Login() {
                 onChange={(val) => setPassword(val)}
                 disabled={isLoading}
                 clearable
+                autoComplete="current-password"
               />
             </Form.Item>
           </Form>
