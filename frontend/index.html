@@ -1,48 +1,52 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="Pet health tracking application" />
-    
-    <!-- Fonts Preconnect -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&display=swap" rel="stylesheet">
-    
-    <!-- iOS PWA meta tags -->
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Petzy" />
-    <link rel="apple-touch-icon" href="/icon-192.svg" />
-    <meta name="format-detection" content="telephone=no" />
-    <meta name="apple-touch-fullscreen" content="yes" />
-    
-    <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>Petzy</title>
-    <script>
-      (function() {
-        try {
-          var theme = localStorage.getItem('theme') || 'system';
-          var root = document.documentElement;
-          var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (isDark) {
-            root.setAttribute('data-prefers-color-scheme', 'dark');
-            root.classList.add('dark');
-          } else {
-            root.setAttribute('data-prefers-color-scheme', 'light');
-            root.classList.remove('dark');
-          }
-        } catch (e) {}
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="Pet health tracking application" />
+
+  <!-- Fonts Preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&display=swap" rel="stylesheet">
+
+  <!-- iOS PWA meta tags -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Petzy" />
+  <link rel="apple-touch-icon" href="/icon-512.svg" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+
+  <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Petzy</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('theme') || 'system';
+        var root = document.documentElement;
+        var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          root.setAttribute('data-prefers-color-scheme', 'dark');
+          root.classList.add('dark');
+        } else {
+          root.setAttribute('data-prefers-color-scheme', 'light');
+          root.classList.remove('dark');
+        }
+      } catch (e) { }
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
