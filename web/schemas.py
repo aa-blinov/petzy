@@ -330,9 +330,25 @@ class PetCreate(BaseModel):
             "example": {
                 "name": "Мурзик",
                 "breed": "Британская короткошерстная",
+                "species": "Кот",
                 "birth_date": "2020-03-15",
                 "gender": "Мужской",
-                "photo_url": "",
+                "is_neutered": True,
+                "health_notes": "Здоров, аллергий нет",
+                "photo_url": "https://example.com/photo.jpg",
+                "tiles_settings": {
+                    "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                    "visible": {
+                        "weight": True,
+                        "defecation": True,
+                        "feeding": True,
+                        "eye_drops": True,
+                        "asthma": True,
+                        "litter": True,
+                        "ear_cleaning": True,
+                        "tooth_brushing": True,
+                    }
+                }
             }
         }
     )
@@ -349,6 +365,7 @@ class PetUpdate(BaseModel):
     is_neutered: Optional[bool] = None
     health_notes: Optional[str] = Field(None, max_length=1000)
     photo_url: Optional[str] = None
+    remove_photo: Optional[bool] = Field(None, description="True, если нужно удалить текущую фотографию")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
     @field_validator("birth_date")
@@ -362,8 +379,26 @@ class PetUpdate(BaseModel):
             "example": {
                 "name": "Мурзик Обновленный",
                 "breed": "Британская короткошерстная",
+                "species": "Кот",
                 "birth_date": "2020-03-15",
                 "gender": "Мужской",
+                "is_neutered": True,
+                "health_notes": "Аллергия на курицу",
+                "photo_url": "https://example.com/photo.jpg",
+                "remove_photo": False,
+                "tiles_settings": {
+                    "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                    "visible": {
+                        "weight": True,
+                        "defecation": True,
+                        "feeding": True,
+                        "eye_drops": True,
+                        "asthma": True,
+                        "litter": True,
+                        "ear_cleaning": True,
+                        "tooth_brushing": True,
+                    }
+                }
             }
         }
     )
@@ -374,20 +409,20 @@ class PetResponse(BaseModel):
 
     _id: str
     name: str
-    breed: str
+    breed: Optional[str] = None
     species: Optional[str] = None
     birth_date: Optional[str] = None
-    gender: str
+    gender: Optional[str] = None
     is_neutered: Optional[bool] = None
     health_notes: Optional[str] = None
     photo_url: Optional[str] = None
     photo_file_id: Optional[str] = None
     tiles_settings: Optional[TilesSettings] = None
     owner: str
-    shared_with: List[str]
-    created_at: str
-    created_by: str
-    current_user_is_owner: bool
+    shared_with: Optional[List[str]] = None
+    created_at: Optional[str] = None
+    created_by: Optional[str] = None
+    current_user_is_owner: Optional[bool] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -396,14 +431,31 @@ class PetResponse(BaseModel):
                 "_id": "507f1f77bcf86cd799439011",
                 "name": "Мурзик",
                 "breed": "Британская короткошерстная",
+                "species": "Кот",
                 "birth_date": "2020-03-15",
                 "gender": "Мужской",
-                "photo_url": "",
+                "is_neutered": True,
+                "health_notes": "Здоров",
+                "photo_url": "/api/pets/507f1f77bcf86cd799439011/photo?v=abc12345",
+                "photo_file_id": "507f1f77bcf86cd799439012",
                 "owner": "admin",
-                "shared_with": [],
+                "shared_with": ["user2"],
                 "created_at": "2024-01-15 14:30",
                 "created_by": "admin",
                 "current_user_is_owner": True,
+                "tiles_settings": {
+                    "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                    "visible": {
+                        "weight": True,
+                        "defecation": True,
+                        "feeding": True,
+                        "eye_drops": True,
+                        "asthma": True,
+                        "litter": True,
+                        "ear_cleaning": True,
+                        "tooth_brushing": True,
+                    }
+                }
             }
         },
     )
@@ -430,6 +482,22 @@ class PetShareRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "username": "user1",
+            }
+        }
+    )
+
+
+class PhotoQueryParams(BaseModel):
+    """Query parameters for pet photo retrieval with optional resizing."""
+
+    w: Optional[int] = Field(None, gt=0, le=4000, description="Ширина изображения в пикселях")
+    h: Optional[int] = Field(None, gt=0, le=4000, description="Высота изображения в пикселях")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "w": 300,
+                "h": 300,
             }
         }
     )
