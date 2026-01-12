@@ -340,7 +340,7 @@ a,
 
 .adm-form-item-label {
     font-size: var(--text-sm) !important;
-    margin-bottom: var(--spacing-xs) !important;
+    margin-bottom: 0 !important;
 }
 
 .adm-button {
@@ -405,6 +405,7 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 
 .adm-form-item-child-inner {
     justify-content: flex-start !important;
+    align-items: center !important;
 }
 
 /* Dialog content text size */

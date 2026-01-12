@@ -525,7 +525,8 @@ export function MedicationForm() {
                                     <Input
                                         value={field.value}
                                         onChange={field.onChange}
-                                        placeholder="Заметки..."
+                                        placeholder="Напр. от кашля"
+                                        style={{ '--text-align': 'left' }}
                                     />
                                 </Form.Item>
                             )}
