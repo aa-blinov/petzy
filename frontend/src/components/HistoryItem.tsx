@@ -126,6 +126,7 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
         content="Вы уверены, что хотите удалить эту запись?"
         closeOnAction
         onClose={() => setDeleteDialogVisible(false)}
+        getContainer={() => document.body}
         actions={[
           {
             key: 'delete',
