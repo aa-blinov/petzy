@@ -283,6 +283,13 @@ body {
     height: 84px;
     /* 50px bar + 34px safe area fallback */
     height: calc(50px + env(safe-area-inset-bottom, 34px));
+
+    /* GPU acceleration to prevent detachment during scroll on iOS Safari */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
 }
 
 /* TabBar icons styling */
