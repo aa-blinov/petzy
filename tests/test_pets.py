@@ -396,12 +396,12 @@ class TestPetManagement:
             "date_time": datetime.now(timezone.utc),
             "username": "testuser"
         })
-        db["ear_cleanings"].insert_one({
+        db["ear_cleaning"].insert_one({
             "pet_id": pet_id,
             "date_time": datetime.now(timezone.utc),
             "username": "testuser"
         })
-        db["tooth_brushings"].insert_one({
+        db["tooth_brushing"].insert_one({
             "pet_id": pet_id,
             "date_time": datetime.now(timezone.utc),
             "username": "testuser"
@@ -430,8 +430,8 @@ class TestPetManagement:
         assert db["feedings"].count_documents({"pet_id": pet_id}) == 1
         assert db["litter_changes"].count_documents({"pet_id": pet_id}) == 1
         assert db["eye_drops"].count_documents({"pet_id": pet_id}) == 1
-        assert db["ear_cleanings"].count_documents({"pet_id": pet_id}) == 1
-        assert db["tooth_brushings"].count_documents({"pet_id": pet_id}) == 1
+        assert db["ear_cleaning"].count_documents({"pet_id": pet_id}) == 1
+        assert db["tooth_brushing"].count_documents({"pet_id": pet_id}) == 1
         assert db["medications"].count_documents({"pet_id": pet_id}) == 1
         assert db["medication_intakes"].count_documents({"pet_id": pet_id}) == 1
         
@@ -453,8 +453,8 @@ class TestPetManagement:
         assert db["feedings"].count_documents({"pet_id": pet_id}) == 0
         assert db["litter_changes"].count_documents({"pet_id": pet_id}) == 0
         assert db["eye_drops"].count_documents({"pet_id": pet_id}) == 0
-        assert db["ear_cleanings"].count_documents({"pet_id": pet_id}) == 0
-        assert db["tooth_brushings"].count_documents({"pet_id": pet_id}) == 0
+        assert db["ear_cleaning"].count_documents({"pet_id": pet_id}) == 0
+        assert db["tooth_brushing"].count_documents({"pet_id": pet_id}) == 0
         assert db["medications"].count_documents({"pet_id": pet_id}) == 0
         assert db["medication_intakes"].count_documents({"pet_id": pet_id}) == 0
 

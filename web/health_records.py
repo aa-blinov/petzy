@@ -56,6 +56,8 @@ from web.schemas import (
     HealthStatsResponse,
     SuccessResponse,
     ErrorResponse,
+    TimelineResponse,
+    TimelineQuery,
 )
 
 health_records_bp = Blueprint("health_records", __name__)
@@ -1553,3 +1555,73 @@ def get_health_stats():
         })
 
     return jsonify({"data": stats_data})
+
+
+# History timeline route
+@health_records_bp.route("/api/history/timeline", methods=["GET"])
+@api.validate(
+    query=TimelineQuery,
+    resp=Response(HTTP_200=TimelineResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["health-records"],
+)
+@require_pet_access
+def get_history_timeline():
+    """Get aggregate timeline of all health records and medication intakes for a pet."""
+    query_params = request.context.query  # type: ignore[attr-defined]
+    pet_id = g.pet_id
+    page = query_params.page
+    page_size = query_params.page_size
+    filter_type = getattr(query_params, 'type', 'all')
+
+    collections = {
+        "feedings": "feeding",
+        "asthma_attacks": "asthma",
+        "defecations": "defecation",
+        "litter_changes": "litter",
+        "weights": "weight",
+        "eye_drops": "eye_drops",
+        "tooth_brushing": "tooth_brushing",
+        "ear_cleaning": "ear_cleaning",
+        "medication_intakes": "medications"
+    }
+
+    # Filter collections if a specific type is requested
+    if filter_type and filter_type != "all":
+        collections = {k: v for k, v in collections.items() if v == filter_type}
+
+    all_records = []
+
+    for coll_name, record_type in collections.items():
+        try:
+            records_cursor = app.db[coll_name].find({"pet_id": pet_id})
+            for record in records_cursor:
+                record["_id"] = str(record["_id"])
+                record["pet_id"] = str(record.get("pet_id", ""))
+                record["record_type"] = record_type
+                
+                if isinstance(record.get("date_time"), datetime):
+                    record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+                
+                if record_type == "medications" and "medication_id" in record:
+                    med = app.db["medications"].find_one({"_id": ObjectId(record["medication_id"])})
+                    if med:
+                        record["medication_name"] = med.get("name", "Unknown")
+
+                all_records.append(record)
+        except Exception as e:
+            app.logger.warning(f"Error fetching from {coll_name} for timeline: {e}")
+
+    # Sort all records by date_time descending
+    all_records.sort(key=lambda x: x.get("date_time", ""), reverse=True)
+
+    # Apply pagination in memory
+    total = len(all_records)
+    offset = (page - 1) * page_size
+    paginated_records = all_records[offset:offset + page_size]
+
+    return jsonify({
+        "items": paginated_records,
+        "page": page,
+        "page_size": page_size,
+        "total": total
+    })

@@ -13,7 +13,16 @@ export interface HealthRecord {
   pet_id: string;
   date_time: string;
   username?: string;
+  record_type?: string; 
+  medication_name?: string;
   [key: string]: any;
+}
+
+export interface TimelineResponse {
+  items: HealthRecord[];
+  page: number;
+  page_size: number;
+  total: number;
 }
 
 export interface HealthRecordCreate {
@@ -162,6 +171,18 @@ export const healthRecordsService = {
   ): Promise<{ data: { date: string; value: any }[] }> {
     const response = await api.get<{ data: { date: string; value: any }[] }>(`/stats/health`, {
       params: { pet_id: petId, type, days }
+    });
+    return response.data;
+  },
+
+  async getTimeline(
+    petId: string,
+    page: number = 1,
+    pageSize: number = 100,
+    type: string = 'all'
+  ): Promise<TimelineResponse> {
+    const response = await api.get<TimelineResponse>('/history/timeline', {
+      params: { pet_id: petId, page, page_size: pageSize, type }
     });
     return response.data;
   }

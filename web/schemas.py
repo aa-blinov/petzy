@@ -1219,3 +1219,26 @@ class UpcomingDoseItem(BaseModel):
 
 class UpcomingDosesResponse(BaseModel):
     doses: List[UpcomingDoseItem]
+
+
+# ============================================================================
+# History Timeline Schemas
+# ============================================================================
+
+class TimelineQuery(PetIdPaginationQuery):
+    """Query parameters for timeline with optional filtering by type."""
+    type: Optional[str] = Field("all", description="Тип записи (all, feeding, asthma и т.д.)")
+
+
+class TimelineItem(BaseModel):
+    _id: str
+    record_type: str = Field(..., description="Тип записи (feeding, weight, asthma, и т.д.)")
+    pet_id: str
+    date_time: str
+    username: str
+    
+    # Allows additional dynamic fields from different record types
+    model_config = ConfigDict(extra='allow')
+
+class TimelineResponse(PaginatedResponse):
+    items: List[dict] # Use dict to allow flexibility of various record types
