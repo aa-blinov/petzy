@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Toast, Dialog, Card } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
@@ -29,7 +29,7 @@ const pastelColorMap: Record<string, string> = {
   pink: 'var(--tile-pink)',
 };
 
-export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
+export const HistoryItem = memo(function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const backgroundColor = pastelColorMap[config.color] || 'var(--tile-blue)';
@@ -144,4 +144,4 @@ export function HistoryItem({ item, config, type, activeTab }: HistoryItemProps)
 
     </>
   );
-}
+});

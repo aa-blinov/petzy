@@ -5,7 +5,8 @@ import {
     AreaChart, Area
 } from 'recharts';
 import { healthRecordsService } from '../services/healthRecords.service';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { CapsuleTabs } from 'antd-mobile';
 
 interface HistoryChartProps {
     type: string;
@@ -13,9 +14,11 @@ interface HistoryChartProps {
 }
 
 export function HistoryChart({ type, petId }: HistoryChartProps) {
+    const [days, setDays] = useState('30');
+
     const { data, isLoading, error } = useQuery({
-        queryKey: ['stats', type, petId],
-        queryFn: () => healthRecordsService.getStats(type, petId, 30),
+        queryKey: ['stats', type, petId, days],
+        queryFn: () => healthRecordsService.getStats(type, petId, parseInt(days, 10)),
     });
 
     const chartData = useMemo(() => {
@@ -53,115 +56,133 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
         return 'Количество';
     }, [type]);
 
-    if (isLoading) {
-        return <LoadingSpinner fullscreen={false} />;
-    }
+    const renderContent = () => {
+        if (isLoading) {
+            return <LoadingSpinner fullscreen={false} />;
+        }
 
-    if (error || !data) {
-        return (
-            <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
-                Ошибка загрузки данных для графика
-            </p>
-        );
-    }
+        if (error || !data) {
+            return (
+                <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
+                    Ошибка загрузки данных для графика
+                </p>
+            );
+        }
 
-    if (chartData.length === 0) {
+        if (chartData.length === 0) {
+            return (
+                <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
+                    Нет записей за выбранный период
+                </p>
+            );
+        }
+
         return (
-            <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
-                Недостаточно данных для построения графика
-            </p>
+            <div style={{
+                width: '100%',
+                height: '300px',
+                padding: '16px 8px 16px 0',
+                backgroundColor: 'var(--app-card-background)',
+                borderRadius: '12px',
+                marginTop: '16px',
+                boxShadow: 'var(--app-shadow-light)'
+            }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    {isLineChart ? (
+                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--app-primary-color)" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="var(--app-primary-color)" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--app-border-color)" />
+                            <XAxis
+                                dataKey="shortDate"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                minTickGap={20}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                width={35}
+                            />
+                            <Tooltip
+                                formatter={(value: any) => [value, valueLabel]}
+                                contentStyle={{
+                                    backgroundColor: 'var(--app-card-background)',
+                                    border: '1px solid var(--app-border-color)',
+                                    borderRadius: '8px',
+                                    color: 'var(--app-text-color)'
+                                }}
+                                itemStyle={{ color: 'var(--app-primary-color)' }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="value"
+                                name={valueLabel}
+                                stroke="var(--app-primary-color)"
+                                fillOpacity={1}
+                                fill="url(#colorValue)"
+                                strokeWidth={2}
+                            />
+                        </AreaChart>
+                    ) : (
+                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--app-border-color)" />
+                            <XAxis
+                                dataKey="date"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                allowDecimals={false}
+                                width={35}
+                            />
+                            <Tooltip
+                                formatter={(value: any) => [value, valueLabel]}
+                                contentStyle={{
+                                    backgroundColor: 'var(--app-card-background)',
+                                    border: '1px solid var(--app-border-color)',
+                                    borderRadius: '8px',
+                                    color: 'var(--app-text-color)'
+                                }}
+                                cursor={{ fill: 'var(--app-white-05)' }}
+                            />
+                            <Bar
+                                dataKey="value"
+                                name={valueLabel}
+                                fill="var(--app-primary-color)"
+                                radius={[4, 4, 0, 0]}
+                                barSize={20}
+                            />
+                        </BarChart>
+                    )}
+                </ResponsiveContainer>
+            </div>
         );
-    }
+    };
 
     return (
-        <div style={{
-            width: '100%',
-            height: '300px',
-            padding: '16px 8px 16px 0',
-            backgroundColor: 'var(--app-card-background)',
-            borderRadius: '12px',
-            marginTop: '16px',
-            boxShadow: 'var(--app-shadow-light)'
-        }}>
-            <ResponsiveContainer width="100%" height="100%">
-                {isLineChart ? (
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--app-primary-color)" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="var(--app-primary-color)" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--app-border-color)" />
-                        <XAxis
-                            dataKey="shortDate"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
-                            minTickGap={20}
-                        />
-                        <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
-                            width={35}
-                        />
-                        <Tooltip
-                            formatter={(value: any) => [value, valueLabel]}
-                            contentStyle={{
-                                backgroundColor: 'var(--app-card-background)',
-                                border: '1px solid var(--app-border-color)',
-                                borderRadius: '8px',
-                                color: 'var(--app-text-color)'
-                            }}
-                            itemStyle={{ color: 'var(--app-primary-color)' }}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="value"
-                            name={valueLabel}
-                            stroke="var(--app-primary-color)"
-                            fillOpacity={1}
-                            fill="url(#colorValue)"
-                            strokeWidth={2}
-                        />
-                    </AreaChart>
-                ) : (
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--app-border-color)" />
-                        <XAxis
-                            dataKey="date"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
-                        />
-                        <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
-                            allowDecimals={false}
-                            width={35}
-                        />
-                        <Tooltip
-                            formatter={(value: any) => [value, valueLabel]}
-                            contentStyle={{
-                                backgroundColor: 'var(--app-card-background)',
-                                border: '1px solid var(--app-border-color)',
-                                borderRadius: '8px',
-                                color: 'var(--app-text-color)'
-                            }}
-                            cursor={{ fill: 'var(--app-white-05)' }}
-                        />
-                        <Bar
-                            dataKey="value"
-                            name={valueLabel}
-                            fill="var(--app-primary-color)"
-                            radius={[4, 4, 0, 0]}
-                            barSize={20}
-                        />
-                    </BarChart>
-                )}
-            </ResponsiveContainer>
+        <div style={{ marginTop: '16px' }}>
+            <CapsuleTabs 
+                activeKey={days} 
+                onChange={v => setDays(v)}
+            >
+                <CapsuleTabs.Tab title="1 мес" key="30" />
+                <CapsuleTabs.Tab title="3 мес" key="90" />
+                <CapsuleTabs.Tab title="Полгода" key="180" />
+                <CapsuleTabs.Tab title="Всё время" key="3650" />
+            </CapsuleTabs>
+            
+            {renderContent()}
         </div>
     );
 }
