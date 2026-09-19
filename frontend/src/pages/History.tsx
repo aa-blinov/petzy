@@ -109,9 +109,10 @@ export function History() {
             marginBottom: 'var(--spacing-lg)',
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || 'var(--tile-blue)',
             '--active-title-color': 'var(--app-text-color)',
-            '--title-font-size': 'var(--text-md)',
+            '--title-font-size': 'var(--text-sm)',
             '--content-padding': '0',
           } as React.CSSProperties}
+          className="history-tabs-scrollable"
         >
           {tabs.map(tab => (
             <Tabs.Tab

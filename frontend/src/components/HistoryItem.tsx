@@ -77,7 +77,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       >
         <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 600, color: 'var(--app-text-on-tile)', fontSize: '16px' }}>{formatDateTime(item.date_time)}</span>
+            <span style={{ fontWeight: 700, color: 'var(--app-text-on-tile)', fontSize: '17px' }}>{formatDateTime(item.date_time)}</span>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {type !== 'medications' && (
                 <Button

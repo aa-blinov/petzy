@@ -104,7 +104,9 @@
     /* Other */
     --app-border-radius: var(--radius-md);
     --app-font-bubble: 'DynaPuff', system-ui, sans-serif;
-    --app-brand-gradient: linear-gradient(135deg, #FF9A3E 0%, #3E9AFF 100%);
+    /* Brand gradient stops are dark enough to keep WCAG AA contrast on both
+       the dark login background and the light navbar/tabbar. */
+    --app-brand-gradient: linear-gradient(135deg, #C25200 0%, #1A5FCC 100%);
     --app-blue-gradient: linear-gradient(135deg, var(--app-primary-color) 0%, #4a90e2 100%);
 
     /* Compatibility with old variable names */
@@ -619,4 +621,25 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+/* History tabs: enable horizontal scroll when there are more tabs than fit.
+   antd-mobile wraps each tab in a "stretch" wrapper that pins width — we
+   undo that and let the tab-list overflow horizontally. */
+.history-tabs-scrollable .adm-tabs-tab-list {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+}
+.history-tabs-scrollable .adm-tabs-tab-list::-webkit-scrollbar {
+    display: none;
+}
+.history-tabs-scrollable .adm-tabs-tab-wrapper-stretch {
+    flex: 0 0 auto;
+}
+.history-tabs-scrollable .adm-tabs-tab {
+    flex-shrink: 0;
+    padding-left: 8px;
+    padding-right: 8px;
 }
