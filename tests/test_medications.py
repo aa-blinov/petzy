@@ -84,6 +84,60 @@ class TestMedicationManagement:
         assert med["name"] == "Vitamin C"
         assert med["username"] == "testuser"
 
+    def test_get_medication_by_id_success(self, client, mock_db, regular_user_token, test_pet):
+        """Test fetching a single medication by id returns enriched detail."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "Detail Med",
+            "type": "pill",
+            "dosage": "1.0",
+            "unit": "шт",
+            "schedule": {"days": [0, 3], "times": ["08:00", "20:00"]},
+            "inventory_enabled": False,
+            "is_active": True,
+            "owner": "testuser",
+        })
+
+        response = client.get(
+            f"/api/medications/{med_id}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body["medication"]["_id"] == str(med_id)
+        assert body["medication"]["name"] == "Detail Med"
+        assert body["medication"]["intakes_today"] == 0
+        assert body["medication"]["last_taken_at"] is None
+
+    def test_get_medication_by_id_requires_auth(self, client, mock_db, regular_user_token, test_pet):
+        """Anonymous GET /api/medications/<id> must return 401."""
+        med_id = ObjectId()
+        mock_db["medications"].insert_one({
+            "_id": med_id,
+            "pet_id": str(test_pet["_id"]),
+            "name": "No Auth Med",
+            "type": "pill",
+            "schedule": {"days": [0], "times": ["08:00"]},
+            "inventory_enabled": False,
+            "is_active": True,
+            "owner": "testuser",
+        })
+
+        response = client.get(f"/api/medications/{med_id}")
+        assert response.status_code == 401
+
+    def test_get_medication_by_id_not_found(self, client, regular_user_token):
+        """GET on a non-existent id returns 404."""
+        missing_id = ObjectId()
+        response = client.get(
+            f"/api/medications/{missing_id}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 404
+
     def test_update_medication_success(self, client, mock_db, regular_user_token, test_pet):
         """Test updating an existing medication course."""
         # Insert a test medication
@@ -106,7 +160,7 @@ class TestMedicationManagement:
             "is_active": False
         }
 
-        response = client.patch(
+        response = client.put(
             f"/api/medications/{med_id}",
             json=update_data,
             headers={"Authorization": f"Bearer {regular_user_token}"}

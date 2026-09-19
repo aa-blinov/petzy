@@ -92,8 +92,13 @@ export const medicationsService = {
         return response.data.id;
     },
 
+    async getById(id: string): Promise<Medication> {
+        const response = await api.get<{ medication: Medication }>(`/medications/${id}`);
+        return response.data.medication;
+    },
+
     async update(id: string, data: Partial<MedicationCreate>): Promise<void> {
-        await api.patch(`/medications/${id}`, data);
+        await api.put(`/medications/${id}`, data);
     },
 
     async delete(id: string): Promise<void> {

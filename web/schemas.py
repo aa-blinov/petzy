@@ -1186,6 +1186,12 @@ class MedicationListResponse(BaseModel):
     medications: List[MedicationItem]
 
 
+class MedicationDetailResponse(BaseModel):
+    """Wrapper for the single-medication GET response."""
+
+    medication: MedicationItem
+
+
 class MedicationIntakeCreate(BaseModel):
     date: str
     time: str

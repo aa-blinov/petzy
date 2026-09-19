@@ -17,6 +17,8 @@ from web.schemas import (
     MedicationCreate,
     MedicationUpdate,
     MedicationListResponse,
+    MedicationDetailResponse,
+    MedicationItem,
     MedicationIntakeCreate,
     MedicationIntakeListResponse,
     UpcomingDosesResponse,
@@ -139,7 +141,49 @@ def get_medications():
         return error_response("internal_error")
 
 
-@medications_bp.route("/api/medications/<id>", methods=["PATCH"])
+@medications_bp.route("/api/medications/<id>", methods=["GET"])
+@api.validate(
+    resp=Response(HTTP_200=MedicationDetailResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["medications"],
+)
+@require_record_access("medications")
+def get_medication(id):
+    """Fetch a single medication course by id.
+
+    The decorator already loads the record into ``g.record`` after
+    verifying ownership via ``@require_record_access``; we only need
+    to serialise ``_id`` and return the document.
+    """
+    try:
+        record = g.record
+        record["_id"] = str(record["_id"])
+        # Mirror the enrichment the list endpoint provides so consumers
+        # don't see a stripped shape when switching from list→detail.
+        pet_id = record.get("pet_id")
+        if pet_id:
+            last_intake = app.db.medication_intakes.find_one(
+                {"medication_id": str(record["_id"])},
+                sort=[("date_time", -1)],
+            )
+            if last_intake and last_intake.get("date_time"):
+                dt = last_intake["date_time"]
+                record["last_taken_at"] = dt.strftime("%Y-%m-%d %H:%M")
+            else:
+                record.setdefault("last_taken_at", None)
+
+            today_start = datetime.now(timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            record["intakes_today"] = app.db.medication_intakes.count_documents(
+                {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
+            )
+        return jsonify({"medication": record})
+    except Exception as e:
+        app.logger.error(f"Error fetching medication: {e}")
+        return error_response("internal_error")
+
+
+@medications_bp.route("/api/medications/<id>", methods=["PUT"])
 @api.validate(
     body=Request(MedicationUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
