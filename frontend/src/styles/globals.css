@@ -220,6 +220,33 @@
     background-color: var(--app-card-background) !important;
 }
 
+/* antd-mobile wraps every Form.Item in an .adm-list-item, which paints
+   `#ffffff` via `--adm-color-background`. Against a warm off-white card
+   this reads as two stark horizontal bands. Drop the white fill and
+   switch the cold-grey hairline borders to our warm border token so
+   the entire form blends into the card — applies to Login, PetForm,
+   HealthForm, MedicationForm and any future Form-based screen. */
+.adm-list-body,
+.adm-list-item,
+.adm-form .adm-list-item {
+    background-color: transparent !important;
+    --adm-color-background: transparent !important;
+    --border-inner: solid 1px var(--app-divider-color) !important;
+    --border-top: solid 1px var(--app-divider-color) !important;
+    --border-bottom: solid 1px var(--app-divider-color) !important;
+}
+
+/* antd-mobile's Input defaults to `--background-color: #ffffff`, which
+   paints a stark-white rectangle inside any warm card. Drop the white
+   fill so inputs sit flush with their parent card. */
+.adm-input,
+.adm-text-area,
+.adm-input-wrapper,
+.adm-text-area-wrapper {
+    --background-color: transparent !important;
+    background-color: transparent !important;
+}
+
 /* Settings row — icon left, label/description center, control right.
    Used by Settings page and any future list-of-options screens. */
 .setting-row {
