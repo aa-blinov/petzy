@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Dialog, Tag } from 'antd-mobile';
-import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
+import { Button, Dialog } from 'antd-mobile';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { hapticFeedback } from '../utils/haptic';
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -41,14 +42,17 @@ export function AdminPanel() {
   });
 
   const handleDelete = (username: string) => {
+    hapticFeedback('medium');
     setDeleteDialog({ visible: true, username });
   };
 
   const handleEdit = (user: User) => {
+    hapticFeedback('light');
     navigate(`/admin/users/${user.username}/edit`);
   };
 
   const handleNewUser = () => {
+    hapticFeedback('light');
     navigate('/admin/users/new');
   };
 
@@ -131,53 +135,89 @@ export function AdminPanel() {
               <p style={{ color: 'var(--app-text-secondary)', padding: 'var(--spacing-md) var(--spacing-lg)' }}>Пользователи не найдены</p>
             ) : (
               users.map((user) => (
-                <Card
+                <div
                   key={user._id}
-                  style={{
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: 'var(--app-shadow)',
-                  }}
+                  className="card-soft tap-ripple"
+                  style={{ padding: 16 }}
                 >
-                  <div style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '16px' }}>{user.username}</span>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <Button
-                          size="mini"
-                          fill="outline"
-                          onClick={() => handleEdit(user)}
-                          style={{
-                            '--text-color': 'var(--app-text-primary)',
-                            '--border-color': 'var(--app-border-color)',
-                            backgroundColor: 'transparent',
-                          } as React.CSSProperties}
-                        >
-                          <EditSOutline style={{ color: 'var(--app-text-primary)', fontSize: '16px' }} />
-                        </Button>
-                        <Button
-                          size="mini"
-                          color="danger"
-                          fill="outline"
-                          onClick={() => handleDelete(user.username)}
-                          disabled={deleteUserMutation.isPending}
-                        >
-                          <DeleteOutline />
-                        </Button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {user.full_name && <span>{user.full_name}</span>}
-                      {user.email && <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>{user.email}</span>}
-                      <div style={{ marginTop: '4px' }}>
-                        <Tag color={user.is_active !== false ? 'success' : 'danger'}>
-                          {user.is_active !== false ? 'Активен' : 'Неактивен'}
-                        </Tag>
-                      </div>
-                      {user.created_at && <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Создан: {user.created_at}</span>}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: 10,
+                  }}>
+                    <span style={{
+                      fontWeight: 600,
+                      fontSize: 16,
+                      fontFamily: 'var(--font-display)',
+                      color: 'var(--app-text-primary)',
+                    }}>
+                      {user.username}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(user)}
+                        aria-label="Редактировать"
+                        style={{
+                          width: 32, height: 32, padding: 0,
+                          border: 'none', borderRadius: 10,
+                          background: 'transparent',
+                          color: 'var(--app-text-secondary)',
+                          cursor: 'pointer', display: 'grid', placeItems: 'center',
+                        }}
+                      >
+                        <Pencil size={16} strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(user.username)}
+                        disabled={deleteUserMutation.isPending}
+                        aria-label="Удалить"
+                        style={{
+                          width: 32, height: 32, padding: 0,
+                          border: '1px solid var(--app-danger-color)',
+                          borderRadius: 10,
+                          background: 'transparent',
+                          color: 'var(--app-danger-color)',
+                          cursor: deleteUserMutation.isPending ? 'not-allowed' : 'pointer',
+                          opacity: deleteUserMutation.isPending ? 0.5 : 1,
+                          display: 'grid', placeItems: 'center',
+                        }}
+                      >
+                        <Trash2 size={16} strokeWidth={2} />
+                      </button>
                     </div>
                   </div>
-                </Card>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {user.full_name && (
+                      <span style={{ fontSize: 14, color: 'var(--app-text-primary)' }}>{user.full_name}</span>
+                    )}
+                    {user.email && (
+                      <span style={{ fontSize: 12, color: 'var(--app-text-secondary)' }}>{user.email}</span>
+                    )}
+                    <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span
+                        className="chip"
+                        style={{
+                          background: user.is_active !== false
+                            ? 'rgba(52, 199, 89, 0.12)'
+                            : 'rgba(255, 69, 58, 0.10)',
+                          color: user.is_active !== false
+                            ? 'var(--app-success-color)'
+                            : 'var(--app-danger-color)',
+                        }}
+                      >
+                        {user.is_active !== false ? 'Активен' : 'Неактивен'}
+                      </span>
+                      {user.created_at && (
+                        <span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>
+                          Создан: {user.created_at}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ))
             )}
           </div>
