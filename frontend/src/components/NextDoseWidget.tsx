@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Toast } from 'antd-mobile';
-import { ClockCircleOutline, CheckOutline, ExclamationCircleOutline } from 'antd-mobile-icons';
+import { ClockCircleOutline, ExclamationCircleOutline } from 'antd-mobile-icons';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 
@@ -59,7 +59,7 @@ export function NextDoseWidget() {
                         </div>
                         <h3 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 700 }}>{nextDose.name}</h3>
                         <div style={{ fontSize: 'var(--text-sm)', opacity: 0.9, marginTop: '2px' }}>
-                            {nextDose.type} • {nextDose.time}
+                            {nextDose.time}
                         </div>
                     </div>
                     <div style={{ backgroundColor: 'var(--app-white-20)', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)' }}>
@@ -95,7 +95,7 @@ export function NextDoseWidget() {
                         onClick={() => intakeMutation.mutate(nextDose)}
                         loading={intakeMutation.isPending}
                     >
-                        <CheckOutline /> Принять сейчас
+                        Принять сейчас
                     </Button>
                 </div>
             </div>
