@@ -469,6 +469,17 @@ select {
     will-change: transform;
 }
 
+/* Tab bar items — colour and title-weight transitions for the active
+   state. The icon scale is handled inline in BottomTabBar.tsx so it
+   can use a spring easing. */
+.adm-tab-bar-item {
+    transition: color 180ms ease;
+}
+
+.adm-tab-bar-item-title {
+    transition: color 180ms ease, font-weight 180ms ease;
+}
+
 /* TabBar icons styling */
 input,
 textarea,

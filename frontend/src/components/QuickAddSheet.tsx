@@ -44,6 +44,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
       visible={visible}
       onMaskClick={onClose}
       position="bottom"
+      closeOnSwipe
       bodyStyle={{
         borderTopLeftRadius: 'var(--radius-xl)',
         borderTopRightRadius: 'var(--radius-xl)',
