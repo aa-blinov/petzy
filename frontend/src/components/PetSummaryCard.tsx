@@ -11,11 +11,12 @@ import { useNavigate } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 import { Skeleton } from 'antd-mobile';
 
+import { type LucideIcon } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
-import { speciesIconMap, SPECIES_FALLBACK_ICON, type LucideIcon } from '../utils/constants';
+import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
 import { useScrollParallax } from '../hooks/useScrollParallax';
 import { PetImage } from './PetImage';
 import { CountUp } from './CountUp';
