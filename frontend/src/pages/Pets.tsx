@@ -245,7 +245,7 @@ function PetCard({
 
   return (
     <div
-      className="card-soft"
+      className="card-soft tap-ripple"
       style={{ overflow: 'hidden' }}
       onTouchStart={startPress}
       onTouchEnd={cancelPress}

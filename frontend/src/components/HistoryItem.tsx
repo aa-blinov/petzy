@@ -63,7 +63,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   return (
     <>
       <div
-        className="card-soft"
+        className="card-soft tap-ripple"
         style={{
           display: 'flex',
           // Pill-icon sits on the first text line (the title). Aligning
