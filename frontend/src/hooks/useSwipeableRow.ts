@@ -21,8 +21,8 @@
 
 import { useRef, useState, useCallback, type TouchEvent as ReactTouchEvent } from 'react';
 
-const THRESHOLD_PX = 80;     // travel needed to commit an action
-const MAX_OFFSET_PX = 120;   // hard cap so a long swipe doesn't yank the row off-screen
+const THRESHOLD_PX = 60;     // travel needed to commit an action
+const MAX_OFFSET_PX = 76;    // hard cap so a long swipe doesn't yank the row off-screen
 const COMMIT_VELOCITY = 0.5; // px/ms — fast flick also commits even if travel < threshold
 const RUBBER_BAND = 0.45;    // resistance factor past MAX_OFFSET_PX
 

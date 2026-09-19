@@ -128,8 +128,8 @@ def main() -> int:
                         el.dispatchEvent(ev);
                     };
                     fire('touchstart', 40);
-                    for (let i = 1; i <= 20; i++) {
-                        fire('touchmove', 40 + i * 8);
+                    for (let i = 1; i <= 12; i++) {
+                        fire('touchmove', 40 + i * 7);
                     }
                     // Pause mid-drag (don't fire touchend) so the action
                     // layer stays visible in the screenshot.
@@ -160,8 +160,8 @@ def main() -> int:
                         el.dispatchEvent(ev);
                     };
                     fire('touchstart', 350);
-                    for (let i = 1; i <= 20; i++) {
-                        fire('touchmove', 350 - i * 8);
+                    for (let i = 1; i <= 12; i++) {
+                        fire('touchmove', 350 - i * 7);
                     }
                 }""",
                 {"y": mid_y},

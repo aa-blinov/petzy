@@ -33,41 +33,44 @@
 
 .swipeable-row__action {
     position: absolute;
-    top: 0;
-    bottom: 0;
+    top: 6px;
+    bottom: 6px;
+    /* Sit at the row's edge but inset by 6px — the action reads as a
+       pill-shaped button rather than a full-height colored slab that
+       touches the row border. */
+    margin: 0 6px;
+    padding: 0;
+    width: 72px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 20px;
+    justify-content: center;
+    border-radius: var(--radius-md);
     color: var(--app-text-on-dark);
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: var(--text-sm);
     /* Stay behind the surface so the row's card-soft covers them. */
     z-index: 0;
     user-select: none;
+    /* The action's own shadow gives it depth even while tucked behind
+       the row — reads as a tactile button on commit. */
+    box-shadow: 0 2px 6px rgba(60, 40, 20, 0.10);
 }
 
 .swipeable-row__action--left {
     left: 0;
-    justify-content: flex-start;
 }
 
 .swipeable-row__action--right {
     right: 0;
-    justify-content: flex-end;
 }
 
 .swipeable-row__action-icon {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .swipeable-row__action-label {
-    /* Labels stay visible only when there's enough offset to read
-       them — saves the row from looking crowded at rest. */
-    letter-spacing: -0.01em;
+    display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
