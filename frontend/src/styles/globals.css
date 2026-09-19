@@ -857,6 +857,44 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
        PetSummaryCard. We just give it a hint here. */
 }
 
+/* ========================================
+   Tap ripple (CSS-only, no finger-tracking)
+   ======================================== */
+/* Apply .tap-ripple to any clickable card/button for an expanding
+   accent-soft circle on press. Centered ripple — doesn't follow the
+   touch point, but the existing :active scale-down already gives
+   tactile feedback. Together they read as "native". */
+.tap-ripple {
+    position: relative;
+    overflow: hidden;
+    /* Establishes the pseudo-element's positioning context. */
+}
+
+.tap-ripple::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: var(--app-accent-soft);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.tap-ripple:active::after {
+    width: 220%;
+    height: 220%;
+    opacity: 0.6;
+    transition: width 520ms ease-out, height 520ms ease-out, opacity 0ms;
+}
+
+.tap-ripple:not(:active)::after {
+    transition: width 0ms, height 0ms, opacity 360ms ease-out;
+}
+
 /* High refresh rate display optimizations (120Hz+) */
 @media (prefers-reduced-motion: no-preference) {
 
