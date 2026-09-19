@@ -1,13 +1,14 @@
 import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Toast, Dialog } from 'antd-mobile';
-import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
+import { Toast, Dialog } from 'antd-mobile';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
 import { formatRelativeDateTime } from '../utils/relativeTime';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { pastelColorMap, typeIconMap, type HealthRecordType } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
+import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -23,19 +24,21 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
   const PillIcon = typeIconMap[type];
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Hide the author chip when the record was logged by the current user —
   // single-owner households shouldn't see "admin" on every row.
   const showAuthor = item.username && item.username !== currentUsername;
+  const canEdit = type !== 'medications';
 
   const handleEdit = () => {
-    // Pass item data via state to avoid extra API call
-    // ActiveTab is now in URL, so we pass it as query parameter
+    // Pass item data via state to avoid extra API call.
     navigate(`/form/${type}/${item._id}?tab=${activeTab}`, { state: { recordData: item } });
   };
 
   const handleDelete = async () => {
-    hapticFeedback('medium');
+    if (isDeleting) return;
+    setIsDeleting(true);
     try {
       await healthRecordsService.delete(type as HealthRecordType, item._id);
       await queryClient.invalidateQueries({ queryKey: ['history'] });
@@ -46,111 +49,97 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         await queryClient.invalidateQueries({ queryKey: ['medications', 'upcoming'] });
       }
 
-      hapticFeedback('light');
       Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
-
-      // Small delay to let Toast render before unmounting
-      setTimeout(() => {
-        setDeleteDialogVisible(false);
-      }, 100);
+      setDeleteDialogVisible(false);
     } catch (error) {
       console.error('Error deleting record:', error);
       Toast.show({ content: 'Ошибка при удалении', icon: 'fail', duration: 2000 });
       setDeleteDialogVisible(false);
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  // Actions revealed by swipe. Right-swipe opens edit; left-swipe asks
+  // for delete confirmation. Edit action omitted for medication intakes
+  // — they're immutable per dose.
+  const leftAction: SwipeAction | undefined = canEdit
+    ? {
+        icon: <Pencil size={20} strokeWidth={2.4} />,
+        label: 'Изменить',
+        color: 'var(--app-accent)',
+        onTrigger: handleEdit,
+      }
+    : undefined;
+
+  const rightAction: SwipeAction = {
+    icon: <Trash2 size={20} strokeWidth={2.4} />,
+    label: 'Удалить',
+    color: 'var(--app-danger-color)',
+    onTrigger: () => setDeleteDialogVisible(true),
   };
 
   return (
     <>
-      <div
-        className="card-soft tap-ripple"
-        style={{
-          display: 'flex',
-          // Pill-icon sits on the first text line (the title). Aligning
-          // with the row's vertical centre made the title drift above
-          // the icon and the row looked unanchored.
-          alignItems: 'flex-start',
-          gap: '12px',
-          padding: '14px',
-        }}
+      <SwipeableRow
+        leftAction={leftAction}
+        rightAction={rightAction}
+        disabled={deleteDialogVisible}
       >
-        {/* Pill-icon on the left — tinted rounded square with category icon */}
         <div
-          className="pill-icon"
-          style={{ backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}
-          aria-hidden
+          className="card-soft tap-ripple"
+          style={{
+            display: 'flex',
+            // Pill-icon sits on the first text line (the title). Aligning
+            // with the row's vertical centre made the title drift above
+            // the icon and the row looked unanchored.
+            alignItems: 'flex-start',
+            gap: '12px',
+            padding: '14px',
+          }}
         >
-          {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Header row: date + actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-            <span
-              className="display-headline"
-              style={{ fontSize: '15px', fontWeight: 600 }}
-            >
-              {formatRelativeDateTime(item.date_time)}
-            </span>
-
-            {/* Action buttons — kept small and discrete */}
-            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-              {type !== 'medications' && (
-                <Button
-                  size="mini"
-                  fill="none"
-                  onClick={handleEdit}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    padding: 0,
-                    borderRadius: '10px',
-                    color: 'var(--app-text-secondary)',
-                    '--background-color': 'transparent',
-                  } as React.CSSProperties}
-                >
-                  <EditSOutline style={{ fontSize: '16px' }} />
-                </Button>
-              )}
-              <Button
-                size="mini"
-                fill="none"
-                onClick={() => setDeleteDialogVisible(true)}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  padding: 0,
-                  borderRadius: '10px',
-                  color: 'var(--app-text-tertiary)',
-                  '--background-color': 'transparent',
-                } as React.CSSProperties}
-              >
-                <DeleteOutline style={{ fontSize: '16px' }} />
-              </Button>
-            </div>
+          {/* Pill-icon on the left — tinted rounded square with category icon */}
+          <div
+            className="pill-icon"
+            style={{ backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}
+            aria-hidden
+          >
+            {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
           </div>
 
-          {showAuthor && (
-            <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>
-              {item.username}
-            </span>
-          )}
+          {/* Body */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Header row: relative date/time */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <span
+                className="display-headline"
+                style={{ fontSize: '15px', fontWeight: 600 }}
+              >
+                {formatRelativeDateTime(item.date_time)}
+              </span>
+            </div>
 
-          {/* Details — rendered as plain text blocks */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              color: 'var(--app-text-primary)',
-              fontSize: '14px',
-              lineHeight: 1.45,
-            }}
-            dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
-          />
+            {showAuthor && (
+              <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>
+                {item.username}
+              </span>
+            )}
+
+            {/* Details — rendered as plain text blocks */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                color: 'var(--app-text-primary)',
+                fontSize: '14px',
+                lineHeight: 1.45,
+              }}
+              dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
+            />
+          </div>
         </div>
-      </div>
+      </SwipeableRow>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -163,8 +152,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         actions={[
           {
             key: 'delete',
-            text: 'Удалить',
+            text: isDeleting ? 'Удаление...' : 'Удалить',
             danger: true,
+            disabled: isDeleting,
             onClick: handleDelete,
           },
           {
@@ -174,7 +164,6 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
           },
         ]}
       />
-
     </>
   );
 });

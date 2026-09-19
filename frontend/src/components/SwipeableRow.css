@@ -1,0 +1,77 @@
+/* SwipeableRow — iOS-style swipe-to-action.
+   The row surface translates horizontally; action layers sit underneath
+   anchored to the left and right edges. */
+
+.swipeable-row {
+    position: relative;
+    width: 100%;
+    /* Establish a containing block for the absolute-positioned actions. */
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    /* No margin-bottom here — parents (HistoryTab, Pets, etc.) use
+       flex `gap` so they control their own rhythm. */
+}
+
+.swipeable-row__surface {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    /* Spring back when the user releases without committing. The
+       transition is paused while dragging so the row tracks 1:1. */
+    transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    will-change: transform;
+    touch-action: pan-y;
+    /* Allow the inner card-soft to keep its rounded corners. */
+    border-radius: var(--radius-lg);
+}
+
+.swipeable-row--dragging .swipeable-row__surface {
+    /* Cancel the spring while the finger is down — direct manipulation
+       feels native, the bounce only kicks in on release. */
+    transition: none;
+}
+
+.swipeable-row__action {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+    color: var(--app-text-on-dark);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    /* Stay behind the surface so the row's card-soft covers them. */
+    z-index: 0;
+    user-select: none;
+}
+
+.swipeable-row__action--left {
+    left: 0;
+    justify-content: flex-start;
+}
+
+.swipeable-row__action--right {
+    right: 0;
+    justify-content: flex-end;
+}
+
+.swipeable-row__action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.swipeable-row__action-label {
+    /* Labels stay visible only when there's enough offset to read
+       them — saves the row from looking crowded at rest. */
+    letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swipeable-row__surface {
+        transition: none;
+    }
+}

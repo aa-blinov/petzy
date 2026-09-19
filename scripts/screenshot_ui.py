@@ -95,6 +95,81 @@ def main() -> int:
         page.screenshot(path=str(OUTPUT_DIR / "quick_add_sheet.png"), full_page=False)
         print("  captured quick_add_sheet (FAB sheet)")
 
+        # Bonus: capture History swipe gestures (left=delete, right=edit).
+        # We dispatch raw TouchEvents because Playwright's locator.drag()
+        # path doesn't reach the row surface's onTouchMove handler in a
+        # way that the React hook recognises.
+        page.goto(f"{FRONTEND}/history", wait_until="networkidle")
+        page.wait_for_timeout(1500)
+
+        row_box = page.evaluate("""() => {
+            const el = document.querySelector('.swipeable-row__surface');
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: r.x, y: r.y, w: r.width, h: r.height, midY: r.y + r.height / 2 };
+        }""")
+        if row_box:
+            mid_y = row_box["midY"]
+            # Right-swipe (left→right finger motion) — reveals Edit action.
+            page.evaluate(
+                """({y}) => {
+                    const el = document.querySelector('.swipeable-row__surface');
+                    if (!el) return;
+                    const fire = (type, x) => {
+                        const t = new Touch({
+                            identifier: 1, target: el, clientX: x, clientY: y
+                        });
+                        const ev = new TouchEvent(type, {
+                            bubbles: true, cancelable: true,
+                            touches: type === 'touchend' ? [] : [t],
+                            targetTouches: type === 'touchend' ? [] : [t],
+                            changedTouches: [t],
+                        });
+                        el.dispatchEvent(ev);
+                    };
+                    fire('touchstart', 40);
+                    for (let i = 1; i <= 20; i++) {
+                        fire('touchmove', 40 + i * 8);
+                    }
+                    // Pause mid-drag (don't fire touchend) so the action
+                    // layer stays visible in the screenshot.
+                }""",
+                {"y": mid_y},
+            )
+            page.wait_for_timeout(400)
+            page.screenshot(path=str(OUTPUT_DIR / "history_swipe_right.png"), full_page=False)
+            print("  captured history_swipe_right (edit reveal)")
+
+            # Reset by clicking elsewhere, then left-swipe (delete reveal).
+            page.evaluate("window.scrollTo(0, 0)")
+            page.wait_for_timeout(400)
+            page.evaluate(
+                """({y}) => {
+                    const el = document.querySelector('.swipeable-row__surface');
+                    if (!el) return;
+                    const fire = (type, x) => {
+                        const t = new Touch({
+                            identifier: 1, target: el, clientX: x, clientY: y
+                        });
+                        const ev = new TouchEvent(type, {
+                            bubbles: true, cancelable: true,
+                            touches: type === 'touchend' ? [] : [t],
+                            targetTouches: type === 'touchend' ? [] : [t],
+                            changedTouches: [t],
+                        });
+                        el.dispatchEvent(ev);
+                    };
+                    fire('touchstart', 350);
+                    for (let i = 1; i <= 20; i++) {
+                        fire('touchmove', 350 - i * 8);
+                    }
+                }""",
+                {"y": mid_y},
+            )
+            page.wait_for_timeout(400)
+            page.screenshot(path=str(OUTPUT_DIR / "history_swipe_left.png"), full_page=False)
+            print("  captured history_swipe_left (delete reveal)")
+
         browser.close()
 
     print(f"\nScreenshots saved to {OUTPUT_DIR}")
