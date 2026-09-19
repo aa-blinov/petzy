@@ -14,25 +14,14 @@ import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
+import { speciesIconMap, SPECIES_FALLBACK_ICON, type LucideIcon } from '../utils/constants';
 import { PetImage } from './PetImage';
 
 
-const SPECIES_EMOJI: Record<string, string> = {
-  cat: "🐱",
-  dog: "🐶",
-  bird: "🐦",
-  rabbit: "🐰",
-  hamster: "🐹",
-  fish: "🐟",
-  reptile: "🦎",
-  other: "🐾",
-};
-
-
-function speciesEmoji(species?: string): string {
-  if (!species) return SPECIES_EMOJI.other;
+function speciesIcon(species?: string): LucideIcon {
+  if (!species) return SPECIES_FALLBACK_ICON;
   const key = species.toLowerCase().trim();
-  return SPECIES_EMOJI[key] ?? SPECIES_EMOJI.other;
+  return speciesIconMap[key] ?? SPECIES_FALLBACK_ICON;
 }
 
 
@@ -114,7 +103,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const lastWeightRecord = weights.data?.weights?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
-  const species = speciesEmoji(pet.species);
+  const SpeciesIcon = speciesIcon(pet.species);
 
   return (
     <div
@@ -142,7 +131,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             style={{ width: "100%", height: "100%", borderRadius: 0 }}
           />
         ) : (
-          <span
+          <div
             aria-hidden
             style={{
               position: "absolute",
@@ -150,12 +139,12 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "84px",
-              opacity: 0.85,
+              color: "#FFFFFF",
+              opacity: 0.9,
             }}
           >
-            {species}
-          </span>
+            <SpeciesIcon size={84} strokeWidth={1.5} />
+          </div>
         )}
 
         {/* Bottom gradient for legibility */}

@@ -19,7 +19,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
-  const pillIcon = typeIconMap[type] ?? '🐾';
+  const PillIcon = typeIconMap[type];
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
   const handleEdit = () => {
@@ -63,13 +63,13 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
           padding: '14px',
         }}
       >
-        {/* Pill-icon on the left — tinted rounded square with category emoji */}
+        {/* Pill-icon on the left — tinted rounded square with category icon */}
         <div
           className="pill-icon"
-          style={{ backgroundColor: pillBg }}
+          style={{ backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}
           aria-hidden
         >
-          <span>{pillIcon}</span>
+          {PillIcon ? <PillIcon size={22} strokeWidth={2} /> : null}
         </div>
 
         {/* Body */}
