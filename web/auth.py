@@ -24,6 +24,7 @@ from web.security import (
     login_required,
     set_auth_cookie,
     try_refresh_access_token,
+    validate_refresh_token,
     verify_token,
     create_access_token,
     create_refresh_token,
@@ -159,17 +160,12 @@ def api_refresh():
     if not refresh_token:
         return error_response("unauthorized_refresh_token_required")
 
-    # Verify refresh token
-    payload = verify_token(refresh_token, "refresh")
-    if not payload:
+    # Verify refresh token end-to-end (signature + DB lookup + TTL
+    # defensive cleanup). Returning None means "treat as unauthorised".
+    result = validate_refresh_token(refresh_token)
+    if result is None:
         return error_response("unauthorized_refresh_token_invalid")
-
-    # Check if token exists in database
-    token_record = app.db["refresh_tokens"].find_one({"token": refresh_token})
-    if not token_record:
-        return error_response("unauthorized_refresh_token_not_found")
-
-    username = payload.get("username") or ""
+    username, _token_record = result
 
     # Create new access token
     access_token = create_access_token(username)
@@ -192,12 +188,34 @@ def api_refresh():
     tags=["auth"],
 )
 def api_logout():
-    """Logout - invalidate refresh token."""
+    """Logout — invalidate this user's refresh tokens.
+
+    We delete the specific token the cookie carries, AND any other
+    tokens belonging to the same user. Logging out is supposed to
+    mean "sign me out of everything" — if a user had refresh tokens
+    cached from older devices/sessions and only the current cookie
+    got deleted, a stolen token from a different device would still
+    happily mint access tokens. Deleting by username keeps the
+    invariant "after logout, no refresh token for this user exists".
+    """
     refresh_token = request.cookies.get("refresh_token")
 
     if refresh_token:
-        # Remove refresh token from database (must see patched app.db in tests)
-        app.db["refresh_tokens"].delete_one({"token": refresh_token})
+        # Must see patched app.db in tests
+        from web.security import verify_token
+
+        # Find the user this token belongs to (verify_token only checks
+        # signature/expiry, doesn't touch the DB).
+        payload = verify_token(refresh_token, "refresh")
+        username = payload.get("username") if payload else None
+
+        if username:
+            # Drop every refresh token for this user. Cheap because
+            # refresh_tokens collection is small (TTL keeps it bounded).
+            app.db["refresh_tokens"].delete_many({"username": username})
+        else:
+            # Couldn't decode — fall back to removing the specific token.
+            app.db["refresh_tokens"].delete_one({"token": refresh_token})
 
     response, status = get_message("auth_logout_success")
     response.set_cookie("access_token", "", max_age=0)

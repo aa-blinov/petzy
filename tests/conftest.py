@@ -39,7 +39,7 @@ def mock_db():
     mock_db = mock_client["test_db"]
 
     # Patch the db module and GridFS
-    with patch("web.db.db", mock_db), patch("web.app.db", mock_db), patch("web.app.fs", MagicMock()):
+    with patch("web.db.db", mock_db), patch("web.app.db", mock_db), patch("web.security.db", mock_db), patch("web.app.fs", MagicMock()):
         # Clear any existing data
         mock_db["users"].delete_many({})
         mock_db["pets"].delete_many({})
@@ -95,12 +95,12 @@ def admin_token():
 def admin_refresh_token(mock_db):
     """Create a valid refresh token for admin user."""
     # Need to use mock_db context, so create token manually
-    from web.security import JWT_SECRET_KEY, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
+    from web.security import JWT_SECRET_KEY, REFRESH_TOKEN_EXPIRE_DAYS
 
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     jti = uuid4().hex
     payload = {"username": "admin", "exp": expire, "type": "refresh", "jti": jti}
-    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
 
     # Store in database
     from web.app import db
