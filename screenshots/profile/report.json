@@ -1,0 +1,398 @@
+{
+  "routes": [
+    {
+      "name": "login",
+      "path": "/login",
+      "status": "ok",
+      "timing_ms": {
+        "load": 420.7,
+        "network_idle": 1290.7
+      },
+      "web_vitals": {
+        "fcp_ms": 444,
+        "lcp_ms": 796,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [
+          {
+            "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
+            "location": {
+              "url": "http://localhost:5173/api/pets",
+              "line": 0,
+              "column": 0,
+              "lineNumber": 0,
+              "columnNumber": 0
+            }
+          },
+          {
+            "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
+            "location": {
+              "url": "http://localhost:5173/api/auth/check-admin",
+              "line": 0,
+              "column": 0,
+              "lineNumber": 0,
+              "columnNumber": 0
+            }
+          },
+          {
+            "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
+            "location": {
+              "url": "http://localhost:5173/api/auth/refresh",
+              "line": 0,
+              "column": 0,
+              "lineNumber": 0,
+              "columnNumber": 0
+            }
+          },
+          {
+            "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
+            "location": {
+              "url": "http://localhost:5173/api/auth/refresh",
+              "line": 0,
+              "column": 0,
+              "lineNumber": 0,
+              "columnNumber": 0
+            }
+          },
+          {
+            "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
+            "location": {
+              "url": "http://localhost:5173/api/auth/check-admin",
+              "line": 0,
+              "column": 0,
+              "lineNumber": 0,
+              "columnNumber": 0
+            }
+          },
+          {
+            "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
+            "location": {
+              "url": "http://localhost:5173/api/auth/refresh",
+              "line": 0,
+              "column": 0,
+              "lineNumber": 0,
+              "columnNumber": 0
+            }
+          }
+        ],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [
+        {
+          "url": "http://localhost:5173/api/pets",
+          "status": 401
+        },
+        {
+          "url": "http://localhost:5173/api/auth/check-admin",
+          "status": 401
+        },
+        {
+          "url": "http://localhost:5173/api/auth/refresh",
+          "status": 401
+        },
+        {
+          "url": "http://localhost:5173/api/auth/refresh",
+          "status": 401
+        },
+        {
+          "url": "http://localhost:5173/api/auth/check-admin",
+          "status": 401
+        },
+        {
+          "url": "http://localhost:5173/api/auth/refresh",
+          "status": 401
+        }
+      ],
+      "note": ""
+    },
+    {
+      "name": "dashboard",
+      "path": "/",
+      "status": "ok",
+      "timing_ms": {
+        "load": 47.7,
+        "network_idle": 750.5
+      },
+      "web_vitals": {
+        "fcp_ms": 84,
+        "lcp_ms": 84,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "pets",
+      "path": "/pets",
+      "status": "ok",
+      "timing_ms": {
+        "load": 42.2,
+        "network_idle": 569.8
+      },
+      "web_vitals": {
+        "fcp_ms": 56,
+        "lcp_ms": 76,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "history_list",
+      "path": "/history",
+      "status": "ok",
+      "timing_ms": {
+        "load": 42.3,
+        "network_idle": 560.3
+      },
+      "web_vitals": {
+        "fcp_ms": 60,
+        "lcp_ms": 60,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "history_chart",
+      "path": "/history?view=chart",
+      "status": "ok",
+      "timing_ms": {
+        "load": 43.3,
+        "network_idle": 563.6
+      },
+      "web_vitals": {
+        "fcp_ms": 64,
+        "lcp_ms": 64,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "medications",
+      "path": "/medications",
+      "status": "ok",
+      "timing_ms": {
+        "load": 44.1,
+        "network_idle": 562.3
+      },
+      "web_vitals": {
+        "fcp_ms": 64,
+        "lcp_ms": 80,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "settings",
+      "path": "/settings",
+      "status": "ok",
+      "timing_ms": {
+        "load": 41.8,
+        "network_idle": 560.8
+      },
+      "web_vitals": {
+        "fcp_ms": 64,
+        "lcp_ms": 64,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "pet_form",
+      "path": "/pets/new",
+      "status": "ok",
+      "timing_ms": {
+        "load": 44.6,
+        "network_idle": 568.5
+      },
+      "web_vitals": {
+        "fcp_ms": 64,
+        "lcp_ms": 108,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "health_form",
+      "path": "/form/feeding",
+      "status": "ok",
+      "timing_ms": {
+        "load": 42.9,
+        "network_idle": 559.4
+      },
+      "web_vitals": {
+        "fcp_ms": 56,
+        "lcp_ms": 56,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "medication_form",
+      "path": "/medications/new",
+      "status": "ok",
+      "timing_ms": {
+        "load": 41.8,
+        "network_idle": 559.2
+      },
+      "web_vitals": {
+        "fcp_ms": 56,
+        "lcp_ms": 56,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "tiles_settings",
+      "path": "/tiles-settings",
+      "status": "ok",
+      "timing_ms": {
+        "load": 45.6,
+        "network_idle": 559.3
+      },
+      "web_vitals": {
+        "fcp_ms": 68,
+        "lcp_ms": 68,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "form_defaults",
+      "path": "/form-defaults",
+      "status": "ok",
+      "timing_ms": {
+        "load": 40.5,
+        "network_idle": 556.6
+      },
+      "web_vitals": {
+        "fcp_ms": 48,
+        "lcp_ms": 72,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "admin_panel",
+      "path": "/admin",
+      "status": "ok",
+      "timing_ms": {
+        "load": 42.2,
+        "network_idle": 560.5
+      },
+      "web_vitals": {
+        "fcp_ms": 56,
+        "lcp_ms": 56,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    },
+    {
+      "name": "user_form",
+      "path": "/admin/users/new",
+      "status": "ok",
+      "timing_ms": {
+        "load": 50.2,
+        "network_idle": 560.6
+      },
+      "web_vitals": {
+        "fcp_ms": 64,
+        "lcp_ms": 80,
+        "cls": 0,
+        "long_tasks_gt_50ms": 0
+      },
+      "console": {
+        "errors": [],
+        "warnings": []
+      },
+      "page_errors": [],
+      "failed_requests": [],
+      "note": ""
+    }
+  ]
+}
