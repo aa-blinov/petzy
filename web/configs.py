@@ -24,6 +24,11 @@ def load_config() -> Dict[str, Any]:
         f"mongodb://{mongo_user_encoded}:{mongo_pass_encoded}@{mongo_host}:{mongo_port}/{mongo_db}?authSource=admin"
     )
 
+    # CORS allowed origins (comma-separated). Empty list → reflect the
+    # request Origin (safe with cookies only when front and back share an origin).
+    cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
     # Base configuration structure
     config = {
         # Flask settings
@@ -34,6 +39,8 @@ def load_config() -> Dict[str, Any]:
             "json_as_ascii": False,
             "template_folder": "templates",
             "static_folder": "static",
+            "cookie_secure": os.getenv("COOKIE_SECURE", "false").lower() == "true",
+            "cookie_samesite": os.getenv("COOKIE_SAMESITE", "Lax"),
         },
         # JWT settings
         "jwt": {
@@ -55,6 +62,10 @@ def load_config() -> Dict[str, Any]:
             "level": os.getenv("LOG_LEVEL", "INFO").upper(),
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        # CORS settings
+        "cors": {
+            "allowed_origins": cors_origins,
         },
         # Admin settings
         "admin": {
@@ -108,3 +119,4 @@ RATE_LIMIT_CONFIG = _config["rate_limit"]
 LOGGING_CONFIG = _config["logging"]
 ADMIN_CONFIG = _config["admin"]
 MONGODB_CONFIG = _config["mongodb"]
+CORS_CONFIG = _config["cors"]

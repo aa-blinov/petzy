@@ -11,9 +11,9 @@ import logging
 
 import bcrypt
 import jwt
-from flask import request
+from flask import request, Response
 
-from web.configs import JWT_CONFIG, ADMIN_CONFIG
+from web.configs import FLASK_CONFIG, JWT_CONFIG, ADMIN_CONFIG
 from web.db import db
 from web.errors import error_response
 
@@ -26,9 +26,30 @@ JWT_ALGORITHM = JWT_CONFIG["algorithm"]
 ACCESS_TOKEN_EXPIRE_MINUTES = JWT_CONFIG["access_token_expire_minutes"]
 REFRESH_TOKEN_EXPIRE_DAYS = JWT_CONFIG["refresh_token_expire_days"]
 
+# Cookie defaults (env-driven via FLASK_CONFIG; see web/configs.py)
+COOKIE_SECURE: bool = FLASK_CONFIG["cookie_secure"]
+COOKIE_SAMESITE: str = FLASK_CONFIG["cookie_samesite"]
+
 # Authentication credentials - REQUIRED from environment
 ADMIN_USERNAME = ADMIN_CONFIG["username"]
 ADMIN_PASSWORD_HASH = ADMIN_CONFIG["password_hash"]
+
+
+def set_auth_cookie(response: Response, key: str, value: str, max_age: int) -> None:
+    """Attach an auth cookie to ``response`` using configured defaults.
+
+    Centralising this avoids the silent ``secure=False`` footgun that the
+    project shipped with for months — flip ``COOKIE_SECURE=true`` in
+    production and HTTPS-only cookies are enforced everywhere at once.
+    """
+    response.set_cookie(
+        key,
+        value,
+        max_age=max_age,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+    )
 
 # Validate required environment variables
 if not ADMIN_PASSWORD_HASH:
@@ -209,13 +230,11 @@ def login_required(f):
 
         # If token was refreshed, attach new token cookie to response (if it's a response object)
         if new_token and hasattr(response, "set_cookie"):
-            response.set_cookie(
+            set_auth_cookie(
+                response,
                 "access_token",
                 new_token,
                 max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
             )
 
         return response
