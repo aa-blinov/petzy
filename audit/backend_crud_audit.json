@@ -140,7 +140,7 @@
     },
     {
       "file": "medications.py",
-      "line": 33,
+      "line": 35,
       "path": "/api/medications",
       "methods": [
         "POST"
@@ -155,7 +155,7 @@
     },
     {
       "file": "medications.py",
-      "line": 58,
+      "line": 60,
       "path": "/api/medications",
       "methods": [
         "GET"
@@ -170,10 +170,25 @@
     },
     {
       "file": "medications.py",
-      "line": 142,
+      "line": 144,
       "path": "/api/medications/<id>",
       "methods": [
-        "PATCH"
+        "GET"
+      ],
+      "auth": [
+        "require_record_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_ONE"
+    },
+    {
+      "file": "medications.py",
+      "line": 186,
+      "path": "/api/medications/<id>",
+      "methods": [
+        "PUT"
       ],
       "auth": [
         "require_record_access"
@@ -185,7 +200,7 @@
     },
     {
       "file": "medications.py",
-      "line": 169,
+      "line": 213,
       "path": "/api/medications/<id>",
       "methods": [
         "DELETE"
@@ -200,7 +215,7 @@
     },
     {
       "file": "medications.py",
-      "line": 239,
+      "line": 283,
       "path": "/api/medications/<id>/log",
       "methods": [
         "POST"
@@ -215,7 +230,7 @@
     },
     {
       "file": "medications.py",
-      "line": 328,
+      "line": 372,
       "path": "/api/medications/intakes",
       "methods": [
         "GET"
@@ -230,7 +245,7 @@
     },
     {
       "file": "medications.py",
-      "line": 370,
+      "line": 414,
       "path": "/api/medications/intakes/<id>",
       "methods": [
         "DELETE"
@@ -245,7 +260,7 @@
     },
     {
       "file": "medications.py",
-      "line": 427,
+      "line": 471,
       "path": "/api/medications/upcoming",
       "methods": [
         "GET"
@@ -584,18 +599,17 @@
       ]
     },
     "medications": {
-      "routes": 8,
+      "routes": 9,
       "ops_present": [
         "CREATE",
         "DELETE",
         "READ_LIST",
+        "READ_ONE",
         "UPDATE"
       ],
-      "ops_missing": [
-        "READ_ONE"
-      ],
+      "ops_missing": [],
       "update_methods_used": [
-        "PATCH"
+        "PUT"
       ],
       "auth_missing": [],
       "details": [
@@ -612,7 +626,7 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 33
+          "line": 35
         },
         {
           "path": "/api/medications",
@@ -627,12 +641,27 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 58
+          "line": 60
         },
         {
           "path": "/api/medications/<id>",
           "methods": [
-            "PATCH"
+            "GET"
+          ],
+          "crud": "READ_ONE",
+          "auth": [
+            "require_record_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 144
+        },
+        {
+          "path": "/api/medications/<id>",
+          "methods": [
+            "PUT"
           ],
           "crud": "UPDATE",
           "auth": [
@@ -642,7 +671,7 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 142
+          "line": 186
         },
         {
           "path": "/api/medications/<id>",
@@ -657,7 +686,7 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 169
+          "line": 213
         },
         {
           "path": "/api/medications/<id>/log",
@@ -672,7 +701,7 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 239
+          "line": 283
         },
         {
           "path": "/api/medications/intakes",
@@ -687,7 +716,7 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 328
+          "line": 372
         },
         {
           "path": "/api/medications/intakes/<id>",
@@ -702,7 +731,7 @@
           "validated": true,
           "response": "error_response",
           "file": "medications.py",
-          "line": 370
+          "line": 414
         },
         {
           "path": "/api/medications/upcoming",
@@ -717,7 +746,7 @@
           "validated": true,
           "response": "jsonify",
           "file": "medications.py",
-          "line": 427
+          "line": 471
         }
       ]
     },
@@ -1089,7 +1118,5 @@
       ]
     }
   },
-  "inconsistencies": [
-    "medications: uses PATCH instead of PUT (REST convention is PUT for full-resource updates)"
-  ]
+  "inconsistencies": []
 }
