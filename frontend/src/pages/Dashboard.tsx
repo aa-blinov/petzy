@@ -2,11 +2,10 @@ import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { ActionSheet, Button, FloatingBubble } from 'antd-mobile';
-import { AddOutline, FilterOutline } from 'antd-mobile-icons';
-import { tilesConfig } from '../utils/tilesConfig';
+import { Button, FloatingBubble } from 'antd-mobile';
+import { AddOutline } from 'antd-mobile-icons';
+
 import { historyConfig } from '../utils/historyConfig';
-import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService } from '../services/healthRecords.service';
@@ -18,12 +17,9 @@ import { QuickAddSheet } from '../components/QuickAddSheet';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { selectedPetId, selectedPetName, getSelectedPet } = usePet();
-  const { tilesSettings } = usePetTilesSettings(selectedPetId);
+  const { selectedPetId, getSelectedPet } = usePet();
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
-  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
-  const [filter, setFilter] = useState<string>('all');
 
   const pageSize = 20;
 
@@ -35,14 +31,15 @@ export function Dashboard() {
     isLoading,
     error
   } = useInfiniteQuery({
-    queryKey: ['timeline', selectedPetId, filter],
+    queryKey: ['timeline', selectedPetId],
     queryFn: async ({ pageParam = 1 }) => {
       if (!selectedPetId) return { items: [], page: 1, total: 0, hasMore: false };
       const response = await healthRecordsService.getTimeline(
         selectedPetId,
         pageParam as number,
         pageSize,
-        filter
+        // No filtering — the timeline shows every event in chronological order.
+        'all'
       );
       return {
         items: response.items || [],
@@ -55,32 +52,6 @@ export function Dashboard() {
     initialPageParam: 1,
     enabled: !!selectedPetId
   });
-
-  const visibleTiles = useMemo(() => tilesConfig
-    .filter(tile => tile.isTile !== false && tilesSettings.visible[tile.id] !== false)
-    .sort((a, b) => {
-      const aI = tilesSettings.order.indexOf(a.id);
-      const bI = tilesSettings.order.indexOf(b.id);
-      return (aI === -1 ? 999 : aI) - (bI === -1 ? 999 : bI);
-    }), [tilesSettings]);
-
-  const filterActions = useMemo(() => [
-    {
-      text: 'Все события',
-      key: 'all',
-      onClick: () => { hapticFeedback('light'); setFilter('all'); }
-    },
-    ...visibleTiles.map(tile => ({
-      text: tile.title,
-      key: tile.id,
-      onClick: () => { hapticFeedback('light'); setFilter(tile.id); }
-    }))
-  ], [visibleTiles]);
-
-  const currentFilterTitle =
-    filter === 'all'
-      ? 'Все события'
-      : visibleTiles.find(t => t.id === filter)?.title ?? 'Все события';
 
   const allItems = data?.pages.flatMap(page => page.items) ?? [];
 
@@ -96,20 +67,18 @@ export function Dashboard() {
   const formatDateHeader = (dateStr: string) => {
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
-    
-    // Check if it's today or yesterday
+
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    
-    // Format to YYYY-MM-DD for comparison (handling timezone offsets roughly)
+
     const pad = (n: number) => n.toString().padStart(2, '0');
     const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
     const yesterdayStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
 
     if (dateStr === todayStr) return 'Сегодня';
     if (dateStr === yesterdayStr) return 'Вчера';
-    
+
     return `${parts[2]}.${parts[1]}.${parts[0]}`;
   };
 
@@ -118,39 +87,6 @@ export function Dashboard() {
       {/* ─── Main scrollable content ─── */}
       <div className="page-container" style={{ paddingBottom: '80px' }}>
         <div className="max-width-container">
-
-          {/* Filter button — pet name lives on the hero card, no duplicate header */}
-          <div
-            className="safe-area-padding"
-            style={{
-              marginBottom: 'var(--spacing-sm)',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              minHeight: '40px',
-              paddingTop: 'var(--spacing-sm)'
-            }}
-          >
-            <Button
-              size="small"
-              fill="none"
-              onClick={() => setFilterSheetVisible(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '6px 12px',
-                backgroundColor: 'var(--app-card-background)',
-                borderRadius: '999px',
-                boxShadow: 'var(--app-shadow-light)',
-                color: 'var(--app-text-primary)',
-                fontWeight: 500,
-              }}
-            >
-              <FilterOutline />
-              {currentFilterTitle}
-            </Button>
-          </div>
 
           {/* Timeline Content */}
           <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -275,15 +211,6 @@ export function Dashboard() {
       <QuickAddSheet
         visible={actionSheetVisible}
         onClose={() => setActionSheetVisible(false)}
-      />
-
-      {/* Filter ActionSheet */}
-      <ActionSheet
-        visible={filterSheetVisible}
-        actions={filterActions}
-        onClose={() => setFilterSheetVisible(false)}
-        closeOnAction
-        cancelText="Отмена"
       />
     </>
   );
