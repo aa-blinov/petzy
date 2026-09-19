@@ -17,7 +17,7 @@ import { tilesConfig } from '../utils/tilesConfig';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
-import { pastelColorMap } from '../utils/constants';
+import { pastelColorMap, typeIconMap } from '../utils/constants';
 
 
 interface QuickAddSheetProps {
@@ -81,6 +81,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         <Grid columns={2} gap={12}>
           {tiles.map(tile => {
             const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
+            const Icon = typeIconMap[tile.id];
             return (
               <Grid.Item key={tile.id}>
                 <button
@@ -97,7 +98,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     justifyContent: 'space-between',
                     gap: '8px',
                     padding: '14px',
-                    height: '92px',
+                    height: '100px',
                     width: '100%',
                     background: bg,
                     border: 'none',
@@ -108,11 +109,22 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     boxShadow: 'var(--app-shadow-light)',
                   }}
                 >
-                  <span style={{ fontSize: '15px', fontWeight: 700, lineHeight: 1.2 }}>
+                  {Icon && (
+                    <Icon
+                      size={24}
+                      strokeWidth={2}
+                      style={{ display: 'block', color: 'var(--app-text-on-tile)' }}
+                    />
+                  )}
+                  <span
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      lineHeight: 1.25,
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
                     {tile.title}
-                  </span>
-                  <span style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.2 }}>
-                    {tile.subtitle}
                   </span>
                 </button>
               </Grid.Item>
