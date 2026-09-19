@@ -42,8 +42,8 @@ jobs:
             echo "=== collection counts ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.getCollectionNames().sort().forEach(c => print(c + ': ' + db[c].countDocuments()));" 2>&1
             echo
-            echo "=== indexes ==="
-            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.getCollectionNames().sort().forEach(c => { print('\n--- ' + c + ' ---'); db[c].indexes().forEach(i => print('  ' + i.name + ': ' + JSON.stringify(i.key) + (i.unique ? ' [unique]' : ''))); });" 2>&1
+            echo "=== indexes (incl. TTL flags) ==="
+            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.getCollectionNames().sort().forEach(c => { print('\n--- ' + c + ' ---'); db[c].getIndexes().forEach(i => print('  ' + i.name + ': ' + JSON.stringify(i.key) + (i.unique ? ' [unique]' : '') + (i.expireAfterSeconds !== undefined ? ' [TTL=' + i.expireAfterSeconds + 's]' : ''))); });" 2>&1
             echo
             echo "=== users ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.users.find({}, {username:1, role:1, is_active:1, is_admin:1, _id:0}).forEach(u => printjson(u));" 2>&1
