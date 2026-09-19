@@ -167,13 +167,25 @@
     width: 44px;
     height: 44px;
     border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
     font-size: 22px;
     line-height: 1;
     flex-shrink: 0;
     user-select: none;
+}
+
+/* SVGs default to inline baseline alignment (like text glyphs), which
+   makes the icon sit a couple px above the geometric centre even inside
+   a flex container. Force block-level rendering so flex centering
+   actually centers the glyph. */
+.pill-icon > svg {
+    display: block;
+    /* Lucide icons have an uneven visual weight between their top half
+       (fork tines, knife blade) and bottom half (just thin handles).
+       A small downward shift balances the optical centre with the
+       geometric centre of the pill. */
+    margin-top: 1px;
 }
 
 /* Chip — small pill used for meta tags (breed, age, "5 кг"). */
