@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, Button } from 'antd-mobile';
+import { Download } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
 import { historyConfig } from '../utils/historyConfig';
 import { HistoryTab } from '../components/HistoryTab';
@@ -9,6 +10,7 @@ import { ExportModal } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
 import { pastelColorMap } from '../utils/constants';
+import { hapticFeedback } from '../utils/haptic';
 
 export function History() {
   const { selectedPetId } = usePet();
@@ -56,8 +58,14 @@ export function History() {
 
   // Обновляем URL при изменении вкладки
   const handleTabChange = (key: string) => {
+    hapticFeedback('light');
     setActiveTab(key);
     setSearchParams({ tab: key });
+  };
+
+  const handleViewModeChange = (mode: 'list' | 'chart') => {
+    hapticFeedback('light');
+    setViewMode(mode);
   };
 
   if (!selectedPetId) {
@@ -72,28 +80,44 @@ export function History() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
-          marginBottom: 'var(--spacing-lg)',
+          marginBottom: 'var(--spacing-sm)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           minHeight: '40px',
         }}>
-          <h2 style={{ fontSize: 'var(--text-xxl)', margin: 0, fontWeight: 600, color: 'var(--app-text-color)' }}>История записей</h2>
-          <Button
-            size="small"
-            fill="outline"
-            onClick={() => setExportVisible(true)}
-            style={{ borderColor: 'var(--adm-color-border)' }}
+          <h1
+            className="display-headline"
+            style={{ fontSize: '24px', margin: 0 }}
           >
+            История записей
+          </h1>
+          <button
+            type="button"
+            onClick={() => setExportVisible(true)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--app-accent-deep)',
+              fontWeight: 500,
+              fontSize: 'var(--text-sm)',
+              cursor: 'pointer',
+              padding: '8px 4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Download size={16} strokeWidth={2} style={{ display: 'block' }} />
             Экспорт
-          </Button>
+          </button>
         </div>
 
         <Tabs
           activeKey={activeTab}
           onChange={handleTabChange}
           style={{
-            marginBottom: 'var(--spacing-lg)',
+            marginBottom: 'var(--spacing-md)',
             '--active-line-color': pastelColorMap[tabs.find(t => t.key === activeTab)?.color || 'blue'] || 'var(--tile-blue)',
             '--active-title-color': 'var(--app-text-color)',
             '--title-font-size': 'var(--text-sm)',
@@ -109,38 +133,55 @@ export function History() {
           ))}
         </Tabs>
 
-        {/* View mode toggle */}
+        {/* View mode toggle — compact pill, sits flush right */}
         <div style={{
           display: 'flex',
-          justifyContent: 'center',
-          marginBottom: 'var(--spacing-lg)',
-          padding: `0 var(--spacing-lg)`
+          justifyContent: 'flex-end',
+          marginBottom: 'var(--spacing-md)',
+          padding: `0 var(--spacing-lg)`,
         }}>
           <div style={{
             display: 'flex',
             backgroundColor: 'var(--app-card-background)',
-            padding: 'var(--spacing-xs)',
-            borderRadius: 'var(--radius-sm)',
-            boxShadow: 'var(--app-shadow-light)'
+            padding: 3,
+            borderRadius: '999px',
+            boxShadow: 'var(--app-shadow-light)',
+            border: '1px solid var(--app-border-color)',
           }}>
-            <Button
-              size="mini"
-              fill={viewMode === 'list' ? 'solid' : 'none'}
-              color={viewMode === 'list' ? 'primary' : 'default'}
-              onClick={() => setViewMode('list')}
-              style={{ borderRadius: '6px', padding: `var(--spacing-xs) var(--spacing-md)` }}
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('list')}
+              style={{
+                background: viewMode === 'list' ? 'var(--app-primary-color)' : 'transparent',
+                color: viewMode === 'list' ? '#FFFFFF' : 'var(--app-text-secondary)',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '4px 14px',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 180ms ease',
+              }}
             >
               Список
-            </Button>
-            <Button
-              size="mini"
-              fill={viewMode === 'chart' ? 'solid' : 'none'}
-              color={viewMode === 'chart' ? 'primary' : 'default'}
-              onClick={() => setViewMode('chart')}
-              style={{ borderRadius: '6px', padding: `var(--spacing-xs) var(--spacing-md)` }}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('chart')}
+              style={{
+                background: viewMode === 'chart' ? 'var(--app-primary-color)' : 'transparent',
+                color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '4px 14px',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 180ms ease',
+              }}
             >
               График
-            </Button>
+            </button>
           </div>
         </div>
 
