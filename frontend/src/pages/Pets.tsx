@@ -1,23 +1,24 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Dialog, ImageViewer, Card, Toast } from 'antd-mobile';
-import { AddOutline, EditSOutline, DeleteOutline } from 'antd-mobile-icons';
+import { Dialog, ImageViewer, Toast } from 'antd-mobile';
+import { AddOutline } from 'antd-mobile-icons';
+import { Pencil } from 'lucide-react';
 import { petsService, type Pet } from '../services/pets.service';
+import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { computePetAge } from '../utils/relativeTime';
+import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
 import { PetImage } from '../components/PetImage';
 
 export function Pets() {
   const navigate = useNavigate();
   const { pets, selectPet, getSelectedPet } = usePet();
 
-  // State for Delete Confirmation Dialog
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({
     visible: false,
-    pet: null
+    pet: null,
   });
-
-  // State for Image Viewer
   const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null }>({
     visible: false,
     image: null,
@@ -25,20 +26,10 @@ export function Pets() {
 
   const queryClient = useQueryClient();
 
-  const handleEditPet = (pet: Pet) => {
-    navigate(`/pets/${pet._id}/edit`);
-  };
+  const handleEditPet = (pet: Pet) => navigate(`/pets/${pet._id}/edit`);
+  const handleAddPet = () => navigate('/pets/new');
+  const handleDeleteClick = (pet: Pet) => setDeleteDialog({ visible: true, pet });
 
-  const handleAddPet = () => {
-    navigate('/pets/new');
-  };
-
-  // Just open the dialog via state
-  const handleDeleteClick = (pet: Pet) => {
-    setDeleteDialog({ visible: true, pet });
-  };
-
-  // Actual delete logic
   const confirmDelete = async () => {
     const pet = deleteDialog.pet;
     if (!pet) return;
@@ -47,45 +38,27 @@ export function Pets() {
       const wasSelected = getSelectedPet?._id === pet._id;
       const currentPetIndex = pets.findIndex(p => p._id === pet._id);
 
-      // Delete the pet
       await petsService.deletePet(pet._id);
-
-      // Close dialog first
       setDeleteDialog(prev => ({ ...prev, visible: false }));
 
-      // Fetch fresh data directly
       const updatedPets = await petsService.getPets();
-
-      // Update the cache
       queryClient.setQueryData(['pets'], updatedPets);
 
-      // If the deleted pet was selected, select another pet from the fresh list
       if (wasSelected && updatedPets.length > 0) {
-        // Try to select the pet at the same index, or the previous one if we deleted the last pet
         const nextPetIndex = currentPetIndex >= updatedPets.length ? updatedPets.length - 1 : currentPetIndex;
         selectPet(updatedPets[nextPetIndex]);
       } else if (updatedPets.length === 0) {
-        // No pets left, clear selection
         selectPet(null);
       }
 
-      Toast.show({
-        icon: 'success',
-        content: 'Питомец удален'
-      });
+      Toast.show({ icon: 'success', content: 'Питомец удален' });
     } catch (error: any) {
       console.error('Delete pet error:', error);
-      // Close dialog on error
       setDeleteDialog(prev => ({ ...prev, visible: false }));
-
       const errorMessage = error?.response?.data?.error || 'Ошибка при удалении';
-      Toast.show({
-        icon: 'fail',
-        content: errorMessage
-      });
+      Toast.show({ icon: 'fail', content: errorMessage });
     }
   };
-
 
   return (
     <div className="page-container">
@@ -95,27 +68,59 @@ export function Pets() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          minHeight: '40px'
+          minHeight: '40px',
         }}>
-          <h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600, color: 'var(--app-text-color)' }}>Мои питомцы</h2>
-          <Button color="primary" fill="none" onClick={handleAddPet}>
-            <AddOutline style={{ marginRight: 'var(--spacing-xs)' }} />
+          <h1 className="display-headline" style={{ fontSize: '28px', margin: 0 }}>
+            Мои питомцы
+          </h1>
+          <button
+            onClick={handleAddPet}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--app-accent-deep)',
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
+              cursor: 'pointer',
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <AddOutline style={{ fontSize: 20 }} />
             Добавить
-          </Button>
+          </button>
         </div>
 
         {pets.length === 0 ? (
           <div className="safe-area-padding" style={{
             textAlign: 'center',
-            color: 'var(--adm-color-weak)',
+            color: 'var(--app-text-secondary)',
             padding: 'var(--spacing-xl)',
           }}>
             <p style={{ marginBottom: 'var(--spacing-lg)' }}>
-              Нет питомцев. Добавьте первого!
+              Здесь будут ваши питомцы
             </p>
-            <Button color="primary" onClick={handleAddPet}>
-              <AddOutline /> &nbsp;Добавить питомца
-            </Button>
+            <button
+              onClick={handleAddPet}
+              style={{
+                background: 'var(--app-primary-color)',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: '12px 24px',
+                fontSize: 'var(--text-md)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <AddOutline />
+              Добавить питомца
+            </button>
           </div>
         ) : (
           <div className="safe-area-padding" style={{
@@ -125,106 +130,18 @@ export function Pets() {
             marginTop: 'var(--spacing-sm)',
           }}>
             {pets.map(pet => (
-              <Card
+              <PetCard
                 key={pet._id}
-                style={{
-                  borderRadius: '12px',
-                  border: 'none',
-                  boxShadow: 'var(--app-shadow)',
-                }}
-              >
-                <div style={{ padding: '16px' }}>
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                    {/* Avatar */}
-                    {pet.photo_url ? (
-                      <div
-                        style={{
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (pet.photo_url) {
-                            setImageViewer({ visible: true, image: pet.photo_url });
-                          }
-                        }}
-                      >
-                        <PetImage
-                          src={pet.photo_url}
-                          alt={pet.name}
-                          size={48}
-                          style={{
-                            borderRadius: '50%',
-                            border: '2px solid var(--adm-color-border)',
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--adm-color-border)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '24px',
-                          flexShrink: 0,
-                        }}
-                      >
-                        🐱
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '16px' }}>{pet.name}</span>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <Button
-                            size="mini"
-                            fill="outline"
-                            onClick={() => handleEditPet(pet)}
-                            style={{
-                              '--text-color': 'var(--app-text-primary)',
-                              '--border-color': 'var(--app-border-color)',
-                            } as React.CSSProperties}
-                          >
-                            <EditSOutline style={{ color: 'var(--app-text-primary)', fontSize: '16px' }} />
-                          </Button>
-                          <Button
-                            size="mini"
-                            color="danger"
-                            fill="outline"
-                            onClick={() => handleDeleteClick(pet)}
-                          >
-                            <DeleteOutline />
-                          </Button>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {pet.breed && <span>{pet.breed}</span>}
-                        {pet.birth_date && (
-                          <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Дата рождения: {pet.birth_date}</span>
-                        )}
-                        {pet.gender && (
-                          <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Пол: {pet.gender}</span>
-                        )}
-                        {pet.species && (
-                          <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Вид: {pet.species}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+                pet={pet}
+                onEdit={() => handleEditPet(pet)}
+                onDelete={() => handleDeleteClick(pet)}
+                onImageTap={(url) => setImageViewer({ visible: true, image: url })}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {/* Declarative Delete Dialog */}
       <Dialog
         visible={deleteDialog.visible}
         title="Удаление питомца"
@@ -246,13 +163,163 @@ export function Pets() {
         ]}
       />
 
-      {/* Image Viewer */}
       <ImageViewer
         image={imageViewer.image || ''}
         visible={imageViewer.visible}
         onClose={() => setImageViewer(prev => ({ ...prev, visible: false }))}
         afterClose={() => setImageViewer({ visible: false, image: null })}
       />
+    </div>
+  );
+}
+
+
+/**
+ * Pet list row — hero photo (or species icon) + headline name + meta chips
+ * + a discrete edit pencil. Delete is hidden behind a long-press.
+ */
+function PetCard({
+  pet,
+  onEdit,
+  onDelete,
+  onImageTap,
+}: {
+  pet: Pet;
+  onEdit: () => void;
+  onDelete: () => void;
+  onImageTap: (url: string) => void;
+}) {
+  const age = computePetAge(pet.birth_date ?? '');
+  const SpeciesIcon = useMemo(() => {
+    if (!pet.species) return SPECIES_FALLBACK_ICON;
+    const key = pet.species.toLowerCase().trim();
+    return speciesIconMap[key] ?? SPECIES_FALLBACK_ICON;
+  }, [pet.species]);
+
+  // Most recent weight for the chip — uses the same endpoint as the dashboard.
+  const weights = useQuery({
+    queryKey: ['pet-summary', 'weight', pet._id],
+    queryFn: () => healthRecordsService.getList('weight', pet._id, 1, 1),
+    enabled: !!pet._id,
+    staleTime: 30_000,
+  });
+  const lastWeight = weights.data?.weights?.[0];
+
+  let pressTimer: number | null = null;
+  const startPress = () => {
+    pressTimer = window.setTimeout(() => {
+      onDelete();
+      pressTimer = null;
+    }, 600);
+  };
+  const cancelPress = () => {
+    if (pressTimer != null) {
+      window.clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  return (
+    <div
+      className="card-soft"
+      style={{ overflow: 'hidden' }}
+      onTouchStart={startPress}
+      onTouchEnd={cancelPress}
+      onTouchCancel={cancelPress}
+      onMouseDown={startPress}
+      onMouseUp={cancelPress}
+      onMouseLeave={cancelPress}
+    >
+      {/* Hero photo / species icon (compact, ~120px) */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '120px',
+          backgroundColor: 'var(--tile-brown)',
+          backgroundImage: pet.photo_url
+            ? undefined
+            : 'linear-gradient(135deg, #E8946A 0%, #C46A3F 100%)',
+          overflow: 'hidden',
+        }}
+        onClick={() => pet.photo_url && onImageTap(pet.photo_url)}
+      >
+        {pet.photo_url ? (
+          <PetImage
+            src={pet.photo_url}
+            alt={pet.name}
+            size={120}
+            style={{ width: '100%', height: '100%', borderRadius: 0, cursor: 'pointer' }}
+          />
+        ) : (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              opacity: 0.9,
+            }}
+          >
+            <SpeciesIcon size={64} strokeWidth={1.5} style={{ display: 'block' }} />
+          </div>
+        )}
+
+        {/* Edit pencil — small, top-right */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          aria-label="Редактировать питомца"
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            background: 'rgba(255,255,255,0.85)',
+            border: 'none',
+            color: 'var(--app-accent-deep)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <Pencil size={16} strokeWidth={2} style={{ display: 'block' }} />
+        </button>
+      </div>
+
+      {/* Body — name + meta chips */}
+      <div style={{ padding: '14px 16px' }}>
+        <div
+          className="display-headline"
+          style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1.2 }}
+        >
+          {pet.name}
+        </div>
+        {(pet.breed || age || pet.gender || lastWeight) && (
+          <div
+            style={{
+              marginTop: 8,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+            }}
+          >
+            {pet.breed && <span className="chip">{pet.breed}</span>}
+            {age && <span className="chip">{age}</span>}
+            {pet.gender && <span className="chip">{pet.gender}</span>}
+            {lastWeight && (
+              <span className="chip">⚖️ {lastWeight.weight} кг</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

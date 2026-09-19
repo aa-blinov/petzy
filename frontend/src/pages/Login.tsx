@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Button, Input, Toast, Card, Form } from 'antd-mobile';
+import { Button, Input, Toast, Form } from 'antd-mobile';
+import { PawPrint } from 'lucide-react';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -11,65 +12,36 @@ export function Login() {
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-
-    // Frontend validation
     if (!username.trim()) {
-      Toast.show({
-        icon: 'fail',
-        content: 'Введите имя пользователя',
-      });
+      Toast.show({ icon: 'fail', content: 'Введите имя пользователя' });
       return;
     }
-
     if (!password) {
-      Toast.show({
-        icon: 'fail',
-        content: 'Введите пароль',
-      });
+      Toast.show({ icon: 'fail', content: 'Введите пароль' });
       return;
     }
 
     setIsLoading(true);
-
     try {
       await login({ username: username.trim(), password });
-      // Wait a bit to ensure cookies are set
       await new Promise(resolve => setTimeout(resolve, 100));
-      // Navigate to dashboard
       navigate('/');
     } catch (err: any) {
-      // Extract error message from response
       let errorMessage = 'Ошибка входа. Проверьте соединение или учетные данные.';
-
       if (err.response) {
         const status = err.response.status;
         const data = err.response.data;
-
-        if (status === 422) {
-          // Validation error
-          errorMessage = data?.error || data?.message || 'Неверные данные. Проверьте введенные данные.';
-        } else if (status === 401) {
-          // Unauthorized
-          errorMessage = data?.error || data?.message || 'Неверный логин или пароль.';
-        } else if (status === 429) {
-          // Rate limit
-          errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже.';
-        } else {
-          errorMessage = data?.error || data?.message || errorMessage;
-        }
+        if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные.';
+        else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль.';
+        else if (status === 429) errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже.';
+        else errorMessage = data?.error || data?.message || errorMessage;
+      } else if (err.message === 'Network Error') {
+        errorMessage = 'Ошибка сети. Проверьте, запущен ли бэкенд.';
       } else if (err.message) {
-        if (err.message === 'Network Error') {
-          errorMessage = 'Ошибка сети. Проверьте, запущен ли бэкенд.';
-        } else {
-          errorMessage = err.message;
-        }
+        errorMessage = err.message;
       }
 
-      Toast.show({
-        icon: 'fail',
-        content: errorMessage,
-        duration: 2000,
-      });
+      Toast.show({ icon: 'fail', content: errorMessage, duration: 2000 });
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
@@ -85,35 +57,53 @@ export function Login() {
       padding: '16px',
       backgroundColor: 'var(--app-page-background)',
       paddingTop: 'env(safe-area-inset-top)',
-      paddingBottom: 'env(safe-area-inset-bottom)'
+      paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
-        <Card style={{ padding: '32px', backgroundColor: 'var(--app-card-background)' }}>
+        {/* Brand block */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div
+            aria-hidden
             style={{
-              fontFamily: 'var(--app-font-bubble)',
-              fontSize: '48px',
-              fontWeight: 700,
+              width: 64,
+              height: 64,
+              borderRadius: 20,
+              margin: '0 auto 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
               background: 'var(--app-brand-gradient)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textAlign: 'center',
-              marginBottom: '16px',
-              filter: 'drop-shadow(var(--app-shadow))'
+              boxShadow: '0 8px 24px rgba(196, 106, 63, 0.35)',
+            }}
+          >
+            <PawPrint size={32} strokeWidth={2} style={{ display: 'block' }} />
+          </div>
+          <h1
+            className="display-headline"
+            style={{
+              fontSize: 36,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              margin: 0,
+              color: 'var(--app-text-primary)',
             }}
           >
             Petzy
-          </div>
-          <p style={{
-            textAlign: 'center',
-            marginBottom: '32px',
-            fontSize: '1rem',
-            color: 'var(--app-text-secondary)',
-            fontWeight: 400
-          }}>
-            Вход в систему
+          </h1>
+          <p
+            style={{
+              marginTop: 8,
+              fontSize: 'var(--text-sm)',
+              color: 'var(--app-text-secondary)',
+            }}
+          >
+            Здоровье вашего питомца — в одном месте
           </p>
+        </div>
 
+        {/* Form card */}
+        <div className="card-soft" style={{ padding: '28px 24px' }}>
           <Form
             layout="vertical"
             onFinish={handleSubmit}
@@ -124,13 +114,18 @@ export function Login() {
                 loading={isLoading}
                 disabled={isLoading}
                 type="submit"
+                style={{ marginTop: 8 }}
               >
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
             }
           >
             <Form.Item
-              label="Имя пользователя"
+              label={
+                <span style={{ color: 'var(--app-text-primary)', fontWeight: 500 }}>
+                  Имя пользователя
+                </span>
+              }
               name="username"
             >
               <Input
@@ -143,7 +138,11 @@ export function Login() {
               />
             </Form.Item>
             <Form.Item
-              label="Пароль"
+              label={
+                <span style={{ color: 'var(--app-text-primary)', fontWeight: 500 }}>
+                  Пароль
+                </span>
+              }
               name="password"
             >
               <Input
@@ -157,9 +156,28 @@ export function Login() {
               />
             </Form.Item>
           </Form>
-        </Card>
+
+          {/* Seed credentials hint — dev convenience. Hidden in prod by env. */}
+          {import.meta.env.DEV && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: '10px 12px',
+                background: 'var(--app-accent-soft)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--app-accent-deep)',
+                lineHeight: 1.5,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>Dev-учётка:</div>
+              <code style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace' }}>
+                admin / test1234
+              </code>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-

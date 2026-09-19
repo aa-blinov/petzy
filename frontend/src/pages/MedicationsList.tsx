@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
+import { Pill, Droplets, Syringe } from 'lucide-react';
 import { medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -50,10 +51,10 @@ export function MedicationsList() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            queryClient.invalidateQueries({ queryKey: ['pets'] }); // Pet might have inventory warning
+            queryClient.invalidateQueries({ queryKey: ['pets'] });
             Toast.show({
                 icon: 'success',
-                content: 'Прием отмечен',
+                content: 'Приём отмечен',
                 duration: 2000
             });
         },
@@ -69,15 +70,12 @@ export function MedicationsList() {
         mutationFn: (id: string) => medicationsService.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({ icon: 'success', content: 'Курс удален' });
+            Toast.show({ icon: 'success', content: 'Курс удалён' });
         }
     });
 
     const handleDelete = (med: Medication) => {
-        setDeleteDialog({
-            visible: true,
-            medication: med
-        });
+        setDeleteDialog({ visible: true, medication: med });
     };
 
     const handleLogIntake = (med: Medication) => {
@@ -117,16 +115,11 @@ export function MedicationsList() {
         }
     };
 
-    const getFormFactorIcon = (formFactor?: string) => {
-        switch (formFactor) {
-            case 'tablet': return '💊';
-            case 'liquid': return '💧';
-            case 'injection': return '💉';
-            default: return '💊';
-        }
+    const FormFactorIcon = ({ factor }: { factor?: string }) => {
+        if (factor === 'liquid') return <Droplets size={20} strokeWidth={2} style={{ display: 'block' }} />;
+        if (factor === 'injection') return <Syringe size={20} strokeWidth={2} style={{ display: 'block' }} />;
+        return <Pill size={20} strokeWidth={2} style={{ display: 'block' }} />;
     };
-
-
 
     return (
         <div className="page-container">
@@ -138,42 +131,95 @@ export function MedicationsList() {
                     marginBottom: 'var(--spacing-lg)',
                     minHeight: '40px',
                 }}>
-                    <h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>Прием препаратов</h2>
-                    <Button
-                        color="primary"
-                        fill="solid"
-                        size="small"
-                        onClick={() => navigate('/medications/new')}
-                        style={{
-                            borderRadius: 'var(--radius-md)',
-                            fontWeight: 500,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 'var(--spacing-xs)'
-                        }}
-                    >
-                        <AddOutline style={{ fontSize: '18px' }} /> Добавить
-                    </Button>
+                    <h1 className="display-headline" style={{ fontSize: '28px', margin: 0 }}>
+                        Препараты
+                    </h1>
+                    {medications.length > 0 && (
+                        <button
+                            onClick={() => navigate('/medications/new')}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--app-accent-deep)',
+                                fontWeight: 600,
+                                fontSize: 'var(--text-sm)',
+                                cursor: 'pointer',
+                                padding: '8px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                            }}
+                        >
+                            <AddOutline style={{ fontSize: 20 }} />
+                            Добавить
+                        </button>
+                    )}
                 </div>
 
                 {isLoading ? (
                     <LoadingSpinner fullscreen={false} />
                 ) : medications.length === 0 ? (
-                    <div className="safe-area-padding" style={{
-                        textAlign: 'center',
-                        color: 'var(--adm-color-weak)',
-                        paddingTop: 'var(--spacing-xl)',
-                        paddingBottom: 'var(--spacing-xl)',
-                    }}>
-                        <p style={{ marginBottom: 'var(--spacing-lg)' }}>
-                            Нет назначенных лекарств
-                        </p>
-                        <Button
-                            color="primary"
-                            onClick={() => navigate('/medications/new')}
+                    <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-xl)' }}>
+                        <div
+                            className="card-soft"
+                            style={{
+                                textAlign: 'center',
+                                padding: '40px 24px',
+                            }}
                         >
-                            Добавить препарат
-                        </Button>
+                            <div
+                                aria-hidden
+                                style={{
+                                    width: 72,
+                                    height: 72,
+                                    borderRadius: 20,
+                                    margin: '0 auto 16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--app-accent-deep)',
+                                    background: 'var(--app-accent-soft)',
+                                }}
+                            >
+                                <Pill size={36} strokeWidth={1.75} style={{ display: 'block' }} />
+                            </div>
+                            <h3
+                                className="display-headline"
+                                style={{ fontSize: '1.125rem', margin: 0 }}
+                            >
+                                Здесь будут курсы препаратов
+                            </h3>
+                            <p
+                                style={{
+                                    marginTop: 8,
+                                    fontSize: 'var(--text-sm)',
+                                    color: 'var(--app-text-secondary)',
+                                    lineHeight: 1.5,
+                                }}
+                            >
+                                Добавьте лекарство — Petzy напомнит о приёме и покажет остаток.
+                            </p>
+                            <button
+                                onClick={() => navigate('/medications/new')}
+                                style={{
+                                    marginTop: 20,
+                                    background: 'var(--app-primary-color)',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: '12px 24px',
+                                    fontSize: 'var(--text-md)',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <AddOutline />
+                                Добавить препарат
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <div className="safe-area-padding" style={{
@@ -183,16 +229,30 @@ export function MedicationsList() {
                         marginTop: 'var(--spacing-sm)',
                     }}>
                         {medications.map(med => (
-                            <Card key={med._id} style={{
+                            <Card key={med._id} className="card-soft" style={{
                                 borderRadius: 'var(--radius-md)',
                                 border: 'none',
-                                boxShadow: 'var(--app-shadow)'
+                                padding: 0,
                             }}>
                                 <div style={{ padding: 'var(--spacing-lg)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
-                                                <span style={{ fontSize: 'var(--text-xl)' }}>{getFormFactorIcon(med.form_factor)}</span>
+                                                <div
+                                                    style={{
+                                                        width: 36,
+                                                        height: 36,
+                                                        borderRadius: 12,
+                                                        background: 'var(--app-accent-soft)',
+                                                        color: 'var(--app-accent-deep)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    <FormFactorIcon factor={med.form_factor} />
+                                                </div>
                                                 <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h3>
                                                 {!med.is_active && <Tag color="default">Архив</Tag>}
                                             </div>
@@ -231,7 +291,7 @@ export function MedicationsList() {
 
                                         {med.last_taken_at && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-color)' }}>
-                                                <span>Последний прием: {formatRelativeTime(med.last_taken_at)}</span>
+                                                <span>Последний приём: {formatRelativeTime(med.last_taken_at)}</span>
                                             </div>
                                         )}
 
@@ -265,7 +325,7 @@ export function MedicationsList() {
                                                 disabled={(med.intakes_today || 0) >= med.schedule.times.length}
                                                 style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
-                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить прием (${med.default_dose || 1} ${med.dose_unit || ''})`}
+                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить приём (${med.default_dose || 1} ${med.dose_unit || ''})`}
                                             </Button>
                                         </div>
                                     )}
@@ -278,7 +338,7 @@ export function MedicationsList() {
 
             <Dialog
                 visible={logIntakeDialog.visible}
-                title="Подтвердите прием"
+                title="Подтвердите приём"
                 content={
                     logIntakeDialog.medication && (
                         <div style={{ textAlign: 'center' }}>
