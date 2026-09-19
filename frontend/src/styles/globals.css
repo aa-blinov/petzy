@@ -600,6 +600,13 @@ a,
     touch-action: none;
 }
 
+/* Same story for PullToRefresh — antd-mobile wires @use-gesture for
+   the top-of-list pull gesture and warns loudly when the container's
+   touch-action isn't 'none'. */
+.adm-pull-to-refresh {
+    touch-action: none;
+}
+
 /* Hide admin username on mobile */
 @media (max-width: 767px) {
     .admin-username {
