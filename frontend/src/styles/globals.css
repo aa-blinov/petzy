@@ -1035,6 +1035,60 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     padding-right: 8px;
 }
 
+/* History filter rail — horizontal scrollable chips for type filtering.
+   Replaces the per-type antd-mobile Tabs (too many entries, each one
+   a separate pane was overkill — the timeline endpoint already returns
+   all types mixed). */
+.history-filter-rail {
+    display: flex;
+    gap: var(--spacing-xs);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 0 var(--spacing-sm);
+    margin: 0 0 var(--spacing-md);
+}
+.history-filter-rail::-webkit-scrollbar {
+    display: none;
+}
+
+.history-filter-chip {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border-color);
+    background: var(--app-card-background);
+    color: var(--app-text-secondary);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.history-filter-chip:active {
+    transform: scale(0.97);
+}
+
+.history-filter-chip--active {
+    background: var(--app-primary-color);
+    border-color: var(--app-primary-color);
+    color: var(--app-text-on-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .history-filter-chip {
+        transition: none;
+    }
+}
+
 /* FloatingBubble sits in a portal and ignores the CSS variables we set
    on the outer wrapper, so we position the inner button directly. */
 .adm-floating-bubble {
