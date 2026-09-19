@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, List, Switch, Toast } from 'antd-mobile';
+import { GripVertical } from 'lucide-react';
 import { useTilesSettings } from '../hooks/useTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -44,9 +45,9 @@ function SortableTileItem({ id, title, visible, onToggle, disabled = false }: So
           <div
             {...attributes}
             {...listeners}
-            style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', fontSize: '20px', paddingRight: '8px', touchAction: 'none' }}
+            style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', paddingRight: '8px', touchAction: 'none', display: 'flex' }}
           >
-            ☰
+            <GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />
           </div>
         }
         extra={
