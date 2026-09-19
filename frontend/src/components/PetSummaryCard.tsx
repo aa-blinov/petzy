@@ -15,7 +15,9 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
 import { speciesIconMap, SPECIES_FALLBACK_ICON, type LucideIcon } from '../utils/constants';
+import { useScrollParallax } from '../hooks/useScrollParallax';
 import { PetImage } from './PetImage';
+import { CountUp } from './CountUp';
 
 
 function speciesIcon(species?: string): LucideIcon {
@@ -104,6 +106,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
 
   const age = computePetAge(pet.birth_date ?? "");
   const SpeciesIcon = speciesIcon(pet.species);
+  const parallaxTransform = useScrollParallax(0.15);
 
   return (
     <div
@@ -115,6 +118,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
     >
       {/* Hero photo */}
       <div
+        className="parallax-hero"
         style={{
           position: "relative",
           width: "100%",
@@ -124,12 +128,14 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         }}
       >
         {pet.photo_url ? (
-          <PetImage
-            src={pet.photo_url}
-            alt={pet.name}
-            size={180}
-            style={{ width: "100%", height: "100%", borderRadius: 0 }}
-          />
+          <div style={{ position: 'absolute', inset: 0, transform: parallaxTransform }}>
+            <PetImage
+              src={pet.photo_url}
+              alt={pet.name}
+              size={180}
+              style={{ width: "100%", height: "100%", borderRadius: 0 }}
+            />
+          </div>
         ) : (
           <div
             aria-hidden
@@ -141,6 +147,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               justifyContent: "center",
               color: "#FFFFFF",
               opacity: 0.9,
+              transform: parallaxTransform,
             }}
           >
             <SpeciesIcon size={84} strokeWidth={1.5} style={{ display: 'block' }} />
@@ -206,7 +213,9 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           {pet.breed && <span className="chip">{pet.breed}</span>}
           {pet.gender && <span className="chip">{pet.gender}</span>}
           {lastWeightRecord && (
-            <span className="chip">⚖️ {lastWeightRecord.weight} кг</span>
+            <span className="chip">
+              ⚖️ <CountUp to={lastWeightRecord.weight} duration={800} decimals={1} /> кг
+            </span>
           )}
         </div>
       )}

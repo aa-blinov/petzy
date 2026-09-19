@@ -363,6 +363,13 @@ html {
     /* Performance optimizations for high refresh rate displays */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Smooth theme transition when dark mode flips — only animates
+       the colour-related properties to keep the perf cost minimal. */
+    transition: background-color 240ms ease;
+}
+
+html, body, #root {
+    transition: background-color 240ms ease, color 240ms ease;
 }
 
 body {
