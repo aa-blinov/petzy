@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { TabBar } from 'antd-mobile';
 import { FileOutline, SetOutline, UserOutline, ClockCircleOutline, HeartOutline } from 'antd-mobile-icons';
 import { useAdmin } from '../hooks/useAdmin';
+import { hapticFeedback } from '../utils/haptic';
 
 export function BottomTabBar() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export function BottomTabBar() {
   }
 
   const setRouteActive = (value: string) => {
+    hapticFeedback('light');
     navigate(value);
   };
 
@@ -71,7 +73,20 @@ export function BottomTabBar() {
           {tabs.map(item => (
             <TabBar.Item
               key={item.key}
-              icon={item.icon}
+              // Wrap icon so we can give the active state a subtle
+              // spring bounce instead of the default instant swap.
+              icon={(active: boolean) => (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    transform: active ? 'scale(1.12)' : 'scale(1)',
+                    transition: 'transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    color: active ? 'var(--app-primary-color)' : 'var(--app-text-secondary)',
+                  }}
+                >
+                  {item.icon}
+                </span>
+              )}
               title={item.title}
             />
           ))}
