@@ -22,6 +22,7 @@ from web.security import (
     get_current_user,
     get_token_from_request,
     login_required,
+    set_auth_cookie,
     try_refresh_access_token,
     verify_token,
     create_access_token,
@@ -79,13 +80,11 @@ def page_login_required(f):
             elif not hasattr(response, "set_cookie"):
                 response = make_response(response)
 
-            response.set_cookie(
+            set_auth_cookie(
+                response,
                 "access_token",
                 new_token,
                 max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
             )
 
         return response
@@ -122,21 +121,17 @@ def api_login():
         response, status = get_message("auth_login_success", access_token=access_token, refresh_token=refresh_token)
 
         # Set tokens in httpOnly cookies
-        response.set_cookie(
+        set_auth_cookie(
+            response,
             "access_token",
             access_token,
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="Lax",
         )
-        response.set_cookie(
+        set_auth_cookie(
+            response,
             "refresh_token",
             refresh_token,
             max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-            httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="Lax",
         )
 
         return response, status
@@ -181,13 +176,11 @@ def api_refresh():
 
     response, status = get_message("auth_refresh_success", access_token=access_token)
 
-    response.set_cookie(
+    set_auth_cookie(
+        response,
         "access_token",
         access_token,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True,
-        secure=False,
-        samesite="Lax",
     )
 
     return response, status
@@ -257,13 +250,11 @@ def login():
         payload = verify_token(new_token, "access")
         if payload:
             response = make_response(redirect(url_for("dashboard")))
-            response.set_cookie(
+            set_auth_cookie(
+                response,
                 "access_token",
                 new_token,
                 max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
             )
             return response
 
@@ -287,21 +278,17 @@ def login():
             response = make_response(redirect(url_for("dashboard")))
 
             # Set tokens in cookies
-            response.set_cookie(
+            set_auth_cookie(
+                response,
                 "access_token",
                 access_token,
                 max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
             )
-            response.set_cookie(
+            set_auth_cookie(
+                response,
                 "refresh_token",
                 refresh_token,
                 max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
             )
 
             return response

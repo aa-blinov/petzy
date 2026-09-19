@@ -14,12 +14,13 @@ from gridfs import GridFS
 from werkzeug.exceptions import HTTPException
 
 from web import security
-from web.configs import FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
+from web.configs import CORS_CONFIG, FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
 from web.db import db
 from web.errors import error_response
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     get_token_from_request,
+    set_auth_cookie,
     try_refresh_access_token,
     verify_token,
 )
@@ -56,7 +57,14 @@ app = Flask(
     template_folder=FLASK_CONFIG["template_folder"],
     static_folder=FLASK_CONFIG["static_folder"],
 )
-CORS(app, supports_credentials=True)
+# When CORS_ALLOWED_ORIGINS is set, use it as an explicit whitelist.
+# When empty, flask-cors reflects the request Origin header — safe because the
+# frontend (same host via Nginx) does not need to send an Origin header.
+cors_origins = CORS_CONFIG["allowed_origins"]
+if cors_origins:
+    CORS(app, supports_credentials=True, origins=cors_origins)
+else:
+    CORS(app, supports_credentials=True)
 app.secret_key = FLASK_CONFIG["secret_key"]
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = FLASK_CONFIG["jsonify_prettyprint_regular"]
 app.config["JSON_AS_ASCII"] = FLASK_CONFIG["json_as_ascii"]
@@ -225,13 +233,11 @@ def index():
         payload = verify_token(new_token, "access")
         if payload:
             response = make_response(redirect(url_for("dashboard")))
-            response.set_cookie(
+            set_auth_cookie(
+                response,
                 "access_token",
                 new_token,
                 max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
             )
             return response
 
