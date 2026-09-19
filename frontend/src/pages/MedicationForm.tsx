@@ -205,7 +205,7 @@ export function MedicationForm() {
                             color="primary"
                             fill="outline"
                             onClick={() => setShowCommonMeds(true)}
-                            style={{ borderRadius: 'var(--radius-xl)', fontSize: 'var(--text-xs)' }}
+                            style={{ borderRadius: 'var(--app-border-radius)', fontSize: 'var(--text-xs)' }}
                         >
                             <SearchOutline /> Шаблоны
                         </Button>
