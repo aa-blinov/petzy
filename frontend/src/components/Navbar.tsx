@@ -65,7 +65,26 @@ export function Navbar() {
 
   const rightContent = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>
-      {pets.length > 0 && (
+      {pets.length === 1 && (
+        // Single-pet households: show the name as a plain label. No
+        // chevron, no tap target — there's nothing to switch to. Keeps
+        // the navbar quiet for the most common starter state.
+        <span
+          aria-label={`Текущий питомец: ${selectedPetName}`}
+          style={{
+            height: '36px',
+            padding: '0 12px',
+            display: 'flex',
+            alignItems: 'center',
+            color: 'var(--app-text-color)',
+            fontSize: '15px',
+            fontWeight: 600,
+          }}
+        >
+          {selectedPetName}
+        </span>
+      )}
+      {pets.length >= 2 && (
         <>
           <button
             type="button"
