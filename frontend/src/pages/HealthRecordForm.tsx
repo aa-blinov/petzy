@@ -310,6 +310,7 @@ export function HealthRecordForm() {
                 '--prefix-width': '6em'
               } as React.CSSProperties}
             >
+              <Form.Header>{config.title}</Form.Header>
               {config.fields.map((field) => (
                 <FormField
                   key={field.id}
