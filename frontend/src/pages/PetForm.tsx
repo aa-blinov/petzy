@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Form, Input, Picker, List, Switch, TextArea, SearchBar, ImageViewer, Toast } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
+import { Camera, GripVertical } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -535,7 +536,7 @@ export function PetForm() {
                       }}
                       title="Заменить фото"
                     >
-                      📷
+                      <Camera size={16} strokeWidth={2} style={{ display: 'block' }} />
                     </button>
                     <button
                       type="button"
@@ -587,7 +588,7 @@ export function PetForm() {
                     e.currentTarget.style.background = 'var(--adm-color-fill-light)';
                   }}
                 >
-                  <span style={{ fontSize: '32px', opacity: 0.6 }}>📷</span>
+                  <Camera size={32} strokeWidth={1.5} style={{ display: 'block', opacity: 0.6 }} />
                   <span style={{
                     fontSize: '12px',
                     color: 'var(--adm-color-text-secondary)',
@@ -747,8 +748,8 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
       <div ref={setNodeRef} style={style}>
         <List.Item
           prefix={
-            <div {...attributes} {...listeners} style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', fontSize: '20px', paddingRight: '8px', touchAction: 'none' }}>
-              ☰
+            <div {...attributes} {...listeners} style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', paddingRight: '8px', touchAction: 'none', display: 'flex' }}>
+              <GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />
             </div>
           }
           extra={<Switch checked={visible} onChange={(checked) => onToggle(id, checked)} aria-label={`Показать ${title}`} />}
