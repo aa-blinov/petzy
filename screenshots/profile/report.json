@@ -5,12 +5,12 @@
       "path": "/login",
       "status": "ok",
       "timing_ms": {
-        "load": 416.5,
-        "network_idle": 1234.5
+        "load": 405.5,
+        "network_idle": 1947.5
       },
       "web_vitals": {
-        "fcp_ms": 432,
-        "lcp_ms": 748,
+        "fcp_ms": 424,
+        "lcp_ms": 1056,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -113,12 +113,12 @@
       "path": "/",
       "status": "ok",
       "timing_ms": {
-        "load": 47.8,
-        "network_idle": 698.4
+        "load": 50.7,
+        "network_idle": 725.6
       },
       "web_vitals": {
-        "fcp_ms": 84,
-        "lcp_ms": 84,
+        "fcp_ms": 88,
+        "lcp_ms": 88,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -135,12 +135,12 @@
       "path": "/pets",
       "status": "ok",
       "timing_ms": {
-        "load": 41.1,
-        "network_idle": 569.5
+        "load": 44.6,
+        "network_idle": 565.8
       },
       "web_vitals": {
-        "fcp_ms": 52,
-        "lcp_ms": 64,
+        "fcp_ms": 60,
+        "lcp_ms": 60,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -157,8 +157,8 @@
       "path": "/history",
       "status": "ok",
       "timing_ms": {
-        "load": 44.6,
-        "network_idle": 563.1
+        "load": 46.0,
+        "network_idle": 562.9
       },
       "web_vitals": {
         "fcp_ms": 64,
@@ -179,12 +179,12 @@
       "path": "/history?view=chart",
       "status": "ok",
       "timing_ms": {
-        "load": 45.5,
-        "network_idle": 565.1
+        "load": 48.4,
+        "network_idle": 568.3
       },
       "web_vitals": {
-        "fcp_ms": 56,
-        "lcp_ms": 56,
+        "fcp_ms": 60,
+        "lcp_ms": 60,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -201,12 +201,12 @@
       "path": "/medications",
       "status": "ok",
       "timing_ms": {
-        "load": 43.3,
-        "network_idle": 557.5
+        "load": 53.2,
+        "network_idle": 568.1
       },
       "web_vitals": {
-        "fcp_ms": 60,
-        "lcp_ms": 60,
+        "fcp_ms": 64,
+        "lcp_ms": 64,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -223,12 +223,12 @@
       "path": "/settings",
       "status": "ok",
       "timing_ms": {
-        "load": 51.6,
-        "network_idle": 568.5
+        "load": 43.7,
+        "network_idle": 562.8
       },
       "web_vitals": {
-        "fcp_ms": 80,
-        "lcp_ms": 80,
+        "fcp_ms": 64,
+        "lcp_ms": 64,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -245,12 +245,12 @@
       "path": "/pets/new",
       "status": "ok",
       "timing_ms": {
-        "load": 46.4,
-        "network_idle": 590.1
+        "load": 47.7,
+        "network_idle": 571.1
       },
       "web_vitals": {
-        "fcp_ms": 56,
-        "lcp_ms": 72,
+        "fcp_ms": 64,
+        "lcp_ms": 112,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -267,12 +267,12 @@
       "path": "/form/feeding",
       "status": "ok",
       "timing_ms": {
-        "load": 42.8,
-        "network_idle": 574.2
+        "load": 44.3,
+        "network_idle": 562.2
       },
       "web_vitals": {
-        "fcp_ms": 64,
-        "lcp_ms": 64,
+        "fcp_ms": 56,
+        "lcp_ms": 76,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -289,12 +289,12 @@
       "path": "/medications/new",
       "status": "ok",
       "timing_ms": {
-        "load": 44.9,
-        "network_idle": 569.7
+        "load": 43.8,
+        "network_idle": 562.1
       },
       "web_vitals": {
         "fcp_ms": 64,
-        "lcp_ms": 64,
+        "lcp_ms": 80,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -311,12 +311,12 @@
       "path": "/tiles-settings",
       "status": "ok",
       "timing_ms": {
-        "load": 45.4,
-        "network_idle": 563.2
+        "load": 42.9,
+        "network_idle": 557.4
       },
       "web_vitals": {
-        "fcp_ms": 60,
-        "lcp_ms": 60,
+        "fcp_ms": 52,
+        "lcp_ms": 68,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -333,12 +333,12 @@
       "path": "/form-defaults",
       "status": "ok",
       "timing_ms": {
-        "load": 46.1,
-        "network_idle": 565.6
+        "load": 41.0,
+        "network_idle": 555.9
       },
       "web_vitals": {
         "fcp_ms": 60,
-        "lcp_ms": 60,
+        "lcp_ms": 80,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -355,8 +355,8 @@
       "path": "/admin",
       "status": "ok",
       "timing_ms": {
-        "load": 45.0,
-        "network_idle": 562.3
+        "load": 45.4,
+        "network_idle": 560.8
       },
       "web_vitals": {
         "fcp_ms": 64,
@@ -377,12 +377,12 @@
       "path": "/admin/users/new",
       "status": "ok",
       "timing_ms": {
-        "load": 54.3,
-        "network_idle": 566.4
+        "load": 51.1,
+        "network_idle": 562.1
       },
       "web_vitals": {
         "fcp_ms": 64,
-        "lcp_ms": 64,
+        "lcp_ms": 80,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
