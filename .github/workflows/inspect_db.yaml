@@ -16,8 +16,6 @@ jobs:
           script: |
             set +e
             cd ~/services/cat-health-control-bot 2>/dev/null || cd ~/services/cat-health-control 2>/dev/null || cd ~/cat-health-control 2>/dev/null
-            # Parse .env with python so values containing shell metacharacters
-            # ('&', '$', spaces, etc.) survive intact.
             eval "$(python3 -c "
             import os
             for line in open('.env'):
@@ -26,16 +24,14 @@ jobs:
                 k, _, v = line.partition('=')
                 v = v.strip().strip('\"').strip(\"'\")
                 print(f'export {k}=\"' + v.replace('\"','\\\\\"') + '\"')
-            " | grep -E '^export (MONGO_|FLASK_|JWT_|ADMIN_)')"
-            echo "MONGO_HOST=$MONGO_HOST  MONGO_DB=$MONGO_DB  USER=$MONGO_USER  pass-len=${#MONGO_PASS}"
-            echo
-            echo "=== docker compose ps ==="
-            docker compose ps 2>&1 | head -10
-            echo
+            " | grep -E '^export (MONGO_)')"
             mongosh_args="--quiet --username $MONGO_USER --password $MONGO_PASS --authenticationDatabase admin"
             mongo_eval() {
               docker compose exec -T db mongosh $mongosh_args --eval "$1" 2>&1
             }
+            echo "=== web container last 60 log lines (look for index errors) ==="
+            docker compose logs --tail=60 web 2>&1 | tail -60
+            echo
             echo "=== collections ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print(db.getCollectionNames().sort().join(', '));" 2>&1
             echo
@@ -54,8 +50,8 @@ jobs:
             echo "=== medications ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.medications.find({}, {name:1, pet_id:1, is_active:1, schedule:1, _id:1}).forEach(m => printjson(m));" 2>&1
             echo
-            echo "=== refresh_tokens (count + sample 5, jti present?) ==="
-            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments()); db.refresh_tokens.find({}, {username:1, jti:1, created_at:1, _id:0}).limit(5).forEach(t => printjson(t));" 2>&1
+            echo "=== refresh_tokens (count + sample 5) ==="
+            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments()); db.refresh_tokens.find({}, {username:1, jti:1, created_at:1, expires_at:1, _id:0}).limit(5).forEach(t => printjson(t));" 2>&1
             echo
             echo "=== health-records counts ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); ['asthma_attacks','defecations','litter_changes','weights','feedings','eye_drops','tooth_brushing','ear_cleaning','medication_intakes'].forEach(c => print(c + ': ' + db[c].countDocuments()));" 2>&1
