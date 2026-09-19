@@ -58,7 +58,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         className="card-soft"
         style={{
           display: 'flex',
-          alignItems: 'flex-start',
+          // Pill-icon should sit on the visual centre of the row, not pinned
+          // to the top — otherwise it floats above the multi-line content.
+          alignItems: 'center',
           gap: '12px',
           padding: '14px',
         }}
@@ -69,7 +71,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
           style={{ backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}
           aria-hidden
         >
-          {PillIcon ? <PillIcon size={22} strokeWidth={2} /> : null}
+          {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
         </div>
 
         {/* Body */}
