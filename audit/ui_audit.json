@@ -1,0 +1,2626 @@
+{
+  "file_count": 64,
+  "line_count": 9394,
+  "findings": {
+    "ts_any_explicit": [
+      {
+        "file": "App.tsx",
+        "line": 32,
+        "snippet": "retry: (failureCount, error: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "components/Alert.tsx",
+        "line": 15,
+        "snippet": "const handlerRef = useRef<any>(null);",
+        "severity": "warn"
+      },
+      {
+        "file": "components/ExportModal.tsx",
+        "line": 29,
+        "snippet": "await exportService.exportData(petId, exportType[0], format[0] as any);",
+        "severity": "warn"
+      },
+      {
+        "file": "components/FormField.tsx",
+        "line": 17,
+        "snippet": "const inputRef = useRef<any>(null);",
+        "severity": "warn"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 116,
+        "snippet": "formatter={(value: any) => [value, valueLabel]}",
+        "severity": "warn"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 152,
+        "snippet": "formatter={(value: any) => [value, valueLabel]}",
+        "severity": "warn"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 17,
+        "snippet": "const handlePetSelect = (pet: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "hooks/useAuth.ts",
+        "line": 54,
+        "snippet": "retry: (failureCount, error: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "hooks/useAuth.ts",
+        "line": 70,
+        "snippet": "return error && (error as any)?.response?.status === 401;",
+        "severity": "warn"
+      },
+      {
+        "file": "hooks/useAuth.ts",
+        "line": 88,
+        "snippet": "} catch (error: any) {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 34,
+        "snippet": "onError: (err: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 158,
+        "snippet": "{itemsForDate.map((item: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 149,
+        "snippet": "columns={[OPTIONS[pickerKey] as any]}",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 37,
+        "snippet": "config.fields.reduce((acc: Record<string, any>, field: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 110,
+        "snippet": "const normalizeData = useCallback((data: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 133,
+        "snippet": "config.fields.forEach((field: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 159,
+        "snippet": "let finalValue: any = raw ?? '';",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 163,
+        "snippet": "const optsLower = field.options.map((o: any) => String(o.value).toLowerCase());",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 171,
+        "snippet": "const matchingOption = field.options.find((opt: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 247,
+        "snippet": "}) as any;",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 270,
+        "snippet": "} catch (error: any) {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 168,
+        "snippet": "{itemsForDate.map((item: any, index: number) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 28,
+        "snippet": "} catch (err: any) {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 64,
+        "snippet": "resolver: zodResolver(medicationSchema) as any,",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 161,
+        "snippet": "onError: (err: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 392,
+        "snippet": "{timeFields.map((timeField: any, index) => (",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 413,
+        "snippet": "name={`schedule.times.${index}` as any}",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 62,
+        "snippet": "onError: (err: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 81,
+        "snippet": "const nameInputRef = useRef<any>(null);",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 82,
+        "snippet": "const breedInputRef = useRef<any>(null);",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 83,
+        "snippet": "const healthNotesInputRef = useRef<any>(null);",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 268,
+        "snippet": "} catch (error: any) {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 830,
+        "snippet": "<List style={{ '--background-color': 'transparent' } as any}>",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 57,
+        "snippet": "} catch (error: any) {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 77,
+        "snippet": "onError: (err: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 91,
+        "snippet": "onError: (err: any) => {",
+        "severity": "warn"
+      },
+      {
+        "file": "services/healthRecords.service.ts",
+        "line": 18,
+        "snippet": "[key: string]: any;",
+        "severity": "warn"
+      },
+      {
+        "file": "services/healthRecords.service.ts",
+        "line": 32,
+        "snippet": "[key: string]: any;",
+        "severity": "warn"
+      },
+      {
+        "file": "services/healthRecords.service.ts",
+        "line": 38,
+        "snippet": "[key: string]: any;",
+        "severity": "warn"
+      },
+      {
+        "file": "services/healthRecords.service.ts",
+        "line": 171,
+        "snippet": "): Promise<{ data: { date: string; value: any }[] }> {",
+        "severity": "warn"
+      },
+      {
+        "file": "services/healthRecords.service.ts",
+        "line": 172,
+        "snippet": "const response = await api.get<{ data: { date: string; value: any }[] }>(`/stats/health`, {",
+        "severity": "warn"
+      },
+      {
+        "file": "utils/historyConfig.ts",
+        "line": 7,
+        "snippet": "[key: string]: any;",
+        "severity": "warn"
+      }
+    ],
+    "inline_style": [
+      {
+        "file": "components/BottomTabBar.tsx",
+        "line": 58,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/BottomTabBar.tsx",
+        "line": 67,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/BottomTabBar.tsx",
+        "line": 80,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/ExportModal.tsx",
+        "line": 58,
+        "snippet": "<div style={{ padding: '16px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/ExportModal.tsx",
+        "line": 59,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/ExportModal.tsx",
+        "line": 65,
+        "snippet": "<h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Экспорт данных</h3>",
+        "severity": "info"
+      },
+      {
+        "file": "components/ExportModal.tsx",
+        "line": 93,
+        "snippet": "style={{ marginTop: '16px' }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/FormField.tsx",
+        "line": 235,
+        "snippet": "<div style={{ fontSize: '12px', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'l",
+        "severity": "info"
+      },
+      {
+        "file": "components/FormField.tsx",
+        "line": 263,
+        "snippet": "style={{ minHeight: '80px' }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/FormField.tsx",
+        "line": 294,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 66,
+        "snippet": "<p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 74,
+        "snippet": "<p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 81,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 176,
+        "snippet": "<div style={{ marginTop: '16px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 91,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 104,
+        "snippet": "style={{ backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 107,
+        "snippet": "{PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 111,
+        "snippet": "<div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 113,
+        "snippet": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 116,
+        "snippet": "style={{ fontSize: '15px', fontWeight: 600 }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 123,
+        "snippet": "<span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryItem.tsx",
+        "line": 130,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/ItemCard.tsx",
+        "line": 33,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/ItemCard.tsx",
+        "line": 41,
+        "snippet": "<div style={{ padding: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/ItemCard.tsx",
+        "line": 44,
+        "snippet": "<div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/ItemCard.tsx",
+        "line": 52,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/ItemCard.tsx",
+        "line": 67,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/LoadingSpinner.tsx",
+        "line": 33,
+        "snippet": "<SpinLoading style={{ '--size': '40px', '--color': 'var(--adm-color-primary)' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/LoadingSpinner.tsx",
+        "line": 34,
+        "snippet": "<p style={{ fontSize: '16px', color: 'var(--app-text-secondary)' }}>Загрузка...</p>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 42,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 61,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 67,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 78,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 94,
+        "snippet": "<span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--app-text-color)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 97,
+        "snippet": "<DownOutline style={{ fontSize: '10px', color: 'var(--app-text-secondary)' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 117,
+        "snippet": "<div style={{ padding: '20px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 118,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 127,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 136,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 152,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 159,
+        "snippet": "style={{ borderRadius: '50%' }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 162,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 178,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 179,
+        "snippet": "<span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 180,
+        "snippet": "<span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || pet.species || 'Питомец'}</span>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 184,
+        "snippet": "<CheckOutline style={{ fontSize: '20px', color: 'var(--adm-color-primary)' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 197,
+        "snippet": "style={{ marginTop: '8px', fontSize: '15px' }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 210,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 221,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 46,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 54,
+        "snippet": "<div style={{ padding: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 55,
+        "snippet": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 57,
+        "snippet": "<div style={{ fontSize: 'var(--text-xs)', opacity: 0.9, marginBottom: 'var(--spacing-xs)', textTransform: 'uppercase', l",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 60,
+        "snippet": "<h3 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 700 }}>{nextDose.name}</h3>",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 61,
+        "snippet": "<div style={{ fontSize: 'var(--text-sm)', opacity: 0.9, marginTop: '2px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 65,
+        "snippet": "<div style={{ backgroundColor: 'var(--app-white-20)', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 66,
+        "snippet": "<ClockCircleOutline style={{ fontSize: 'var(--spacing-xl)' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 71,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 86,
+        "snippet": "<div style={{ marginTop: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 90,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetImage.tsx",
+        "line": 38,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetImage.tsx",
+        "line": 52,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetImage.tsx",
+        "line": 75,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetImage.tsx",
+        "line": 88,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 54,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 68,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 77,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 115,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 123,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 132,
+        "snippet": "<div style={{ position: 'absolute', inset: 0, transform: parallaxTransform }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 137,
+        "snippet": "style={{ width: \"100%\", height: \"100%\", borderRadius: 0 }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 143,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 154,
+        "snippet": "<SpeciesIcon size={84} strokeWidth={1.5} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 160,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 171,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 181,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 191,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 207,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 218,
+        "snippet": "<Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 227,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 250,
+        "snippet": "<Skeleton.Paragraph lineCount={1} style={{ marginTop: \"12px\", padding: \"0 16px 12px\" }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSwitcher.tsx",
+        "line": 26,
+        "snippet": "<Card style={{ marginBottom: '16px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSwitcher.tsx",
+        "line": 27,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSwitcher.tsx",
+        "line": 28,
+        "snippet": "<span style={{ fontSize: '14px', fontWeight: 500 }}>Животное:</span>",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSwitcher.tsx",
+        "line": 36,
+        "snippet": "style={{ flex: 1 }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 56,
+        "snippet": "<div style={{ padding: 'var(--spacing-lg) var(--spacing-md) 0' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 59,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 72,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 94,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 116,
+        "snippet": "style={{ display: 'block', color: 'var(--app-text-on-tile)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 120,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/SettingsRow.tsx",
+        "line": 47,
+        "snippet": "<span aria-hidden style={{ color: 'var(--app-text-tertiary)', fontSize: 20 }}>›</span>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 10,
+        "snippet": "<div className=\"card-soft\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 16,
+        "snippet": "<div className=\"skeleton\" style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 17,
+        "snippet": "<div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 18,
+        "snippet": "<div className=\"skeleton\" style={{ height: 14, width: '45%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 19,
+        "snippet": "<div className=\"skeleton\" style={{ height: 10, width: '30%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 20,
+        "snippet": "<div className=\"skeleton\" style={{ height: 12, width: '65%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 28,
+        "snippet": "<div className=\"card-soft\" style={{ overflow: 'hidden' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 29,
+        "snippet": "<div className=\"skeleton\" style={{ width: '100%', height: 120, borderRadius: 0 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 30,
+        "snippet": "<div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 31,
+        "snippet": "<div className=\"skeleton\" style={{ height: 20, width: '40%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 32,
+        "snippet": "<div className=\"skeleton\" style={{ height: 12, width: '25%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 40,
+        "snippet": "<div className=\"card-soft\" style={{ padding: '20px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 41,
+        "snippet": "<div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 42,
+        "snippet": "<div className=\"skeleton\" style={{ width: 36, height: 36, borderRadius: 12 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 43,
+        "snippet": "<div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 44,
+        "snippet": "<div className=\"skeleton\" style={{ height: 16, width: '45%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 45,
+        "snippet": "<div className=\"skeleton\" style={{ height: 12, width: '60%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 48,
+        "snippet": "<div className=\"skeleton\" style={{ height: 10, width: '80%', marginBottom: 8 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 49,
+        "snippet": "<div className=\"skeleton\" style={{ height: 10, width: '65%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 56,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 58,
+        "snippet": "<div className=\"card-soft\" style={{ overflow: 'hidden' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 59,
+        "snippet": "<div className=\"skeleton\" style={{ width: '100%', height: 180, borderRadius: 0 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 60,
+        "snippet": "<div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 61,
+        "snippet": "<div className=\"skeleton\" style={{ height: 14, width: '30%' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 62,
+        "snippet": "<div style={{ display: 'flex', gap: 8 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 63,
+        "snippet": "<div className=\"skeleton\" style={{ flex: 1, height: 56, borderRadius: 12 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 64,
+        "snippet": "<div className=\"skeleton\" style={{ flex: 1, height: 56, borderRadius: 12 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/Skeletons.tsx",
+        "line": 68,
+        "snippet": "<div className=\"skeleton\" style={{ height: 24, width: 80, marginTop: 4 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "components/SwipeableRow.tsx",
+        "line": 60,
+        "snippet": "style={{ backgroundColor: leftAction.color }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/SwipeableRow.tsx",
+        "line": 70,
+        "snippet": "style={{ backgroundColor: rightAction.color }}",
+        "severity": "info"
+      },
+      {
+        "file": "components/SwipeableRow.tsx",
+        "line": 81,
+        "snippet": "style={{ transform: `translate3d(${offset}px, 0, 0)` }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 65,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 74,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 75,
+        "snippet": "<h2 style={{ color: 'var(--app-text-color)', fontSize: '20px', margin: 0 }}>Админ-панель</h2>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 77,
+        "snippet": "<div style={{ marginTop: '16px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 87,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 94,
+        "snippet": "<h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Админ-панель</h2",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 98,
+        "snippet": "<div className=\"safe-area-padding\" style={{ paddingBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 103,
+        "snippet": "<div className=\"safe-area-padding\" style={{ paddingBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 108,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 114,
+        "snippet": "<h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--app-text-color)' }}>Пользователи</h3>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 119,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 128,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 135,
+        "snippet": "<p style={{ color: 'var(--app-text-secondary)', padding: 'var(--spacing-md) var(--spacing-lg)' }}>Пользователи не найден",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 141,
+        "snippet": "style={{ padding: 16 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 143,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 149,
+        "snippet": "<span style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 157,
+        "snippet": "<div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 162,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 177,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 192,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 194,
+        "snippet": "<span style={{ fontSize: 14, color: 'var(--app-text-primary)' }}>{user.full_name}</span>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 197,
+        "snippet": "<span style={{ fontSize: 12, color: 'var(--app-text-secondary)' }}>{user.email}</span>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 199,
+        "snippet": "<div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 202,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/AdminPanel.tsx",
+        "line": 214,
+        "snippet": "<span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 89,
+        "snippet": "<div className=\"page-container\" style={{ paddingBottom: '80px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 100,
+        "snippet": "<div className=\"safe-area-padding\" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 113,
+        "snippet": "<div style={{ paddingBottom: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 120,
+        "snippet": "<p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 124,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 129,
+        "snippet": "<p style={{ marginBottom: '16px', fontSize: '15px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 143,
+        "snippet": "<div key={dateStr} style={{ marginBottom: '16px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 147,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 157,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 176,
+        "snippet": "<div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', paddingBottom: '24px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 201,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 143,
+        "snippet": "<span style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 167,
+        "snippet": "<div className=\"safe-area-padding\" style={{ marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 168,
+        "snippet": "<h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умол",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 201,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 241,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 265,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/FormDefaults.tsx",
+        "line": 310,
+        "snippet": "<div style={{ paddingTop: 'var(--spacing-md)', paddingBottom: 'var(--spacing-md)', display: 'flex', flexDirection: 'colu",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 102,
+        "snippet": "<div style={{ padding: '20px', textAlign: 'center' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 279,
+        "snippet": "<div style={{ minHeight: '100vh', padding: '16px', backgroundColor: 'var(--app-page-background)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 280,
+        "snippet": "<p style={{ color: 'var(--app-text-color)' }}>Выберите животное в меню навигации</p>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 292,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 299,
+        "snippet": "<h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 309,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 324,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 332,
+        "snippet": "style={{ display: 'none' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 342,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 357,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 124,
+        "snippet": "<div style={{ minHeight: '100vh', padding: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 133,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 143,
+        "snippet": "<p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 151,
+        "snippet": "<p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 160,
+        "snippet": "<div key={dateStr} style={{ marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 163,
+        "snippet": "style={{ marginBottom: '10px', paddingLeft: 4 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 167,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 191,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 205,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 228,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 235,
+        "snippet": "<h1 className=\"display-headline\" style={{ fontSize: '24px', margin: 0 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 241,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 254,
+        "snippet": "<Download size={16} strokeWidth={2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 286,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 291,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 302,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 319,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 336,
+        "snippet": "<div style={{ minHeight: '400px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 345,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 51,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 61,
+        "snippet": "<div style={{ width: '100%', maxWidth: '400px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 66,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 84,
+        "snippet": "<div className=\"card-soft\" style={{ padding: '28px 24px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 96,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 111,
+        "snippet": "<span style={{ color: 'var(--app-text-primary)', fontWeight: 500 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Login.tsx",
+        "line": 128,
+        "snippet": "<span style={{ color: 'var(--app-text-primary)', fontWeight: 500 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 192,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 199,
+        "snippet": "<h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 208,
+        "snippet": "style={{ borderRadius: 'var(--app-border-radius)', fontSize: 'var(--text-xs)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 220,
+        "snippet": "style={{ '--prefix-width': '6em' } as React.CSSProperties}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 248,
+        "snippet": "style={{ cursor: 'pointer' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 255,
+        "snippet": "style={{ pointerEvents: 'none' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 305,
+        "snippet": "<div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 315,
+        "snippet": "style={{ width: '80px' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 318,
+        "snippet": "<div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: `0 var(--spacing-xs)` }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 320,
+        "snippet": "<div style={{ width: '80px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 328,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 344,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 371,
+        "snippet": "<div style={{ marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 382,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 393,
+        "snippet": "<div key={timeField.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 396,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 420,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 451,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', marginTop: 'var(--spacing-xs)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 554,
+        "snippet": "style={{ '--text-align': 'left' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 561,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 573,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 581,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 594,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 595,
+        "snippet": "<div style={{ padding: 'var(--spacing-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', bord",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 596,
+        "snippet": "<span style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Популярные препараты</span>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 599,
+        "snippet": "<div style={{ overflowY: 'auto', flex: 1 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 607,
+        "snippet": "<div style={{ fontWeight: 500 }}>{med.name}</div>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 608,
+        "snippet": "<div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 122,
+        "snippet": "if (factor === 'liquid') return <Droplets size={20} strokeWidth={2} style={{ display: 'block' }} />;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 123,
+        "snippet": "if (factor === 'injection') return <Syringe size={20} strokeWidth={2} style={{ display: 'block' }} />;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 124,
+        "snippet": "return <Pill size={20} strokeWidth={2} style={{ display: 'block' }} />;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 130,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 137,
+        "snippet": "<h1 className=\"display-headline\" style={{ fontSize: '28px', margin: 0 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 144,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 157,
+        "snippet": "<AddOutline style={{ fontSize: 20 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 164,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 174,
+        "snippet": "<div className=\"safe-area-padding\" style={{ paddingTop: 'var(--spacing-xl)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 177,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 184,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 196,
+        "snippet": "<Pill size={36} strokeWidth={1.75} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 200,
+        "snippet": "style={{ fontSize: '1.125rem', margin: 0 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 205,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 217,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 245,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 256,
+        "snippet": "<Card className=\"card-soft\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 261,
+        "snippet": "<div style={{ padding: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 262,
+        "snippet": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 264,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)', flexWr",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 266,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 280,
+        "snippet": "<h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h3>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 283,
+        "snippet": "<p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 285,
+        "snippet": "<span style={{ margin: `0 var(--spacing-xs)`, color: 'var(--app-divider-color)' }}>|</span>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 289,
+        "snippet": "<div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 295,
+        "snippet": "<EditSOutline style={{ fontSize: '18px' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 303,
+        "snippet": "<DeleteOutline style={{ fontSize: '18px' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 308,
+        "snippet": "<div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', lineHeight",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 309,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 317,
+        "snippet": "<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color:",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 323,
+        "snippet": "<div style={{ marginTop: 'var(--spacing-md)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 324,
+        "snippet": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 332,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 342,
+        "snippet": "<div style={{ marginTop: 'var(--spacing-xl)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 350,
+        "snippet": "style={{ borderRadius: 'var(--radius-sm)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 370,
+        "snippet": "<div style={{ textAlign: 'center' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 371,
+        "snippet": "<div style={{ marginBottom: 'var(--spacing-lg)', fontSize: 'var(--text-sm)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 374,
+        "snippet": "<div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 377,
+        "snippet": "<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 387,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 396,
+        "snippet": "<span style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 286,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 293,
+        "snippet": "<h2 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 337,
+        "snippet": "<span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 444,
+        "snippet": "<span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 479,
+        "snippet": "<span style={{ color: value !== undefined ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 524,
+        "snippet": "style={{ display: 'none' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 540,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 552,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 562,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 577,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 591,
+        "snippet": "<Camera size={16} strokeWidth={2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 596,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 623,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 646,
+        "snippet": "<Camera size={32} strokeWidth={1.5} style={{ display: 'block', opacity: 0.6 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 647,
+        "snippet": "<span style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 662,
+        "snippet": "<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 672,
+        "snippet": "{searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 674,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 687,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 702,
+        "snippet": "<span style={{ fontWeight: 500 }}>{u.username}</span>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 725,
+        "snippet": "<span style={{ fontWeight: 500 }}>{username}</span>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 739,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 747,
+        "snippet": "style={{ display: 'none' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 757,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 765,
+        "snippet": "style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 813,
+        "snippet": "<div {...attributes} {...listeners} style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', paddingRight: '8px', tou",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 814,
+        "snippet": "<GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 830,
+        "snippet": "<List style={{ '--background-color': 'transparent' } as any}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 847,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 68,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 75,
+        "snippet": "<h1 className=\"display-headline\" style={{ fontSize: '28px', margin: 0 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 81,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 94,
+        "snippet": "<AddOutline style={{ fontSize: 20 }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 100,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 110,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 115,
+        "snippet": "<p style={{ marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 121,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 147,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 251,
+        "snippet": "style={{ overflow: 'hidden' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 265,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 277,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 291,
+        "snippet": "style={{ width: '100%', height: '100%', borderRadius: 0, cursor: 'pointer' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 296,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 306,
+        "snippet": "<SpeciesIcon size={64} strokeWidth={1.5} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 316,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 333,
+        "snippet": "<Pencil size={16} strokeWidth={2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 338,
+        "snippet": "<div style={{ padding: '14px 16px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 341,
+        "snippet": "style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1.2 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 347,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 359,
+        "snippet": "<Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 25,
+        "snippet": "<div className=\"safe-area-padding\" style={{ marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 28,
+        "snippet": "style={{ fontSize: '28px', margin: 0 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 36,
+        "snippet": "<h3 className=\"section-header\" style={{ marginBottom: 'var(--spacing-sm)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 39,
+        "snippet": "<div className=\"card-soft\" style={{ overflow: 'hidden' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 41,
+        "snippet": "icon={<Moon size={18} strokeWidth={2} style={{ display: 'block' }} />}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 59,
+        "snippet": "icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 70,
+        "snippet": "style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 74,
+        "snippet": "<div className=\"card-soft\" style={{ overflow: 'hidden' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 76,
+        "snippet": "icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 87,
+        "snippet": "style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 91,
+        "snippet": "<div className=\"card-soft\" style={{ overflow: 'hidden' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 93,
+        "snippet": "icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 105,
+        "snippet": "style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Settings.tsx",
+        "line": 117,
+        "snippet": "<LogOut size={16} strokeWidth={2} style={{ verticalAlign: 'middle', marginRight: 8, display: 'inline-block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 48,
+        "snippet": "style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', paddingRight: '8px', touchAction: 'none', display: 'flex' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 50,
+        "snippet": "<GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 136,
+        "snippet": "<div className=\"safe-area-padding\" style={{ marginBottom: 'var(--spacing-lg)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 137,
+        "snippet": "<h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Настройка тайлов",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 138,
+        "snippet": "<p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--adm-color-weak)' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 174,
+        "snippet": "<div className=\"safe-area-padding\" style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 181,
+        "snippet": "<Button block color=\"primary\" size=\"large\" onClick={handleSave} style={{ borderRadius: 'var(--radius-md)', fontWeight: 6",
+        "severity": "info"
+      },
+      {
+        "file": "pages/TilesSettings.tsx",
+        "line": 184,
+        "snippet": "<Button block color=\"default\" size=\"large\" onClick={handleReset} style={{ borderRadius: 'var(--radius-md)', fontWeight: ",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 125,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 130,
+        "snippet": "<div style={{ maxWidth: '800px', margin: '0 auto' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 131,
+        "snippet": "<div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 132,
+        "snippet": "<h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0 }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 172,
+        "snippet": "style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 240,
+        "snippet": "<div style={{",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 250,
+        "snippet": "style={{ display: 'none' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 260,
+        "snippet": "style={{ borderRadius: '12px', fontWeight: 600 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 268,
+        "snippet": "style={{ borderRadius: '12px', fontWeight: 500 }}",
+        "severity": "info"
+      }
+    ],
+    "magic_44_check": [
+      {
+        "file": "components/BottomTabBar.tsx",
+        "line": 59,
+        "snippet": "height: '50px',",
+        "severity": "info"
+      },
+      {
+        "file": "components/HistoryChart.tsx",
+        "line": 84,
+        "snippet": "height: '300px',",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 79,
+        "snippet": "height: '36px',",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 163,
+        "snippet": "width: '40px',",
+        "severity": "info"
+      },
+      {
+        "file": "components/Navbar.tsx",
+        "line": 164,
+        "snippet": "height: '40px',",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 126,
+        "snippet": "height: \"180px\",",
+        "severity": "info"
+      },
+      {
+        "file": "components/QuickAddSheet.tsx",
+        "line": 101,
+        "snippet": "height: '100px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 315,
+        "snippet": "style={{ width: '80px' }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 318,
+        "snippet": "<div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: `0 var(--spacing-xs)` }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 318,
+        "snippet": "<div style={{ width: '1px', height: '24px', backgroundColor: 'var(--app-border-color)', margin: `0 var(--spacing-xs)` }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 320,
+        "snippet": "<div style={{ width: '80px' }}>",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 389,
+        "snippet": "width: '80px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 542,
+        "snippet": "width: '120px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 543,
+        "snippet": "height: '120px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 578,
+        "snippet": "width: '32px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 579,
+        "snippet": "height: '32px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 597,
+        "snippet": "width: '32px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 598,
+        "snippet": "height: '32px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 625,
+        "snippet": "width: '120px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 626,
+        "snippet": "height: '120px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 268,
+        "snippet": "height: '120px',",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 172,
+        "snippet": "style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 172,
+        "snippet": "style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}",
+        "severity": "info"
+      }
+    ],
+    "ts_non_null_assert": [
+      {
+        "file": "components/NextDoseWidget.tsx",
+        "line": 21,
+        "snippet": "enabled: !!selectedPetId,",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 95,
+        "snippet": "enabled: !!pet._id,",
+        "severity": "info"
+      },
+      {
+        "file": "components/PetSummaryCard.tsx",
+        "line": 101,
+        "snippet": "enabled: !!pet._id,",
+        "severity": "info"
+      },
+      {
+        "file": "components/SettingsRow.tsx",
+        "line": 30,
+        "snippet": "const interactive = !!onClick;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Dashboard.tsx",
+        "line": 54,
+        "snippet": "enabled: !!selectedPetId",
+        "severity": "info"
+      },
+      {
+        "file": "pages/HealthRecordForm.tsx",
+        "line": 62,
+        "snippet": "const isEditing = !!id;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/History.tsx",
+        "line": 90,
+        "snippet": "enabled: !!selectedPetId,",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 48,
+        "snippet": "const isEditing = !!id;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 97,
+        "snippet": "enabled: isEditing && !!id && !!selectedPetId,",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationForm.tsx",
+        "line": 97,
+        "snippet": "enabled: isEditing && !!id && !!selectedPetId,",
+        "severity": "info"
+      },
+      {
+        "file": "pages/MedicationsList.tsx",
+        "line": 23,
+        "snippet": "enabled: !!selectedPetId,",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 60,
+        "snippet": "const isEditing = !!id;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 113,
+        "snippet": "enabled: isEditing && !!id,",
+        "severity": "info"
+      },
+      {
+        "file": "pages/PetForm.tsx",
+        "line": 217,
+        "snippet": "const photoWasRemoved = fileList.length === 0 && !!pet?.photo_url;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/Pets.tsx",
+        "line": 229,
+        "snippet": "enabled: !!pet._id,",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 24,
+        "snippet": "const isEditing = !!username;",
+        "severity": "info"
+      },
+      {
+        "file": "pages/UserForm.tsx",
+        "line": 46,
+        "snippet": "enabled: isEditing && !!username,",
+        "severity": "info"
+      }
+    ],
+    "button_missing_type": [
+      {
+        "file": "components/SettingsRow.tsx",
+        "line": 4,
+        "snippet": "* Renders as a <button> when `onClick` is provided, otherwise a <div>.",
+        "severity": "warn"
+      }
+    ]
+  }
+}

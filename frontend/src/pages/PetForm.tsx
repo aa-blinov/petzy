@@ -614,15 +614,18 @@ export function PetForm() {
                   </div>
                 </div>
               ) : (
-                // No photo - show upload zone
-                <div
-                  onClick={() => document.getElementById('pet-photo-input')?.click()}
+                // No photo - show upload zone. Wrapped in <label htmlFor="pet-photo-input">
+                // so keyboard / screen-reader users get the same affordance
+                // as mouse users — clicking the dashed zone opens the file
+                // picker just like clicking the hidden <input>.
+                <label
+                  htmlFor="pet-photo-input"
                   style={{
+                    display: 'flex',
                     width: '120px',
                     height: '120px',
                     borderRadius: '16px',
                     border: '2px dashed var(--adm-color-border)',
-                    display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -648,7 +651,7 @@ export function PetForm() {
                   }}>
                     Добавить
                   </span>
-                </div>
+                </label>
               )}
             </Form.Item>
           </Form>
@@ -677,21 +680,28 @@ export function PetForm() {
                     backgroundColor: 'var(--app-page-background)'
                   }}>
                     {searchResults.map(u => (
-                      <div
+                      <button
+                        type="button"
                         key={u.username}
                         onClick={() => handleAddSharedUser(u.username)}
                         style={{
                           padding: '12px',
+                          border: 'none',
                           borderBottom: '1px solid var(--app-border-color)',
+                          background: 'transparent',
+                          textAlign: 'left',
+                          width: '100%',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between'
+                          justifyContent: 'space-between',
+                          color: 'inherit',
+                          font: 'inherit',
                         }}
                       >
                         <span style={{ fontWeight: 500 }}>{u.username}</span>
                         <UserAddOutline color='var(--adm-color-primary)' fontSize={20} />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
