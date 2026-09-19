@@ -1,0 +1,108 @@
+{
+  "conditions": {
+    "viewport": "360x640 @2x",
+    "device_scale_factor": 2,
+    "user_agent": "Samsung SM-A145F (Galaxy A14)",
+    "cpu_throttling": "4x slowdown",
+    "network": "Slow 4G (1.6 Mbps down / 750 Kbps up / 150 ms RTT)"
+  },
+  "routes": [
+    {
+      "route": "dashboard",
+      "path": "/",
+      "cold": {
+        "fcp": 256,
+        "lcp": 256,
+        "cls": 0,
+        "loadMs": 207.4000000357628,
+        "total_ms": 863.0
+      },
+      "warm": {
+        "fcp": 220,
+        "lcp": 220,
+        "cls": 0,
+        "loadMs": 200.20000004768372,
+        "total_ms": 822.1
+      }
+    },
+    {
+      "route": "pets",
+      "path": "/pets",
+      "cold": {
+        "fcp": 228,
+        "lcp": 548,
+        "cls": 0,
+        "loadMs": 196.5999999642372,
+        "total_ms": 817.8
+      },
+      "warm": {
+        "fcp": 216,
+        "lcp": 536,
+        "cls": 0,
+        "loadMs": 196.80000001192093,
+        "total_ms": 818.2
+      }
+    },
+    {
+      "route": "history",
+      "path": "/history",
+      "cold": {
+        "fcp": 208,
+        "lcp": 688,
+        "cls": 0,
+        "loadMs": 192.0999999642372,
+        "total_ms": 815.0
+      },
+      "warm": {
+        "fcp": 220,
+        "lcp": 708,
+        "cls": 0,
+        "loadMs": 196.39999997615814,
+        "total_ms": 812.4
+      }
+    },
+    {
+      "route": "medications",
+      "path": "/medications",
+      "cold": {
+        "fcp": 208,
+        "lcp": 688,
+        "cls": 0,
+        "loadMs": 192.80000001192093,
+        "total_ms": 816.2
+      },
+      "warm": {
+        "fcp": 220,
+        "lcp": 704,
+        "cls": 0,
+        "loadMs": 199.69999998807907,
+        "total_ms": 820.4
+      }
+    },
+    {
+      "route": "admin_panel",
+      "path": "/admin",
+      "cold": {
+        "fcp": 220,
+        "lcp": 700,
+        "cls": 0,
+        "loadMs": 200.30000001192093,
+        "total_ms": 820.4
+      },
+      "warm": {
+        "fcp": 220,
+        "lcp": 696,
+        "cls": 0,
+        "loadMs": 199.19999998807907,
+        "total_ms": 820.3
+      }
+    }
+  ],
+  "aggregate": {
+    "cold_lcp_p50_ms": 688,
+    "cold_lcp_p95_ms": 688,
+    "warm_lcp_p50_ms": 696,
+    "warm_lcp_p95_ms": 704,
+    "cls_max": 0
+  }
+}
