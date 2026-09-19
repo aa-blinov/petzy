@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Toast, Form } from 'antd-mobile';
-import { PawPrint } from 'lucide-react';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -60,47 +59,26 @@ export function Login() {
       paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
-        {/* Brand block */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div
-            aria-hidden
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 20,
-              margin: '0 auto 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              background: 'var(--app-brand-gradient)',
-              boxShadow: '0 8px 24px rgba(196, 106, 63, 0.35)',
-            }}
-          >
-            <PawPrint size={32} strokeWidth={2} style={{ display: 'block' }} />
-          </div>
-          <h1
-            className="display-headline"
-            style={{
-              fontSize: 36,
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              margin: 0,
-              color: 'var(--app-text-primary)',
-            }}
-          >
-            Petzy
-          </h1>
-          <p
-            style={{
-              marginTop: 8,
-              fontSize: 'var(--text-sm)',
-              color: 'var(--app-text-secondary)',
-            }}
-          >
-            Здоровье вашего питомца — в одном месте
-          </p>
-        </div>
+        {/* Stylized wordmark — gradient copper fill, no icon, no subtitle
+           so the brand reads as the literal name, not a logo. */}
+        <h1
+          className="display-headline"
+          style={{
+            textAlign: 'center',
+            margin: '0 0 32px',
+            fontFamily: 'var(--font-display)',
+            fontSize: 56,
+            fontWeight: 700,
+            letterSpacing: '-0.04em',
+            lineHeight: 1,
+            background: 'var(--app-brand-gradient)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: 'var(--app-accent)',
+          }}
+        >
+          Petzy
+        </h1>
 
         {/* Form card */}
         <div className="card-soft" style={{ padding: '28px 24px' }}>
@@ -156,26 +134,6 @@ export function Login() {
               />
             </Form.Item>
           </Form>
-
-          {/* Seed credentials hint — dev convenience. Hidden in prod by env. */}
-          {import.meta.env.DEV && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: '10px 12px',
-                background: 'var(--app-accent-soft)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--app-accent-deep)',
-                lineHeight: 1.5,
-              }}
-            >
-              <div style={{ fontWeight: 600, marginBottom: 2 }}>Dev-учётка:</div>
-              <code style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace' }}>
-                admin / test1234
-              </code>
-            </div>
-          )}
         </div>
       </div>
     </div>
