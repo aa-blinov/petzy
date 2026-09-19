@@ -7,7 +7,6 @@ http://localhost:5173 with seeded data (admin / test1234).
 Saves screenshots into screenshots/ for inspection.
 """
 
-import os
 import sys
 from pathlib import Path
 

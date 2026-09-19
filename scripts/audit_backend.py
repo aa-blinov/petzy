@@ -358,7 +358,7 @@ def main() -> int:
         if info["update_methods_used"]:
             print(f"   UPDATE methods:    {', '.join(info['update_methods_used'])}")
         if info["auth_missing"]:
-            print(f"   ⚠ Routes without auth:")
+            print("   ⚠ Routes without auth:")
             for u in info["auth_missing"]:
                 print(f"       {','.join(u['methods']):6s} {u['path']}  ({u['file']}:{u['line']})")
         print()

@@ -7,7 +7,7 @@ transform function for denormalised lookups (see the ``medications`` case).
 
 import csv
 import io
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional
 from urllib.parse import quote

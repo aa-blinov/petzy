@@ -4,8 +4,6 @@ These exercise the 422 handler and the unhandled-exception handler that
 flask-pydantic-spec / generic HTTPException dispatch routes through.
 """
 
-import json
-
 import pytest
 
 
@@ -20,7 +18,6 @@ class TestGlobalErrorHandlers:
         from flask_pydantic_spec import FlaskPydanticSpec
 
         from web.app import handle_unexpected_error, handle_unprocessable_entity
-        from web.errors import error_response
 
         app = Flask(__name__)
         app.config["TESTING"] = True
