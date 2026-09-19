@@ -92,7 +92,14 @@ export function Login() {
                 loading={isLoading}
                 disabled={isLoading}
                 type="submit"
-                style={{ marginTop: 8 }}
+                style={{
+                  marginTop: 8,
+                  // Brand gradient — matches the Petzy wordmark above so
+                  // the two copper surfaces on this screen read as the
+                  // same identity, not two competing ones.
+                  background: 'var(--app-brand-gradient)',
+                  border: 'none',
+                }}
               >
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
