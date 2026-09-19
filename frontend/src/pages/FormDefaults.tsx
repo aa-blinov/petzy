@@ -168,7 +168,7 @@ export function FormDefaults() {
                     <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h2>
                 </div>
 
-                <Form layout="horizontal" mode="card">
+                <Form layout="horizontal" mode="card" style={{ '--prefix-width': '7em' } as React.CSSProperties}>
                     <Form.Header>Приступ астмы</Form.Header>
                     <PickerRow
                         label="Длительность"

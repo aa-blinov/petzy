@@ -307,10 +307,9 @@ export function HealthRecordForm() {
               layout="horizontal"
               mode="card"
               style={{
-                '--prefix-width': '6em'
+                '--prefix-width': '7em'
               } as React.CSSProperties}
             >
-              <Form.Header>{config.title}</Form.Header>
               {config.fields.map((field) => (
                 <FormField
                   key={field.id}

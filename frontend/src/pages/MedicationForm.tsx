@@ -217,7 +217,7 @@ export function MedicationForm() {
                         layout="horizontal"
                         mode="card"
                         onFinish={handleSubmit(onSubmit)}
-                        style={{ '--prefix-width': '6em' } as React.CSSProperties}
+                        style={{ '--prefix-width': '7em' } as React.CSSProperties}
                     >
                         <Form.Header>Препарат</Form.Header>
                         <Controller

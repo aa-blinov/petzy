@@ -272,6 +272,22 @@
     letter-spacing: -0.01em;
 }
 
+/* Section headers were also flush against the previous field row
+   (no vertical breathing room above). antd-mobile wraps each
+   <Form.Header> in its own .adm-list-card, so headers are not
+   siblings — they are the first child of their own card. Give every
+   card after the first a clear top margin and a hairline so each
+   "Приступ астмы" / "Дефекация" / "Вес" / "Схема приема" reads as
+   its own region. The selector is intentionally scoped to the
+   + combinator because the earlier rule on `.adm-form .adm-list-card`
+   uses `border: none !important` to flatten the card surface — we
+   re-introduce only the top border for subsequent cards. */
+.adm-form .adm-list-card + .adm-list-card {
+    margin-top: var(--spacing-lg) !important;
+    padding-top: var(--spacing-md) !important;
+    border-top: 1px solid var(--app-divider-color) !important;
+}
+
 /* Give every form the safe-area-aware horizontal indent the rest of
    the page chrome already has via `.safe-area-padding`. Without this,
    forms (PetForm, HealthForm, MedicationForm, UserForm, FormDefaults)
