@@ -157,26 +157,59 @@ def get_token_from_request():
     return request.cookies.get("access_token")
 
 
-def try_refresh_access_token():
-    """Try to refresh access token using refresh token. Returns new access token or None."""
-    refresh_token = request.cookies.get("refresh_token")
+def validate_refresh_token(refresh_token: str):
+    """Verify a refresh token end-to-end.
+
+    Returns ``(username, token_record)`` if the token is valid for use,
+    or ``None`` if it should be rejected. Side effect: drops the row
+    from ``refresh_tokens`` if its stored ``expires_at`` is in the past
+    (the JWT signature may still verify under clock skew, so this
+    defensive check guards the gap until MongoDB's TTL monitor sweeps).
+
+    Used by both the silent ``try_refresh_access_token`` helper
+    (request flow on access-token expiry) and the explicit
+    ``/api/auth/refresh`` endpoint, so the invariants are the same.
+    """
     if not refresh_token:
         return None
 
-    # Verify refresh token
     payload = verify_token(refresh_token, "refresh")
     if not payload:
         return None
 
-    # Check if token exists in database
     token_record = db["refresh_tokens"].find_one({"token": refresh_token})
     if not token_record:
         return None
 
-    username = payload.get("username")
+    # Defensive cleanup against expired-but-not-yet-TTL-swept rows.
+    # PyMongo returns BSON Date as naive UTC datetimes, so we compare
+    # in naive UTC to avoid TypeError on tz mismatch.
+    expires_at = token_record.get("expires_at")
+    if expires_at is not None:
+        now_naive_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        expires_naive = (
+            expires_at.replace(tzinfo=None)
+            if expires_at.tzinfo is not None
+            else expires_at
+        )
+        if expires_naive < now_naive_utc:
+            db["refresh_tokens"].delete_one({"_id": token_record["_id"]})
+            return None
+
+    username = payload.get("username") or ""
+    return username, token_record
+
+
+def try_refresh_access_token():
+    """Try to refresh access token using refresh token. Returns new access token or None."""
+    refresh_token = request.cookies.get("refresh_token")
+    result = validate_refresh_token(refresh_token)
+    if result is None:
+        return None
+    username, _token_record = result
 
     # Create new access token
-    access_token = create_access_token(username or "")
+    access_token = create_access_token(username)
 
     # Update token in database (optional, for tracking)
     db["refresh_tokens"].update_one(

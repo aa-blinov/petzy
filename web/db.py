@@ -105,6 +105,20 @@ def ensure_indexes() -> None:
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (db.refresh_tokens, [("jti", ASCENDING)], "refresh_token_jti_unique", {"unique": True}),
+        # TTL index — MongoDB's background TTL monitor sweeps every ~60s
+        # and drops any document whose `expires_at` is in the past. This
+        # is the right answer for "no application-level cleanup needed":
+        # the field is already authoritative (we set it from the JWT
+        # payload in create_refresh_token), and PyMongo encodes Python
+        # datetimes as BSON Date, which is what TTL requires.
+        #
+        # Documented caveat: rows created before this migration may have
+        # `expires_at` missing or as a non-Date type. The TTL monitor
+        # silently ignores such rows (no type error — it just doesn't
+        # match the index), so existing tokens keep working until they
+        # naturally get used-and-replaced. A one-shot deleteMany is run
+        # via the `inspect_db` workflow to prune legacy rows.
+        (db.refresh_tokens, [("expires_at", ASCENDING)], "refresh_token_ttl", {"expireAfterSeconds": 0}),
     ]
     for coll_name in HEALTH_RECORD_COLLECTIONS:
         coll = db[coll_name]

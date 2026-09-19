@@ -121,21 +121,65 @@ class TestAuthentication:
         assert "error" in data
 
     def test_api_logout(self, client, mock_db, admin_refresh_token):
-        """Test logout."""
-        # Store refresh token in database (it should already be there from fixture)
-        from web.app import db
+        """Test logout removes the user's refresh token (and only theirs).
 
-        # Ensure token exists
+        Also covers the "logout invalidates every device" invariant: a
+        second refresh token for the same user must be dropped together
+        with the cookie token.
+        """
+        from uuid import uuid4
+        from web.app import db
+        from web.security import (
+            JWT_SECRET_KEY, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS,
+        )
+
+        # Ensure cookie token exists (fixture already does this).
         existing = db["refresh_tokens"].find_one({"token": admin_refresh_token})
         if not existing:
             db["refresh_tokens"].insert_one(
                 {
+                    "jti": uuid4().hex,
                     "token": admin_refresh_token,
                     "username": "admin",
                     "created_at": datetime.now(timezone.utc),
                     "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
                 }
             )
+
+        # Insert a SECOND refresh token for the same user (simulates an
+        # older device/session). Logout must drop both.
+        other_jti = uuid4().hex
+        other_token = jwt.encode(
+            {
+                "username": "admin",
+                "exp": datetime.now(timezone.utc) + timedelta(days=7),
+                "type": "refresh",
+                "jti": other_jti,
+            },
+            JWT_SECRET_KEY,
+            algorithm=JWT_ALGORITHM,
+        )
+        db["refresh_tokens"].insert_one(
+            {
+                "jti": other_jti,
+                "token": other_token,
+                "username": "admin",
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+            }
+        )
+
+        # And one for a DIFFERENT user — must NOT be dropped.
+        from tests.conftest import _mock_db  # noqa: F401 — ensures conftest imported
+        db["refresh_tokens"].insert_one(
+            {
+                "jti": uuid4().hex,
+                "token": "other-user-token",
+                "username": "someone-else",
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+            }
+        )
 
         client.set_cookie("refresh_token", admin_refresh_token)
         response = client.post("/api/auth/logout")
@@ -144,9 +188,12 @@ class TestAuthentication:
         data = response.get_json()
         assert data["success"] is True
 
-        # Check token is removed from database
-        token_record = db["refresh_tokens"].find_one({"token": admin_refresh_token})
-        assert token_record is None
+        # Cookie token gone
+        assert db["refresh_tokens"].find_one({"token": admin_refresh_token}) is None
+        # Other admin token also gone (logout is "sign out of everything")
+        assert db["refresh_tokens"].find_one({"token": other_token}) is None
+        # Other user untouched
+        assert db["refresh_tokens"].find_one({"token": "other-user-token"}) is not None
 
     def test_login_page_get(self, client):
         """Test GET login page."""
@@ -223,6 +270,52 @@ class TestAuthentication:
         assert payload["username"] == "admin"
         assert payload["type"] == "access"
         assert "exp" in payload
+
+    def test_expired_refresh_token_is_dropped_on_use(self, client, mock_db):
+        """A refresh token whose stored `expires_at` is in the past must
+        not only be rejected but actively deleted by try_refresh_access_token
+        — otherwise the TTL monitor is the only line of defence and a
+        stolen-but-revoked token could keep minting access tokens during
+        the ~60 s gap between expiry and the sweep.
+        """
+        from uuid import uuid4
+        from web.app import db
+        from web.security import (
+            JWT_SECRET_KEY, JWT_ALGORITHM,
+        )
+
+        # Mint a refresh token whose stored expires_at is yesterday, but
+        # whose JWT signature itself is still valid (the JWT's `exp` is
+        # one second from now — the document expires_at is what we read).
+        jti = uuid4().hex
+        token = jwt.encode(
+            {
+                "username": "admin",
+                "exp": datetime.now(timezone.utc) + timedelta(seconds=10),
+                "type": "refresh",
+                "jti": jti,
+            },
+            JWT_SECRET_KEY,
+            algorithm=JWT_ALGORITHM,
+        )
+        db["refresh_tokens"].insert_one(
+            {
+                "jti": jti,
+                "token": token,
+                "username": "admin",
+                "created_at": datetime.now(timezone.utc) - timedelta(days=2),
+                "expires_at": datetime.now(timezone.utc) - timedelta(days=1),
+            }
+        )
+
+        client.set_cookie("refresh_token", token)
+        response = client.post("/api/auth/refresh")
+
+        # The /api/auth/refresh endpoint should reject and try_refresh
+        # should have already deleted the row.
+        assert response.status_code in (401, 403), response.get_json()
+        assert db["refresh_tokens"].find_one({"token": token}) is None
+
 
     def test_expired_token_rejection(self, client):
         """Test that expired tokens are rejected."""

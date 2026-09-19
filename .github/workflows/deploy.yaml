@@ -24,6 +24,11 @@ jobs:
             pwd
             echo "--- Deployment ---"
             git pull origin master
-            docker compose build frontend
+            # Rebuild everything that has its own Dockerfile / depends on the
+            # backend source. Previously only `frontend` was rebuilt, which
+            # meant backend changes (jti migration, ensure_indexes TTL,
+            # refresh-token cleanup) never reached production — the `web`
+            # container happily served a 3-week-old image.
+            docker compose build
             docker compose up -d --remove-orphans
             docker compose ps
