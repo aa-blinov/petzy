@@ -1,0 +1,51 @@
+name: Cleanup stale refresh tokens
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete expired refresh tokens from prod DB
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_PETZY_HOST }}
+          username: ${{ secrets.SERVER_PETZY_USER }}
+          key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
+          script: |
+            set +e
+            cd ~/services/cat-health-control-bot 2>/dev/null || cd ~/services/cat-health-control 2>/dev/null || cd ~/cat-health-control 2>/dev/null
+            eval "$(python3 -c "
+            import os
+            for line in open('.env'):
+                line = line.strip()
+                if not line or line.startswith('#'): continue
+                k, _, v = line.partition('=')
+                v = v.strip().strip('\"').strip(\"'\")
+                print(f'export {k}=\"' + v.replace('\"','\\\\\"') + '\"')
+            " | grep -E '^export (MONGO_)')"
+            mongosh_args="--quiet --username $MONGO_USER --password $MONGO_PASS --authenticationDatabase admin"
+            echo "=== BEFORE ==="
+            docker compose exec -T db mongosh $mongosh_args --eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments()); print('indexes:'); db.refresh_tokens.getIndexes().forEach(i => print('  ' + i.name + ': ' + JSON.stringify(i.key) + (i.unique ? ' [unique]' : '') + (i.expireAfterSeconds !== undefined ? ' TTL=' + i.expireAfterSeconds + 's' : '')));" 2>&1
+            echo
+            echo "=== Cleaning expired/legacy tokens ==="
+            docker compose exec -T db mongosh $mongosh_args --eval "
+              db = db.getSiblingDB('$MONGO_DB');
+              const before = db.refresh_tokens.countDocuments();
+              // Three cleanup passes:
+              //  1. expires_at missing entirely (legacy rows from before we stored it)
+              const r1 = db.refresh_tokens.deleteMany({expires_at: {\$exists: false}});
+              //  2. expires_at stored as a string (some early deploys encoded it that way)
+              const r2 = db.refresh_tokens.deleteMany({expires_at: {\$type: 'string'}});
+              //  3. expires_at is a Date that's already in the past
+              const r3 = db.refresh_tokens.deleteMany({expires_at: {\$lt: new Date()}});
+              const after = db.refresh_tokens.countDocuments();
+              print('removed missing-field: ' + r1.deletedCount);
+              print('removed string-field:   ' + r2.deletedCount);
+              print('removed past-date:      ' + r3.deletedCount);
+              print('before: ' + before + ', after: ' + after);
+            " 2>&1
+            echo
+            echo "=== AFTER ==="
+            docker compose exec -T db mongosh $mongosh_args --eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments());" 2>&1
