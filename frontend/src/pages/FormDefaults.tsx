@@ -205,8 +205,13 @@ export function FormDefaults() {
                                 color: 'var(--app-text-primary)',
                                 fontSize: 'var(--text-md)',
                                 fontFamily: 'inherit',
+                                minWidth: 0,
+                                maxWidth: '100%',
                                 width: '100%',
                                 textAlign: 'right',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap',
                             }}
                         />
                     </Form.Item>
