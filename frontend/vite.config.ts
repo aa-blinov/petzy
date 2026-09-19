@@ -39,6 +39,14 @@ export default defineConfig(() => {
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Vite emits <link rel="modulepreload" crossorigin> for every
+        // vendor chunk. Workbox's navigation-fallback handler intercepts
+        // those as navigations and throws "cross-origin service worker
+        // resource mismatch" in the console — the preloads become
+        // dead weight. Tell Workbox to keep its hands off hashed asset
+        // bundles; the browser's HTTP cache + Workbox precache handle
+        // them just fine.
+        navigateFallbackDenylist: [/^\/assets\//],
         runtimeCaching: [
           {
             urlPattern: /^\/api\/(pets|auth\/check-admin)/i,
