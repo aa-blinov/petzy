@@ -1,12 +1,12 @@
 import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Toast, Dialog, Card } from 'antd-mobile';
+import { Button, Toast, Dialog } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
 import { formatRelativeDateTime } from '../utils/relativeTime';
 import { healthRecordsService } from '../services/healthRecords.service';
-import { pastelColorMap, type HealthRecordType } from '../utils/constants';
+import { pastelColorMap, typeIconMap, type HealthRecordType } from '../utils/constants';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -18,7 +18,8 @@ interface HistoryItemProps {
 export const HistoryItem = memo(function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const backgroundColor = pastelColorMap[config.color] || 'var(--tile-blue)';
+  const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
+  const pillIcon = typeIconMap[type] ?? '🐾';
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
   const handleEdit = () => {
@@ -53,57 +54,92 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
 
   return (
     <>
-      <Card
+      <div
+        className="card-soft"
         style={{
-          backgroundColor: backgroundColor,
-          borderRadius: '12px',
-          border: 'none',
-          boxShadow: 'var(--app-shadow)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+          padding: '14px',
         }}
       >
-        <div style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 700, color: 'var(--app-text-on-tile)', fontSize: '17px' }}>{formatRelativeDateTime(item.date_time)}</span>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {/* Pill-icon on the left — tinted rounded square with category emoji */}
+        <div
+          className="pill-icon"
+          style={{ backgroundColor: pillBg }}
+          aria-hidden
+        >
+          <span>{pillIcon}</span>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {/* Header row: date + actions */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            <span
+              className="display-headline"
+              style={{ fontSize: '15px', fontWeight: 600 }}
+            >
+              {formatRelativeDateTime(item.date_time)}
+            </span>
+
+            {/* Action buttons — kept small and discrete */}
+            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
               {type !== 'medications' && (
                 <Button
                   size="mini"
-                  fill="outline"
+                  fill="none"
                   onClick={handleEdit}
                   style={{
-                    '--text-color': 'var(--app-text-on-tile)',
-                    '--border-color': 'var(--app-black-20)',
+                    width: '32px',
+                    height: '32px',
+                    padding: 0,
+                    borderRadius: '10px',
+                    color: 'var(--app-text-secondary)',
+                    '--background-color': 'transparent',
                   } as React.CSSProperties}
                 >
-                  <EditSOutline style={{ color: 'var(--app-text-on-tile)', fontSize: '16px' }} />
+                  <EditSOutline style={{ fontSize: '16px' }} />
                 </Button>
               )}
               <Button
                 size="mini"
-                color="danger"
-                fill="outline"
+                fill="none"
                 onClick={() => setDeleteDialogVisible(true)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  padding: 0,
+                  borderRadius: '10px',
+                  color: 'var(--app-text-tertiary)',
+                  '--background-color': 'transparent',
+                } as React.CSSProperties}
               >
-                <DeleteOutline />
+                <DeleteOutline style={{ fontSize: '16px' }} />
               </Button>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {item.username && (
-              <span style={{ fontSize: '12px', color: 'var(--app-text-secondary-on-tile)' }}>Пользователь: {item.username}</span>
-            )}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                color: 'var(--app-text-on-tile)',
-              }}
-              dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
-            />
-          </div>
+
+          {item.username && (
+            <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>
+              {item.username}
+            </span>
+          )}
+
+          {/* Details — rendered as plain text blocks */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              color: 'var(--app-text-primary)',
+              fontSize: '14px',
+              lineHeight: 1.45,
+            }}
+            dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
+          />
         </div>
-      </Card>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

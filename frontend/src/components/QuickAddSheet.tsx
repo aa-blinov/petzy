@@ -4,9 +4,13 @@
  * Replaces the older ActionSheet (vertical list of titles) with a
  * grid of icon-tiles so the user can see all options at a glance and
  * tap the one they want in a single gesture.
+ *
+ * Uses antd-mobile `Popup` rather than `ActionSheet` — ActionSheet
+ * ignores children and only renders the `actions` array, so any custom
+ * body content has to live inside a Popup.
  */
 
-import { ActionSheet, Grid } from 'antd-mobile';
+import { Popup, Grid } from 'antd-mobile';
 import { useNavigate } from 'react-router-dom';
 
 import { tilesConfig } from '../utils/tilesConfig';
@@ -36,61 +40,85 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
     });
 
   return (
-    <ActionSheet
+    <Popup
       visible={visible}
-      onClose={onClose}
-      closeOnAction
-      title="Что записать?"
-      styles={{
-        body: { minHeight: "60vh" },
+      onMaskClick={onClose}
+      position="bottom"
+      bodyStyle={{
+        borderTopLeftRadius: 'var(--radius-xl)',
+        borderTopRightRadius: 'var(--radius-xl)',
+        backgroundColor: 'var(--app-card-background)',
+        minHeight: '60vh',
+        paddingBottom: 'calc(var(--safe-area-bottom) + 24px)',
       }}
     >
-      <div style={{ padding: "0 var(--spacing-md) var(--spacing-lg)" }}>
-        <Grid
-          columns={2}
-          gap={12}
-          data={tiles.map(tile => ({
-            key: tile.id,
-            title: tile.title,
-            subtitle: tile.subtitle,
-            bg: pastelColorMap[tile.color] ?? 'var(--tile-blue)',
-            tile,
-          }))}
-          renderItem={item => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => {
-                hapticFeedback("light");
-                onClose();
-                navigate(`/form/${item.tile.id}`);
-              }}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: "8px",
-                padding: "14px",
-                height: "92px",
-                background: item.bg,
-                border: "none",
-                borderRadius: "12px",
-                color: "var(--app-text-on-tile)",
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-            >
-              <span style={{ fontSize: "15px", fontWeight: 700, lineHeight: 1.2 }}>
-                {item.title}
-              </span>
-              <span style={{ fontSize: "12px", opacity: 0.7, lineHeight: 1.2 }}>
-                {item.subtitle}
-              </span>
-            </button>
-          )}
+      <div style={{ padding: 'var(--spacing-lg) var(--spacing-md) 0' }}>
+        {/* Drag handle */}
+        <div
+          style={{
+            width: 36,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: 'var(--app-border-color)',
+            margin: '0 auto var(--spacing-md)',
+          }}
+          aria-hidden
         />
+
+        {/* Title */}
+        <h3
+          className="section-header"
+          style={{
+            marginBottom: 'var(--spacing-lg)',
+            paddingLeft: 4,
+            fontSize: '1.125rem',
+          }}
+        >
+          Что записать?
+        </h3>
+
+        <Grid columns={2} gap={12}>
+          {tiles.map(tile => {
+            const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
+            return (
+              <Grid.Item key={tile.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticFeedback('light');
+                    onClose();
+                    navigate(`/form/${tile.id}`);
+                  }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    padding: '14px',
+                    height: '92px',
+                    width: '100%',
+                    background: bg,
+                    border: 'none',
+                    borderRadius: '14px',
+                    color: 'var(--app-text-on-tile)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--app-shadow-light)',
+                  }}
+                >
+                  <span style={{ fontSize: '15px', fontWeight: 700, lineHeight: 1.2 }}>
+                    {tile.title}
+                  </span>
+                  <span style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.2 }}>
+                    {tile.subtitle}
+                  </span>
+                </button>
+              </Grid.Item>
+            );
+          })}
+        </Grid>
       </div>
-    </ActionSheet>
+    </Popup>
   );
 }

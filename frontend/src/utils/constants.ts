@@ -42,3 +42,17 @@ export const pastelColorMap: Record<string, string> = {
   pink: 'var(--tile-pink)',
 };
 
+/** Category emoji for each health-record type, used inside HistoryItem's
+ *  pill-icon. Kept here so dashboard, history, and quick-add stay in sync. */
+export const typeIconMap: Record<string, string> = {
+  feeding: '🍽️',
+  weight: '⚖️',
+  asthma: '💨',
+  defecation: '💩',
+  litter: '🧹',
+  eye_drops: '👁️',
+  tooth_brushing: '🦷',
+  ear_cleaning: '👂',
+  medications: '💊',
+};
+
