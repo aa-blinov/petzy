@@ -8,6 +8,7 @@ import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { hapticFeedback } from '../utils/haptic';
+import { SwipeableRow } from '../components/SwipeableRow';
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -135,15 +136,27 @@ export function AdminPanel() {
               <p style={{ color: 'var(--app-text-secondary)', padding: 'var(--spacing-md) var(--spacing-lg)' }}>Пользователи не найдены</p>
             ) : (
               users.map((user) => (
-                <div
+                <SwipeableRow
                   key={user._id}
+                  leftAction={{
+                    icon: <Pencil size={20} strokeWidth={2.4} />,
+                    label: 'Изменить',
+                    color: 'var(--app-accent)',
+                    onTrigger: () => handleEdit(user),
+                  }}
+                  rightAction={{
+                    icon: <Trash2 size={20} strokeWidth={2.4} />,
+                    label: 'Удалить',
+                    color: 'var(--app-danger-color)',
+                    onTrigger: () => handleDelete(user.username),
+                  }}
+                  disabled={deleteUserMutation.isPending}
+                >
+                <div
                   className="card-soft tap-ripple"
                   style={{ padding: 16 }}
                 >
                   <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
                     marginBottom: 10,
                   }}>
                     <span style={{
@@ -154,40 +167,6 @@ export function AdminPanel() {
                     }}>
                       {user.username}
                     </span>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(user)}
-                        aria-label="Редактировать"
-                        style={{
-                          width: 32, height: 32, padding: 0,
-                          border: 'none', borderRadius: 'var(--radius-md)',
-                          background: 'transparent',
-                          color: 'var(--app-text-secondary)',
-                          cursor: 'pointer', display: 'grid', placeItems: 'center',
-                        }}
-                      >
-                        <Pencil size={16} strokeWidth={2} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(user.username)}
-                        disabled={deleteUserMutation.isPending}
-                        aria-label="Удалить"
-                        style={{
-                          width: 32, height: 32, padding: 0,
-                          border: '1px solid var(--app-danger-color)',
-                          borderRadius: 'var(--radius-md)',
-                          background: 'transparent',
-                          color: 'var(--app-danger-color)',
-                          cursor: deleteUserMutation.isPending ? 'not-allowed' : 'pointer',
-                          opacity: deleteUserMutation.isPending ? 0.5 : 1,
-                          display: 'grid', placeItems: 'center',
-                        }}
-                      >
-                        <Trash2 size={16} strokeWidth={2} />
-                      </button>
-                    </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {user.full_name && (
@@ -218,6 +197,7 @@ export function AdminPanel() {
                     </div>
                   </div>
                 </div>
+                </SwipeableRow>
               ))
             )}
           </div>

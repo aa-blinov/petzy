@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, Toast, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
-import { Pencil, Scale } from 'lucide-react';
+import { Pencil, Scale, Trash2 } from 'lucide-react';
 import { petsService, type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
@@ -12,6 +12,7 @@ import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
+import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 
 export function Pets() {
   const navigate = useNavigate();
@@ -231,137 +232,105 @@ function PetCard({
   });
   const lastWeight = weights.data?.weights?.[0];
 
-  let pressTimer: number | null = null;
-  const startPress = () => {
-    pressTimer = window.setTimeout(() => {
-      onDelete();
-      pressTimer = null;
-    }, 600);
+  // Swipe left → delete, swipe right → edit. Matches HistoryItem / MedicationsList.
+  const leftAction: SwipeAction = {
+    icon: <Pencil size={20} strokeWidth={2.4} />,
+    label: 'Изменить',
+    color: 'var(--app-accent)',
+    onTrigger: onEdit,
   };
-  const cancelPress = () => {
-    if (pressTimer != null) {
-      window.clearTimeout(pressTimer);
-      pressTimer = null;
-    }
+  const rightAction: SwipeAction = {
+    icon: <Trash2 size={20} strokeWidth={2.4} />,
+    label: 'Удалить',
+    color: 'var(--app-danger-color)',
+    onTrigger: onDelete,
   };
 
   return (
-    <div
-      className="card-soft tap-ripple"
-      style={{ overflow: 'hidden' }}
-      onTouchStart={startPress}
-      onTouchEnd={cancelPress}
-      onTouchCancel={cancelPress}
-      onMouseDown={startPress}
-      onMouseUp={cancelPress}
-      onMouseLeave={cancelPress}
-    >
-      {/* Hero photo / species icon (compact, ~120px) */}
-      <button
-        type="button"
-        onClick={() => pet.photo_url && onImageTap(pet.photo_url)}
-        disabled={!pet.photo_url}
-        aria-label={pet.photo_url ? `Открыть фото ${pet.name}` : undefined}
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '120px',
-          padding: 0,
-          border: 'none',
-          background: 'none',
-          cursor: pet.photo_url ? 'pointer' : 'default',
-          overflow: 'hidden',
-        }}
-      >
-        <div
+    <SwipeableRow leftAction={leftAction} rightAction={rightAction}>
+      <div className="card-soft tap-ripple" style={{ overflow: 'hidden' }}>
+        {/* Hero photo / species icon (compact, ~120px) */}
+        <button
+          type="button"
+          onClick={() => pet.photo_url && onImageTap(pet.photo_url)}
+          disabled={!pet.photo_url}
+          aria-label={pet.photo_url ? `Открыть фото ${pet.name}` : undefined}
           style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: 'var(--tile-brown)',
-            backgroundImage: pet.photo_url
-              ? undefined
-              : 'linear-gradient(135deg, #E8946A 0%, #C46A3F 100%)',
+            position: 'relative',
+            width: '100%',
+            height: '120px',
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            cursor: pet.photo_url ? 'pointer' : 'default',
+            overflow: 'hidden',
           }}
-        />
-        {pet.photo_url ? (
-          <PetImage
-            src={pet.photo_url}
-            alt={pet.name}
-            size={120}
-            style={{ width: '100%', height: '100%', borderRadius: 0, cursor: 'pointer' }}
-          />
-        ) : (
+        >
           <div
-            aria-hidden
             style={{
               position: 'absolute',
               inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              opacity: 0.9,
+              backgroundColor: 'var(--tile-brown)',
+              backgroundImage: pet.photo_url
+                ? undefined
+                : 'linear-gradient(135deg, #E8946A 0%, #C46A3F 100%)',
             }}
-          >
-            <SpeciesIcon size={64} strokeWidth={1.5} style={{ display: 'block' }} />
-          </div>
-        )}
-      </button>
-
-      {/* Edit pencil — small, top-right */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-        aria-label="Редактировать питомца"
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            background: 'rgba(255,255,255,0.85)',
-            border: 'none',
-            color: 'var(--app-accent-deep)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <Pencil size={16} strokeWidth={2} style={{ display: 'block' }} />
+          />
+          {pet.photo_url ? (
+            <PetImage
+              src={pet.photo_url}
+              alt={pet.name}
+              size={120}
+              style={{ width: '100%', height: '100%', borderRadius: 0, cursor: 'pointer' }}
+            />
+          ) : (
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                opacity: 0.9,
+              }}
+            >
+              <SpeciesIcon size={64} strokeWidth={1.5} style={{ display: 'block' }} />
+            </div>
+          )}
         </button>
 
-      {/* Body — name + meta chips */}
-      <div style={{ padding: '14px 16px' }}>
-        <div
-          className="display-headline"
-          style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1.2 }}
-        >
-          {pet.name}
-        </div>
-        {(pet.breed || age || pet.gender || lastWeight) && (
+        {/* Body — name + meta chips */}
+        <div style={{ padding: '14px 16px' }}>
           <div
-            style={{
-              marginTop: 8,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 6,
-            }}
+            className="display-headline"
+            style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1.2 }}
           >
-            {pet.breed && <span className="chip">{pet.breed}</span>}
-            {age && <span className="chip">{age}</span>}
-            {pet.gender && <span className="chip">{pet.gender}</span>}
-            {lastWeight && (
-              <span className="chip">
-                <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
-                {lastWeight.weight} кг
-              </span>
-            )}
+            {pet.name}
           </div>
-        )}
+          {(pet.breed || age || pet.gender || lastWeight) && (
+            <div
+              style={{
+                marginTop: 8,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 6,
+              }}
+            >
+              {pet.breed && <span className="chip">{pet.breed}</span>}
+              {age && <span className="chip">{age}</span>}
+              {pet.gender && <span className="chip">{pet.gender}</span>}
+              {lastWeight && (
+                <span className="chip">
+                  <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
+                  {lastWeight.weight} кг
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </SwipeableRow>
   );
 }
