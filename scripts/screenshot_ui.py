@@ -70,12 +70,18 @@ def main() -> int:
         # Bonus: capture the QuickAdd bottom sheet by tapping the FAB.
         page.goto(f"{FRONTEND}/", wait_until="networkidle")
         page.wait_for_timeout(1500)
-        # The FAB is positioned via CSS variables — its bbox sits near
-        # the bottom-right. Use the box coords to click reliably on mobile.
-        box = page.locator(".adm-floating-bubble").first.bounding_box()
-        if box:
-            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-        page.wait_for_timeout(1200)
+        # Use a programmatic click() instead of locator.click() — Playwright's
+        # actionability checks don't always trigger React's synthetic onClick
+        # on the FAB's inner button (it's a styled div, not a native button).
+        page.evaluate(
+            "document.querySelector('.adm-floating-bubble-button')?.click()"
+        )
+        # QuickAddSheet is rendered as antd-mobile Popup. Wait for the grid
+        # items to appear rather than the popup container — the spring-animated
+        # popup body is sometimes flagged "hidden" by Playwright's checks
+        # even when it's actually rendered and visible to the user.
+        page.wait_for_selector(".adm-grid-item", timeout=5_000)
+        page.wait_for_timeout(1500)
         page.screenshot(path=str(OUTPUT_DIR / "quick_add_sheet.png"), full_page=False)
         print("  captured quick_add_sheet (FAB sheet)")
 

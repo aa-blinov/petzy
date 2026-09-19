@@ -1,22 +1,16 @@
 /**
  * Pet summary card shown at the top of the dashboard.
  *
- * At-a-glance answers to the two questions every pet owner has when they
- * open the app:
- *
- *   1. *Who* is this — photo / species emoji, breed, age, current weight
- *   2. *How is the pet* — when was the last feeding and the last weight?
- *
- * The card links "add" buttons into the QuickAdd flow so the user can
- * act on the empty slots without leaving the dashboard.
+ * Designed in the "warm pet-care" style — a full-bleed photo hero with the
+ * pet's name overlaid, meta chips underneath, and last-event chips at the
+ * bottom. Inspired by Pawza's "pet profile" treatment.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Card, Skeleton } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
+import { Skeleton } from 'antd-mobile';
 
-import { petsService, type Pet } from '../services/pets.service';
+import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
@@ -69,17 +63,31 @@ function LastEvent({ label, dateTime, emptyLabel, addPath, onAdd }: LastEventPro
         flex: 1,
         minWidth: 0,
         textAlign: "left",
-        background: "none",
+        background: "var(--app-accent-soft)",
         border: "none",
-        padding: "8px 12px",
-        borderRadius: "10px",
+        padding: "10px 12px",
+        borderRadius: "12px",
         cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
       }}
     >
-      <div style={{ fontSize: "11px", color: "var(--app-text-secondary)", textTransform: "uppercase", letterSpacing: "0.4px", fontWeight: 600 }}>
+      <div style={{
+        fontSize: "10px",
+        color: "var(--app-accent-deep)",
+        textTransform: "uppercase",
+        letterSpacing: "0.4px",
+        fontWeight: 600,
+      }}>
         {label}
       </div>
-      <div style={{ marginTop: "2px", fontSize: "14px", color: "var(--app-text-color)", fontWeight: 600 }}>
+      <div style={{
+        fontSize: "13px",
+        color: "var(--app-text-primary)",
+        fontWeight: 600,
+        fontFamily: "var(--font-display)",
+      }}>
         {dateTime ? formatRelativeShort(dateTime) : emptyLabel}
       </div>
     </button>
@@ -106,98 +114,146 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const lastWeightRecord = weights.data?.weights?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
-  const subtitleParts = [
-    pet.breed,
-    pet.gender,
-    age ? `${age}` : null,
-  ].filter(Boolean);
+  const species = speciesEmoji(pet.species);
 
   return (
-    <Card
+    <div
+      className="card-soft"
       style={{
-        borderRadius: "16px",
-        border: "none",
-        boxShadow: "var(--app-shadow)",
+        overflow: "hidden",
         marginBottom: "var(--spacing-md)",
       }}
     >
-      <div style={{ padding: "16px" }}>
-        {/* Identity row */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
+      {/* Hero photo */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "180px",
+          backgroundColor: "var(--tile-brown)",
+          overflow: "hidden",
+        }}
+      >
+        {pet.photo_url ? (
+          <PetImage
+            src={pet.photo_url}
+            alt={pet.name}
+            size={180}
+            style={{ width: "100%", height: "100%", borderRadius: 0 }}
+          />
+        ) : (
+          <span
+            aria-hidden
             style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              backgroundColor: "var(--app-page-background)",
+              position: "absolute",
+              inset: 0,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "32px",
-              flexShrink: 0,
-              overflow: "hidden",
+              fontSize: "84px",
+              opacity: 0.85,
             }}
           >
-            {pet.photo_url ? (
-              <PetImage src={pet.photo_url} alt={pet.name} />
-            ) : (
-              <span aria-hidden>{speciesEmoji(pet.species)}</span>
-            )}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "20px", fontWeight: 700, color: "var(--app-text-color)" }}>
-                {pet.name}
-              </span>
-              {pet.species && (
-                <span style={{ fontSize: "13px", color: "var(--app-text-secondary)" }}>
-                  {speciesEmoji(pet.species)} {pet.species}
-                </span>
-              )}
-            </div>
-            {subtitleParts.length > 0 && (
-              <div style={{ marginTop: "2px", fontSize: "13px", color: "var(--app-text-secondary)" }}>
-                {subtitleParts.join(" · ")}
-              </div>
-            )}
-          </div>
-          <AddOutline
-            style={{ fontSize: "20px", color: "var(--app-text-secondary)" }}
-            onClick={() => onQuickAdd("feeding")}
-          />
-        </div>
+            {species}
+          </span>
+        )}
 
-        {/* At-a-glance: last feeding + last weight */}
+        {/* Bottom gradient for legibility */}
         <div
           style={{
-            marginTop: "12px",
-            display: "flex",
-            background: "var(--app-page-background)",
-            borderRadius: "10px",
-            gap: "4px",
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(31,27,22,0.55) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Pet name overlay */}
+        <div
+          style={{
+            position: "absolute",
+            left: "16px",
+            right: "16px",
+            bottom: "14px",
+            color: "#FFFFFF",
           }}
         >
-          <LastEvent
-            label="Кормление"
-            dateTime={lastFeedingDateTime}
-            emptyLabel="не записано"
-            addPath="/form/feeding"
-            onAdd={() => onQuickAdd("feeding")}
-          />
-          <div style={{ width: "1px", backgroundColor: "var(--app-border-color)", margin: "8px 0" }} />
-          <LastEvent
-            label={lastWeightRecord ? `Вес ${lastWeightRecord.weight} кг` : "Вес"}
-            dateTime={lastWeightRecord?.date_time}
-            emptyLabel="не записан"
-            addPath="/form/weight"
-            onAdd={() => onQuickAdd("weight")}
-          />
+          <div
+            className="display-headline"
+            style={{
+              fontSize: "28px",
+              fontWeight: 700,
+              textShadow: "0 1px 2px rgba(0,0,0,0.25)",
+            }}
+          >
+            {pet.name}
+          </div>
+          {pet.species && (
+            <div
+              style={{
+                marginTop: "2px",
+                fontSize: "13px",
+                opacity: 0.92,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <span>{pet.species}</span>
+              {age ? (
+                <>
+                  <span style={{ opacity: 0.6 }}>·</span>
+                  <span>{age}</span>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
-
-        {feedings.isLoading || weights.isLoading ? (
-          <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px" }} />
-        ) : null}
       </div>
-    </Card>
+
+      {/* Meta chips */}
+      <div
+        style={{
+          padding: "14px 16px 12px",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "6px",
+        }}
+      >
+        {pet.breed && <span className="chip">{pet.breed}</span>}
+        {pet.gender && <span className="chip">{pet.gender}</span>}
+        {lastWeightRecord && (
+          <span className="chip">⚖️ {lastWeightRecord.weight} кг</span>
+        )}
+      </div>
+
+      {/* Last-event chips */}
+      <div
+        style={{
+          padding: "0 16px 16px",
+          display: "flex",
+          gap: "8px",
+        }}
+      >
+        <LastEvent
+          label="Кормление"
+          dateTime={lastFeedingDateTime}
+          emptyLabel="не записано"
+          addPath="/form/feeding"
+          onAdd={() => onQuickAdd("feeding")}
+        />
+        <LastEvent
+          label={lastWeightRecord ? "Вес" : "Вес"}
+          dateTime={lastWeightRecord?.date_time}
+          emptyLabel="не записан"
+          addPath="/form/weight"
+          onAdd={() => onQuickAdd("weight")}
+        />
+      </div>
+
+      {feedings.isLoading || weights.isLoading ? (
+        <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px", padding: "0 16px 12px" }} />
+      ) : null}
+    </div>
   );
 }

@@ -119,22 +119,18 @@ export function Dashboard() {
       <div className="page-container" style={{ paddingBottom: '80px' }}>
         <div className="max-width-container">
 
-          {/* Header & Filter button */}
+          {/* Filter button — pet name lives on the hero card, no duplicate header */}
           <div
             className="safe-area-padding"
             style={{
-              marginBottom: 'var(--spacing-md)',
+              marginBottom: 'var(--spacing-sm)',
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               alignItems: 'center',
               minHeight: '40px',
-              paddingTop: 'var(--spacing-md)'
+              paddingTop: 'var(--spacing-sm)'
             }}
           >
-            <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {selectedPetName ? `Лента ${selectedPetName}` : 'Лента'}
-            </h2>
-
             <Button
               size="small"
               fill="none"
@@ -143,11 +139,12 @@ export function Dashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '4px 8px',
+                padding: '6px 12px',
                 backgroundColor: 'var(--app-card-background)',
-                borderRadius: '16px',
+                borderRadius: '999px',
                 boxShadow: 'var(--app-shadow-light)',
-                color: 'var(--app-text-color)'
+                color: 'var(--app-text-primary)',
+                fontWeight: 500,
               }}
             >
               <FilterOutline />
@@ -201,18 +198,16 @@ export function Dashboard() {
                 {Object.entries(groupedItems).map(([dateStr, itemsForDate]) => (
                   <div key={dateStr} style={{ marginBottom: '16px' }}>
                     {/* Date separator */}
-                    <div
+                    <h3
+                      className="section-header"
                       style={{
-                        marginBottom: '8px',
-                        marginTop: '8px',
-                        fontSize: 'var(--text-md)',
-                        fontWeight: 600,
-                        color: 'var(--app-text-secondary)',
-                        paddingLeft: '4px'
+                        marginBottom: '10px',
+                        marginTop: '4px',
+                        paddingLeft: '4px',
                       }}
                     >
                       {formatDateHeader(dateStr)}
-                    </div>
+                    </h3>
 
                     {/* Cards for the day */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -261,9 +256,9 @@ export function Dashboard() {
           style={{
             '--edge-distance': '24px',
             '--size': '56px',
-            '--background': 'var(--adm-color-primary)',
+            '--background': 'var(--app-primary-color)',
             '--border-radius': '28px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            boxShadow: '0 4px 16px rgba(196, 106, 63, 0.45)',
             zIndex: 200,
           } as React.CSSProperties}
           onClick={() => {
