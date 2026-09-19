@@ -138,6 +138,9 @@ export function UserForm() {
           <Form
             layout="horizontal"
             mode="card"
+            style={{
+              '--prefix-width': '7em'
+            } as React.CSSProperties}
           >
             <Form.Header>Учётные данные</Form.Header>
             {!isEditing && (
@@ -145,7 +148,7 @@ export function UserForm() {
                 name="username"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <Form.Item label="Имя пользователя" required help={error?.message}>
+                  <Form.Item label="Логин" required help={error?.message}>
                     <Input
                       {...field}
                       id="username"

@@ -299,6 +299,9 @@ export function PetForm() {
           <Form
             layout="horizontal"
             mode="card"
+            style={{
+              '--prefix-width': '7em'
+            } as React.CSSProperties}
           >
             <Form.Header>Общие настройки</Form.Header>
             <Controller

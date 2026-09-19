@@ -37,7 +37,7 @@ export const formConfigs: FormConfigs = {
     fields: [
       { name: 'date', type: 'date', label: 'Дата', required: true, id: 'feeding-date' },
       { name: 'time', type: 'time', label: 'Время', required: true, id: 'feeding-time' },
-      { name: 'food_weight', type: 'number', label: 'Вес корма (граммы)', required: true, placeholder: '50', min: 0, step: 0.1, id: 'feeding-food-weight' },
+      { name: 'food_weight', type: 'number', label: 'Вес корма', required: true, placeholder: '50 граммов', min: 0, step: 0.1, id: 'feeding-food-weight' },
       { name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'feeding-comment' }
     ],
     transformData: (data) => ({
