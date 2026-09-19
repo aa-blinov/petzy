@@ -308,7 +308,7 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label="Вид питомца"
+                  label="Тип питомца"
                   clickable
                   onClick={() => speciesInputRef.current?.focus()}
                 >
