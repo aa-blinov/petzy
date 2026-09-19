@@ -42,17 +42,49 @@ export const pastelColorMap: Record<string, string> = {
   pink: 'var(--tile-pink)',
 };
 
-/** Category emoji for each health-record type, used inside HistoryItem's
- *  pill-icon. Kept here so dashboard, history, and quick-add stay in sync. */
-export const typeIconMap: Record<string, string> = {
-  feeding: '🍽️',
-  weight: '⚖️',
-  asthma: '💨',
-  defecation: '💩',
-  litter: '🧹',
-  eye_drops: '👁️',
-  tooth_brushing: '🦷',
-  ear_cleaning: '👂',
-  medications: '💊',
+import {
+  Utensils,
+  Scale,
+  Wind,
+  Droplet,
+  Brush,
+  Eye,
+  Sparkles,
+  Ear,
+  Pill,
+  Footprints,
+  Cat,
+  Dog,
+  Bird,
+  Rabbit,
+  Fish,
+  type LucideIcon,
+} from 'lucide-react';
+
+/** Category icon (lucide) for each health-record type. Rendered inside
+ *  HistoryItem's pill-icon and inside QuickAddSheet tiles. */
+export const typeIconMap: Record<string, LucideIcon> = {
+  feeding: Utensils,
+  weight: Scale,
+  asthma: Wind,
+  defecation: Droplet,
+  litter: Brush,
+  eye_drops: Eye,
+  tooth_brushing: Sparkles,
+  ear_cleaning: Ear,
+  medications: Pill,
 };
+
+/** Species icon (lucide) for the PetSummaryCard hero fallback. */
+export const speciesIconMap: Record<string, LucideIcon> = {
+  cat: Cat,
+  dog: Dog,
+  bird: Bird,
+  rabbit: Rabbit,
+  fish: Fish,
+  // hamster, reptile and other species fall back to Footprints below.
+};
+
+/** Generic species icon used when the species isn't recognized. */
+export const SPECIES_FALLBACK_ICON: LucideIcon = Footprints;
 
