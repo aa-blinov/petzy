@@ -35,12 +35,6 @@ function _parseDate(dateStr: string): { y: number; m: number; d: number; hh: num
 }
 
 
-function _todayLocal(): { y: number; m: number; d: number } {
-  const now = new Date();
-  return { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
-}
-
-
 function _daysAgo(target: { y: number; m: number; d: number }, today: { y: number; m: number; d: number }): number {
   // Compute the difference in calendar days at local midnight.
   const t = new Date(target.y, target.m - 1, target.d).getTime();
