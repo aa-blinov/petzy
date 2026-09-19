@@ -165,7 +165,15 @@ export function MedicationsList() {
                         paddingTop: 'var(--spacing-xl)',
                         paddingBottom: 'var(--spacing-xl)',
                     }}>
-                        Нет назначенных лекарств
+                        <p style={{ marginBottom: 'var(--spacing-lg)' }}>
+                            Нет назначенных лекарств
+                        </p>
+                        <Button
+                            color="primary"
+                            onClick={() => navigate('/medications/new')}
+                        >
+                            Добавить препарат
+                        </Button>
                     </div>
                 ) : (
                     <div className="safe-area-padding" style={{
