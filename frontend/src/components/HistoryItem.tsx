@@ -4,9 +4,9 @@ import { Button, Toast, Dialog, Card } from 'antd-mobile';
 import { EditSOutline, DeleteOutline } from 'antd-mobile-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
-import { formatDateTime } from '../utils/historyConfig';
+import { formatRelativeDateTime } from '../utils/relativeTime';
 import { healthRecordsService } from '../services/healthRecords.service';
-import type { HealthRecordType } from '../utils/constants';
+import { pastelColorMap, type HealthRecordType } from '../utils/constants';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -14,20 +14,6 @@ interface HistoryItemProps {
   type: string;
   activeTab: string;
 }
-
-// Пастельные цвета для карточек истории (соответствуют дневнику)
-const pastelColorMap: Record<string, string> = {
-  brown: 'var(--tile-brown)',
-  orange: 'var(--tile-orange)',
-  red: 'var(--tile-red)',
-  green: 'var(--tile-green)',
-  purple: 'var(--tile-purple)',
-  teal: 'var(--tile-teal)',
-  cyan: 'var(--tile-cyan)',
-  yellow: 'var(--tile-yellow)',
-  blue: 'var(--tile-blue)',
-  pink: 'var(--tile-pink)',
-};
 
 export const HistoryItem = memo(function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
   const navigate = useNavigate();
@@ -77,7 +63,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       >
         <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 700, color: 'var(--app-text-on-tile)', fontSize: '17px' }}>{formatDateTime(item.date_time)}</span>
+            <span style={{ fontWeight: 700, color: 'var(--app-text-on-tile)', fontSize: '17px' }}>{formatRelativeDateTime(item.date_time)}</span>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {type !== 'medications' && (
                 <Button

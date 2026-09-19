@@ -28,3 +28,17 @@ export const HEALTH_RECORD_TYPES = {
 export type TileColor = typeof TILE_COLORS[keyof typeof TILE_COLORS];
 export type HealthRecordType = typeof HEALTH_RECORD_TYPES[keyof typeof HEALTH_RECORD_TYPES];
 
+/** Maps a tile's color id to its pastel CSS custom-property. */
+export const pastelColorMap: Record<string, string> = {
+  brown: 'var(--tile-brown)',
+  orange: 'var(--tile-orange)',
+  red: 'var(--tile-red)',
+  green: 'var(--tile-green)',
+  purple: 'var(--tile-purple)',
+  teal: 'var(--tile-teal)',
+  cyan: 'var(--tile-cyan)',
+  yellow: 'var(--tile-yellow)',
+  blue: 'var(--tile-blue)',
+  pink: 'var(--tile-pink)',
+};
+

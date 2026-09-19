@@ -13,10 +13,12 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { NextDoseWidget } from '../components/NextDoseWidget';
+import { PetSummaryCard } from '../components/PetSummaryCard';
+import { QuickAddSheet } from '../components/QuickAddSheet';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { selectedPetId, selectedPetName } = usePet();
+  const { selectedPetId, selectedPetName, getSelectedPet } = usePet();
   const { tilesSettings } = usePetTilesSettings(selectedPetId);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
@@ -61,15 +63,6 @@ export function Dashboard() {
       const bI = tilesSettings.order.indexOf(b.id);
       return (aI === -1 ? 999 : aI) - (bI === -1 ? 999 : bI);
     }), [tilesSettings]);
-
-  const addActions = useMemo(() => visibleTiles.map(tile => ({
-    text: tile.title,
-    key: tile.id,
-    onClick: () => {
-      hapticFeedback('light');
-      if (tile.screen.includes('-form')) navigate(`/form/${tile.id}`);
-    }
-  })), [visibleTiles, navigate]);
 
   const filterActions = useMemo(() => [
     {
@@ -164,6 +157,17 @@ export function Dashboard() {
 
           {/* Timeline Content */}
           <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Pet at-a-glance summary */}
+            {getSelectedPet && (
+              <PetSummaryCard
+                pet={getSelectedPet}
+                onQuickAdd={(tileId) => {
+                  hapticFeedback('light');
+                  navigate(`/form/${tileId}`);
+                }}
+              />
+            )}
+
             {/* Widget for upcoming medication block */}
             <div style={{ paddingBottom: '8px' }}>
               <NextDoseWidget />
@@ -176,9 +180,22 @@ export function Dashboard() {
                 Ошибка загрузки данных
               </p>
             ) : allItems.length === 0 ? (
-              <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
-                Ваша лента пока пуста. Нажмите + чтобы добавить запись.
-              </p>
+              <div style={{
+                textAlign: 'center',
+                padding: '32px 16px',
+                color: 'var(--app-text-secondary)',
+              }}>
+                <p style={{ marginBottom: '16px', fontSize: '15px' }}>
+                  Лента пока пуста — запишите первое событие
+                </p>
+                <Button
+                  color="primary"
+                  size="middle"
+                  onClick={() => setActionSheetVisible(true)}
+                >
+                  <AddOutline /> &nbsp;Добавить запись
+                </Button>
+              </div>
             ) : (
               <>
                 {Object.entries(groupedItems).map(([dateStr, itemsForDate]) => (
@@ -239,8 +256,9 @@ export function Dashboard() {
       {createPortal(
         <FloatingBubble
           style={{
-            '--initial-position-bottom': '80px',
-            '--initial-position-right': '24px',
+            position: 'fixed',
+            bottom: '80px',
+            right: '24px',
             '--edge-distance': '24px',
             '--size': '56px',
             '--background': 'var(--adm-color-primary)',
@@ -258,13 +276,10 @@ export function Dashboard() {
         document.body
       )}
 
-      {/* Add Record ActionSheet */}
-      <ActionSheet
+      {/* Add Record — quick-add grid */}
+      <QuickAddSheet
         visible={actionSheetVisible}
-        actions={addActions}
         onClose={() => setActionSheetVisible(false)}
-        closeOnAction
-        cancelText="Отмена"
       />
 
       {/* Filter ActionSheet */}

@@ -105,8 +105,17 @@ export function Pets() {
         </div>
 
         {pets.length === 0 ? (
-          <div className="safe-area-padding" style={{ textAlign: 'center', color: 'var(--adm-color-weak)', padding: 'var(--spacing-xl)' }}>
-            Нет питомцев. Добавьте первого!
+          <div className="safe-area-padding" style={{
+            textAlign: 'center',
+            color: 'var(--adm-color-weak)',
+            padding: 'var(--spacing-xl)',
+          }}>
+            <p style={{ marginBottom: 'var(--spacing-lg)' }}>
+              Нет питомцев. Добавьте первого!
+            </p>
+            <Button color="primary" onClick={handleAddPet}>
+              <AddOutline /> &nbsp;Добавить питомца
+            </Button>
           </div>
         ) : (
           <div className="safe-area-padding" style={{

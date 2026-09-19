@@ -8,20 +8,7 @@ import { HistoryChart } from '../components/HistoryChart';
 import { ExportModal } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
-
-// Пастельные цвета для вкладок (соответствуют дневнику)
-const pastelColorMap: Record<string, string> = {
-  brown: 'var(--tile-brown)',
-  orange: 'var(--tile-orange)',
-  red: 'var(--tile-red)',
-  green: 'var(--tile-green)',
-  purple: 'var(--tile-purple)',
-  teal: 'var(--tile-teal)',
-  cyan: 'var(--tile-cyan)',
-  yellow: 'var(--tile-yellow)',
-  blue: 'var(--tile-blue)',
-  pink: 'var(--tile-pink)',
-};
+import { pastelColorMap } from '../utils/constants';
 
 export function History() {
   const { selectedPetId } = usePet();
