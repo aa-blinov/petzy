@@ -80,14 +80,16 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
         return (
             <div style={{
                 width: '100%',
+                minWidth: 0,
                 height: '300px',
+                minHeight: '300px',
                 padding: '16px 8px 16px 0',
                 backgroundColor: 'var(--app-card-background)',
                 borderRadius: '12px',
                 marginTop: '16px',
                 boxShadow: 'var(--app-shadow-light)'
             }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     {isLineChart ? (
                         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <defs>
