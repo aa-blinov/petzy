@@ -16,7 +16,7 @@ import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 
 export function Pets() {
   const navigate = useNavigate();
-  const { pets, selectPet, getSelectedPet, isLoading, refetch } = usePet();
+  const { pets, selectPet, getSelectedPet, isLoading } = usePet();
 
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({
     visible: false,
@@ -141,7 +141,8 @@ export function Pets() {
           <PullToRefresh
             onRefresh={async () => {
               hapticFeedback('medium');
-              await refetch();
+              await queryClient.invalidateQueries({ queryKey: ['pets'] });
+              await queryClient.refetchQueries({ queryKey: ['pets'] });
             }}
             headHeight={48}
           >
