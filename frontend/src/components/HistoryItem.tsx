@@ -7,6 +7,7 @@ import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils
 import { formatRelativeDateTime } from '../utils/relativeTime';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { pastelColorMap, typeIconMap, type HealthRecordType } from '../utils/constants';
+import { useAuth } from '../hooks/useAuth';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -18,9 +19,14 @@ interface HistoryItemProps {
 export const HistoryItem = memo(function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { username: currentUsername } = useAuth();
   const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
   const PillIcon = typeIconMap[type];
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+
+  // Hide the author chip when the record was logged by the current user —
+  // single-owner households shouldn't see "admin" on every row.
+  const showAuthor = item.username && item.username !== currentUsername;
 
   const handleEdit = () => {
     // Pass item data via state to avoid extra API call
@@ -58,9 +64,10 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         className="card-soft"
         style={{
           display: 'flex',
-          // Pill-icon should sit on the visual centre of the row, not pinned
-          // to the top — otherwise it floats above the multi-line content.
-          alignItems: 'center',
+          // Pill-icon sits on the first text line (the title). Aligning
+          // with the row's vertical centre made the title drift above
+          // the icon and the row looked unanchored.
+          alignItems: 'flex-start',
           gap: '12px',
           padding: '14px',
         }}
@@ -75,9 +82,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Header row: date + actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
             <span
               className="display-headline"
               style={{ fontSize: '15px', fontWeight: 600 }}
@@ -122,7 +129,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
             </div>
           </div>
 
-          {item.username && (
+          {showAuthor && (
             <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>
               {item.username}
             </span>
