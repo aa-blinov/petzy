@@ -104,7 +104,18 @@ def ensure_indexes() -> None:
         (db.medication_intakes, [("medication_id", ASCENDING), ("date_time", DESCENDING)], "intakes_med_date"),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
-        (db.refresh_tokens, [("jti", ASCENDING)], "refresh_token_jti_unique", {"unique": True}),
+        (db.refresh_tokens, [("jti", ASCENDING)], "refresh_token_jti_unique",
+            {
+                "unique": True,
+                # Only enforce uniqueness on rows that actually have a
+                # jti. Legacy rows from before the jti fix carry
+                # `jti: null` and several of them would collide on the
+                # index — a partial filter makes the constraint
+                # permissive enough that the index can be created
+                # against a pre-existing legacy collection, while
+                # still preventing any future duplicate.
+                "partialFilterExpression": {"jti": {"$exists": True}},
+            }),
         # TTL index — MongoDB's background TTL monitor sweeps every ~60s
         # and drops any document whose `expires_at` is in the past. This
         # is the right answer for "no application-level cleanup needed":
@@ -118,7 +129,13 @@ def ensure_indexes() -> None:
         # match the index), so existing tokens keep working until they
         # naturally get used-and-replaced. A one-shot deleteMany is run
         # via the `inspect_db` workflow to prune legacy rows.
-        (db.refresh_tokens, [("expires_at", ASCENDING)], "refresh_token_ttl", {"expireAfterSeconds": 0}),
+        (db.refresh_tokens, [("expires_at", ASCENDING)], "refresh_token_ttl",
+            {
+                "expireAfterSeconds": 0,
+                # Same partial filter story — legacy rows without
+                # expires_at shouldn't appear "in the past" to TTL.
+                "partialFilterExpression": {"expires_at": {"$exists": True}},
+            }),
     ]
     for coll_name in HEALTH_RECORD_COLLECTIONS:
         coll = db[coll_name]
