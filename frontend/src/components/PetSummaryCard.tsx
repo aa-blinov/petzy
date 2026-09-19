@@ -168,7 +168,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           }}
         />
 
-        {/* Pet name overlay */}
+        {/* Pet name overlay — only the name + age (if known).
+           Species is conveyed by the emoji, no need to repeat it as text. */}
         <div
           style={{
             position: "absolute",
@@ -188,44 +189,38 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           >
             {pet.name}
           </div>
-          {pet.species && (
+          {age && (
             <div
               style={{
                 marginTop: "2px",
                 fontSize: "13px",
                 opacity: 0.92,
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
               }}
             >
-              <span>{pet.species}</span>
-              {age ? (
-                <>
-                  <span style={{ opacity: 0.6 }}>·</span>
-                  <span>{age}</span>
-                </>
-              ) : null}
+              {age}
             </div>
           )}
         </div>
       </div>
 
-      {/* Meta chips */}
-      <div
-        style={{
-          padding: "14px 16px 12px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "6px",
-        }}
-      >
-        {pet.breed && <span className="chip">{pet.breed}</span>}
-        {pet.gender && <span className="chip">{pet.gender}</span>}
-        {lastWeightRecord && (
-          <span className="chip">⚖️ {lastWeightRecord.weight} кг</span>
-        )}
-      </div>
+      {/* Meta chips — only render if we have something to show. Breed and gender
+           appear here when set, weight is the always-relevant one. */}
+      {(pet.breed || pet.gender || lastWeightRecord) && (
+        <div
+          style={{
+            padding: "14px 16px 12px",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px",
+          }}
+        >
+          {pet.breed && <span className="chip">{pet.breed}</span>}
+          {pet.gender && <span className="chip">{pet.gender}</span>}
+          {lastWeightRecord && (
+            <span className="chip">⚖️ {lastWeightRecord.weight} кг</span>
+          )}
+        </div>
+      )}
 
       {/* Last-event chips */}
       <div
