@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
-import { AddOutline, EditSOutline, DeleteOutline, ClockCircleOutline } from 'antd-mobile-icons';
+import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
-import { Pill, Droplets, Syringe } from 'lucide-react';
+import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { MedicationCardSkeleton } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
+import { SwipeableRow } from '../components/SwipeableRow';
 
 export function MedicationsList() {
     const { selectedPetId } = usePet();
@@ -253,6 +254,20 @@ export function MedicationsList() {
                                 key={med._id}
                                 className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
                             >
+                            <SwipeableRow
+                                leftAction={{
+                                    icon: <Pencil size={20} strokeWidth={2.4} />,
+                                    label: 'Изменить',
+                                    color: 'var(--app-accent)',
+                                    onTrigger: () => navigate(`/medications/${med._id}/edit`),
+                                }}
+                                rightAction={{
+                                    icon: <Trash2 size={20} strokeWidth={2.4} />,
+                                    label: 'Удалить',
+                                    color: 'var(--app-danger-color)',
+                                    onTrigger: () => handleDelete(med),
+                                }}
+                            >
                             <Card className="card-soft" style={{
                                 borderRadius: 'var(--radius-md)',
                                 border: 'none',
@@ -285,23 +300,6 @@ export function MedicationsList() {
                                                 <span style={{ margin: `0 var(--spacing-xs)`, color: 'var(--app-divider-color)' }}>|</span>
                                                 По {med.default_dose || 1} {med.dose_unit || 'ед.'}
                                             </p>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-                                            <Button
-                                                size="mini"
-                                                fill="outline"
-                                                onClick={() => navigate(`/medications/${med._id}/edit`)}
-                                            >
-                                                <EditSOutline style={{ fontSize: '18px' }} />
-                                            </Button>
-                                            <Button
-                                                size="mini"
-                                                fill="outline"
-                                                color="danger"
-                                                onClick={() => handleDelete(med)}
-                                            >
-                                                <DeleteOutline style={{ fontSize: '18px' }} />
-                                            </Button>
                                         </div>
                                     </div>
 
@@ -355,6 +353,7 @@ export function MedicationsList() {
                                     )}
                                 </div>
                             </Card>
+                            </SwipeableRow>
                             </div>
                         ))}
                     </div>
