@@ -322,7 +322,21 @@ export function MedicationForm() {
                                                 name="dose_unit"
                                                 control={control}
                                                 render={({ field: unitField }) => (
-                                                    <div onClick={() => setUnitPickerVisible(true)}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setUnitPickerVisible(true)}
+                                                        style={{
+                                                            width: '100%',
+                                                            background: 'transparent',
+                                                            border: 'none',
+                                                            padding: 0,
+                                                            textAlign: 'center',
+                                                            color: 'var(--app-primary-color)',
+                                                            cursor: 'pointer',
+                                                            font: 'inherit',
+                                                        }}
+                                                        aria-label="Выбрать единицу измерения"
+                                                    >
                                                         <Input
                                                             value={unitField.value}
                                                             readOnly
@@ -333,7 +347,7 @@ export function MedicationForm() {
                                                                 cursor: 'pointer'
                                                             }}
                                                         />
-                                                    </div>
+                                                    </button>
                                                 )}
                                             />
                                         </div>
@@ -377,12 +391,23 @@ export function MedicationForm() {
 
                             {timeFields.map((timeField: any, index) => (
                                 <div key={timeField.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                    <div
-                                        style={{ flex: 1, cursor: 'pointer' }}
+                                    <button
+                                        type="button"
+                                        style={{
+                                            flex: 1,
+                                            cursor: 'pointer',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            padding: 0,
+                                            textAlign: 'left',
+                                            font: 'inherit',
+                                            color: 'inherit',
+                                        }}
                                         onClick={() => {
                                             setActiveTimeIndex(index);
                                             setTimePickerVisible(true);
                                         }}
+                                        aria-label={`Изменить время приёма ${index + 1}`}
                                     >
                                         <Controller
                                             name={`schedule.times.${index}` as any}
@@ -405,7 +430,7 @@ export function MedicationForm() {
                                                 />
                                             )}
                                         />
-                                    </div>
+                                    </button>
                                     {timeFields.length > 1 && (
                                         <Button
                                             size="small"

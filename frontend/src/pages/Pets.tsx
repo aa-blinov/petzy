@@ -76,6 +76,7 @@ export function Pets() {
             Мои питомцы
           </h1>
           <button
+            type="button"
             onClick={handleAddPet}
             style={{
               background: 'transparent',
@@ -115,6 +116,7 @@ export function Pets() {
               Здесь будут ваши питомцы
             </p>
             <button
+              type="button"
               onClick={handleAddPet}
               style={{
                 background: 'var(--app-primary-color)',
@@ -255,19 +257,32 @@ function PetCard({
       onMouseLeave={cancelPress}
     >
       {/* Hero photo / species icon (compact, ~120px) */}
-      <div
+      <button
+        type="button"
+        onClick={() => pet.photo_url && onImageTap(pet.photo_url)}
+        disabled={!pet.photo_url}
+        aria-label={pet.photo_url ? `Открыть фото ${pet.name}` : undefined}
         style={{
           position: 'relative',
           width: '100%',
           height: '120px',
-          backgroundColor: 'var(--tile-brown)',
-          backgroundImage: pet.photo_url
-            ? undefined
-            : 'linear-gradient(135deg, #E8946A 0%, #C46A3F 100%)',
+          padding: 0,
+          border: 'none',
+          background: 'none',
+          cursor: pet.photo_url ? 'pointer' : 'default',
           overflow: 'hidden',
         }}
-        onClick={() => pet.photo_url && onImageTap(pet.photo_url)}
       >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'var(--tile-brown)',
+            backgroundImage: pet.photo_url
+              ? undefined
+              : 'linear-gradient(135deg, #E8946A 0%, #C46A3F 100%)',
+          }}
+        />
         {pet.photo_url ? (
           <PetImage
             src={pet.photo_url}
@@ -291,12 +306,13 @@ function PetCard({
             <SpeciesIcon size={64} strokeWidth={1.5} style={{ display: 'block' }} />
           </div>
         )}
+      </button>
 
-        {/* Edit pencil — small, top-right */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          aria-label="Редактировать питомца"
+      {/* Edit pencil — small, top-right */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        aria-label="Редактировать питомца"
           style={{
             position: 'absolute',
             top: 10,
@@ -316,7 +332,6 @@ function PetCard({
         >
           <Pencil size={16} strokeWidth={2} style={{ display: 'block' }} />
         </button>
-      </div>
 
       {/* Body — name + meta chips */}
       <div style={{ padding: '14px 16px' }}>

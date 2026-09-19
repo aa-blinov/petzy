@@ -67,12 +67,14 @@ export function Navbar() {
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>
       {pets.length > 0 && (
         <>
-          <div
+          <button
+            type="button"
             className="tap-feedback"
             onClick={() => {
               hapticFeedback('light');
               setPickerVisible(true);
             }}
+            aria-label="Сменить питомца"
             style={{
               height: '36px',
               padding: '0 12px',
@@ -85,13 +87,15 @@ export function Navbar() {
               border: '1px solid var(--app-border-color)',
               transition: 'all 0.2s ease',
               boxShadow: 'inset 0 1px 2px var(--app-white-05), var(--app-shadow-light)',
+              color: 'inherit',
+              font: 'inherit',
             }}
           >
             <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--app-text-color)' }}>
               {selectedPetName}
             </span>
             <DownOutline style={{ fontSize: '10px', color: 'var(--app-text-secondary)' }} />
-          </div>
+          </button>
 
           <Popup
             visible={pickerVisible}
@@ -122,10 +126,13 @@ export function Navbar() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {pets.map(pet => (
-                  <div
+                  <button
+                    type="button"
                     key={pet._id}
                     className="tap-feedback active-dim"
                     onClick={() => handlePetSelect(pet)}
+                    aria-label={`Выбрать питомца ${pet.name}`}
+                    aria-pressed={pet._id === selectedPetId}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -135,7 +142,11 @@ export function Navbar() {
                       borderRadius: '12px',
                       cursor: 'pointer',
                       border: pet._id === selectedPetId ? '2px solid var(--app-primary-color)' : '1px solid var(--app-border-color)',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      color: 'inherit',
+                      font: 'inherit',
+                      textAlign: 'left',
+                      width: '100%',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -172,7 +183,7 @@ export function Navbar() {
                     {pet._id === selectedPetId && (
                       <CheckOutline style={{ fontSize: '20px', color: 'var(--adm-color-primary)' }} />
                     )}
-                  </div>
+                  </button>
                 ))}
                 <Button
                   block

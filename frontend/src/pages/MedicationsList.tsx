@@ -139,6 +139,7 @@ export function MedicationsList() {
                     </h1>
                     {medications.length > 0 && (
                         <button
+                            type="button"
                             onClick={() => navigate('/medications/new')}
                             style={{
                                 background: 'transparent',
@@ -211,6 +212,7 @@ export function MedicationsList() {
                                 Добавьте лекарство — Petzy напомнит о приёме и покажет остаток.
                             </p>
                             <button
+                                type="button"
                                 onClick={() => navigate('/medications/new')}
                                 style={{
                                     marginTop: 20,
