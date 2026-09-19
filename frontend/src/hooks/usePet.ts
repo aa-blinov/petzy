@@ -29,9 +29,16 @@ export function usePet() {
     }
   };
 
-  // Auto-select first pet if none selected and pets are available
+  // Auto-select first pet if none selected and pets are available.
+  // Also recover from a stale selectedPetId — e.g. after a backend
+  // restart with a fresh in-memory DB, the previous pet ID no longer
+  // exists and the API returns 403 on every dashboard call. Clear it
+  // so the auto-select path below takes over.
   useEffect(() => {
-    if (pets.length > 0 && !selectedPetId) {
+    if (pets.length === 0) return;
+    if (selectedPetId && !pets.find(p => p._id === selectedPetId)) {
+      selectPet(pets[0]);
+    } else if (!selectedPetId) {
       selectPet(pets[0]);
     }
   }, [pets, selectedPetId]);
