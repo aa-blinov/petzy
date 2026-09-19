@@ -666,6 +666,45 @@ a,
     font-size: var(--text-sm) !important;
 }
 
+/* antd-mobile's Selector draws a CSS-triangle checkmark in the
+   bottom-right corner of every selected chip. On small / single-
+   letter chips (the "Частота" weekday row) the triangle reads as a
+   stray chevron rather than as confirmation. The chip background
+   colour already signals selection, so we hide the triangle. */
+.adm-selector-item .adm-selector-check-mark-wrapper {
+    display: none !important;
+}
+
+/* Picker triggers can hold long values (e.g. "Royal Canin Fibre
+   Response 30"). Without ellipsis the value clips at the right
+   edge. antd-mobile's Form.Item puts its children inside a
+   `.adm-form-item-child` wrapper inside `.adm-list-item-content-
+   main`, which is a `flex: auto` column. Flex children default to
+   `min-width: auto`, refusing to shrink below content size — that
+   is why the value overflows past the row. Force the wrapper to
+   truncate cleanly with !important since the antd-mobile defaults
+   are sticky. */
+.adm-list-item-content-main,
+.adm-form-item-child,
+.adm-form-item-child-inner {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+.adm-form-item-child > span:not([class]),
+.adm-form-item-child > div:not([class]),
+.adm-form-item-child > input,
+.adm-list-item-content-main > span:not([class]),
+.adm-list-item-content-main > div:not([class]):not(.adm-form-item-child),
+.adm-list-item-content-main > input {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
 .adm-form-header {
     font-size: 15px !important;
     /* Keeping 15px if it's specific, or use 0.9375rem */
