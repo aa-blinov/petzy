@@ -591,6 +591,15 @@ a,
     -webkit-tap-highlight-color: transparent;
 }
 
+/* antd-mobile's PickerView column wheel uses @use-gesture for the
+   vertical drag gesture. It needs touch-action: none on the wheel
+   element so the gesture library owns the pointer and the browser
+   doesn't scroll the page underneath. The library warns loudly in the
+   console when this is missing. */
+.adm-picker-view-column-wheel {
+    touch-action: none;
+}
+
 /* Hide admin username on mobile */
 @media (max-width: 767px) {
     .admin-username {
