@@ -5,11 +5,39 @@ import { authService } from '../services/auth.service';
 import { petsService } from '../services/pets.service';
 import type { LoginRequest } from '../services/auth.service';
 
+const USERNAME_STORAGE_KEY = 'petzy:auth:username';
+
+function readStoredUsername(): string | null {
+  try {
+    return localStorage.getItem(USERNAME_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredUsername(value: string | null) {
+  try {
+    if (value) localStorage.setItem(USERNAME_STORAGE_KEY, value);
+    else localStorage.removeItem(USERNAME_STORAGE_KEY);
+  } catch {
+    /* localStorage may be unavailable (private mode, SSR) — ignore */
+  }
+}
+
 export function useAuth() {
-  const [username, setUsername] = useState<string | null>(null);
+  // Username is shared between all components via localStorage. The
+  // tokens live in HttpOnly cookies so JS can't read them, but the
+  // human-readable username is fine in localStorage and lets every
+  // useAuth() instance see the same value without prop-drilling.
+  const [username, setUsernameState] = useState<string | null>(() => readStoredUsername());
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
+
+  const setUsername = (value: string | null) => {
+    writeStoredUsername(value);
+    setUsernameState(value);
+  };
 
   // Check if we're on the login page using React Router location
   const isLoginPage = useMemo(() => {
