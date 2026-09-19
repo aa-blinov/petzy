@@ -26,6 +26,41 @@ class TestAuthentication:
         assert "access_token" in " ".join(cookie_names)
         assert "refresh_token" in " ".join(cookie_names)
 
+    def test_two_logins_produce_distinct_refresh_token_jtis(self, client, mock_db):
+        """Regression: two back-to-back logins must not collide on the
+        refresh-token unique index. Each refresh token now carries a
+        fresh UUID4 `jti` (RFC 7519 §4.1.7) so even identical
+        ``{username, exp}`` payloads produce distinct documents.
+
+        Before this fix, both tokens decoded to the same JWT string when
+        issued in the same wall-clock second, tripping the unique index
+        on ``refresh_tokens.token`` and crashing the second login with
+        DuplicateKeyError — visible as a flake on the CI pytest job.
+
+        The HTTP-200 on the second login is itself the proof — before
+        the fix the index raised inside the view function and Flask
+        surfaced it as a 500. We additionally assert the two tokens
+        carry distinct ``jti`` claims, which is what makes the DB-side
+        uniqueness work.
+        """
+        r1 = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+        r2 = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+
+        t1 = r1.get_json()["refresh_token"]
+        t2 = r2.get_json()["refresh_token"]
+
+        # Different JWT strings (jti is part of the signed payload).
+        assert t1 != t2
+
+        # Both tokens carry a `jti` claim and they are distinct.
+        p1 = jwt.decode(t1, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        p2 = jwt.decode(t2, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        assert "jti" in p1 and "jti" in p2
+        assert p1["jti"] != p2["jti"]
+
     def test_api_login_invalid_credentials(self, client, mock_db):
         """Test login with invalid credentials."""
         response = client.post("/api/auth/login", json={"username": "admin", "password": "wrongpassword"})
@@ -55,19 +90,11 @@ class TestAuthentication:
         assert "Превышен лимит" in data["error"] or "rate limit" in data["error"].lower() or "Too many" in data["error"]
 
     def test_api_refresh_token_success(self, client, mock_db, admin_refresh_token):
-        """Test successful token refresh."""
-        # Store refresh token in database
-        from web.app import db
+        """Test successful token refresh.
 
-        db["refresh_tokens"].insert_one(
-            {
-                "token": admin_refresh_token,
-                "username": "admin",
-                "created_at": datetime.now(timezone.utc),
-                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
-            }
-        )
-
+        ``admin_refresh_token`` fixture already persisted the token with
+        the matching ``jti`` claim — no need to re-insert here.
+        """
         client.set_cookie("refresh_token", admin_refresh_token)
         response = client.post("/api/auth/refresh")
 

@@ -24,7 +24,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "medications": ["meds_pet_created"],
         "medication_intakes": ["intakes_pet_date", "intakes_med_date"],
         "users": ["users_username_unique", "users_role"],
-        "refresh_tokens": ["refresh_token_unique"],
+        "refresh_tokens": ["refresh_token_jti_unique"],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()

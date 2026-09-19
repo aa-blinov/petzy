@@ -77,9 +77,25 @@ def ensure_indexes() -> None:
                           medication_id + date_time (last intake / count today)
       users               username unique (login lookup)
                           role             (admin queries)
-      refresh_tokens      token unique      (token refresh lookup)
+      refresh_tokens      jti unique        (RFC 7519 JWT ID; replaces
+                                              the older `token`-unique
+                                              index, which collided when
+                                              two logins landed in the
+                                              same wall-clock second)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
+    # Migration: drop the obsolete `refresh_token_unique` on `token` if it
+    # exists from a previous deploy. After this, refresh-token uniqueness
+    # is enforced on `jti` (UUID4), which is collision-proof regardless of
+    # clock alignment. Existing refresh_tokens without a `jti` become
+    # useless — users simply re-login.
+    try:
+        db.refresh_tokens.drop_index("refresh_token_unique")
+        logger.info("Dropped legacy refresh_token_unique index on refresh_tokens.token")
+    except Exception:
+        # mongomock and first-time prod: index doesn't exist yet, that's fine.
+        pass
+
     declarations = [
         (db.pets, [("owner", ASCENDING), ("created_at", DESCENDING)], "pets_owner_created"),
         (db.pets, [("shared_with", ASCENDING)], "pets_shared"),
@@ -88,7 +104,7 @@ def ensure_indexes() -> None:
         (db.medication_intakes, [("medication_id", ASCENDING), ("date_time", DESCENDING)], "intakes_med_date"),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
-        (db.refresh_tokens, [("token", ASCENDING)], "refresh_token_unique", {"unique": True}),
+        (db.refresh_tokens, [("jti", ASCENDING)], "refresh_token_jti_unique", {"unique": True}),
     ]
     for coll_name in HEALTH_RECORD_COLLECTIONS:
         coll = db[coll_name]

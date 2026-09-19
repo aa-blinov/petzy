@@ -4,6 +4,7 @@ import os
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
+from uuid import uuid4
 
 import jwt
 import pytest
@@ -97,14 +98,21 @@ def admin_refresh_token(mock_db):
     from web.security import JWT_SECRET_KEY, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"username": "admin", "exp": expire, "type": "refresh"}
+    jti = uuid4().hex
+    payload = {"username": "admin", "exp": expire, "type": "refresh", "jti": jti}
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
     # Store in database
     from web.app import db
 
     db["refresh_tokens"].insert_one(
-        {"token": token, "username": "admin", "created_at": datetime.now(timezone.utc), "expires_at": expire}
+        {
+            "jti": jti,
+            "token": token,
+            "username": "admin",
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": expire,
+        }
     )
 
     return token

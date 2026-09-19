@@ -8,6 +8,7 @@ from `web.app` and imported directly from blueprints.
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 import logging
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -106,13 +107,22 @@ def create_access_token(username):
 
 
 def create_refresh_token(username):
-    """Create JWT refresh token and store it in database."""
+    """Create JWT refresh token and store it in database.
+
+    Each refresh token carries a fresh `jti` (JWT ID, RFC 7519 §4.1.7)
+    so that two logins in the same wall-clock second produce distinct
+    tokens and don't trip the unique index on `refresh_tokens.jti`.
+    Keeping `token` in the document too so existing `find_one({"token":
+    ...})` lookups in `verify_refresh_token` keep working.
+    """
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"username": username, "exp": expire, "type": "refresh"}
+    jti = uuid4().hex
+    payload = {"username": username, "exp": expire, "type": "refresh", "jti": jti}
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
     db["refresh_tokens"].insert_one(
         {
+            "jti": jti,
             "token": token,
             "username": username,
             "created_at": datetime.now(timezone.utc),
