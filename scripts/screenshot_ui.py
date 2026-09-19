@@ -67,6 +67,18 @@ def main() -> int:
             page.screenshot(path=str(OUTPUT_DIR / f"{name}.png"), full_page=False)
             print(f"  captured {name} ({path})")
 
+        # Bonus: capture the QuickAdd bottom sheet by tapping the FAB.
+        page.goto(f"{FRONTEND}/", wait_until="networkidle")
+        page.wait_for_timeout(1500)
+        # The FAB is positioned via CSS variables — its bbox sits near
+        # the bottom-right. Use the box coords to click reliably on mobile.
+        box = page.locator(".adm-floating-bubble").first.bounding_box()
+        if box:
+            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.wait_for_timeout(1200)
+        page.screenshot(path=str(OUTPUT_DIR / "quick_add_sheet.png"), full_page=False)
+        print("  captured quick_add_sheet (FAB sheet)")
+
         browser.close()
 
     print(f"\nScreenshots saved to {OUTPUT_DIR}")
