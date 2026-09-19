@@ -15,7 +15,7 @@ from werkzeug.exceptions import HTTPException
 
 from web import security
 from web.configs import CORS_CONFIG, FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
-from web.db import db
+from web.db import db, ensure_indexes
 from web.errors import error_response
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -161,6 +161,11 @@ app.register_blueprint(users_bp)
 app.register_blueprint(health_records_bp)
 app.register_blueprint(medications_bp)
 app.register_blueprint(export_bp)
+
+# Build the indexes the application relies on. MongoDB makes
+# create_index a no-op when an identical index already exists, so
+# running this at every startup is safe and free.
+ensure_indexes()
 
 # Register API spec after all blueprints are registered
 api.register(app)
