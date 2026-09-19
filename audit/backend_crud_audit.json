@@ -1,0 +1,1095 @@
+{
+  "routes": [
+    {
+      "file": "app.py",
+      "line": 193,
+      "path": "/favicon.ico",
+      "methods": [
+        "GET"
+      ],
+      "auth": [],
+      "rate_limited": false,
+      "validated": false,
+      "response": "redirect",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "app.py",
+      "line": 221,
+      "path": "/",
+      "methods": [
+        "GET"
+      ],
+      "auth": [],
+      "rate_limited": false,
+      "validated": false,
+      "response": "redirect",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "app.py",
+      "line": 247,
+      "path": "/dashboard",
+      "methods": [
+        "GET"
+      ],
+      "auth": [],
+      "rate_limited": false,
+      "validated": false,
+      "response": "?",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "auth.py",
+      "line": 98,
+      "path": "/api/auth/login",
+      "methods": [
+        "POST"
+      ],
+      "auth": [],
+      "rate_limited": true,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "auth.py",
+      "line": 144,
+      "path": "/api/auth/refresh",
+      "methods": [
+        "POST"
+      ],
+      "auth": [],
+      "rate_limited": false,
+      "validated": true,
+      "response": "redirect",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "auth.py",
+      "line": 189,
+      "path": "/api/auth/logout",
+      "methods": [
+        "POST"
+      ],
+      "auth": [],
+      "rate_limited": false,
+      "validated": true,
+      "response": "redirect",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "auth.py",
+      "line": 209,
+      "path": "/api/auth/check-admin",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "redirect",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "export.py",
+      "line": 270,
+      "path": "/api/export/<export_type>/<format_type>",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_ONE"
+    },
+    {
+      "file": "health_records.py",
+      "line": 266,
+      "path": "/api/stats/health",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "health_records.py",
+      "line": 322,
+      "path": "/api/history/timeline",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "jsonify",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "medications.py",
+      "line": 33,
+      "path": "/api/medications",
+      "methods": [
+        "POST"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "medications.py",
+      "line": 58,
+      "path": "/api/medications",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "medications.py",
+      "line": 142,
+      "path": "/api/medications/<id>",
+      "methods": [
+        "PATCH"
+      ],
+      "auth": [
+        "require_record_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "UPDATE"
+    },
+    {
+      "file": "medications.py",
+      "line": 169,
+      "path": "/api/medications/<id>",
+      "methods": [
+        "DELETE"
+      ],
+      "auth": [
+        "require_record_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "DELETE"
+    },
+    {
+      "file": "medications.py",
+      "line": 239,
+      "path": "/api/medications/<id>/log",
+      "methods": [
+        "POST"
+      ],
+      "auth": [
+        "require_record_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "medications.py",
+      "line": 328,
+      "path": "/api/medications/intakes",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "medications.py",
+      "line": 370,
+      "path": "/api/medications/intakes/<id>",
+      "methods": [
+        "DELETE"
+      ],
+      "auth": [
+        "require_record_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "DELETE"
+    },
+    {
+      "file": "medications.py",
+      "line": 427,
+      "path": "/api/medications/upcoming",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "require_pet_access"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "jsonify",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "pets.py",
+      "line": 76,
+      "path": "/api/pets",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "pets.py",
+      "line": 125,
+      "path": "/api/pets",
+      "methods": [
+        "POST"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "pets.py",
+      "line": 226,
+      "path": "/api/pets/<pet_id>",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_ONE"
+    },
+    {
+      "file": "pets.py",
+      "line": 275,
+      "path": "/api/pets/<pet_id>",
+      "methods": [
+        "PUT"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "?",
+      "crud_op": "UPDATE"
+    },
+    {
+      "file": "pets.py",
+      "line": 417,
+      "path": "/api/pets/<pet_id>/share",
+      "methods": [
+        "POST"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "pets.py",
+      "line": 469,
+      "path": "/api/pets/<pet_id>/share/<share_username>",
+      "methods": [
+        "DELETE"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "DELETE"
+    },
+    {
+      "file": "pets.py",
+      "line": 496,
+      "path": "/api/pets/<pet_id>",
+      "methods": [
+        "DELETE"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "DELETE"
+    },
+    {
+      "file": "pets.py",
+      "line": 628,
+      "path": "/api/pets/<pet_id>/photo",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "error_response",
+      "crud_op": "READ_ONE"
+    },
+    {
+      "file": "users.py",
+      "line": 30,
+      "path": "/api/users",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "admin_required",
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "users.py",
+      "line": 47,
+      "path": "/api/users/search",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "READ_LIST"
+    },
+    {
+      "file": "users.py",
+      "line": 67,
+      "path": "/api/users",
+      "methods": [
+        "POST"
+      ],
+      "auth": [
+        "admin_required",
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "CREATE"
+    },
+    {
+      "file": "users.py",
+      "line": 116,
+      "path": "/api/users/<username>",
+      "methods": [
+        "GET"
+      ],
+      "auth": [
+        "admin_required",
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "READ_ONE"
+    },
+    {
+      "file": "users.py",
+      "line": 137,
+      "path": "/api/users/<username>",
+      "methods": [
+        "PUT"
+      ],
+      "auth": [
+        "admin_required",
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "UPDATE"
+    },
+    {
+      "file": "users.py",
+      "line": 184,
+      "path": "/api/users/<username>",
+      "methods": [
+        "DELETE"
+      ],
+      "auth": [
+        "admin_required",
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "DELETE"
+    },
+    {
+      "file": "users.py",
+      "line": 213,
+      "path": "/api/users/<username>/reset-password",
+      "methods": [
+        "POST"
+      ],
+      "auth": [
+        "admin_required",
+        "login_required"
+      ],
+      "rate_limited": false,
+      "validated": true,
+      "response": "get_message",
+      "crud_op": "CREATE"
+    }
+  ],
+  "by_entity": {
+    "auth": {
+      "routes": 4,
+      "ops_present": [
+        "CREATE",
+        "READ_LIST"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/auth/login",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [],
+          "rate_limited": true,
+          "validated": true,
+          "response": "get_message",
+          "file": "auth.py",
+          "line": 98
+        },
+        {
+          "path": "/api/auth/refresh",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [],
+          "rate_limited": false,
+          "validated": true,
+          "response": "redirect",
+          "file": "auth.py",
+          "line": 144
+        },
+        {
+          "path": "/api/auth/logout",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [],
+          "rate_limited": false,
+          "validated": true,
+          "response": "redirect",
+          "file": "auth.py",
+          "line": 189
+        },
+        {
+          "path": "/api/auth/check-admin",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "redirect",
+          "file": "auth.py",
+          "line": 209
+        }
+      ]
+    },
+    "export": {
+      "routes": 1,
+      "ops_present": [
+        "READ_ONE"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/export/<export_type>/<format_type>",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_ONE",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "export.py",
+          "line": 270
+        }
+      ]
+    },
+    "medications": {
+      "routes": 8,
+      "ops_present": [
+        "CREATE",
+        "DELETE",
+        "READ_LIST",
+        "UPDATE"
+      ],
+      "ops_missing": [
+        "READ_ONE"
+      ],
+      "update_methods_used": [
+        "PATCH"
+      ],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/medications",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 33
+        },
+        {
+          "path": "/api/medications",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 58
+        },
+        {
+          "path": "/api/medications/<id>",
+          "methods": [
+            "PATCH"
+          ],
+          "crud": "UPDATE",
+          "auth": [
+            "require_record_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 142
+        },
+        {
+          "path": "/api/medications/<id>",
+          "methods": [
+            "DELETE"
+          ],
+          "crud": "DELETE",
+          "auth": [
+            "require_record_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 169
+        },
+        {
+          "path": "/api/medications/<id>/log",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [
+            "require_record_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 239
+        },
+        {
+          "path": "/api/medications/intakes",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 328
+        },
+        {
+          "path": "/api/medications/intakes/<id>",
+          "methods": [
+            "DELETE"
+          ],
+          "crud": "DELETE",
+          "auth": [
+            "require_record_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "medications.py",
+          "line": 370
+        },
+        {
+          "path": "/api/medications/upcoming",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "jsonify",
+          "file": "medications.py",
+          "line": 427
+        }
+      ]
+    },
+    "misc": {
+      "routes": 3,
+      "ops_present": [
+        "READ_LIST"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/favicon.ico",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [],
+          "rate_limited": false,
+          "validated": false,
+          "response": "redirect",
+          "file": "app.py",
+          "line": 193
+        },
+        {
+          "path": "/",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [],
+          "rate_limited": false,
+          "validated": false,
+          "response": "redirect",
+          "file": "app.py",
+          "line": 221
+        },
+        {
+          "path": "/dashboard",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [],
+          "rate_limited": false,
+          "validated": false,
+          "response": "?",
+          "file": "app.py",
+          "line": 247
+        }
+      ]
+    },
+    "pets": {
+      "routes": 8,
+      "ops_present": [
+        "CREATE",
+        "DELETE",
+        "READ_LIST",
+        "READ_ONE",
+        "UPDATE"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [
+        "PUT"
+      ],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/pets",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "pets.py",
+          "line": 76
+        },
+        {
+          "path": "/api/pets",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "pets.py",
+          "line": 125
+        },
+        {
+          "path": "/api/pets/<pet_id>",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_ONE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "pets.py",
+          "line": 226
+        },
+        {
+          "path": "/api/pets/<pet_id>",
+          "methods": [
+            "PUT"
+          ],
+          "crud": "UPDATE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "?",
+          "file": "pets.py",
+          "line": 275
+        },
+        {
+          "path": "/api/pets/<pet_id>/share",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "pets.py",
+          "line": 417
+        },
+        {
+          "path": "/api/pets/<pet_id>/share/<share_username>",
+          "methods": [
+            "DELETE"
+          ],
+          "crud": "DELETE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "pets.py",
+          "line": 469
+        },
+        {
+          "path": "/api/pets/<pet_id>",
+          "methods": [
+            "DELETE"
+          ],
+          "crud": "DELETE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "pets.py",
+          "line": 496
+        },
+        {
+          "path": "/api/pets/<pet_id>/photo",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_ONE",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "pets.py",
+          "line": 628
+        }
+      ]
+    },
+    "stats": {
+      "routes": 1,
+      "ops_present": [
+        "READ_LIST"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/stats/health",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "error_response",
+          "file": "health_records.py",
+          "line": 266
+        }
+      ]
+    },
+    "timeline": {
+      "routes": 1,
+      "ops_present": [
+        "READ_LIST"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/history/timeline",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "require_pet_access"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "jsonify",
+          "file": "health_records.py",
+          "line": 322
+        }
+      ]
+    },
+    "users": {
+      "routes": 7,
+      "ops_present": [
+        "CREATE",
+        "DELETE",
+        "READ_LIST",
+        "READ_ONE",
+        "UPDATE"
+      ],
+      "ops_missing": [],
+      "update_methods_used": [
+        "PUT"
+      ],
+      "auth_missing": [],
+      "details": [
+        {
+          "path": "/api/users",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "admin_required",
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 30
+        },
+        {
+          "path": "/api/users/search",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_LIST",
+          "auth": [
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 47
+        },
+        {
+          "path": "/api/users",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [
+            "admin_required",
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 67
+        },
+        {
+          "path": "/api/users/<username>",
+          "methods": [
+            "GET"
+          ],
+          "crud": "READ_ONE",
+          "auth": [
+            "admin_required",
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 116
+        },
+        {
+          "path": "/api/users/<username>",
+          "methods": [
+            "PUT"
+          ],
+          "crud": "UPDATE",
+          "auth": [
+            "admin_required",
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 137
+        },
+        {
+          "path": "/api/users/<username>",
+          "methods": [
+            "DELETE"
+          ],
+          "crud": "DELETE",
+          "auth": [
+            "admin_required",
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 184
+        },
+        {
+          "path": "/api/users/<username>/reset-password",
+          "methods": [
+            "POST"
+          ],
+          "crud": "CREATE",
+          "auth": [
+            "admin_required",
+            "login_required"
+          ],
+          "rate_limited": false,
+          "validated": true,
+          "response": "get_message",
+          "file": "users.py",
+          "line": 213
+        }
+      ]
+    }
+  },
+  "inconsistencies": [
+    "medications: uses PATCH instead of PUT (REST convention is PUT for full-resource updates)"
+  ]
+}
