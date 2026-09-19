@@ -5,6 +5,7 @@ import { usePet } from '../hooks/usePet';
 import { CheckOutline, DownOutline } from 'antd-mobile-icons';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
+import { speciesIcon } from '../utils/speciesIcon';
 
 export function Navbar() {
   const location = useLocation();
@@ -143,6 +144,7 @@ export function Navbar() {
                           src={pet.photo_url}
                           alt={pet.name}
                           size={40}
+                          species={pet.species}
                           style={{ borderRadius: '50%' }}
                         />
                       ) : (
@@ -150,13 +152,16 @@ export function Navbar() {
                           width: '40px',
                           height: '40px',
                           borderRadius: '50%',
-                          backgroundColor: 'var(--adm-color-border)',
+                          backgroundColor: 'var(--app-accent-soft)',
+                          color: 'var(--app-accent-deep)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '20px'
                         }}>
-                          🐱
+                          {(() => {
+                            const Icon = speciesIcon(pet.species);
+                            return <Icon size={22} strokeWidth={1.8} aria-hidden />;
+                          })()}
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column' }}>

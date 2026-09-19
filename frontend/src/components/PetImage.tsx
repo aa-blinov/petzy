@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { speciesIcon } from '../utils/speciesIcon';
 
 interface PetImageProps {
     src: string;
@@ -6,11 +7,15 @@ interface PetImageProps {
     size?: number; // Base size in pixels (e.g. 48 for avatar)
     className?: string;
     style?: React.CSSProperties;
+    /** Optional species hint — picks the lucide placeholder icon
+        when the photo fails to load. Falls back to PawPrint. */
+    species?: string | null;
 }
 
-export function PetImage({ src, alt, size = 48, className, style }: PetImageProps) {
+export function PetImage({ src, alt, size = 48, className, style, species }: PetImageProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(false);
+    const FallbackIcon = speciesIcon(species);
 
     // Generate srcset for common screen densities
     // Expecting src to be /api/pets/:id/photo
@@ -87,9 +92,9 @@ export function PetImage({ src, alt, size = 48, className, style }: PetImageProp
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: 'var(--adm-color-border)',
-                    fontSize: size ? `${size / 2}px` : '24px'
+                    color: 'var(--app-text-tertiary)',
                 }}>
-                    🐱
+                    <FallbackIcon size={size ? Math.round(size * 0.55) : 24} strokeWidth={1.6} aria-hidden />
                 </div>
             )}
         </div>
