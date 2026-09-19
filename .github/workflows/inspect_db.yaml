@@ -1,0 +1,67 @@
+name: Inspect remote DB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into petzy server and inspect MongoDB (read-only)
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_PETZY_HOST }}
+          username: ${{ secrets.SERVER_PETZY_USER }}
+          key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
+          script: |
+            set +e
+            cd ~/services/cat-health-control-bot 2>/dev/null || cd ~/services/cat-health-control 2>/dev/null || cd ~/cat-health-control 2>/dev/null
+            echo "=== docker compose ps ==="
+            docker compose ps 2>&1 | head -20
+            echo
+            echo "=== reading .env ==="
+            cat .env 2>&1 | grep -v '^#'
+            echo
+            # Export MONGO_* for later use
+            eval "$(grep -E '^MONGO_' .env | sed 's/^/export /')"
+            echo "MONGO_HOST=$MONGO_HOST  MONGO_DB=$MONGO_DB  USER=$MONGO_USER"
+            echo
+            echo "=== collections ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); print('collections: ' + db.getCollectionNames().sort().join(', '));" 2>&1
+            echo
+            echo "=== collection counts ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); db.getCollectionNames().sort().forEach(c => print(c + ': ' + db[c].countDocuments()));" 2>&1
+            echo
+            echo "=== indexes (names + unique flag) ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); db.getCollectionNames().sort().forEach(c => { print('\n--- ' + c + ' ---'); db[c].indexes().forEach(i => print('  ' + i.name + ': ' + JSON.stringify(i.key) + (i.unique ? ' [unique]' : ''))); });" 2>&1
+            echo
+            echo "=== users ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); db.users.find({}, {username:1, role:1, is_active:1, is_admin:1, _id:0}).forEach(u => printjson(u));" 2>&1
+            echo
+            echo "=== pets ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); db.pets.find({}, {name:1, species:1, owner:1, created_by:1, _id:1}).forEach(p => printjson(p));" 2>&1
+            echo
+            echo "=== medications ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); db.medications.find({}, {name:1, pet_id:1, is_active:1, schedule:1, _id:1}).forEach(m => printjson(m));" 2>&1
+            echo
+            echo "=== refresh_tokens (count + sample 5, jti present?) ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments()); db.refresh_tokens.find({}, {username:1, jti:1, created_at:1, _id:0}).limit(5).forEach(t => printjson(t));" 2>&1
+            echo
+            echo "=== health-records collection sample counts ==="
+            docker compose exec -T db mongosh --quiet \
+              --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin \
+              --eval "db = db.getSiblingDB('$MONGO_DB'); ['asthma_attacks','defecations','litter_changes','weights','feedings','eye_drops','tooth_brushing','ear_cleaning','medication_intakes'].forEach(c => print(c + ': ' + db[c].countDocuments()));" 2>&1
