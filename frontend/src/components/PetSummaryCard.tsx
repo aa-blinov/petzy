@@ -8,6 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { Scale } from 'lucide-react';
 import { Skeleton } from 'antd-mobile';
 
 import { type Pet } from '../services/pets.service';
@@ -214,7 +215,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           {pet.gender && <span className="chip">{pet.gender}</span>}
           {lastWeightRecord && (
             <span className="chip">
-              ⚖️ <CountUp to={lastWeightRecord.weight} duration={800} decimals={1} /> кг
+              <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
+              <CountUp to={lastWeightRecord.weight} duration={800} decimals={1} /> кг
             </span>
           )}
         </div>
