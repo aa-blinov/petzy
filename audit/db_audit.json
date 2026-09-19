@@ -1,0 +1,49 @@
+{
+  "find_no_projection": [
+    {
+      "file": "export.py",
+      "line": 62,
+      "code": "app.db.medications.find"
+    },
+    {
+      "file": "medications.py",
+      "line": 74,
+      "code": "app.db.medications.find"
+    },
+    {
+      "file": "medications.py",
+      "line": 389,
+      "code": "app.db.medication_intakes.find"
+    },
+    {
+      "file": "medications.py",
+      "line": 395,
+      "code": "app.db.medications.find"
+    },
+    {
+      "file": "medications.py",
+      "line": 486,
+      "code": "app.db.medications.find"
+    },
+    {
+      "file": "medications.py",
+      "line": 514,
+      "code": "app.db.medication_intakes.find"
+    },
+    {
+      "file": "pets.py",
+      "line": 85,
+      "code": "app.db[\"pets\"].find"
+    },
+    {
+      "file": "users.py",
+      "line": 36,
+      "code": "app.db[\"users\"].find"
+    },
+    {
+      "file": "users.py",
+      "line": 59,
+      "code": "app.db[\"users\"].find"
+    }
+  ]
+}
