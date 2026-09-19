@@ -643,3 +643,20 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     padding-left: 8px;
     padding-right: 8px;
 }
+
+/* FloatingBubble sits in a portal and ignores the CSS variables we set
+   on the outer wrapper, so we position the inner button directly. */
+.adm-floating-bubble {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+.adm-floating-bubble-button {
+    position: fixed !important;
+    right: 24px !important;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    pointer-events: auto;
+}

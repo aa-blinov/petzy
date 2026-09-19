@@ -252,13 +252,13 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ─── FAB: rendered in portal to completely escape any CSS containing blocks ─── */}
+      {/* ─── FAB: rendered in portal to completely escape any CSS containing blocks.
+           Actual positioning lives in globals.css under .adm-floating-bubble so
+           it pins to the bottom-right even as antd-mobile's component logic
+           sets its own transforms. ─── */}
       {createPortal(
         <FloatingBubble
           style={{
-            position: 'fixed',
-            bottom: '80px',
-            right: '24px',
             '--edge-distance': '24px',
             '--size': '56px',
             '--background': 'var(--adm-color-primary)',
