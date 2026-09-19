@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, Toast, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
-import { Pencil } from 'lucide-react';
+import { Pencil, Scale } from 'lucide-react';
 import { petsService, type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
@@ -339,7 +339,10 @@ function PetCard({
             {age && <span className="chip">{age}</span>}
             {pet.gender && <span className="chip">{pet.gender}</span>}
             {lastWeight && (
-              <span className="chip">⚖️ {lastWeight.weight} кг</span>
+              <span className="chip">
+                <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
+                {lastWeight.weight} кг
+              </span>
             )}
           </div>
         )}
