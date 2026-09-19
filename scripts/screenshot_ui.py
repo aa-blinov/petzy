@@ -21,11 +21,21 @@ PASSWORD = "test1234"
 
 # Screens to capture after login. Order matters — Dashboard first.
 SCREENS = [
+    # Top-level pages
     ("dashboard", "/"),
     ("pets", "/pets"),
     ("history", "/history"),
     ("medications", "/medications"),
     ("settings", "/settings"),
+    # Form screens
+    ("pet_form", "/pets/new"),
+    ("health_form", "/form/feeding"),
+    ("medication_form", "/medications/new"),
+    # Admin / settings sub-pages
+    ("admin_panel", "/admin"),
+    ("user_form", "/admin/users/new"),
+    ("tiles_settings", "/tiles-settings"),
+    ("form_defaults", "/form-defaults"),
 ]
 
 
