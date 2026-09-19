@@ -1,10 +1,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Button } from 'antd-mobile';
+import { Button, PullToRefresh } from 'antd-mobile';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { historyConfig } from '../utils/historyConfig';
 import { HistoryItem } from './HistoryItem';
 import type { HealthRecordType } from '../utils/constants';
-import { LoadingSpinner } from './LoadingSpinner';
+import { HistoryItemSkeleton } from './Skeletons';
+import { hapticFeedback } from '../utils/haptic';
 
 interface HistoryTabProps {
   type: string;
@@ -22,7 +23,8 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-    error
+    error,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ['history', type, petId],
     queryFn: async ({ pageParam = 1 }) => {
@@ -42,68 +44,95 @@ export function HistoryTab({ type, petId, activeTab }: HistoryTabProps) {
     initialPageParam: 1
   });
 
-  if (isLoading) {
-    return <LoadingSpinner fullscreen={false} />;
-  }
+  const content = (() => {
+    if (isLoading) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <HistoryItemSkeleton />
+          <HistoryItemSkeleton />
+          <HistoryItemSkeleton />
+        </div>
+      );
+    }
 
-  if (error) {
+    if (error) {
+      return (
+        <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
+          Ошибка загрузки данных
+        </p>
+      );
+    }
+
+    const allItems = data?.pages.flatMap(page => page.items) || [];
+
+    if (allItems.length === 0) {
+      return (
+        <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
+          Нет записей
+        </p>
+      );
+    }
+
     return (
-      <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
-        Ошибка загрузки данных
-      </p>
-    );
-  }
+      <>
+        {allItems.map((item, index) => (
+          <div
+            key={item._id}
+            className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
+          >
+            <HistoryItem
+              item={item}
+              config={config}
+              type={type}
+              activeTab={activeTab}
+            />
+          </div>
+        ))}
 
-  const allItems = data?.pages.flatMap(page => page.items) || [];
-
-  if (allItems.length === 0) {
-    return (
-      <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
-        Нет записей
-      </p>
+        {hasNextPage && (
+          <div style={{
+            marginTop: '24px',
+            paddingTop: '24px',
+            borderTop: '1px solid var(--app-border-color)',
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <Button
+              fill="outline"
+              onClick={() => {
+                hapticFeedback('light');
+                fetchNextPage();
+              }}
+              disabled={isFetchingNextPage}
+              loading={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? 'Загрузка...' : 'Загрузить еще'}
+            </Button>
+          </div>
+        )}
+      </>
     );
-  }
+  })();
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-      paddingLeft: 'max(16px, env(safe-area-inset-left))',
-      paddingRight: 'max(16px, env(safe-area-inset-right))',
-      paddingTop: '16px'
-    }}>
-      {allItems.map(item => (
-        <HistoryItem
-          key={item._id}
-          item={item}
-          config={config}
-          type={type}
-          activeTab={activeTab}
-        />
-      ))}
-
-      {hasNextPage && (
-        <div style={{
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid var(--app-border-color)',
-          display: 'flex',
-          justifyContent: 'center'
-        }}>
-          <Button
-            fill="outline"
-            onClick={() => {
-              fetchNextPage();
-            }}
-            disabled={isFetchingNextPage}
-            loading={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? 'Загрузка...' : 'Загрузить еще'}
-          </Button>
-        </div>
-      )}
-    </div>
+    <PullToRefresh
+      onRefresh={async () => {
+        hapticFeedback('medium');
+        await refetch();
+      }}
+      headHeight={48}
+    >
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+        paddingRight: 'max(16px, env(safe-area-inset-right))',
+        paddingTop: '16px'
+      }}>
+        {content}
+      </div>
+    </PullToRefresh>
   );
 }
 

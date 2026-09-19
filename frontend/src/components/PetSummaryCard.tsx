@@ -143,7 +143,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               opacity: 0.9,
             }}
           >
-            <SpeciesIcon size={84} strokeWidth={1.5} />
+            <SpeciesIcon size={84} strokeWidth={1.5} style={{ display: 'block' }} />
           </div>
         )}
 
