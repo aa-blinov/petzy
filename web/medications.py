@@ -3,12 +3,11 @@
 from flask import Blueprint, jsonify, request, g
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
-from bson.errors import InvalidId
-from datetime import datetime
+from datetime import datetime, timezone
 
 import web.app as app
 from web.app import api
-from web.errors import error_response
+from web.errors import error_response, MedicationNotFoundDuringDeletion
 from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
@@ -23,7 +22,6 @@ from web.schemas import (
     UpcomingDosesResponse,
     SuccessResponse,
     ErrorResponse,
-    PetIdQuery,
     PetIdPaginationQuery,
     MedicationListQuery,
     UpcomingDosesQuery,
@@ -43,12 +41,11 @@ def add_medication():
     """Create a new medication course."""
     try:
         data = request.context.body  # type: ignore[attr-defined]
-        pet_id = g.pet_id
         username = g.username
 
         medication_data = data.model_dump()
         medication_data["username"] = username
-        medication_data["created_at"] = datetime.utcnow()
+        medication_data["created_at"] = datetime.now(timezone.utc)
 
         result = app.db.medications.insert_one(medication_data)
         
@@ -70,7 +67,6 @@ def get_medications():
     try:
         query_params = request.context.query
         pet_id = g.pet_id
-        username = g.username
         client_date_str = query_params.client_date
 
         cursor = app.db.medications.find({"pet_id": pet_id}).sort("created_at", -1)
@@ -83,7 +79,7 @@ def get_medications():
         med_ids = [str(med["_id"]) for med in meds]
         
         # Determine "today" based on client date if provided
-        now_utc = datetime.utcnow()
+        now_utc = datetime.now(timezone.utc)
         if client_date_str:
             try:
                 today_start = datetime.strptime(client_date_str, "%Y-%m-%d")
@@ -181,7 +177,6 @@ def delete_medication(id):
     try:
         medication = g.record
         medication_id = medication["_id"]
-        username = g.username
 
         # Atomic deletion: use session-based transaction if replica set is available
         # Otherwise, use best-effort approach with proper error handling
@@ -200,7 +195,7 @@ def delete_medication(id):
                     
                     if med_result.deleted_count == 0:
                         # Should not happen as we already checked existence
-                        raise Exception("Medication not found during deletion")
+                        raise MedicationNotFoundDuringDeletion("Medication not found during deletion")
                     
                     app.logger.info(
                         f"Deleted medication {id} and {intakes_result.deleted_count} related intakes"
@@ -319,7 +314,7 @@ def log_intake(id):
             "dose_taken": dose_taken,
             "comment": data.comment or "",
             "username": username,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
 
         app.db.medication_intakes.insert_one(intake_data)
@@ -383,7 +378,6 @@ def delete_intake(id):
     try:
         intake = g.record
         intake_id = intake["_id"]
-        username = g.username
 
         # Restore inventory if applicable
         medication_id = ObjectId(intake["medication_id"])
@@ -464,9 +458,9 @@ def get_upcoming_doses():
                     # Fallback or simple format
                     now = datetime.strptime(client_datetime_str, "%Y-%m-%d %H:%M")
             except ValueError:
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
         else:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
         current_day = now.weekday()
         today_start = datetime(now.year, now.month, now.day)
