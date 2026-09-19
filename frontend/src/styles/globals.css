@@ -21,9 +21,9 @@
     --app-text-tertiary: #A39A8E;
     --app-text-on-dark: #FFFFFF;
 
-    /* Layout Colors (warm cream background, white cards) */
+    /* Layout Colors (warm cream background, warm off-white cards) */
     --app-page-background: #FAF6EF;
-    --app-card-background: #FFFFFF;
+    --app-card-background: #FEFCF6;
     --app-border-color: #EFE9DD;
     --app-divider-color: #E5DFD0;
 
@@ -202,12 +202,22 @@
     white-space: nowrap;
 }
 
-/* Soft card — white card with subtle warm shadow on cream background. */
+/* Soft card — warm off-white card with subtle warm shadow on cream. */
 .card-soft {
     background: var(--app-card-background);
     border-radius: var(--radius-lg);
     box-shadow: var(--app-shadow);
     border: 1px solid var(--app-border-color);
+}
+
+/* antd-mobile's Form.Item mode="card" renders a hard-white card by
+   default — too clinical against the cream page. Inherit our warm
+   off-white so forms sit naturally in the system. */
+.adm-form-card,
+.adm-list-card,
+.adm-form .adm-list-card,
+.adm-form-card .adm-list-inner {
+    background-color: var(--app-card-background) !important;
 }
 
 /* Settings row — icon left, label/description center, control right.
