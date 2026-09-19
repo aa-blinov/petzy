@@ -8,6 +8,30 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+
+/** Predefined species — matches speciesIcon() in utils/speciesIcon.tsx
+    so the lucide placeholder stays consistent. */
+const SPECIES_OPTIONS = [
+    { label: 'Кот', value: 'cat' },
+    { label: 'Собака', value: 'dog' },
+    { label: 'Птица', value: 'bird' },
+    { label: 'Рыба', value: 'fish' },
+    { label: 'Другое', value: 'other' },
+];
+
+/** Gender options. */
+const GENDER_OPTIONS = [
+    { label: 'Не указан', value: '' },
+    { label: 'Мужской', value: 'male' },
+    { label: 'Женский', value: 'female' },
+];
+
+/** Sterilisation (neutered) options. */
+const NEUTERED_OPTIONS = [
+    { label: 'Не указано', value: '' },
+    { label: 'Нет', value: 'false' },
+    { label: 'Да', value: 'true' },
+];
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -40,6 +64,8 @@ export function PetForm() {
   const [loading, setLoading] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
+  const [speciesPickerVisible, setSpeciesPickerVisible] = useState(false);
+  const [genderPickerVisible, setGenderPickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
 
   // State for Image Viewer to avoid imperative ImageViewer.show()
@@ -53,9 +79,7 @@ export function PetForm() {
 
   // Refs for focusing inputs on row click
   const nameInputRef = useRef<any>(null);
-  const speciesInputRef = useRef<any>(null);
   const breedInputRef = useRef<any>(null);
-  const genderInputRef = useRef<any>(null);
   const healthNotesInputRef = useRef<any>(null);
 
   const { control, handleSubmit, reset, watch } = useForm<PetFormData>({
@@ -154,11 +178,6 @@ export function PetForm() {
     });
     return [days, months, years];
   }, [internalPickerDate, birthDateValue]);
-
-  const neuteredOptions = [
-    { label: 'Да', value: 'true' },
-    { label: 'Нет', value: 'false' },
-  ];
 
   const handleSearch = async (val: string) => {
     setSearchTerm(val);
@@ -306,20 +325,33 @@ export function PetForm() {
             <Controller
               name="species"
               control={control}
-              render={({ field }) => (
-                <Form.Item
-                  label="Тип питомца"
-                  clickable
-                  onClick={() => speciesInputRef.current?.focus()}
-                >
-                  <Input
-                    {...field}
-                    ref={speciesInputRef}
-                    id="species"
-                    placeholder="Кот, Собака..."
-                  />
-                </Form.Item>
-              )}
+              render={({ field }) => {
+                const selectedLabel = SPECIES_OPTIONS.find(o => o.value === field.value)?.label || '';
+                return (
+                  <Form.Item
+                    label="Тип питомца"
+                    clickable
+                    arrow
+                    onClick={() => setSpeciesPickerVisible(true)}
+                  >
+                    <span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
+                      {selectedLabel || 'Не выбран'}
+                    </span>
+                    <Picker
+                      columns={[SPECIES_OPTIONS]}
+                      visible={speciesPickerVisible}
+                      value={field.value ? [field.value] : []}
+                      onClose={() => setSpeciesPickerVisible(false)}
+                      onConfirm={(val) => {
+                        field.onChange(val[0] as string);
+                        setSpeciesPickerVisible(false);
+                      }}
+                      cancelText="Отмена"
+                      confirmText="Выбрать"
+                    />
+                  </Form.Item>
+                );
+              }}
             />
 
             <Controller
@@ -400,50 +432,70 @@ export function PetForm() {
             <Controller
               name="gender"
               control={control}
-              render={({ field }) => (
-                <Form.Item
-                  label="Пол"
-                  clickable
-                  onClick={() => genderInputRef.current?.focus()}
-                >
-                  <Input
-                    {...field}
-                    ref={genderInputRef}
-                    id="gender"
-                    placeholder="Необязательно"
-                  />
-                </Form.Item>
-              )}
+              render={({ field }) => {
+                const selectedLabel = GENDER_OPTIONS.find(o => o.value === (field.value || ''))?.label || '';
+                return (
+                  <Form.Item
+                    label="Пол"
+                    clickable
+                    arrow
+                    onClick={() => setGenderPickerVisible(true)}
+                  >
+                    <span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
+                      {selectedLabel || 'Не выбран'}
+                    </span>
+                    <Picker
+                      columns={[GENDER_OPTIONS]}
+                      visible={genderPickerVisible}
+                      value={field.value ? [field.value] : ['']}
+                      onClose={() => setGenderPickerVisible(false)}
+                      onConfirm={(val) => {
+                        field.onChange(val[0] as string);
+                        setGenderPickerVisible(false);
+                      }}
+                      cancelText="Отмена"
+                      confirmText="Выбрать"
+                    />
+                  </Form.Item>
+                );
+              }}
             />
 
             <Controller
               name="is_neutered"
               control={control}
-              render={({ field: { value, onChange } }) => (
-                <Form.Item
-                  label="Стерилизация"
-                  clickable
-                  onClick={() => setNeuteredPickerVisible(true)}
-                  arrow
-                >
-                  <Input
-                    readOnly
-                    value={value ? 'Да' : 'Нет'}
-                  />
-                  <Picker
-                    columns={[neuteredOptions]}
-                    visible={neuteredPickerVisible}
-                    onClose={() => setNeuteredPickerVisible(false)}
-                    value={[String(value)]}
-                    onConfirm={(val) => {
-                      onChange(val[0] === 'true');
-                      setNeuteredPickerVisible(false);
-                    }}
-                    cancelText="Отмена"
-                    confirmText="Сохранить"
-                  />
-                </Form.Item>
-              )}
+              render={({ field: { value, onChange } }) => {
+                // Display label: handle the undefined case so it doesn't
+                // show 'Нет' by default for an unset optional field.
+                const displayValue = value === undefined ? '' : String(value);
+                const selectedLabel = NEUTERED_OPTIONS.find(o => o.value === displayValue)?.label || '';
+                return (
+                  <Form.Item
+                    label="Стерилизация"
+                    clickable
+                    arrow
+                    onClick={() => setNeuteredPickerVisible(true)}
+                  >
+                    <span style={{ color: value !== undefined ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
+                      {selectedLabel || 'Не указано'}
+                    </span>
+                    <Picker
+                      columns={[NEUTERED_OPTIONS]}
+                      visible={neuteredPickerVisible}
+                      value={[displayValue]}
+                      onClose={() => setNeuteredPickerVisible(false)}
+                      onConfirm={(val) => {
+                        const v = val[0] as string;
+                        if (v === '') onChange(undefined);
+                        else onChange(v === 'true');
+                        setNeuteredPickerVisible(false);
+                      }}
+                      cancelText="Отмена"
+                      confirmText="Выбрать"
+                    />
+                  </Form.Item>
+                );
+              }}
             />
 
             <Controller
