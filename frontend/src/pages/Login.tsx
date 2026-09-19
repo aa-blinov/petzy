@@ -89,6 +89,7 @@ export function Login() {
               <Button
                 color="primary"
                 block
+                size="large"
                 loading={isLoading}
                 disabled={isLoading}
                 type="submit"

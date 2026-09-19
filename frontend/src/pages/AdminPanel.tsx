@@ -161,7 +161,7 @@ export function AdminPanel() {
                         aria-label="Редактировать"
                         style={{
                           width: 32, height: 32, padding: 0,
-                          border: 'none', borderRadius: 10,
+                          border: 'none', borderRadius: 'var(--radius-md)',
                           background: 'transparent',
                           color: 'var(--app-text-secondary)',
                           cursor: 'pointer', display: 'grid', placeItems: 'center',
@@ -177,7 +177,7 @@ export function AdminPanel() {
                         style={{
                           width: 32, height: 32, padding: 0,
                           border: '1px solid var(--app-danger-color)',
-                          borderRadius: 10,
+                          borderRadius: 'var(--radius-md)',
                           background: 'transparent',
                           color: 'var(--app-danger-color)',
                           cursor: deleteUserMutation.isPending ? 'not-allowed' : 'pointer',
