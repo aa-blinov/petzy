@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, ImageViewer, Toast } from 'antd-mobile';
+import { Dialog, ImageViewer, Toast, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import { Pencil } from 'lucide-react';
 import { petsService, type Pet } from '../services/pets.service';
@@ -9,11 +9,13 @@ import { usePet } from '../hooks/usePet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
 import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
+import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
+import { PetCardSkeleton } from '../components/Skeletons';
 
 export function Pets() {
   const navigate = useNavigate();
-  const { pets, selectPet, getSelectedPet } = usePet();
+  const { pets, selectPet, getSelectedPet, isLoading, refetch } = usePet();
 
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({
     visible: false,
@@ -93,7 +95,17 @@ export function Pets() {
           </button>
         </div>
 
-        {pets.length === 0 ? (
+        {isLoading ? (
+          <div className="safe-area-padding" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-md)',
+            marginTop: 'var(--spacing-sm)',
+          }}>
+            <PetCardSkeleton />
+            <PetCardSkeleton />
+          </div>
+        ) : pets.length === 0 ? (
           <div className="safe-area-padding" style={{
             textAlign: 'center',
             color: 'var(--app-text-secondary)',
@@ -123,22 +135,34 @@ export function Pets() {
             </button>
           </div>
         ) : (
-          <div className="safe-area-padding" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--spacing-md)',
-            marginTop: 'var(--spacing-sm)',
-          }}>
-            {pets.map(pet => (
-              <PetCard
-                key={pet._id}
-                pet={pet}
-                onEdit={() => handleEditPet(pet)}
-                onDelete={() => handleDeleteClick(pet)}
-                onImageTap={(url) => setImageViewer({ visible: true, image: url })}
-              />
-            ))}
-          </div>
+          <PullToRefresh
+            onRefresh={async () => {
+              hapticFeedback('medium');
+              await refetch();
+            }}
+            headHeight={48}
+          >
+            <div className="safe-area-padding" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-md)',
+              marginTop: 'var(--spacing-sm)',
+            }}>
+              {pets.map((pet, index) => (
+                <div
+                  key={pet._id}
+                  className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
+                >
+                  <PetCard
+                    pet={pet}
+                    onEdit={() => handleEditPet(pet)}
+                    onDelete={() => handleDeleteClick(pet)}
+                    onImageTap={(url) => setImageViewer({ visible: true, image: url })}
+                  />
+                </div>
+              ))}
+            </div>
+          </PullToRefresh>
         )}
       </div>
 

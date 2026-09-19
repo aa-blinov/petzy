@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input } from 'antd-mobile';
+import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
 import { AddOutline, EditSOutline, DeleteOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe } from 'lucide-react';
 import { medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { MedicationCardSkeleton } from '../components/Skeletons';
+import { hapticFeedback } from '../utils/haptic';
 
 export function MedicationsList() {
     const { selectedPetId } = usePet();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    const { data: medications = [], isLoading } = useQuery({
+    const { data: medications = [], isLoading, refetch } = useQuery({
         queryKey: ['medications', selectedPetId],
         queryFn: () => {
             const clientDate = new Date().toISOString().split('T')[0];
@@ -75,10 +76,12 @@ export function MedicationsList() {
     });
 
     const handleDelete = (med: Medication) => {
+        hapticFeedback('light');
         setDeleteDialog({ visible: true, medication: med });
     };
 
     const handleLogIntake = (med: Medication) => {
+        hapticFeedback('light');
         setLogIntakeDialog({
             visible: true,
             medication: med,
@@ -157,7 +160,15 @@ export function MedicationsList() {
                 </div>
 
                 {isLoading ? (
-                    <LoadingSpinner fullscreen={false} />
+                    <div className="safe-area-padding" style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 'var(--spacing-md)',
+                        marginTop: 'var(--spacing-sm)',
+                    }}>
+                        <MedicationCardSkeleton />
+                        <MedicationCardSkeleton />
+                    </div>
                 ) : medications.length === 0 ? (
                     <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-xl)' }}>
                         <div
@@ -222,14 +233,25 @@ export function MedicationsList() {
                         </div>
                     </div>
                 ) : (
+                    <PullToRefresh
+                        onRefresh={async () => {
+                            hapticFeedback('medium');
+                            await refetch();
+                        }}
+                        headHeight={48}
+                    >
                     <div className="safe-area-padding" style={{
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 'var(--spacing-md)',
                         marginTop: 'var(--spacing-sm)',
                     }}>
-                        {medications.map(med => (
-                            <Card key={med._id} className="card-soft" style={{
+                        {medications.map((med, index) => (
+                            <div
+                                key={med._id}
+                                className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
+                            >
+                            <Card className="card-soft" style={{
                                 borderRadius: 'var(--radius-md)',
                                 border: 'none',
                                 padding: 0,
@@ -331,8 +353,10 @@ export function MedicationsList() {
                                     )}
                                 </div>
                             </Card>
+                            </div>
                         ))}
                     </div>
+                    </PullToRefresh>
                 )}
             </div>
 

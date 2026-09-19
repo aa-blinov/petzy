@@ -35,6 +35,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   };
 
   const handleDelete = async () => {
+    hapticFeedback('medium');
     try {
       await healthRecordsService.delete(type as HealthRecordType, item._id);
       await queryClient.invalidateQueries({ queryKey: ['history'] });
@@ -45,6 +46,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         await queryClient.invalidateQueries({ queryKey: ['medications', 'upcoming'] });
       }
 
+      hapticFeedback('light');
       Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
 
       // Small delay to let Toast render before unmounting

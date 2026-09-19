@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Button, FloatingBubble } from 'antd-mobile';
+import { Button, FloatingBubble, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 
 import { historyConfig } from '../utils/historyConfig';
@@ -10,7 +10,7 @@ import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { DashboardSkeleton } from '../components/Skeletons';
 import { NextDoseWidget } from '../components/NextDoseWidget';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { QuickAddSheet } from '../components/QuickAddSheet';
@@ -29,7 +29,8 @@ export function Dashboard() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-    error
+    error,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ['timeline', selectedPetId],
     queryFn: async ({ pageParam = 1 }) => {
@@ -87,6 +88,13 @@ export function Dashboard() {
       {/* ─── Main scrollable content ─── */}
       <div className="page-container" style={{ paddingBottom: '80px' }}>
         <div className="max-width-container">
+          <PullToRefresh
+            onRefresh={async () => {
+              hapticFeedback('medium');
+              await refetch();
+            }}
+            headHeight={48}
+          >
 
           {/* Timeline Content */}
           <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -107,7 +115,7 @@ export function Dashboard() {
             </div>
 
             {isLoading ? (
-              <LoadingSpinner fullscreen={false} />
+              <DashboardSkeleton />
             ) : error ? (
               <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
                 Ошибка загрузки данных
@@ -179,6 +187,7 @@ export function Dashboard() {
               </>
             )}
           </div>
+          </PullToRefresh>
 
         </div>
       </div>

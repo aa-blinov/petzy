@@ -763,6 +763,82 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     animation: scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/* ========================================
+   Route Transitions (fluent-native feel)
+   ======================================== */
+
+/* The RouteTransition wrapper remounts on pathname change. The
+   animation runs once on mount and then sits idle. Forward and back
+   directions differ in distance + duration so push feels snappier
+   than pop. */
+.route-transition {
+    width: 100%;
+    will-change: transform, opacity;
+}
+
+.route-transition--forward {
+    animation: route-forward 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.route-transition--back {
+    animation: route-back 240ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.route-transition--replace {
+    animation: route-fade 180ms ease-out both;
+}
+
+@keyframes route-forward {
+    from { opacity: 0; transform: translate3d(24px, 0, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes route-back {
+    from { opacity: 0; transform: translate3d(-16px, 0, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes route-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Skeleton placeholders for list/card loading states. Pulsing
+   gradient on a rounded card shape — mimics the eventual card
+   silhouette so the swap is invisible. */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--app-border-color) 0%,
+        rgba(196, 106, 63, 0.10) 50%,
+        var(--app-border-color) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1400ms ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
+    .route-transition--forward,
+    .route-transition--back,
+    .route-transition--replace { animation: none; }
+}
+
+/* ========================================
+   Hero parallax (subtle scroll-driven translation)
+   ======================================== */
+.parallax-hero {
+    will-change: transform;
+    /* The actual transform is set inline from the scroll handler in
+       PetSummaryCard. We just give it a hint here. */
+}
+
 /* High refresh rate display optimizations (120Hz+) */
 @media (prefers-reduced-motion: no-preference) {
 
