@@ -139,6 +139,7 @@ export function UserForm() {
             layout="horizontal"
             mode="card"
           >
+            <Form.Header>Учётные данные</Form.Header>
             {!isEditing && (
               <Controller
                 name="username"
@@ -186,6 +187,8 @@ export function UserForm() {
                 </>
               )}
             />
+
+            <Form.Header>Профиль</Form.Header>
 
             <Controller
               name="full_name"
