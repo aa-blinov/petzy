@@ -13,7 +13,7 @@ Listens on 0.0.0.0:5001 — matches the vite proxy in frontend/vite.config.ts.
 import logging
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(

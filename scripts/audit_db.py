@@ -42,7 +42,6 @@ def find_enclosing_block(text: str, pos: int) -> tuple[int, int]:
 
 def find_enclosing_loop(text: str, pos: int) -> int:
     """Return the line number of the nearest enclosing `for` / `while` loop, or 0."""
-    line_no = text[:pos].count("\n") + 1
     # Search backwards for `for ... in` or `while ` at line starts.
     chunk = text[:pos]
     for pat in (r"\.for [\w,\s]+ in ", r"\.while "):
@@ -172,7 +171,7 @@ def main() -> int:
 
     # ---- Report ----
     print("=" * 78)
-    print(f"MongoDB usage audit\n")
+    print("MongoDB usage audit\n")
     print(f"Files scanned: {len(list(WEB_DIR.glob('*.py')))}")
     print(f"Index declarations found: {len(index_declarations)}")
     print(f"Collections queried: {len(queried_collections)}\n")

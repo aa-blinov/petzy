@@ -209,7 +209,6 @@ def profile_route(page: Page, name: str, path: str) -> PageReport:
     t0 = time.perf_counter()
     try:
         response = page.goto(url, wait_until="domcontentloaded", timeout=15_000)
-        dcl = (time.perf_counter() - t0) * 1000
         # If the response status is e.g. 5xx, flag it.
         if response and response.status >= 500:
             report.status = "http_5xx"

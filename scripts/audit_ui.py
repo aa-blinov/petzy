@@ -83,7 +83,7 @@ def main() -> int:
     # ---------- Report ----------
     print("=" * 78)
     print(f"Frontend UI audit — {file_count} files, {line_count} lines\n")
-    print(f"Pattern hits:")
+    print("Pattern hits:")
     for label, count in pattern_hits.most_common():
         sev = next((p[2] for p in PATTERNS if p[0] == label), "")
         print(f"  {label:32s} {count:>4d}   [{sev}]")

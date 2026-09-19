@@ -18,7 +18,6 @@ from web.schemas import (
     MedicationUpdate,
     MedicationListResponse,
     MedicationDetailResponse,
-    MedicationItem,
     MedicationIntakeCreate,
     MedicationIntakeListResponse,
     UpcomingDosesResponse,
