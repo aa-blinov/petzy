@@ -5,12 +5,12 @@
       "path": "/login",
       "status": "ok",
       "timing_ms": {
-        "load": 405.5,
-        "network_idle": 1947.5
+        "load": 387.6,
+        "network_idle": 1148.1
       },
       "web_vitals": {
-        "fcp_ms": 424,
-        "lcp_ms": 1056,
+        "fcp_ms": 408,
+        "lcp_ms": 672,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -19,7 +19,7 @@
           {
             "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
             "location": {
-              "url": "http://localhost:5173/api/pets",
+              "url": "http://localhost:5173/api/auth/check-admin",
               "line": 0,
               "column": 0,
               "lineNumber": 0,
@@ -29,7 +29,7 @@
           {
             "text": "Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)",
             "location": {
-              "url": "http://localhost:5173/api/auth/check-admin",
+              "url": "http://localhost:5173/api/pets",
               "line": 0,
               "column": 0,
               "lineNumber": 0,
@@ -82,11 +82,11 @@
       "page_errors": [],
       "failed_requests": [
         {
-          "url": "http://localhost:5173/api/pets",
+          "url": "http://localhost:5173/api/auth/check-admin",
           "status": 401
         },
         {
-          "url": "http://localhost:5173/api/auth/check-admin",
+          "url": "http://localhost:5173/api/pets",
           "status": 401
         },
         {
@@ -113,8 +113,8 @@
       "path": "/",
       "status": "ok",
       "timing_ms": {
-        "load": 50.7,
-        "network_idle": 725.6
+        "load": 49.3,
+        "network_idle": 699.5
       },
       "web_vitals": {
         "fcp_ms": 88,
@@ -135,12 +135,12 @@
       "path": "/pets",
       "status": "ok",
       "timing_ms": {
-        "load": 44.6,
-        "network_idle": 565.8
+        "load": 46.7,
+        "network_idle": 566.8
       },
       "web_vitals": {
-        "fcp_ms": 60,
-        "lcp_ms": 60,
+        "fcp_ms": 64,
+        "lcp_ms": 80,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -157,12 +157,12 @@
       "path": "/history",
       "status": "ok",
       "timing_ms": {
-        "load": 46.0,
-        "network_idle": 562.9
+        "load": 44.5,
+        "network_idle": 563.8
       },
       "web_vitals": {
-        "fcp_ms": 64,
-        "lcp_ms": 64,
+        "fcp_ms": 56,
+        "lcp_ms": 56,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -179,12 +179,12 @@
       "path": "/history?view=chart",
       "status": "ok",
       "timing_ms": {
-        "load": 48.4,
-        "network_idle": 568.3
+        "load": 45.1,
+        "network_idle": 565.3
       },
       "web_vitals": {
-        "fcp_ms": 60,
-        "lcp_ms": 60,
+        "fcp_ms": 64,
+        "lcp_ms": 64,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -201,12 +201,12 @@
       "path": "/medications",
       "status": "ok",
       "timing_ms": {
-        "load": 53.2,
-        "network_idle": 568.1
+        "load": 51.6,
+        "network_idle": 563.9
       },
       "web_vitals": {
-        "fcp_ms": 64,
-        "lcp_ms": 64,
+        "fcp_ms": 68,
+        "lcp_ms": 80,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -223,12 +223,12 @@
       "path": "/settings",
       "status": "ok",
       "timing_ms": {
-        "load": 43.7,
-        "network_idle": 562.8
+        "load": 44.4,
+        "network_idle": 560.5
       },
       "web_vitals": {
-        "fcp_ms": 64,
-        "lcp_ms": 64,
+        "fcp_ms": 60,
+        "lcp_ms": 60,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -245,11 +245,11 @@
       "path": "/pets/new",
       "status": "ok",
       "timing_ms": {
-        "load": 47.7,
-        "network_idle": 571.1
+        "load": 42.4,
+        "network_idle": 563.4
       },
       "web_vitals": {
-        "fcp_ms": 64,
+        "fcp_ms": 60,
         "lcp_ms": 112,
         "cls": 0,
         "long_tasks_gt_50ms": 0
@@ -267,12 +267,12 @@
       "path": "/form/feeding",
       "status": "ok",
       "timing_ms": {
-        "load": 44.3,
-        "network_idle": 562.2
+        "load": 45.2,
+        "network_idle": 560.9
       },
       "web_vitals": {
-        "fcp_ms": 56,
-        "lcp_ms": 76,
+        "fcp_ms": 64,
+        "lcp_ms": 80,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -289,12 +289,12 @@
       "path": "/medications/new",
       "status": "ok",
       "timing_ms": {
-        "load": 43.8,
-        "network_idle": 562.1
+        "load": 44.0,
+        "network_idle": 558.5
       },
       "web_vitals": {
         "fcp_ms": 64,
-        "lcp_ms": 80,
+        "lcp_ms": 84,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -311,12 +311,12 @@
       "path": "/tiles-settings",
       "status": "ok",
       "timing_ms": {
-        "load": 42.9,
-        "network_idle": 557.4
+        "load": 46.9,
+        "network_idle": 558.8
       },
       "web_vitals": {
-        "fcp_ms": 52,
-        "lcp_ms": 68,
+        "fcp_ms": 72,
+        "lcp_ms": 72,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -333,12 +333,12 @@
       "path": "/form-defaults",
       "status": "ok",
       "timing_ms": {
-        "load": 41.0,
-        "network_idle": 555.9
+        "load": 46.5,
+        "network_idle": 559.3
       },
       "web_vitals": {
-        "fcp_ms": 60,
-        "lcp_ms": 80,
+        "fcp_ms": 76,
+        "lcp_ms": 76,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -355,12 +355,12 @@
       "path": "/admin",
       "status": "ok",
       "timing_ms": {
-        "load": 45.4,
-        "network_idle": 560.8
+        "load": 44.0,
+        "network_idle": 559.6
       },
       "web_vitals": {
-        "fcp_ms": 64,
-        "lcp_ms": 64,
+        "fcp_ms": 56,
+        "lcp_ms": 56,
         "cls": 0,
         "long_tasks_gt_50ms": 0
       },
@@ -377,8 +377,8 @@
       "path": "/admin/users/new",
       "status": "ok",
       "timing_ms": {
-        "load": 51.1,
-        "network_idle": 562.1
+        "load": 49.2,
+        "network_idle": 560.5
       },
       "web_vitals": {
         "fcp_ms": 64,
