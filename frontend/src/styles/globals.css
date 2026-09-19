@@ -236,6 +236,25 @@
     --border-bottom: solid 1px var(--app-divider-color) !important;
 }
 
+/* Forms — flatten the card boundary so the form and its fields read as
+   one continuous surface on the page. The user wants no visible
+   distinction between the form section and its rows; section headers
+   (Form.Header → .adm-list-header) and spacing do the segmentation. */
+.adm-form .adm-list-card {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+.adm-form .adm-list-item {
+    /* Drop the hairlines between rows so the whole form is one flat
+       surface. Section headers are the only visual separator. */
+    --border-inner: none !important;
+    --border-top: none !important;
+    --border-bottom: none !important;
+}
+
 /* antd-mobile's Input defaults to `--background-color: #ffffff`, which
    paints a stark-white rectangle inside any warm card. Drop the white
    fill so inputs sit flush with their parent card. */
