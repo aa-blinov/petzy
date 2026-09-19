@@ -1,10 +1,20 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Switch } from 'antd-mobile';
+import { Button, Dialog, Form, Switch } from 'antd-mobile';
 import { useTheme } from '../hooks/useTheme';
+import { useAuth } from '../hooks/useAuth';
 
 export function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme, isDark } = useTheme();
+  const { logout } = useAuth();
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+
+  const confirmLogout = async () => {
+    setLogoutDialogVisible(false);
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <div className="page-container">
@@ -50,9 +60,42 @@ export function Settings() {
             >
               Настройки форм
             </Form.Item>
+
+            <Form.Header>Дашборд</Form.Header>
+            <Form.Item
+              onClick={() => navigate('/tiles-settings')}
+              clickable
+              arrow
+            >
+              Порядок тайлов
+            </Form.Item>
           </Form>
+
+          <Button
+            block
+            color="danger"
+            fill="outline"
+            style={{ marginTop: 'var(--spacing-lg)' }}
+            onClick={() => setLogoutDialogVisible(true)}
+          >
+            Выйти из аккаунта
+          </Button>
         </div>
       </div>
+
+      <Dialog
+        visible={logoutDialogVisible}
+        title="Выход из аккаунта"
+        content="Вы уверены, что хотите выйти?"
+        closeOnAction
+        onClose={() => setLogoutDialogVisible(false)}
+        actions={[
+          [
+            { key: 'cancel', text: 'Отмена', onClick: () => setLogoutDialogVisible(false) },
+            { key: 'confirm', text: 'Выйти', bold: true, danger: true, onClick: confirmLogout },
+          ],
+        ]}
+      />
     </div>
   );
 }
