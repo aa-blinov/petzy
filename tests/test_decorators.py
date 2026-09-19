@@ -1,9 +1,8 @@
 
 import pytest
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify
 from bson import ObjectId
 from web.decorators import require_pet_access, require_record_access
-from web.errors import error_response
 
 # Mock app and db setup for testing
 @pytest.fixture

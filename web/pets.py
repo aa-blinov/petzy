@@ -13,7 +13,7 @@ from web.app import api, logger  # shared logger and api
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
 from web.helpers import get_pet_and_validate, parse_date, optimize_image
-from web.errors import error_response
+from web.errors import error_response, PetNotFoundDuringDeletion
 from web.messages import get_message
 from web.pydantic_helpers import validate_request_data
 from web.schemas import (
@@ -554,7 +554,7 @@ def delete_pet(pet_id):
                     result = app.db["pets"].delete_one({"_id": pet_id_obj}, session=session)
                     
                     if result.deleted_count == 0:
-                        raise Exception("Pet not found during deletion")
+                        raise PetNotFoundDuringDeletion("Pet not found during deletion")
                     
                     logger.info(
                         f"Pet deleted with transaction: id={pet_id}, user={username}, "

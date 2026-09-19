@@ -1,7 +1,7 @@
 """Tests for medication management endpoints."""
 
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from bson import ObjectId
 
 @pytest.mark.medications
@@ -183,8 +183,7 @@ class TestMedicationManagement:
         """Test getting upcoming doses for all pets."""
         # Use a fixed day of week for predictability in test
         # Let's say today is Monday (0)
-        now = datetime.now(timezone.utc)
-        
+
         med_id = ObjectId()
         mock_db["medications"].insert_one({
             "_id": med_id,
@@ -272,7 +271,7 @@ class TestMedicationManagement:
             "medication_id": str(med_id),
             "pet_id": str(test_pet["_id"]),
             "dose_taken": 1.0,
-            "date_time": datetime.utcnow(), # Use utcnow to match endpoint logic
+            "date_time": datetime.now(timezone.utc), # Use UTC to match endpoint logic
             "username": "testuser"
         })
 

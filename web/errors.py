@@ -9,6 +9,23 @@ from flask import jsonify, Response
 logger = logging.getLogger(__name__)
 
 
+class TransactionRollback(Exception):
+    """Raised inside a MongoDB transaction to force a rollback.
+
+    Use this when business logic detects an inconsistency that should
+    abort the transaction (e.g. a document disappeared between read and
+    delete). Catch and translate at the route boundary.
+    """
+
+
+class PetNotFoundDuringDeletion(TransactionRollback):
+    """Pet disappeared between access check and transaction delete."""
+
+
+class MedicationNotFoundDuringDeletion(TransactionRollback):
+    """Medication disappeared between access check and transaction delete."""
+
+
 @dataclass(frozen=True)
 class ErrorDef:
     """Definition of a single error type."""

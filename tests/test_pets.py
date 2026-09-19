@@ -472,8 +472,7 @@ class TestPetManagement:
         
         # Track if fs.delete was called
         delete_called = False
-        original_delete = fs.delete
-        
+
         def mock_delete(file_id):
             nonlocal delete_called
             delete_called = True

@@ -1,6 +1,5 @@
 from functools import wraps
 from flask import request, g
-from bson import ObjectId
 
 from web.security import get_current_user, login_required
 from web.helpers import validate_pet_access, get_record_and_validate_access

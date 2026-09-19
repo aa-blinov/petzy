@@ -54,6 +54,7 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
         else:
             raise ValueError(f"Неверный формат даты. Ожидается YYYY-MM-DD, получено '{date_str}'")
 
+    # Compare against current local time (naive, matching the contract that user input is local).
     now = datetime.now()
     max_future = now + timedelta(days=max_future_days) if allow_future else now
     max_past = now - timedelta(days=max_past_years * 365)
