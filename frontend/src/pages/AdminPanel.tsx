@@ -210,23 +210,6 @@ export function AdminPanel() {
                       <span style={{ fontSize: 12, color: 'var(--app-text-secondary)' }}>{user.email}</span>
                     )}
                     <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                      {/* Only the exception gets a badge. "Активен" is the
-                          normal state of every user, so flagging it spent
-                          attention on nothing — and it did so in iOS green,
-                          the one cold colour in a warm palette. A disabled
-                          account is worth interrupting for; a working one
-                          is not. */}
-                      {user.is_active === false && (
-                        <span
-                          className="chip"
-                          style={{
-                            background: 'color-mix(in srgb, var(--app-danger-color) 12%, transparent)',
-                            color: 'var(--app-danger-color)',
-                          }}
-                        >
-                          Неактивен
-                        </span>
-                      )}
                       {user.created_at && (
                         <span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>
                           {/* Raw "2026-09-20 07:40" was the only bare

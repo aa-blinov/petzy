@@ -12,8 +12,8 @@
  *   (basic iOS-style edge gesture).
  *
  * The three states map to `.route-transition--forward|back|replace`,
- * backed by the `route-forward` / `route-back` / `route-fade` keyframes
- * in globals.css.
+ * backed by the `route-forward` / `route-back` / `motion-fade`
+ * keyframes in globals.css.
  *
  * The key on the inner div forces a remount on pathname change, which
  * restarts the CSS animation each time.
