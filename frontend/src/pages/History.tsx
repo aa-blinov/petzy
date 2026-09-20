@@ -12,7 +12,7 @@ import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
 import { typeIconMap } from '../utils/constants';
 import { healthRecordsService, type TimelineResponse } from '../services/healthRecords.service';
-import { HistoryItemSkeleton } from '../components/Skeletons';
+import { SkeletonList } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
 
 /** Format a YYYY-MM-DD dateStr as a friendly Russian relative or absolute label. */
@@ -130,13 +130,7 @@ export function History() {
 
     const content = (() => {
         if (isLoading) {
-            return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <HistoryItemSkeleton />
-                    <HistoryItemSkeleton />
-                    <HistoryItemSkeleton />
-                </div>
-            );
+            return <SkeletonList count={4} gap={12} />;
         }
 
         if (error) {
