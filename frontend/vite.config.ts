@@ -49,33 +49,30 @@ export default defineConfig(() => {
         navigateFallbackDenylist: [/^\/assets\//],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\/(pets|auth\/check-admin)/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'api-static-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 5 * 60, // 5 minutes
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
+            // No API response is ever served from a cache.
+            //
+            // This used to be NetworkFirst with a 60-second TTL (and
+            // /api/pets was CacheFirst for five minutes). Both were a
+            // bad trade for a health diary: a one-minute window buys
+            // essentially no offline capability — anything longer than
+            // a minute offline and the cache is stale anyway — while
+            // it did leave one user's pet roster and medical records
+            // in Cache Storage on a possibly shared device, ready to
+            // be served to whoever signed in next, and let a slow
+            // backend (mid-deploy) answer from a stale entry so the
+            // UI rendered old data and then corrected itself.
+            //
+            // It matters most for /auth/session, the app's "am I
+            // signed in?" probe: a cached 200 there would keep a
+            // signed-out user looking signed in, and it has to fail
+            // loudly during a deploy rather than answer from a stale
+            // entry.
+            //
+            // The app shell is still precached, so the PWA installs
+            // and launches offline; data simply requires the network
+            // and says so when it is missing.
             urlPattern: /^\/api\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-dynamic-cache',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60, // 1 minute for other API calls
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+            handler: 'NetworkOnly',
           }
         ]
       }
@@ -118,6 +115,20 @@ export default defineConfig(() => {
   },
   server: {
     port: 5173, // Vite default port for local dev
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
+  // `vite preview` serves the production build — the only local way to
+  // exercise the service worker, which is disabled under `vite dev`.
+  // It needs the same API proxy as the dev server or every request
+  // 404s against the preview server itself.
+  preview: {
+    port: 4173,
     proxy: {
       '/api': {
         target: 'http://localhost:5001',

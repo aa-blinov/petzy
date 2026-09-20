@@ -503,6 +503,45 @@ html[data-prefers-color-scheme='dark'] {
     --app-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
+/* ── antd-mobile token bridge ────────────────────────────────────────
+   antd-mobile paints its components from its own --adm-* tokens, which
+   default to its blue palette. `--adm-color-primary` was already
+   overridden on :root, but antd ALSO redeclares the whole set under
+   `html[data-prefers-color-scheme='dark']` — a higher-specificity
+   selector than `:root` — so in dark mode its blue won anyway. That is
+   why buttons like "Шаблоны" on the medication form came out blue while
+   everything hand-styled was copper, and why antd's own red/green and
+   near-black fills showed up next to the app's warm palette.
+
+   Point the tokens at the app's own, once per theme. The values come
+   through `var(--app-*)`, so they follow whatever the theme block sets.
+   Both blocks are needed: the :root copy covers light mode, and the
+   dark copy has to match antd's selector to outrank it. */
+:root,
+html[data-prefers-color-scheme='dark'] {
+    --adm-color-primary: var(--app-primary-color);
+    --adm-color-success: var(--app-success-color);
+    --adm-color-warning: var(--app-warning-color);
+    --adm-color-danger: var(--app-danger-color);
+    --adm-color-text: var(--app-text-primary);
+    --adm-color-text-secondary: var(--app-text-secondary);
+    --adm-color-weak: var(--app-text-tertiary);
+    --adm-color-border: var(--app-border-color);
+    --adm-color-box: var(--app-page-background);
+    --adm-color-fill-content: var(--app-page-background);
+    /* "wathet" is antd's selected/tinted surface — a blue wash
+       (#e7f1ff light, #0d2543 dark). It is what painted the weekday
+       chips on the medication form navy while the rest of the screen
+       was copper. */
+    --adm-color-wathet: var(--app-accent-soft);
+    /* Neutral gray used for disabled checkbox/radio outlines. */
+    --adm-color-light: var(--app-border-color);
+    --adm-color-yellow: var(--app-warning-color);
+    --adm-color-orange: var(--app-accent);
+    /* --adm-color-highlight already resolves to --adm-color-danger,
+       which is mapped above, so it follows along. */
+}
+
 /* iOS Safe Area Overrides for antd-mobile components */
 :root {
     --adm-safe-area-top: env(safe-area-inset-top);
