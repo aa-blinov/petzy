@@ -586,8 +586,17 @@ select {
     color: var(--app-primary-color) !important;
 }
 
-/* FAB — primary action stays in our copper accent, not blue. */
+/* FAB — primary action stays in our copper accent, not blue.
+   NOTE: the wrapper `.adm-floating-bubble` itself spans the whole
+   viewport (`position: fixed; inset: 0`) and is just a positioning
+   shim for the inner button. Painting the wrapper leaks our copper
+   across the entire screen — only the inner button should carry the
+   background. */
 .adm-floating-bubble {
+    background: transparent !important;
+}
+
+.adm-floating-bubble-button {
     background: var(--app-primary-color) !important;
     border-color: var(--app-primary-color) !important;
 }
