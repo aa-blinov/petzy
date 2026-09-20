@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TabBar } from 'antd-mobile';
-import { FileOutline, SetOutline, UserOutline, ClockCircleOutline, HeartOutline } from 'antd-mobile-icons';
+import { BookOpen, Pill, Clock, SlidersHorizontal, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { hapticFeedback } from '../utils/haptic';
 
@@ -25,22 +25,22 @@ export function BottomTabBar() {
     {
       key: '/',
       title: 'Дневник',
-      icon: <FileOutline />,
+      icon: <BookOpen size={22} strokeWidth={1.8} />,
     },
     {
       key: '/medications',
       title: 'Лекарства',
-      icon: <HeartOutline />,
+      icon: <Pill size={22} strokeWidth={1.8} />,
     },
     {
       key: '/history',
       title: 'История',
-      icon: <ClockCircleOutline />,
+      icon: <Clock size={22} strokeWidth={1.8} />,
     },
     {
       key: '/settings',
       title: 'Настройки',
-      icon: <SetOutline />,
+      icon: <SlidersHorizontal size={22} strokeWidth={1.8} />,
     },
   ];
 
@@ -49,7 +49,7 @@ export function BottomTabBar() {
     tabs.push({
       key: '/admin',
       title: 'Админ',
-      icon: <UserOutline />,
+      icon: <Users size={22} strokeWidth={1.8} />,
     });
   }
 
