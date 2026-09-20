@@ -155,7 +155,7 @@ export function Pets() {
               {pets.map((pet, index) => (
                 <div
                   key={pet._id}
-                  className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
+                  className={`motion-enter motion-stagger-${Math.min(index + 1, 4)}`}
                 >
                   <PetCard
                     pet={pet}

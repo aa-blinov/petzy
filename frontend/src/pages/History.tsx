@@ -172,7 +172,7 @@ export function History() {
                                 return (
                                     <div
                                         key={item._id}
-                                        className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
+                                        className={`motion-enter motion-stagger-${Math.min(index + 1, 4)}`}
                                     >
                                         <HistoryItem
                                             item={item}
@@ -308,7 +308,7 @@ export function History() {
                                 fontSize: 'var(--text-xs)',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                transition: 'all 180ms ease',
+                                transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
                             }}
                         >
                             Список
@@ -325,7 +325,7 @@ export function History() {
                                 fontSize: 'var(--text-xs)',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                transition: 'all 180ms ease',
+                                transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
                             }}
                         >
                             График

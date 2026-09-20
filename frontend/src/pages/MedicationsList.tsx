@@ -252,7 +252,7 @@ export function MedicationsList() {
                         {medications.map((med, index) => (
                             <div
                                 key={med._id}
-                                className={`animate-slide-up animate-stagger-${Math.min(index + 1, 6)}`}
+                                className={`motion-enter motion-stagger-${Math.min(index + 1, 4)}`}
                             >
                             <SwipeableRow
                                 leftAction={{

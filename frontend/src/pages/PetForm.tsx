@@ -635,7 +635,7 @@ export function PetForm() {
                     gap: '8px',
                     cursor: 'pointer',
                     background: 'var(--adm-color-fill-light)',
-                    transition: 'all 0.2s ease',
+                    transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--adm-color-primary)';
