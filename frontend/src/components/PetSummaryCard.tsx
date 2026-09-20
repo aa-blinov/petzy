@@ -17,7 +17,7 @@ import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
-import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
+import { speciesIconMap, SPECIES_FALLBACK_ICON, genderLabel } from '../utils/constants';
 import { PetImage } from './PetImage';
 import { CountUp } from './CountUp';
 
@@ -192,7 +192,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               textOverflow: "ellipsis",
             }}
           >
-            {[age, pet.breed, pet.gender].filter(Boolean).join(" · ") || "—"}
+            {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ") || "—"}
           </div>
 
           {/* Weight chip — the always-relevant health metric */}
