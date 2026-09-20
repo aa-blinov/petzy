@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usersService, type UserCreate, type UserUpdate } from '../services/users.service';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SpinnerButton } from '../components/SpinnerButton';
 
 const userSchema = z.object({
   username: z.string().min(1, 'Имя пользователя обязательно'),
@@ -254,16 +255,13 @@ export function UserForm() {
               type="submit"
               onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
             />
-            <Button
-              block
-              color="primary"
-              size="large"
-              onClick={() => handleSubmit(onSubmit)()}
+            <SpinnerButton
               loading={isLoading}
+              onClick={() => handleSubmit(onSubmit)()}
               style={{ borderRadius: '12px', fontWeight: 600 }}
             >
               {isEditing ? 'Сохранить' : 'Создать'}
-            </Button>
+            </SpinnerButton>
             <Button
               block
               size="large"
