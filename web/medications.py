@@ -3,7 +3,7 @@
 from flask import Blueprint, jsonify, request, g
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import web.app as app
 from web.app import api
@@ -85,7 +85,11 @@ def get_medications():
             try:
                 today_start = datetime.strptime(client_date_str, "%Y-%m-%d")
             except ValueError:
-                # Fallback to UTC if invalid
+                app.logger.warning(
+                    f"Unparseable client_date {client_date_str!r}; falling "
+                    "back to server UTC — \"taken today\" may land on the "
+                    "wrong day"
+                )
                 today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
         else:
             today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
@@ -303,7 +307,9 @@ def log_intake(id):
         if dose_taken is None:
             dose_taken = medication.get("default_dose", 1.0)
 
-        # Update inventory if enabled (before inserting intake to maintain consistency)
+        # Reserve stock before recording the intake; the insert below
+        # gives it back if it fails.
+        inventory_decremented_by = 0.0
         if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
             # Optimistic concurrency control with retry loop (similar to delete_intake)
             max_retries = 3
@@ -334,6 +340,7 @@ def log_intake(id):
                 
                 if result.matched_count > 0:
                     inventory_updated = True
+                    inventory_decremented_by = dose_taken
                     break
                 # If matched_count == 0, inventory was changed by concurrent request, retry
                 app.logger.warning(
@@ -360,7 +367,23 @@ def log_intake(id):
             "created_at": datetime.now(timezone.utc)
         }
 
-        app.db.medication_intakes.insert_one(intake_data)
+        try:
+            app.db.medication_intakes.insert_one(intake_data)
+        except Exception:
+            # The stock was already decremented above. Without this the
+            # dose would stay spent on an intake that does not exist —
+            # the original ordering claimed to be "for consistency" but
+            # had no compensation behind it.
+            if inventory_decremented_by:
+                app.db.medications.update_one(
+                    {"_id": medication_id},
+                    {"$inc": {"inventory_current": inventory_decremented_by}},
+                )
+                app.logger.warning(
+                    f"Intake insert failed for medication {id}; "
+                    f"restored {inventory_decremented_by} to inventory"
+                )
+            raise
 
         return jsonify({"message": "Intake logged"}), 201
     except Exception as e:
@@ -501,8 +524,17 @@ def get_upcoming_doses():
                     # Fallback or simple format
                     now = datetime.strptime(client_datetime_str, "%Y-%m-%d %H:%M")
             except ValueError:
+                app.logger.warning(
+                    f"Unparseable client_datetime {client_datetime_str!r}; "
+                    "falling back to server UTC — dose timing will be off "
+                    "by the caller's offset"
+                )
                 now = datetime.now(timezone.utc)
         else:
+            app.logger.warning(
+                "client_datetime missing; falling back to server UTC — dose "
+                "timing will be off by the caller's offset"
+            )
             now = datetime.now(timezone.utc)
 
         current_day = now.weekday()
@@ -565,6 +597,40 @@ def get_upcoming_doses():
                         )
                     })
         
+        # Nothing left today — look ahead for the next scheduled dose.
+        #
+        # The loop above only ever considered `current_day`, so on a day
+        # the course doesn't cover (a Mon/Wed/Fri schedule on a Tuesday),
+        # or once the last dose of the day was taken, this returned an
+        # empty list and the widget rendered nothing at all. For a
+        # component called "next dose" that is the case it exists for.
+        if not upcoming:
+            for offset in range(1, 8):
+                day = (current_day + offset) % 7
+                for med in medications:
+                    schedule = med.get("schedule", {})
+                    if day not in schedule.get("days", []):
+                        continue
+                    times = sorted(schedule.get("times", []))
+                    if not times:
+                        continue
+                    upcoming.append({
+                        "medication_id": str(med["_id"]),
+                        "name": med["name"],
+                        "type": med.get("type", "pill"),
+                        "time": times[0],
+                        "date": (today_start + timedelta(days=offset)).strftime("%Y-%m-%d"),
+                        "is_overdue": False,
+                        "inventory_warning": bool(
+                            med.get("inventory_enabled", False) and
+                            (med.get("inventory_current") or 0) <= (med.get("inventory_warning_threshold") or 0)
+                        ),
+                    })
+                if upcoming:
+                    # Stop at the first day that has anything; showing the
+                    # whole week would bury the one dose that matters.
+                    break
+
         return jsonify({"doses": upcoming})
     except Exception as e:
         app.logger.error(f"Error fetching upcoming doses: {e}")
