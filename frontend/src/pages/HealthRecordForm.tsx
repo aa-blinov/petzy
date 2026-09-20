@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Form, Toast } from 'antd-mobile';
+import { Button, Form } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { formConfigs, getFormSettings } from '../utils/formsConfig';
 import type { HealthRecordType } from '../utils/constants';
@@ -222,7 +223,7 @@ export function HealthRecordForm() {
           reset(safeFormData);
         } catch (err) {
           console.error('Error loading record:', err);
-          Toast.show({ content: 'Ошибка загрузки записи', icon: 'fail' });
+          showToast.failure('Ошибка загрузки записи');
           navigate('/history');
         } finally {
           setIsLoading(false);
@@ -254,10 +255,7 @@ export function HealthRecordForm() {
 
       await queryClient.invalidateQueries({ queryKey: ['history'] });
 
-      Toast.show({
-        content: id ? config.successMessage(true) : config.successMessage(false),
-        icon: 'success',
-        duration: 1500,
+      showToast.success(id ? config.successMessage(true) : config.successMessage(false), {
         afterClose: () => {
           if (id) {
             const activeTab = searchParams.get('tab');
@@ -265,12 +263,12 @@ export function HealthRecordForm() {
           } else {
             navigate('/');
           }
-        }
+        },
       });
     } catch (error: any) {
       console.error('Error submitting form:', error);
       const errorMessage = error.response?.data?.error || 'Ошибка при сохранении';
-      Toast.show({ content: errorMessage, icon: 'fail' });
+      showToast.failure(errorMessage);
     }
   };
 

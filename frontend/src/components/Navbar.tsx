@@ -37,6 +37,13 @@ export function Navbar() {
   const mainTabs = ['/', '/medications', '/settings', '/admin', '/history'];
   const isMainTab = mainTabs.includes(location.pathname) || location.pathname === '';
 
+  // The pet switcher only belongs on screens whose content is scoped to
+  // one pet. It used to render on every route: in the admin panel and
+  // settings it controlled nothing, and inside a form it silently
+  // repointed the record being edited at a different animal.
+  const petScopedRoutes = ['/', '/medications', '/history'];
+  const showPetSwitcher = petScopedRoutes.includes(location.pathname) || location.pathname === '';
+
   const logo = (
     <div
       style={{
@@ -63,7 +70,7 @@ export function Navbar() {
     </div>
   ) : null;
 
-  const rightContent = (
+  const rightContent = !showPetSwitcher ? null : (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>
       {/* Single-pet households get nothing here. The name already sits
           on the pet card right below, so a label in the navbar was a

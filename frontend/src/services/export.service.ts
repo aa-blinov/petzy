@@ -11,7 +11,10 @@ export const exportService = {
 
       // Extract filename from Content-Disposition header
       const contentDisposition = response.headers['content-disposition'];
-      let filename = `${exportType}_export.${format}`;
+      // The all-types export arrives as a ZIP of per-type files, so the
+      // fallback name must not claim the requested text format.
+      const fallbackExt = exportType === 'all' ? 'zip' : format;
+      let filename = `${exportType}_export.${fallbackExt}`;
       
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/i);

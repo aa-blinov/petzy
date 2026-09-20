@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { showToast } from '../utils/toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
+import { Button, Card, ProgressBar, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
@@ -55,17 +56,10 @@ export function MedicationsList() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
             queryClient.invalidateQueries({ queryKey: ['pets'] });
-            Toast.show({
-                icon: 'success',
-                content: 'Приём отмечен',
-                duration: 2000
-            });
+            showToast.success('Приём отмечен');
         },
         onError: (err: any) => {
-            Toast.show({
-                icon: 'fail',
-                content: err?.response?.data?.error || 'Ошибка при сохранении'
-            });
+            showToast.failure(err?.response?.data?.error || 'Ошибка при сохранении');
         }
     });
 
@@ -73,7 +67,7 @@ export function MedicationsList() {
         mutationFn: (id: string) => medicationsService.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({ icon: 'success', content: 'Курс удалён' });
+            showToast.success('Курс удалён');
         }
     });
 

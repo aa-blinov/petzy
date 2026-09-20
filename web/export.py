@@ -3,10 +3,18 @@
 The list of supported export types lives in :data:`EXPORT_SPECS`. Adding a
 new export type is one entry in that mapping plus, if needed, a record-level
 transform function for denormalised lookups (see the ``medications`` case).
+
+The special export type ``all`` returns a ZIP holding one file per type
+that has records. Types are not merged into a single table on purpose:
+their column sets genuinely differ (feeding has "Вес корма", defecation
+has "Тип стула"/"Цвет стула"), so a combined sheet would be either lossy
+or mostly empty cells. One file per type keeps each schema intact while
+still being a single download.
 """
 
 import csv
 import io
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -267,6 +275,78 @@ SERIALIZERS = {
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Rendering
+# ---------------------------------------------------------------------------
+
+
+ALL_TYPES = "all"
+
+
+def _render_export(spec, pet_id, format_type, serializer):
+    """Serialise one export type.
+
+    Returns ``(content, mimetype, suffix)``, or ``(None, None, None)`` when
+    the pet has no records of that type — the caller decides whether that
+    is an error (single-type export) or simply a file to omit (the ZIP).
+    """
+    records = list(
+        app.db[spec.collection_name]
+        .find({"pet_id": pet_id})
+        .sort([("date_time", -1)])
+    )
+    if not records:
+        return None, None, None
+
+    # Optional denormalisation pass (e.g. medication names).
+    if spec.enrich is not None:
+        for r in records:
+            spec.enrich(r, records)
+
+    # Common per-row cleanup shared by every export format.
+    for r in records:
+        dt = r.get("date_time")
+        r["date_time"] = (
+            dt.strftime("%d.%m.%Y %H:%M") if isinstance(dt, datetime) else str(dt or "")
+        )
+        if not r.get("username"):
+            r["username"] = "-"
+        r["comment"] = _replace_skip_blank(r.get("comment", ""))
+        r["food"] = _replace_skip_blank(r.get("food", ""))
+
+    # Some serializers need the title (html/md); csv/tsv ignore it.
+    if format_type in ("html", "md"):
+        return serializer(spec.title, records, spec.fields)
+    return serializer(records, spec.fields)
+
+
+def _render_all_types_zip(pet_id, format_type, serializer):
+    """Bundle every type that has records into a single ZIP.
+
+    Each entry keeps its own column set, named after the type's title, so
+    the archive is the "separate exports" the UI offers — just delivered
+    as one download instead of nine.
+
+    Returns ``(zip_bytes, included_titles)``; an empty list means the pet
+    has no records at all.
+    """
+    buffer = io.BytesIO()
+    included = []
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for export_type, spec in EXPORT_SPECS.items():
+            content, _mimetype, suffix = _render_export(spec, pet_id, format_type, serializer)
+            if content is None:
+                # Nothing logged for this type — leave it out rather than
+                # shipping an empty file with only a header row.
+                continue
+            entry_name = f"{spec.title.replace(' ', '_').lower()}.{suffix}"
+            archive.writestr(entry_name, content)
+            included.append(spec.title)
+
+    return buffer.getvalue(), included
+
+
 @export_bp.route("/api/export/<export_type>/<format_type>", methods=["GET"])
 @api.validate(
     query=PetIdQuery,
@@ -286,46 +366,28 @@ def export_data(export_type, format_type):
         pet_id = g.pet_id  # Provided by @require_pet_access
         username = g.username  # Provided by @require_pet_access
 
-        spec = EXPORT_SPECS.get(export_type)
-        if spec is None:
+        if export_type != ALL_TYPES and export_type not in EXPORT_SPECS:
             return error_response("export_invalid_type")
 
         serializer = SERIALIZERS.get(format_type)
         if serializer is None:
             return error_response("export_invalid_format")
 
-        records = list(
-            app.db[spec.collection_name]
-            .find({"pet_id": pet_id})
-            .sort([("date_time", -1)])
-        )
-        if not records:
-            return error_response("no_data_for_export")
-
-        # Optional denormalisation pass (e.g. medication names).
-        if spec.enrich is not None:
-            for r in records:
-                spec.enrich(r, records)
-
-        # Common per-row cleanup shared by every export format.
-        for r in records:
-            dt = r.get("date_time")
-            r["date_time"] = (
-                dt.strftime("%d.%m.%Y %H:%M") if isinstance(dt, datetime) else str(dt or "")
-            )
-            if not r.get("username"):
-                r["username"] = "-"
-            r["comment"] = _replace_skip_blank(r.get("comment", ""))
-            r["food"] = _replace_skip_blank(r.get("food", ""))
-
-        # Some serializers need the title (html/md); csv/tsv ignore it.
-        if format_type in ("html", "md"):
-            content, mimetype, suffix = serializer(spec.title, records, spec.fields)
+        if export_type == ALL_TYPES:
+            content, included = _render_all_types_zip(pet_id, format_type, serializer)
+            if not included:
+                return error_response("no_data_for_export")
+            mimetype = "application/zip"
+            title, suffix = "все_записи", "zip"
         else:
-            content, mimetype, suffix = serializer(records, spec.fields)
+            spec = EXPORT_SPECS[export_type]
+            content, mimetype, suffix = _render_export(spec, pet_id, format_type, serializer)
+            if content is None:
+                return error_response("no_data_for_export")
+            title, included = spec.title, [spec.title]
 
         filename_base = (
-            f"{spec.title.replace(' ', '_').lower()}_"
+            f"{title.replace(' ', '_').lower()}_"
             f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
         )
         filename = f"{filename_base}.{suffix}"
@@ -339,7 +401,7 @@ def export_data(export_type, format_type):
         response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
         app.logger.info(
             f"Data exported: type={export_type}, format={format_type}, "
-            f"pet_id={pet_id}, user={username}"
+            f"pet_id={pet_id}, user={username}, sections={len(included)}"
         )
         return response
 

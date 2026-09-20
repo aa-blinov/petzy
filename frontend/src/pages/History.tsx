@@ -7,7 +7,7 @@ import { historyConfig } from '../utils/historyConfig';
 import { HistoryItem } from '../components/HistoryItem';
 import { HistoryChart } from '../components/HistoryChart';
 import { EmptyState } from '../components/EmptyState';
-import { ExportModal } from '../components/ExportModal';
+import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
 import { typeIconMap } from '../utils/constants';
@@ -153,10 +153,21 @@ export function History() {
 
         return (
             <>
-                {groupedItems.map(([dateStr, itemsForDate]) => (
+                {groupedItems.map(([dateStr, itemsForDate], groupIndex) => {
+                    // Stagger by position in the whole list, not within the
+                    // group. Counting per group restarted the delay at every
+                    // date header, so the cascade began again halfway down and
+                    // a one-item group appeared together with the first card of
+                    // the next one. The header counts as a row too — it used to
+                    // pop in instantly while its own cards were still fading.
+                    const offset = groupedItems
+                        .slice(0, groupIndex)
+                        .reduce((n, [, items]) => n + items.length + 1, 0);
+                    const stagger = (position: number) => `motion-stagger-${Math.min(position, 4)}`;
+                    return (
                     <div key={dateStr} style={{ marginBottom: 'var(--spacing-lg)' }}>
                         <h3
-                            className="section-header"
+                            className={`section-header motion-enter ${stagger(offset + 1)}`}
                             style={{ marginBottom: '10px', paddingLeft: 4 }}
                         >
                             {formatDateHeader(dateStr)}
@@ -169,7 +180,7 @@ export function History() {
                                 return (
                                     <div
                                         key={item._id}
-                                        className={`motion-enter motion-stagger-${Math.min(index + 1, 4)}`}
+                                        className={`motion-enter ${stagger(offset + index + 2)}`}
                                     >
                                         <HistoryItem
                                             item={item}
@@ -182,7 +193,8 @@ export function History() {
                             })}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
 
                 {hasNextPage && (
                     <div style={{
@@ -259,8 +271,8 @@ export function History() {
                                     color: viewMode === 'list' ? '#FFFFFF' : 'var(--app-text-secondary)',
                                     border: 'none',
                                     borderRadius: '999px',
-                                    padding: '4px 12px',
-                                    fontSize: 'var(--text-xs)',
+                                    padding: '7px 16px',
+                                    fontSize: 'var(--text-sm)',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                     transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
@@ -277,8 +289,8 @@ export function History() {
                                     color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
                                     border: 'none',
                                     borderRadius: '999px',
-                                    padding: '4px 12px',
-                                    fontSize: 'var(--text-xs)',
+                                    padding: '7px 16px',
+                                    fontSize: 'var(--text-sm)',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                     transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
@@ -297,12 +309,15 @@ export function History() {
                                 border: 'none',
                                 color: 'var(--app-accent-deep)',
                                 cursor: 'pointer',
-                                padding: 6,
+                                /* 10 px around a 20 px icon gives 40 px —
+                                   the same height as the view pill beside
+                                   it, so the two read as one control group. */
+                                padding: 10,
                                 display: 'flex',
                                 alignItems: 'center',
                             }}
                         >
-                            <Download size={18} strokeWidth={2} style={{ display: 'block' }} />
+                            <Download size={20} strokeWidth={2} style={{ display: 'block' }} />
                         </button>
                     </div>
                 </div>
@@ -326,7 +341,7 @@ export function History() {
                                 onClick={() => handleFilterChange(chip.id)}
                                 className={`history-filter-chip ${active ? 'history-filter-chip--active' : ''}`}
                             >
-                                {Icon ? <Icon size={14} strokeWidth={2.4} aria-hidden /> : null}
+                                {Icon ? <Icon size={16} strokeWidth={2.4} aria-hidden /> : null}
                                 <span>{chip.label}</span>
                             </button>
                         );
@@ -370,7 +385,9 @@ export function History() {
                 visible={exportVisible}
                 onClose={() => setExportVisible(false)}
                 petId={selectedPetId}
-                defaultType={filterType === FILTER_ALL ? 'feeding' : filterType}
+                // "Все" now maps to the real all-types export instead of
+                // silently pre-selecting feeding.
+                defaultType={filterType === FILTER_ALL ? ALL_TYPES : filterType}
             />
         </div>
     );

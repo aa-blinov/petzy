@@ -1,6 +1,7 @@
 import { useState, memo } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
-import { Toast, Dialog } from 'antd-mobile';
+import { Dialog } from 'antd-mobile';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
@@ -49,11 +50,11 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         await queryClient.invalidateQueries({ queryKey: ['medications', 'upcoming'] });
       }
 
-      Toast.show({ content: 'Запись удалена', icon: 'success', duration: 1500 });
+      showToast.success('Запись удалена');
       setDeleteDialogVisible(false);
     } catch (error) {
       console.error('Error deleting record:', error);
-      Toast.show({ content: 'Ошибка при удалении', icon: 'fail', duration: 2000 });
+      showToast.failure('Ошибка при удалении');
       setDeleteDialogVisible(false);
     } finally {
       setIsDeleting(false);
@@ -87,7 +88,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         disabled={deleteDialogVisible}
       >
         <div
-          className="card-soft card-soft--interactive tap-ripple"
+          className="card-soft card-soft--interactive"
           style={{
             display: 'flex',
             // Pill-icon sits on the first text line (the title). Aligning

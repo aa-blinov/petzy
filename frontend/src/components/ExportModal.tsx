@@ -1,7 +1,11 @@
-import { useState } from 'react';
-import { Popup, Button, Selector, Form, Toast } from 'antd-mobile';
+import { useEffect, useState } from 'react';
+import { showToast } from '../utils/toast';
+import { Popup, Button, Selector, Form } from 'antd-mobile';
 import { exportService } from '../services/export.service';
 import { historyConfig } from '../utils/historyConfig';
+
+/** Matches ALL_TYPES on the backend: one ZIP with a file per record type. */
+export const ALL_TYPES = 'all';
 
 interface ExportModalProps {
   visible: boolean;
@@ -15,31 +19,45 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
   const [format, setFormat] = useState<string[]>(['csv']);
   const [loading, setLoading] = useState(false);
 
-  // Update export type when defaultType changes and modal opens
-  // (Optional, can be handled by useEffect if needed, but simplistic approach works too)
+  // The modal stays mounted between openings, so useState's initial value
+  // is only ever read once — without this the type stayed on whatever was
+  // picked the first time and stopped following the history filter.
+  // Format is deliberately left alone: which file type someone wants is a
+  // standing preference, the record type is not.
+  useEffect(() => {
+    if (visible) setExportType([defaultType]);
+  }, [visible, defaultType]);
+
   
   const handleExport = async () => {
     if (!exportType[0] || !format[0]) {
-      Toast.show({ content: 'Выберите тип данных и формат' });
+      showToast.info('Выберите тип данных и формат');
       return;
     }
 
     setLoading(true);
     try {
       await exportService.exportData(petId, exportType[0], format[0] as any);
-      Toast.show({ content: 'Файл успешно скачан', icon: 'success' });
+      showToast.success('Файл успешно скачан');
       onClose();
     } catch (error) {
-      Toast.show({ content: 'Ошибка при экспорте', icon: 'fail' });
+      showToast.failure('Ошибка при экспорте');
     } finally {
       setLoading(false);
     }
   };
 
-  const typeOptions = Object.entries(historyConfig).map(([key, config]) => ({
-    label: config.displayName,
-    value: key,
-  }));
+  // "Все типы" ships every type that has records as separate files in one
+  // ZIP rather than merging them into a single table: the column sets
+  // genuinely differ per type, so a combined sheet would be either lossy
+  // or mostly empty cells.
+  const typeOptions = [
+    { label: 'Все типы (архивом)', value: ALL_TYPES },
+    ...Object.entries(historyConfig).map(([key, config]) => ({
+      label: config.displayName,
+      value: key,
+    })),
+  ];
 
   const formatOptions = [
     { label: 'CSV (Excel)', value: 'csv' },

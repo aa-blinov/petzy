@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
+import { parseRecordDate } from '../utils/relativeTime';
+import { showToast } from '../utils/toast';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Input, TextArea, Picker, Form, Toast } from 'antd-mobile';
+import { Input, TextArea, Picker, Form } from 'antd-mobile';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime, parseDateTime } from '../utils/dateUtils';
 
@@ -33,8 +35,11 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
       selectedMonth = parseInt(internalPickerDate[1]);
       selectedYear = parseInt(internalPickerDate[2]);
     } else if (currentValue) {
-      const d = new Date(currentValue);
-      if (!isNaN(d.getTime())) {
+      // Form date values are "YYYY-MM-DD". new Date() reads that as ISO,
+      // i.e. UTC midnight, and the local getters below then report the
+      // previous day for anyone west of UTC.
+      const d = parseRecordDate(currentValue);
+      if (d) {
         selectedMonth = d.getMonth();
         selectedYear = d.getFullYear();
       }
@@ -97,7 +102,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
       const currentVal = getValues(field.name);
       let pValue: string[] = [];
       if (currentVal) {
-        const d = new Date(currentVal);
+        const d = parseRecordDate(currentVal) ?? new Date();
         pValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
       } else {
         const now = new Date();
@@ -124,7 +129,9 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
         const renderInput = () => {
           switch (field.type) {
             case 'date':
-              const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
+              const displayDate = value
+                ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value)
+                : '';
 
               return (
                 <>
@@ -151,7 +158,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
                       const todayStr = getCurrentDate();
                       if (formattedDate > todayStr) {
-                        Toast.show({ content: 'Дата не может быть в будущем', icon: 'fail' });
+                        showToast.failure('Дата не может быть в будущем');
                         onChange(todayStr);
                       } else {
                         onChange(formattedDate);
@@ -198,7 +205,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                       const selectedDateTime = parseDateTime(currentDate, formattedTime);
 
                       if (selectedDateTime > now) {
-                        Toast.show({ content: 'Время не может быть в будущем', icon: 'fail' });
+                        showToast.failure('Время не может быть в будущем');
                         if (currentDate === getCurrentDate()) {
                           onChange(getCurrentTime());
                         } else {

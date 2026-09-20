@@ -18,7 +18,7 @@
     background: transparent;
     /* Spring back when the user releases without committing. The
        transition is paused while dragging so the row tracks 1:1. */
-    transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform var(--motion-duration-slow) var(--motion-ease-spring);
     will-change: transform;
     touch-action: pan-y;
     /* Allow the inner card-soft to keep its rounded corners. */
@@ -26,9 +26,18 @@
 }
 
 .swipeable-row--dragging .swipeable-row__surface {
-    /* Cancel the spring while the finger is down — direct manipulation
+    /* Cancel the spring while the pointer is down — direct manipulation
        feels native, the bounce only kicks in on release. */
     transition: none;
+    /* A horizontal mouse drag would otherwise select the row's text and
+       start a native image drag on the pet photo. */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.swipeable-row--dragging img {
+    -webkit-user-drag: none;
+    pointer-events: none;
 }
 
 .swipeable-row__action {
@@ -42,7 +51,7 @@
        without any swipe. Gate it on the drag instead of relying on one
        element covering another pixel-for-pixel. */
     opacity: 0;
-    transition: opacity 120ms linear;
+    transition: opacity var(--motion-duration-instant) linear;
     top: 6px;
     bottom: 6px;
     /* Sit at the row's edge but inset by 6px — the action reads as a
