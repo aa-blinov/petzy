@@ -263,14 +263,17 @@ export function PetForm() {
       Toast.show({
         icon: 'success',
         content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен',
-        duration: 1500,
+        position: 'bottom',
+        duration: 1600,
         afterClose: () => navigate('/pets')
       });
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || 'Ошибка при сохранении';
       Toast.show({
         icon: 'fail',
-        content: errorMessage
+        content: errorMessage,
+        position: 'bottom',
+        duration: 2400,
       });
     } finally {
       setLoading(false);

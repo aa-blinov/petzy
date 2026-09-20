@@ -87,7 +87,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         disabled={deleteDialogVisible}
       >
         <div
-          className="card-soft tap-ripple"
+          className="card-soft card-soft--interactive tap-ripple"
           style={{
             display: 'flex',
             // Pill-icon sits on the first text line (the title). Aligning
