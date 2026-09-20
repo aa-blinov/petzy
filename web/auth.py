@@ -16,6 +16,7 @@ from flask_pydantic_spec import Request, Response
 
 from web.app import api, limiter, logger  # app-level singletons
 import web.app as app  # use app.db so test patches (web.app.db) are visible
+from web.configs import RATE_LIMIT_CONFIG  # per-route limits overridable via env
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
@@ -97,7 +98,10 @@ auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
-@limiter.limit("5 per 5 minutes", error_message="Too many login attempts. Please try again later.")
+@limiter.limit(
+    lambda: RATE_LIMIT_CONFIG["login_limit"],
+    error_message="Too many login attempts. Please try again later.",
+)
 @api.validate(
     body=Request(AuthLoginRequest),
     resp=Response(HTTP_200=AuthTokensResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse),
@@ -252,7 +256,10 @@ def check_admin():
 
 
 @auth_bp.route("/login", methods=["GET", "POST"], endpoint="login")
-@limiter.limit("50 per 5 minutes", error_message="Слишком много попыток. Попробуйте позже.")
+@limiter.limit(
+    lambda: RATE_LIMIT_CONFIG["login_page_limit"],
+    error_message="Слишком много запросов. Попробуйте позже.",
+)
 def login():
     """Login page."""
     # Check if already logged in

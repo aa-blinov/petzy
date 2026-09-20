@@ -51,11 +51,21 @@ def load_config() -> Dict[str, Any]:
             "access_token_expire_minutes": 15,
             "refresh_token_expire_days": 7,
         },
-        # Rate limiting settings
+        # Rate limiting settings. Override any of these via env in
+        # production or dev:
+        #   RATE_LIMIT_LOGIN        — per-IP cap on /api/auth/login
+        #   RATE_LIMIT_LOGIN_PAGE   — per-IP cap on the GET /login HTML
+        #   RATE_LIMIT_DEFAULT      — global fallback for everything else
+        # Default values are chosen to be friendly to real users (forgot
+        # password retry, slow phone, etc.) while still blocking brute
+        # force — 5 logins per minute is ~1 attempt every 12 s, well
+        # above human typing speed but well below any brute-force loop.
         "rate_limit": {
             "storage_uri": os.getenv("RATELIMIT_STORAGE_URI", mongo_uri),
             "default_limits": [],
             "strategy": "fixed-window",
+            "login_limit": os.getenv("RATE_LIMIT_LOGIN", "5 per minute"),
+            "login_page_limit": os.getenv("RATE_LIMIT_LOGIN_PAGE", "200 per 5 minutes"),
         },
         # Logging settings
         "logging": {
