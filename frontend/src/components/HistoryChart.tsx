@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LoadingSpinner } from './LoadingSpinner';
+import { EmptyState } from './EmptyState';
+import { ChartNoAxesColumn } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     AreaChart, Area
@@ -71,9 +73,12 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
 
         if (chartData.length === 0) {
             return (
-                <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
-                    Нет записей за выбранный период
-                </p>
+                <EmptyState
+                    icon={ChartNoAxesColumn}
+                    title="Нет данных за период"
+                    description="Переключите вкладку или добавьте записи — график построится автоматически."
+                    compact
+                />
             );
         }
 

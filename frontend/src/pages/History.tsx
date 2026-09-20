@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PullToRefresh } from 'antd-mobile';
-import { Download } from 'lucide-react';
+import { Download, Notebook } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
 import { historyConfig } from '../utils/historyConfig';
 import { HistoryItem } from '../components/HistoryItem';
 import { HistoryChart } from '../components/HistoryChart';
+import { EmptyState } from '../components/EmptyState';
 import { ExportModal } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
@@ -148,9 +149,11 @@ export function History() {
 
         if (groupedItems.length === 0) {
             return (
-                <p style={{ color: 'var(--app-text-secondary)', textAlign: 'center', padding: '32px 0' }}>
-                    Нет записей
-                </p>
+                <EmptyState
+                    icon={Notebook}
+                    title="Записей пока нет"
+                    description="Кормления, вес, лекарства и прививки появятся здесь, как только вы их добавите."
+                />
             );
         }
 

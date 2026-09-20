@@ -7,6 +7,7 @@ import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { MedicationCardSkeleton } from '../components/Skeletons';
+import { EmptyState } from '../components/EmptyState';
 import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
 
@@ -172,69 +173,13 @@ export function MedicationsList() {
                         <MedicationCardSkeleton />
                     </div>
                 ) : medications.length === 0 ? (
-                    <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-xl)' }}>
-                        <div
-                            className="card-soft"
-                            style={{
-                                textAlign: 'center',
-                                padding: '40px 24px',
-                            }}
-                        >
-                            <div
-                                aria-hidden
-                                style={{
-                                    width: 72,
-                                    height: 72,
-                                    borderRadius: 20,
-                                    margin: '0 auto 16px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'var(--app-accent-deep)',
-                                    background: 'var(--app-accent-soft)',
-                                }}
-                            >
-                                <Pill size={36} strokeWidth={1.75} style={{ display: 'block' }} />
-                            </div>
-                            <h3
-                                className="display-headline"
-                                style={{ fontSize: '1.125rem', margin: 0 }}
-                            >
-                                Здесь будут курсы препаратов
-                            </h3>
-                            <p
-                                style={{
-                                    marginTop: 8,
-                                    fontSize: 'var(--text-sm)',
-                                    color: 'var(--app-text-secondary)',
-                                    lineHeight: 1.5,
-                                }}
-                            >
-                                Добавьте лекарство — Petzy напомнит о приёме и покажет остаток.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => navigate('/medications/new')}
-                                style={{
-                                    marginTop: 20,
-                                    background: 'var(--app-primary-color)',
-                                    color: '#FFFFFF',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: '12px 24px',
-                                    fontSize: 'var(--text-md)',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                }}
-                            >
-                                <AddOutline />
-                                Добавить препарат
-                            </button>
-                        </div>
-                    </div>
+                    <EmptyState
+                        icon={Pill}
+                        title="Здесь будут курсы препаратов"
+                        description="Добавьте лекарство — Petzy напомнит о приёме и покажет остаток."
+                        actionLabel="Добавить препарат"
+                        onAction={() => navigate('/medications/new')}
+                    />
                 ) : (
                     <PullToRefresh
                         onRefresh={async () => {
