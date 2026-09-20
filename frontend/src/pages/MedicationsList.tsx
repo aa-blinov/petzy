@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
-import { MedicationCardSkeleton } from '../components/Skeletons';
+import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
 import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
@@ -163,15 +163,11 @@ export function MedicationsList() {
                 </div>
 
                 {isLoading ? (
-                    <div className="safe-area-padding" style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 'var(--spacing-md)',
-                        marginTop: 'var(--spacing-sm)',
-                    }}>
-                        <MedicationCardSkeleton />
-                        <MedicationCardSkeleton />
-                    </div>
+                    <SkeletonList
+                        count={3}
+                        gap={undefined /* use default token gap */}
+                        render={() => <MedicationCardSkeleton />}
+                    />
                 ) : medications.length === 0 ? (
                     <EmptyState
                         icon={Pill}

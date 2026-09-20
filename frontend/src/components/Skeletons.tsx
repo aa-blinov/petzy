@@ -72,3 +72,51 @@ export function DashboardSkeleton() {
     </div>
   );
 }
+
+/**
+ * Stack of N skeletons with the same spacing the real list will use,
+ * so the swap from skeleton → real items is visually seamless.
+ *
+ * Apply the motion-stagger-* classes to stagger the skeletons' entrance
+ * (one per item) so the load feels less "blank sheet → pop".
+ */
+interface SkeletonListProps {
+  /** Number of skeletons to render. */
+  count?: number;
+  /** Gap between skeletons in px — match your real list's gap. */
+  gap?: number;
+  /** Top padding — set this to match where the real list starts. */
+  topPadding?: number;
+  /** Which skeleton to repeat. Defaults to HistoryItemSkeleton. */
+  render?: (index: number) => React.ReactNode;
+}
+
+import * as React from 'react';
+
+export function SkeletonList({
+  count = 4,
+  gap = 12,
+  topPadding = 0,
+  render = () => <HistoryItemSkeleton />,
+}: SkeletonListProps) {
+  const staggerClass = (i: number) =>
+    `motion-enter motion-stagger-${Math.min(i + 1, 4)}`;
+  return (
+    <div
+      className="safe-area-padding"
+      style={{
+        marginTop: 'var(--spacing-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap,
+        paddingTop: topPadding || undefined,
+      }}
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={staggerClass(i)}>
+          {render(i)}
+        </div>
+      ))}
+    </div>
+  );
+}
