@@ -222,35 +222,89 @@ export function History() {
     return (
         <div className="page-container">
             <div className="max-width-container">
+                {/* Header — one row, not three.
+                   This screen used to stack a title row, the filter rail
+                   and a third row holding just the list/chart pill, so
+                   three bands of chrome pushed the records below the
+                   fold. The pill now sits in the dead space on the title
+                   line and export is icon-only (it is an occasional
+                   action, and the tab is already labelled "История", so
+                   "История записей" was saying it twice). */}
                 <div className="safe-area-padding" style={{
                     marginBottom: 'var(--spacing-md)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
                     minHeight: '40px',
                 }}>
                     <h1 className="display-headline" style={{ fontSize: '24px', margin: 0 }}>
-                        История записей
+                        История
                     </h1>
-                    <button
-                        type="button"
-                        onClick={() => setExportVisible(true)}
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--app-accent-deep)',
-                            fontWeight: 500,
-                            fontSize: 'var(--text-sm)',
-                            cursor: 'pointer',
-                            padding: '8px 4px',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                        <div style={{
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                        }}
-                    >
-                        <Download size={16} strokeWidth={2} style={{ display: 'block' }} />
-                        Экспорт
-                    </button>
+                            backgroundColor: 'var(--app-card-background)',
+                            padding: 3,
+                            borderRadius: '999px',
+                            boxShadow: 'var(--app-shadow-light)',
+                            border: '1px solid var(--app-border-color)',
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => handleViewModeChange('list')}
+                                aria-pressed={viewMode === 'list'}
+                                style={{
+                                    background: viewMode === 'list' ? 'var(--app-primary-color)' : 'transparent',
+                                    color: viewMode === 'list' ? '#FFFFFF' : 'var(--app-text-secondary)',
+                                    border: 'none',
+                                    borderRadius: '999px',
+                                    padding: '4px 12px',
+                                    fontSize: 'var(--text-xs)',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
+                                }}
+                            >
+                                Список
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleViewModeChange('chart')}
+                                aria-pressed={viewMode === 'chart'}
+                                style={{
+                                    background: viewMode === 'chart' ? 'var(--app-primary-color)' : 'transparent',
+                                    color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
+                                    border: 'none',
+                                    borderRadius: '999px',
+                                    padding: '4px 12px',
+                                    fontSize: 'var(--text-xs)',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
+                                }}
+                            >
+                                График
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setExportVisible(true)}
+                            aria-label="Экспорт"
+                            title="Экспорт"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--app-accent-deep)',
+                                cursor: 'pointer',
+                                padding: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Download size={18} strokeWidth={2} style={{ display: 'block' }} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Type filter — horizontal scrollable chip rail.
@@ -277,57 +331,6 @@ export function History() {
                             </button>
                         );
                     })}
-                </div>
-
-                {/* View mode toggle — compact pill, sits flush right */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    marginBottom: 'var(--spacing-md)',
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        backgroundColor: 'var(--app-card-background)',
-                        padding: 3,
-                        borderRadius: '999px',
-                        boxShadow: 'var(--app-shadow-light)',
-                        border: '1px solid var(--app-border-color)',
-                    }}>
-                        <button
-                            type="button"
-                            onClick={() => handleViewModeChange('list')}
-                            style={{
-                                background: viewMode === 'list' ? 'var(--app-primary-color)' : 'transparent',
-                                color: viewMode === 'list' ? '#FFFFFF' : 'var(--app-text-secondary)',
-                                border: 'none',
-                                borderRadius: '999px',
-                                padding: '4px 14px',
-                                fontSize: 'var(--text-xs)',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
-                            }}
-                        >
-                            Список
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleViewModeChange('chart')}
-                            style={{
-                                background: viewMode === 'chart' ? 'var(--app-primary-color)' : 'transparent',
-                                color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
-                                border: 'none',
-                                borderRadius: '999px',
-                                padding: '4px 14px',
-                                fontSize: 'var(--text-xs)',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
-                            }}
-                        >
-                            График
-                        </button>
-                    </div>
                 </div>
 
                 <div style={{ minHeight: '400px' }}>
