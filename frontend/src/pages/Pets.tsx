@@ -9,7 +9,7 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
-import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
+import { speciesIconMap, SPECIES_FALLBACK_ICON, genderLabel } from '../utils/constants';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
@@ -320,7 +320,7 @@ function PetCard({
               <>
                 {pet.breed && <span className="chip">{pet.breed}</span>}
                 {age && <span className="chip">{age}</span>}
-                {pet.gender && <span className="chip">{pet.gender}</span>}
+                {pet.gender && <span className="chip">{genderLabel(pet.gender)}</span>}
                 {lastWeight && (
                   <span className="chip">
                     <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />

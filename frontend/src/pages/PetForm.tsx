@@ -20,13 +20,6 @@ const SPECIES_OPTIONS = [
     { label: 'Другое', value: 'other' },
 ];
 
-/** Gender options. */
-const GENDER_OPTIONS = [
-    { label: 'Не указан', value: '' },
-    { label: 'Мужской', value: 'male' },
-    { label: 'Женский', value: 'female' },
-];
-
 /** Sterilisation (neutered) options. */
 const NEUTERED_OPTIONS = [
     { label: 'Не указано', value: '' },
@@ -37,6 +30,7 @@ const NEUTERED_OPTIONS = [
 import { petsService } from '../services/pets.service';
 import { usersService } from '../services/users.service';
 import { TilesEditor } from '../components/TilesEditor';
+import { GENDER_OPTIONS } from '../utils/constants';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 

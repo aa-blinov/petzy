@@ -84,6 +84,38 @@ export const typeIconMap: Record<string, LucideIcon> = {
   medications: Pill,
 };
 
+/** Pet gender — the stored value and the label shown for it.
+ *
+ *  "Мальчик"/"Девочка" rather than "Мужской"/"Женский": this is a pet
+ *  diary, and that is how owners talk about their animals. */
+export const GENDER_OPTIONS = [
+  { label: 'Не указан', value: '' },
+  { label: 'Мальчик', value: 'male' },
+  { label: 'Девочка', value: 'female' },
+];
+
+/** Legacy spellings that predate the codes above, kept so older records
+ *  read the same as new ones instead of showing their stored text. */
+const LEGACY_GENDER_LABELS: Record<string, string> = {
+  'Мужской': 'Мальчик',
+  'Женский': 'Девочка',
+};
+
+/**
+ * Human-readable gender for display.
+ *
+ * The form stores a code (`male`/`female`) while the pet card and the
+ * pets list used to print `pet.gender` straight out of the record — so a
+ * pet added through the UI showed a bare "male". Unknown values pass
+ * through unchanged, which keeps anything hand-entered readable.
+ */
+export function genderLabel(value?: string | null): string {
+  if (!value) return '';
+  const known = GENDER_OPTIONS.find(o => o.value === value);
+  if (known) return known.label;
+  return LEGACY_GENDER_LABELS[value] ?? value;
+}
+
 /** Species icon (lucide) for the PetSummaryCard hero fallback. */
 export const speciesIconMap: Record<string, LucideIcon> = {
   cat: Cat,
