@@ -526,6 +526,45 @@ select {
     background-color: transparent !important;
 }
 
+/* Force the NavBar back-arrow + right-side icons + any leftover
+   antd-mobile primary-styled glyphs to inherit the navbar's text
+   color instead of antd-mobile's default blue (#1677ff). The custom
+   logo and pet-switcher already use explicit colors, but the stock
+   back-arrow renders through .adm-nav-bar-back which leaks blue
+   unless overridden here. */
+.adm-nav-bar-back,
+.adm-nav-bar-back-arrow,
+.adm-nav-bar-left .adm-nav-bar-back,
+.adm-nav-bar-right .adm-nav-bar-back {
+    color: var(--app-text-color) !important;
+}
+
+.adm-nav-bar-back svg,
+.adm-nav-bar-back-arrow svg,
+.adm-nav-bar-back path,
+.adm-nav-bar-back-arrow path,
+.adm-nav-bar-back polygon,
+.adm-nav-bar-back-arrow polygon {
+    fill: currentColor !important;
+    stroke: currentColor !important;
+}
+
+/* Bottom tab bar — same anti-blue override for stock antd-mobile
+   components that pin to --adm-color-primary. */
+.adm-tab-bar-item-active {
+    color: var(--app-primary-color) !important;
+}
+.adm-tab-bar-item-active .adm-tab-bar-item-icon,
+.adm-tab-bar-item-active .adm-tab-bar-item-title {
+    color: var(--app-primary-color) !important;
+}
+
+/* FAB — primary action stays in our copper accent, not blue. */
+.adm-floating-bubble {
+    background: var(--app-primary-color) !important;
+    border-color: var(--app-primary-color) !important;
+}
+
 .adm-nav-bar-left {
     padding-left: 0 !important;
     flex: 1;
