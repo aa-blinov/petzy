@@ -15,8 +15,9 @@ export function Settings() {
 
   const confirmLogout = async () => {
     setLogoutDialogVisible(false);
+    // useAuth.logout() handles the navigate('/login', {replace:true}) itself,
+    // so we don't need to navigate again here.
     await logout();
-    navigate('/login');
   };
 
   return (

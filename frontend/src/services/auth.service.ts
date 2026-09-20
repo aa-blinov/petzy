@@ -32,8 +32,12 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    // Tokens are in httpOnly cookies, so logout is handled by backend
-    // Just clear any client-side state if needed
+    // Tell the backend to invalidate the refresh_token row in
+    // MongoDB and clear the httpOnly cookies. Without this call the
+    // tokens remain valid until the TTL expires — a security issue
+    // (stolen cookies stay usable after "logout") and a UX issue (a
+    // re-login right after logout can re-use the old refresh_token).
+    await api.post('/auth/logout');
   }
 };
 
