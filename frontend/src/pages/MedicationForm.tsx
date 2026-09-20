@@ -9,6 +9,7 @@ import { DeleteOutline, SearchOutline } from 'antd-mobile-icons';
 import { medicationsService, type MedicationCreate, COMMON_MEDICATIONS } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SpinnerButton } from '../components/SpinnerButton';
 
 const medicationSchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
@@ -564,16 +565,13 @@ export function MedicationForm() {
                         marginLeft: 'var(--spacing-md)',
                         marginRight: 'var(--spacing-md)'
                     }}>
-                        <Button
-                            block
-                            color="primary"
-                            size="large"
-                            onClick={() => handleSubmit(onSubmit)()}
+                        <SpinnerButton
                             loading={mutation.isPending || isSubmitting}
+                            onClick={() => handleSubmit(onSubmit)()}
                             style={{ borderRadius: 'var(--radius-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}
                         >
                             {isEditing ? 'Сохранить' : 'Создать'}
-                        </Button>
+                        </SpinnerButton>
                         <Button
                             block
                             size="large"

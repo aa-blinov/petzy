@@ -935,6 +935,11 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Skeleton shimmer keeps a separate keyframe — it's an indefinite
    loop and isn't part of the entrance vocabulary. */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
 @keyframes shimmer {
     0% {
         background-position: -200% 0;

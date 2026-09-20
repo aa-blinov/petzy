@@ -41,6 +41,7 @@ import { usersService } from '../services/users.service';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { tilesConfig } from '../utils/tilesConfig';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SpinnerButton } from '../components/SpinnerButton';
 
 const petSchema = z.object({
   name: z.string().min(1, 'Имя питомца обязательно'),
@@ -751,16 +752,13 @@ export function PetForm() {
               type="submit"
               onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
             />
-            <Button
-              block
-              color="primary"
-              size="large"
-              onClick={() => handleSubmit(onSubmit)()}
+            <SpinnerButton
               loading={loading}
+              onClick={() => handleSubmit(onSubmit)()}
               style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
             >
               {isEditing ? 'Сохранить' : 'Добавить'}
-            </Button>
+            </SpinnerButton>
             <Button
               block
               size="large"
