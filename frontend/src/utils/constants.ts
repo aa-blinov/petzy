@@ -46,10 +46,10 @@ import {
   Utensils,
   Scale,
   Wind,
-  Droplet,
-  Brush,
+  Toilet,
+  Shovel,
   Eye,
-  Sparkles,
+  Toothbrush,
   Ear,
   Pill,
   Footprints,
@@ -66,14 +66,55 @@ import {
 export const typeIconMap: Record<string, LucideIcon> = {
   feeding: Utensils,
   weight: Scale,
+  // No lungs glyph in lucide; wind is the closest read for "breathing".
   asthma: Wind,
-  defecation: Droplet,
-  litter: Brush,
+  // Was Droplet, which reads as liquid — urine, water, a spill — rather
+  // than stool. Toilet names the event without being crude.
+  defecation: Toilet,
+  // Was Brush, i.e. grooming or painting. Changing a tray is scooping it.
+  litter: Shovel,
+  // Organ icons for the two body-part routines: at a glance in a mixed
+  // list, "eye thing" and "ear thing" are read faster than the implements
+  // (a pipette and a cleaning brush) would be.
   eye_drops: Eye,
-  tooth_brushing: Sparkles,
   ear_cleaning: Ear,
+  // Was Sparkles, which says "clean/shiny" generically — it could have
+  // been grooming, a wash, anything.
+  tooth_brushing: Toothbrush,
   medications: Pill,
 };
+
+/** Pet gender — the stored value and the label shown for it.
+ *
+ *  "Мальчик"/"Девочка" rather than "Мужской"/"Женский": this is a pet
+ *  diary, and that is how owners talk about their animals. */
+export const GENDER_OPTIONS = [
+  { label: 'Не указан', value: '' },
+  { label: 'Мальчик', value: 'male' },
+  { label: 'Девочка', value: 'female' },
+];
+
+/** Legacy spellings that predate the codes above, kept so older records
+ *  read the same as new ones instead of showing their stored text. */
+const LEGACY_GENDER_LABELS: Record<string, string> = {
+  'Мужской': 'Мальчик',
+  'Женский': 'Девочка',
+};
+
+/**
+ * Human-readable gender for display.
+ *
+ * The form stores a code (`male`/`female`) while the pet card and the
+ * pets list used to print `pet.gender` straight out of the record — so a
+ * pet added through the UI showed a bare "male". Unknown values pass
+ * through unchanged, which keeps anything hand-entered readable.
+ */
+export function genderLabel(value?: string | null): string {
+  if (!value) return '';
+  const known = GENDER_OPTIONS.find(o => o.value === value);
+  if (known) return known.label;
+  return LEGACY_GENDER_LABELS[value] ?? value;
+}
 
 /** Species icon (lucide) for the PetSummaryCard hero fallback. */
 export const speciesIconMap: Record<string, LucideIcon> = {

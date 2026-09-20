@@ -573,14 +573,23 @@ class TestMedicationManagement:
         assert len(data["doses"]) == 1
         assert data["doses"][0]["is_overdue"] is True
 
-        # Case 3: Client time is Tuesday. Should see nothing.
+        # Case 3: Client time is Tuesday — nothing is scheduled today, so
+        # the endpoint looks ahead to the next scheduled day rather than
+        # returning an empty list. It used to return nothing at all, which
+        # left the "next dose" widget blank for six days out of seven on a
+        # once-a-week course.
         client_dt_tue = "2024-01-02T09:00:00"
         response = client.get(
             f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_tue}",
             headers={"Authorization": f"Bearer {regular_user_token}"}
         )
         data = response.get_json()
-        assert len(data["doses"]) == 0
+        assert len(data["doses"]) == 1
+        assert data["doses"][0]["time"] == "10:00"
+        # The Monday after that Tuesday.
+        assert data["doses"][0]["date"] == "2024-01-08"
+        # A dose that hasn't come round yet is never overdue.
+        assert data["doses"][0]["is_overdue"] is False
 
     def test_delete_medication_deletes_all_intakes(self, client, mock_db, regular_user_token, test_pet):
         """Test that deleting a medication also deletes all related intakes atomically."""

@@ -1,193 +1,90 @@
-import { useCallback, useRef, useEffect } from 'react';
+/**
+ * Standalone editor for the diary tiles of the currently selected pet.
+ *
+ * It used to keep its own copy of the drag-and-drop list and persist to
+ * a device-wide `tilesSettings` key in localStorage, while the quick-add
+ * sheet and the history filter chips read the pet's `tiles_settings`
+ * from the API — so nothing this screen did ever reached the UI. Both it
+ * and the section inside the pet form now render the same TilesEditor
+ * over the pet's own settings.
+ */
+
 import { useNavigate } from 'react-router-dom';
-import { Button, List, Switch, Toast } from 'antd-mobile';
-import { GripVertical } from 'lucide-react';
-import { useTilesSettings } from '../hooks/useTilesSettings';
-import { tilesConfig } from '../utils/tilesConfig';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { Button } from 'antd-mobile';
 
-interface SortableTileItemProps {
-  id: string;
-  title: string;
-  visible: boolean;
-  onToggle: (id: string, visible: boolean) => void;
-  disabled?: boolean;
-}
-
-function SortableTileItem({ id, title, visible, onToggle, disabled = false }: SortableTileItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 'auto',
-    position: 'relative' as const,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-    >
-      <List.Item
-        prefix={
-          <div
-            {...attributes}
-            {...listeners}
-            style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', paddingRight: '8px', touchAction: 'none', display: 'flex' }}
-          >
-            <GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />
-          </div>
-        }
-        extra={
-          <Switch
-            checked={visible}
-            onChange={(checked) => onToggle(id, checked)}
-            disabled={disabled}
-          />
-        }
-      >
-        {title}
-      </List.Item>
-    </div>
-  );
-}
+import { showToast } from '../utils/toast';
+import { usePet } from '../hooks/usePet';
+import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
+import { TilesEditor } from '../components/TilesEditor';
+import { EmptyState } from '../components/EmptyState';
+import { LayoutGrid } from 'lucide-react';
 
 export function TilesSettings() {
   const navigate = useNavigate();
-  const mountedRef = useRef(true);
-  const { tilesSettings, updateOrder, toggleVisibility, resetSettings } = useTilesSettings();
+  const { selectedPetId, selectedPetName } = usePet();
+  const { resetSettings } = usePetTilesSettings(selectedPetId);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = tilesSettings.order.indexOf(active.id as string);
-      const newIndex = tilesSettings.order.indexOf(over.id as string);
-      const newOrder = arrayMove(tilesSettings.order, oldIndex, newIndex);
-      updateOrder(newOrder);
+  const handleReset = () => {
+    if (!window.confirm('Сбросить порядок и видимость тайлов к значениям по умолчанию?')) return;
+    try {
+      resetSettings();
+      showToast.success('Настройки тайлов сброшены');
+    } catch {
+      showToast.failure('Не удалось сбросить настройки');
     }
-  }, [tilesSettings.order, updateOrder]);
-
-  const handleSave = useCallback(() => {
-    Toast.show({
-      icon: 'success',
-      content: 'Настройки тайлов сохранены',
-      duration: 1000,
-    });
-    setTimeout(() => {
-      if (mountedRef.current) {
-        navigate('/settings');
-      }
-    }, 1000);
-  }, [navigate]);
-
-  const handleReset = useCallback(() => {
-    const confirmed = window.confirm('Вы уверены, что хотите сбросить настройки тайлов к значениям по умолчанию?');
-    if (confirmed) {
-      try {
-        resetSettings();
-        Toast.show({
-          icon: 'success',
-          content: 'Настройки тайлов сброшены',
-          duration: 1000,
-        });
-      } catch (err) {
-        Toast.show({
-          icon: 'fail',
-          content: 'Ошибка при сбросе настроек',
-        });
-      }
-    }
-  }, [resetSettings]);
+  };
 
   return (
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Настройка тайлов дневника</h2>
-          <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--adm-color-weak)' }}>
-            Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
+          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+            Порядок тайлов
+          </h2>
+          <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+            {/* Naming the pet matters now that the settings really are
+                per-pet: without it, switching pets would silently change
+                what this screen edits. */}
+            {selectedPetName
+              ? <>Настройки для питомца <strong>{selectedPetName}</strong>. Перетащите, чтобы изменить порядок, переключатель скрывает тайл. Изменения сохраняются сразу.</>
+              : 'Перетащите, чтобы изменить порядок, переключатель скрывает тайл.'}
           </p>
         </div>
 
-        <div>
-          {/* Tiles Drag and Drop */}
-          <List mode="card">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={tilesSettings.order}
-                strategy={verticalListSortingStrategy}
+        {!selectedPetId ? (
+          <EmptyState
+            icon={LayoutGrid}
+            title="Сначала выберите питомца"
+            description="Тайлы дневника настраиваются отдельно для каждого питомца."
+            actionLabel="К питомцам"
+            onAction={() => navigate('/pets')}
+          />
+        ) : (
+          <>
+            <TilesEditor petId={selectedPetId} mode="card" />
+
+            <div className="safe-area-padding" style={{
+              paddingTop: 'var(--spacing-lg)',
+              paddingBottom: 'var(--spacing-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-md)',
+            }}>
+              {/* No "Save": every toggle and drop persists on the spot,
+                  so a save button would only be able to lie. */}
+              <Button
+                block
+                color="default"
+                size="large"
+                onClick={handleReset}
+                style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
               >
-                {tilesSettings.order.map((tileId) => {
-                  const tile = tilesConfig.find((t) => t.id === tileId);
-                  if (!tile || tile.isTile === false) return null;
-
-                  return (
-                    <SortableTileItem
-                      key={tile.id}
-                      id={tile.id}
-                      title={tile.title}
-                      visible={tilesSettings.visible[tile.id] !== false}
-                      onToggle={toggleVisibility}
-                      disabled={tile.id === 'history'}
-                    />
-                  );
-                })}
-              </SortableContext>
-            </DndContext>
-          </List>
-
-          <div className="safe-area-padding" style={{
-            paddingTop: 'var(--spacing-lg)',
-            paddingBottom: 'var(--spacing-lg)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--spacing-md)'
-          }}>
-            <Button block color="primary" size="large" onClick={handleSave} style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}>
-              Сохранить
-            </Button>
-            <Button block color="default" size="large" onClick={handleReset} style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}>
-              Сбросить к значениям по умолчанию
-            </Button>
-          </div>
-        </div>
+                Сбросить к значениям по умолчанию
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
-

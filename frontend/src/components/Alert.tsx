@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Toast } from 'antd-mobile';
+import { showToast } from '../utils/toast';
 
 interface AlertProps {
   type: 'success' | 'error' | 'info' | 'warning';
@@ -15,17 +15,17 @@ export function Alert({ type, message, onClose, duration = 3000 }: AlertProps) {
   const handlerRef = useRef<any>(null);
 
   useEffect(() => {
-    const iconMap = {
-      success: 'success',
-      error: 'fail',
-      info: 'loading',
-      warning: 'fail',
-    } as const;
+    // Map onto the shared helpers so these inherit the app-wide toast
+    // position instead of antd's centred default.
+    const variant = {
+      success: showToast.success,
+      error: showToast.failure,
+      info: showToast.info,
+      warning: showToast.failure,
+    }[type];
 
-    handlerRef.current = Toast.show({
-      icon: iconMap[type],
-      content: message,
-      duration: duration, // antd-mobile v5 uses ms
+    handlerRef.current = variant(message, {
+      duration, // antd-mobile v5 uses ms
       afterClose: () => {
         handlerRef.current = null;
         if (typeof onCloseRef.current === 'function') {

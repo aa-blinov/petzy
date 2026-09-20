@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, Switch } from 'antd-mobile';
-import { Moon, SlidersHorizontal, LayoutGrid, LogOut } from 'lucide-react';
+import { Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -63,6 +63,29 @@ export function Settings() {
                 onClick={() => setTheme('system')}
               />
             )}
+          </div>
+
+          {/* Section: Pets
+              The only route to /pets used to be the "Управление
+              питомцами" button inside the navbar's pet picker, and that
+              picker only renders from the second pet onwards — so a
+              household with exactly one pet had no way to add a second
+              one, edit it, or delete it. This row is always reachable,
+              which also lets the navbar picker stay a pure switcher. */}
+          <h3
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            Питомцы
+          </h3>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<PawPrint size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Мои питомцы"
+              description="Добавить, изменить или удалить питомца"
+              chevron
+              onClick={() => navigate('/pets')}
+            />
           </div>
 
           {/* Section: Defaults */}
@@ -129,8 +152,13 @@ export function Settings() {
         onClose={() => setLogoutDialogVisible(false)}
         actions={[
           [
-            { key: 'cancel', text: 'Отмена', onClick: () => setLogoutDialogVisible(false) },
+            // Destructive action first, cancel second — antd stacks
+            // dialog actions vertically, and the four delete dialogs
+            // (курс, питомец, пользователь, запись) all put the
+            // destructive one on top. This one had them reversed, so
+            // the dangerous button changed position between screens.
             { key: 'confirm', text: 'Выйти', bold: true, danger: true, onClick: confirmLogout },
+            { key: 'cancel', text: 'Отмена', onClick: () => setLogoutDialogVisible(false) },
           ],
         ]}
       />

@@ -36,6 +36,9 @@
     --motion-ease-standard:    cubic-bezier(0.2, 0, 0, 1);
     --motion-ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
     --motion-ease-emphasized:  cubic-bezier(0.32, 0.72, 0, 1);
+    /* Overshoots past the target and settles — for gestures that spring
+       back to rest (the swipeable row releasing below threshold). */
+    --motion-ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
 
     /* List stagger — 40ms step, capped at 4 levels so the last item
        never waits longer than 120ms regardless of list size. */
@@ -158,7 +161,10 @@
     padding-bottom: var(--page-padding-bottom);
     background-color: var(--app-page-background);
     color: var(--app-text-color);
-    animation: fadeIn 250ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    /* No entry animation here: this used to say
+       `animation: fadeIn 250ms …`, but no `fadeIn` keyframes exist in
+       the project, so the rule was inert on all 12 pages. Page entry
+       belongs to RouteTransition, which wraps the routed element. */
 }
 
 .safe-area-padding {
@@ -227,6 +233,19 @@
     background: var(--app-accent-soft);
     color: var(--app-accent-deep);
     white-space: nowrap;
+    /* Transparent border so a chip and the dashed .chip--muted stand-in
+       occupy exactly the same box — otherwise the placeholder made its
+       row 2 px taller and the cards in a list no longer matched. */
+    border: 1px solid transparent;
+}
+
+/* Stand-in for a metadata row that has nothing to show yet. Keeps the
+   row's height so cards in a list stay the same size, and reads as a
+   prompt rather than as data. */
+.chip--muted {
+    background: transparent;
+    color: var(--app-text-tertiary);
+    border: 1px dashed var(--app-border-color);
 }
 
 /* Soft card — warm off-white card with subtle warm shadow on cream.
@@ -238,32 +257,28 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--app-shadow);
     border: 1px solid var(--app-border-color);
+    /* Colour only. The card deliberately never moves or changes
+       elevation, so transform and box-shadow are not transitioned. */
     transition:
-        transform var(--motion-duration-fast) var(--motion-ease-emphasized),
-        box-shadow var(--motion-duration-fast) var(--motion-ease-emphasized),
-        border-color var(--motion-duration-fast) var(--motion-ease-standard);
+        border-color var(--motion-duration-fast) var(--motion-ease-standard),
+        background-color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
-/* Hover lift — opt-in via .card-soft--interactive so static cards
-   (EmptyState wrappers, dashboard skeleton) don't wiggle. */
-.card-soft--interactive:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(60, 40, 20, 0.10);
-    border-color: rgba(196, 106, 63, 0.25);
-}
+/* Hover highlight — colour only, opt-in via .card-soft--interactive so
+   static cards (EmptyState wrappers, dashboard skeleton) stay inert.
 
-.card-soft--interactive:active {
-    transform: translateY(0);
-    box-shadow: var(--app-shadow);
-    border-color: var(--app-border-color);
-}
+   This used to lift the card 2 px with translateY and swap in a taller
+   shadow, which read as the row jumping out from under the cursor —
+   especially in a list, where passing over several rows made the whole
+   column twitch. A warm tint and an accent border mark the row without
+   moving anything.
 
-@media (prefers-reduced-motion: reduce) {
-    .card-soft,
-    .card-soft--interactive:hover,
-    .card-soft--interactive:active {
-        transition: none;
-        transform: none;
+   Still gated on a real pointer: on a touch screen `:hover` latches
+   after a tap, so the highlight would stay on the last row touched. */
+@media (hover: hover) and (pointer: fine) {
+    .card-soft--interactive:hover {
+        border-color: var(--app-accent);
+        background-color: var(--app-accent-soft);
     }
 }
 
@@ -382,7 +397,7 @@
     font-family: var(--font-display);
     font-size: 15px;
     cursor: default;
-    transition: background-color 120ms ease;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .setting-row + .setting-row {
@@ -460,8 +475,8 @@ button.setting-row:active {
 .adm-picker-header-button,
 [role="button"] {
     /* Optimized for 120Hz displays - using cubic-bezier for natural motion */
-    transition: transform 80ms cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 80ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: transform var(--motion-duration-instant) var(--motion-ease-standard),
+        opacity var(--motion-duration-instant) var(--motion-ease-standard) !important;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 
@@ -561,11 +576,12 @@ html {
     -moz-osx-font-smoothing: grayscale;
     /* Smooth theme transition when dark mode flips — only animates
        the colour-related properties to keep the perf cost minimal. */
-    transition: background-color 240ms ease;
+    transition: background-color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 html, body, #root {
-    transition: background-color 240ms ease, color 240ms ease;
+    transition: background-color var(--motion-duration-base) var(--motion-ease-standard),
+        color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 body {
@@ -724,11 +740,12 @@ select {
    state. The icon scale is handled inline in BottomTabBar.tsx so it
    can use a spring easing. */
 .adm-tab-bar-item {
-    transition: color 180ms ease;
+    transition: color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .adm-tab-bar-item-title {
-    transition: color 180ms ease, font-weight 180ms ease;
+    transition: color var(--motion-duration-fast) var(--motion-ease-standard),
+        font-weight var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 /* TabBar icons styling */
@@ -1028,16 +1045,6 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     to   { transform: rotate(360deg); }
 }
 
-@keyframes shimmer {
-    0% {
-        background-position: -200% 0;
-    }
-
-    100% {
-        background-position: 200% 0;
-    }
-}
-
 /* ============================================================
    Unified motion system — one vocabulary, one set of durations.
    Replace the old `animate-fade-in / animate-slide-up / animate-scale-in /
@@ -1094,10 +1101,17 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
-.adm-popup-body,
-.adm-dialog-body {
-    animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
-}
+/* Popups and dialogs are deliberately NOT animated here.
+   antd-mobile drives them itself, with a spring on an inline
+   `transform` — slide-up/slide-down for a bottom sheet, scale for a
+   dialog. A CSS `animation` on the same element outranks inline styles
+   in the cascade, and `animation-fill-mode: both` keeps the final
+   keyframe applied for as long as the element lives. So the old rule
+   here pinned the body at `scale(1)` forever: on close antd set
+   `transform: translate(0, 100%)` and nothing moved (computed stayed
+   `matrix(1,0,0,1,0,0)` instead of `…,0,722)`), the sheet was simply
+   unmounted mid-air, and the bottom tab bar snapped back into view.
+   Leave the motion to the component. */
 
 .adm-toast-main {
     animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
@@ -1116,12 +1130,22 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     will-change: transform, opacity;
 }
 
+/* These three were all pointing at the generic motion-appear/motion-fade
+   pair, which meant "forward" was a 6 px vertical nudge and "back" was a
+   plain cross-fade identical to "replace" — while the dedicated
+   route-forward / route-back keyframes below sat unused and
+   RouteTransition's docstring described horizontal slides that nothing
+   implemented. Point each state at its own keyframes: forward enters
+   from the right, back from the left (shorter travel, shorter duration,
+   since returning should feel quicker). "Replace" reuses the generic
+   motion-fade: a plain cross-fade carries no direction, so there was
+   nothing route-specific about keeping a second identical keyframe. */
 .route-transition--forward {
-    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
+    animation: route-forward var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
 .route-transition--back {
-    animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) both;
+    animation: route-back var(--motion-duration-fast) var(--motion-ease-standard) both;
 }
 
 .route-transition--replace {
@@ -1136,11 +1160,6 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 @keyframes route-back {
     from { opacity: 0; transform: translate3d(-16px, 0, 0); }
     to   { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-
-@keyframes route-fade {
-    from { opacity: 0; }
-    to   { opacity: 1; }
 }
 
 /* ============================================================
@@ -1165,6 +1184,31 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 :focus-visible {
     outline: 2px solid var(--app-primary-color);
     outline-offset: 2px;
+    /* No border-radius here on purpose: an outline already follows the
+       element's own corners, so setting a radius only reshaped the
+       element itself while focused — it squared off pill-shaped buttons
+       the moment they were tabbed to. */
+}
+
+/* Text fields draw the ring INSIDE their box.
+   Two reasons. First, `:focus-visible` matches a text input whenever it
+   is focused — including a plain mouse click — because the browser
+   knows keyboard input is coming next; the note above about clicks not
+   triggering the ring holds for buttons, not for fields. Second,
+   antd-mobile's form rows (`.adm-form-item-child`, and its `-inner`)
+   clip to exactly the field box with `overflow: hidden`, so a positive
+   offset pushed the ring outside the clip and only the fragment beside
+   the field survived — it rendered as a stray copper arc at the right
+   edge of whichever field had focus. Inset, the ring is fully visible
+   and keyboard users still get a clear indicator. */
+input:focus-visible,
+textarea:focus-visible,
+.adm-input-element:focus-visible,
+.adm-text-area-element:focus-visible {
+    outline-offset: -2px;
+    /* Safe to set here, unlike on the global rule: these fields are
+       transparent and borderless, so the radius only shapes the ring
+       and matches the app's rounded language. */
     border-radius: var(--radius-sm);
 }
 
@@ -1174,25 +1218,6 @@ button:focus-visible,
 .adm-button:focus-visible,
 [class*="button"]:focus-visible {
     outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .motion-enter,
-    .motion-scale-in,
-    .motion-press:active,
-    .adm-card,
-    .adm-list-card,
-    .adm-form,
-    .adm-popup-body,
-    .adm-dialog-body,
-    .adm-toast-main,
-    .route-transition,
-    .route-transition--forward,
-    .route-transition--back,
-    .route-transition--replace {
-        animation-duration: 1ms !important;
-        animation-delay: 0ms !important;
-    }
 }
 
 /* Skeleton placeholders for list/card loading states. Pulsing
@@ -1206,6 +1231,7 @@ button:focus-visible,
         var(--app-border-color) 100%
     );
     background-size: 200% 100%;
+    /* Loop, not a state change — outside the 80-320 ms scale on purpose. */
     animation: skeleton-shimmer 1400ms ease-in-out infinite;
     border-radius: var(--radius-sm);
 }
@@ -1218,10 +1244,6 @@ button:focus-visible,
 /* Skeleton shimmer is a loop, not an entrance — kill it entirely
    under reduced-motion (the new unified motion override above
    handles everything else). */
-@media (prefers-reduced-motion: reduce) {
-    .skeleton { animation: none; }
-}
-
 /* ========================================
    Hero parallax (subtle scroll-driven translation)
    ======================================== */
@@ -1234,41 +1256,6 @@ button:focus-visible,
 /* ========================================
    Tap ripple (CSS-only, no finger-tracking)
    ======================================== */
-/* Apply .tap-ripple to any clickable card/button for an expanding
-   accent-soft circle on press. Centered ripple — doesn't follow the
-   touch point, but the existing :active scale-down already gives
-   tactile feedback. Together they read as "native". */
-.tap-ripple {
-    position: relative;
-    overflow: hidden;
-    /* Establishes the pseudo-element's positioning context. */
-}
-
-.tap-ripple::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: var(--app-accent-soft);
-    opacity: 0;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
-.tap-ripple:active::after {
-    width: 220%;
-    height: 220%;
-    opacity: 0.6;
-    transition: width 520ms ease-out, height 520ms ease-out, opacity 0ms;
-}
-
-.tap-ripple:not(:active)::after {
-    transition: width 0ms, height 0ms, opacity 360ms ease-out;
-}
-
 /* High refresh rate display optimizations (120Hz+) */
 @media (prefers-reduced-motion: no-preference) {
 
@@ -1292,6 +1279,19 @@ button:focus-visible,
 }
 
 /* Optimize for users who prefer reduced motion */
+/* ============================================================
+   Reduced motion — the single place motion is switched off.
+   This was spread over five separate `prefers-reduced-motion: reduce`
+   blocks: a universal reset plus four narrower ones that it already
+   covered. Worse, one of them set `animation-duration: 1ms` for a list
+   of selectors and outranked the universal `0.01ms`, so two different
+   "zero" durations were live at once.
+
+   The universal rule handles everything expressible as a duration. The
+   rules after it cover what a duration cannot: a transform that would
+   otherwise snap into place instantly rather than not happening, and a
+   looping animation that is better switched off outright.
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
 
     *,
@@ -1301,6 +1301,11 @@ button:focus-visible,
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    /* A shimmer loop has nothing to show instantly; stop it. */
+    .skeleton {
+        animation: none;
     }
 }
 /* History tabs: enable horizontal scroll when there are more tabs than fit.
@@ -1336,7 +1341,16 @@ button:focus-visible,
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 0 0 var(--spacing-sm);
+    /* Side padding matches the page gutter (.safe-area-padding uses the
+       same tokens), so the rail's first chip lines up with the heading
+       above it. The rail itself still spans edge to edge — it lives in
+       .max-width-container, not in a padded wrapper — so without this
+       the leading chip sat flush at x=0, 16 px left of the title, and
+       read as clipped rather than as a scrollable rail. The padding is
+       part of the scroll area, so chips still run to the edge once the
+       rail is scrolled. */
+    padding: 0 var(--layout-padding-right) var(--spacing-sm) var(--layout-padding-left);
+    scroll-padding-left: var(--layout-padding-left);
     margin: 0 0 var(--spacing-md);
 }
 .history-filter-rail::-webkit-scrollbar {
@@ -1348,19 +1362,25 @@ button:focus-visible,
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    /* These are tap targets, not status badges. At --text-xs with 6 px
+       of vertical padding they rendered 29 px tall under a 24 px
+       heading, which read as a caption rather than a control (and sat
+       well under a comfortable touch target). */
+    padding: 8px 14px;
     border-radius: 999px;
     border: 1px solid var(--app-border-color);
     background: var(--app-card-background);
     color: var(--app-text-secondary);
     font-family: var(--font-display);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: 600;
     letter-spacing: -0.01em;
     white-space: nowrap;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-standard),
+        color var(--motion-duration-fast) var(--motion-ease-standard),
+        border-color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .history-filter-chip:active {
@@ -1371,12 +1391,6 @@ button:focus-visible,
     background: var(--app-primary-color);
     border-color: var(--app-primary-color);
     color: var(--app-text-on-dark);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .history-filter-chip {
-        transition: none;
-    }
 }
 
 /* FloatingBubble sits in a portal and ignores the CSS variables we set

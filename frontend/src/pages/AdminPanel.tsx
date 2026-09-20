@@ -1,24 +1,17 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Dialog } from 'antd-mobile';
+import { Dialog, PullToRefresh } from 'antd-mobile';
 import { Pencil, Trash2, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SkeletonList } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { formatRelativeDate } from '../utils/relativeTime';
-
-/**
- * A horizontal drag can still end with a synthetic click on some
- * browsers. Remember where the pointer went down and ignore anything
- * that travelled far enough to have been a swipe, so swipe-to-delete
- * never doubles as tap-to-edit.
- */
-const TAP_SLOP_PX = 8;
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -27,9 +20,8 @@ export function AdminPanel() {
   // State for alert messages
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const tapOrigin = useRef<{ x: number; y: number } | null>(null);
 
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [], isLoading: usersLoading, refetch } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersService.getUsers(),
     enabled: isAdmin,
@@ -126,14 +118,15 @@ export function AdminPanel() {
           {/* Same .section-header as Settings, so the admin screen reads
               as part of the app rather than a bare CRUD table. */}
           <h3 className="section-header" style={{ fontSize: 'var(--text-lg)' }}>Пользователи</h3>
-          {/* antd-mobile's color="primary" paints this its own blue,
-              which was the one non-brand surface in the app. Use the
-              same copper gradient as every other primary action. */}
+          {/* Flat copper, like every other primary action in the app.
+              The brand gradient is reserved for the wordmark and the
+              single sign-in button on the login screen; using it here
+              made this the only gradient button inside the app shell. */}
           <button
             type="button"
             onClick={handleNewUser}
             style={{
-              background: 'var(--app-brand-gradient)',
+              background: 'var(--app-primary-color)',
               border: 'none',
               borderRadius: '999px',
               color: '#FFFFFF',
@@ -148,22 +141,32 @@ export function AdminPanel() {
         </div>
 
         {usersLoading ? (
-          <LoadingSpinner fullscreen={false} />
+          /* Skeletons, like every other list in the app. This was the
+             one list that flashed a spinner on a cold fetch. */
+          <SkeletonList count={3} />
+        ) : users.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Пользователей пока нет"
+            description="Добавьте первого пользователя — у каждого будут свои питомцы и права."
+          />
         ) : (
-          <div className="safe-area-padding" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--spacing-md)',
-            marginTop: 'var(--spacing-sm)',
-          }}>
-            {users.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title="Пользователей пока нет"
-                description="Добавьте первого пользователя — у каждого будут свои питомцы и права."
-              />
-            ) : (
-              users.map((user) => (
+          /* Pull-to-refresh, same as the other lists — this was the
+             only one a user couldn't pull to reload. */
+          <PullToRefresh
+            onRefresh={async () => {
+              hapticFeedback('medium');
+              await refetch();
+            }}
+            headHeight={48}
+          >
+            <div className="safe-area-padding" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-md)',
+              marginTop: 'var(--spacing-sm)',
+            }}>
+              {users.map((user) => (
                 <SwipeableRow
                   key={user._id}
                   leftAction={{
@@ -180,30 +183,12 @@ export function AdminPanel() {
                   }}
                   disabled={deleteUserMutation.isPending}
                 >
-                {/* Tapping the row opens the editor — the same action the
-                    left swipe commits. The card already carried
-                    .tap-ripple, so a press animated and then resolved
-                    to nothing; and without --interactive it lacked the
-                    press/hover feedback every other card in the app has. */}
+                {/* Editing and deleting are swipe actions. No .tap-ripple
+                    here on purpose: the row has no tap action, so a press
+                    animation would promise something that never happens. */}
                 <div
-                  className="card-soft card-soft--interactive tap-ripple"
-                  style={{ padding: 16, cursor: 'pointer' }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Изменить пользователя ${user.username}`}
-                  onPointerDown={(e) => { tapOrigin.current = { x: e.clientX, y: e.clientY }; }}
-                  onClick={(e) => {
-                    const origin = tapOrigin.current;
-                    tapOrigin.current = null;
-                    if (origin && Math.hypot(e.clientX - origin.x, e.clientY - origin.y) > TAP_SLOP_PX) return;
-                    handleEdit(user);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleEdit(user);
-                    }
-                  }}
+                  className="card-soft card-soft--interactive"
+                  style={{ padding: 16 }}
                 >
                   <div style={{
                     marginBottom: 10,
@@ -225,19 +210,6 @@ export function AdminPanel() {
                       <span style={{ fontSize: 12, color: 'var(--app-text-secondary)' }}>{user.email}</span>
                     )}
                     <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span
-                        className="chip"
-                        style={{
-                          background: user.is_active !== false
-                            ? 'rgba(52, 199, 89, 0.12)'
-                            : 'rgba(255, 69, 58, 0.10)',
-                          color: user.is_active !== false
-                            ? 'var(--app-success-color)'
-                            : 'var(--app-danger-color)',
-                        }}
-                      >
-                        {user.is_active !== false ? 'Активен' : 'Неактивен'}
-                      </span>
                       {user.created_at && (
                         <span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>
                           {/* Raw "2026-09-20 07:40" was the only bare
@@ -250,9 +222,9 @@ export function AdminPanel() {
                   </div>
                 </div>
                 </SwipeableRow>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          </PullToRefresh>
         )}
       </div>
 

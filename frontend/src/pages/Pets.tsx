@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, ImageViewer, Toast, PullToRefresh } from 'antd-mobile';
+import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import { Pencil, Scale, Trash2, Cat } from 'lucide-react';
 import { petsService, type Pet } from '../services/pets.service';
@@ -8,7 +9,7 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
-import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
+import { speciesIconMap, SPECIES_FALLBACK_ICON, genderLabel } from '../utils/constants';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
@@ -55,12 +56,12 @@ export function Pets() {
         selectPet(null);
       }
 
-      Toast.show({ icon: 'success', content: 'Питомец удален' });
+      showToast.success('Питомец удален');
     } catch (error: any) {
       console.error('Delete pet error:', error);
       setDeleteDialog(prev => ({ ...prev, visible: false }));
       const errorMessage = error?.response?.data?.error || 'Ошибка при удалении';
-      Toast.show({ icon: 'fail', content: errorMessage });
+      showToast.failure(errorMessage);
     }
   };
 
@@ -228,7 +229,10 @@ function PetCard({
 
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction}>
-      <div className="card-soft card-soft--interactive tap-ripple" style={{ overflow: 'hidden' }}>
+      {/* Editing and deleting are swipe actions. No .tap-ripple here on
+          purpose: the card has no tap action, so a press animation would
+          promise something that never happens. */}
+      <div className="card-soft card-soft--interactive" style={{ overflow: 'hidden' }}>
         {/* Hero photo / species icon (compact, ~120px) */}
         <button
           type="button"
@@ -281,34 +285,53 @@ function PetCard({
           )}
         </button>
 
-        {/* Body — name + meta chips */}
+        {/* Body — name + meta chips.
+            Every card is the same height regardless of how full the
+            profile is. Three things used to vary it: the chip row was
+            rendered only when some metadata existed, it could wrap onto
+            a second line, and a long name could wrap too — so a list of
+            pets came out as a stepped column. The row is now always
+            present (with a stand-in when empty), kept to one line, and
+            the name is clipped rather than wrapped. */}
         <div style={{ padding: '14px 16px' }}>
           <div
             className="display-headline"
-            style={{ fontSize: '20px', fontWeight: 700, lineHeight: 1.2 }}
+            style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
           >
             {pet.name}
           </div>
-          {(pet.breed || age || pet.gender || lastWeight) && (
-            <div
-              style={{
-                marginTop: 8,
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 6,
-              }}
-            >
-              {pet.breed && <span className="chip">{pet.breed}</span>}
-              {age && <span className="chip">{age}</span>}
-              {pet.gender && <span className="chip">{pet.gender}</span>}
-              {lastWeight && (
-                <span className="chip">
-                  <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
-                  {lastWeight.weight} кг
-                </span>
-              )}
-            </div>
-          )}
+          <div
+            style={{
+              marginTop: 8,
+              display: 'flex',
+              flexWrap: 'nowrap',
+              gap: 6,
+              overflow: 'hidden',
+            }}
+          >
+            {pet.breed || age || pet.gender || lastWeight ? (
+              <>
+                {pet.breed && <span className="chip">{pet.breed}</span>}
+                {age && <span className="chip">{age}</span>}
+                {pet.gender && <span className="chip">{genderLabel(pet.gender)}</span>}
+                {lastWeight && (
+                  <span className="chip">
+                    <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
+                    {lastWeight.weight} кг
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="chip chip--muted">Профиль не заполнен</span>
+            )}
+          </div>
         </div>
       </div>
     </SwipeableRow>

@@ -15,11 +15,16 @@
  *     is responsible for snapping back / unmounting.
  *   - Below threshold, releasing springs the row back to rest.
  *
+ * Input: Pointer Events, so mouse, touch and pen share one path.
+ * This used to listen to touch events only, which meant the row could
+ * not be swiped with a cursor at all — and since the rows have no tap
+ * action, edit and delete were unreachable on a desktop.
+ *
  * Why a hook instead of a library: we already own `useSwipeBack`
- * with the same touch-tracking shape. Keep dependencies minimal.
+ * with the same tracking shape. Keep dependencies minimal.
  */
 
-import { useRef, useState, useCallback, type TouchEvent as ReactTouchEvent } from 'react';
+import { useRef, useState, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
 
 // Travel thresholds tuned for ~412 CSS-px viewports on iOS Safari and
 // Android Chrome — real-finger swipes rarely exceed 80 px before the
@@ -51,23 +56,30 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
   const lockedRef = useRef<SwipeDirection | null>(null);
   const offsetRef = useRef(0);
 
-  // Keep ref in sync so the touchmove handler always sees the latest offset.
+  // Keep ref in sync so the pointermove handler always sees the latest offset.
   offsetRef.current = offset;
 
-  const onTouchStart = useCallback((e: ReactTouchEvent) => {
+  const onPointerDown = useCallback((e: ReactPointerEvent) => {
     if (disabled) return;
-    const t = e.touches[0];
-    startXRef.current = t.clientX;
-    startYRef.current = t.clientY;
+    // Primary contact only: ignore right/middle clicks and extra fingers.
+    if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
     startTimeRef.current = Date.now();
     lockedRef.current = null;
+    // Keep receiving moves even if the cursor leaves the row mid-drag —
+    // with a mouse that happens constantly near the edges.
+    try {
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    } catch {
+      /* capture unsupported or pointer already gone — tracking still works */
+    }
   }, [disabled]);
 
-  const onTouchMove = useCallback((e: ReactTouchEvent) => {
-    if (disabled) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startXRef.current;
-    const dy = t.clientY - startYRef.current;
+  const onPointerMove = useCallback((e: ReactPointerEvent) => {
+    if (disabled || !e.isPrimary) return;
+    const dx = e.clientX - startXRef.current;
+    const dy = e.clientY - startYRef.current;
 
     // Lock axis on the first significant move so vertical scroll
     // (within PullToRefresh) still works and a sloppy diagonal
@@ -80,6 +92,9 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
       if (Math.abs(dx) > Math.abs(dy)) {
         lockedRef.current = dx > 0 ? 'right' : 'left';
         setDragging(true);
+        // Cancel the text selection a horizontal mouse drag would
+        // otherwise start; touch is already handled by touch-action.
+        e.preventDefault();
       } else {
         // Vertical — let the parent handle scroll and bail out.
         return;
@@ -98,7 +113,12 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
     setOffset(next);
   }, [disabled]);
 
-  const onTouchEnd = useCallback(() => {
+  const onPointerUp = useCallback((e: ReactPointerEvent) => {
+    try {
+      (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+    } catch {
+      /* capture was never taken */
+    }
     if (disabled || !lockedRef.current) {
       setDragging(false);
       return;
@@ -134,7 +154,14 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
   return {
     offset,
     dragging,
-    handlers: { onTouchStart, onTouchMove, onTouchEnd },
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      // A cancelled pointer (browser gesture, window blur) must not
+      // leave the row stuck mid-swipe.
+      onPointerCancel: onPointerUp,
+    },
     reset,
   };
 }

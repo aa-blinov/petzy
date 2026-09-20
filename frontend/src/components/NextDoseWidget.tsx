@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Button, Toast } from 'antd-mobile';
+import { formatDate, formatTime } from '../utils/dateUtils';
+import { showToast } from '../utils/toast';
+import { Card, Button } from 'antd-mobile';
 import { ClockCircleOutline, ExclamationCircleOutline } from 'antd-mobile-icons';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
@@ -11,12 +13,18 @@ export function NextDoseWidget() {
     const { data: upcoming = [], isLoading } = useQuery({
         queryKey: ['medications', 'upcoming', selectedPetId],
         queryFn: () => {
+            // The client's own wall clock, not toISOString(): that emits
+            // UTC, and the backend treats this value as local — it takes
+            // the weekday from it, bounds "today's intakes" by it, and
+            // compares it against schedule times like "08:00" that are
+            // local. Sending UTC shifted every judgement by the viewer's
+            // offset, so a dose an hour overdue still read as upcoming
+            // (at UTC+5, a five-hour blind window).
             const now = new Date();
-            // ISO string format: YYYY-MM-DDTHH:mm:ss.sssZ
-            // We want to pass the local time representation or just the ISO string.
-            // Backend expects ISO-like usage or YYYY-MM-DD HH:MM.
-            // Let's pass ISO string, backend handles checking T.
-            return medicationsService.getUpcoming(selectedPetId!, now.toISOString());
+            return medicationsService.getUpcoming(
+                selectedPetId!,
+                `${formatDate(now)}T${formatTime(now)}:00`,
+            );
         },
         enabled: !!selectedPetId,
         refetchInterval: 60000, // Refresh every minute
@@ -32,7 +40,7 @@ export function NextDoseWidget() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({ icon: 'success', content: 'Принято!' });
+            showToast.success('Принято!');
         }
     });
 

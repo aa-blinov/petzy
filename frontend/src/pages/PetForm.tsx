@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { parseRecordDate } from '../utils/relativeTime';
+import { showToast } from '../utils/toast';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Picker, List, Switch, TextArea, SearchBar, ImageViewer, Toast } from 'antd-mobile';
+import { Button, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
-import { Camera, GripVertical } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 
 /** Predefined species — matches speciesIcon() in utils/speciesIcon.tsx
     so the lucide placeholder stays consistent. */
@@ -19,27 +20,17 @@ const SPECIES_OPTIONS = [
     { label: 'Другое', value: 'other' },
 ];
 
-/** Gender options. */
-const GENDER_OPTIONS = [
-    { label: 'Не указан', value: '' },
-    { label: 'Мужской', value: 'male' },
-    { label: 'Женский', value: 'female' },
-];
-
 /** Sterilisation (neutered) options. */
 const NEUTERED_OPTIONS = [
     { label: 'Не указано', value: '' },
     { label: 'Нет', value: 'false' },
     { label: 'Да', value: 'true' },
 ];
-import type { DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 import { petsService } from '../services/pets.service';
 import { usersService } from '../services/users.service';
-import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
-import { tilesConfig } from '../utils/tilesConfig';
+import { TilesEditor } from '../components/TilesEditor';
+import { GENDER_OPTIONS } from '../utils/constants';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 
@@ -156,8 +147,10 @@ export function PetForm() {
       month = parseInt(internalPickerDate[1]);
       year = parseInt(internalPickerDate[2]);
     } else if (birthDateValue) {
-      const d = new Date(birthDateValue);
-      if (!isNaN(d.getTime())) {
+      // "YYYY-MM-DD" parsed by new Date() is UTC midnight; the local
+      // getters below would then report the previous day west of UTC.
+      const d = parseRecordDate(birthDateValue);
+      if (d) {
         month = d.getMonth();
         year = d.getFullYear();
       }
@@ -260,21 +253,12 @@ export function PetForm() {
         await queryClient.invalidateQueries({ queryKey: ['pet', petId] });
       }
 
-      Toast.show({
-        icon: 'success',
-        content: isEditing ? 'Питомец обновлен' : 'Питомец добавлен',
-        position: 'bottom',
-        duration: 1600,
-        afterClose: () => navigate('/pets')
+      showToast.success(isEditing ? 'Питомец обновлен' : 'Питомец добавлен', {
+        afterClose: () => navigate('/pets'),
       });
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || 'Ошибка при сохранении';
-      Toast.show({
-        icon: 'fail',
-        content: errorMessage,
-        position: 'bottom',
-        duration: 2400,
-      });
+      showToast.failure(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -386,8 +370,8 @@ export function PetForm() {
               render={({ field: { value, onChange } }) => {
                 let pickerValue: string[] = [];
                 if (value) {
-                  const d = new Date(value);
-                  if (!isNaN(d.getTime())) {
+                  const d = parseRecordDate(value);
+                  if (d) {
                     pickerValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
                   }
                 } else {
@@ -395,7 +379,9 @@ export function PetForm() {
                   pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
                 }
 
-                const displayDate = value ? new Date(value).toLocaleDateString('ru-RU') : '';
+                const displayDate = value
+                  ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value)
+                  : '';
                 return (
                   <Form.Item
                     label="Дата рождения"
@@ -784,79 +770,17 @@ export function PetForm() {
 }
 
 function PetTilesSettingsSection({ petId }: { petId: string }) {
-  const { tilesSettings, updateOrder, toggleVisibility } = usePetTilesSettings(petId);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = tilesSettings.order.indexOf(active.id as string);
-      const newIndex = tilesSettings.order.indexOf(over.id as string);
-      updateOrder(arrayMove(tilesSettings.order, oldIndex, newIndex));
-    }
-  };
-
-  function SortableTileItem({ id, title, visible, onToggle }: { id: string; title: string; visible: boolean; onToggle: (id: string, visible: boolean) => void }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-      zIndex: isDragging ? 1000 : 'auto',
-      position: 'relative' as const,
-    };
-
-    return (
-      <div ref={setNodeRef} style={style}>
-        <List.Item
-          prefix={
-            <div {...attributes} {...listeners} style={{ cursor: 'grab', color: 'var(--app-text-tertiary)', paddingRight: '8px', touchAction: 'none', display: 'flex' }}>
-              <GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />
-            </div>
-          }
-          extra={<Switch checked={visible} onChange={(checked) => onToggle(id, checked)} aria-label={`Показать ${title}`} />}
-        >
-          {title}
-        </List.Item>
-      </div>
-    );
-  }
-
   return (
-    <>
-      <Form.Item layout="vertical">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={tilesSettings.order} strategy={verticalListSortingStrategy}>
-            <List style={{ '--background-color': 'transparent' } as any}>
-              {tilesSettings.order.map((tileId) => {
-                const tile = tilesConfig.find((t) => t.id === tileId);
-                if (!tile || tile.isTile === false) return null;
-                return (
-                  <SortableTileItem
-                    key={tile.id}
-                    id={tile.id}
-                    title={tile.title}
-                    visible={tilesSettings.visible[tile.id] !== false}
-                    onToggle={toggleVisibility}
-                  />
-                );
-              })}
-            </List>
-          </SortableContext>
-        </DndContext>
-        <div style={{
-          marginTop: 'var(--spacing-sm)',
-          fontSize: 'var(--text-xs)',
-          color: 'var(--app-text-tertiary)',
-          lineHeight: 'var(--line-height-tight)'
-        }}>
-          Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
-        </div>
-      </Form.Item>
-    </>
+    <Form.Item layout="vertical">
+      <TilesEditor petId={petId} />
+      <div style={{
+        marginTop: 'var(--spacing-sm)',
+        fontSize: 'var(--text-xs)',
+        color: 'var(--app-text-tertiary)',
+        lineHeight: 'var(--line-height-tight)'
+      }}>
+        Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
+      </div>
+    </Form.Item>
   );
 }

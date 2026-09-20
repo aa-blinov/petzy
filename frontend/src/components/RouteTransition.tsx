@@ -2,10 +2,18 @@
  * Wraps the route outlet so each page fades+slides in on navigation.
  *
  * - Forward navigation (push) slides in from the right.
- * - Back navigation (pop) slides in from the left, slightly faster.
+ * - Back navigation (pop) slides in from the left, slightly faster —
+ *   returning to a previous view should feel quicker than going
+ *   somewhere new.
+ * - Replace (a redirect, e.g. the sign-out path) just cross-fades:
+ *   there is no direction to imply when the user didn't navigate.
  * - Same-route re-renders don't trigger the animation.
  * - Swiping right from the left edge triggers a back navigation
  *   (basic iOS-style edge gesture).
+ *
+ * The three states map to `.route-transition--forward|back|replace`,
+ * backed by the `route-forward` / `route-back` / `motion-fade`
+ * keyframes in globals.css.
  *
  * The key on the inner div forces a remount on pathname change, which
  * restarts the CSS animation each time.

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
-import { Button, Form, Picker, Toast } from 'antd-mobile';
+import { Button, Form, Picker } from 'antd-mobile';
 import { DEFAULT_FORM_SETTINGS, getFormSettings, type FormSettings } from '../utils/formsConfig';
 
 /** Static option lists for each categorical field. Kept here rather than
@@ -65,21 +66,14 @@ export function FormDefaults() {
     const handleSave = useCallback(() => {
         try {
             localStorage.setItem('formDefaults', JSON.stringify(formSettings));
-            Toast.show({
-                icon: 'success',
-                content: 'Настройки успешно сохранены',
-                duration: 1000,
-            });
+            showToast.success('Настройки успешно сохранены');
             setTimeout(() => {
                 if (mountedRef.current) {
                     navigate('/settings');
                 }
             }, 1000);
         } catch (err) {
-            Toast.show({
-                icon: 'fail',
-                content: 'Ошибка при сохранении настроек',
-            });
+            showToast.failure('Ошибка при сохранении настроек');
             console.error('Error saving settings:', err);
         }
     }, [formSettings, navigate]);
@@ -90,16 +84,9 @@ export function FormDefaults() {
             try {
                 setFormSettings(DEFAULT_FORM_SETTINGS);
                 localStorage.setItem('formDefaults', JSON.stringify(DEFAULT_FORM_SETTINGS));
-                Toast.show({
-                    icon: 'success',
-                    content: 'Настройки сброшены',
-                    duration: 1000,
-                });
+                showToast.success('Настройки сброшены');
             } catch (err) {
-                Toast.show({
-                    icon: 'fail',
-                    content: 'Ошибка при сбросе настроек',
-                });
+                showToast.failure('Ошибка при сбросе настроек');
             }
         }
     }, []);

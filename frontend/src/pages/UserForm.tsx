@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Switch, Toast } from 'antd-mobile';
+import { Button, Form, Input } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +15,6 @@ const userSchema = z.object({
   password: z.string().optional(),
   full_name: z.string().optional(),
   email: z.string().email('Некорректный email').optional().or(z.literal('')),
-  is_active: z.boolean(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -32,7 +32,6 @@ export function UserForm() {
       password: '',
       full_name: '',
       email: '',
-      is_active: true,
     }
   });
 
@@ -55,7 +54,6 @@ export function UserForm() {
         password: '',
         full_name: user.full_name || '',
         email: user.email || '',
-        is_active: user.is_active !== false,
       });
     } else if (!isEditing) {
       reset({
@@ -63,7 +61,6 @@ export function UserForm() {
         password: '',
         full_name: '',
         email: '',
-        is_active: true,
       });
     }
   }, [user, isEditing, reset]);
@@ -72,12 +69,12 @@ export function UserForm() {
     mutationFn: (data: UserCreate) => usersService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      Toast.show({ icon: 'success', content: 'Пользователь успешно создан', duration: 1500 });
+      showToast.success('Пользователь успешно создан');
       setTimeout(() => navigate('/admin'), 500);
     },
     onError: (err: any) => {
       const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при создании пользователя';
-      Toast.show({ icon: 'fail', content: errorMessage, duration: 2000 });
+      showToast.failure(errorMessage);
     },
   });
 
@@ -86,18 +83,18 @@ export function UserForm() {
       usersService.updateUser(username, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      Toast.show({ icon: 'success', content: 'Пользователь успешно обновлен', duration: 1500 });
+      showToast.success('Пользователь успешно обновлен');
       setTimeout(() => navigate('/admin'), 500);
     },
     onError: (err: any) => {
       const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при обновлении пользователя';
-      Toast.show({ icon: 'fail', content: errorMessage, duration: 2000 });
+      showToast.failure(errorMessage);
     },
   });
 
   const onSubmit = (formData: UserFormData) => {
     if (!isEditing && !formData.password) {
-      Toast.show({ icon: 'fail', content: 'Пароль обязателен для нового пользователя', duration: 2000 });
+      showToast.failure('Пароль обязателен для нового пользователя');
       return;
     }
 
@@ -106,7 +103,9 @@ export function UserForm() {
       ...(isEditing && formData.password?.trim() && { password: formData.password.trim() }),
       full_name: formData.full_name || '',
       email: formData.email || '',
-      is_active: formData.is_active,
+      // is_active is deliberately not sent. Create hardcodes it to true
+      // server-side and update only writes it when present, so omitting
+      // it leaves an existing account's state untouched.
     };
 
     if (isEditing && username) {
@@ -222,19 +221,6 @@ export function UserForm() {
                     placeholder="Введите email"
                     clearable
                     autoComplete="email"
-                  />
-                </Form.Item>
-              )}
-            />
-
-            <Controller
-              name="is_active"
-              control={control}
-              render={({ field: { value, onChange } }) => (
-                <Form.Item label="Активен">
-                  <Switch
-                    checked={value}
-                    onChange={onChange}
                   />
                 </Form.Item>
               )}

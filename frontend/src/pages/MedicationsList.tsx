@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { formatDate } from '../utils/dateUtils';
+import { showToast } from '../utils/toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ProgressBar, Toast, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
+import { Button, Card, ProgressBar, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
@@ -19,7 +21,11 @@ export function MedicationsList() {
     const { data: medications = [], isLoading, refetch } = useQuery({
         queryKey: ['medications', selectedPetId],
         queryFn: () => {
-            const clientDate = new Date().toISOString().split('T')[0];
+            // Local date, not the UTC one toISOString() yields: the
+            // backend uses this as the start of "today" when deciding
+            // which doses are already taken, so a UTC date put the
+            // window on the wrong day near midnight.
+            const clientDate = formatDate(new Date());
             return medicationsService.getList(selectedPetId!, clientDate);
         },
         enabled: !!selectedPetId,
@@ -55,17 +61,10 @@ export function MedicationsList() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
             queryClient.invalidateQueries({ queryKey: ['pets'] });
-            Toast.show({
-                icon: 'success',
-                content: 'Приём отмечен',
-                duration: 2000
-            });
+            showToast.success('Приём отмечен');
         },
         onError: (err: any) => {
-            Toast.show({
-                icon: 'fail',
-                content: err?.response?.data?.error || 'Ошибка при сохранении'
-            });
+            showToast.failure(err?.response?.data?.error || 'Ошибка при сохранении');
         }
     });
 
@@ -73,7 +72,7 @@ export function MedicationsList() {
         mutationFn: (id: string) => medicationsService.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({ icon: 'success', content: 'Курс удалён' });
+            showToast.success('Курс удалён');
         }
     });
 
