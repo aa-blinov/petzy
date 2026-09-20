@@ -13,6 +13,33 @@
     /* Single accent (warm copper) + soft tint for backgrounds */
     --app-accent: #C46A3F;
     --app-accent-soft: #FBEFE5;
+
+    /* Motion design tokens — single source of truth for durations,
+       easings, and stagger so the whole UI feels uniform.
+       Anything that previously hard-coded 200ms / 240ms / 280ms / 300ms
+       with `cubic-bezier(0.4,0,0.2,1)` or `(0.34,1.56,0.64,1)` now
+       reads from these. Three durations cover every interaction:
+         - instant:  micro-feedback on hover/press
+         - fast:     tap targets, color transitions, FAB spin
+         - base:     cards appearing, list items, route changes
+         - slow:     reserved for hero elements (not used today)
+       Three easings:
+         - standard:  the everyday decelerate curve (close to
+                       cubic-bezier(0.2,0,0,1) — Material 3 "standard")
+         - decelerate: gentler at the end (elements coming in)
+         - emphasized: snappier mid-curve (popups, FAB, primary taps) */
+    --motion-duration-instant: 80ms;
+    --motion-duration-fast:    160ms;
+    --motion-duration-base:    240ms;
+    --motion-duration-slow:    320ms;
+
+    --motion-ease-standard:    cubic-bezier(0.2, 0, 0, 1);
+    --motion-ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
+    --motion-ease-emphasized:  cubic-bezier(0.32, 0.72, 0, 1);
+
+    /* List stagger — 40ms step, capped at 4 levels so the last item
+       never waits longer than 120ms regardless of list size. */
+    --motion-stagger-step: 40ms;
     --app-accent-deep: #9F4F2A;
 
     /* Neutral / Text Colors (warm) */
@@ -854,21 +881,13 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    Lightweight Animations (GPU-accelerated)
    ======================================== */
 
-/* Keyframes */
-@keyframes fadeIn {
+/* Keyframes — three primitives cover every entrance. They all share
+   the same duration token via var(--motion-duration-base) so a
+   global "speed up the UI" change in :root moves them together. */
+@keyframes motion-appear {
     from {
         opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px) translateZ(0);
+        transform: translateY(6px) translateZ(0);
     }
 
     to {
@@ -877,22 +896,10 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
-@keyframes slideDown {
+@keyframes motion-scale-in {
     from {
         opacity: 0;
-        transform: translateY(-20px) translateZ(0);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) translateZ(0);
-    }
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateZ(0);
+        transform: scale(0.96) translateZ(0);
     }
 
     to {
@@ -901,6 +908,24 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
+@keyframes motion-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes motion-press {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(0.97); }
+    100% { transform: scale(1); }
+}
+
+/* Skeleton shimmer keeps a separate keyframe — it's an indefinite
+   loop and isn't part of the entrance vocabulary. */
 @keyframes shimmer {
     0% {
         background-position: -200% 0;
@@ -911,68 +936,69 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
-/* Animation utility classes */
-.animate-fade-in {
-    animation: fadeIn 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+/* ============================================================
+   Unified motion system — one vocabulary, one set of durations.
+   Replace the old `animate-fade-in / animate-slide-up / animate-scale-in /
+   animate-stagger-N` mix with a smaller, predictable surface:
+     - `.motion-enter`        any element fading into the layout
+                                (lists, cards, modal bodies)
+     - `.motion-scale-in`     popups / dialogs / FAB / toasts
+     - `.motion-stagger-1..4` ordered children (max 4, 40 ms step)
+   Plus a shared `prefers-reduced-motion` override below.
+   ============================================================ */
+
+.motion-enter {
+    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
-.animate-slide-up {
-    animation: slideUp 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+.motion-scale-in {
+    animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
 }
 
-.animate-slide-down {
-    animation: slideDown 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+.motion-press:active {
+    animation: motion-press var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-.animate-scale-in {
-    animation: scaleIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+/* Stagger — applied to children 1..4 inside a list. Last delay is
+   3 × 40 ms = 120 ms; longer lists should just not bother staggering
+   beyond the 4th item. */
+.motion-stagger-1 {
+    animation-delay: calc(var(--motion-stagger-step) * 0);
 }
 
-/* Stagger delays for list items */
-.animate-stagger-1 {
-    animation-delay: 50ms;
+.motion-stagger-2 {
+    animation-delay: calc(var(--motion-stagger-step) * 1);
 }
 
-.animate-stagger-2 {
-    animation-delay: 100ms;
+.motion-stagger-3 {
+    animation-delay: calc(var(--motion-stagger-step) * 2);
 }
 
-.animate-stagger-3 {
-    animation-delay: 150ms;
+.motion-stagger-4 {
+    animation-delay: calc(var(--motion-stagger-step) * 3);
 }
 
-.animate-stagger-4 {
-    animation-delay: 200ms;
-}
-
-.animate-stagger-5 {
-    animation-delay: 250ms;
-}
-
-.animate-stagger-6 {
-    animation-delay: 300ms;
-}
-
-/* Card animations */
+/* Card and form animations — applied at the .adm-card / .adm-form
+   level so every screen automatically gets the same entrance.
+   Drawn from the same --motion-duration-base token so changing it
+   in :root updates cards, forms, lists, and route transitions
+   together. */
 .adm-card,
 .adm-list-card {
-    animation: slideUp 350ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
-/* Form animations */
 .adm-form {
-    animation: slideUp 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
-/* Popup/Modal animations */
 .adm-popup-body,
 .adm-dialog-body {
-    animation: scaleIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
 }
 
-/* Toast animations - already handled by antd-mobile but we can enhance */
 .adm-toast-main {
-    animation: scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
 }
 
 /* ========================================
@@ -981,23 +1007,23 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 
 /* The RouteTransition wrapper remounts on pathname change. The
    animation runs once on mount and then sits idle. Forward and back
-   directions differ in distance + duration so push feels snappier
-   than pop. */
+   share the base duration (240 ms); back is slightly faster because
+   returning to a previous view feels snappier than going forward. */
 .route-transition {
     width: 100%;
     will-change: transform, opacity;
 }
 
 .route-transition--forward {
-    animation: route-forward 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
 .route-transition--back {
-    animation: route-back 240ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) both;
 }
 
 .route-transition--replace {
-    animation: route-fade 180ms ease-out both;
+    animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) both;
 }
 
 @keyframes route-forward {
@@ -1013,6 +1039,32 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 @keyframes route-fade {
     from { opacity: 0; }
     to   { opacity: 1; }
+}
+
+/* ============================================================
+   Reduced-motion override — honored for users who set the OS-level
+   "reduce motion" preference. Keeps durations non-zero so layout
+   still updates instantly, but drops the offset/translation and
+   stiffness — elements appear in place rather than flying in. The
+   override sits at the bottom of the file so it wins the cascade.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    .motion-enter,
+    .motion-scale-in,
+    .motion-press:active,
+    .adm-card,
+    .adm-list-card,
+    .adm-form,
+    .adm-popup-body,
+    .adm-dialog-body,
+    .adm-toast-main,
+    .route-transition,
+    .route-transition--forward,
+    .route-transition--back,
+    .route-transition--replace {
+        animation-duration: 1ms !important;
+        animation-delay: 0ms !important;
+    }
 }
 
 /* Skeleton placeholders for list/card loading states. Pulsing
@@ -1035,11 +1087,11 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     100% { background-position: -200% 0; }
 }
 
+/* Skeleton shimmer is a loop, not an entrance — kill it entirely
+   under reduced-motion (the new unified motion override above
+   handles everything else). */
 @media (prefers-reduced-motion: reduce) {
     .skeleton { animation: none; }
-    .route-transition--forward,
-    .route-transition--back,
-    .route-transition--replace { animation: none; }
 }
 
 /* ========================================

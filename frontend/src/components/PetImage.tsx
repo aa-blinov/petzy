@@ -77,7 +77,7 @@ export function PetImage({ src, alt, size = 48, className, style, species }: Pet
                         height: '100%',
                         objectFit: 'cover',
                         opacity: isLoaded ? 1 : 0,
-                        transition: 'opacity 0.3s ease-in-out',
+                        transition: `opacity var(--motion-duration-base) var(--motion-ease-standard)`,
                         display: 'block',
                     }}
                 />
