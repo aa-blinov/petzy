@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Switch, Toast } from 'antd-mobile';
+import { Button, Form, Input, Switch } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,12 +73,12 @@ export function UserForm() {
     mutationFn: (data: UserCreate) => usersService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      Toast.show({ icon: 'success', content: 'Пользователь успешно создан', duration: 1500 });
+      showToast.success('Пользователь успешно создан');
       setTimeout(() => navigate('/admin'), 500);
     },
     onError: (err: any) => {
       const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при создании пользователя';
-      Toast.show({ icon: 'fail', content: errorMessage, duration: 2000 });
+      showToast.failure(errorMessage);
     },
   });
 
@@ -86,18 +87,18 @@ export function UserForm() {
       usersService.updateUser(username, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      Toast.show({ icon: 'success', content: 'Пользователь успешно обновлен', duration: 1500 });
+      showToast.success('Пользователь успешно обновлен');
       setTimeout(() => navigate('/admin'), 500);
     },
     onError: (err: any) => {
       const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при обновлении пользователя';
-      Toast.show({ icon: 'fail', content: errorMessage, duration: 2000 });
+      showToast.failure(errorMessage);
     },
   });
 
   const onSubmit = (formData: UserFormData) => {
     if (!isEditing && !formData.password) {
-      Toast.show({ icon: 'fail', content: 'Пароль обязателен для нового пользователя', duration: 2000 });
+      showToast.failure('Пароль обязателен для нового пользователя');
       return;
     }
 

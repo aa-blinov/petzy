@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Button, Input, Toast, Form } from 'antd-mobile';
+import { Button, Input, Form } from 'antd-mobile';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -12,11 +13,11 @@ export function Login() {
 
   const handleSubmit = async () => {
     if (!username.trim()) {
-      Toast.show({ icon: 'fail', content: 'Введите имя пользователя' });
+      showToast.failure('Введите имя пользователя');
       return;
     }
     if (!password) {
-      Toast.show({ icon: 'fail', content: 'Введите пароль' });
+      showToast.failure('Введите пароль');
       return;
     }
 
@@ -44,7 +45,7 @@ export function Login() {
         errorMessage = err.message;
       }
 
-      Toast.show({ icon: 'fail', content: errorMessage, duration: 2000 });
+      showToast.failure(errorMessage);
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
@@ -90,8 +91,22 @@ export function Login() {
           Petzy
         </h1>
 
-        {/* Form card */}
-        <div className="card-soft" style={{ padding: '28px 24px' }}>
+        {/* Form card.
+            spellCheck / autoCapitalize / autoCorrect sit here rather
+            than on the Input: antd-mobile's Input only forwards a
+            whitelist of native props, and these three are inherited by
+            descendants anyway. A username is not prose — spellcheck
+            drew a red squiggle under it (and under nothing else, so the
+            two fields read as mismatched), and auto-capitalisation on
+            mobile turns "admin" into "Admin" against a case-sensitive
+            lookup. */}
+        <div
+          className="card-soft"
+          style={{ padding: '28px 24px' }}
+          spellCheck={false}
+          autoCapitalize="none"
+          autoCorrect="off"
+        >
           <Form
             layout="vertical"
             onFinish={handleSubmit}

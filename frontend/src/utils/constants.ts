@@ -46,10 +46,10 @@ import {
   Utensils,
   Scale,
   Wind,
-  Droplet,
-  Brush,
+  Toilet,
+  Shovel,
   Eye,
-  Sparkles,
+  Toothbrush,
   Ear,
   Pill,
   Footprints,
@@ -66,12 +66,21 @@ import {
 export const typeIconMap: Record<string, LucideIcon> = {
   feeding: Utensils,
   weight: Scale,
+  // No lungs glyph in lucide; wind is the closest read for "breathing".
   asthma: Wind,
-  defecation: Droplet,
-  litter: Brush,
+  // Was Droplet, which reads as liquid — urine, water, a spill — rather
+  // than stool. Toilet names the event without being crude.
+  defecation: Toilet,
+  // Was Brush, i.e. grooming or painting. Changing a tray is scooping it.
+  litter: Shovel,
+  // Organ icons for the two body-part routines: at a glance in a mixed
+  // list, "eye thing" and "ear thing" are read faster than the implements
+  // (a pipette and a cleaning brush) would be.
   eye_drops: Eye,
-  tooth_brushing: Sparkles,
   ear_cleaning: Ear,
+  // Was Sparkles, which says "clean/shiny" generically — it could have
+  // been grooming, a wash, anything.
+  tooth_brushing: Toothbrush,
   medications: Pill,
 };
 

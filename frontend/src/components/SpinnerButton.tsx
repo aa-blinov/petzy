@@ -78,7 +78,8 @@ export function SpinnerButton({
           size={18}
           strokeWidth={2.4}
           style={{
-            animation: 'spin 700ms linear infinite',
+            /* Loop, not a state change — outside the motion scale on purpose. */
+        animation: 'spin 700ms linear infinite',
           }}
           aria-hidden
         />

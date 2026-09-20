@@ -7,6 +7,7 @@ import {
     AreaChart, Area
 } from 'recharts';
 import { healthRecordsService } from '../services/healthRecords.service';
+import { parseRecordDate } from '../utils/relativeTime';
 import { useMemo, useState } from 'react';
 import { CapsuleTabs } from 'antd-mobile';
 
@@ -29,26 +30,44 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
         // Aggregation logic for counts (asthma, defecation, etc.)
         const isCountType = ['asthma', 'defecation', 'litter', 'eye_drops', 'tooth_brushing', 'ear_cleaning', 'medications'].includes(type);
 
+        // Both branches parse through parseRecordDate. Passing the
+        // backend's strings to `new Date()` read them in two different
+        // timezones: the date-only form used here is ISO, so it landed on
+        // UTC midnight and every bar was labelled a day early west of
+        // UTC, while the date+time form below isn't ISO and was read as
+        // local. Same field, two meanings.
         if (isCountType) {
             const aggregated: Record<string, number> = {};
             data.data.forEach(item => {
                 const date = item.date.split(' ')[0]; // YYYY-MM-DD
                 aggregated[date] = (aggregated[date] || 0) + 1;
             });
-            return Object.entries(aggregated).map(([date, value]) => ({
-                date: new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-                fullDate: date,
-                value
-            })).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+            return Object.entries(aggregated).map(([date, value]) => {
+                const parsed = parseRecordDate(date);
+                return {
+                    date: parsed
+                        ? parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+                        : date,
+                    fullDate: date,
+                    value
+                };
+            }).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
         }
 
         // Direct mapping for values (weight, feeding)
-        return data.data.map(item => ({
-            date: new Date(item.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
-            shortDate: new Date(item.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-            fullDate: item.date,
-            value: typeof item.value === 'number' ? item.value : parseFloat(item.value) || 0
-        }));
+        return data.data.map(item => {
+            const parsed = parseRecordDate(item.date);
+            return {
+                date: parsed
+                    ? parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                    : item.date,
+                shortDate: parsed
+                    ? parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+                    : item.date,
+                fullDate: item.date,
+                value: typeof item.value === 'number' ? item.value : parseFloat(item.value) || 0
+            };
+        });
     }, [data, type]);
 
     const isLineChart = ['weight', 'feeding'].includes(type);

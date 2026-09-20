@@ -35,6 +35,33 @@ function _parseDate(dateStr: string): { y: number; m: number; d: number; hh: num
 }
 
 
+/**
+ * Parse a backend `date_time` string into a Date in the viewer's own
+ * timezone.
+ *
+ * The backend emits a naive local wall clock — `YYYY-MM-DD HH:MM`, or
+ * just `YYYY-MM-DD` — so the only correct reading is to build the Date
+ * from the parts. Handing either form straight to `new Date()` is wrong
+ * in a different way for each:
+ *
+ *   - `new Date("2026-09-16")` is an ISO date-only form, which the spec
+ *     says is UTC. Formatted in a negative-offset zone it renders as the
+ *     *previous* day — a chart bar for the 16th is labelled "15 сент."
+ *     in New York.
+ *   - `new Date("2026-09-16 08:00")` is not ISO at all (ISO needs a `T`),
+ *     so its handling is implementation-defined; engines happen to read
+ *     it as local time, but nothing guarantees that.
+ *
+ * Returns null when the string doesn't match, so callers can fall back
+ * to showing the raw value rather than "Invalid Date".
+ */
+export function parseRecordDate(dateStr: string): Date | null {
+  const p = _parseDate(dateStr);
+  if (!p) return null;
+  return new Date(p.y, p.m - 1, p.d, p.hh, p.mm);
+}
+
+
 function _daysAgo(target: { y: number; m: number; d: number }, today: { y: number; m: number; d: number }): number {
   // Compute the difference in calendar days at local midnight.
   const t = new Date(target.y, target.m - 1, target.d).getTime();

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Button, Toast } from 'antd-mobile';
+import { showToast } from '../utils/toast';
+import { Card, Button } from 'antd-mobile';
 import { ClockCircleOutline, ExclamationCircleOutline } from 'antd-mobile-icons';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
@@ -32,7 +33,7 @@ export function NextDoseWidget() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({ icon: 'success', content: 'Принято!' });
+            showToast.success('Принято!');
         }
     });
 

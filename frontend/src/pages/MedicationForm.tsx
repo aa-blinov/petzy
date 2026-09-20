@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { showToast } from '../utils/toast';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Form, Input, Switch, Toast, Selector, Picker, Popup, List } from 'antd-mobile';
+import { Button, Form, Input, Switch, Selector, Picker, Popup, List } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -132,7 +133,7 @@ export function MedicationForm() {
         setValue('dose_unit', common.dose_unit);
         setValue('default_dose', common.default_dose);
         setShowCommonMeds(false);
-        Toast.show({ content: 'Данные заполнены', icon: 'success' });
+        showToast.success('Данные заполнены');
     };
 
     const mutation = useMutation({
@@ -152,38 +153,29 @@ export function MedicationForm() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            Toast.show({
-                icon: 'success',
-                content: isEditing ? 'Курс обновлен' : 'Курс создан',
-                position: 'bottom',
-                duration: 1600,
-                afterClose: () => navigate('/medications')
+            showToast.success(isEditing ? 'Курс обновлен' : 'Курс создан', {
+                afterClose: () => navigate('/medications'),
             });
         },
         onError: (err: any) => {
-            Toast.show({
-                icon: 'fail',
-                content: err?.response?.data?.error || 'Ошибка при сохранении',
-                position: 'bottom',
-                duration: 2400,
-            });
+            showToast.failure(err?.response?.data?.error || 'Ошибка при сохранении');
         }
     });
 
     const onSubmit = (data: MedicationFormData) => {
         if (data.inventory_enabled) {
             if (data.inventory_total !== null && data.inventory_total !== undefined && data.inventory_total <= 0) {
-                Toast.show({ icon: 'fail', content: 'Общее количество должно быть больше 0' });
+                showToast.failure('Общее количество должно быть больше 0');
                 return;
             }
             if (data.inventory_current !== null && data.inventory_current !== undefined) {
                 if (data.inventory_current < 0) {
-                    Toast.show({ icon: 'fail', content: 'Текущий остаток не может быть отрицательным' });
+                    showToast.failure('Текущий остаток не может быть отрицательным');
                     return;
                 }
                 if (data.inventory_total !== null && data.inventory_total !== undefined &&
                     data.inventory_current > data.inventory_total) {
-                    Toast.show({ icon: 'fail', content: 'Текущий остаток не может превышать общее количество' });
+                    showToast.failure('Текущий остаток не может превышать общее количество');
                     return;
                 }
             }
