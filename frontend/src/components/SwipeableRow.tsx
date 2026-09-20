@@ -52,7 +52,15 @@ export function SwipeableRow({ leftAction, rightAction, children, disabled }: Sw
   });
 
   return (
-    <div className={`swipeable-row ${dragging ? 'swipeable-row--dragging' : ''}`}>
+    <div
+      className={[
+        'swipeable-row',
+        dragging ? 'swipeable-row--dragging' : '',
+        // Actions are only visible while the row is off its rest
+        // position, so nothing underneath can peek out on a press.
+        offset !== 0 ? 'swipeable-row--revealed' : '',
+      ].filter(Boolean).join(' ')}
+    >
       {/* Action layers — sit behind the row, fixed to the row's edges. */}
       {leftAction && (
         <div
