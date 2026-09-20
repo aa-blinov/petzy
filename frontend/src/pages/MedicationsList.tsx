@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatDate } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, ProgressBar, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
@@ -20,7 +21,11 @@ export function MedicationsList() {
     const { data: medications = [], isLoading, refetch } = useQuery({
         queryKey: ['medications', selectedPetId],
         queryFn: () => {
-            const clientDate = new Date().toISOString().split('T')[0];
+            // Local date, not the UTC one toISOString() yields: the
+            // backend uses this as the start of "today" when deciding
+            // which doses are already taken, so a UTC date put the
+            // window on the wrong day near midnight.
+            const clientDate = formatDate(new Date());
             return medicationsService.getList(selectedPetId!, clientDate);
         },
         enabled: !!selectedPetId,
