@@ -228,7 +228,7 @@ function PetCard({
 
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction}>
-      <div className="card-soft tap-ripple" style={{ overflow: 'hidden' }}>
+      <div className="card-soft card-soft--interactive tap-ripple" style={{ overflow: 'hidden' }}>
         {/* Hero photo / species icon (compact, ~120px) */}
         <button
           type="button"

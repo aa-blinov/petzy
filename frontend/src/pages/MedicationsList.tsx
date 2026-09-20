@@ -209,7 +209,7 @@ export function MedicationsList() {
                                     onTrigger: () => handleDelete(med),
                                 }}
                             >
-                            <Card className="card-soft" style={{
+                            <Card className="card-soft card-soft--interactive" style={{
                                 borderRadius: 'var(--radius-md)',
                                 border: 'none',
                                 padding: 0,

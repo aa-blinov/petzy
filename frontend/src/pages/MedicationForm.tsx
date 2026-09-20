@@ -155,12 +155,18 @@ export function MedicationForm() {
             Toast.show({
                 icon: 'success',
                 content: isEditing ? 'Курс обновлен' : 'Курс создан',
-                duration: 1500,
+                position: 'bottom',
+                duration: 1600,
                 afterClose: () => navigate('/medications')
             });
         },
         onError: (err: any) => {
-            Toast.show({ icon: 'fail', content: err?.response?.data?.error || 'Ошибка при сохранении' });
+            Toast.show({
+                icon: 'fail',
+                content: err?.response?.data?.error || 'Ошибка при сохранении',
+                position: 'bottom',
+                duration: 2400,
+            });
         }
     });
 
