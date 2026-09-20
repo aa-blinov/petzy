@@ -1133,11 +1133,13 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 /* These three were all pointing at the generic motion-appear/motion-fade
    pair, which meant "forward" was a 6 px vertical nudge and "back" was a
    plain cross-fade identical to "replace" — while the dedicated
-   route-forward / route-back / route-fade keyframes below sat unused and
+   route-forward / route-back keyframes below sat unused and
    RouteTransition's docstring described horizontal slides that nothing
    implemented. Point each state at its own keyframes: forward enters
    from the right, back from the left (shorter travel, shorter duration,
-   since returning should feel quicker), replace just fades. */
+   since returning should feel quicker). "Replace" reuses the generic
+   motion-fade: a plain cross-fade carries no direction, so there was
+   nothing route-specific about keeping a second identical keyframe. */
 .route-transition--forward {
     animation: route-forward var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
@@ -1147,7 +1149,7 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .route-transition--replace {
-    animation: route-fade var(--motion-duration-fast) var(--motion-ease-standard) both;
+    animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) both;
 }
 
 @keyframes route-forward {
@@ -1158,11 +1160,6 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 @keyframes route-back {
     from { opacity: 0; transform: translate3d(-16px, 0, 0); }
     to   { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-
-@keyframes route-fade {
-    from { opacity: 0; }
-    to   { opacity: 1; }
 }
 
 /* ============================================================
