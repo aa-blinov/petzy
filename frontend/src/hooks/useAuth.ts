@@ -93,14 +93,28 @@ export function useAuth() {
 
   const logout = async () => {
     try {
+      // Tell the backend to revoke the refresh_token and clear the
+      // httpOnly cookies. Must happen before we clear local state —
+      // if the request fails (network, server down) we still want
+      // the user to land on /login so the local session is gone.
       await authService.logout();
-      setUsername(null);
-      // Clear all queries on logout
-      queryClient.clear();
-      navigate('/login');
     } catch (error) {
-      console.error('Logout error:', error);
+      // Don't block the user on a backend hiccup — the local
+      // queryClient + storage cleanup below is what really matters
+      // for the UI. The next page load will fail with 401 if the
+      // backend is genuinely broken, and the 401-handler in api.ts
+      // will redirect to /login then too.
+      console.warn('[auth] logout backend call failed, continuing with local cleanup', error);
     }
+    setUsername(null);
+    // Drop every cached query — pets, history, medications, admin
+    // status, dashboard widgets. They belong to the user we just
+    // signed out and could leak data if reused after a re-login as
+    // someone else.
+    queryClient.clear();
+    // Replace, not push, so the back button doesn't return to the
+    // protected page after logout.
+    navigate('/login', { replace: true });
   };
 
   return {

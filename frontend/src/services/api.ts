@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-// Base URL for API requests. 
+// Base URL for API requests.
 // Use relative path by default to work with proxy/Nginx.
 let API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -15,45 +15,81 @@ if (API_URL.includes('localhost:3000') && !window.location.href.includes('localh
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  // Don't set default Content-Type - let axios auto-detect based on data type
-  // For FormData: multipart/form-data with boundary
-  // For JSON objects: application/json
 });
 
-// Request interceptor - add auth token if needed
+// Request interceptor — tokens are in httpOnly cookies so we don't
+// need to add an Authorization header manually.
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Tokens are in httpOnly cookies, so we don't need to add them manually
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (config: InternalAxiosRequestConfig) => config,
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor - handle errors and token refresh
+// Tracks whether we've already kicked off a forced redirect for the
+// current auth failure — multiple parallel 401s shouldn't each trigger
+// their own /login navigation.
+let forcedRedirect = false;
+function forceLogoutAndRedirect(reason: string) {
+  if (forcedRedirect) return;
+  forcedRedirect = true;
+  // Clear client-side state. Best-effort: even if queryClient is
+  // unavailable (early boot), we still redirect.
+  try {
+    const w = window as any;
+    w.localStorage?.removeItem('petzy:auth:username');
+    w.localStorage?.removeItem('selectedPetId');
+    w.localStorage?.removeItem('selectedPetName');
+  } catch { /* ignore */ }
+  try {
+    // Send the user to /login. setTimeout(0) keeps the redirect out
+    // of any in-flight render — avoids React complaining about
+    // state updates during render.
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
+      forcedRedirect = false;
+    }, 0);
+  } catch {
+    forcedRedirect = false;
+  }
+  // eslint-disable-next-line no-console
+  console.info(`[auth] ${reason} — redirecting to /login`);
+}
+
+// Response interceptor — handle 401 by attempting a silent refresh,
+// then redirect to /login if refresh fails.
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = (error.config ?? {}) as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Handle 401 Unauthorized - try to refresh token
+    // Handle 401 Unauthorized — try to refresh token.
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // Don't try to refresh if we're already on the login or refresh endpoint
       const url = originalRequest.url || '';
+      // Don't refresh on the auth endpoints themselves — they're
+      // the source of the 401 in the first place.
       if (url.includes('/auth/login') || url.includes('/auth/refresh')) {
+        // The login form or the refresh probe itself failed — send
+        // the user back to /login (only if we're not already there).
+        if (url.includes('/auth/refresh')) forceLogoutAndRedirect('refresh failed');
         return Promise.reject(error);
       }
 
       try {
-        // Try to refresh token
+        // Try to refresh token. The /auth/refresh endpoint sets
+        // fresh httpOnly access_token + refresh_token cookies on
+        // success.
         await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
-        // Retry original request
+        // Refresh succeeded — replay the original request with the
+        // new credentials attached.
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - don't redirect here, let the component handle it
+        // Refresh failed: the refresh_token is gone (expired or
+        // revoked). Force a logout + redirect instead of leaving the
+        // user on a frozen screen that just shows a blank error.
+        forceLogoutAndRedirect('refresh token invalid');
         return Promise.reject(refreshError);
       }
     }
