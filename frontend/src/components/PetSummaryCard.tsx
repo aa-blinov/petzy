@@ -1,9 +1,10 @@
 /**
  * Pet summary card shown at the top of the dashboard.
  *
- * Designed in the "warm pet-care" style — a full-bleed photo hero with the
- * pet's name overlaid, meta chips underneath, and last-event chips at the
- * bottom. Inspired by Pawza's "pet profile" treatment.
+ * Side-by-side layout: a square avatar (or species icon when no photo)
+ * on the left, the pet's name and quick meta on the right. Below the
+ * header row sit the last-event chips (кормление / вес) so the user
+ * can jump into the timeline in one tap.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,6 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
 import { speciesIconMap, SPECIES_FALLBACK_ICON } from '../utils/constants';
-import { useScrollParallax } from '../hooks/useScrollParallax';
 import { PetImage } from './PetImage';
 import { CountUp } from './CountUp';
 
@@ -108,7 +108,6 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
 
   const age = computePetAge(pet.birth_date ?? "");
   const SpeciesIcon = speciesIcon(pet.species);
-  const parallaxTransform = useScrollParallax(0.15);
 
   return (
     <div
@@ -116,117 +115,108 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
       style={{
         overflow: "hidden",
         marginBottom: "var(--spacing-md)",
+        padding: "16px",
       }}
     >
-      {/* Hero photo */}
+      {/* Header row — square avatar on the left, name + meta on the right.
+          The avatar slot is fixed-size (88 × 88) so text alignment stays
+          consistent across photo / no-photo / long-name cases. */}
       <div
-        className="parallax-hero"
         style={{
-          position: "relative",
-          width: "100%",
-          height: "180px",
-          backgroundColor: "var(--tile-brown)",
-          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--spacing-md)",
+          marginBottom: "var(--spacing-md)",
         }}
       >
-        {pet.photo_url ? (
-          <div style={{ position: 'absolute', inset: 0, transform: parallaxTransform }}>
+        {/* Square avatar — image if available, else species icon on the
+            brand-soft tint. object-fit: cover keeps the photo square
+            even if the source is rectangular. */}
+        <div
+          aria-hidden={!pet.photo_url}
+          style={{
+            flexShrink: 0,
+            width: "88px",
+            height: "88px",
+            borderRadius: "var(--radius-md)",
+            overflow: "hidden",
+            backgroundColor: "var(--app-accent-soft)",
+            color: "var(--app-accent-deep)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {pet.photo_url ? (
             <PetImage
               src={pet.photo_url}
               alt={pet.name}
-              size={180}
-              style={{ width: "100%", height: "100%", borderRadius: 0 }}
+              size={88}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: 0,
+              }}
             />
-          </div>
-        ) : (
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#FFFFFF",
-              opacity: 0.9,
-              transform: parallaxTransform,
-            }}
-          >
-            <SpeciesIcon size={84} strokeWidth={1.5} style={{ display: 'block' }} />
-          </div>
-        )}
+          ) : (
+            <SpeciesIcon size={44} strokeWidth={1.6} style={{ display: "block" }} aria-hidden />
+          )}
+        </div>
 
-        {/* Bottom gradient for legibility */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(31,27,22,0.55) 100%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Pet name overlay — only the name + age (if known).
-           Species is conveyed by the emoji, no need to repeat it as text. */}
-        <div
-          style={{
-            position: "absolute",
-            left: "16px",
-            right: "16px",
-            bottom: "14px",
-            color: "#FFFFFF",
-          }}
-        >
+        {/* Right column — name, age/gender/breed summary, weight chip.
+            minWidth: 0 lets flex children ellipsis correctly. */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
           <div
             className="display-headline"
             style={{
-              fontSize: "28px",
+              fontSize: "var(--text-xl)",
               fontWeight: 700,
-              textShadow: "0 1px 2px rgba(0,0,0,0.25)",
+              color: "var(--app-text-primary)",
+              // Long names like «Шерри-Мими» truncate instead of wrapping.
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {pet.name}
           </div>
-          {age && (
-            <div
+
+          {/* Meta line — only render the parts we have */}
+          <div
+            style={{
+              fontSize: "var(--text-sm)",
+              color: "var(--app-text-secondary)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {[age, pet.breed, pet.gender].filter(Boolean).join(" · ") || "—"}
+          </div>
+
+          {/* Weight chip — the always-relevant health metric */}
+          {lastWeightRecord && (
+            <span
+              className="chip"
               style={{
-                marginTop: "2px",
-                fontSize: "13px",
-                opacity: 0.92,
+                alignSelf: "flex-start",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "12px",
               }}
             >
-              {age}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Meta chips — only render if we have something to show. Breed and gender
-           appear here when set, weight is the always-relevant one. */}
-      {(pet.breed || pet.gender || lastWeightRecord) && (
-        <div
-          style={{
-            padding: "14px 16px 12px",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "6px",
-          }}
-        >
-          {pet.breed && <span className="chip">{pet.breed}</span>}
-          {pet.gender && <span className="chip">{pet.gender}</span>}
-          {lastWeightRecord && (
-            <span className="chip">
-              <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
+              <Scale size={13} strokeWidth={2.2} style={{ display: "block" }} />
               <CountUp to={lastWeightRecord.weight} duration={800} decimals={1} /> кг
             </span>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Last-event chips */}
+      {/* Last-event row — Кормление + Вес */}
       <div
         style={{
-          padding: "0 16px 16px",
           display: "flex",
           gap: "8px",
         }}
@@ -239,7 +229,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           onAdd={() => onQuickAdd("feeding")}
         />
         <LastEvent
-          label={lastWeightRecord ? "Вес" : "Вес"}
+          label="Вес"
           dateTime={lastWeightRecord?.date_time}
           emptyLabel="не записан"
           addPath="/form/weight"
@@ -248,7 +238,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
       </div>
 
       {feedings.isLoading || weights.isLoading ? (
-        <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px", padding: "0 16px 12px" }} />
+        <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px" }} />
       ) : null}
     </div>
   );
