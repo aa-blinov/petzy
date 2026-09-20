@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Dialog } from 'antd-mobile';
+import { Dialog } from 'antd-mobile';
 import { Pencil, Trash2, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
@@ -10,6 +10,15 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { formatRelativeDate } from '../utils/relativeTime';
+
+/**
+ * A horizontal drag can still end with a synthetic click on some
+ * browsers. Remember where the pointer went down and ignore anything
+ * that travelled far enough to have been a swipe, so swipe-to-delete
+ * never doubles as tap-to-edit.
+ */
+const TAP_SLOP_PX = 8;
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -18,6 +27,7 @@ export function AdminPanel() {
   // State for alert messages
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const tapOrigin = useRef<{ x: number; y: number } | null>(null);
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
@@ -113,15 +123,28 @@ export function AdminPanel() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--app-text-color)' }}>Пользователи</h3>
-          <Button
-            color="primary"
-            size="small"
+          {/* Same .section-header as Settings, so the admin screen reads
+              as part of the app rather than a bare CRUD table. */}
+          <h3 className="section-header" style={{ fontSize: 'var(--text-lg)' }}>Пользователи</h3>
+          {/* antd-mobile's color="primary" paints this its own blue,
+              which was the one non-brand surface in the app. Use the
+              same copper gradient as every other primary action. */}
+          <button
+            type="button"
             onClick={handleNewUser}
-            style={{ borderRadius: 'var(--radius-md)' }}
+            style={{
+              background: 'var(--app-brand-gradient)',
+              border: 'none',
+              borderRadius: '999px',
+              color: '#FFFFFF',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 600,
+              padding: '7px 16px',
+              cursor: 'pointer',
+            }}
           >
             + Добавить
-          </Button>
+          </button>
         </div>
 
         {usersLoading ? (
@@ -157,9 +180,30 @@ export function AdminPanel() {
                   }}
                   disabled={deleteUserMutation.isPending}
                 >
+                {/* Tapping the row opens the editor — the same action the
+                    left swipe commits. The card already carried
+                    .tap-ripple, so a press animated and then resolved
+                    to nothing; and without --interactive it lacked the
+                    press/hover feedback every other card in the app has. */}
                 <div
-                  className="card-soft tap-ripple"
-                  style={{ padding: 16 }}
+                  className="card-soft card-soft--interactive tap-ripple"
+                  style={{ padding: 16, cursor: 'pointer' }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Изменить пользователя ${user.username}`}
+                  onPointerDown={(e) => { tapOrigin.current = { x: e.clientX, y: e.clientY }; }}
+                  onClick={(e) => {
+                    const origin = tapOrigin.current;
+                    tapOrigin.current = null;
+                    if (origin && Math.hypot(e.clientX - origin.x, e.clientY - origin.y) > TAP_SLOP_PX) return;
+                    handleEdit(user);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleEdit(user);
+                    }
+                  }}
                 >
                   <div style={{
                     marginBottom: 10,
@@ -196,7 +240,10 @@ export function AdminPanel() {
                       </span>
                       {user.created_at && (
                         <span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>
-                          Создан: {user.created_at}
+                          {/* Raw "2026-09-20 07:40" was the only bare
+                              timestamp in the UI; everything else speaks
+                              in relative dates. */}
+                          Создан {formatRelativeDate(user.created_at)}
                         </span>
                       )}
                     </div>

@@ -22,9 +22,13 @@ export function Login() {
 
     setIsLoading(true);
     try {
+      // login() clears the query cache and releases the interceptor's
+      // sign-out latch, so the protected pages mount against an empty
+      // cache and re-probe the (now valid) session. The old 100 ms
+      // sleep waited for cookies that the browser had already applied
+      // when the response headers arrived.
       await login({ username: username.trim(), password });
-      await new Promise(resolve => setTimeout(resolve, 100));
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (err: any) {
       let errorMessage = 'Ошибка входа. Проверьте соединение или учетные данные.';
       if (err.response) {
@@ -60,16 +64,22 @@ export function Login() {
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
         {/* Stylized wordmark — gradient copper fill, no icon, no subtitle
-           so the brand reads as the literal name, not a logo. */}
+           so the brand reads as the literal name, not a logo.
+
+           Same face as the navbar wordmark (--app-font-bubble, DynaPuff):
+           this and the navbar are the only two places the brand name is
+           set, so they have to be the same letterform or the login
+           screen reads as a different product. Tracking is kept near the
+           navbar's (-0.5px at 28px ≈ -0.018em) — DynaPuff's rounded
+           terminals collide under the -0.04em the display face took. */}
         <h1
-          className="display-headline"
           style={{
             textAlign: 'center',
             margin: '0 0 32px',
-            fontFamily: 'var(--font-display)',
+            fontFamily: 'var(--app-font-bubble)',
             fontSize: 56,
             fontWeight: 700,
-            letterSpacing: '-0.04em',
+            letterSpacing: '-0.02em',
             lineHeight: 1,
             background: 'var(--app-brand-gradient)',
             WebkitBackgroundClip: 'text',

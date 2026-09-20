@@ -37,6 +37,7 @@ from web.schemas import (
     AuthTokensResponse,
     AuthRefreshResponse,
     AdminStatusResponse,
+    AuthSessionResponse,
     SuccessResponse,
     ErrorResponse,
 )
@@ -226,6 +227,30 @@ def api_logout():
     response.set_cookie("refresh_token", "", max_age=0)
 
     return response, status
+
+
+@auth_bp.route("/api/auth/session", methods=["GET"])
+@login_required
+@api.validate(
+    resp=Response(HTTP_200=AuthSessionResponse, HTTP_401=ErrorResponse),
+    tags=["auth"],
+)
+def api_session():
+    """Return the identity behind the current cookies.
+
+    This is the SPA's only auth probe. It used to infer "am I signed
+    in?" from GET /api/pets, which conflated a cold cache, a failed
+    data fetch and a dead session — so a 500 on the pet roster looked
+    exactly like a logout. A dedicated endpoint means a 401 here is the
+    single, unambiguous signal that the session is gone.
+    """
+    username, auth_error = get_current_user()
+    if auth_error:
+        return auth_error[0], auth_error[1]
+
+    from web.security import is_admin as is_admin_check
+
+    return jsonify({"username": username, "is_admin": is_admin_check(username)}), 200
 
 
 @auth_bp.route("/api/auth/check-admin", methods=["GET"])

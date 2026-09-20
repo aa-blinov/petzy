@@ -24,79 +24,186 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Tracks whether we've already kicked off a forced redirect for the
-// current auth failure — multiple parallel 401s shouldn't each trigger
-// their own /login navigation.
-let forcedRedirect = false;
-function forceLogoutAndRedirect(reason: string) {
-  if (forcedRedirect) return;
-  forcedRedirect = true;
-  // Clear client-side state. Best-effort: even if queryClient is
-  // unavailable (early boot), we still redirect.
+/**
+ * HTTP status behind a rejected request, or undefined for a failure
+ * that never reached the server (network error, cancellation).
+ *
+ * Callers need this to tell "the session is gone" (401) from "the
+ * request failed for some other reason" — the distinction the old
+ * auth state was missing.
+ */
+export function httpStatus(error: unknown): number | undefined {
+  return axios.isAxiosError(error) ? error.response?.status : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Session expiry
+//
+// There is exactly ONE way the app leaves a protected page when auth
+// fails: the handler registered below by <SessionExpiryBridge>, which
+// performs a React Router navigation.
+//
+// This file previously ALSO called window.location.replace('/login'),
+// so a single 401 raced a soft router redirect against a full document
+// reload. Which one won came down to network timing, and when both
+// landed the user watched the login screen appear, then the entire SPA
+// reboot and show it again — the flicker. Keep window.location
+// navigation out of this module.
+// ---------------------------------------------------------------------------
+
+type SessionExpiredHandler = () => void;
+
+let sessionExpiredHandler: SessionExpiredHandler | null = null;
+
+/** Register the app's single sign-out path. Pass null to unregister. */
+export function setSessionExpiredHandler(handler: SessionExpiredHandler | null) {
+  sessionExpiredHandler = handler;
+}
+
+// Latched while a session failure is being handled so a burst of
+// parallel 401s (the dashboard fires session + pets + medications +
+// upcoming doses at once) collapses into one sign-out.
+//
+// The old guard reset itself synchronously right after kicking off the
+// redirect. window.location.replace() navigates asynchronously, so the
+// flag was already free again while the old document was still alive
+// and every remaining 401 fired another redirect on top of the pending
+// one. This latch is released only by resetSessionExpired(), on a
+// successful login.
+let sessionExpired = false;
+
+/** Release the latch once fresh credentials are in hand. */
+export function resetSessionExpired() {
+  sessionExpired = false;
+}
+
+/**
+ * Wipe every piece of the signed-in user's identity we keep outside
+ * httpOnly cookies.
+ *
+ * Exported so the explicit logout path uses the same list: clearing
+ * only the username left `selectedPetId`/`selectedPetName` behind, and
+ * the next user to sign in on that device started out pointed at the
+ * previous user's pet — a burst of 403s plus their pet's name in the
+ * navbar until usePet's recovery effect noticed and switched.
+ */
+export function clearLocalAuthState() {
   try {
-    const w = window as any;
-    w.localStorage?.removeItem('petzy:auth:username');
-    w.localStorage?.removeItem('selectedPetId');
-    w.localStorage?.removeItem('selectedPetName');
-  } catch { /* ignore */ }
-  try {
-    // Send the user to /login. setTimeout(0) keeps the redirect out
-    // of any in-flight render — avoids React complaining about
-    // state updates during render.
-    setTimeout(() => {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.replace('/login');
-      }
-      forcedRedirect = false;
-    }, 0);
+    localStorage.removeItem('petzy:auth:username');
+    localStorage.removeItem('selectedPetId');
+    localStorage.removeItem('selectedPetName');
   } catch {
-    forcedRedirect = false;
+    /* localStorage may be unavailable (private mode) — ignore */
   }
-  // eslint-disable-next-line no-console
-  console.info(`[auth] ${reason} — redirecting to /login`);
+}
+
+/**
+ * Drop the service worker's API response caches.
+ *
+ * queryClient.clear() only empties React Query's in-memory cache; the
+ * SW keeps its own copy of every /api/* response it has seen. Without
+ * this, signing out left the previous user's responses on disk, ready
+ * to be served to whoever signs in next on the same device — and to
+ * show up briefly before the network answer replaced them.
+ *
+ * Fire-and-forget: a failure here must never block signing out.
+ */
+export function clearApiCaches(): void {
+  if (typeof caches === 'undefined') return;
+  caches
+    .keys()
+    .then((keys) => Promise.all(keys.filter((k) => k.startsWith('api-')).map((k) => caches.delete(k))))
+    .catch(() => {
+      /* Cache Storage unavailable or blocked — nothing to clean up */
+    });
+}
+
+function handleSessionExpired(reason: string) {
+  if (sessionExpired) return;
+  sessionExpired = true;
+  clearLocalAuthState();
+  clearApiCaches();
+  console.info(`[auth] ${reason} — signing out`);
+
+  if (sessionExpiredHandler) {
+    sessionExpiredHandler();
+    return;
+  }
+
+  // No handler means React hasn't mounted yet, so nothing can navigate
+  // on our behalf. A hard redirect is the only option left, and it
+  // cannot race the router because the router doesn't exist yet.
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.replace('/login');
+  }
+}
+
+// In-flight refresh, shared by every 401 that arrives while it runs.
+// Without this, N parallel 401s fired N POST /auth/refresh requests and
+// N sign-out attempts.
+let refreshInFlight: Promise<void> | null = null;
+
+function refreshSession(): Promise<void> {
+  if (!refreshInFlight) {
+    // Deliberately plain axios, not `api`: the refresh call must not
+    // re-enter this interceptor.
+    refreshInFlight = axios
+      .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+      .then(() => undefined)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
 }
 
 // Response interceptor — handle 401 by attempting a silent refresh,
-// then redirect to /login if refresh fails.
+// then sign out if the refresh fails.
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = (error.config ?? {}) as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Handle 401 Unauthorized — try to refresh token.
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const url = originalRequest.url || '';
-      // Don't refresh on the auth endpoints themselves — they're
-      // the source of the 401 in the first place.
-      if (url.includes('/auth/login') || url.includes('/auth/refresh')) {
-        // The login form or the refresh probe itself failed — send
-        // the user back to /login (only if we're not already there).
-        if (url.includes('/auth/refresh')) forceLogoutAndRedirect('refresh failed');
-        return Promise.reject(error);
-      }
-
-      try {
-        // Try to refresh token. The /auth/refresh endpoint sets
-        // fresh httpOnly access_token + refresh_token cookies on
-        // success.
-        await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
-        // Refresh succeeded — replay the original request with the
-        // new credentials attached.
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed: the refresh_token is gone (expired or
-        // revoked). Force a logout + redirect instead of leaving the
-        // user on a frozen screen that just shows a blank error.
-        forceLogoutAndRedirect('refresh token invalid');
-        return Promise.reject(refreshError);
-      }
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
-  }
+    const url = originalRequest.url || '';
+
+    // A 401 from the login form means "wrong password". It belongs to
+    // the form, not to the session machinery.
+    if (url.includes('/auth/login')) {
+      return Promise.reject(error);
+    }
+
+    // The refresh probe itself is unauthorised — nothing left to try.
+    if (url.includes('/auth/refresh')) {
+      handleSessionExpired('refresh rejected');
+      return Promise.reject(error);
+    }
+
+    // Already signing out; let useAuth.logout() finish its own cleanup
+    // rather than triggering a second, competing sign-out here.
+    if (url.includes('/auth/logout')) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      await refreshSession();
+    } catch {
+      handleSessionExpired('refresh token invalid');
+      // Reject with the ORIGINAL 401, not the refresh error, so callers
+      // (useSession in particular) can tell "session is gone" from
+      // "request failed for some other reason".
+      return Promise.reject(error);
+    }
+
+    // Refresh succeeded — replay the original request with the new
+    // credentials attached.
+    return api(originalRequest);
+  },
 );
 
 export default api;
-

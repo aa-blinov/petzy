@@ -20,9 +20,22 @@ export interface RefreshResponse {
   access_token: string;
 }
 
+export interface SessionResponse {
+  username: string;
+  is_admin: boolean;
+}
+
 export const authService = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/login', credentials);
+    return response.data;
+  },
+
+  async getSession(): Promise<SessionResponse> {
+    // The app's auth probe. Returns 200 with the signed-in identity, or
+    // 401 when the cookies are dead — and 401 is the only answer that
+    // means "signed out".
+    const response = await api.get<SessionResponse>('/auth/session');
     return response.data;
   },
 
