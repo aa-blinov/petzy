@@ -203,3 +203,6 @@ __marimo__/
 .streamlit/secrets.toml
 bot/whitelist.txt
 backups/
+
+# Playwright flicker-detection artifacts (debug only, never committed)
+screenshots/flicker/

@@ -21,14 +21,12 @@ export function usePet() {
   });
 
   /**
-   * Switching the selected pet must invalidate every pet-scoped query
-   * so the dashboard, history, medications and next-dose widget all
-   * refetch for the new pet. Without this, the navbar shows the new
-   * pet's name but the rest of the UI keeps the previous pet's data
-   * until the queries next go stale (~30 s). One switch → full
-   * cascade refetch keeps the UI in lockstep with the selection.
+   * Update the selected pet's id+name in localStorage only — no query
+   * cascade. Used by the auto-select path on first mount, where every
+   * pet-scoped query for the new id hasn't been fetched yet (it will
+   * run on first render of the consumer, keyed by the new id).
    */
-  const selectPet = useCallback((pet: Pet | null) => {
+  const setSelectedPet = useCallback((pet: Pet | null) => {
     if (pet) {
       setSelectedPetId(pet._id);
       setSelectedPetName(pet.name);
@@ -36,32 +34,61 @@ export function usePet() {
       setSelectedPetId(null);
       setSelectedPetName(null);
     }
-    // Drop every query that takes pet_id as part of its key, so the
-    // next render fetches fresh data for the new selection.
+  }, [setSelectedPetId, setSelectedPetName]);
+
+  /**
+   * Switching the selected pet on user action must invalidate every
+   * pet-scoped query so the dashboard, history, medications and next-dose
+   * widget all refetch for the new pet. Without this, the navbar shows
+   * the new pet's name but the rest of the UI keeps the previous pet's
+   * data until the queries next go stale (~30 s).
+   *
+   * The predicate intentionally excludes the `['pets']` key itself — the
+   * pet roster doesn't change when we switch which one is "active",
+   * so refetching it just causes a render-storm across every `usePet`
+   * consumer (Navbar, PetSummaryCard, NextDoseWidget, …) that would
+   * otherwise be visible as flicker on the home page.
+   */
+  const selectPet = useCallback((pet: Pet | null) => {
+    setSelectedPet(pet);
+    if (!pet) return;
     queryClient.invalidateQueries({
       predicate: (q) =>
         Array.isArray(q.queryKey) &&
         q.queryKey.some(
           (segment) =>
-            (typeof segment === 'string' && (segment === 'pets' || segment === 'medications' || segment === 'history' || segment === 'future-intakes' || segment === 'dashboard' || segment.startsWith('pet-'))) ||
-            (Array.isArray(segment) && segment.length > 0 && typeof segment[0] === 'string' && segment[0] === 'pets')
+            typeof segment === 'string' &&
+            (
+              segment === 'medications' ||
+              segment === 'history' ||
+              segment === 'future-intakes' ||
+              segment === 'dashboard' ||
+              segment === 'timeline' ||
+              segment.startsWith('pet-summary')
+            )
         ),
     });
-  }, [queryClient, setSelectedPetId, setSelectedPetName]);
+  }, [queryClient, setSelectedPet]);
 
   // Auto-select first pet if none selected and pets are available.
   // Also recover from a stale selectedPetId — e.g. after a backend
   // restart with a fresh in-memory DB, the previous pet ID no longer
   // exists and the API returns 403 on every dashboard call. Clear it
   // so the auto-select path below takes over.
+  //
+  // Uses `setSelectedPet` (storage-only) instead of `selectPet` (full
+  // cascade invalidation): on first mount there is no cached data for
+  // the new pet id yet, so React Query will fetch every pet-scoped
+  // query lazily on its first render — no manual invalidation needed,
+  // and importantly no render-storm from re-invalidating the pet roster.
   useEffect(() => {
     if (pets.length === 0) return;
     if (selectedPetId && !pets.find(p => p._id === selectedPetId)) {
-      selectPet(pets[0]);
+      setSelectedPet(pets[0]);
     } else if (!selectedPetId) {
-      selectPet(pets[0]);
+      setSelectedPet(pets[0]);
     }
-  }, [pets, selectedPetId, selectPet]);
+  }, [pets, selectedPetId, setSelectedPet]);
 
   const getSelectedPet = useMemo((): Pet | null => {
     if (!selectedPetId) return null;
@@ -77,4 +104,3 @@ export function usePet() {
     getSelectedPet
   };
 }
-
