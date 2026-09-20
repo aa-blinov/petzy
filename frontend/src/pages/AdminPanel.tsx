@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog } from 'antd-mobile';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
+import { EmptyState } from '../components/EmptyState';
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -133,7 +134,11 @@ export function AdminPanel() {
             marginTop: 'var(--spacing-sm)',
           }}>
             {users.length === 0 ? (
-              <p style={{ color: 'var(--app-text-secondary)', padding: 'var(--spacing-md) var(--spacing-lg)' }}>Пользователи не найдены</p>
+              <EmptyState
+                icon={Users}
+                title="Пользователей пока нет"
+                description="Добавьте первого пользователя — у каждого будут свои питомцы и права."
+              />
             ) : (
               users.map((user) => (
                 <SwipeableRow

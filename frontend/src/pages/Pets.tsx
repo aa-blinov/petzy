@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, Toast, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
-import { Pencil, Scale, Trash2 } from 'lucide-react';
+import { Pencil, Scale, Trash2, Cat } from 'lucide-react';
 import { petsService, type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
@@ -13,6 +13,7 @@ import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
+import { EmptyState } from '../components/EmptyState';
 
 export function Pets() {
   const navigate = useNavigate();
@@ -108,35 +109,13 @@ export function Pets() {
             <PetCardSkeleton />
           </div>
         ) : pets.length === 0 ? (
-          <div className="safe-area-padding" style={{
-            textAlign: 'center',
-            color: 'var(--app-text-secondary)',
-            padding: 'var(--spacing-xl)',
-          }}>
-            <p style={{ marginBottom: 'var(--spacing-lg)' }}>
-              Здесь будут ваши питомцы
-            </p>
-            <button
-              type="button"
-              onClick={handleAddPet}
-              style={{
-                background: 'var(--app-primary-color)',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 'var(--radius-md)',
-                padding: '12px 24px',
-                fontSize: 'var(--text-md)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <AddOutline />
-              Добавить питомца
-            </button>
-          </div>
+          <EmptyState
+            icon={Cat}
+            title="Здесь будут ваши питомцы"
+            description="Добавьте первого — Petzy будет считать кормления, вес и напомнит о лекарствах."
+            actionLabel="Добавить питомца"
+            onAction={handleAddPet}
+          />
         ) : (
           <PullToRefresh
             onRefresh={async () => {
