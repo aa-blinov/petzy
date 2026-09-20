@@ -1062,6 +1062,32 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    stiffness — elements appear in place rather than flying in. The
    override sits at the bottom of the file so it wins the cascade.
    ============================================================ */
+
+/* ============================================================
+   Keyboard focus visibility — important for accessibility and for
+   PWA-installed desktop mode where users actually tab through
+   controls. Without this, antd-mobile's default focus ring is a
+   thin blue (#1677ff) outline that doesn't match the rest of the
+   warm/copper palette and is easy to miss.
+
+   :focus-visible only shows the ring when the user is navigating
+   with the keyboard — clicks, taps, and hovers don't trigger it,
+   so the UI stays clean for mouse / touch users.
+   ============================================================ */
+:focus-visible {
+    outline: 2px solid var(--app-primary-color);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Buttons get a tighter outline — the default 2px offset looks too
+   airy around pill-shaped controls. */
+button:focus-visible,
+.adm-button:focus-visible,
+[class*="button"]:focus-visible {
+    outline-offset: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .motion-enter,
     .motion-scale-in,
