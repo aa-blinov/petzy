@@ -11,6 +11,7 @@
  */
 
 import { Popup, Grid } from 'antd-mobile';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { tilesConfig } from '../utils/tilesConfig';
@@ -26,7 +27,54 @@ interface QuickAddSheetProps {
 }
 
 
+/** Downward travel that commits the dismiss, in CSS px. */
+const DISMISS_AFTER_PX = 90;
+
 export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
+  // Drag-to-dismiss.
+  //
+  // antd's own `closeOnSwipe` only reacts to @use-gesture's `swipe`
+  // flag, which is velocity-gated — a quick flick closes the sheet, a
+  // deliberate drag does not. With a cursor people drag slowly, so the
+  // handle looked grabbable and did nothing, and the sheet never
+  // followed the pointer to hint that the gesture wasn't landing.
+  //
+  // The offset is applied to an inner wrapper rather than the popup
+  // body: antd drives the body's transform with react-spring for the
+  // open/close animation, and writing to the same property would fight
+  // it — the mistake that once pinned popups in place.
+  const [dragY, setDragY] = useState(0);
+  const dragFrom = useRef<number | null>(null);
+
+  // Reopening must not inherit the offset the last drag left behind.
+  useEffect(() => {
+    if (visible) setDragY(0);
+  }, [visible]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    dragFrom.current = e.clientY;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture unsupported — plain tracking still works */
+    }
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (dragFrom.current === null) return;
+    // Downward only: dragging up shouldn't lift the sheet off its edge.
+    setDragY(Math.max(0, e.clientY - dragFrom.current));
+  };
+
+  const onPointerUp = () => {
+    if (dragFrom.current === null) return;
+    const travelled = dragY;
+    dragFrom.current = null;
+    if (travelled >= DISMISS_AFTER_PX) onClose();
+    else setDragY(0);
+  };
+
   const navigate = useNavigate();
   const { selectedPetId } = usePet();
   const { tilesSettings } = usePetTilesSettings(selectedPetId);
@@ -53,18 +101,51 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         paddingBottom: 'calc(var(--safe-area-bottom) + 24px)',
       }}
     >
-      <div style={{ padding: 'var(--spacing-lg) var(--spacing-md) 0' }}>
-        {/* Drag handle */}
+      <div
+        style={{
+          padding: 'var(--spacing-lg) var(--spacing-md) 0',
+          transform: `translateY(${dragY}px)`,
+          transition: dragFrom.current === null
+            ? `transform var(--motion-duration-base) var(--motion-ease-spring)`
+            : 'none',
+        }}
+      >
+        {/* Grab strip — the handle plus the padding around it, so the
+            target is a comfortable size rather than a 4 px bar. */}
         <div
-          style={{
-            width: 36,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: 'var(--app-border-color)',
-            margin: '0 auto var(--spacing-md)',
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          role="button"
+          tabIndex={0}
+          aria-label="Закрыть"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+              e.preventDefault();
+              onClose();
+            }
           }}
-          aria-hidden
-        />
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: 28,
+            marginBottom: 'var(--spacing-sm)',
+            cursor: 'grab',
+            touchAction: 'none',
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: 'var(--app-border-color)',
+            }}
+            aria-hidden
+          />
+        </div>
 
         {/* Title */}
         <h3
