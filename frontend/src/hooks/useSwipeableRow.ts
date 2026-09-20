@@ -21,9 +21,14 @@
 
 import { useRef, useState, useCallback, type TouchEvent as ReactTouchEvent } from 'react';
 
-const THRESHOLD_PX = 60;     // travel needed to commit an action
-const MAX_OFFSET_PX = 76;    // hard cap so a long swipe doesn't yank the row off-screen
-const COMMIT_VELOCITY = 0.5; // px/ms — fast flick also commits even if travel < threshold
+// Travel thresholds tuned for ~412 CSS-px viewports on iOS Safari and
+// Android Chrome — real-finger swipes rarely exceed 80 px before the
+// user lifts, and a slow drag typically travels less than the user
+// intended. 40 px is comfortable for one-handed use; anything
+// shorter is interpreted as a tap.
+const THRESHOLD_PX = 40;     // travel needed to commit an action
+const MAX_OFFSET_PX = 84;    // hard cap so a long swipe doesn't yank the row off-screen
+const COMMIT_VELOCITY = 0.3; // px/ms — fast flick also commits even if travel < threshold
 const RUBBER_BAND = 0.45;    // resistance factor past MAX_OFFSET_PX
 
 export type SwipeDirection = 'left' | 'right';
@@ -66,9 +71,11 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
 
     // Lock axis on the first significant move so vertical scroll
     // (within PullToRefresh) still works and a sloppy diagonal
-    // swipe doesn't trigger both.
+    // swipe doesn't trigger both. The 4-px floor is small enough
+    // that a slow, slightly-curved finger swipe still locks
+    // horizontally — anything larger and we treat it as scroll.
     if (lockedRef.current === null) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
       // Horizontal lock only if horizontal travel dominates.
       if (Math.abs(dx) > Math.abs(dy)) {
         lockedRef.current = dx > 0 ? 'right' : 'left';

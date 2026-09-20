@@ -33,6 +33,16 @@
 
 .swipeable-row__action {
     position: absolute;
+    /* Hidden until the row is actually being pulled.
+       These layers used to be "hidden" only because the row surface's
+       opaque card background happened to cover them exactly. That held
+       until anything nudged the surface: the card's own hover/press lift
+       (translateY(-2px)) exposed a strip of the coloured action pill
+       underneath, so pressing a row flashed its edit/delete buttons
+       without any swipe. Gate it on the drag instead of relying on one
+       element covering another pixel-for-pixel. */
+    opacity: 0;
+    transition: opacity 120ms linear;
     top: 6px;
     bottom: 6px;
     /* Sit at the row's edge but inset by 6px — the action reads as a
@@ -40,7 +50,7 @@
        touches the row border. */
     margin: 0 6px;
     padding: 0;
-    width: 72px;
+    width: 84px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -52,6 +62,10 @@
     /* The action's own shadow gives it depth even while tucked behind
        the row — reads as a tactile button on commit. */
     box-shadow: 0 2px 6px rgba(60, 40, 20, 0.10);
+}
+
+.swipeable-row--revealed .swipeable-row__action {
+    opacity: 1;
 }
 
 .swipeable-row__action--left {
