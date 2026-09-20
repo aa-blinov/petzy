@@ -170,6 +170,28 @@ class AdminStatusResponse(BaseModel):
     )
 
 
+class AuthSessionResponse(BaseModel):
+    """Identity of the currently signed-in user.
+
+    The SPA's single auth probe: it answers "am I signed in, and as
+    whom?" and nothing else. Cheap enough to call on every app boot —
+    the username comes straight off the verified JWT and the admin flag
+    is a string comparison, so no collection is touched.
+    """
+
+    username: str
+    is_admin: bool
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "anna",
+                "is_admin": False,
+            }
+        }
+    )
+
+
 class UserSearchItem(BaseModel):
     """Simple user item for search/autocomplete."""
     username: str

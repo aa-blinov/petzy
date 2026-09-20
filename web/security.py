@@ -12,7 +12,7 @@ from uuid import uuid4
 
 import bcrypt
 import jwt
-from flask import request, Response
+from flask import make_response, request, Response
 
 from web.configs import FLASK_CONFIG, JWT_CONFIG, ADMIN_CONFIG
 from web.db import db
@@ -271,8 +271,23 @@ def login_required(f):
 
         response = f(*args, **kwargs)
 
-        # If token was refreshed, attach new token cookie to response (if it's a response object)
-        if new_token and hasattr(response, "set_cookie"):
+        # If the token was refreshed mid-request, hand the new access
+        # token back as a cookie.
+        #
+        # Views return a mix of bare ``Response`` objects and
+        # ``(body, status)`` tuples. Today every route puts
+        # ``@api.validate`` outside this decorator, and it normalises
+        # the tuples before we see them — so the previous
+        # ``hasattr(response, "set_cookie")`` guard happened to always
+        # hold. It was one decorator-order change away from silently
+        # dropping the renewed cookie, though, which would leave the
+        # session limping along on refresh_token alone for every
+        # request. make_response accepts either shape, so the renewal
+        # no longer depends on where the decorator sits. The HTML twin
+        # of this decorator (page_login_required) already normalises
+        # this way.
+        if new_token:
+            response = make_response(response)
             set_auth_cookie(
                 response,
                 "access_token",

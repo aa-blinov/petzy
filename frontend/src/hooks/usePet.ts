@@ -1,12 +1,14 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalStorage } from './useLocalStorage';
+import { useSession } from './useSession';
 import { petsService, type Pet } from '../services/pets.service';
 
 export function usePet() {
   const [selectedPetId, setSelectedPetId] = useLocalStorage<string | null>('selectedPetId', null);
   const [selectedPetName, setSelectedPetName] = useLocalStorage<string | null>('selectedPetName', null);
   const queryClient = useQueryClient();
+  const { isAuthenticated, isLoginPage } = useSession();
 
   // Use React Query to cache pets data - shared across all components
   // React Query automatically deduplicates requests with the same key
@@ -14,6 +16,17 @@ export function usePet() {
   const { data: pets = [], isLoading } = useQuery({
     queryKey: ['pets'],
     queryFn: () => petsService.getPets(),
+    // This hook renders inside the Navbar, which mounts on every route
+    // including /login (its `return null` for the login page happens
+    // after the hooks run). Unguarded, that fired an authenticated
+    // GET /api/pets on the login screen — a guaranteed 401 plus a
+    // refresh attempt every time anyone looked at the form.
+    //
+    // `isAuthenticated !== false` rather than `=== true` so the roster
+    // still loads in parallel with the session probe on a protected
+    // page; we only hold back once we positively know there's no
+    // session.
+    enabled: !isLoginPage && isAuthenticated !== false,
     staleTime: 30 * 1000, // Consider data fresh for 30 seconds (matches App.tsx default)
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     refetchOnMount: false, // Don't refetch if data is already in cache

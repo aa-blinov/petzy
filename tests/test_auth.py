@@ -356,3 +356,75 @@ class TestAuthentication:
         assert response.status_code == 200
         data = response.get_json()
         assert data["is_admin"] is False
+
+
+@pytest.mark.auth
+class TestSessionProbe:
+    """Tests for GET /api/auth/session — the SPA's single auth probe."""
+
+    def test_session_requires_authentication(self, client):
+        """No cookies, no token -> 401.
+
+        The SPA treats a 401 here (and only a 401) as "signed out", so
+        this status is load-bearing: it is the single signal that sends
+        the user to /login.
+        """
+        response = client.get("/api/auth/session")
+        assert response.status_code == 401
+
+    def test_session_returns_identity_for_admin(self, client, mock_db, admin_token):
+        response = client.get("/api/auth/session", headers={"Authorization": f"Bearer {admin_token}"})
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["username"] == "admin"
+        assert data["is_admin"] is True
+
+    def test_session_returns_identity_for_regular_user(self, client, mock_db, regular_user_token):
+        response = client.get(
+            "/api/auth/session", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["username"] == "testuser"
+        assert data["is_admin"] is False
+
+    def test_session_renews_access_cookie_from_refresh_token(self, client, mock_db, admin_refresh_token):
+        """The silent refresh must hand the renewed cookie back.
+
+        ``login_required`` refreshes an expired access token
+        mid-request and attaches the new one as a cookie. It guards
+        that on the shape of the view's return value, so the guard is
+        sensitive to decorator order: if the renewal is ever skipped,
+        the browser's 15-minute access_token cookie stays expired and
+        every request has to fall back to refresh_token, which turns
+        any hiccup with refresh_token into a whole-app 401.
+
+        Here there is no access_token at all, only a valid
+        refresh_token, so the request can only succeed via the silent
+        refresh — and the renewed cookie must come back with it. This
+        route returns a ``(body, status)`` tuple, so it also pins the
+        tuple-shaped path.
+        """
+        client.set_cookie("refresh_token", admin_refresh_token)
+
+        response = client.get("/api/auth/session")
+
+        assert response.status_code == 200
+        assert response.get_json()["username"] == "admin"
+
+        set_cookies = " ".join(response.headers.getlist("Set-Cookie"))
+        assert "access_token=" in set_cookies
+
+    def test_session_401_when_refresh_token_is_unknown(self, client, mock_db):
+        """A refresh_token with no DB row (e.g. after a service restart
+        wiped the collection) must read as signed out, not as a crash."""
+        from web.security import create_refresh_token
+
+        token = create_refresh_token("admin")
+        mock_db["refresh_tokens"].delete_many({})
+        client.set_cookie("refresh_token", token)
+
+        response = client.get("/api/auth/session")
+        assert response.status_code == 401

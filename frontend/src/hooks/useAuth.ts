@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
-import { petsService } from '../services/pets.service';
+import { clearApiCaches, clearLocalAuthState, resetSessionExpired } from '../services/api';
+import { SESSION_QUERY_KEY, useSession } from './useSession';
 import type { LoginRequest } from '../services/auth.service';
 
 const USERNAME_STORAGE_KEY = 'petzy:auth:username';
@@ -25,68 +25,53 @@ function writeStoredUsername(value: string | null) {
 }
 
 export function useAuth() {
-  // Username is shared between all components via localStorage. The
-  // tokens live in HttpOnly cookies so JS can't read them, but the
-  // human-readable username is fine in localStorage and lets every
-  // useAuth() instance see the same value without prop-drilling.
-  const [username, setUsernameState] = useState<string | null>(() => readStoredUsername());
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const location = useLocation();
+  // Auth state comes from the dedicated /auth/session probe, not from
+  // a second observer on the ['pets'] data query. That second observer
+  // was the reason a failed pet fetch read as a logout, and the reason
+  // the login page kept firing authenticated requests.
+  const { isAuthenticated, isLoginPage, username: sessionUsername } = useSession();
 
-  const setUsername = (value: string | null) => {
-    writeStoredUsername(value);
-    setUsernameState(value);
-  };
-
-  // Check if we're on the login page using React Router location
-  const isLoginPage = useMemo(() => {
-    return location.pathname === '/login' || location.pathname.endsWith('/login');
-  }, [location.pathname]);
-
-  // Use React Query to check auth - this will be shared with other components using pets
-  // React Query automatically deduplicates requests with the same queryKey
-  // Use refetchOnMount: false to prevent refetching if data is already in cache
-  const { isLoading: isPetsLoading, isError, error } = useQuery({
-    queryKey: ['pets'],
-    queryFn: () => petsService.getPets(),
-    enabled: !isLoginPage, // Skip if on login page
-    retry: (failureCount, error: any) => {
-      // Don't retry on 401 (unauthorized)
-      if (error?.response?.status === 401) {
-        return false;
-      }
-      return failureCount < 1; // Retry once for other errors
-    },
-    staleTime: 30 * 1000, // Consider data fresh for 30 seconds (matches App.tsx default)
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnMount: false, // Don't refetch if data is already in cache
-    refetchOnWindowFocus: false, // Already set in App.tsx, but explicit here
-  });
-
-  // Determine auth state from pets query
-  // If query is loading or errored with 401, user is not authenticated
-  const is401Error = useMemo(() => {
-    return error && (error as any)?.response?.status === 401;
-  }, [error]);
-
-  const isAuthenticated = useMemo(() => {
-    return !isLoginPage && !is401Error && !isPetsLoading && !isError;
-  }, [isLoginPage, is401Error, isPetsLoading, isError]);
-
-  const isLoading = !isLoginPage && isPetsLoading;
+  // Prefer the server's answer; fall back to the last known name so
+  // components that only display it (HistoryItem) don't blank out
+  // during the first probe.
+  const username = sessionUsername ?? readStoredUsername();
 
   const login = async (credentials: LoginRequest) => {
     try {
       const response = await authService.login(credentials);
-      // After successful login, tokens are set in httpOnly cookies
-      setUsername(credentials.username);
-      // Invalidate all auth-related queries to refetch with new user context
-      queryClient.invalidateQueries({ queryKey: ['pets'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-status'] });
+      // Tokens are now in httpOnly cookies.
+      writeStoredUsername(credentials.username);
+      // A previous expiry latched the interceptor's sign-out guard.
+      // Release it now that we hold fresh cookies, otherwise the next
+      // genuine expiry would be swallowed.
+      resetSessionExpired();
+      // Drop everything the previous user cached, including the 401
+      // that the session probe may be holding, so the protected pages
+      // mount against an empty cache instead of a stale error.
+      queryClient.clear();
+      // Resolve the session probe here, while the submit button still
+      // shows its own "Вход..." state, rather than after navigating.
+      // Otherwise the protected page mounts with the session unknown
+      // and ProtectedRoute covers the screen with the fullscreen
+      // loader for one round trip — a flash between the login form and
+      // the dashboard.
+      //
+      // A failure here is deliberately swallowed: the credentials were
+      // accepted, so the user should land on the app and let it report
+      // any connectivity problem, not be told their login failed.
+      try {
+        await queryClient.fetchQuery({
+          queryKey: SESSION_QUERY_KEY,
+          queryFn: () => authService.getSession(),
+        });
+      } catch {
+        /* the protected route will probe again and surface the error */
+      }
       return response;
-    } catch (error: any) {
-      setUsername(null);
+    } catch (error) {
+      writeStoredUsername(null);
       throw error;
     }
   };
@@ -101,28 +86,36 @@ export function useAuth() {
     } catch (error) {
       // Don't block the user on a backend hiccup — the local
       // queryClient + storage cleanup below is what really matters
-      // for the UI. The next page load will fail with 401 if the
-      // backend is genuinely broken, and the 401-handler in api.ts
-      // will redirect to /login then too.
+      // for the UI. The next protected request will 401 if the
+      // backend is genuinely broken, and the session handler in
+      // api.ts will sign the user out then too.
       console.warn('[auth] logout backend call failed, continuing with local cleanup', error);
     }
-    setUsername(null);
-    // Drop every cached query — pets, history, medications, admin
-    // status, dashboard widgets. They belong to the user we just
-    // signed out and could leak data if reused after a re-login as
-    // someone else.
-    queryClient.clear();
+    // Clear the username AND the selected pet — the same list the
+    // interceptor's sign-out path clears. Leaving the pet behind meant
+    // the next user on this device booted pointed at the previous
+    // user's pet.
+    clearLocalAuthState();
+    // React Query's cache is not the only copy — the service worker
+    // holds one per /api/* response too.
+    clearApiCaches();
     // Replace, not push, so the back button doesn't return to the
-    // protected page after logout.
+    // protected page after logout. Navigate BEFORE clearing so the
+    // protected pages unmount first — clearing the cache while their
+    // queries are still mounted makes every one of them refetch.
     navigate('/login', { replace: true });
+    // Drop every cached query — pets, history, medications, session,
+    // dashboard widgets. They belong to the user we just signed out
+    // and could leak data if reused after a re-login as someone else.
+    queryClient.clear();
   };
 
   return {
+    /** true | false | undefined ("not known yet") */
     isAuthenticated,
-    isLoading,
+    isLoading: !isLoginPage && isAuthenticated === undefined,
     username,
     login,
-    logout
+    logout,
   };
 }
-

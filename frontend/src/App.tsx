@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { setSessionExpiredHandler } from './services/api';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { BottomTabBar } from './components/BottomTabBar';
@@ -43,9 +44,45 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Wires the axios interceptor's sign-out signal to a React Router
+ * navigation, giving the app exactly one way to leave a protected page
+ * when the session dies.
+ *
+ * Before this, api.ts did its own window.location.replace('/login')
+ * while ProtectedRoute independently rendered <Navigate to="/login">.
+ * Two redirects for one 401: sometimes the soft one won and the hard
+ * one was skipped, sometimes both landed and the SPA rebooted on top
+ * of the transition. That timing-dependent double redirect was the
+ * flicker.
+ */
+function SessionExpiryBridge() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      // Stop in-flight requests first so a late response can't
+      // repopulate the cache we're about to drop.
+      queryClient.cancelQueries();
+      navigate('/login', { replace: true });
+      // Clear on the next macrotask, once the navigation has rendered
+      // and the protected pages have unmounted. Clearing while their
+      // queries still have active observers makes every one of them
+      // refetch — a 401 storm on the way out. This timeout only defers
+      // cache cleanup; it does not race the navigation above.
+      setTimeout(() => queryClient.clear(), 0);
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [navigate, queryClient]);
+
+  return null;
+}
+
 function AppRoutes() {
   return (
     <>
+      <SessionExpiryBridge />
       <Navbar />
       <Suspense fallback={<LoadingSpinner />}>
         <RouteTransition>

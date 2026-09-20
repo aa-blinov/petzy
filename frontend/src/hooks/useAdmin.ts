@@ -1,29 +1,20 @@
-import { useQuery } from '@tanstack/react-query';
-import api from '../services/api';
+import { useSession } from './useSession';
 
-interface AdminStatusResponse {
-  is_admin: boolean;
-}
-
+/**
+ * Admin flag for the current user.
+ *
+ * Derived from the session probe rather than its own
+ * GET /auth/check-admin request. The separate request was a second
+ * unguarded authenticated call on every page (login page included,
+ * since BottomTabBar calls this hook before its `/login` early
+ * return), and its `retry: 1` overrode the app-wide "never retry a
+ * 401" rule — so every expiry produced a doubled 401 here.
+ */
 export function useAdmin() {
-  // Check admin status only once per session (until cache is cleared)
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin-status'],
-    queryFn: async () => {
-      const response = await api.get<AdminStatusResponse>('/auth/check-admin');
-      return response.data.is_admin === true;
-    },
-    staleTime: Infinity, // Never consider stale - valid for entire session
-    gcTime: Infinity, // Keep in cache forever (until logout clears it)
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: 1,
-  });
+  const { isAdmin, isAuthenticated } = useSession();
 
-  return { 
-    isAdmin: data ?? false, 
-    isLoading 
+  return {
+    isAdmin,
+    isLoading: isAuthenticated === undefined,
   };
 }
-
