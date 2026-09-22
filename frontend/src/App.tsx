@@ -11,21 +11,25 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { HapticListener } from './components/HapticListener';
 import { RouteTransition } from './components/RouteTransition';
 
-// Lazy load pages for code splitting
+// Lazy load pages for code splitting. Every route is split, Dashboard
+// included: these five used to be eager imports, which meant every
+// route — even /login — paid for downloading and parsing History (and
+// the recharts it pulls in), AdminPanel, Settings and MedicationsList
+// before the app could render anything.
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-import { Dashboard } from './pages/Dashboard';
-import { History } from './pages/History';
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
 const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
-import { AdminPanel } from './pages/AdminPanel';
+const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const UserForm = lazy(() => import('./pages/UserForm').then(m => ({ default: m.UserForm })));
-import { Settings } from './pages/Settings';
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })));
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
 const EventTypeForm = lazy(() => import('./pages/EventTypeForm').then(m => ({ default: m.EventTypeForm })));
-import { MedicationsList } from './pages/MedicationsList';
+const MedicationsList = lazy(() => import('./pages/MedicationsList').then(m => ({ default: m.MedicationsList })));
 const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ default: m.MedicationForm })));
 
 const queryClient = new QueryClient({
