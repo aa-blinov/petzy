@@ -452,7 +452,18 @@ def get_health_stats():
 )
 @require_pet_access
 def get_history_timeline():
-    """Get an aggregate timeline of events + medication intakes for a pet."""
+    """Get an aggregate timeline of events + medication intakes for a pet.
+
+    Both source collections are indexed on ``{pet_id, date_time}`` — used
+    here for a sorted, `limit`-ed fetch from each instead of loading the
+    pet's entire history on every call. Fetching the top
+    ``offset + page_size`` from each source (rather than everything) is
+    still enough to answer this page correctly: any record that belongs
+    in the merged page can be at most that far down within its own
+    collection, since everything ahead of it globally is also ahead of
+    it within its source. Medication names are batch-resolved with one
+    `$in` query instead of a `find_one` per intake.
+    """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
     page = query_params.page
@@ -460,38 +471,62 @@ def get_history_timeline():
     filter_type = getattr(query_params, "type", "all")
 
     all_records = []
+    total = 0
 
     include_events = filter_type != "medications"
     include_medications = not filter_type or filter_type in ("all", "medications")
+
+    offset = (page - 1) * page_size
+    fetch_limit = offset + page_size
 
     if include_events:
         events_query: dict[str, Any] = {"pet_id": pet_id}
         if filter_type and filter_type != "all":
             events_query["type"] = filter_type
-        for record in app.db[EVENTS_COLLECTION].find(events_query):
+        total += app.db[EVENTS_COLLECTION].count_documents(events_query)
+        cursor = app.db[EVENTS_COLLECTION].find(events_query).sort("date_time", -1).limit(fetch_limit)
+        for record in cursor:
             item = _serialize_event(record)
             item["record_type"] = item.pop("type")
             all_records.append(item)
 
     if include_medications:
-        for record in app.db["medication_intakes"].find({"pet_id": pet_id}):
+        intakes_query = {"pet_id": pet_id}
+        total += app.db["medication_intakes"].count_documents(intakes_query)
+        intake_records = list(
+            app.db["medication_intakes"].find(intakes_query).sort("date_time", -1).limit(fetch_limit)
+        )
+
+        from bson import ObjectId  # local import keeps module-load cheap
+
+        med_object_ids = []
+        for record in intake_records:
+            raw_id = record.get("medication_id")
+            if raw_id:
+                try:
+                    med_object_ids.append(ObjectId(raw_id))
+                except Exception:
+                    pass
+        med_names = {
+            str(med["_id"]): med.get("name", "Unknown")
+            for med in app.db["medications"].find(
+                {"_id": {"$in": med_object_ids}}, {"name": 1}
+            )
+        } if med_object_ids else {}
+
+        for record in intake_records:
             record["_id"] = str(record["_id"])
             record["pet_id"] = str(record.get("pet_id", ""))
             record["record_type"] = "medications"
             if isinstance(record.get("date_time"), datetime):
                 record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
-            if "medication_id" in record:
-                from bson import ObjectId  # local import keeps module-load cheap
-
-                med = app.db["medications"].find_one({"_id": ObjectId(record["medication_id"])})
-                if med:
-                    record["medication_name"] = med.get("name", "Unknown")
+            med_name = med_names.get(record.get("medication_id"))
+            if med_name:
+                record["medication_name"] = med_name
             all_records.append(record)
 
     all_records.sort(key=lambda x: x.get("date_time", ""), reverse=True)
 
-    total = len(all_records)
-    offset = (page - 1) * page_size
     paginated_records = all_records[offset : offset + page_size]
 
     return jsonify(
