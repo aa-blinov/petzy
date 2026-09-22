@@ -15,7 +15,7 @@ Use this anywhere a record's date_time is rendered for the user.
  */
 
 
-const MONTHS_GENITIVE = [
+export const MONTHS_GENITIVE = [
   "января", "февраля", "марта", "апреля", "мая", "июня",
   "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ]

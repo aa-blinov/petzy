@@ -1,16 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
+import { MONTHS_GENITIVE } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { Button } from 'antd-mobile';
 import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 
+// The backend looks ahead up to a week once today's doses are all given,
+// so "the next dose" can land on a different day — without saying which,
+// a dose due tomorrow read exactly like one due right now, and "Принять
+// сейчас" on it would log an early, wrong-dated intake.
+function describeDoseDay(doseDateStr: string, now: Date): string | null {
+    const [y, m, d] = doseDateStr.split('-').map(Number);
+    const doseDay = new Date(y, m - 1, d).getTime();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const daysAhead = Math.round((doseDay - today) / 86_400_000);
+
+    if (daysAhead <= 0) return null;
+    if (daysAhead === 1) return 'завтра';
+    return `${d} ${MONTHS_GENITIVE[m - 1]}`;
+}
+
 export function NextDoseWidget() {
     const { selectedPetId } = usePet();
     const queryClient = useQueryClient();
 
-    const { data: upcoming = [], isLoading } = useQuery({
+    const { data: upcoming = [], isLoading, isFetching } = useQuery({
         queryKey: ['medications', 'upcoming', selectedPetId],
         queryFn: () => {
             // The client's own wall clock, not toISOString(): that emits
@@ -48,6 +64,7 @@ export function NextDoseWidget() {
 
     // For the widget, we only show the VERY next dose (or multiple if they are at the same time)
     const nextDose = upcoming[0];
+    const doseDay = describeDoseDay(nextDose.date, new Date());
 
     return (
         <div
@@ -96,7 +113,7 @@ export function NextDoseWidget() {
                             {nextDose.name}
                         </h3>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
-                            {nextDose.time}
+                            {doseDay ? `${doseDay}, ${nextDose.time}` : nextDose.time}
                         </div>
                     </div>
                 </div>
@@ -127,8 +144,15 @@ export function NextDoseWidget() {
                     style={{ fontWeight: 600 }}
                     onClick={() => intakeMutation.mutate(nextDose)}
                     loading={intakeMutation.isPending}
+                    // Once the log request succeeds, the invalidated query
+                    // needs its own refetch round-trip before `upcoming`
+                    // reflects the new state — without this, that gap let a
+                    // second tap (or, on a slower connection, several) log
+                    // the same dose again before the button had any visible
+                    // reason to stop offering it.
+                    disabled={isFetching}
                 >
-                    Принять сейчас
+                    {doseDay ? 'Отметить заранее' : 'Принять сейчас'}
                 </Button>
             </div>
         </div>

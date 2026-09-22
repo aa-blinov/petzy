@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatTime } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -52,10 +52,16 @@ export function MedicationsList() {
 
     const intakeMutation = useMutation({
         mutationFn: ({ id, dose }: { id: string; dose: number }) => {
+            // Both from the local wall clock, not toISOString(): that
+            // emits the UTC date, which disagrees with the local date for
+            // several hours around midnight (5 at UTC+5) — the intake
+            // landed under yesterday's date paired with today's time,
+            // so it fell outside every "today" query (intakes_today,
+            // the upcoming-dose widget) until the offset window passed.
             const now = new Date();
             return medicationsService.logIntake(id, {
-                date: now.toISOString().split('T')[0],
-                time: now.toTimeString().split(' ')[0].substring(0, 5),
+                date: formatDate(now),
+                time: formatTime(now),
                 dose_taken: dose,
             });
         },

@@ -518,15 +518,19 @@ def get_upcoming_doses():
             app.db.medication_intakes.find({"medication_id": {"$in": med_ids}, "date_time": {"$gte": today_start}})
         )
 
-        # Group intakes by medication_id
-        taken_times_by_med = {}
+        # Count today's intakes per medication — not matched against the
+        # exact scheduled time. An intake's own date_time is whenever it
+        # was actually logged (e.g. MedicationsList's "Отметить приём"
+        # stamps the real tap time, not the schedule's "08:00"), so
+        # comparing HH:MM strings against the schedule almost never
+        # matched and a dose already given kept reappearing here as due.
+        # Same convention get_medications already uses for intakes_today:
+        # a plain count, consumed against the day's scheduled slots in
+        # chronological order.
+        taken_count_by_med: dict[str, int] = {}
         for intake in today_intakes_all:
             med_id = intake.get("medication_id")
-            if med_id not in taken_times_by_med:
-                taken_times_by_med[med_id] = set()
-            if intake.get("date_time"):
-                intake_time = intake["date_time"].strftime("%H:%M")
-                taken_times_by_med[med_id].add(intake_time)
+            taken_count_by_med[med_id] = taken_count_by_med.get(med_id, 0) + 1
 
         for med in medications:
             schedule = med.get("schedule", {})
@@ -537,14 +541,14 @@ def get_upcoming_doses():
                 continue
 
             med_id_str = str(med["_id"])
-            taken_times = taken_times_by_med.get(med_id_str, set())
+            taken_count = taken_count_by_med.get(med_id_str, 0)
 
             # Find next occurrence
             # We'll return all doses for 'today' that haven't been taken yet
             if current_day in sched_days:
-                for t in sched_times:
-                    # Skip if already taken today
-                    if t in taken_times:
+                for slot_index, t in enumerate(sorted(sched_times)):
+                    # The earliest `taken_count` slots are considered given.
+                    if slot_index < taken_count:
                         continue
 
                     # Check if time is overdue
