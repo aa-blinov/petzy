@@ -411,6 +411,22 @@ class TestPetManagement:
             }
         )
 
+        # Documents
+        db["documents"].insert_one(
+            {
+                "pet_id": pet_id,
+                "username": "testuser",
+                "category": "other",
+                "title": "Test Doc",
+                "note": "",
+                "file_id": str(ObjectId()),
+                "original_filename": "doc.pdf",
+                "content_type": "application/pdf",
+                "file_size": 10,
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
+
         # Verify records exist
         assert db["asthma_attacks"].count_documents({"pet_id": pet_id}) == 1
         assert db["defecations"].count_documents({"pet_id": pet_id}) == 1
@@ -422,6 +438,7 @@ class TestPetManagement:
         assert db["tooth_brushing"].count_documents({"pet_id": pet_id}) == 1
         assert db["medications"].count_documents({"pet_id": pet_id}) == 1
         assert db["medication_intakes"].count_documents({"pet_id": pet_id}) == 1
+        assert db["documents"].count_documents({"pet_id": pet_id}) == 1
 
         # Delete pet
         response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
@@ -442,6 +459,74 @@ class TestPetManagement:
         assert db["tooth_brushing"].count_documents({"pet_id": pet_id}) == 0
         assert db["medications"].count_documents({"pet_id": pet_id}) == 0
         assert db["medication_intakes"].count_documents({"pet_id": pet_id}) == 0
+        assert db["documents"].count_documents({"pet_id": pet_id}) == 0
+
+    def test_delete_pet_with_documents(self, client, mock_db, regular_user_token, test_pet):
+        """Deleting a pet also deletes each of its documents' GridFS files."""
+        from unittest.mock import patch
+
+        from web.app import db, fs
+
+        pet_id = str(test_pet["_id"])
+        file_ids = [ObjectId(), ObjectId()]
+        for i, file_id in enumerate(file_ids):
+            db["documents"].insert_one(
+                {
+                    "pet_id": pet_id,
+                    "username": "testuser",
+                    "category": "other",
+                    "title": f"Doc {i}",
+                    "note": "",
+                    "file_id": str(file_id),
+                    "original_filename": "doc.pdf",
+                    "content_type": "application/pdf",
+                    "file_size": 10,
+                    "created_at": datetime.now(timezone.utc),
+                }
+            )
+
+        deleted_ids = []
+
+        def mock_delete(file_id):
+            deleted_ids.append(file_id)
+
+        with patch.object(fs, "delete", side_effect=mock_delete):
+            response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
+
+        assert response.status_code == 200
+        assert db["documents"].count_documents({"pet_id": pet_id}) == 0
+        assert set(deleted_ids) == set(file_ids)
+
+    def test_delete_pet_document_file_deletion_failure_does_not_fail_request(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        """Losing a document's GridFS blob during cascade delete shouldn't
+        block deleting the pet — same tolerance as the photo cleanup."""
+        from unittest.mock import patch
+
+        from web.app import db, fs
+
+        pet_id = str(test_pet["_id"])
+        db["documents"].insert_one(
+            {
+                "pet_id": pet_id,
+                "username": "testuser",
+                "category": "other",
+                "title": "Doc",
+                "note": "",
+                "file_id": str(ObjectId()),
+                "original_filename": "doc.pdf",
+                "content_type": "application/pdf",
+                "file_size": 10,
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
+
+        with patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")):
+            response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
+
+        assert response.status_code == 200
+        assert db["pets"].find_one({"_id": test_pet["_id"]}) is None
 
     def test_delete_pet_with_photo(self, client, mock_db, regular_user_token, test_pet):
         """Test that deleting a pet also deletes its photo from GridFS."""

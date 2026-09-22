@@ -37,6 +37,10 @@ MESSAGES: Dict[str, MessageDef] = {
     "event_updated": MessageDef("Запись «{label}» обновлена"),
     "event_deleted": MessageDef("Запись «{label}» удалена"),
     "event_type_deleted": MessageDef("Тип события удалён"),
+    # Documents
+    "document_created": MessageDef("Документ добавлен"),
+    "document_updated": MessageDef("Документ обновлён"),
+    "document_deleted": MessageDef("Документ удалён"),
 }
 
 

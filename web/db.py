@@ -78,6 +78,8 @@ def ensure_indexes() -> None:
       events              pet_id + date_time (timeline per pet)
                           pet_id + type + date_time (per-type list/chart)
       event_types         key unique         (registry lookup by type)
+      documents           pet_id + created_at (document list for a pet)
+                          pet_id + category + created_at (category filter)
       users               username unique (login lookup)
                           role             (admin queries)
       refresh_tokens      jti unique        (RFC 7519 JWT ID; replaces
@@ -108,6 +110,12 @@ def ensure_indexes() -> None:
         (db.events, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "events_pet_date"),
         (db.events, [("pet_id", ASCENDING), ("type", ASCENDING), ("date_time", DESCENDING)], "events_pet_type_date"),
         (db.event_types, [("key", ASCENDING)], "event_types_key_unique", {"unique": True}),
+        (db.documents, [("pet_id", ASCENDING), ("created_at", DESCENDING)], "documents_pet_created"),
+        (
+            db.documents,
+            [("pet_id", ASCENDING), ("category", ASCENDING), ("created_at", DESCENDING)],
+            "documents_pet_category_created",
+        ),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (

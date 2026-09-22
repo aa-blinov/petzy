@@ -1001,6 +1001,54 @@ class UpcomingDosesResponse(BaseModel):
 
 
 # ============================================================================
+# Document Schemas
+# ============================================================================
+# `category` is a plain str, not a Literal/enum — matches EventListQuery.type
+# below, which is likewise unrestricted at the schema level. The allowed set
+# (vaccination/lab_result/insurance/other) is enforced by the frontend's own
+# fixed picker, not here.
+
+
+class DocumentCreate(PetIdQuery):
+    category: str = Field(..., description="Категория документа")
+    title: str = Field(..., min_length=1, max_length=100)
+    note: Optional[str] = Field(None, max_length=500)
+
+
+class DocumentUpdate(BaseModel):
+    category: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=100)
+    note: Optional[str] = Field(None, max_length=500)
+
+
+class DocumentListQuery(PetIdPaginationQuery):
+    category: Optional[str] = Field(None, description="Фильтр по категории (опустить — все)")
+
+
+class DocumentItem(BaseModel):
+    id: str = Field(alias="_id")
+    pet_id: str
+    username: str
+    category: str
+    title: str
+    note: Optional[str] = None
+    original_filename: str
+    content_type: str
+    file_size: int
+    created_at: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class DocumentListResponse(PaginatedResponse):
+    documents: List[DocumentItem]
+
+
+class DocumentDetailResponse(BaseModel):
+    document: DocumentItem
+
+
+# ============================================================================
 # History Timeline Schemas
 # ============================================================================
 

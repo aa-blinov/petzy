@@ -89,6 +89,10 @@ ERRORS: Dict[str, ErrorDef] = {
         "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
     ),
     "event_type_has_events": ErrorDef("event_type_has_events", "У этого типа есть записи — сначала удалите их", 422),
+    # Documents
+    "document_file_required": ErrorDef("document_file_required", "Файл обязателен", 422),
+    "document_unsupported_type": ErrorDef("document_unsupported_type", "Неподдерживаемый тип файла", 422),
+    "document_file_too_large": ErrorDef("document_file_too_large", "Файл слишком большой (максимум 15 МБ)", 422),
     # Other
     "no_data_for_export": ErrorDef("no_data_for_export", "Нет данных для экспорта", 404),
     "upload_error": ErrorDef("upload_error", "Ошибка при загрузке файла", 404),

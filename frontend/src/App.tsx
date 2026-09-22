@@ -32,6 +32,8 @@ const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(
 const EventTypeForm = lazy(() => import('./pages/EventTypeForm').then(m => ({ default: m.EventTypeForm })));
 const MedicationsList = lazy(() => import('./pages/MedicationsList').then(m => ({ default: m.MedicationsList })));
 const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ default: m.MedicationForm })));
+const DocumentsList = lazy(() => import('./pages/DocumentsList').then(m => ({ default: m.DocumentsList })));
+const DocumentForm = lazy(() => import('./pages/DocumentForm').then(m => ({ default: m.DocumentForm })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -196,6 +198,30 @@ function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <MedicationForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <ProtectedRoute>
+                  <DocumentsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents/new"
+              element={
+                <ProtectedRoute>
+                  <DocumentForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <DocumentForm />
                 </ProtectedRoute>
               }
             />

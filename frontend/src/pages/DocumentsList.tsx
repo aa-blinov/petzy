@@ -1,0 +1,461 @@
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, Dialog, ImageViewer, PullToRefresh, SearchBar } from 'antd-mobile';
+import { AddOutline } from 'antd-mobile-icons';
+import { FileText, Pencil, Trash2, X } from 'lucide-react';
+
+import { usePet } from '../hooks/usePet';
+import { hapticFeedback } from '../utils/haptic';
+import { formatRelativeDateTime } from '../utils/relativeTime';
+import { showToast } from '../utils/toast';
+import {
+  documentsService,
+  DOCUMENT_CATEGORY_LABELS,
+  type DocumentCategory,
+  type PetDocument,
+} from '../services/documents.service';
+import { SwipeableRow } from '../components/SwipeableRow';
+import { EmptyState } from '../components/EmptyState';
+import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
+
+/**
+ * Category display order — the insertion order of DOCUMENT_CATEGORY_LABELS,
+ * so adding a category there is enough; nothing here needs to stay in sync
+ * by hand.
+ */
+const CATEGORY_ORDER = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[];
+
+/**
+ * One badge per format this app accepts (see ALLOWED_CONTENT_TYPES in
+ * web/documents.py) — always a short text label, never an actual image
+ * preview: a cropped 40×40 thumbnail of a real photo (especially a
+ * mostly-white infographic or a scanned document) reads as an
+ * unrecognisable blur. Every format gets its own colour so the list
+ * reads at a glance, uniformly — no format singled out as "the icon
+ * one" while the rest get text.
+ */
+const FORMAT_BADGES: Record<string, { label: string; bg: string; fg: string }> = {
+  jpeg: { label: 'JPG', bg: 'rgba(10, 132, 255, 0.14)', fg: '#0A84FF' },
+  png: { label: 'PNG', bg: 'rgba(191, 90, 242, 0.14)', fg: '#BF5AF2' },
+  webp: { label: 'WEBP', bg: 'rgba(52, 199, 89, 0.14)', fg: '#34C759' },
+  heic: { label: 'HEIC', bg: 'rgba(255, 159, 10, 0.14)', fg: '#FF9F0A' },
+  heif: { label: 'HEIF', bg: 'rgba(255, 159, 10, 0.14)', fg: '#FF9F0A' },
+  pdf: { label: 'PDF', bg: 'rgba(255, 69, 58, 0.12)', fg: '#FF453A' },
+};
+const DEFAULT_FORMAT_BADGE = { label: 'FILE', bg: 'var(--app-accent-soft)', fg: 'var(--app-accent-deep)' };
+
+export function DocumentsList() {
+  const { selectedPetId } = usePet();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; document: PetDocument | null }>({
+    visible: false,
+    document: null,
+  });
+  const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null }>({
+    visible: false,
+    image: null,
+  });
+  // Non-image documents (PDFs) open in an in-app viewer rather than a new
+  // tab or a same-tab navigation — window.open is unreliable here (a popup
+  // blocker can silently swallow it, and installed as a PWA there is often
+  // no browser chrome to open a tab in at all), and navigating away loses
+  // the whole SPA. An <iframe> keeps the user on this screen and works
+  // everywhere a browser can render a PDF at all.
+  const [fileViewer, setFileViewer] = useState<{ visible: boolean; url: string | null; title: string }>({
+    visible: false,
+    url: null,
+    title: '',
+  });
+
+  // Esc closes whichever viewer is open. Needed most for the image
+  // viewer: it has no close button of its own and normally relies on
+  // tapping the image to dismiss — which does nothing when the "image"
+  // is a format the browser can't decode (HEIC, most places outside
+  // Safari) and never actually renders, leaving no tap target at all.
+  useEffect(() => {
+    if (!imageViewer.visible && !fileViewer.visible) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setImageViewer((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+      setFileViewer((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [imageViewer.visible, fileViewer.visible]);
+
+  const {
+    data: documents = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['documents', selectedPetId],
+    queryFn: () => documentsService.getList(selectedPetId!).then((res) => res.documents),
+    enabled: !!selectedPetId,
+  });
+
+  const searchedDocuments = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return documents;
+    return documents.filter((doc) => doc.title.toLowerCase().includes(q));
+  }, [documents, searchQuery]);
+
+  // Sections replace the old category filter — with the handful of
+  // documents a pet typically has, always showing every category beats
+  // hiding them behind a filter sheet the user has to open first.
+  // Categories with no matching documents (right now, or under the
+  // current search) are skipped rather than shown as empty sections.
+  const groupedDocuments = useMemo(() => {
+    const byCategory = new Map<DocumentCategory, PetDocument[]>();
+    for (const doc of searchedDocuments) {
+      const list = byCategory.get(doc.category);
+      if (list) list.push(doc);
+      else byCategory.set(doc.category, [doc]);
+    }
+    return CATEGORY_ORDER
+      .map((category) => [category, byCategory.get(category) ?? []] as const)
+      .filter(([, docs]) => docs.length > 0);
+  }, [searchedDocuments]);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => documentsService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
+      showToast.success('Документ удалён');
+    },
+  });
+
+  const handleDelete = (doc: PetDocument) => {
+    hapticFeedback('light');
+    setDeleteDialog({ visible: true, document: doc });
+  };
+
+  const handleOpen = (doc: PetDocument) => {
+    hapticFeedback('light');
+    const url = documentsService.getFileUrl(doc._id);
+    if (doc.content_type.startsWith('image/')) {
+      setImageViewer({ visible: true, image: url });
+    } else {
+      setFileViewer({ visible: true, url, title: doc.title });
+    }
+  };
+
+  if (!selectedPetId) {
+    return (
+      <div style={{ minHeight: '100vh', padding: 'var(--spacing-lg)' }}>
+        <p>Выберите животное в меню навигации для просмотра документов</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-container">
+      <div className="max-width-container">
+        <div
+          className="safe-area-padding"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 'var(--spacing-lg)',
+            minHeight: '40px',
+          }}
+        >
+          <h1 className="display-headline" style={{ fontSize: '28px', margin: 0 }}>
+            Документы
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/documents/new')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--app-accent-deep)',
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
+              cursor: 'pointer',
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <AddOutline style={{ fontSize: 20 }} />
+            Добавить
+          </button>
+        </div>
+
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
+          <SearchBar
+            placeholder="Поиск по названию"
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onClear={() => setSearchQuery('')}
+          />
+        </div>
+
+        {isLoading ? (
+          <SkeletonList count={3} render={() => <MedicationCardSkeleton />} />
+        ) : documents.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="Здесь будут документы животного"
+            description="Прививочные справки, анализы, страховка и фото — всё в одном месте."
+            actionLabel="Добавить документ"
+            onAction={() => navigate('/documents/new')}
+          />
+        ) : searchedDocuments.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="Ничего не найдено"
+            description="Попробуйте изменить запрос."
+          />
+        ) : (
+          <PullToRefresh
+            onRefresh={async () => {
+              hapticFeedback('medium');
+              await refetch();
+            }}
+            headHeight={48}
+          >
+            <div
+              className="safe-area-padding"
+              style={{ marginTop: 'var(--spacing-sm)' }}
+            >
+              {groupedDocuments.map(([category, docs]) => (
+                <div key={category} style={{ marginBottom: 'var(--spacing-lg)' }}>
+                  <h3 className="section-header" style={{ marginBottom: '10px', paddingLeft: 4 }}>
+                    {DOCUMENT_CATEGORY_LABELS[category]}
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+                    {docs.map((doc) => {
+                      // Preview reflects the file's actual format — the
+                      // category already reads from the section header above.
+                      const subtype = doc.content_type.split('/')[1]?.toLowerCase() ?? '';
+                      const badge = FORMAT_BADGES[subtype] ?? { ...DEFAULT_FORMAT_BADGE, label: subtype ? subtype.toUpperCase().slice(0, 4) : 'FILE' };
+                      return (
+                        <SwipeableRow
+                          key={doc._id}
+                          leftAction={{
+                            icon: <Pencil size={20} strokeWidth={2.4} />,
+                            label: 'Изменить',
+                            color: 'var(--app-accent)',
+                            onTrigger: () => navigate(`/documents/${doc._id}/edit`),
+                          }}
+                          rightAction={{
+                            icon: <Trash2 size={20} strokeWidth={2.4} />,
+                            label: 'Удалить',
+                            color: 'var(--app-danger-color)',
+                            onTrigger: () => handleDelete(doc),
+                          }}
+                        >
+                          <Card
+                            className="card-soft card-soft--interactive"
+                            style={{ borderRadius: 'var(--radius-md)', border: 'none', padding: 0, cursor: 'pointer' }}
+                            onClick={() => handleOpen(doc)}
+                          >
+                            <div style={{ padding: 'var(--spacing-lg)', display: 'flex', gap: 'var(--spacing-md)' }}>
+                              <div
+                                aria-hidden
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 12,
+                                  background: badge.bg,
+                                  color: badge.fg,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  letterSpacing: '0.02em',
+                                }}
+                              >
+                                {badge.label}
+                              </div>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+                                  <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{doc.title}</h3>
+                                </div>
+                                <p
+                                  style={{
+                                    margin: '2px 0 0',
+                                    fontSize: 'var(--text-sm)',
+                                    color: 'var(--app-text-secondary)',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                >
+                                  {doc.original_filename}
+                                </p>
+                                <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
+                                  {formatRelativeDateTime(doc.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </Card>
+                        </SwipeableRow>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PullToRefresh>
+        )}
+      </div>
+
+      <ImageViewer
+        image={imageViewer.image || ''}
+        visible={imageViewer.visible}
+        onClose={() => setImageViewer((prev) => ({ ...prev, visible: false }))}
+        afterClose={() => setImageViewer({ visible: false, image: null })}
+      />
+
+      {/* ImageViewer ships no close button of its own — dismissing relies
+          on tapping the image, which is exactly what doesn't work for a
+          format the browser can't decode (HEIC, outside Safari): nothing
+          ever renders, so there's no tap target and the viewer is stuck
+          open. A explicit close button doesn't depend on the image
+          having loaded. Portalled to <body> at a higher z-index than
+          antd's own mask (1000) for the same reason as the file viewer
+          below — RouteTransition's stacking context would otherwise
+          bury it under the Navbar. */}
+      {imageViewer.visible && createPortal(
+        <button
+          type="button"
+          onClick={() => {
+            hapticFeedback('light');
+            setImageViewer((prev) => ({ ...prev, visible: false }));
+          }}
+          aria-label="Закрыть"
+          style={{
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top) + var(--spacing-md))',
+            right: 'var(--spacing-md)',
+            zIndex: 1001,
+            background: 'rgba(0, 0, 0, 0.5)',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '50%',
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <X size={20} strokeWidth={2.4} />
+        </button>,
+        document.body,
+      )}
+
+      {fileViewer.visible && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            // The page content sits inside RouteTransition, which sets
+            // `will-change: transform` for its slide animation — that
+            // alone opens a new stacking context, so a z-index here would
+            // only ever compete within it and never actually beat the
+            // Navbar's fixed z-index:1000 sitting outside it. Portalling
+            // to <body> escapes that context entirely, same as antd-mobile's
+            // own ImageViewer/Dialog/Popup already do for this exact reason.
+            zIndex: 1001,
+            background: 'var(--app-page-background)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--spacing-md)',
+              padding: 'var(--spacing-md) var(--spacing-lg)',
+              paddingTop: 'calc(env(safe-area-inset-top) + var(--spacing-md))',
+              flexShrink: 0,
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 'var(--text-md)',
+                fontWeight: 600,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {fileViewer.title}
+            </h3>
+            <button
+              type="button"
+              onClick={() => {
+                hapticFeedback('light');
+                setFileViewer({ visible: false, url: null, title: '' });
+              }}
+              aria-label="Закрыть"
+              style={{
+                background: 'var(--app-accent-soft)',
+                color: 'var(--app-text-color)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <X size={18} strokeWidth={2.4} />
+            </button>
+          </div>
+          {fileViewer.url && (
+            <iframe
+              src={fileViewer.url}
+              title={fileViewer.title}
+              style={{ flex: 1, width: '100%', border: 'none' }}
+            />
+          )}
+        </div>,
+        document.body,
+      )}
+
+      <Dialog
+        visible={deleteDialog.visible}
+        title="Удаление документа"
+        content={deleteDialog.document && <span>Удалить документ «{deleteDialog.document.title}»?</span>}
+        onClose={() => setDeleteDialog((prev) => ({ ...prev, visible: false }))}
+        afterClose={() => setDeleteDialog({ visible: false, document: null })}
+        actions={[
+          {
+            key: 'delete',
+            text: 'Удалить',
+            danger: true,
+            onClick: () => {
+              if (deleteDialog.document) deleteMutation.mutate(deleteDialog.document._id);
+              setDeleteDialog((prev) => ({ ...prev, visible: false }));
+            },
+          },
+          {
+            key: 'cancel',
+            text: 'Отмена',
+            onClick: () => setDeleteDialog((prev) => ({ ...prev, visible: false })),
+          },
+        ]}
+      />
+    </div>
+  );
+}

@@ -560,10 +560,18 @@ def delete_pet(pet_id):
             ("events", {"pet_id": pet_id}),
             ("medication_intakes", {"pet_id": pet_id}),
             ("medications", {"pet_id": pet_id}),
+            ("documents", {"pet_id": pet_id}),
         ]
 
         # Delete photo from GridFS if exists
         old_photo_id = pet.get("photo_file_id") if pet else None
+
+        # Documents' GridFS files need the same capture-before-delete
+        # treatment as the pet photo — the Mongo rows disappear once
+        # collections_to_clean runs, so grab their file_ids now.
+        doc_file_ids = [
+            d["file_id"] for d in app.db["documents"].find({"pet_id": pet_id}, {"file_id": 1}) if d.get("file_id")
+        ]
 
         # Try to use transaction if available
         try:
@@ -642,6 +650,13 @@ def delete_pet(pet_id):
             except Exception as photo_error:
                 # Log but don't fail the request
                 logger.warning(f"Failed to delete photo {old_photo_id} for pet {pet_id}: {photo_error}")
+
+        # Same rationale — document files live in GridFS, outside the transaction.
+        for file_id in doc_file_ids:
+            try:
+                app.fs.delete(ObjectId(file_id))
+            except Exception as file_error:
+                logger.warning(f"Failed to delete document file {file_id} for pet {pet_id}: {file_error}")
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
         return get_message("pet_deleted")

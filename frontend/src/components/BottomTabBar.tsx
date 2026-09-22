@@ -1,13 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TabBar } from 'antd-mobile';
-import { BookOpen, Pill, Clock, SlidersHorizontal, Users } from 'lucide-react';
-import { useAdmin } from '../hooks/useAdmin';
+import { BookOpen, Pill, FileText, Clock, SlidersHorizontal } from 'lucide-react';
 import { hapticFeedback } from '../utils/haptic';
 
 export function BottomTabBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin, isLoading } = useAdmin();
 
   const { pathname } = location;
 
@@ -33,6 +31,11 @@ export function BottomTabBar() {
       icon: <Pill size={22} strokeWidth={1.8} />,
     },
     {
+      key: '/documents',
+      title: 'Документы',
+      icon: <FileText size={22} strokeWidth={1.8} />,
+    },
+    {
       key: '/history',
       title: 'История',
       icon: <Clock size={22} strokeWidth={1.8} />,
@@ -43,15 +46,6 @@ export function BottomTabBar() {
       icon: <SlidersHorizontal size={22} strokeWidth={1.8} />,
     },
   ];
-
-  // Only add admin tab after loading to prevent flickering
-  if (!isLoading && isAdmin) {
-    tabs.push({
-      key: '/admin',
-      title: 'Админ',
-      icon: <Users size={22} strokeWidth={1.8} />,
-    });
-  }
 
   return (
     <div className="bottom-tab-bar-container">

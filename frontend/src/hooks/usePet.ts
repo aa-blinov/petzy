@@ -73,6 +73,7 @@ export function usePet() {
             typeof segment === 'string' &&
             (
               segment === 'medications' ||
+              segment === 'documents' ||
               segment === 'history' ||
               segment === 'future-intakes' ||
               segment === 'dashboard' ||

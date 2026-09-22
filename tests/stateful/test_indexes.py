@@ -27,6 +27,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "refresh_tokens": ["refresh_token_jti_unique"],
         "events": ["events_pet_date", "events_pet_type_date"],
         "event_types": ["event_types_key_unique"],
+        "documents": ["documents_pet_created", "documents_pet_category_created"],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()
