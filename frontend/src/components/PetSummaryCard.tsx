@@ -123,7 +123,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
       }}
     >
       {/* Header row — square avatar on the left, name + meta on the right.
-          The avatar slot is fixed-size (88 × 88) so text alignment stays
+          The avatar slot is fixed-size (112 × 112) so text alignment stays
           consistent across photo / no-photo / long-name cases. */}
       <div
         style={{
@@ -140,8 +140,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           aria-hidden={!pet.photo_url}
           style={{
             flexShrink: 0,
-            width: "88px",
-            height: "88px",
+            width: "112px",
+            height: "112px",
             borderRadius: "var(--radius-md)",
             overflow: "hidden",
             backgroundColor: "var(--app-accent-soft)",
@@ -155,7 +155,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             <PetImage
               src={pet.photo_url}
               alt={pet.name}
-              size={88}
+              size={112}
               style={{
                 width: "100%",
                 height: "100%",
@@ -164,7 +164,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               }}
             />
           ) : (
-            createElement(SpeciesIcon, { size: 44, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
+            createElement(SpeciesIcon, { size: 56, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
           )}
         </div>
 

@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
-import { Card, Button } from 'antd-mobile';
-import { ClockCircleOutline, ExclamationCircleOutline } from 'antd-mobile-icons';
+import { Button } from 'antd-mobile';
+import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 
@@ -50,63 +50,87 @@ export function NextDoseWidget() {
     const nextDose = upcoming[0];
 
     return (
-        <Card
+        <div
+            className="card-soft"
             style={{
                 marginBottom: 'var(--spacing-lg)',
-                borderRadius: 'var(--radius-lg)',
-                background: 'var(--app-blue-gradient)',
-                color: 'var(--color-white)',
-                border: 'none'
+                padding: 'var(--spacing-lg)',
             }}
         >
-            <div style={{ padding: 'var(--spacing-lg)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <div style={{ fontSize: 'var(--text-xs)', opacity: 0.9, marginBottom: 'var(--spacing-xs)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Следующий прием
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--spacing-md)' }}>
+                <div style={{ display: 'flex', gap: 'var(--spacing-md)', minWidth: 0 }}>
+                    {/* Same badge shape/colors as the medication cards on the
+                        Лекарства tab — the point is to read as "this is a
+                        medication" at a glance, the same way that page does. */}
+                    <div
+                        aria-hidden
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 12,
+                            background: 'var(--app-accent-soft)',
+                            color: 'var(--app-accent-deep)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                        }}
+                    >
+                        <Pill size={20} strokeWidth={2} style={{ display: 'block' }} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Приём лекарства
                         </div>
-                        <h3 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 700 }}>{nextDose.name}</h3>
-                        <div style={{ fontSize: 'var(--text-sm)', opacity: 0.9, marginTop: '2px' }}>
+                        <h3
+                            style={{
+                                margin: '2px 0 0',
+                                fontSize: 'var(--text-lg)',
+                                fontWeight: 700,
+                                color: 'var(--app-text-primary)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
+                        >
+                            {nextDose.name}
+                        </h3>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
                             {nextDose.time}
                         </div>
                     </div>
-                    <div style={{ backgroundColor: 'var(--app-white-20)', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)' }}>
-                        <ClockCircleOutline style={{ fontSize: 'var(--spacing-xl)' }} />
-                    </div>
-                </div>
-
-                {nextDose.inventory_warning && (
-                    <div style={{
-                        marginTop: 'var(--spacing-md)',
-                        backgroundColor: 'var(--app-black-20)',
-                        padding: 'var(--spacing-sm)',
-                        borderRadius: 'var(--radius-sm)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--spacing-sm)',
-                        fontSize: 'var(--text-xs)'
-                    }}>
-                        <ExclamationCircleOutline />
-                        <span>Мало лекарства в остатке!</span>
-                    </div>
-                )}
-
-                <div style={{ marginTop: 'var(--spacing-lg)' }}>
-                    <Button
-                        block
-                        shape="rounded"
-                        style={{
-                            '--background-color': 'var(--color-white)',
-                            '--text-color': 'var(--app-primary-color)',
-                            fontWeight: 600
-                        } as React.CSSProperties}
-                        onClick={() => intakeMutation.mutate(nextDose)}
-                        loading={intakeMutation.isPending}
-                    >
-                        Принять сейчас
-                    </Button>
                 </div>
             </div>
-        </Card>
+
+            {nextDose.inventory_warning && (
+                <div style={{
+                    marginTop: 'var(--spacing-md)',
+                    backgroundColor: 'var(--app-danger-soft, rgba(255, 69, 58, 0.12))',
+                    color: 'var(--app-danger-color)',
+                    padding: 'var(--spacing-sm) var(--spacing-md)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    fontSize: 'var(--text-xs)',
+                }}>
+                    <TriangleAlert size={16} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
+                    <span>Мало лекарства в остатке!</span>
+                </div>
+            )}
+
+            <div style={{ marginTop: 'var(--spacing-lg)' }}>
+                <Button
+                    block
+                    color="primary"
+                    shape="rounded"
+                    style={{ fontWeight: 600 }}
+                    onClick={() => intakeMutation.mutate(nextDose)}
+                    loading={intakeMutation.isPending}
+                >
+                    Принять сейчас
+                </Button>
+            </div>
+        </div>
     );
 }
