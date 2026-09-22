@@ -55,14 +55,21 @@ export function Settings() {
                 />
               }
             />
-            {theme !== 'system' && (
-              <SettingsRow
-                icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
-                label="Следовать за системой"
-                description="Авто-переключение день/ночь"
-                onClick={() => setTheme('system')}
-              />
-            )}
+            {/* Always visible with its own on/off state — this used to be
+                a plain clickable row that only showed up while OFF and
+                vanished the moment you turned it on, with no way to see
+                (or turn back off) the setting it had just applied. */}
+            <SettingsRow
+              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Следовать за системой"
+              description="Авто-переключение день/ночь"
+              control={
+                <Switch
+                  checked={theme === 'system'}
+                  onChange={(checked) => setTheme(checked ? 'system' : (isDark ? 'dark' : 'light'))}
+                />
+              }
+            />
           </div>
 
           {/* Section: Pets
