@@ -215,6 +215,15 @@ def create_pet():
         if isinstance(pet_data.get("created_at"), datetime):
             pet_data["created_at"] = pet_data["created_at"].strftime("%Y-%m-%d %H:%M")
 
+        # Mirror get_pet/get_pets: a photo uploaded on create should come
+        # back with a usable photo_url in this same response, not only
+        # once the caller re-fetches the pet.
+        if pet_data.get("photo_file_id"):
+            pet_data["photo_url"] = (
+                url_for("pets.get_pet_photo", pet_id=pet_data["_id"], _external=False)
+                + f"?v={pet_data['photo_file_id'][:8]}"
+            )
+
         logger.info(f"Pet created: id={pet_data['_id']}, name={pet_data['name']}, owner={username}")
         return get_message("pet_created", status=201, pet=pet_data)
 
@@ -307,57 +316,64 @@ def update_pet(pet_id):
             data = request.context.body  # type: ignore[attr-defined]
 
         # Handle photo file upload/removal (only for multipart/form-data)
+        #
+        # `remove_photo` used to be checked as an `elif` nested inside
+        # `if "photo_file" in request.files`, so it only ever ran when a
+        # (possibly empty) photo_file part was also present. The
+        # frontend never sends that part when removing a photo without
+        # picking a new one — so removal silently did nothing. Checking
+        # for a real upload (photo_file present AND named) versus a
+        # removal request are independent conditions now.
         photo_file_id = pet.get("photo_file_id") if pet else None
         if is_multipart:
-            if "photo_file" in request.files:
-                photo_file = request.files["photo_file"]
-                if photo_file.filename:
-                    # Delete old photo if exists
-                    old_photo_id = pet.get("photo_file_id") if pet else None
-                    if old_photo_id:
-                        try:
-                            app.fs.delete(ObjectId(old_photo_id))
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to delete old photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
-                            )
+            photo_file = request.files.get("photo_file")
+            if photo_file and photo_file.filename:
+                # Delete old photo if exists
+                old_photo_id = pet.get("photo_file_id") if pet else None
+                if old_photo_id:
+                    try:
+                        app.fs.delete(ObjectId(old_photo_id))
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to delete old photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
+                        )
 
-                    # Optimize image to WebP format
-                    optimized_result = optimize_image(photo_file)
-                    if optimized_result:
-                        optimized_file, content_type = optimized_result
-                        # Generate filename with .webp extension
-                        original_filename = photo_file.filename
-                        filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
-                        optimized_filename = f"{filename_without_ext}.webp"
-                        
-                        photo_file_id = str(
-                            app.fs.put(
-                                optimized_file,
-                                filename=optimized_filename,
-                                content_type=content_type,
-                            )
+                # Optimize image to WebP format
+                optimized_result = optimize_image(photo_file)
+                if optimized_result:
+                    optimized_file, content_type = optimized_result
+                    # Generate filename with .webp extension
+                    original_filename = photo_file.filename
+                    filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                    optimized_filename = f"{filename_without_ext}.webp"
+
+                    photo_file_id = str(
+                        app.fs.put(
+                            optimized_file,
+                            filename=optimized_filename,
+                            content_type=content_type,
                         )
-                    else:
-                        # Fallback to original file if optimization fails
-                        photo_file_id = str(
-                            app.fs.put(
-                                photo_file,
-                                filename=photo_file.filename,
-                                content_type=photo_file.content_type,
-                            )
+                    )
+                else:
+                    # Fallback to original file if optimization fails
+                    photo_file_id = str(
+                        app.fs.put(
+                            photo_file,
+                            filename=photo_file.filename,
+                            content_type=photo_file.content_type,
                         )
-                elif request.form.get("remove_photo") == "true":
-                    # Remove photo
-                    old_photo_id = pet.get("photo_file_id") if pet else None
-                    if old_photo_id:
-                        try:
-                            app.fs.delete(ObjectId(old_photo_id))
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to delete photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
-                            )
-                    photo_file_id = None
+                    )
+            elif request.form.get("remove_photo") == "true":
+                # Remove photo
+                old_photo_id = pet.get("photo_file_id") if pet else None
+                if old_photo_id:
+                    try:
+                        app.fs.delete(ObjectId(old_photo_id))
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to delete photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
+                        )
+                photo_file_id = None
 
         birth_date = parse_date(data.birth_date, allow_future=False)
 
@@ -518,8 +534,14 @@ def delete_pet(pet_id):
 
         pet_id_obj = ObjectId(pet_id)
         
-        # List of collections with related records to delete
-        # Using pet_id as string for most collections
+        # List of collections with related records to delete.
+        # The first eight are the pre-event-engine collections — nothing
+        # writes to them anymore, but they're left here as a harmless
+        # no-op in case any pet predates the migration and still has
+        # rows there. `events` is where every event (builtin or custom
+        # type) actually lives today; it was missing from this list
+        # until a cascade-delete test caught pet deletion silently
+        # leaving a pet's entire event history orphaned.
         collections_to_clean = [
             ("asthma_attacks", {"pet_id": pet_id}),
             ("defecations", {"pet_id": pet_id}),
@@ -529,6 +551,7 @@ def delete_pet(pet_id):
             ("eye_drops", {"pet_id": pet_id}),
             ("ear_cleaning", {"pet_id": pet_id}),
             ("tooth_brushing", {"pet_id": pet_id}),
+            ("events", {"pet_id": pet_id}),
             ("medication_intakes", {"pet_id": pet_id}),
             ("medications", {"pet_id": pet_id}),
         ]
