@@ -44,6 +44,27 @@ jobs:
           ADMIN_USERNAME: admin
           ADMIN_PASSWORD_HASH: $2b$12$dummyhashforCIplaceholdervalueXXXXXXXXXXXXXXXXXXXXX
 
+  frontend:
+    name: Frontend (typecheck + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck + build
+        run: npm run build
+      - name: Lint (non-blocking — existing debt not yet cleaned up)
+        run: npm run lint
+        continue-on-error: true
+
   test-stateful:
     name: Pytest (stateful)
     runs-on: ubuntu-latest
