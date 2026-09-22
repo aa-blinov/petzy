@@ -11,7 +11,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { buildTiles } from '../utils/tilesConfig';
-import { healthRecordsService, type TimelineResponse } from '../services/healthRecords.service';
+import { healthRecordsService, type TimelineResponse, type HealthRecord } from '../services/healthRecords.service';
 import { SkeletonList } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
 
@@ -103,7 +103,7 @@ export function History() {
 
     // Group by date for the section headers.
     const groupedItems = useMemo(() => {
-        const groups: Record<string, any[]> = {};
+        const groups: Record<string, HealthRecord[]> = {};
         for (const item of filteredRecords) {
             const dateStr = String(item.date_time ?? '').split(' ')[0];
             if (!groups[dateStr]) groups[dateStr] = [];
@@ -164,8 +164,9 @@ export function History() {
                             {formatDateHeader(dateStr)}
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {itemsForDate.map((item: any) => {
+                            {itemsForDate.map((item: HealthRecord) => {
                                 const type = item.record_type;
+                                if (!type) return null;
                                 const config = historyConfig[type];
                                 if (!config) return null;
                                 return (

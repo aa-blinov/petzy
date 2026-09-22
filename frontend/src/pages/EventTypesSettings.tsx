@@ -13,6 +13,7 @@ import { Button, Dialog } from 'antd-mobile';
 import { Plus, Trash2, Sparkles } from 'lucide-react';
 
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useEventTypes, useInvalidateEventTypes } from '../hooks/useEventTypes';
 import { eventTypesService } from '../services/eventTypes.service';
 import { pastelColorMap } from '../utils/constants';
@@ -33,8 +34,8 @@ export function EventTypesSettings() {
       await eventTypesService.remove(key);
       invalidate();
       showToast.success('Тип события удалён');
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'Не удалось удалить тип события';
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Не удалось удалить тип события');
       showToast.failure(message);
     } finally {
       setDeletingKey(null);

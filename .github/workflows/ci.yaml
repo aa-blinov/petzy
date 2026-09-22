@@ -45,7 +45,7 @@ jobs:
           ADMIN_PASSWORD_HASH: $2b$12$dummyhashforCIplaceholdervalueXXXXXXXXXXXXXXXXXXXXX
 
   frontend:
-    name: Frontend (typecheck + build)
+    name: Frontend (typecheck + build + lint)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -61,9 +61,8 @@ jobs:
         run: npm ci
       - name: Typecheck + build
         run: npm run build
-      - name: Lint (non-blocking — existing debt not yet cleaned up)
+      - name: Lint
         run: npm run lint
-        continue-on-error: true
 
   test-stateful:
     name: Pytest (stateful)

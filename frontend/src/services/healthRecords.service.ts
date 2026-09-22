@@ -72,8 +72,8 @@ export const healthRecordsService = {
     type: string,
     petId: string,
     days: number = 30
-  ): Promise<{ data: { date: string; value: any }[] }> {
-    const response = await api.get<{ data: { date: string; value: any }[] }>(`/stats/health`, {
+  ): Promise<{ data: { date: string; value: number | string }[] }> {
+    const response = await api.get<{ data: { date: string; value: number | string }[] }>(`/stats/health`, {
       params: { pet_id: petId, type, days }
     });
     return response.data;

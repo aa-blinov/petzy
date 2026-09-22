@@ -9,7 +9,7 @@ import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
-import { healthRecordsService } from '../services/healthRecords.service';
+import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { NextDoseWidget } from '../components/NextDoseWidget';
@@ -60,7 +60,7 @@ export function Dashboard() {
   const allItems = data?.pages.flatMap(page => page.items) ?? [];
 
   const groupedItems = useMemo(() => {
-    return allItems.reduce<Record<string, any[]>>((acc, item) => {
+    return allItems.reduce<Record<string, HealthRecord[]>>((acc, item) => {
       const dateStr = String(item.date_time ?? '').split(' ')[0];
       if (!acc[dateStr]) acc[dateStr] = [];
       acc[dateStr].push(item);
@@ -158,7 +158,8 @@ export function Dashboard() {
 
                     {/* Cards for the day */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {itemsForDate.map((item: any) => {
+                      {itemsForDate.map((item: HealthRecord) => {
+                        if (!item.record_type) return null;
                         const config = historyConfig[item.record_type];
                         if (!config) return null;
                         return (

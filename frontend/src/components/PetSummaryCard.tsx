@@ -8,6 +8,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { createElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 import { Skeleton } from 'antd-mobile';
@@ -107,6 +108,9 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const lastWeightRecord = weights.data?.items?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
+  // speciesIcon() selects among a fixed set of icons — see the identical
+  // comment in PetImage.tsx for why createElement is used below instead
+  // of JSX to render it.
   const SpeciesIcon = speciesIcon(pet.species);
 
   return (
@@ -160,7 +164,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               }}
             />
           ) : (
-            <SpeciesIcon size={44} strokeWidth={1.6} style={{ display: "block" }} aria-hidden />
+            createElement(SpeciesIcon, { size: 44, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
           )}
         </div>
 

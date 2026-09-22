@@ -1,7 +1,9 @@
 import api from './api';
 
+export type ExportFormat = 'csv' | 'tsv' | 'html' | 'md';
+
 export const exportService = {
-  exportData: async (petId: string, exportType: string, format: 'csv' | 'tsv' | 'html' | 'md') => {
+  exportData: async (petId: string, exportType: string, format: ExportFormat) => {
     try {
       const response = await api.get(`/export/${exportType}/${format}`, {
         params: { pet_id: petId },

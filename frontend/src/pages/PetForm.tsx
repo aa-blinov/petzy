@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
+import type { InputRef, TextAreaRef } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { Camera } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,13 +48,18 @@ const petSchema = z.object({
 
 type PetFormData = z.infer<typeof petSchema>;
 
+interface PetPhotoItem {
+  url: string;
+  file?: File;
+}
+
 export function PetForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
   const queryClient = useQueryClient();
 
-  const [fileList, setFileList] = useState<any[]>([]);
+  const [fileList, setFileList] = useState<PetPhotoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
@@ -70,9 +77,9 @@ export function PetForm() {
   const initializedPetId = useRef<string | null>(null);
 
   // Refs for focusing inputs on row click
-  const nameInputRef = useRef<any>(null);
-  const breedInputRef = useRef<any>(null);
-  const healthNotesInputRef = useRef<any>(null);
+  const nameInputRef = useRef<InputRef>(null);
+  const breedInputRef = useRef<InputRef>(null);
+  const healthNotesInputRef = useRef<TextAreaRef>(null);
 
   const { control, handleSubmit, reset, watch } = useForm<PetFormData>({
     resolver: zodResolver(petSchema),
@@ -256,8 +263,8 @@ export function PetForm() {
       showToast.success(isEditing ? 'Питомец обновлен' : 'Питомец добавлен', {
         afterClose: () => navigate('/pets'),
       });
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.error || 'Ошибка при сохранении';
+    } catch (error) {
+      const errorMessage = getApiErrorMessage(error, 'Ошибка при сохранении');
       showToast.failure(errorMessage);
     } finally {
       setLoading(false);

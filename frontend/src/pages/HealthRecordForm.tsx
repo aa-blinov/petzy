@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,7 +13,7 @@ import type { EventType } from '../services/eventTypes.service';
 import { getFormSettings } from '../utils/formsConfig';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
-import { healthRecordsService } from '../services/healthRecords.service';
+import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { FormField } from '../components/FormField';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -46,7 +47,7 @@ export function HealthRecordForm() {
   // Create Zod schema dynamically from the type's own fields, plus the
   // date/time/comment every event shares.
   const schema = useMemo(() => {
-    const baseFields: Record<string, any> = {
+    const baseFields: Record<string, z.ZodTypeAny> = {
       pet_id: z.string().min(1),
       date: z.string().min(1, 'Обязательное поле'),
       time: z.string().min(1, 'Обязательное поле'),
@@ -54,7 +55,7 @@ export function HealthRecordForm() {
     };
 
     return z.object(
-      fields.reduce((acc: Record<string, any>, field) => {
+      fields.reduce((acc: Record<string, z.ZodTypeAny>, field) => {
         if (field.type === 'number') {
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
@@ -77,7 +78,7 @@ export function HealthRecordForm() {
 
   const defaultValues = useMemo(() => {
     const settings = getFormSettings();
-    const values: Record<string, any> = {
+    const values: Record<string, string | undefined> = {
       date: isEditing ? '' : getCurrentDate(),
       time: isEditing ? '' : getCurrentTime(),
       pet_id: selectedPetId || '',
@@ -107,8 +108,8 @@ export function HealthRecordForm() {
 
   // Maps an API record (date_time + nested fields) onto the form's flat
   // field names — the mirror image of onSubmit's payload building below.
-  const normalizeData = useCallback((data: any) => {
-    const formData: Record<string, any> = {
+  const normalizeData = useCallback((data: HealthRecord) => {
+    const formData: Record<string, unknown> = {
       pet_id: data.pet_id || selectedPetId || '',
       comment: data.comment ?? '',
     };
@@ -152,7 +153,7 @@ export function HealthRecordForm() {
       if (!type) return;
       const loadData = async () => {
         try {
-          let data = location.state?.recordData;
+          let data = location.state?.recordData as HealthRecord | undefined;
           if (!data) {
             setIsLoading(true);
             data = await healthRecordsService.get(id!);
@@ -173,19 +174,21 @@ export function HealthRecordForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, type, id, location.state, normalizeData, reset, navigate, !!eventType]);
 
-  const onSubmit = async (data: Record<string, any>) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
     if (!selectedPetId || !type || !eventType) return;
 
     try {
-      const fieldsPayload: Record<string, any> = {};
+      const fieldsPayload: Record<string, unknown> = {};
       for (const field of fields) {
         fieldsPayload[field.name] = data[field.name];
       }
       const payload = {
         pet_id: selectedPetId,
-        date: data.date,
-        time: data.time,
-        comment: data.comment || '',
+        // Zod's resolver already enforced these as non-empty strings
+        // before react-hook-form ever calls this handler.
+        date: data.date as string,
+        time: data.time as string,
+        comment: (data.comment as string) || '',
         fields: fieldsPayload,
       };
 
@@ -213,9 +216,9 @@ export function HealthRecordForm() {
           }
         },
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting form:', error);
-      const errorMessage = error.response?.data?.error || 'Ошибка при сохранении';
+      const errorMessage = getApiErrorMessage(error, 'Ошибка при сохранении');
       showToast.failure(errorMessage);
     }
   };

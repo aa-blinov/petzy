@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type Ref } from 'react';
 import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input, TextArea, Picker, Form } from 'antd-mobile';
+import type { InputRef, TextAreaRef } from 'antd-mobile';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime, parseDateTime } from '../utils/dateUtils';
 
@@ -16,7 +17,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
-  const inputRef = useRef<any>(null);
+  const inputRef = useRef<InputRef | TextAreaRef | null>(null);
 
   // Use provided defaultValue or fallback to first option for select
   const defaultVal = defaultValue || (field.options && field.options.length > 0 ? field.options[0].value : '');
@@ -128,7 +129,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
       render={({ field: { value, onChange }, fieldState: { error } }) => {
         const renderInput = () => {
           switch (field.type) {
-            case 'date':
+            case 'date': {
               const displayDate = value
                 ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value)
                 : '';
@@ -136,7 +137,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               return (
                 <>
                   <Input
-                    ref={inputRef}
+                    ref={inputRef as Ref<InputRef>}
                     id={field.name}
                     readOnly
                     value={displayDate}
@@ -172,8 +173,9 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   />
                 </>
               );
+            }
 
-            case 'time':
+            case 'time': {
               const timeValue = value ? value.split(':') : (defaultValue ? defaultValue.split(':') : []);
               const displayTime = value || '';
               const currentDateForTime = getValues('date');
@@ -182,7 +184,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               return (
                 <>
                   <Input
-                    ref={inputRef}
+                    ref={inputRef as Ref<InputRef>}
                     id={field.name}
                     readOnly
                     value={displayTime}
@@ -222,8 +224,9 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   />
                 </>
               );
+            }
 
-            case 'select':
+            case 'select': {
               const options = field.options?.map(opt => ({
                 label: opt.text,
                 value: opt.value,
@@ -232,7 +235,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               return (
                 <>
                   <Input
-                    ref={inputRef}
+                    ref={inputRef as Ref<InputRef>}
                     id={field.name}
                     readOnly
                     value={selectedOption?.label || ''}
@@ -257,11 +260,12 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   />
                 </>
               );
+            }
 
             case 'textarea':
               return (
                 <TextArea
-                  ref={inputRef}
+                  ref={inputRef as Ref<TextAreaRef>}
                   id={field.name}
                   value={value !== undefined && value !== null ? String(value) : ''}
                   onChange={onChange}
@@ -271,11 +275,11 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                 />
               );
 
-            default:
+            default: {
               const displayValue = value !== undefined && value !== null ? String(value) : '';
               return (
                 <Input
-                  ref={inputRef}
+                  ref={inputRef as Ref<InputRef>}
                   type={field.type === 'number' ? 'text' : field.type}
                   inputMode={field.type === 'number' ? 'decimal' : undefined}
                   id={field.name}
@@ -287,6 +291,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   max={field.max}
                 />
               );
+            }
           }
         };
 

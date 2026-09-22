@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Form, Input } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -72,9 +73,8 @@ export function UserForm() {
       showToast.success('Пользователь успешно создан');
       setTimeout(() => navigate('/admin'), 500);
     },
-    onError: (err: any) => {
-      const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при создании пользователя';
-      showToast.failure(errorMessage);
+    onError: (err: unknown) => {
+      showToast.failure(getApiErrorMessage(err, 'Ошибка при создании пользователя'));
     },
   });
 
@@ -86,9 +86,8 @@ export function UserForm() {
       showToast.success('Пользователь успешно обновлен');
       setTimeout(() => navigate('/admin'), 500);
     },
-    onError: (err: any) => {
-      const errorMessage = err.response?.data?.error || err.response?.data?.detail || 'Ошибка при обновлении пользователя';
-      showToast.failure(errorMessage);
+    onError: (err: unknown) => {
+      showToast.failure(getApiErrorMessage(err, 'Ошибка при обновлении пользователя'));
     },
   });
 

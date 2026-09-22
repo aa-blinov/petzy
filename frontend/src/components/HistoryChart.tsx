@@ -6,6 +6,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     AreaChart, Area
 } from 'recharts';
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { parseRecordDate } from '../utils/relativeTime';
@@ -138,7 +139,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 width={35}
                             />
                             <Tooltip
-                                formatter={(value: any) => [value, valueLabel]}
+                                formatter={(value: ValueType | undefined) => [value, valueLabel]}
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',
@@ -174,7 +175,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 width={35}
                             />
                             <Tooltip
-                                formatter={(value: any) => [value, valueLabel]}
+                                formatter={(value: ValueType | undefined) => [value, valueLabel]}
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',

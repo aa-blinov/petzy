@@ -13,6 +13,7 @@ import { Button, Input, Switch, Selector, TextArea } from 'antd-mobile';
 import { Trash2, Plus } from 'lucide-react';
 
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useEventTypes, useInvalidateEventTypes } from '../hooks/useEventTypes';
 import { eventTypesService, type EventTypeField } from '../services/eventTypes.service';
 import { TILE_COLORS, pastelColorMap, type TileColor } from '../utils/constants';
@@ -218,8 +219,8 @@ export function EventTypeForm() {
       invalidate();
       showToast.success(isEditing ? 'Тип события обновлён' : 'Тип события создан');
       navigate('/event-types');
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'Не удалось сохранить тип события';
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Не удалось сохранить тип события');
       showToast.failure(message);
     } finally {
       setIsSaving(false);

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
@@ -57,10 +58,10 @@ export function Pets() {
       }
 
       showToast.success('Питомец удален');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Delete pet error:', error);
       setDeleteDialog(prev => ({ ...prev, visible: false }));
-      const errorMessage = error?.response?.data?.error || 'Ошибка при удалении';
+      const errorMessage = getApiErrorMessage(error, 'Ошибка при удалении');
       showToast.failure(errorMessage);
     }
   };

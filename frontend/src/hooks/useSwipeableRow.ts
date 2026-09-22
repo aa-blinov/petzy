@@ -72,7 +72,9 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
   const snapBackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep ref in sync so the pointermove handler always sees the latest offset.
-  offsetRef.current = offset;
+  useEffect(() => {
+    offsetRef.current = offset;
+  }, [offset]);
 
   useEffect(() => {
     return () => {

@@ -12,6 +12,7 @@ import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { formatRelativeDate } from '../utils/relativeTime';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -40,8 +41,8 @@ export function AdminPanel() {
       setSuccess(data.message);
       setTimeout(() => setSuccess(null), 3000);
     },
-    onError: (err: any) => {
-      setError(err.response?.data?.error || 'Ошибка при деактивации пользователя');
+    onError: (err: unknown) => {
+      setError(getApiErrorMessage(err, 'Ошибка при деактивации пользователя'));
     },
   });
 
@@ -52,8 +53,8 @@ export function AdminPanel() {
       setSuccess('Пользователь активирован');
       setTimeout(() => setSuccess(null), 3000);
     },
-    onError: (err: any) => {
-      setError(err.response?.data?.error || 'Ошибка при активации пользователя');
+    onError: (err: unknown) => {
+      setError(getApiErrorMessage(err, 'Ошибка при активации пользователя'));
     },
   });
 

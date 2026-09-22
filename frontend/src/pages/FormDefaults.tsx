@@ -45,10 +45,71 @@ const OPTIONS = {
 
 type PickerKey = keyof typeof OPTIONS;
 
+interface PickerRowProps {
+    label: string;
+    pickerKey: PickerKey;
+    value: string;
+    formType: keyof FormSettings;
+    field: string;
+    placeholder?: string;
+    visiblePicker: PickerKey | null;
+    onOpenPicker: (key: PickerKey) => void;
+    onClosePicker: () => void;
+    onUpdate: (formType: keyof FormSettings, field: string, value: string) => void;
+}
+
+/** Renders a categorical field — same look as PetForm's species /
+    gender / sterilisation pickers (chevron + selected-or-placeholder).
+    Defined at module scope (not inside FormDefaults) so it's a stable
+    component across renders rather than a fresh one every time — the
+    picker-open state and update callback come in as props instead of
+    being captured from an enclosing closure. */
+function PickerRow({
+    label,
+    pickerKey,
+    value,
+    formType,
+    field,
+    placeholder = 'Не выбрано',
+    visiblePicker,
+    onOpenPicker,
+    onClosePicker,
+    onUpdate,
+}: PickerRowProps) {
+    const selected = OPTIONS[pickerKey].find(o => o.value === value);
+    const display = selected?.label || placeholder;
+    return (
+        <Form.Item
+            label={label}
+            clickable
+            arrow
+            onClick={() => onOpenPicker(pickerKey)}
+        >
+            <span style={{
+                color: selected ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)',
+            }}>
+                {display}
+            </span>
+            <Picker
+                columns={[[...OPTIONS[pickerKey]]]}
+                visible={visiblePicker === pickerKey}
+                value={[value]}
+                onClose={onClosePicker}
+                onConfirm={(val) => {
+                    onUpdate(formType, field, val[0] as string);
+                    onClosePicker();
+                }}
+                cancelText="Отмена"
+                confirmText="Выбрать"
+            />
+        </Form.Item>
+    );
+}
+
 export function FormDefaults() {
     const navigate = useNavigate();
     const mountedRef = useRef(true);
-    const [formSettings, setFormSettings] = useState<FormSettings>(DEFAULT_FORM_SETTINGS);
+    const [formSettings, setFormSettings] = useState<FormSettings>(() => getFormSettings());
     const [visiblePicker, setVisiblePicker] = useState<PickerKey | null>(null);
 
     useEffect(() => {
@@ -56,11 +117,6 @@ export function FormDefaults() {
         return () => {
             mountedRef.current = false;
         };
-    }, []);
-
-    useEffect(() => {
-        const settings = getFormSettings();
-        setFormSettings(settings);
     }, []);
 
     const handleSave = useCallback(() => {
@@ -85,7 +141,7 @@ export function FormDefaults() {
                 setFormSettings(DEFAULT_FORM_SETTINGS);
                 localStorage.setItem('formDefaults', JSON.stringify(DEFAULT_FORM_SETTINGS));
                 showToast.success('Настройки сброшены');
-            } catch (err) {
+            } catch {
                 showToast.failure('Ошибка при сбросе настроек');
             }
         }
@@ -101,52 +157,7 @@ export function FormDefaults() {
         }));
     }, []);
 
-    /** Renders a categorical field — same look as PetForm's species /
-        gender / sterilisation pickers (chevron + selected-or-placeholder). */
-    const PickerRow = ({
-        label,
-        pickerKey,
-        value,
-        formType,
-        field,
-        placeholder = 'Не выбрано',
-    }: {
-        label: string;
-        pickerKey: PickerKey;
-        value: string;
-        formType: keyof FormSettings;
-        field: string;
-        placeholder?: string;
-    }) => {
-        const selected = OPTIONS[pickerKey].find(o => o.value === value);
-        const display = selected?.label || placeholder;
-        return (
-            <Form.Item
-                label={label}
-                clickable
-                arrow
-                onClick={() => setVisiblePicker(pickerKey)}
-            >
-                <span style={{
-                    color: selected ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)',
-                }}>
-                    {display}
-                </span>
-                <Picker
-                    columns={[OPTIONS[pickerKey] as any]}
-                    visible={visiblePicker === pickerKey}
-                    value={[value]}
-                    onClose={() => setVisiblePicker(null)}
-                    onConfirm={(val) => {
-                        updateFormSetting(formType, field, val[0] as string);
-                        setVisiblePicker(null);
-                    }}
-                    cancelText="Отмена"
-                    confirmText="Выбрать"
-                />
-            </Form.Item>
-        );
-    };
+
 
     return (
         <div className="page-container">
@@ -164,6 +175,10 @@ export function FormDefaults() {
                         formType="asthma"
                         field="duration"
                         placeholder="Короткий"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
                     <PickerRow
                         label="Ингаляция"
@@ -172,6 +187,10 @@ export function FormDefaults() {
                         formType="asthma"
                         field="inhalation"
                         placeholder="Нет"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
                     <Form.Item
                         label="Причина"
@@ -211,6 +230,10 @@ export function FormDefaults() {
                         formType="defecation"
                         field="stool_type"
                         placeholder="Обычный"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
                     <PickerRow
                         label="Цвет стула"
@@ -219,6 +242,10 @@ export function FormDefaults() {
                         formType="defecation"
                         field="color"
                         placeholder="Коричневый"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
                     <Form.Item
                         label="Корм"
@@ -285,6 +312,10 @@ export function FormDefaults() {
                         formType="eye_drops"
                         field="drops_type"
                         placeholder="Обычные"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
 
                     <Form.Header>Чистка зубов</Form.Header>
@@ -295,6 +326,10 @@ export function FormDefaults() {
                         formType="tooth_brushing"
                         field="brushing_type"
                         placeholder="Щетка"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
 
                     <Form.Header>Чистка ушей</Form.Header>
@@ -305,6 +340,10 @@ export function FormDefaults() {
                         formType="ear_cleaning"
                         field="cleaning_type"
                         placeholder="Салфетка/Марля"
+                        visiblePicker={visiblePicker}
+                        onOpenPicker={setVisiblePicker}
+                        onClosePicker={() => setVisiblePicker(null)}
+                        onUpdate={updateFormSetting}
                     />
                 </Form>
 

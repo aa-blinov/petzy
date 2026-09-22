@@ -6,6 +6,7 @@ import { CheckOutline, DownOutline } from 'antd-mobile-icons';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
 import { speciesIcon } from '../utils/speciesIcon';
+import type { Pet } from '../services/pets.service';
 
 export function Navbar() {
   const location = useLocation();
@@ -14,7 +15,7 @@ export function Navbar() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingNavigate, setPendingNavigate] = useState<string | null>(null);
 
-  const handlePetSelect = (pet: any) => {
+  const handlePetSelect = (pet: Pet) => {
     hapticFeedback('light');
     selectPet(pet);
     setPickerVisible(false);

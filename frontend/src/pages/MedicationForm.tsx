@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Form, Input, Switch, Selector, Picker, Popup, List } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,6 +32,7 @@ const medicationSchema = z.object({
     comment: z.string().optional(),
 });
 
+type MedicationFormInput = z.input<typeof medicationSchema>;
 type MedicationFormData = z.infer<typeof medicationSchema>;
 
 const DAYS_OF_WEEK = [
@@ -62,8 +64,8 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
-    const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormData>({
-        resolver: zodResolver(medicationSchema) as any,
+    const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+        resolver: zodResolver(medicationSchema),
         defaultValues: {
             name: '',
             type: '',
@@ -157,8 +159,8 @@ export function MedicationForm() {
                 afterClose: () => navigate('/medications'),
             });
         },
-        onError: (err: any) => {
-            showToast.failure(err?.response?.data?.error || 'Ошибка при сохранении');
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Ошибка при сохранении'));
         }
     });
 
@@ -388,7 +390,7 @@ export function MedicationForm() {
                                 />
                             </div>
 
-                            {timeFields.map((timeField: any, index) => (
+                            {timeFields.map((timeField: { id: string }, index) => (
                                 <div key={timeField.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                                     <button
                                         type="button"
@@ -409,7 +411,7 @@ export function MedicationForm() {
                                         aria-label={`Изменить время приёма ${index + 1}`}
                                     >
                                         <Controller
-                                            name={`schedule.times.${index}` as any}
+                                            name={`schedule.times.${index}` as `schedule.times.${number}`}
                                             control={control}
                                             render={({ field: tField }) => (
                                                 <Input

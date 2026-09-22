@@ -1,0 +1,28 @@
+#!/bin/sh
+# Runs eslint on staged frontend files before allowing a commit.
+# Enabled via: git config core.hooksPath .githooks (one-time per clone).
+
+staged_frontend_files=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/*.ts' 'frontend/*.tsx')
+
+if [ -z "$staged_frontend_files" ]; then
+    exit 0
+fi
+
+echo "Running eslint on staged frontend files..."
+
+cd frontend || exit 1
+
+# Paths relative to frontend/ for the eslint CLI.
+relative_files=$(echo "$staged_frontend_files" | sed 's#^frontend/##')
+
+# shellcheck disable=SC2086
+npx eslint $relative_files
+status=$?
+
+if [ $status -ne 0 ]; then
+    echo ""
+    echo "eslint failed — fix the errors above or run 'git commit --no-verify' to skip (not recommended)."
+    exit 1
+fi
+
+exit 0

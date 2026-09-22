@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { setSessionExpiredHandler } from './services/api';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
@@ -36,9 +37,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error) => {
         // Don't retry on 401 (unauthorized)
-        if (error?.response?.status === 401) {
+        if (isAxiosError(error) && error.response?.status === 401) {
           return false;
         }
         return failureCount < 1; // Retry once for other errors

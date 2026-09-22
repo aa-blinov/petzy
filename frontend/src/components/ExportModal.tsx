@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { Popup, Button, Selector, Form } from 'antd-mobile';
-import { exportService } from '../services/export.service';
+import { exportService, type ExportFormat } from '../services/export.service';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 
@@ -40,10 +40,10 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
 
     setLoading(true);
     try {
-      await exportService.exportData(petId, exportType[0], format[0] as any);
+      await exportService.exportData(petId, exportType[0], format[0] as ExportFormat);
       showToast.success('Файл успешно скачан');
       onClose();
-    } catch (error) {
+    } catch {
       showToast.failure('Ошибка при экспорте');
     } finally {
       setLoading(false);

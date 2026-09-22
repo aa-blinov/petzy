@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, createElement } from 'react';
 import { speciesIcon } from '../utils/speciesIcon';
 
 interface PetImageProps {
@@ -15,6 +15,11 @@ interface PetImageProps {
 export function PetImage({ src, alt, size = 48, className, style, species }: PetImageProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(false);
+    // speciesIcon() selects among a fixed set of module-level lucide icons —
+    // it never creates a new component. createElement (rather than JSX
+    // <FallbackIcon .../>) keeps the react-hooks/static-components rule from
+    // flagging this as a component defined during render, which it can't
+    // tell apart from a real one from the syntax alone.
     const FallbackIcon = speciesIcon(species);
 
     // Generate srcset for common screen densities
@@ -94,7 +99,7 @@ export function PetImage({ src, alt, size = 48, className, style, species }: Pet
                     backgroundColor: 'var(--adm-color-border)',
                     color: 'var(--app-text-tertiary)',
                 }}>
-                    <FallbackIcon size={size ? Math.round(size * 0.55) : 24} strokeWidth={1.6} aria-hidden />
+                    {createElement(FallbackIcon, { size: size ? Math.round(size * 0.55) : 24, strokeWidth: 1.6, 'aria-hidden': true })}
                 </div>
             )}
         </div>

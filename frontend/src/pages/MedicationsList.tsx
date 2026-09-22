@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatDate } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, ProgressBar, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
@@ -63,8 +64,8 @@ export function MedicationsList() {
             queryClient.invalidateQueries({ queryKey: ['pets'] });
             showToast.success('Приём отмечен');
         },
-        onError: (err: any) => {
-            showToast.failure(err?.response?.data?.error || 'Ошибка при сохранении');
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Ошибка при сохранении'));
         }
     });
 

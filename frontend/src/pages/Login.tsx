@@ -3,6 +3,7 @@ import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Form } from 'antd-mobile';
+import { isAxiosError } from 'axios';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -30,18 +31,17 @@ export function Login() {
       // when the response headers arrived.
       await login({ username: username.trim(), password });
       navigate('/', { replace: true });
-    } catch (err: any) {
+    } catch (err) {
       let errorMessage = 'Ошибка входа. Проверьте соединение или учетные данные.';
-      if (err.response) {
-        const status = err.response.status;
-        const data = err.response.data;
+      if (isAxiosError<{ error?: string; message?: string }>(err)) {
+        const status = err.response?.status;
+        const data = err.response?.data;
         if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные.';
         else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль.';
         else if (status === 429) errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже.';
-        else errorMessage = data?.error || data?.message || errorMessage;
-      } else if (err.message === 'Network Error') {
-        errorMessage = 'Ошибка сети. Проверьте, запущен ли бэкенд.';
-      } else if (err.message) {
+        else if (err.message === 'Network Error') errorMessage = 'Ошибка сети. Проверьте, запущен ли бэкенд.';
+        else errorMessage = data?.error || data?.message || err.message || errorMessage;
+      } else if (err instanceof Error && err.message) {
         errorMessage = err.message;
       }
 
