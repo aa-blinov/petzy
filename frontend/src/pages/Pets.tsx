@@ -241,7 +241,7 @@ function PetCard({
           purpose: the card has no tap action, so a press animation would
           promise something that never happens. */}
       <div className="card-soft card-soft--interactive" style={{ padding: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
           {/* Square avatar — image if available, else species icon on
               its gradient tile. Same treatment as PetSummaryCard on the
               dashboard, just without the кормление/вес row below — this
@@ -297,8 +297,12 @@ function PetCard({
             )}
           </button>
 
-          {/* Right column — name, age/breed/gender summary, weight chip. */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {/* Right column — name, age/breed/gender summary, weight chip.
+              Stretched to the avatar's full height and spread with
+              space-between instead of a tight centered cluster, so the
+              card doesn't read as a compact block floating in a much
+              taller photo frame. */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div
               className="display-headline"
               style={{
@@ -325,7 +329,18 @@ function PetCard({
             {lastWeight && (
               <span
                 className="chip"
-                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                style={{
+                  alignSelf: 'flex-start',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  // A full pill next to the avatar's soft rounded-square
+                  // photo read as two different shape languages in the
+                  // same small card — this matches the avatar's corner
+                  // instead.
+                  borderRadius: 'var(--radius-sm)',
+                }}
               >
                 <Scale size={13} strokeWidth={2.2} style={{ display: 'block' }} />
                 {lastWeight.fields?.weight as number} кг

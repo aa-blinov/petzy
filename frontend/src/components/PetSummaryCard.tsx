@@ -209,6 +209,10 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
                 alignItems: "center",
                 gap: "4px",
                 fontSize: "12px",
+                // A full pill next to the avatar's soft rounded-square
+                // photo read as two different shape languages in the
+                // same card — this matches the avatar's corner instead.
+                borderRadius: "var(--radius-sm)",
               }}
             >
               <Scale size={13} strokeWidth={2.2} style={{ display: "block" }} />
