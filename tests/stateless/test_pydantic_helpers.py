@@ -158,3 +158,59 @@ def test_error_response_helper_unknown_key(monkeypatch, flask_app):
     payload = body.get_json()
     assert payload["success"] is False
     assert payload["code"] == "nope_does_not_exist"
+
+def test_json_body_of_literal_null_returns_validation_error(flask_app):
+    """A syntactically valid JSON body that parses to None (the literal
+    `null`) must produce a clean validation_error rather than crashing
+    on model_validate(None). A body that isn't valid JSON at all, or has
+    no JSON content-type, raises inside request.get_json() itself and
+    is caught by the generic except further down instead — this is
+    specifically the "parsed successfully to nothing" case.
+    """
+    with flask_app.test_request_context("/x", method="POST", data="null", content_type="application/json"):
+        data, err = validate_request_data(request, _Payload, context="ctx")
+    assert data is None
+    body, status = err
+    assert status == 422
+
+
+def test_unexpected_exception_during_validation_is_caught(flask_app, monkeypatch):
+    """Something other than pydantic's own ValidationError raised during
+    model_validate (a bug in a custom validator, e.g.) must still come
+    back as a clean validation_error instead of propagating as a 500."""
+
+    class _Explodes(BaseModel):
+        name: str
+
+        @classmethod
+        def model_validate(cls, *_a, **_kw):
+            raise RuntimeError("unexpected bug in a custom validator")
+
+    with flask_app.test_request_context("/x", method="POST", json={"name": "x"}):
+        data, err = validate_request_data(request, _Explodes, context="ctx")
+
+    assert data is None
+    body, status = err
+    assert status == 422
+    assert "unexpected bug" in body.get_json()["error"]
+
+
+def test_validation_error_with_no_error_entries_falls_back_to_str(flask_app):
+    """Pydantic's ValidationError always carries at least one entry in
+    practice, but the code defensively handles an empty list too —
+    verified directly since Pydantic itself won't naturally produce one."""
+    from pydantic import ValidationError
+
+    class _Empty(BaseModel):
+        name: str
+
+        @classmethod
+        def model_validate(cls, *_a, **_kw):
+            raise ValidationError.from_exception_data(cls.__name__, [])
+
+    with flask_app.test_request_context("/x", method="POST", json={"name": "x"}):
+        data, err = validate_request_data(request, _Empty, context="ctx")
+
+    assert data is None
+    body, status = err
+    assert status == 422

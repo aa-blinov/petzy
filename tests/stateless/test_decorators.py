@@ -139,3 +139,40 @@ def test_require_record_access_denied(test_app_with_decorators, mock_auth, mock_
         response = client.get("/test_record_denied/abc")
         
         assert response.status_code == 404
+
+def test_require_record_access_no_auth(test_app_with_decorators, mock_auth):
+    """Test @require_record_access fails when user not authenticated."""
+    with test_app_with_decorators.app_context():
+        mock_auth(username=None, error=(jsonify({"error": "unauthorized"}), 401))
+
+        @test_app_with_decorators.route("/test_record_no_auth/<record_id>", methods=["GET"])
+        @require_record_access("test_collection")
+        def test_route(record_id):
+            return "Allowed"
+
+        client = test_app_with_decorators.test_client()
+        response = client.get("/test_record_no_auth/abc")
+
+        assert response.status_code == 401
+
+def test_require_record_access_accepts_positional_record_id(mock_auth, mock_record_access):
+    """record_id is normally a Flask URL kwarg, but the decorator also
+    accepts it as the first positional argument — exercised by calling
+    the decorated function directly rather than through URL dispatch,
+    which always passes named path segments as kwargs.
+    """
+    from flask import Flask
+
+    app = Flask(__name__)
+    mock_auth(username="testuser")
+    mock_record = {"_id": ObjectId(), "data": "test"}
+    mock_record_access(record=mock_record, pet_id="123")
+
+    @require_record_access("test_collection")
+    def view(record_id):
+        return jsonify({"record_id": str(g.record["_id"])})
+
+    with app.test_request_context("/"):
+        response = view("abc")
+
+    assert response.get_json()["record_id"] == str(mock_record["_id"])

@@ -158,3 +158,94 @@ class TestParseEventDateTimeSafe:
         assert error_response2 is None
         assert isinstance(event_dt1, datetime)
         assert isinstance(event_dt2, datetime)
+
+class TestParseEventDatetime:
+    """parse_event_datetime (the raising variant, distinct from
+    parse_event_datetime_safe's tuple-returning contract used by
+    events.py) isn't currently called from any route, but it's a real,
+    reachable function with its own contract worth verifying directly.
+    """
+
+    def test_both_present_parses_combined_datetime(self):
+        from web.helpers import parse_event_datetime
+        result = parse_event_datetime("2024-01-15", "14:30")
+        assert result.hour == 14
+        assert result.minute == 30
+
+    def test_neither_present_returns_now(self):
+        from web.helpers import parse_event_datetime
+        from datetime import datetime, timedelta
+        before = datetime.now()
+        result = parse_event_datetime("", "")
+        after = datetime.now()
+        assert before - timedelta(seconds=1) <= result <= after + timedelta(seconds=1)
+
+    def test_only_date_present_raises(self):
+        from web.helpers import parse_event_datetime
+        with pytest.raises(ValueError, match="вместе"):
+            parse_event_datetime("2024-01-15", "")
+
+    def test_only_time_present_raises(self):
+        from web.helpers import parse_event_datetime
+        with pytest.raises(ValueError, match="вместе"):
+            parse_event_datetime("", "14:30")
+
+
+class TestGetRecordAndValidateAccessMalformedRecord:
+
+    def test_record_without_pet_id_is_rejected(self, client, mock_db):
+        from web.helpers import get_record_and_validate_access
+        from bson import ObjectId
+        from web.app import app as flask_app
+
+        record_id = ObjectId()
+        mock_db["medications"].insert_one({"_id": record_id, "name": "orphaned, no pet_id"})
+
+        with flask_app.test_request_context("/"):
+            record, pet_id, error = get_record_and_validate_access(str(record_id), "medications", "testuser")
+
+        assert record is None
+        assert pet_id is None
+        assert error is not None
+
+
+class TestOptimizeImagePaletteMode:
+
+    def test_palette_mode_image_converts_correctly(self):
+        import io
+        from PIL import Image
+        from web.helpers import optimize_image
+        from werkzeug.datastructures import FileStorage
+
+        buf = io.BytesIO()
+        # A "P" (palette) mode image, as produced by e.g. a GIF or an
+        # indexed-color PNG.
+        img = Image.new("RGB", (10, 10), (200, 50, 50)).convert("P")
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        file_storage = FileStorage(stream=buf, filename="palette.png")
+
+        result = optimize_image(file_storage)
+
+        assert result is not None
+        output, content_type = result
+        assert content_type == "image/webp"
+        assert Image.open(output).format == "WEBP"
+
+    def test_grayscale_mode_image_converts_to_rgb(self):
+        import io
+        from PIL import Image
+        from web.helpers import optimize_image
+        from werkzeug.datastructures import FileStorage
+
+        buf = io.BytesIO()
+        img = Image.new("L", (10, 10), 128)  # grayscale — neither RGBA/LA/P nor RGB
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        file_storage = FileStorage(stream=buf, filename="gray.png")
+
+        result = optimize_image(file_storage)
+
+        assert result is not None
+        output, content_type = result
+        assert content_type == "image/webp"

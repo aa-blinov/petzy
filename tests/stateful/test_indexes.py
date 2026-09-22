@@ -49,3 +49,28 @@ def test_ensure_indexes_idempotent():
         ensure_indexes()
         # Second call should be a no-op for every collection.
         ensure_indexes()
+
+def test_get_env_raises_when_required_var_missing():
+    from web.db import get_env
+
+    try:
+        get_env("SOME_VAR_THAT_DEFINITELY_IS_NOT_SET_IN_THIS_PROCESS_XYZ")
+        assert False, "expected RuntimeError"
+    except RuntimeError as e:
+        assert "SOME_VAR_THAT_DEFINITELY_IS_NOT_SET_IN_THIS_PROCESS_XYZ" in str(e)
+
+
+def test_ensure_indexes_drops_legacy_refresh_token_index():
+    """The pre-jti unique index on refresh_tokens.token must be dropped
+    when present — legacy deploys built it before jti-based uniqueness
+    replaced it."""
+    from pymongo import ASCENDING
+
+    cm, mock_db = _patched_db()
+    with cm:
+        mock_db.refresh_tokens.create_index([("token", ASCENDING)], name="refresh_token_unique", unique=True)
+        assert "refresh_token_unique" in mock_db.refresh_tokens.index_information()
+
+        ensure_indexes()
+
+        assert "refresh_token_unique" not in mock_db.refresh_tokens.index_information()

@@ -323,3 +323,32 @@ class TestDataExport:
         assert response.status_code == 200
         content = response.data.decode("utf-8")
         assert "\\|" in content
+
+    def test_export_all_types_no_data_returns_error(self, client, mock_db, regular_user_token, test_pet):
+        response = client.get(
+            f"/api/export/all/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 404
+        assert "error" in response.get_json()
+
+    def test_export_unexpected_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
+        from unittest.mock import patch
+        with patch("web.export._build_export_specs", side_effect=ValueError("simulated")):
+            response = client.get(
+                f"/api/export/asthma/csv?pet_id={test_pet['_id']}",
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+        assert response.status_code == 422
+
+    def test_enrich_medication_names_noop_when_no_medication_ids(self):
+        """Pure-function edge case: a records list with no
+        medication_id at all (or none set) should be a safe no-op, not
+        an unnecessary empty $in query."""
+        from web.export import _enrich_medication_names
+
+        records = [{"pet_id": "x", "dose_taken": "1"}]
+        _enrich_medication_names({}, records)
+
+        assert "medication_name" not in records[0]

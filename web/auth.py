@@ -244,9 +244,8 @@ def api_session():
     exactly like a logout. A dedicated endpoint means a 401 here is the
     single, unambiguous signal that the session is gone.
     """
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
+    # @login_required already guarantees request.current_user is set.
+    username, _ = get_current_user()
 
     from web.security import is_admin as is_admin_check
 
@@ -262,9 +261,8 @@ def api_session():
 def check_admin():
     """Check if current user is admin (returns 200 with isAdmin flag, no 403)."""
     try:
-        username, error_response = get_current_user()
-        if error_response:
-            return error_response[0], error_response[1]
+        # @login_required already guarantees request.current_user is set.
+        username, _ = get_current_user()
 
         # Use shared is_admin helper for consistency
         from web.security import is_admin as is_admin_check

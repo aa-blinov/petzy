@@ -120,3 +120,139 @@ class TestGlobalErrorHandlers:
         payload = response.get_json()
         assert payload["success"] is False
         assert payload["code"] == "internal_error"
+
+    def test_non_404_405_http_exception_on_api_path_returns_internal_error(self):
+        """A raised HTTPException with a status other than 404/405 (e.g. a
+        route explicitly aborting with 400) still gets the app's unified
+        JSON envelope instead of Werkzeug's default HTML error page — as
+        a generic internal_error (500), same as any other "not 404/405"
+        HTTP exception; the original status isn't preserved.
+        """
+        from flask import Flask, abort
+
+        from web.app import handle_unexpected_error
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        app.register_error_handler(Exception, handle_unexpected_error)
+
+        @app.route("/api/_bad_request")
+        def _bad_request():
+            abort(400)
+
+        client = app.test_client()
+        response = client.get("/api/_bad_request")
+        assert response.status_code == 500
+        payload = response.get_json()
+        assert payload["success"] is False
+        assert payload["code"] == "internal_error"
+
+    def test_404_on_non_api_html_path_falls_through_to_default_page(self):
+        """A 404 on a plain (non-/api/, non-JSON) request is left for Flask
+        to render its own page — the JSON envelope is only for API/JSON
+        clients."""
+        from flask import Flask
+
+        from web.app import handle_unexpected_error
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        app.register_error_handler(Exception, handle_unexpected_error)
+
+        client = app.test_client()
+        response = client.get("/this-page-does-not-exist")
+        assert response.status_code == 404
+        assert response.get_json() is None
+
+    def test_handle_unprocessable_entity_formats_dict_message_directly(self):
+        """This handler is registered for @app.errorhandler(422), but the
+        installed flask-pydantic-spec version never actually routes a
+        validation failure through Flask's error dispatch to trigger it
+        — it returns its own response directly (confirmed by instrumenting
+        the handler and hitting real validated routes: it's never called).
+        It stays registered as a safety net regardless, so its own
+        formatting logic is verified directly here instead of through
+        an HTTP round-trip that can't currently reach it.
+        """
+        from flask import Flask
+        from web.app import handle_unprocessable_entity
+
+        class _FakeError(Exception):
+            data = {"messages": [{"loc": ["body", "date"], "msg": "Value error, bad date", "type": "value_error"}]}
+
+        app = Flask(__name__)
+        with app.test_request_context("/"):
+            response = handle_unprocessable_entity(_FakeError())
+            body, status = response
+            assert status == 422
+            assert body.get_json()["error"] == "bad date"
+
+    def test_handle_unprocessable_entity_stringifies_non_dict_message(self):
+        from flask import Flask
+        from web.app import handle_unprocessable_entity
+
+        class _FakeError(Exception):
+            data = {"messages": ["plain string error"]}
+
+        app = Flask(__name__)
+        with app.test_request_context("/"):
+            response = handle_unprocessable_entity(_FakeError())
+            body, status = response
+            assert status == 422
+            assert body.get_json()["error"] == "plain string error"
+
+    def test_handle_unprocessable_entity_falls_back_for_unrecognized_data_shape(self):
+        from flask import Flask
+        from web.app import handle_unprocessable_entity
+
+        class _FakeError(Exception):
+            data = None
+
+        app = Flask(__name__)
+        with app.test_request_context("/"):
+            response = handle_unprocessable_entity(_FakeError())
+            body, status = response
+            assert status == 422
+            assert body.get_json()["code"] == "validation_error"
+
+    def test_unexpected_exception_on_html_route_returns_default_500_page(self):
+        """An HTML (non-API, non-JSON) request that hits a genuine
+        unexpected exception is left for Flask's own 500 page, matching
+        the same non-API tolerance already given to plain 404s."""
+        from flask import Flask
+
+        from web.app import handle_unexpected_error
+
+        app = Flask(__name__)
+        app.config["TESTING"] = False
+        app.register_error_handler(Exception, handle_unexpected_error)
+
+        @app.route("/boom")
+        def _boom():
+            raise RuntimeError("explosion")
+
+        client = app.test_client()
+        response = client.get("/boom")
+        assert response.status_code == 500
+        assert response.get_json() is None
+
+    def test_favicon_serves_svg(self, client):
+        response = client.get("/favicon.ico")
+        assert response.status_code == 200
+        assert "svg" in response.content_type
+
+    def test_favicon_falls_back_to_config_when_static_folder_unset(self, client, monkeypatch):
+        """If static_folder is None (Flask allows disabling the static
+        route entirely), favicon() must still be able to locate the
+        icon files via FLASK_CONFIG instead of crashing."""
+        import web.app as app_module
+
+        monkeypatch.setattr(app_module.app, "static_folder", None)
+        response = client.get("/favicon.ico")
+        assert response.status_code == 200
+
+    def test_favicon_falls_back_to_icon_192_when_svg_missing(self, client):
+        from unittest.mock import patch
+        with patch("web.app.os.path.exists", return_value=False):
+            response = client.get("/favicon.ico")
+        assert response.status_code == 200

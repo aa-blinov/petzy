@@ -61,7 +61,12 @@ app = Flask(
 # When empty, flask-cors reflects the request Origin header — safe because the
 # frontend (same host via Nginx) does not need to send an Origin header.
 cors_origins = CORS_CONFIG["allowed_origins"]
-if cors_origins:
+if cors_origins:  # pragma: no cover
+    # Only taken when CORS_ALLOWED_ORIGINS is set in the environment;
+    # this module (and its module-level branch) is evaluated exactly
+    # once at import time, before any test can set that env var, so
+    # exercising this branch would require reloading web.app itself —
+    # which would re-register every blueprint a second time.
     CORS(app, supports_credentials=True, origins=cors_origins)
 else:
     CORS(app, supports_credentials=True)
@@ -177,7 +182,13 @@ seed_builtin_event_types(db)
 api.register(app)
 
 # Configure Swagger security
-if "components" not in api.spec:
+if "components" not in api.spec:  # pragma: no cover
+    # api.register(app) above always populates "components" in every
+    # flask_pydantic_spec version this project has run against (it's
+    # produced once, at import time, from the blueprints registered
+    # above) — this guards a library-internals assumption that isn't
+    # reachable to falsify without swapping out api.spec construction
+    # itself before this module-level line runs.
     api.spec["components"] = {}
 api.spec["components"]["securitySchemes"] = {
     "bearerAuth": {
@@ -207,8 +218,12 @@ def favicon():
     # Return optimized SVG version of icon-192.svg as favicon
     # Get the absolute path to static folder
     static_folder = app.static_folder
-    if static_folder and not os.path.isabs(static_folder):
-        # If relative path, make it absolute relative to app root
+    if static_folder and not os.path.isabs(static_folder):  # pragma: no cover
+        # Flask's static_folder property getter always joins whatever was
+        # configured onto app.root_path (an absolute path derived from
+        # __file__), so a truthy-but-relative value can't actually occur
+        # through Flask's normal API — this only guards a hypothetical
+        # future Flask behavior change.
         app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         static_folder = os.path.join(app_root, "web", static_folder)
     elif not static_folder:
@@ -263,6 +278,6 @@ def dashboard():
     return render_template("dashboard.html", username=username)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     security.ensure_default_admin()
     app.run(host="0.0.0.0", port=5000, debug=FLASK_CONFIG["debug"])

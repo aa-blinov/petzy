@@ -201,3 +201,125 @@ class TestUserManagement:
         assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
+
+    def test_update_user_password_gets_hashed(self, client, mock_db, auth_headers, regular_user):
+        import bcrypt
+        response = client.put(
+            f"/api/users/{regular_user['username']}",
+            json={"password": "newpass456"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        user = mock_db["users"].find_one({"username": regular_user["username"]})
+        assert user["password_hash"] != "newpass456"
+        assert bcrypt.checkpw(b"newpass456", user["password_hash"].encode())
+
+
+@pytest.mark.auth
+class TestSearchUsers:
+    """GET /api/users/search — autocomplete for sharing a pet. Untested before this class."""
+
+    def test_requires_authentication(self, client):
+        response = client.get("/api/users/search?q=test")
+        assert response.status_code == 401
+
+    def test_returns_only_active_users_matching_query(self, client, mock_db, auth_headers, regular_user):
+        mock_db["users"].insert_one({
+            "username": "inactive_match", "password_hash": "x", "is_active": False,
+        })
+
+        response = client.get("/api/users/search?q=test", headers=auth_headers)
+
+        assert response.status_code == 200
+        usernames = [u["username"] for u in response.get_json()["users"]]
+        assert "testuser" in usernames
+        assert "inactive_match" not in usernames
+
+    def test_empty_query_returns_active_users(self, client, mock_db, auth_headers, regular_user):
+        response = client.get("/api/users/search", headers=auth_headers)
+
+        assert response.status_code == 200
+        usernames = [u["username"] for u in response.get_json()["users"]]
+        assert "testuser" in usernames
+
+    def test_delete_user_not_found(self, client, auth_headers):
+        response = client.delete("/api/users/nonexistent", headers=auth_headers)
+
+        assert response.status_code == 404
+        assert "error" in response.get_json()
+
+    def test_update_user_race_condition_reports_not_found(self, client, mock_db, auth_headers, regular_user):
+        """User existed for the initial find_one but vanished (a
+        concurrent deactivation/delete) before update_one ran."""
+        import web.app as app
+        from unittest.mock import patch, MagicMock
+        with patch.object(app.db.users, "update_one", return_value=MagicMock(matched_count=0)):
+            response = client.put(
+                f"/api/users/{regular_user['username']}",
+                json={"full_name": "New Name"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 404
+
+    def test_reset_user_password_race_condition_reports_not_found(
+        self, client, mock_db, auth_headers, regular_user
+    ):
+        import web.app as app
+        from unittest.mock import patch, MagicMock
+        with patch.object(app.db.users, "update_one", return_value=MagicMock(matched_count=0)):
+            response = client.post(
+                f"/api/users/{regular_user['username']}/reset-password",
+                json={"password": "newpass456"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 404
+
+
+@pytest.mark.admin
+class TestUserRouteValueErrorHandling:
+    """Same defensive-net-verification pattern as pets.py: each of these
+    routes wraps its body in `except ValueError` for anything unexpected
+    raising one. Forced via a mock rather than deleted, since (unlike
+    the auth_error re-checks removed from pets.py) there's no airtight
+    proof these can never fire — just no currently known trigger.
+    """
+
+    def test_create_user_value_error_handled(self, client, mock_db, auth_headers):
+        from unittest.mock import patch
+        with patch("web.users.bcrypt.hashpw", side_effect=ValueError("simulated")):
+            response = client.post(
+                "/api/users",
+                json={"username": "newuser2", "password": "pass123", "full_name": "New"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 422
+
+    def test_update_user_value_error_handled(self, client, mock_db, auth_headers, regular_user):
+        from unittest.mock import patch
+        with patch("web.users.bcrypt.hashpw", side_effect=ValueError("simulated")):
+            response = client.put(
+                f"/api/users/{regular_user['username']}",
+                json={"password": "newpass456"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 422
+
+    def test_delete_user_value_error_handled(self, client, mock_db, auth_headers, regular_user):
+        import web.app as app
+        from unittest.mock import patch
+        with patch.object(app.db.users, "update_one", side_effect=ValueError("simulated")):
+            response = client.delete(
+                f"/api/users/{regular_user['username']}", headers=auth_headers,
+            )
+        assert response.status_code == 422
+
+    def test_reset_user_password_value_error_handled(self, client, mock_db, auth_headers, regular_user):
+        from unittest.mock import patch
+        with patch("web.users.bcrypt.hashpw", side_effect=ValueError("simulated")):
+            response = client.post(
+                f"/api/users/{regular_user['username']}/reset-password",
+                json={"password": "newpass456"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 422

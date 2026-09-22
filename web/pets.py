@@ -78,9 +78,9 @@ def convert_objectid_to_str(obj):
 @api.validate(resp=Response(HTTP_200=PetListResponse), tags=["pets"])
 def get_pets():
     """Get list of all pets accessible to current user."""
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
+    # @login_required already guarantees request.current_user is set —
+    # get_current_user() here can never actually return an error.
+    username, _ = get_current_user()
 
     pets = list(app.db["pets"].find({"$or": [{"owner": username}, {"shared_with": username}]}).sort("created_at", -1))
 
@@ -88,35 +88,35 @@ def get_pets():
     for pet in pets:
         # Convert all ObjectId instances to strings recursively
         pet = convert_objectid_to_str(pet)
-        
+
         # Ensure _id is string (already converted by convert_objectid_to_str, but double-check)
         pet["_id"] = str(pet["_id"])
-        
+
         # Convert photo_file_id to string if it exists
         if pet.get("photo_file_id"):
             pet["photo_file_id"] = str(pet["photo_file_id"])
             # Add cache-busting parameter using photo_file_id so browser gets new image when it changes
             pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
-        
+
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
         if isinstance(pet.get("created_at"), datetime):
             pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
 
         pet["current_user_is_owner"] = pet.get("owner") == username
-        
+
         # Ensure tiles_settings is present (use default if missing)
         tiles_settings = get_tiles_settings(pet)
         # Convert any ObjectId in tiles_settings to string
         pet["tiles_settings"] = convert_objectid_to_str(tiles_settings)
-        
+
         # Convert any ObjectId in shared_with to string (if present)
         if pet.get("shared_with"):
             pet["shared_with"] = [str(uid) if isinstance(uid, ObjectId) else uid for uid in pet["shared_with"]]
-        
+
         # Final pass: convert any remaining ObjectId instances
         pet = convert_objectid_to_str(pet)
-        
+
         processed_pets.append(pet)
 
     return jsonify({"pets": processed_pets})
@@ -132,19 +132,21 @@ def get_pets():
 def create_pet():
     """Create a new pet."""
     try:
-        username = getattr(request, "current_user", None)
-        if not username:
-            return error_response("unauthorized")
+        # @login_required already guarantees request.current_user is set.
+        username = request.current_user
 
         # Validate request data (supports both JSON and multipart/form-data)
         # For JSON: use request.context.body (validated by @api.validate)
         # For multipart: use validate_request_data helper
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart:
-            data, validation_error = validate_request_data(request, PetCreate, context="pet creation")
-            if validation_error:
-                # validation_error is already a (jsonify, status) tuple
-                return validation_error[0], validation_error[1]
+            # @api.validate(body=Request(PetCreate)) already parses and validates
+            # request.form against this same model before this route body ever
+            # runs (flask_pydantic_spec.flask_backend.Backend.validate aborts
+            # with the request's own validation error otherwise), so the
+            # validation_error branch here is unreachable — we only use this
+            # call for its parsed `data`.
+            data, _ = validate_request_data(request, PetCreate, context="pet creation")
         else:
             # JSON request - already validated by @api.validate(body=Request(PetCreate))
             data = request.context.body  # type: ignore[attr-defined]
@@ -162,7 +164,7 @@ def create_pet():
                     original_filename = photo_file.filename
                     filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
                     optimized_filename = f"{filename_without_ext}.webp"
-                    
+
                     photo_file_id = str(
                         app.fs.put(
                             optimized_file,
@@ -247,16 +249,14 @@ def create_pet():
 def get_pet(pet_id):
     """Get pet information."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
+        # @login_required already guarantees request.current_user is set.
+        username, _ = get_current_user()
 
+        # get_pet_and_validate never returns (None, None) — a falsy pet
+        # always comes with an access_error already set.
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
         if access_error:
             return access_error[0], access_error[1]
-        if pet is None:
-            # Защита от некорректных/mock-результатов helper'а
-            return error_response("pet_not_found")
 
         pet["_id"] = str(pet["_id"])
         if isinstance(pet.get("birth_date"), datetime):
@@ -268,7 +268,7 @@ def get_pet(pet_id):
             pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
 
         pet["current_user_is_owner"] = pet.get("owner") == username
-        
+
         # Ensure tiles_settings is present (use default if missing)
         pet["tiles_settings"] = get_tiles_settings(pet)
 
@@ -297,9 +297,8 @@ def get_pet(pet_id):
 def update_pet(pet_id):
     """Update pet information."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
+        # @login_required already guarantees request.current_user is set.
+        username, _ = get_current_user()
 
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
         if access_error:
@@ -307,10 +306,12 @@ def update_pet(pet_id):
 
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart:
-            data, validation_error = validate_request_data(request, PetUpdate, context="pet update")
-            if validation_error:
-                # validation_error is already a (jsonify, status) tuple
-                return validation_error[0], validation_error[1]
+            # @api.validate(body=Request(PetUpdate)) already parses and validates
+            # request.form against this same model before this route body ever
+            # runs, so the validation_error branch here is unreachable — we
+            # only use this call for its parsed `data`. See the identical
+            # comment in create_pet for the full argument.
+            data, _ = validate_request_data(request, PetUpdate, context="pet update")
         else:
             # JSON request - already validated by @api.validate(body=Request(PetUpdate))
             data = request.context.body  # type: ignore[attr-defined]
@@ -446,9 +447,8 @@ def update_pet(pet_id):
 def share_pet(pet_id):
     """Share pet with another user (owner only)."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
+        # @login_required already guarantees request.current_user is set.
+        username, _ = get_current_user()
 
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
         if access_error:
@@ -491,9 +491,8 @@ def share_pet(pet_id):
 def unshare_pet(pet_id, share_username):
     """Remove access from user (owner only)."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
+        # @login_required already guarantees request.current_user is set.
+        username, _ = get_current_user()
 
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
         if access_error:
@@ -524,16 +523,15 @@ def unshare_pet(pet_id, share_username):
 def delete_pet(pet_id):
     """Delete pet and all related records (cascading delete)."""
     try:
-        username, auth_error = get_current_user()
-        if auth_error:
-            return auth_error[0], auth_error[1]
+        # @login_required already guarantees request.current_user is set.
+        username, _ = get_current_user()
 
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
         if access_error:
             return access_error[0], access_error[1]
 
         pet_id_obj = ObjectId(pet_id)
-        
+
         # List of collections with related records to delete.
         # The first eight are the pre-event-engine collections — nothing
         # writes to them anymore, but they're left here as a harmless
@@ -555,7 +553,7 @@ def delete_pet(pet_id):
             ("medication_intakes", {"pet_id": pet_id}),
             ("medications", {"pet_id": pet_id}),
         ]
-        
+
         # Delete photo from GridFS if exists
         old_photo_id = pet.get("photo_file_id") if pet else None
 
@@ -572,13 +570,13 @@ def delete_pet(pet_id):
                                 f"Deleted {result.deleted_count} records from {collection_name} for pet {pet_id}"
                             )
                             total_deleted += result.deleted_count
-                    
+
                     # Delete the pet itself
                     result = app.db["pets"].delete_one({"_id": pet_id_obj}, session=session)
-                    
+
                     if result.deleted_count == 0:
                         raise PetNotFoundDuringDeletion("Pet not found during deletion")
-                    
+
                     logger.info(
                         f"Pet deleted with transaction: id={pet_id}, user={username}, "
                         f"total_related_records={total_deleted}"
@@ -586,18 +584,18 @@ def delete_pet(pet_id):
         except Exception as tx_error:
             # Fallback for standalone MongoDB (no replica set) or mongomock
             error_msg = str(tx_error).lower()
-            if ("transaction" in error_msg or "replica" in error_msg or 
+            if ("transaction" in error_msg or "replica" in error_msg or
                 "session" in error_msg or "mongomock" in error_msg):
                 logger.warning(
                     f"Transactions not supported, using fallback cascading delete: {tx_error}"
                 )
-                
+
                 # Delete pet first, then related records (prevents foreign key issues)
                 result = app.db["pets"].delete_one({"_id": pet_id_obj})
-                
+
                 if result.deleted_count == 0:
                     return error_response("pet_not_found")
-                
+
                 # Best-effort deletion of related records
                 total_deleted = 0
                 failed_collections = []
@@ -614,13 +612,13 @@ def delete_pet(pet_id):
                             f"Failed to delete from {collection_name} for pet {pet_id}: {col_error}"
                         )
                         failed_collections.append(collection_name)
-                
+
                 if failed_collections:
                     logger.warning(
                         f"Some related records may not have been deleted for pet {pet_id}: "
                         f"{', '.join(failed_collections)}"
                     )
-                
+
                 logger.info(
                     f"Pet deleted (fallback): id={pet_id}, user={username}, "
                     f"total_related_records={total_deleted}"
@@ -665,9 +663,8 @@ def delete_pet(pet_id):
 def get_pet_photo(pet_id):
     """Get pet photo file with optional resizing."""
     try:
-        username = getattr(request, "current_user", None)
-        if not username:
-            return error_response("unauthorized")
+        # @login_required already guarantees request.current_user is set.
+        username = request.current_user
 
         pet = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
         if not pet:
@@ -693,16 +690,16 @@ def get_pet_photo(pet_id):
             if (width or height) and content_type.startswith("image/"):
                 try:
                     img = Image.open(BytesIO(photo_data))
-                    
+
                     # Calculate aspect ratio if only one dimension is provided
                     if width and not height:
                         height = int(img.height * (width / img.width))
                     elif height and not width:
                         width = int(img.width * (height / img.height))
-                    
+
                     if width and height:
                         img.thumbnail((width, height), Image.Resampling.LANCZOS)
-                        
+
                         output = BytesIO()
                         # Use WebP if requested or keep original format (but WebP is better for optimization)
                         format_to_save = "WEBP"

@@ -90,9 +90,8 @@ def list_event_types():
 @login_required
 def create_event_type():
     """Create a custom event type."""
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
+    # @login_required already guarantees request.current_user is set.
+    username, _ = get_current_user()
 
     data = request.context.body  # type: ignore[attr-defined]
     doc = {
@@ -125,9 +124,8 @@ def update_event_type(key):
     once everything is data-driven there's no reason to special-case them
     beyond protecting them from deletion below.
     """
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
+    # @login_required already guarantees request.current_user is set.
+    username, _ = get_current_user()
 
     existing = app.db[EVENT_TYPES_COLLECTION].find_one({"key": key})
     if not existing:
@@ -164,9 +162,8 @@ def delete_event_type(key):
     """Delete a custom event type. Builtin types can't be deleted, and a
     custom type with existing events can't either — its history would
     otherwise lose its field labels and rendering."""
-    username, auth_error = get_current_user()
-    if auth_error:
-        return auth_error[0], auth_error[1]
+    # @login_required already guarantees request.current_user is set.
+    username, _ = get_current_user()
 
     existing = app.db[EVENT_TYPES_COLLECTION].find_one({"key": key})
     if not existing:
@@ -435,10 +432,12 @@ def get_health_stats():
 
         if value_field == "count":
             value = 1
-        elif collection_name == EVENTS_COLLECTION:
-            value = record.get("fields", {}).get(value_field, 0)
         else:
-            value = record.get(value_field, 0)
+            # The only other collection is EVENTS_COLLECTION — medications
+            # always uses value_field="count" and hits the branch above,
+            # so a non-"count" value_field here can only mean an event's
+            # own custom field.
+            value = record.get("fields", {}).get(value_field, 0)
         stats_data.append({"date": date_str, "value": value})
 
     return jsonify({"data": stats_data})
