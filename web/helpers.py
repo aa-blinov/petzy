@@ -151,7 +151,7 @@ def validate_pet_access(pet_id, username):
     return True, None
 
 
-def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, username=None):
+def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, username=None, max_future_days=1):
     """
     Safely parse event datetime with error handling and logging.
 
@@ -161,7 +161,7 @@ def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, usern
     """
     if date_str and time_str:
         try:
-            event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+            event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=max_future_days)
             return event_dt, None
         except ValueError as e:
             log_context = f"pet_id={pet_id}, user={username}" if pet_id and username else ""

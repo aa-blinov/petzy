@@ -30,6 +30,13 @@ from web.schemas import (
 
 medications_bp = Blueprint("medications", __name__)
 
+# How far ahead get_upcoming_doses will look for the next scheduled dose
+# once today's are all given (see its own "look ahead" branch below).
+# log_intake's own future-date bound must cover the same span — otherwise
+# the dashboard widget could offer a dose as "pre-loggable" that logging
+# it would then reject.
+UPCOMING_LOOKAHEAD_DAYS = 7
+
 
 @medications_bp.route("/api/medications", methods=["POST"])
 @api.validate(
@@ -280,8 +287,17 @@ def log_intake(id):
 
         data = request.context.body  # type: ignore[attr-defined]
 
+        # +1 beyond the lookahead itself: a dose offered for day+7 can sit
+        # at any hour of that day, and the bound below is a rolling window
+        # from the exact current moment, not a calendar-day cutoff — the
+        # extra day covers day+7 at 23:59 even when "now" is 00:00 today.
         event_dt, dt_error = parse_event_datetime_safe(
-            data.date, data.time, "medication intake", medication["pet_id"], username
+            data.date,
+            data.time,
+            "medication intake",
+            medication["pet_id"],
+            username,
+            max_future_days=UPCOMING_LOOKAHEAD_DAYS + 1,
         )
         if dt_error:
             return dt_error[0], dt_error[1]
@@ -511,53 +527,75 @@ def get_upcoming_doses():
 
         current_day = now.weekday()
         today_start = datetime(now.year, now.month, now.day)
+        window_end = today_start + timedelta(days=UPCOMING_LOOKAHEAD_DAYS + 1)
 
-        # Optimize: batch fetch all today's intakes in one query
+        # Batch fetch every intake across the whole lookahead window (not
+        # just today) in one query — "Отметить заранее" lets a dose several
+        # days out be pre-logged, and without this the day it landed on
+        # kept re-offering it as still due, exactly like the original
+        # same-day bug this endpoint already had to fix once.
         med_ids = [str(med["_id"]) for med in medications]
-        today_intakes_all = list(
-            app.db.medication_intakes.find({"medication_id": {"$in": med_ids}, "date_time": {"$gte": today_start}})
+        window_intakes = list(
+            app.db.medication_intakes.find(
+                {"medication_id": {"$in": med_ids}, "date_time": {"$gte": today_start, "$lt": window_end}}
+            )
         )
 
-        # Count today's intakes per medication — not matched against the
-        # exact scheduled time. An intake's own date_time is whenever it
-        # was actually logged (e.g. MedicationsList's "Отметить приём"
-        # stamps the real tap time, not the schedule's "08:00"), so
-        # comparing HH:MM strings against the schedule almost never
-        # matched and a dose already given kept reappearing here as due.
-        # Same convention get_medications already uses for intakes_today:
-        # a plain count, consumed against the day's scheduled slots in
-        # chronological order.
-        taken_count_by_med: dict[str, int] = {}
-        for intake in today_intakes_all:
+        # Count intakes per (medication, calendar day) — not matched
+        # against the exact scheduled time. An intake's own date_time is
+        # whenever it was actually logged (e.g. MedicationsList's
+        # "Отметить приём" stamps the real tap time, not the schedule's
+        # "08:00"), so comparing HH:MM strings against the schedule almost
+        # never matched and a dose already given kept reappearing here as
+        # due. Same convention get_medications already uses for
+        # intakes_today: a plain count, consumed against that day's
+        # scheduled slots in chronological order.
+        taken_count_by_med_day: dict[tuple[str, str], int] = {}
+        for intake in window_intakes:
             med_id = intake.get("medication_id")
-            taken_count_by_med[med_id] = taken_count_by_med.get(med_id, 0) + 1
-
-        for med in medications:
-            schedule = med.get("schedule", {})
-            sched_days = schedule.get("days", [])
-            sched_times = schedule.get("times", [])
-
-            if not sched_days or not sched_times:
+            dt = intake.get("date_time")
+            if not dt:
                 continue
+            key = (med_id, dt.strftime("%Y-%m-%d"))
+            taken_count_by_med_day[key] = taken_count_by_med_day.get(key, 0) + 1
 
-            med_id_str = str(med["_id"])
-            taken_count = taken_count_by_med.get(med_id_str, 0)
+        # Walk today, then each following day in the lookahead window,
+        # stopping at the first day that still has anything due — showing
+        # the whole week would bury the one dose that matters. Today is
+        # always walked in full (even when empty) so "nothing left today"
+        # correctly falls through to tomorrow instead of stopping short.
+        for offset in range(0, UPCOMING_LOOKAHEAD_DAYS + 1):
+            if offset > 0 and upcoming:
+                break
 
-            # Find next occurrence
-            # We'll return all doses for 'today' that haven't been taken yet
-            if current_day in sched_days:
-                for slot_index, t in enumerate(sorted(sched_times)):
+            day_date = today_start + timedelta(days=offset)
+            day_key = day_date.strftime("%Y-%m-%d")
+            weekday = (current_day + offset) % 7
+
+            for med in medications:
+                schedule = med.get("schedule", {})
+                sched_days = schedule.get("days", [])
+                sched_times = sorted(schedule.get("times", []))
+
+                if weekday not in sched_days or not sched_times:
+                    continue
+
+                med_id_str = str(med["_id"])
+                taken_count = taken_count_by_med_day.get((med_id_str, day_key), 0)
+
+                for slot_index, t in enumerate(sched_times):
                     # The earliest `taken_count` slots are considered given.
                     if slot_index < taken_count:
                         continue
 
-                    # Check if time is overdue
-                    try:
-                        dose_hour, dose_min = map(int, t.split(":"))
-                        dose_time = now.replace(hour=dose_hour, minute=dose_min, second=0, microsecond=0)
-                        is_overdue = now > dose_time
-                    except (ValueError, TypeError):
-                        is_overdue = False
+                    is_overdue = False
+                    if offset == 0:
+                        try:
+                            dose_hour, dose_min = map(int, t.split(":"))
+                            dose_time = now.replace(hour=dose_hour, minute=dose_min, second=0, microsecond=0)
+                            is_overdue = now > dose_time
+                        except (ValueError, TypeError):
+                            is_overdue = False
 
                     upcoming.append(
                         {
@@ -565,7 +603,7 @@ def get_upcoming_doses():
                             "name": med["name"],
                             "type": med.get("type", "pill"),
                             "time": t,
-                            "date": now.strftime("%Y-%m-%d"),
+                            "date": day_key,
                             "is_overdue": is_overdue,
                             "inventory_warning": bool(
                                 med.get("inventory_enabled", False)
@@ -573,42 +611,6 @@ def get_upcoming_doses():
                             ),
                         }
                     )
-
-        # Nothing left today — look ahead for the next scheduled dose.
-        #
-        # The loop above only ever considered `current_day`, so on a day
-        # the course doesn't cover (a Mon/Wed/Fri schedule on a Tuesday),
-        # or once the last dose of the day was taken, this returned an
-        # empty list and the widget rendered nothing at all. For a
-        # component called "next dose" that is the case it exists for.
-        if not upcoming:
-            for offset in range(1, 8):
-                day = (current_day + offset) % 7
-                for med in medications:
-                    schedule = med.get("schedule", {})
-                    if day not in schedule.get("days", []):
-                        continue
-                    times = sorted(schedule.get("times", []))
-                    if not times:
-                        continue
-                    upcoming.append(
-                        {
-                            "medication_id": str(med["_id"]),
-                            "name": med["name"],
-                            "type": med.get("type", "pill"),
-                            "time": times[0],
-                            "date": (today_start + timedelta(days=offset)).strftime("%Y-%m-%d"),
-                            "is_overdue": False,
-                            "inventory_warning": bool(
-                                med.get("inventory_enabled", False)
-                                and (med.get("inventory_current") or 0) <= (med.get("inventory_warning_threshold") or 0)
-                            ),
-                        }
-                    )
-                if upcoming:
-                    # Stop at the first day that has anything; showing the
-                    # whole week would bury the one dose that matters.
-                    break
 
         return jsonify({"doses": upcoming})
     except Exception as e:

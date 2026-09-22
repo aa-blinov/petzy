@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { MONTHS_GENITIVE } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 import { Button } from 'antd-mobile';
 import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
@@ -57,6 +58,9 @@ export function NextDoseWidget() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
             showToast.success('Принято!');
+        },
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Не удалось отметить приём'));
         }
     });
 
