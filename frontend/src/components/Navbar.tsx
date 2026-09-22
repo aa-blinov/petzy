@@ -172,13 +172,13 @@ export function Navbar() {
                           alt={pet.name}
                           size={40}
                           species={pet.species}
-                          style={{ borderRadius: '50%' }}
+                          style={{ borderRadius: 'var(--radius-md)' }}
                         />
                       ) : (
                         <div style={{
                           width: '40px',
                           height: '40px',
-                          borderRadius: '50%',
+                          borderRadius: 'var(--radius-md)',
                           backgroundColor: 'var(--app-accent-soft)',
                           color: 'var(--app-accent-deep)',
                           display: 'flex',
