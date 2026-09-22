@@ -24,6 +24,15 @@
  * during render — React's sanctioned way to adjust state from a prop
  * change without an extra effect-triggered render) means a
  * swipe-dismiss keeps animating from wherever the finger left it.
+ *
+ * Content taller than the sheet's max height (HistoryFilterSheet, once
+ * there are enough event types) scrolls inside antd's own `.adm-popup-
+ * body` element (the caller opts in with `overflowY: 'auto'` on
+ * `bodyStyle` — see HistoryFilterSheet). Dragging from inside that
+ * scrolled content only dismisses the sheet once it's scrolled back to
+ * the top and the finger keeps pulling down — same as a native bottom
+ * sheet — so an ordinary scroll gesture doesn't fight the close
+ * gesture, and a mid-scroll pull can't yank the sheet shut.
  */
 
 import { useRef, useState, type ReactNode } from 'react';
@@ -46,6 +55,10 @@ export function DraggableSheetBody({
   // under concurrent rendering.
   const [dragging, setDragging] = useState(false);
   const dragFrom = useRef<number | null>(null);
+  // The scrollable ancestor for the drag in progress, if any — found by
+  // walking up from wherever the pointer went down, since antd owns
+  // that element and doesn't hand us a ref to it.
+  const scrollElRef = useRef<HTMLElement | null>(null);
 
   const [wasVisible, setWasVisible] = useState(visible);
   if (visible !== wasVisible) {
@@ -56,6 +69,7 @@ export function DraggableSheetBody({
   const onPointerDown = (e: React.PointerEvent) => {
     if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     dragFrom.current = e.clientY;
+    scrollElRef.current = (e.target as HTMLElement).closest('.adm-popup-body');
     setDragging(true);
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -66,8 +80,22 @@ export function DraggableSheetBody({
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (dragFrom.current === null) return;
-    // Downward only: dragging up shouldn't lift the sheet off its edge.
-    setDragY(Math.max(0, e.clientY - dragFrom.current));
+    const delta = e.clientY - dragFrom.current;
+    const atTop = (scrollElRef.current?.scrollTop ?? 0) <= 0;
+    if (delta > 0 && atTop) {
+      // Scrolled to the top (or never scrollable) and still pulling
+      // down — drag the sheet closed instead of letting the content
+      // rubber-band-scroll.
+      e.preventDefault();
+      setDragY(delta);
+    } else {
+      // Either scrolling normally, or pushed back up after a partial
+      // dismiss drag — hand control back to the scrollview and
+      // recalibrate so a later pull-at-top starts from 0, not from
+      // wherever the finger happened to be when this branch began.
+      if (dragY !== 0) setDragY(0);
+      dragFrom.current = e.clientY;
+    }
   };
 
   const onPointerUp = () => {
@@ -90,7 +118,9 @@ export function DraggableSheetBody({
       }}
     >
       {/* Grab strip — the handle plus the space around it, so the target
-          is a comfortable size rather than a 4 px bar. */}
+          is a comfortable size rather than a 4 px bar. Always a drag
+          surface regardless of scroll position, same as a native sheet's
+          handle. */}
       <div
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -120,7 +150,20 @@ export function DraggableSheetBody({
           aria-hidden
         />
       </div>
-      {children}
+
+      {/* The content itself stays a normal in-flow block — antd's own
+          .adm-popup-body is what actually scrolls (see the comment
+          above) — this just also accepts the drag gesture so dismissing
+          isn't limited to the thin handle strip above. */}
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        style={{ touchAction: 'pan-y' }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

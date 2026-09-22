@@ -46,6 +46,12 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
         borderTopRightRadius: 'var(--radius-xl)',
         backgroundColor: 'var(--app-card-background)',
         maxHeight: '75vh',
+        // With enough event types the grid is taller than 75vh — scroll
+        // it in place instead of silently spilling content off the
+        // bottom of the screen. `contain` stops an over-scroll at either
+        // end from chaining into the page behind the sheet.
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
         paddingBottom: 'calc(var(--safe-area-bottom) + 24px)',
       }}
     >
