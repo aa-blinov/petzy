@@ -14,5 +14,9 @@ Enable them once per clone:
 git config core.hooksPath .githooks
 ```
 
-`pre-commit` runs `eslint` on staged `frontend/**/*.{ts,tsx}` files and blocks
-the commit on any error (skip with `git commit --no-verify` if truly needed).
+- `pre-commit` runs `eslint` on staged `frontend/**/*.{ts,tsx}` files and `ruff`
+  on staged `*.py` files — fast, per-commit checks. Blocks the commit on any
+  error (skip with `git commit --no-verify` if truly needed).
+- `pre-push` runs the full backend test suite (`pytest tests/`). Slower
+  (~45s), so it only runs before push rather than every commit. Blocks the
+  push on any failure (skip with `git push --no-verify` if truly needed).

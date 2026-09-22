@@ -1,27 +1,40 @@
 #!/bin/sh
-# Runs eslint on staged frontend files before allowing a commit.
-# Enabled via: git config core.hooksPath .githooks (one-time per clone).
+# Runs eslint on staged frontend files and ruff on staged backend files
+# before allowing a commit. Enabled via:
+#   git config core.hooksPath .githooks   (one-time per clone)
+
+status=0
 
 staged_frontend_files=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/*.ts' 'frontend/*.tsx')
-
-if [ -z "$staged_frontend_files" ]; then
-    exit 0
+if [ -n "$staged_frontend_files" ]; then
+    echo "Running eslint on staged frontend files..."
+    relative_files=$(echo "$staged_frontend_files" | sed 's#^frontend/##')
+    (
+        cd frontend || exit 1
+        # shellcheck disable=SC2086
+        npx eslint $relative_files
+    )
+    [ $? -ne 0 ] && status=1
 fi
 
-echo "Running eslint on staged frontend files..."
-
-cd frontend || exit 1
-
-# Paths relative to frontend/ for the eslint CLI.
-relative_files=$(echo "$staged_frontend_files" | sed 's#^frontend/##')
-
-# shellcheck disable=SC2086
-npx eslint $relative_files
-status=$?
+staged_py_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.py')
+if [ -n "$staged_py_files" ]; then
+    echo "Running ruff on staged backend files..."
+    # .venv/bin/ruff explicitly — a ruff on $PATH can be a different,
+    # unpinned version that flags things the CI-pinned one doesn't.
+    if [ -x .venv/bin/ruff ]; then
+        # shellcheck disable=SC2086
+        .venv/bin/ruff check $staged_py_files
+    else
+        # shellcheck disable=SC2086
+        ruff check $staged_py_files
+    fi
+    [ $? -ne 0 ] && status=1
+fi
 
 if [ $status -ne 0 ]; then
     echo ""
-    echo "eslint failed — fix the errors above or run 'git commit --no-verify' to skip (not recommended)."
+    echo "Lint failed — fix the errors above or run 'git commit --no-verify' to skip (not recommended)."
     exit 1
 fi
 

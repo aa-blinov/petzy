@@ -1,0 +1,22 @@
+#!/bin/sh
+# Runs the full backend test suite before allowing a push — catches
+# regressions the fast per-commit ruff/eslint checks can't.
+# Enabled via: git config core.hooksPath .githooks (one-time per clone).
+
+if [ -x .venv/bin/python ]; then
+    PYTHON=.venv/bin/python
+else
+    PYTHON=python3
+fi
+
+echo "Running backend test suite before push..."
+$PYTHON -m pytest tests/ --tb=short -q
+status=$?
+
+if [ $status -ne 0 ]; then
+    echo ""
+    echo "Tests failed — fix them or run 'git push --no-verify' to skip (not recommended)."
+    exit 1
+fi
+
+exit 0
