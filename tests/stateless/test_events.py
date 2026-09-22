@@ -568,18 +568,20 @@ class TestEventDatetimeCombinedBoundsCheck:
     validator independently (date compared at midnight), but the route
     additionally combines date+time into one instant and re-checks the
     future bound — a combination that can fail even when both fields
-    individually passed. Late enough in the day, "tomorrow 23:59" is
-    further than 24h out even though "tomorrow" alone is not.
+    individually passed. "Tomorrow 23:59" only demonstrates this right
+    at the boundary (it's already >24h out only late enough in the day),
+    so these use the day after tomorrow — always outside the 1-day bound
+    regardless of what time the suite happens to run.
     """
 
     def test_create_event_rejects_combined_datetime_too_far_future(self, client, mock_db, regular_user_token, test_pet):
-        tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+        day_after_tomorrow = (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d")
         response = client.post(
             "/api/events",
             json={
                 "pet_id": str(test_pet["_id"]),
                 "type": "feeding",
-                "date": tomorrow,
+                "date": day_after_tomorrow,
                 "time": "23:59",
                 "fields": {"food_weight": 50},
             },
@@ -602,10 +604,10 @@ class TestEventDatetimeCombinedBoundsCheck:
         assert create_resp.status_code == 201
         record_id = str(mock_db["events"].find_one({"pet_id": str(test_pet["_id"])})["_id"])
 
-        tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+        day_after_tomorrow = (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d")
         response = client.put(
             f"/api/events/{record_id}",
-            json={"date": tomorrow, "time": "23:59"},
+            json={"date": day_after_tomorrow, "time": "23:59"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
