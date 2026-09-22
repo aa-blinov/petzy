@@ -35,6 +35,7 @@ import { TilesEditor } from '../components/TilesEditor';
 import { GENDER_OPTIONS } from '../utils/constants';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { PhotoCropModal } from '../components/PhotoCropModal';
 
 const petSchema = z.object({
   name: z.string().min(1, 'Имя питомца обязательно'),
@@ -60,6 +61,7 @@ export function PetForm() {
   const queryClient = useQueryClient();
 
   const [fileList, setFileList] = useState<PetPhotoItem[]>([]);
+  const [cropTarget, setCropTarget] = useState<{ src: string; filename: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
@@ -525,10 +527,7 @@ export function PetForm() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    setFileList([{
-                      url: URL.createObjectURL(file),
-                      file: file
-                    }]);
+                    setCropTarget({ src: URL.createObjectURL(file), filename: file.name });
                   }
                   e.target.value = '';
                 }}
@@ -772,6 +771,21 @@ export function PetForm() {
         onClose={() => setImageViewer(prev => ({ ...prev, visible: false }))}
         afterClose={() => setImageViewer({ visible: false, image: null })}
       />
+      {cropTarget && (
+        <PhotoCropModal
+          imageSrc={cropTarget.src}
+          filename={cropTarget.filename}
+          onCancel={() => {
+            URL.revokeObjectURL(cropTarget.src);
+            setCropTarget(null);
+          }}
+          onCropped={(file) => {
+            setFileList([{ url: URL.createObjectURL(file), file }]);
+            URL.revokeObjectURL(cropTarget.src);
+            setCropTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

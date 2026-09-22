@@ -10,9 +10,15 @@ interface PetImageProps {
     /** Optional species hint — picks the lucide placeholder icon
         when the photo fails to load. Falls back to PawPrint. */
     species?: string | null;
+    /** object-position for the cropped photo. Defaults to biasing
+        toward the top: a `cover` crop centered on a tall portrait photo
+        (the common shape for a pet photo taken by a phone) cuts off the
+        face — which sits in the upper third, not the vertical middle —
+        and shows fur/torso instead. */
+    objectPosition?: string;
 }
 
-export function PetImage({ src, alt, size = 48, className, style, species }: PetImageProps) {
+export function PetImage({ src, alt, size = 48, className, style, species, objectPosition = 'center 20%' }: PetImageProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(false);
     // speciesIcon() selects among a fixed set of module-level lucide icons —
@@ -58,6 +64,7 @@ export function PetImage({ src, alt, size = 48, className, style, species }: Pet
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
+                        objectPosition,
                         filter: 'blur(10px)',
                         transform: 'scale(1.1)',
                         position: 'absolute',
@@ -81,6 +88,7 @@ export function PetImage({ src, alt, size = 48, className, style, species }: Pet
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
+                        objectPosition,
                         opacity: isLoaded ? 1 : 0,
                         transition: `opacity var(--motion-duration-base) var(--motion-ease-standard)`,
                         display: 'block',
