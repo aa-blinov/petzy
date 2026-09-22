@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, Switch } from 'antd-mobile';
-import { Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles } from 'lucide-react';
+import { Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
+import { useAdmin } from '../hooks/useAdmin';
 import { SettingsRow } from '../components/SettingsRow';
 
 export function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme, isDark } = useTheme();
   const { logout } = useAuth();
+  const { isAdmin } = useAdmin();
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
 
   const confirmLogout = async () => {
@@ -147,6 +149,33 @@ export function Settings() {
               onClick={() => navigate('/event-types')}
             />
           </div>
+
+          {/* Section: Admin — used to be its own bottom-tab entry, shown
+              only to admins. That meant a whole tab-bar slot (and its own
+              full-page layout) existed purely to hold one link, visible to
+              a fraction of users. Folding it in here as a settings row
+              needs no dedicated chrome and matches how every other
+              secondary screen (pets, form defaults, event types) is
+              reached. */}
+          {isAdmin && (
+            <>
+              <h3
+                className="section-header"
+                style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+              >
+                Администрирование
+              </h3>
+              <div className="card-soft" style={{ overflow: 'hidden' }}>
+                <SettingsRow
+                  icon={<Users size={18} strokeWidth={2} style={{ display: 'block' }} />}
+                  label="Пользователи"
+                  description="Управление учётными записями"
+                  chevron
+                  onClick={() => navigate('/admin')}
+                />
+              </div>
+            </>
+          )}
 
           {/* Logout — destructive but tucked away at the bottom, not a giant red block */}
           <button

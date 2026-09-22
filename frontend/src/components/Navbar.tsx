@@ -35,14 +35,17 @@ export function Navbar() {
   }
 
   // Show back button only on pages that are not main tabs
-  const mainTabs = ['/', '/medications', '/settings', '/admin', '/history'];
+  const mainTabs = ['/', '/medications', '/documents', '/settings', '/history'];
   const isMainTab = mainTabs.includes(location.pathname) || location.pathname === '';
 
   // The pet switcher only belongs on screens whose content is scoped to
-  // one pet. It used to render on every route: in the admin panel and
-  // settings it controlled nothing, and inside a form it silently
-  // repointed the record being edited at a different animal.
-  const petScopedRoutes = ['/', '/medications', '/history'];
+  // one pet, or on the other main tabs for a consistent topbar — not on
+  // secondary/form screens: in the admin panel it controls nothing, and
+  // inside a form it silently repointed the record being edited at a
+  // different animal. Settings has both reasons to carry it: it's a main
+  // tab like the others, and one of its own rows (dashboard tile order)
+  // is itself per-pet.
+  const petScopedRoutes = ['/', '/medications', '/documents', '/history', '/settings'];
   const showPetSwitcher = petScopedRoutes.includes(location.pathname) || location.pathname === '';
 
   const logo = (
@@ -95,7 +98,7 @@ export function Navbar() {
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer',
-              borderRadius: '24px',
+              borderRadius: 'var(--radius-md)',
               backgroundColor: 'var(--app-page-background)',
               border: '1px solid var(--app-border-color)',
               transition: 'all var(--motion-duration-fast) var(--motion-ease-standard)',
