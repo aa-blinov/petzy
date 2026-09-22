@@ -85,3 +85,20 @@ export const speciesIconMap: Record<string, LucideIcon> = {
 /** Generic species icon used when the species isn't recognized. */
 export const SPECIES_FALLBACK_ICON: LucideIcon = Footprints;
 
+/**
+ * Photo-placeholder gradient (see --species-gradient-* in globals.css)
+ * for the pet's no-photo tile — keyed the same as speciesIconMap so a
+ * cat's empty tile reads differently from a fish's at a glance, not just
+ * by icon shape.
+ */
+export const speciesGradientMap: Record<string, string> = {
+  cat: 'var(--species-gradient-cat)',
+  dog: 'var(--species-gradient-dog)',
+  bird: 'var(--species-gradient-bird)',
+  rabbit: 'var(--species-gradient-rabbit)',
+  fish: 'var(--species-gradient-fish)',
+};
+
+/** Fallback gradient for an unset or unrecognized species. */
+export const SPECIES_GRADIENT_FALLBACK = 'var(--species-gradient-default)';
+

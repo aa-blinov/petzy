@@ -25,11 +25,12 @@ export function HistoryItemSkeleton() {
 
 export function PetCardSkeleton() {
   return (
-    <div className="card-soft" style={{ overflow: 'hidden' }}>
-      <div className="skeleton" style={{ width: '100%', height: 120, borderRadius: 0 }} />
-      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="skeleton" style={{ height: 20, width: '40%' }} />
-        <div className="skeleton" style={{ height: 12, width: '25%' }} />
+    <div className="card-soft" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="skeleton" style={{ width: 96, height: 96, borderRadius: 'var(--radius-md)', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="skeleton" style={{ height: 18, width: '55%' }} />
+        <div className="skeleton" style={{ height: 12, width: '70%' }} />
+        <div className="skeleton" style={{ height: 20, width: 60, borderRadius: 999 }} />
       </div>
     </div>
   );
