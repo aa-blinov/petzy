@@ -12,21 +12,7 @@ export const TILE_COLORS = {
   pink: 'pink',
 } as const;
 
-// Health record types
-export const HEALTH_RECORD_TYPES = {
-  feeding: 'feeding',
-  weight: 'weight',
-  asthma: 'asthma',
-  defecation: 'defecation',
-  litter: 'litter',
-  eye_drops: 'eye_drops',
-  tooth_brushing: 'tooth_brushing',
-  ear_cleaning: 'ear_cleaning',
-  medications: 'medications',
-} as const;
-
 export type TileColor = typeof TILE_COLORS[keyof typeof TILE_COLORS];
-export type HealthRecordType = typeof HEALTH_RECORD_TYPES[keyof typeof HEALTH_RECORD_TYPES];
 
 /** Maps a tile's color id to its pastel CSS custom-property. */
 export const pastelColorMap: Record<string, string> = {
@@ -43,15 +29,6 @@ export const pastelColorMap: Record<string, string> = {
 };
 
 import {
-  Utensils,
-  Scale,
-  Wind,
-  Toilet,
-  Shovel,
-  Eye,
-  Toothbrush,
-  Ear,
-  Pill,
   Footprints,
   Cat,
   Dog,
@@ -60,29 +37,6 @@ import {
   Fish,
   type LucideIcon,
 } from 'lucide-react';
-
-/** Category icon (lucide) for each health-record type. Rendered inside
- *  HistoryItem's pill-icon and inside QuickAddSheet tiles. */
-export const typeIconMap: Record<string, LucideIcon> = {
-  feeding: Utensils,
-  weight: Scale,
-  // No lungs glyph in lucide; wind is the closest read for "breathing".
-  asthma: Wind,
-  // Was Droplet, which reads as liquid — urine, water, a spill — rather
-  // than stool. Toilet names the event without being crude.
-  defecation: Toilet,
-  // Was Brush, i.e. grooming or painting. Changing a tray is scooping it.
-  litter: Shovel,
-  // Organ icons for the two body-part routines: at a glance in a mixed
-  // list, "eye thing" and "ear thing" are read faster than the implements
-  // (a pipette and a cleaning brush) would be.
-  eye_drops: Eye,
-  ear_cleaning: Ear,
-  // Was Sparkles, which says "clean/shiny" generically — it could have
-  // been grooming, a wash, anything.
-  tooth_brushing: Toothbrush,
-  medications: Pill,
-};
 
 /** Pet gender — the stored value and the label shown for it.
  *

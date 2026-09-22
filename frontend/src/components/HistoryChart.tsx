@@ -7,6 +7,7 @@ import {
     AreaChart, Area
 } from 'recharts';
 import { healthRecordsService } from '../services/healthRecords.service';
+import { useEventTypes } from '../hooks/useEventTypes';
 import { parseRecordDate } from '../utils/relativeTime';
 import { useMemo, useState } from 'react';
 import { CapsuleTabs } from 'antd-mobile';
@@ -18,17 +19,21 @@ interface HistoryChartProps {
 
 export function HistoryChart({ type, petId }: HistoryChartProps) {
     const [days, setDays] = useState('30');
+    const { eventTypesByKey } = useEventTypes();
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['stats', type, petId, days],
         queryFn: () => healthRecordsService.getStats(type, petId, parseInt(days, 10)),
     });
 
+    // Medications aren't in the registry (their own domain); every other
+    // type's chart shape comes from `event_types.chart` — a custom type
+    // gets a working chart with zero extra code.
+    const chart = type === 'medications' ? { kind: 'count' as const } : eventTypesByKey[type]?.chart;
+    const isValueChart = chart?.kind === 'value';
+
     const chartData = useMemo(() => {
         if (!data?.data) return [];
-
-        // Aggregation logic for counts (asthma, defecation, etc.)
-        const isCountType = ['asthma', 'defecation', 'litter', 'eye_drops', 'tooth_brushing', 'ear_cleaning', 'medications'].includes(type);
 
         // Both branches parse through parseRecordDate. Passing the
         // backend's strings to `new Date()` read them in two different
@@ -36,7 +41,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
         // UTC midnight and every bar was labelled a day early west of
         // UTC, while the date+time form below isn't ISO and was read as
         // local. Same field, two meanings.
-        if (isCountType) {
+        if (!isValueChart) {
             const aggregated: Record<string, number> = {};
             data.data.forEach(item => {
                 const date = item.date.split(' ')[0]; // YYYY-MM-DD
@@ -54,7 +59,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
             }).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
         }
 
-        // Direct mapping for values (weight, feeding)
+        // Direct mapping for values (weight, feeding, or a custom value-chart type)
         return data.data.map(item => {
             const parsed = parseRecordDate(item.date);
             return {
@@ -68,14 +73,10 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                 value: typeof item.value === 'number' ? item.value : parseFloat(item.value) || 0
             };
         });
-    }, [data, type]);
+    }, [data, isValueChart]);
 
-    const isLineChart = ['weight', 'feeding'].includes(type);
-    const valueLabel = useMemo(() => {
-        if (type === 'weight') return 'Вес (кг)';
-        if (type === 'feeding') return 'Вес порции (г)';
-        return 'Количество';
-    }, [type]);
+    const isLineChart = isValueChart;
+    const valueLabel = chart?.kind === 'value' ? (chart.value_label || 'Значение') : 'Количество';
 
     const renderContent = () => {
         if (isLoading) {

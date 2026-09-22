@@ -61,8 +61,9 @@ export const usersService = {
     return response.data.user;
   },
 
-  async deleteUser(username: string): Promise<void> {
-    await api.delete(`/users/${username}`);
+  async deleteUser(username: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/users/${username}`);
+    return response.data;
   },
 
   async resetPassword(username: string, newPassword: string): Promise<void> {

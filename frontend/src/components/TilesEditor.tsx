@@ -35,7 +35,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
-import { tilesConfig } from '../utils/tilesConfig';
+import { useEventTypes } from '../hooks/useEventTypes';
+import { buildTiles } from '../utils/tilesConfig';
 
 function SortableTileItem({
   id,
@@ -94,13 +95,14 @@ function SortableTileItem({
 
 export function TilesEditor({ petId, mode = 'plain' }: { petId: string; mode?: 'plain' | 'card' }) {
   const { tilesSettings, updateOrder, toggleVisibility } = usePetTilesSettings(petId);
+  const { eventTypes } = useEventTypes();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Build from tilesConfig, not from `order`.
+  // Build from the registry (+ medications), not from `order`.
   //
   // Both old editors mapped over `tilesSettings.order`, so a tile the
   // pet's stored order didn't mention simply wasn't listed — it could be
@@ -109,7 +111,7 @@ export function TilesEditor({ petId, mode = 'plain' }: { petId: string; mode?: '
   // shown). Adding a record type would have silently produced exactly
   // that. Sorting a complete list by `order` keeps the stored sequence
   // and appends anything new at the end, which is where it renders.
-  const tiles = tilesConfig
+  const tiles = buildTiles(eventTypes)
     .filter((t) => t.isTile !== false)
     .sort((a, b) => {
       const ai = tilesSettings.order.indexOf(a.id);

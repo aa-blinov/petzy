@@ -11,14 +11,16 @@
  */
 
 import { Popup, Grid } from 'antd-mobile';
-import { useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { tilesConfig } from '../utils/tilesConfig';
+import { buildTiles } from '../utils/tilesConfig';
+import { buildEventDisplayConfigs } from '../utils/eventDisplay';
+import { useEventTypes } from '../hooks/useEventTypes';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
-import { pastelColorMap, typeIconMap } from '../utils/constants';
+import { pastelColorMap } from '../utils/constants';
 
 
 interface QuickAddSheetProps {
@@ -34,8 +36,10 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
   const navigate = useNavigate();
   const { selectedPetId } = usePet();
   const { tilesSettings } = usePetTilesSettings(selectedPetId);
+  const { eventTypes } = useEventTypes();
+  const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
-  const tiles = tilesConfig
+  const tiles = buildTiles(eventTypes)
     .filter(t => t.isTile !== false && tilesSettings.visible[t.id] !== false)
     .sort((a, b) => {
       const ai = tilesSettings.order.indexOf(a.id);
@@ -76,7 +80,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         <Grid columns={2} gap={12}>
           {tiles.map(tile => {
             const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
-            const Icon = typeIconMap[tile.id];
+            const Icon = displayConfigs[tile.id]?.icon;
             return (
               <Grid.Item key={tile.id}>
                 <button

@@ -83,6 +83,14 @@ ERRORS: Dict[str, ErrorDef] = {
     "export_invalid_type": ErrorDef("export_invalid_type", "Неверный тип экспорта", 422),
     "export_invalid_format": ErrorDef("export_invalid_format", "Неверный тип формата", 422),
     "user_exists": ErrorDef("user_exists", "Пользователь с таким именем уже существует", 422),
+    "invalid_type": ErrorDef("invalid_type", "Неподдерживаемый тип записи", 422),
+    "event_type_not_found": ErrorDef("event_type_not_found", "Тип события не найден", 404),
+    "event_type_builtin_immutable": ErrorDef(
+        "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
+    ),
+    "event_type_has_events": ErrorDef(
+        "event_type_has_events", "У этого типа есть записи — сначала удалите их", 422
+    ),
     # Other
     "no_data_for_export": ErrorDef("no_data_for_export", "Нет данных для экспорта", 404),
     "upload_error": ErrorDef("upload_error", "Ошибка при загрузке файла", 404),

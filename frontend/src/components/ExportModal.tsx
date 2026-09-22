@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { Popup, Button, Selector, Form } from 'antd-mobile';
 import { exportService } from '../services/export.service';
-import { historyConfig } from '../utils/historyConfig';
+import { useEventTypes } from '../hooks/useEventTypes';
+import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 
 /** Matches ALL_TYPES on the backend: one ZIP with a file per record type. */
 export const ALL_TYPES = 'all';
@@ -15,6 +16,8 @@ interface ExportModalProps {
 }
 
 export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }: ExportModalProps) {
+  const { eventTypes } = useEventTypes();
+  const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
   const [exportType, setExportType] = useState<string[]>([defaultType]);
   const [format, setFormat] = useState<string[]>(['csv']);
   const [loading, setLoading] = useState(false);
@@ -53,7 +56,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
   // or mostly empty cells.
   const typeOptions = [
     { label: 'Все типы (архивом)', value: ALL_TYPES },
-    ...Object.entries(historyConfig).map(([key, config]) => ({
+    ...Object.entries(displayConfigs).map(([key, config]) => ({
       label: config.displayName,
       value: key,
     })),

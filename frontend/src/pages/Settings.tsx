@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, Switch } from 'antd-mobile';
-import { Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint } from 'lucide-react';
+import { Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -119,6 +119,25 @@ export function Settings() {
               description="Какие записи видны и в каком порядке"
               chevron
               onClick={() => navigate('/tiles-settings')}
+            />
+          </div>
+
+          {/* Section: Event types — the "factory": builtin types can be
+              relabelled/recolored here too, and custom ones created from
+              scratch with their own fields. */}
+          <h3
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            События
+          </h3>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Типы событий"
+              description="Свои типы записей со своими полями"
+              chevron
+              onClick={() => navigate('/event-types')}
             />
           </div>
 

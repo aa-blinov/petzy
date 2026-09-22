@@ -7,7 +7,7 @@ Naming Convention:
 
 from datetime import datetime, timedelta
 from typing import Optional, List, Annotated, Any
-from pydantic import BaseModel, Field, field_validator, ConfigDict, StringConstraints
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, StringConstraints
 
 # Custom type for ObjectId strings
 ObjectIdString = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{24}$")]
@@ -586,476 +586,180 @@ class HealthRecordUpdateBase(BaseModel):
 
 
 # ============================================================================
-# Asthma Schemas
+# Event Type Registry Schemas
 # ============================================================================
 
 
-class AsthmaAttackCreate(HealthRecordBase):
-    """Asthma attack creation request model."""
+EVENT_FIELD_TYPES = ("text", "number", "select", "textarea")
 
-    duration: Optional[str] = Field(None, max_length=50, description="Длительность приступа")
-    reason: Optional[str] = Field(None, max_length=200, description="Причина приступа")
-    inhalation: Optional[bool] = Field(None, description="Была ли проведена ингаляция")
+
+class EventFieldOption(BaseModel):
+    """A single ``select`` field choice."""
+
+    value: str = Field(..., min_length=1, max_length=100)
+    text: str = Field(..., min_length=1, max_length=100)
+
+
+class EventTypeField(BaseModel):
+    """One field of an event type's schema."""
+
+    name: str = Field(..., pattern=r"^[a-z][a-z0-9_]{0,49}$", description="Идентификатор поля")
+    label: str = Field(..., min_length=1, max_length=100)
+    type: str = Field(..., description="text | number | select | textarea")
+    required: bool = False
+    options: Optional[List[EventFieldOption]] = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v):
+        if v not in EVENT_FIELD_TYPES:
+            raise ValueError(f"Тип поля должен быть одним из: {', '.join(EVENT_FIELD_TYPES)}")
+        return v
+
+    @model_validator(mode="after")
+    def validate_select_has_options(self):
+        if self.type == "select" and not self.options:
+            raise ValueError("Для поля типа select нужно указать варианты")
+        return self
+
+
+class EventChartConfig(BaseModel):
+    """How this event type's data is charted."""
+
+    kind: str = Field("count", description="count | value")
+    value_field: Optional[str] = Field(None, description="Имя числового поля для графика значений")
+    value_label: Optional[str] = Field(None, max_length=50, description="Подпись оси Y")
+
+    @field_validator("kind")
+    @classmethod
+    def validate_kind(cls, v):
+        if v not in ("count", "value"):
+            raise ValueError("kind должен быть 'count' или 'value'")
+        return v
+
+
+RESERVED_EVENT_FIELD_NAMES = {"pet_id", "date", "time", "comment", "type", "fields"}
+
+
+def _validate_field_names(fields: List[EventTypeField]) -> List[EventTypeField]:
+    names = [f.name for f in fields]
+    if len(names) != len(set(names)):
+        raise ValueError("Имена полей должны быть уникальными")
+    reserved = RESERVED_EVENT_FIELD_NAMES.intersection(names)
+    if reserved:
+        raise ValueError(f"Имя поля зарезервировано: {', '.join(sorted(reserved))}")
+    return fields
+
+
+class EventTypeCreate(BaseModel):
+    """Create a new (always custom) event type."""
+
+    label: str = Field(..., min_length=1, max_length=100, description="Название типа события")
+    icon: str = Field(..., min_length=1, max_length=50, description="Ключ иконки")
+    color: str = Field(..., min_length=1, max_length=20, description="Цвет плитки")
+    fields: List[EventTypeField] = Field(default_factory=list)
+    chart: EventChartConfig = Field(default_factory=EventChartConfig)
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v):
+        return _validate_field_names(v)
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "duration": "5 минут",
-                "reason": "Стресс",
-                "inhalation": True,
-                "comment": "Приступ был легким",
+                "label": "Игра",
+                "icon": "paw",
+                "color": "blue",
+                "fields": [
+                    {"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}
+                ],
+                "chart": {"kind": "count"},
             }
         }
     )
 
 
-class AsthmaAttackUpdate(HealthRecordUpdateBase):
-    """Asthma attack update request model."""
+class EventTypeUpdate(BaseModel):
+    """Update an existing event type (builtin or custom)."""
 
-    duration: Optional[str] = Field(None, max_length=50)
-    reason: Optional[str] = Field(None, max_length=200)
-    inhalation: Optional[bool] = None
+    label: Optional[str] = Field(None, min_length=1, max_length=100)
+    icon: Optional[str] = Field(None, min_length=1, max_length=50)
+    color: Optional[str] = Field(None, min_length=1, max_length=20)
+    fields: Optional[List[EventTypeField]] = None
+    chart: Optional[EventChartConfig] = None
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "duration": "5 минут",
-                "reason": "Стресс",
-                "inhalation": True,
-                "comment": "Приступ был легким",
-            }
-        }
-    )
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v):
+        return v if v is None else _validate_field_names(v)
 
 
-class AsthmaAttackItem(BaseModel):
-    """Asthma attack item in list response."""
+class EventTypeItem(BaseModel):
+    """An event type as returned by the API."""
 
-    _id: str
-    pet_id: str
-    date_time: str
-    username: str
-    duration: Optional[str] = None
-    reason: Optional[str] = None
-    inhalation: Optional[bool] = None  # Boolean value (true/false) as stored in DB
-    comment: Optional[str] = None
+    key: str
+    label: str
+    icon: str
+    color: str
+    is_builtin: bool
+    fields: List[EventTypeField]
+    chart: EventChartConfig
 
 
-class AsthmaAttackListResponse(PaginatedResponse):
-    """List of asthma attacks response with pagination."""
+class EventTypeListResponse(BaseModel):
+    """List of event types."""
 
-    attacks: List[AsthmaAttackItem]
+    event_types: List[EventTypeItem]
 
 
 # ============================================================================
-# Defecation Schemas
+# Event Schemas (the generic events collection)
 # ============================================================================
 
 
-class DefecationCreate(HealthRecordBase):
-    """Defecation creation request model."""
+class EventCreate(HealthRecordBase):
+    """Create a new event of any registered type."""
 
-    stool_type: Optional[str] = Field(None, max_length=50, description="Тип стула")
-    color: Optional[str] = Field(None, max_length=50, description="Цвет стула")
-    food: Optional[str] = Field(None, max_length=200, description="Корм")
+    type: str = Field(..., min_length=1, max_length=60, description="Ключ типа события")
+    fields: dict[str, Any] = Field(default_factory=dict, description="Значения полей, специфичных для типа")
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "pet_id": "507f1f77bcf86cd799439011",
+                "type": "defecation",
                 "date": "2024-01-15",
                 "time": "14:30",
-                "stool_type": "Нормальный",
-                "color": "Коричневый",
-                "food": "Сухой корм",
+                "fields": {"stool_type": "Обычный", "color": "Коричневый"},
                 "comment": "Все в порядке",
             }
         }
     )
 
 
-class DefecationUpdate(HealthRecordUpdateBase):
-    """Defecation update request model."""
+class EventUpdate(HealthRecordUpdateBase):
+    """Update an existing event."""
 
-    stool_type: Optional[str] = Field(None, max_length=50)
-    color: Optional[str] = Field(None, max_length=50)
-    food: Optional[str] = Field(None, max_length=200)
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "stool_type": "Нормальный",
-                "color": "Коричневый",
-                "food": "Сухой корм",
-                "comment": "Все в порядке",
-            }
-        }
-    )
+    fields: Optional[dict[str, Any]] = Field(None, description="Значения полей, специфичных для типа")
 
 
-class DefecationItem(BaseModel):
-    """Defecation item in list response."""
+class EventItem(BaseModel):
+    """An event as returned by the API."""
 
     _id: str
     pet_id: str
-    date_time: str
-    username: str
-    stool_type: Optional[str] = None
-    color: Optional[str] = None
-    food: Optional[str] = None
-    comment: Optional[str] = None
-
-
-class DefecationListResponse(PaginatedResponse):
-    """List of defecations response with pagination."""
-
-    defecations: List[DefecationItem]
-
-
-# ============================================================================
-# Litter Change Schemas
-# ============================================================================
-
-
-class LitterChangeCreate(HealthRecordBase):
-    """Litter change creation request model."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "comment": "Полная замена наполнителя",
-            }
-        }
-    )
-
-
-class LitterChangeUpdate(HealthRecordUpdateBase):
-    """Litter change update request model."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "comment": "Полная замена наполнителя",
-            }
-        }
-    )
-
-
-class LitterChangeItem(BaseModel):
-    """Litter change item in list response."""
-
-    _id: str
-    pet_id: str
+    type: str
     date_time: str
     username: str
     comment: Optional[str] = None
+    fields: dict[str, Any] = Field(default_factory=dict)
 
 
-class LitterChangeListResponse(PaginatedResponse):
-    """List of litter changes response with pagination."""
+class EventListResponse(PaginatedResponse):
+    """List of events with pagination."""
 
-    litter_changes: List[LitterChangeItem]
-
-
-# ============================================================================
-# Weight Schemas
-# ============================================================================
-
-
-class WeightRecordCreate(HealthRecordBase):
-    """Weight record creation request model."""
-
-    weight: Optional[float] = Field(None, gt=0, description="Вес в килограммах")
-    food: Optional[str] = Field(None, max_length=200, description="Корм")
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "weight": 4.5,
-                "food": "Сухой корм",
-                "comment": "Вес в норме",
-            }
-        }
-    )
-
-
-class WeightRecordUpdate(HealthRecordUpdateBase):
-    """Weight record update request model."""
-
-    weight: Optional[float] = Field(None, gt=0)
-    food: Optional[str] = Field(None, max_length=200)
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "weight": 4.5,
-                "food": "Сухой корм",
-                "comment": "Вес в норме",
-            }
-        }
-    )
-
-
-class WeightRecordItem(BaseModel):
-    """Weight record item in list response."""
-
-    _id: str
-    pet_id: str
-    date_time: str
-    username: str
-    weight: Optional[float] = None
-    food: Optional[str] = None
-    comment: Optional[str] = None
-
-
-class WeightRecordListResponse(PaginatedResponse):
-    """List of weight records response with pagination."""
-
-    weights: List[WeightRecordItem]
-
-
-# ============================================================================
-# Feeding Schemas
-# ============================================================================
-
-
-class FeedingCreate(HealthRecordBase):
-    """Feeding creation request model."""
-
-    food_weight: Optional[float] = Field(None, gt=0, description="Вес корма в граммах")
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "food_weight": 50.0,
-                "comment": "Обычная порция",
-            }
-        }
-    )
-
-
-class FeedingUpdate(HealthRecordUpdateBase):
-    """Feeding update request model."""
-
-    food_weight: Optional[float] = Field(None, gt=0)
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "food_weight": 50.0,
-                "comment": "Обычная порция",
-            }
-        }
-    )
-
-
-class FeedingItem(BaseModel):
-    """Feeding item in list response."""
-
-    _id: str
-    pet_id: str
-    date_time: str
-    username: str
-    food_weight: Optional[float] = None
-    comment: Optional[str] = None
-
-
-class FeedingListResponse(PaginatedResponse):
-    """List of feedings response with pagination."""
-
-    feedings: List[FeedingItem]
-
-
-# ============================================================================
-# Eye Drops Schemas
-# ============================================================================
-
-
-class EyeDropsCreate(HealthRecordBase):
-    """Eye drops creation request model."""
-
-    drops_type: Optional[str] = Field(None, max_length=50, description="Тип капель")
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "drops_type": "Обычные",
-                "comment": "Закапано в оба глаза",
-            }
-        }
-    )
-
-
-class EyeDropsUpdate(HealthRecordUpdateBase):
-    """Eye drops update request model."""
-
-    drops_type: Optional[str] = Field(None, max_length=50)
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "drops_type": "Обычные",
-                "comment": "Закапано в оба глаза",
-            }
-        }
-    )
-
-
-class EyeDropsItem(BaseModel):
-    """Eye drops item in list response."""
-
-    _id: str
-    pet_id: str
-    date_time: str
-    username: str
-    drops_type: Optional[str] = None
-    comment: Optional[str] = None
-
-
-class EyeDropsListResponse(PaginatedResponse):
-    """List of eye drops records response with pagination."""
-
-    eye_drops: List[EyeDropsItem]
-
-
-# ============================================================================
-# Tooth Brushing Schemas
-# ============================================================================
-
-
-class ToothBrushingCreate(HealthRecordBase):
-    """Tooth brushing creation request model."""
-
-    brushing_type: Optional[str] = Field(None, max_length=50, description="Способ чистки")
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "brushing_type": "Щетка",
-                "comment": "Чистка верхних зубов",
-            }
-        }
-    )
-
-
-class ToothBrushingUpdate(HealthRecordUpdateBase):
-    """Tooth brushing update request model."""
-
-    brushing_type: Optional[str] = Field(None, max_length=50)
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "brushing_type": "Щетка",
-                "comment": "Чистка верхних зубов",
-            }
-        }
-    )
-
-
-class ToothBrushingItem(BaseModel):
-    """Tooth brushing item in list response."""
-
-    _id: str
-    pet_id: str
-    date_time: str
-    username: str
-    brushing_type: Optional[str] = None
-    comment: Optional[str] = None
-
-
-class ToothBrushingListResponse(PaginatedResponse):
-    """List of tooth brushing records response with pagination."""
-
-    tooth_brushing: List[ToothBrushingItem]
-
-
-# ============================================================================
-# Ear Cleaning Schemas
-# ============================================================================
-
-class EarCleaningCreate(HealthRecordBase):
-    """Ear cleaning creation request model."""
-
-    cleaning_type: Optional[str] = Field(None, max_length=50, description="Способ чистки")
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "pet_id": "507f1f77bcf86cd799439011",
-                "date": "2024-01-15",
-                "time": "14:30",
-                "cleaning_type": "Салфетка/Марля",
-                "comment": "Чистка левого уха",
-            }
-        }
-    )
-
-
-class EarCleaningUpdate(HealthRecordUpdateBase):
-    """Ear cleaning update request model."""
-
-    cleaning_type: Optional[str] = Field(None, max_length=50)
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "time": "14:30",
-                "cleaning_type": "Салфетка/Марля",
-                "comment": "Чистка левого уха",
-            }
-        }
-    )
-
-
-class EarCleaningItem(BaseModel):
-    """Ear cleaning item in list response."""
-
-    _id: str
-    pet_id: str
-    date_time: str
-    username: str
-    cleaning_type: Optional[str] = None
-    comment: Optional[str] = None
-
-
-class EarCleaningListResponse(PaginatedResponse):
-    """List of ear cleaning records response with pagination."""
-
-    ear_cleaning: List[EarCleaningItem]
+    items: List[EventItem]
 
 
 # ============================================================================
@@ -1105,6 +809,12 @@ class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
             }
         }
     )
+
+
+class EventListQuery(PetIdPaginationQuery):
+    """Query parameters for listing events, optionally filtered by type."""
+
+    type: Optional[str] = Field(None, description="Фильтр по ключу типа события (опустить — все типы)")
 
 
 class HealthStatsQuery(PetIdQuery):

@@ -118,40 +118,41 @@ def main() -> None:
             "updated_at": datetime.now(timezone.utc),
         }
     )
-    db.feedings.insert_many(
+    db.events.insert_many(
         [
             {
                 "pet_id": str(pet_id),
+                "type": "feeding",
                 "date_time": datetime(2026, 9, 18, 8, 0),
-                "food_weight": 50,
+                "fields": {"food_weight": 50},
                 "comment": "",
                 "username": "admin",
             },
             {
                 "pet_id": str(pet_id),
+                "type": "feeding",
                 "date_time": datetime(2026, 9, 18, 19, 0),
-                "food_weight": 50,
+                "fields": {"food_weight": 50},
                 "comment": "",
                 "username": "admin",
             },
             {
                 "pet_id": str(pet_id),
+                "type": "feeding",
                 "date_time": datetime(2026, 9, 19, 8, 0),
-                "food_weight": 50,
+                "fields": {"food_weight": 50},
+                "comment": "",
+                "username": "admin",
+            },
+            {
+                "pet_id": str(pet_id),
+                "type": "weight",
+                "date_time": datetime(2026, 9, 15, 10, 0),
+                "fields": {"weight": 4.5, "food": "Сухой корм"},
                 "comment": "",
                 "username": "admin",
             },
         ]
-    )
-    db.weights.insert_one(
-        {
-            "pet_id": str(pet_id),
-            "date_time": datetime(2026, 9, 15, 10, 0),
-            "weight": 4.5,
-            "food": "Сухой корм",
-            "comment": "",
-            "username": "admin",
-        }
     )
 
     logger.info("Seeded admin/admin, pet Барсик (%s), and a few records.", pet_id)

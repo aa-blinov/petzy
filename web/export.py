@@ -1,8 +1,10 @@
-"""Data export routes (CSV/TSV/HTML/Markdown) for health records.
+"""Data export routes (CSV/TSV/HTML/Markdown) for events + medications.
 
-The list of supported export types lives in :data:`EXPORT_SPECS`. Adding a
-new export type is one entry in that mapping plus, if needed, a record-level
-transform function for denormalised lookups (see the ``medications`` case).
+Export specs for the eight (or more, once custom types exist) event types
+are built from the ``event_types`` registry at request time rather than
+declared statically — a custom type is exportable the moment it's created,
+no code change needed. ``medications`` keeps its own static spec since it
+isn't part of the registry.
 
 The special export type ``all`` returns a ZIP holding one file per type
 that has records. Types are not merged into a single table on purpose:
@@ -15,7 +17,7 @@ still being a single download.
 import csv
 import io
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Optional
 from urllib.parse import quote
@@ -33,14 +35,6 @@ from web.schemas import ErrorResponse, PetIdQuery
 export_bp = Blueprint("export", __name__)
 
 
-# ---------------------------------------------------------------------------
-# Export specs
-# ---------------------------------------------------------------------------
-#
-# ``collection_name`` is looked up at request time against ``app.db``, so
-# tests that patch ``web.app.db`` see the same collection the route does.
-
-
 FieldSpec = tuple[str, str]  # (db_field, ru_header)
 
 
@@ -49,10 +43,14 @@ class ExportSpec:
     collection_name: str
     title: str
     fields: list[FieldSpec]
+    extra_query: dict = field(default_factory=dict)
+    """Extra filter merged into the ``{"pet_id": pet_id}`` base query
+    (e.g. ``{"type": "defecation"}`` for an events-backed spec)."""
+
     enrich: Optional[Callable[[dict, list[dict]], None]] = None
     """Per-row hook invoked with ``(record, all_records)`` before serialisation.
-    Used for denormalising lookups (e.g. medication names) and one-off
-    field conversions (e.g. ``inhalation`` boolean → Russian word)."""
+    Used for denormalising lookups (e.g. medication names) and flattening
+    an event's ``fields`` dict onto the record."""
 
 
 def _enrich_medication_names(_record: dict, records: list[dict]) -> None:
@@ -82,116 +80,66 @@ def _replace_skip_blank(value, replacement: str = "-") -> str:
     return value or ""
 
 
-def _localize_inhalation(record: dict, _records: list[dict]) -> None:
-    """Convert the boolean ``inhalation`` field to a Russian word for export."""
-    inh = record.get("inhalation")
-    if inh is True:
-        record["inhalation"] = "Да"
-    elif inh is False:
-        record["inhalation"] = "Нет"
-    else:
-        record["inhalation"] = "-"
+MEDICATIONS_EXPORT_SPEC = ExportSpec(
+    collection_name="medication_intakes",
+    title="Прием препаратов",
+    fields=[
+        ("date_time", "Дата и время"),
+        ("username", "Пользователь"),
+        ("medication_name", "Препарат"),
+        ("dose_taken", "Доза"),
+        ("comment", "Комментарий"),
+    ],
+    enrich=_enrich_medication_names,
+)
 
 
-EXPORT_SPECS: dict[str, ExportSpec] = {
-    "feeding": ExportSpec(
-        collection_name="feedings",
-        title="Дневные порции корма",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("food_weight", "Вес корма (г)"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "asthma": ExportSpec(
-        collection_name="asthma_attacks",
-        title="Приступы астмы",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("duration", "Длительность"),
-            ("reason", "Причина"),
-            ("inhalation", "Ингаляция"),
-            ("comment", "Комментарий"),
-        ],
-        enrich=_localize_inhalation,
-    ),
-    "defecation": ExportSpec(
-        collection_name="defecations",
-        title="Дефекации",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("stool_type", "Тип стула"),
-            ("color", "Цвет стула"),
-            ("food", "Корм"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "litter": ExportSpec(
-        collection_name="litter_changes",
-        title="Смена лотка",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "weight": ExportSpec(
-        collection_name="weights",
-        title="Вес",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("weight", "Вес (кг)"),
-            ("food", "Корм"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "eye_drops": ExportSpec(
-        collection_name="eye_drops",
-        title="Закапывание глаз",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("drops_type", "Тип капель"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "tooth_brushing": ExportSpec(
-        collection_name="tooth_brushing",
-        title="Чистка зубов",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("brushing_type", "Способ чистки"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "ear_cleaning": ExportSpec(
-        collection_name="ear_cleaning",
-        title="Чистка ушей",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("cleaning_type", "Способ чистки"),
-            ("comment", "Комментарий"),
-        ],
-    ),
-    "medications": ExportSpec(
-        collection_name="medication_intakes",
-        title="Прием препаратов",
-        fields=[
-            ("date_time", "Дата и время"),
-            ("username", "Пользователь"),
-            ("medication_name", "Препарат"),
-            ("dose_taken", "Доза"),
-            ("comment", "Комментарий"),
-        ],
-        enrich=_enrich_medication_names,
-    ),
-}
+def _humanize_select_values(event_fields: dict, field_defs: list) -> dict:
+    """Map a ``select`` field's stored value to its display text.
+
+    Event field values are stored raw (e.g. ``inhalation: "true"``) so the
+    edit form can re-select the right option; export is display-only, so
+    it shows the option's label (e.g. "Да") instead.
+    """
+    out = dict(event_fields)
+    for fd in field_defs:
+        if fd.get("type") == "select" and fd["name"] in out:
+            match = next(
+                (opt for opt in (fd.get("options") or []) if opt["value"] == out[fd["name"]]),
+                None,
+            )
+            if match:
+                out[fd["name"]] = match["text"]
+    return out
+
+
+def _build_event_export_spec(event_type: dict) -> ExportSpec:
+    """Build an ``ExportSpec`` for one event-type-registry entry."""
+    field_defs = event_type.get("fields", [])
+    columns: list[FieldSpec] = [("date_time", "Дата и время"), ("username", "Пользователь")]
+    columns += [(f["name"], f["label"]) for f in field_defs]
+    columns += [("comment", "Комментарий")]
+
+    def _enrich(record: dict, _records: list[dict], _field_defs=field_defs) -> None:
+        record.update(_humanize_select_values(record.pop("fields", {}), _field_defs))
+
+    return ExportSpec(
+        collection_name="events",
+        title=event_type["label"],
+        fields=columns,
+        extra_query={"type": event_type["key"]},
+        enrich=_enrich,
+    )
+
+
+def _build_export_specs() -> dict[str, ExportSpec]:
+    """All currently exportable types: every registered event type, plus
+    the static ``medications`` spec. Built fresh per request so a custom
+    type created a moment ago is immediately exportable."""
+    specs: dict[str, ExportSpec] = {"medications": MEDICATIONS_EXPORT_SPEC}
+    for event_type in app.db.event_types.find({}):
+        specs[event_type["key"]] = _build_event_export_spec(event_type)
+    return specs
 
 
 # ---------------------------------------------------------------------------
@@ -271,11 +219,6 @@ SERIALIZERS = {
 
 
 # ---------------------------------------------------------------------------
-# Route
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
 
@@ -283,22 +226,20 @@ SERIALIZERS = {
 ALL_TYPES = "all"
 
 
-def _render_export(spec, pet_id, format_type, serializer):
+def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
     """Serialise one export type.
 
     Returns ``(content, mimetype, suffix)``, or ``(None, None, None)`` when
     the pet has no records of that type — the caller decides whether that
     is an error (single-type export) or simply a file to omit (the ZIP).
     """
-    records = list(
-        app.db[spec.collection_name]
-        .find({"pet_id": pet_id})
-        .sort([("date_time", -1)])
-    )
+    query = {"pet_id": pet_id, **spec.extra_query}
+    records = list(app.db[spec.collection_name].find(query).sort([("date_time", -1)]))
     if not records:
         return None, None, None
 
-    # Optional denormalisation pass (e.g. medication names).
+    # Optional denormalisation pass (e.g. medication names, event field
+    # flattening + select-value humanising).
     if spec.enrich is not None:
         for r in records:
             spec.enrich(r, records)
@@ -320,12 +261,12 @@ def _render_export(spec, pet_id, format_type, serializer):
     return serializer(records, spec.fields)
 
 
-def _render_all_types_zip(pet_id, format_type, serializer):
+def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, ExportSpec]):
     """Bundle every type that has records into a single ZIP.
 
     Each entry keeps its own column set, named after the type's title, so
     the archive is the "separate exports" the UI offers — just delivered
-    as one download instead of nine.
+    as one download instead of several.
 
     Returns ``(zip_bytes, included_titles)``; an empty list means the pet
     has no records at all.
@@ -334,7 +275,7 @@ def _render_all_types_zip(pet_id, format_type, serializer):
     included = []
 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for export_type, spec in EXPORT_SPECS.items():
+        for spec in specs.values():
             content, _mimetype, suffix = _render_export(spec, pet_id, format_type, serializer)
             if content is None:
                 # Nothing logged for this type — leave it out rather than
@@ -366,7 +307,9 @@ def export_data(export_type, format_type):
         pet_id = g.pet_id  # Provided by @require_pet_access
         username = g.username  # Provided by @require_pet_access
 
-        if export_type != ALL_TYPES and export_type not in EXPORT_SPECS:
+        specs = _build_export_specs()
+
+        if export_type != ALL_TYPES and export_type not in specs:
             return error_response("export_invalid_type")
 
         serializer = SERIALIZERS.get(format_type)
@@ -374,13 +317,13 @@ def export_data(export_type, format_type):
             return error_response("export_invalid_format")
 
         if export_type == ALL_TYPES:
-            content, included = _render_all_types_zip(pet_id, format_type, serializer)
+            content, included = _render_all_types_zip(pet_id, format_type, serializer, specs)
             if not included:
                 return error_response("no_data_for_export")
             mimetype = "application/zip"
             title, suffix = "все_записи", "zip"
         else:
-            spec = EXPORT_SPECS[export_type]
+            spec = specs[export_type]
             content, mimetype, suffix = _render_export(spec, pet_id, format_type, serializer)
             if content is None:
                 return error_response("no_data_for_export")

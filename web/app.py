@@ -151,14 +151,15 @@ def handle_unexpected_error(e):
 from web.auth import auth_bp, page_login_required  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
-from web.health_records import health_records_bp  # noqa: E402
+from web.events import events_bp  # noqa: E402
 from web.medications import medications_bp  # noqa: E402
 from web.export import export_bp  # noqa: E402
+from web.builtin_event_types import seed_builtin_event_types  # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(pets_bp)
 app.register_blueprint(users_bp)
-app.register_blueprint(health_records_bp)
+app.register_blueprint(events_bp)
 app.register_blueprint(medications_bp)
 app.register_blueprint(export_bp)
 
@@ -166,6 +167,11 @@ app.register_blueprint(export_bp)
 # create_index a no-op when an identical index already exists, so
 # running this at every startup is safe and free.
 ensure_indexes()
+
+# Seed the builtin event types (idempotent — skips any key that already
+# exists, so a user's edits to a builtin type's label/icon/color survive
+# restarts).
+seed_builtin_event_types(db)
 
 # Register API spec after all blueprints are registered
 api.register(app)

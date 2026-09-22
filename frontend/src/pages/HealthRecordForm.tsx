@@ -7,47 +7,61 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Form } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
-import { formConfigs, getFormSettings } from '../utils/formsConfig';
-import type { HealthRecordType } from '../utils/constants';
+import { useEventTypes } from '../hooks/useEventTypes';
+import type { EventType } from '../services/eventTypes.service';
+import { getFormSettings } from '../utils/formsConfig';
+import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { FormField } from '../components/FormField';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
+/** Builds the field list + title for a registered event type. Date, time
+ *  and comment aren't part of `eventType.fields` — every type gets them
+ *  the same way, so they're rendered separately (see below) rather than
+ *  duplicated into every type's own field list. */
+function buildFields(eventType: EventType): FormFieldType[] {
+  return eventType.fields.map((f) => ({
+    name: f.name,
+    type: f.type,
+    label: f.label,
+    required: f.required,
+    options: f.options,
+    id: `${eventType.key}-${f.name}`,
+  }));
+}
+
 export function HealthRecordForm() {
-  const { type, id } = useParams<{ type: HealthRecordType; id?: string }>();
+  const { type, id } = useParams<{ type: string; id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { selectedPetId } = usePet();
   const queryClient = useQueryClient();
-  const config = useMemo(() =>
-    type && type in formConfigs ? formConfigs[type as HealthRecordType] : null
-    , [type]);
+  const { eventTypesByKey, isLoading: eventTypesLoading } = useEventTypes();
 
-  // Create Zod schema dynamically
+  const eventType = type ? eventTypesByKey[type] : undefined;
+  const fields = useMemo(() => (eventType ? buildFields(eventType) : []), [eventType]);
+
+  // Create Zod schema dynamically from the type's own fields, plus the
+  // date/time/comment every event shares.
   const schema = useMemo(() => {
-    // Используем базовое поле, чтобы объект не был пустым (Record<string, never>)
     const baseFields: Record<string, any> = {
-      pet_id: z.string().min(1)
+      pet_id: z.string().min(1),
+      date: z.string().min(1, 'Обязательное поле'),
+      time: z.string().min(1, 'Обязательное поле'),
+      comment: z.string().optional(),
     };
 
-    if (!config) return z.object(baseFields);
-
     return z.object(
-      config.fields.reduce((acc: Record<string, any>, field: any) => {
+      fields.reduce((acc: Record<string, any>, field) => {
         if (field.type === 'number') {
-          // Для обязательных чисел: не разрешаем пустую строку
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
             return val;
-          }, z.coerce.number({
-            error: 'Введите число'
-          }).min(field.min || 0, `Минимум ${field.min || 0}`));
+          }, z.coerce.number({ error: 'Введите число' }).min(field.min || 0, `Минимум ${field.min || 0}`));
 
-          acc[field.name] = field.required
-            ? baseSchema
-            : baseSchema.optional().nullable();
+          acc[field.name] = field.required ? baseSchema : baseSchema.optional().nullable();
         } else {
           acc[field.name] = field.required
             ? z.string().min(1, 'Обязательное поле')
@@ -56,36 +70,29 @@ export function HealthRecordForm() {
         return acc;
       }, baseFields)
     );
-  }, [config]);
+  }, [fields]);
 
-  // Если мы редактируем, нам не нужны дефолтные значения "сейчас", 
-  // иначе может быть скачок данных.
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(isEditing);
 
-  // При редактировании начальные значения помогут react-hook-form инициализировать поля,
-  // а затем они будут обновлены вызовом reset() в useEffect когда данные будут загружены.
   const defaultValues = useMemo(() => {
     const settings = getFormSettings();
     const values: Record<string, any> = {
       date: isEditing ? '' : getCurrentDate(),
       time: isEditing ? '' : getCurrentTime(),
-      pet_id: selectedPetId || ''
+      pet_id: selectedPetId || '',
+      comment: '',
     };
 
-    // Добавляем поля из конфига, чтобы RHF знал о них
-    if (config) {
-      config.fields.forEach(field => {
-        if (field.name === 'date' || field.name === 'time') return;
-        values[field.name] = field.type === 'number' ? undefined : '';
-      });
+    for (const field of fields) {
+      values[field.name] = field.type === 'number' ? undefined : '';
     }
 
-    if (!isEditing && type && type in settings && settings[type as keyof typeof settings]) {
+    if (!isEditing && type && type in settings) {
       Object.assign(values, settings[type as keyof typeof settings]);
     }
     return values;
-  }, [isEditing, type, selectedPetId, config]);
+  }, [isEditing, type, selectedPetId, fields]);
 
   const methods = useForm({
     resolver: zodResolver(schema),
@@ -98,114 +105,49 @@ export function HealthRecordForm() {
     reset
   } = methods;
 
-  if (!type || !config) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p>Неизвестный тип записи или конфигурация отсутствует</p>
-        <Button onClick={() => navigate('/')}>На главную</Button>
-      </div>
-    );
-  }
-
-  // Единая функция нормализации данных
+  // Maps an API record (date_time + nested fields) onto the form's flat
+  // field names — the mirror image of onSubmit's payload building below.
   const normalizeData = useCallback((data: any) => {
-    if (!config) return {};
-
-    console.log('Normalize input data:', data);
-
     const formData: Record<string, any> = {
-      pet_id: data.pet_id || data.petId || selectedPetId || '',
+      pet_id: data.pet_id || selectedPetId || '',
+      comment: data.comment ?? '',
     };
 
-    // Date/Time handling
     if (data.date_time) {
       const parts = String(data.date_time).split(' ');
       formData.date = parts[0] || '';
       formData.time = parts[1] ? String(parts[1]).substring(0, 5) : '';
-    } else if (data.date || data.time) {
+    } else {
       formData.date = data.date ? String(data.date) : '';
       formData.time = data.time ? String(data.time) : '';
-    } else {
-      formData.date = '';
-      formData.time = '';
     }
 
-    // Process only fields defined in form config
-    config.fields.forEach((field: any) => {
-      if (field.name === 'date' || field.name === 'time') return;
-
-      // Robust field searching: exact, then case-insensitive, then ignoring underscores
-      let raw = data[field.name];
-      if (raw === undefined) {
-        const keys = Object.keys(data);
-        const lowerName = field.name.toLowerCase();
-        const simpleName = lowerName.replace(/_/g, '');
-
-        const foundKey = keys.find(k => {
-          const lk = k.toLowerCase();
-          return lk === lowerName || lk.replace(/_/g, '') === simpleName;
-        });
-
-        if (foundKey) {
-          raw = data[foundKey];
-        }
-      }
-
-      // Unwrap objects
-      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-        if (raw.value !== undefined && raw.value !== null) raw = raw.value;
-        else if (raw.id !== undefined && raw.id !== null) raw = raw.id;
-      }
-
-      let finalValue: any = raw ?? '';
-
+    const rawFields = data.fields ?? {};
+    for (const field of fields) {
+      const raw = rawFields[field.name];
       if (field.type === 'select' && field.options) {
-        const norm = String(raw !== undefined && raw !== null ? raw : '').trim().toLowerCase();
-        const optsLower = field.options.map((o: any) => String(o.value).toLowerCase());
-        const isBoolSelect = optsLower.includes('true') && optsLower.includes('false');
-
-        if (isBoolSelect) {
-          const isTrue = [true, 'true', '1', 'yes', 'да'].includes(norm) || raw === true;
-          const isFalse = [false, 'false', '0', 'no', 'нет'].includes(norm) || raw === false;
-          finalValue = isTrue ? 'true' : (isFalse ? 'false' : '');
-        } else if (norm !== '') {
-          const matchingOption = field.options.find((opt: any) => {
-            const optVal = String(opt.value).trim().toLowerCase();
-            const optText = String(opt.text || '').trim().toLowerCase();
-            return optVal === norm || optText === norm;
-          });
-          if (matchingOption) finalValue = String(matchingOption.value);
-          else finalValue = String(raw);
-        } else {
-          finalValue = '';
-        }
+        const norm = raw !== undefined && raw !== null ? String(raw).trim() : '';
+        const match = field.options.find((opt) => String(opt.value) === norm);
+        formData[field.name] = match ? String(match.value) : norm;
       } else if (field.type === 'number') {
-        if (raw !== undefined && raw !== null && raw !== '') {
-          const numValue = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(',', '.'));
-          finalValue = !isNaN(numValue) && isFinite(numValue) ? numValue : '';
-        } else {
-          finalValue = '';
-        }
+        formData[field.name] = raw !== undefined && raw !== null && raw !== '' ? raw : '';
       } else {
-        finalValue = raw !== undefined && raw !== null ? String(raw) : '';
+        formData[field.name] = raw !== undefined && raw !== null ? String(raw) : '';
       }
+    }
 
-      formData[field.name] = finalValue;
-    });
-
-    console.log('Normalize output data:', formData);
     return formData;
-  }, [config, selectedPetId]);
+  }, [fields, selectedPetId]);
 
-  // Initial check for selected pet
   useEffect(() => {
     if (!selectedPetId) {
       navigate('/');
     }
   }, [selectedPetId, navigate]);
 
-  // Эффект загрузки данных при редактировании или сброса для новой записи
   useEffect(() => {
+    if (!eventType) return;
+
     if (isEditing) {
       if (!type) return;
       const loadData = async () => {
@@ -213,14 +155,9 @@ export function HealthRecordForm() {
           let data = location.state?.recordData;
           if (!data) {
             setIsLoading(true);
-            data = await healthRecordsService.get(type as HealthRecordType, id!);
+            data = await healthRecordsService.get(id!);
           }
-          const formData = normalizeData(data);
-          const safeFormData: Record<string, any> = {};
-          Object.keys(formData).forEach(key => {
-            safeFormData[key] = formData[key] ?? '';
-          });
-          reset(safeFormData);
+          reset(normalizeData(data));
         } catch (err) {
           console.error('Error loading record:', err);
           showToast.failure('Ошибка загрузки записи');
@@ -231,31 +168,42 @@ export function HealthRecordForm() {
       };
       loadData();
     } else {
-      // Для новой записи сбрасываем форму в дефолтные значения
       reset(defaultValues);
     }
-  }, [isEditing, type, id, location.state, normalizeData, reset, navigate, defaultValues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, type, id, location.state, normalizeData, reset, navigate, !!eventType]);
 
   const onSubmit = async (data: Record<string, any>) => {
-    if (!selectedPetId || !type) {
-      return;
-    }
+    if (!selectedPetId || !type || !eventType) return;
 
     try {
-      const transformedData = config.transformData({
-        ...data,
-        pet_id: selectedPetId
-      }) as any;
-
-      if (id) {
-        await healthRecordsService.update(type as HealthRecordType, id, transformedData);
-      } else {
-        await healthRecordsService.create(type as HealthRecordType, transformedData);
+      const fieldsPayload: Record<string, any> = {};
+      for (const field of fields) {
+        fieldsPayload[field.name] = data[field.name];
       }
+      const payload = {
+        pet_id: selectedPetId,
+        date: data.date,
+        time: data.time,
+        comment: data.comment || '',
+        fields: fieldsPayload,
+      };
 
-      await queryClient.invalidateQueries({ queryKey: ['history'] });
+      const response = id
+        ? await healthRecordsService.update(id, payload)
+        : await healthRecordsService.create(type, payload);
 
-      showToast.success(id ? config.successMessage(true) : config.successMessage(false), {
+      // Dashboard, History and PetSummaryCard each key their queries
+      // differently ('timeline', 'history-timeline', 'stats', 'pet-summary')
+      // — none of them start with 'history', so a plain
+      // invalidateQueries(['history']) silently matched nothing and every
+      // view kept showing pre-submit data until its own staleTime lapsed.
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+      });
+
+      showToast.success(response.message, {
         afterClose: () => {
           if (id) {
             const activeTab = searchParams.get('tab');
@@ -280,8 +228,17 @@ export function HealthRecordForm() {
     );
   }
 
-  if (isLoading) {
+  if (eventTypesLoading || isLoading) {
     return <LoadingSpinner />;
+  }
+
+  if (!type || !eventType) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <p>Неизвестный тип записи</p>
+        <Button onClick={() => navigate('/')}>На главную</Button>
+      </div>
+    );
   }
 
   return (
@@ -295,7 +252,7 @@ export function HealthRecordForm() {
           minHeight: '40px'
         }}>
           <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {id ? 'Редактировать запись' : config.title}
+            {id ? 'Редактировать запись' : `Записать: ${eventType.label}`}
           </h2>
         </div>
 
@@ -308,13 +265,19 @@ export function HealthRecordForm() {
                 '--prefix-width': '7em'
               } as React.CSSProperties}
             >
-              {config.fields.map((field) => (
+              <FormField field={{ name: 'date', type: 'date', label: 'Дата', required: true, id: 'event-date' }} defaultValue={defaultValues.date} />
+              <FormField field={{ name: 'time', type: 'time', label: 'Время', required: true, id: 'event-time' }} defaultValue={defaultValues.time} />
+              {fields.map((field) => (
                 <FormField
                   key={field.id}
                   field={field}
                   defaultValue={defaultValues[field.name]}
                 />
               ))}
+              <FormField
+                field={{ name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'event-comment' }}
+                defaultValue={defaultValues.comment}
+              />
             </Form>
           </FormProvider>
 

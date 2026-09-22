@@ -75,6 +75,9 @@ def ensure_indexes() -> None:
       medications         pet_id + created_at (medication list for a pet)
       medication_intakes  pet_id + date_time (intakes timeline per pet)
                           medication_id + date_time (last intake / count today)
+      events              pet_id + date_time (timeline per pet)
+                          pet_id + type + date_time (per-type list/chart)
+      event_types         key unique         (registry lookup by type)
       users               username unique (login lookup)
                           role             (admin queries)
       refresh_tokens      jti unique        (RFC 7519 JWT ID; replaces
@@ -102,6 +105,9 @@ def ensure_indexes() -> None:
         (db.medications, [("pet_id", ASCENDING), ("created_at", DESCENDING)], "meds_pet_created"),
         (db.medication_intakes, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "intakes_pet_date"),
         (db.medication_intakes, [("medication_id", ASCENDING), ("date_time", DESCENDING)], "intakes_med_date"),
+        (db.events, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "events_pet_date"),
+        (db.events, [("pet_id", ASCENDING), ("type", ASCENDING), ("date_time", DESCENDING)], "events_pet_type_date"),
+        (db.event_types, [("key", ASCENDING)], "event_types_key_unique", {"unique": True}),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (db.refresh_tokens, [("jti", ASCENDING)], "refresh_token_jti_unique",

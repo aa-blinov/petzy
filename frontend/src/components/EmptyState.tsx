@@ -3,8 +3,7 @@
  *
  * Used by every list/collection view (Pets, History, Medications,
  * AdminPanel users, HistoryChart). Renders a centered icon circle +
- * title + optional description + optional CTA. Animates in with the
- * same motion-enter vocabulary as the rest of the UI.
+ * title + optional description + optional CTA.
  *
  * Use lucide icons. Pass an `onAction` for a CTA; omit it for purely
  * informational states.
@@ -41,7 +40,6 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className="motion-enter"
       style={{
         display: 'flex',
         flexDirection: 'column',

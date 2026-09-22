@@ -189,12 +189,9 @@ export function MedicationsList() {
                         gap: 'var(--spacing-md)',
                         marginTop: 'var(--spacing-sm)',
                     }}>
-                        {medications.map((med, index) => (
-                            <div
-                                key={med._id}
-                                className={`motion-enter motion-stagger-${Math.min(index + 1, 4)}`}
-                            >
+                        {medications.map((med) => (
                             <SwipeableRow
+                                key={med._id}
                                 leftAction={{
                                     icon: <Pencil size={20} strokeWidth={2.4} />,
                                     label: 'Изменить',
@@ -294,7 +291,6 @@ export function MedicationsList() {
                                 </div>
                             </Card>
                             </SwipeableRow>
-                            </div>
                         ))}
                     </div>
                     </PullToRefresh>

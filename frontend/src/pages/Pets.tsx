@@ -132,18 +132,14 @@ export function Pets() {
               gap: 'var(--spacing-md)',
               marginTop: 'var(--spacing-sm)',
             }}>
-              {pets.map((pet, index) => (
-                <div
+              {pets.map((pet) => (
+                <PetCard
                   key={pet._id}
-                  className={`motion-enter motion-stagger-${Math.min(index + 1, 4)}`}
-                >
-                  <PetCard
-                    pet={pet}
-                    onEdit={() => handleEditPet(pet)}
-                    onDelete={() => handleDeleteClick(pet)}
-                    onImageTap={(url) => setImageViewer({ visible: true, image: url })}
-                  />
-                </div>
+                  pet={pet}
+                  onEdit={() => handleEditPet(pet)}
+                  onDelete={() => handleDeleteClick(pet)}
+                  onImageTap={(url) => setImageViewer({ visible: true, image: url })}
+                />
               ))}
             </div>
           </PullToRefresh>
@@ -211,7 +207,7 @@ function PetCard({
     enabled: !!pet._id,
     staleTime: 30_000,
   });
-  const lastWeight = weights.data?.weights?.[0];
+  const lastWeight = weights.data?.items?.[0];
 
   // Swipe left → delete, swipe right → edit. Matches HistoryItem / MedicationsList.
   const leftAction: SwipeAction = {
@@ -324,7 +320,7 @@ function PetCard({
                 {lastWeight && (
                   <span className="chip">
                     <Scale size={14} strokeWidth={2.2} style={{ display: 'block' }} />
-                    {lastWeight.weight} кг
+                    {lastWeight.fields?.weight as number} кг
                   </span>
                 )}
               </>

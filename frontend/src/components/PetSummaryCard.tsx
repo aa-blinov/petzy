@@ -103,8 +103,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
     staleTime: 30_000,
   });
 
-  const lastFeedingDateTime = feedings.data?.feedings?.[0]?.date_time;
-  const lastWeightRecord = weights.data?.weights?.[0];
+  const lastFeedingDateTime = feedings.data?.items?.[0]?.date_time;
+  const lastWeightRecord = weights.data?.items?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
   const SpeciesIcon = speciesIcon(pet.species);
@@ -208,7 +208,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               }}
             >
               <Scale size={13} strokeWidth={2.2} style={{ display: "block" }} />
-              <CountUp to={lastWeightRecord.weight} duration={800} decimals={1} /> кг
+              <CountUp to={lastWeightRecord.fields?.weight as number} duration={800} decimals={1} /> кг
             </span>
           )}
         </div>

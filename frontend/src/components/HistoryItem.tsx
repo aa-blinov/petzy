@@ -4,16 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog } from 'antd-mobile';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { HistoryItem as HistoryItemType, HistoryTypeConfig } from '../utils/historyConfig';
+import type { HistoryItem as HistoryItemType, EventDisplayConfig } from '../utils/eventDisplay';
 import { formatRelativeDateTime } from '../utils/relativeTime';
 import { healthRecordsService } from '../services/healthRecords.service';
-import { pastelColorMap, typeIconMap, type HealthRecordType } from '../utils/constants';
+import { pastelColorMap } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 
 interface HistoryItemProps {
   item: HistoryItemType;
-  config: HistoryTypeConfig;
+  config: EventDisplayConfig;
   type: string;
   activeTab: string;
 }
@@ -23,7 +23,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   const queryClient = useQueryClient();
   const { username: currentUsername } = useAuth();
   const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
-  const PillIcon = typeIconMap[type];
+  const PillIcon = config.icon;
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -41,8 +41,14 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
     if (isDeleting) return;
     setIsDeleting(true);
     try {
-      await healthRecordsService.delete(type as HealthRecordType, item._id);
-      await queryClient.invalidateQueries({ queryKey: ['history'] });
+      await healthRecordsService.delete(item._id);
+      // See HealthRecordForm's onSubmit for why this is a predicate rather
+      // than queryKey: ['history'] — none of these views' query keys start
+      // with 'history', so that form never actually matched anything.
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+      });
 
       // If deleting medication intake, also invalidate medications cache to update intakes_today
       if (type === 'medications') {

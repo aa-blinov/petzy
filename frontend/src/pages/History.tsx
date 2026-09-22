@@ -3,14 +3,14 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { PullToRefresh } from 'antd-mobile';
 import { Download, Notebook } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
-import { historyConfig } from '../utils/historyConfig';
+import { useEventTypes } from '../hooks/useEventTypes';
+import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { HistoryItem } from '../components/HistoryItem';
 import { HistoryChart } from '../components/HistoryChart';
 import { EmptyState } from '../components/EmptyState';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
-import { tilesConfig } from '../utils/tilesConfig';
-import { typeIconMap } from '../utils/constants';
+import { buildTiles } from '../utils/tilesConfig';
 import { healthRecordsService, type TimelineResponse } from '../services/healthRecords.service';
 import { SkeletonList } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
@@ -39,6 +39,8 @@ const FILTER_ALL = 'all';
 export function History() {
     const { selectedPetId } = usePet();
     const { tilesSettings } = usePetTilesSettings(selectedPetId);
+    const { eventTypes } = useEventTypes();
+    const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
     const [filterType, setFilterType] = useState<string>(FILTER_ALL);
     const [exportVisible, setExportVisible] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
@@ -46,7 +48,7 @@ export function History() {
     // Build filter chips from the tiles the user has enabled. "Все" first,
     // then each visible type. Chip = lucide icon + label.
     const filterChips = useMemo(() => {
-        const visibleTiles = tilesConfig
+        const visibleTiles = buildTiles(eventTypes)
             .filter(tile => tilesSettings.visible[tile.id] !== false)
             .sort((a, b) => {
                 const aIndex = tilesSettings.order.indexOf(a.id);
@@ -56,15 +58,15 @@ export function History() {
         return [
             { id: FILTER_ALL, label: 'Все', Icon: null },
             ...visibleTiles.map(tile => {
-                const cfg = historyConfig[tile.id as keyof typeof historyConfig];
+                const cfg = historyConfig[tile.id];
                 return {
                     id: tile.id,
                     label: cfg?.displayName || tile.title,
-                    Icon: typeIconMap[tile.id as keyof typeof typeIconMap] || null,
+                    Icon: cfg?.icon || null,
                 };
             }),
         ];
-    }, [tilesSettings]);
+    }, [tilesSettings, eventTypes, historyConfig]);
 
     // Timeline query — single fetch, single source for the whole feed.
     // The backend's timeline endpoint returns all record types mixed
@@ -153,48 +155,32 @@ export function History() {
 
         return (
             <>
-                {groupedItems.map(([dateStr, itemsForDate], groupIndex) => {
-                    // Stagger by position in the whole list, not within the
-                    // group. Counting per group restarted the delay at every
-                    // date header, so the cascade began again halfway down and
-                    // a one-item group appeared together with the first card of
-                    // the next one. The header counts as a row too — it used to
-                    // pop in instantly while its own cards were still fading.
-                    const offset = groupedItems
-                        .slice(0, groupIndex)
-                        .reduce((n, [, items]) => n + items.length + 1, 0);
-                    const stagger = (position: number) => `motion-stagger-${Math.min(position, 4)}`;
-                    return (
+                {groupedItems.map(([dateStr, itemsForDate]) => (
                     <div key={dateStr} style={{ marginBottom: 'var(--spacing-lg)' }}>
                         <h3
-                            className={`section-header motion-enter ${stagger(offset + 1)}`}
+                            className="section-header"
                             style={{ marginBottom: '10px', paddingLeft: 4 }}
                         >
                             {formatDateHeader(dateStr)}
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {itemsForDate.map((item: any, index: number) => {
+                            {itemsForDate.map((item: any) => {
                                 const type = item.record_type;
-                                const config = historyConfig[type as keyof typeof historyConfig];
+                                const config = historyConfig[type];
                                 if (!config) return null;
                                 return (
-                                    <div
+                                    <HistoryItem
                                         key={item._id}
-                                        className={`motion-enter ${stagger(offset + index + 2)}`}
-                                    >
-                                        <HistoryItem
-                                            item={item}
-                                            config={config}
-                                            type={type}
-                                            activeTab={type}
-                                        />
-                                    </div>
+                                        item={item}
+                                        config={config}
+                                        type={type}
+                                        activeTab={type}
+                                    />
                                 );
                             })}
                         </div>
                     </div>
-                    );
-                })}
+                ))}
 
                 {hasNextPage && (
                     <div style={{

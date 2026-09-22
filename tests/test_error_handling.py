@@ -46,8 +46,8 @@ class TestErrorHandling:
     def test_update_record_invalid_id_format(self, client, mock_db, regular_user_token, test_pet):
         """Test updating record with invalid ID format."""
         response = client.put(
-            "/api/asthma/invalid_id",
-            json={"duration": "10 minutes"},
+            "/api/events/invalid_id",
+            json={"fields": {"duration": "10 minutes"}},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -62,11 +62,11 @@ class TestErrorHandling:
         fake_id = ObjectId()
         now = datetime.now(timezone.utc)
         response = client.put(
-            f"/api/asthma/{fake_id}",
+            f"/api/events/{fake_id}",
             json={
                 "date": now.strftime("%Y-%m-%d"),
                 "time": now.strftime("%H:%M"),
-                "duration": "10 minutes",
+                "fields": {"duration": "10 minutes"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -80,11 +80,11 @@ class TestErrorHandling:
         from web.app import db
 
         # Create record for admin's pet
-        record_id = db["asthma_attacks"].insert_one(
+        record_id = db["events"].insert_one(
             {
                 "pet_id": str(admin_pet["_id"]),
-                "duration": "5 minutes",
-                "reason": "Stress",
+                "type": "asthma",
+                "fields": {"duration": "5 minutes", "reason": "Stress"},
                 "username": "admin",
                 "date_time": datetime.now(timezone.utc),
             }
@@ -92,11 +92,11 @@ class TestErrorHandling:
 
         now = datetime.now(timezone.utc)
         response = client.put(
-            f"/api/asthma/{record_id.inserted_id}",
+            f"/api/events/{record_id.inserted_id}",
             json={
                 "date": now.strftime("%Y-%m-%d"),
                 "time": now.strftime("%H:%M"),
-                "duration": "10 minutes",
+                "fields": {"duration": "10 minutes"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -108,13 +108,13 @@ class TestErrorHandling:
     def test_create_record_invalid_datetime_format(self, client, mock_db, regular_user_token, test_pet):
         """Test creating record with invalid datetime format."""
         response = client.post(
-            "/api/asthma",
+            "/api/events",
             json={
                 "pet_id": str(test_pet["_id"]),
+                "type": "asthma",
                 "date": "invalid-date",
                 "time": "invalid-time",
-                "duration": "5 minutes",
-                "reason": "Stress",
+                "fields": {"duration": "5 minutes", "reason": "Stress"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -128,11 +128,11 @@ class TestErrorHandling:
         # Date and time are required fields in HealthRecordBase schema
         # This test verifies that missing date/time returns validation error
         response = client.post(
-            "/api/asthma",
+            "/api/events",
             json={
                 "pet_id": str(test_pet["_id"]),
-                "duration": "5 minutes",
-                "reason": "Stress",
+                "type": "asthma",
+                "fields": {"duration": "5 minutes", "reason": "Stress"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -179,18 +179,18 @@ class TestErrorHandling:
         from web.app import db
 
         # Add some data
-        db["asthma_attacks"].insert_one(
+        db["events"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
+                "type": "asthma",
                 "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
+                "fields": {"duration": "5 minutes", "reason": "Stress"},
                 "username": "testuser",
             }
         )
 
         # Mock collection.find to raise exception
-        with patch.object(db["asthma_attacks"], "find", side_effect=Exception("Database error")):
+        with patch.object(db["events"], "find", side_effect=Exception("Database error")):
             response = client.get(
                 f"/api/export/asthma/csv?pet_id={test_pet['_id']}",
                 headers={"Authorization": f"Bearer {regular_user_token}"},
@@ -207,15 +207,15 @@ class TestErrorHandling:
         now = datetime.now(timezone.utc)
 
         # Mock database to raise exception
-        with patch.object(db["asthma_attacks"], "insert_one", side_effect=Exception("Database error")):
+        with patch.object(db["events"], "insert_one", side_effect=Exception("Database error")):
             response = client.post(
-                "/api/asthma",
+                "/api/events",
                 json={
                     "pet_id": str(test_pet["_id"]),
+                    "type": "asthma",
                     "date": now.strftime("%Y-%m-%d"),
                     "time": now.strftime("%H:%M"),
-                    "duration": "5 minutes",
-                    "reason": "Stress",
+                    "fields": {"duration": "Короткий", "reason": "Stress", "inhalation": "false"},
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )

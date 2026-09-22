@@ -10,6 +10,8 @@ import jwt
 import pytest
 from mongomock import MongoClient
 
+from web.builtin_event_types import seed_builtin_event_types
+
 # Set test environment variables before importing app
 os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
 os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key"
@@ -54,6 +56,12 @@ def mock_db():
         mock_db["eye_drops"].delete_many({})
         mock_db["ear_cleaning"].delete_many({})
         mock_db["tooth_brushing"].delete_many({})
+        mock_db["events"].delete_many({})
+        mock_db["event_types"].delete_many({})
+
+        # Populate the event-type registry the same way production does at
+        # startup, so every test sees the eight builtin types available.
+        seed_builtin_event_types(mock_db)
 
         # Create default admin user
         admin_password_hash = os.environ["ADMIN_PASSWORD_HASH"]

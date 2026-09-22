@@ -5,7 +5,8 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, FloatingBubble, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 
-import { historyConfig } from '../utils/historyConfig';
+import { buildEventDisplayConfigs } from '../utils/eventDisplay';
+import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService } from '../services/healthRecords.service';
@@ -18,6 +19,8 @@ import { QuickAddSheet } from '../components/QuickAddSheet';
 export function Dashboard() {
   const navigate = useNavigate();
   const { selectedPetId, getSelectedPet } = usePet();
+  const { eventTypes } = useEventTypes();
+  const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
 
@@ -156,7 +159,7 @@ export function Dashboard() {
                     {/* Cards for the day */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {itemsForDate.map((item: any) => {
-                        const config = historyConfig[item.record_type as keyof typeof historyConfig];
+                        const config = historyConfig[item.record_type];
                         if (!config) return null;
                         return (
                           <HistoryItem

@@ -23,6 +23,8 @@ const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })))
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
+const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
+const EventTypeForm = lazy(() => import('./pages/EventTypeForm').then(m => ({ default: m.EventTypeForm })));
 import { MedicationsList } from './pages/MedicationsList';
 const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ default: m.MedicationForm })));
 
@@ -213,6 +215,30 @@ function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <TilesSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/event-types"
+              element={
+                <ProtectedRoute>
+                  <EventTypesSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/event-types/new"
+              element={
+                <ProtectedRoute>
+                  <EventTypeForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/event-types/:key/edit"
+              element={
+                <ProtectedRoute>
+                  <EventTypeForm />
                 </ProtectedRoute>
               }
             />

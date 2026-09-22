@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, PullToRefresh } from 'antd-mobile';
-import { Pencil, Trash2, Users } from 'lucide-react';
+import { Pencil, UserX, UserCheck, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
@@ -28,15 +28,32 @@ export function AdminPanel() {
   });
 
 
-  const deleteUserMutation = useMutation({
+  // The endpoint only ever deactivates (soft delete — `is_active: false`),
+  // never removes the row. Labelling this "Удалить" everywhere used to
+  // promise something that didn't happen, and there was no way back: once
+  // deactivated, a user stayed that way forever with no UI path to
+  // reactivate them. Now both directions are real actions with honest names.
+  const deactivateMutation = useMutation({
     mutationFn: (username: string) => usersService.deleteUser(username),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSuccess('Пользователь успешно удален');
+      setSuccess(data.message);
       setTimeout(() => setSuccess(null), 3000);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error || 'Ошибка при удалении пользователя');
+      setError(err.response?.data?.error || 'Ошибка при деактивации пользователя');
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (username: string) => usersService.updateUser(username, { is_active: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setSuccess('Пользователь активирован');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.error || 'Ошибка при активации пользователя');
     },
   });
 
@@ -48,6 +65,11 @@ export function AdminPanel() {
   const handleDelete = (username: string) => {
     hapticFeedback('medium');
     setDeleteDialog({ visible: true, username });
+  };
+
+  const handleActivate = (username: string) => {
+    hapticFeedback('light');
+    activateMutation.mutate(username);
   };
 
   const handleEdit = (user: User) => {
@@ -166,7 +188,9 @@ export function AdminPanel() {
               gap: 'var(--spacing-md)',
               marginTop: 'var(--spacing-sm)',
             }}>
-              {users.map((user) => (
+              {users.map((user) => {
+                const isInactive = user.is_active === false;
+                return (
                 <SwipeableRow
                   key={user._id}
                   leftAction={{
@@ -175,23 +199,33 @@ export function AdminPanel() {
                     color: 'var(--app-accent)',
                     onTrigger: () => handleEdit(user),
                   }}
-                  rightAction={{
-                    icon: <Trash2 size={20} strokeWidth={2.4} />,
-                    label: 'Удалить',
+                  rightAction={isInactive ? {
+                    icon: <UserCheck size={20} strokeWidth={2.4} />,
+                    label: 'Активировать',
+                    color: 'var(--app-success-color)',
+                    onTrigger: () => handleActivate(user.username),
+                  } : {
+                    icon: <UserX size={20} strokeWidth={2.4} />,
+                    label: 'Деактивировать',
                     color: 'var(--app-danger-color)',
                     onTrigger: () => handleDelete(user.username),
                   }}
-                  disabled={deleteUserMutation.isPending}
+                  disabled={deactivateMutation.isPending || activateMutation.isPending}
                 >
-                {/* Editing and deleting are swipe actions. No .tap-ripple
-                    here on purpose: the row has no tap action, so a press
-                    animation would promise something that never happens. */}
+                {/* Editing and deactivating/activating are swipe actions.
+                    No .tap-ripple here on purpose: the row has no tap
+                    action, so a press animation would promise something
+                    that never happens. */}
                 <div
                   className="card-soft card-soft--interactive"
                   style={{ padding: 16 }}
                 >
                   <div style={{
                     marginBottom: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
                   }}>
                     <span style={{
                       fontWeight: 600,
@@ -201,6 +235,14 @@ export function AdminPanel() {
                     }}>
                       {user.username}
                     </span>
+                    {isInactive && (
+                      <span
+                        className="chip"
+                        style={{ background: 'var(--app-danger-soft, rgba(255,69,58,0.1))', color: 'var(--app-danger-color)' }}
+                      >
+                        Деактивирован
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {user.full_name && (
@@ -222,7 +264,8 @@ export function AdminPanel() {
                   </div>
                 </div>
                 </SwipeableRow>
-              ))}
+                );
+              })}
             </div>
           </PullToRefresh>
         )}
@@ -230,18 +273,20 @@ export function AdminPanel() {
 
       <Dialog
         visible={deleteDialog.visible}
-        title="Удаление пользователя"
-        content={deleteDialog.username ? `Вы уверены, что хотите удалить пользователя "${deleteDialog.username}"?` : ''}
+        title="Деактивация пользователя"
+        content={deleteDialog.username
+          ? `Пользователь "${deleteDialog.username}" потеряет доступ к аккаунту. Его можно будет активировать обратно в любой момент.`
+          : ''}
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, username: null })}
         actions={[
           {
             key: 'delete',
-            text: 'Удалить',
+            text: 'Деактивировать',
             danger: true,
             onClick: () => {
               if (deleteDialog.username) {
-                deleteUserMutation.mutate(deleteDialog.username);
+                deactivateMutation.mutate(deleteDialog.username);
               }
               setDeleteDialog(prev => ({ ...prev, visible: false }));
             },

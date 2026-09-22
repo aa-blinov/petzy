@@ -30,38 +30,13 @@ MESSAGES: Dict[str, MessageDef] = {
     "user_updated": MessageDef("Пользователь обновлен"),
     "user_deactivated": MessageDef("Пользователь деактивирован"),
     "user_password_reset": MessageDef("Пароль изменен"),
-    # Health records - Asthma
-    "asthma_created": MessageDef("Приступ астмы записан"),
-    "asthma_updated": MessageDef("Приступ астмы обновлен"),
-    "asthma_deleted": MessageDef("Приступ астмы удален"),
-    # Health records - Defecation
-    "defecation_created": MessageDef("Дефекация записана"),
-    "defecation_updated": MessageDef("Дефекация обновлена"),
-    "defecation_deleted": MessageDef("Дефекация удалена"),
-    # Health records - Litter
-    "litter_created": MessageDef("Смена лотка записана"),
-    "litter_updated": MessageDef("Смена лотка обновлена"),
-    "litter_deleted": MessageDef("Смена лотка удалена"),
-    # Health records - Weight
-    "weight_created": MessageDef("Вес записан"),
-    "weight_updated": MessageDef("Вес обновлен"),
-    "weight_deleted": MessageDef("Вес удален"),
-    # Health records - Feeding
-    "feeding_created": MessageDef("Дневная порция записана"),
-    "feeding_updated": MessageDef("Дневная порция обновлена"),
-    "feeding_deleted": MessageDef("Дневная порция удалена"),
-    # Health records - Eye Drops
-    "eye_drops_created": MessageDef("Запись о каплях создана"),
-    "eye_drops_updated": MessageDef("Запись о каплях обновлена"),
-    "eye_drops_deleted": MessageDef("Запись о каплях удалена"),
-    # Health records - Tooth Brushing
-    "tooth_brushing_created": MessageDef("Запись о чистке зубов создана"),
-    "tooth_brushing_updated": MessageDef("Запись о чистке зубов обновлена"),
-    "tooth_brushing_deleted": MessageDef("Запись о чистке зубов удалена"),
-    # Health records - Ear Cleaning
-    "ear_cleaning_created": MessageDef("Запись о чистке ушей создана"),
-    "ear_cleaning_updated": MessageDef("Запись о чистке ушей обновлена"),
-    "ear_cleaning_deleted": MessageDef("Запись о чистке ушей удалена"),
+    # Events (generic engine — one message per action, parametrized by the
+    # event type's own label, since "запись" is feminine regardless of what
+    # kind of event it is).
+    "event_created": MessageDef("Запись «{label}» добавлена"),
+    "event_updated": MessageDef("Запись «{label}» обновлена"),
+    "event_deleted": MessageDef("Запись «{label}» удалена"),
+    "event_type_deleted": MessageDef("Тип события удалён"),
 }
 
 

@@ -1,157 +1,169 @@
-"""Tests for data export endpoints."""
+"""Tests for data export endpoints.
 
-import pytest
-from datetime import datetime
+Export specs are now built from the ``event_types`` registry at request
+time (see ``web/export.py::_build_export_specs``), so these tests exercise
+that dynamic path against the ``events`` collection instead of one
+hand-rolled collection per type.
+"""
+
 import csv
 import io
+import zipfile
+from datetime import datetime
+
+import pytest
+
+
+def _insert_event(db, pet_id, event_type, when, fields=None, comment="Test", username="testuser"):
+    doc = {
+        "pet_id": pet_id,
+        "type": event_type,
+        "date_time": when,
+        "fields": fields or {},
+        "comment": comment,
+        "username": username,
+    }
+    db["events"].insert_one(doc)
+    return doc
 
 
 @pytest.mark.health
 class TestDataExport:
     """Test data export endpoints."""
 
-    def test_export_asthma_csv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting asthma attacks as CSV."""
-        # Add some asthma attacks
-        from web.app import db
-
-        db["asthma_attacks"].insert_many(
-            [
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 15, 14, 30),
-                    "duration": "5 minutes",
-                    "reason": "Stress",
-                    "inhalation": True,
-                    "comment": "Attack 1",
-                    "username": "testuser",
-                },
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 16, 10, 0),
-                    "duration": "3 minutes",
-                    "reason": "Exercise",
-                    "inhalation": False,
-                    "comment": "Attack 2",
-                    "username": "testuser",
-                },
-            ]
-        )
+    @pytest.mark.parametrize(
+        "event_type,fields,expected_header",
+        [
+            ("asthma", {"duration": "5 минут", "reason": "Стресс", "inhalation": "true"}, "Ингаляция"),
+            ("defecation", {"stool_type": "Обычный", "color": "Коричневый"}, "Тип стула"),
+            ("litter", {}, "Комментарий"),
+            ("weight", {"weight": 4.5}, "Вес (кг)"),
+            ("feeding", {"food_weight": 100}, "Вес корма"),
+            ("eye_drops", {"drops_type": "Обычные"}, "Тип капель"),
+            ("tooth_brushing", {"brushing_type": "Щетка"}, "Способ чистки"),
+            ("ear_cleaning", {"cleaning_type": "Капли"}, "Способ чистки"),
+        ],
+    )
+    def test_export_builtin_type_csv(
+        self, client, mock_db, regular_user_token, test_pet, event_type, fields, expected_header
+    ):
+        """Every builtin event type exports as CSV with its own field columns."""
+        _insert_event(mock_db, str(test_pet["_id"]), event_type, datetime(2024, 1, 15, 14, 30), fields)
 
         response = client.get(
-            f"/api/export/asthma/csv?pet_id={test_pet['_id']}",
+            f"/api/export/{event_type}/csv?pet_id={test_pet['_id']}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
         assert response.content_type == "text/csv"
-        assert "attachment" in response.headers.get("Content-Disposition", "")
-
-        # Verify CSV content
         content = response.data.decode("utf-8-sig")
         reader = csv.reader(io.StringIO(content))
         rows = list(reader)
-        assert len(rows) == 3  # Header + 2 data rows
+        assert len(rows) == 2  # header + 1 row
         assert "Дата и время" in rows[0]
         assert "Пользователь" in rows[0]
+        assert expected_header in rows[0]
 
-    def test_export_defecation_tsv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting defecations as TSV."""
-        from web.app import db
-
-        db["defecations"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "stool_type": "Normal",
-                "color": "Brown",
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
+    @pytest.mark.parametrize("format_type,content_type", [
+        ("tsv", "text/tab-separated-values"),
+        ("html", "text/html"),
+        ("md", "text/markdown"),
+    ])
+    def test_export_other_formats(self, client, mock_db, regular_user_token, test_pet, format_type, content_type):
+        """The other three formats also work for an events-backed type."""
+        _insert_event(
+            mock_db, str(test_pet["_id"]), "defecation", datetime(2024, 1, 15, 14, 30),
+            {"stool_type": "Обычный", "color": "Коричневый"},
         )
 
         response = client.get(
-            f"/api/export/defecation/tsv?pet_id={test_pet['_id']}",
+            f"/api/export/defecation/{format_type}?pet_id={test_pet['_id']}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
-        assert response.content_type == "text/tab-separated-values"
-        # Verify username column is present
+        assert response.content_type == content_type
         content = response.data.decode("utf-8")
         assert "Пользователь" in content
+        assert "Дефекация" in content or format_type == "tsv"  # tsv has no title line
 
-    def test_export_weight_html(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting weights as HTML."""
-        from web.app import db
-
-        db["weights"].insert_one(
+    def test_export_medications_csv(self, client, mock_db, regular_user_token, test_pet):
+        """Medications keep their own static export spec, unaffected by the registry."""
+        med = mock_db["medications"].insert_one(
+            {"pet_id": str(test_pet["_id"]), "name": "Vitamin C", "username": "testuser"}
+        )
+        mock_db["medication_intakes"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
+                "medication_id": str(med.inserted_id),
                 "date_time": datetime(2024, 1, 15, 14, 30),
-                "weight": "4.5",
-                "food": "Dry food",
+                "dose_taken": "1 таблетка",
                 "comment": "Test",
                 "username": "testuser",
             }
         )
 
         response = client.get(
-            f"/api/export/weight/html?pet_id={test_pet['_id']}",
+            f"/api/export/medications/csv?pet_id={test_pet['_id']}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
-        assert response.content_type == "text/html"
-        assert b"<html" in response.data
-        assert "Вес".encode("utf-8") in response.data
-        assert "Пользователь".encode("utf-8") in response.data
+        content = response.data.decode("utf-8-sig")
+        assert "Vitamin C" in content
 
-    def test_export_litter_markdown(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting litter changes as Markdown."""
-        from web.app import db
-
-        db["litter_changes"].insert_one(
+    def test_export_all_types_zip(self, client, mock_db, regular_user_token, test_pet):
+        """'all' bundles every type that has records into one ZIP, medications included."""
+        pet_id = str(test_pet["_id"])
+        _insert_event(mock_db, pet_id, "weight", datetime(2024, 1, 15, 14, 30), {"weight": 4.5})
+        _insert_event(mock_db, pet_id, "feeding", datetime(2024, 1, 15, 8, 0), {"food_weight": 100})
+        med = mock_db["medications"].insert_one({"pet_id": pet_id, "name": "Vitamin C", "username": "testuser"})
+        mock_db["medication_intakes"].insert_one(
             {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "comment": "Test change",
-                "username": "testuser",
+                "pet_id": pet_id, "medication_id": str(med.inserted_id),
+                "date_time": datetime(2024, 1, 15, 9, 0), "dose_taken": "1", "username": "testuser",
             }
         )
 
         response = client.get(
-            f"/api/export/litter/md?pet_id={test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/markdown"
-        assert b"# " in response.data
-        assert "Смена лотка".encode("utf-8") in response.data
-        assert "Пользователь".encode("utf-8") in response.data
-
-    def test_export_feeding_csv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting feedings as CSV."""
-        from web.app import db
-
-        db["feedings"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 8, 0),
-                "food_weight": "100",
-                "comment": "Morning feeding",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/feeding/csv?pet_id={test_pet['_id']}",
+            f"/api/export/all/csv?pet_id={pet_id}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
-        assert response.content_type == "text/csv"
+        assert response.content_type == "application/zip"
+        archive = zipfile.ZipFile(io.BytesIO(response.data))
+        names = archive.namelist()
+        # Only types with data are included — asthma etc. have none.
+        assert any("вес" in n for n in names)
+        assert any("порц" in n for n in names)
+        assert any("препарат" in n for n in names)
+        assert not any("астма" in n for n in names)
+
+    def test_export_custom_type(self, client, mock_db, regular_user_token, test_pet):
+        """A user-created event type is exportable immediately — no code change needed."""
+        create = client.post(
+            "/api/event-types",
+            json={
+                "label": "Игра", "icon": "paw", "color": "blue",
+                "fields": [{"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}],
+                "chart": {"kind": "count"},
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        key = create.get_json()["key"]
+        _insert_event(mock_db, str(test_pet["_id"]), key, datetime(2024, 1, 15, 14, 30), {"duration_min": 15})
+
+        response = client.get(
+            f"/api/export/{key}/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        content = response.data.decode("utf-8-sig")
+        assert "Длительность (мин)" in content
+        assert "15.0" in content or "15" in content
 
     def test_export_requires_pet_id(self, client, regular_user_token):
         """Test that export requires pet_id."""
@@ -174,20 +186,7 @@ class TestDataExport:
 
     def test_export_invalid_format(self, client, mock_db, regular_user_token, test_pet):
         """Test export with invalid format type."""
-        # Add some data first
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
-                "inhalation": True,
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
+        _insert_event(mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30))
 
         response = client.get(
             f"/api/export/asthma/invalid?pet_id={test_pet['_id']}",
@@ -222,18 +221,9 @@ class TestDataExport:
 
     def test_export_csv_encoding(self, client, mock_db, regular_user_token, test_pet):
         """Test CSV export has proper encoding (UTF-8 with BOM for Excel)."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 минут",
-                "reason": "Стресс",
-                "inhalation": True,
-                "comment": "Тест",
-                "username": "testuser",
-            }
+        _insert_event(
+            mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30),
+            {"duration": "5 минут", "reason": "Стресс"}, comment="Тест",
         )
 
         response = client.get(
@@ -242,373 +232,13 @@ class TestDataExport:
         )
 
         assert response.status_code == 200
-        # Check for BOM (UTF-8 signature)
         assert response.data.startswith(b"\xef\xbb\xbf") or response.data.startswith(b"\xff\xfe")
 
-    def test_export_asthma_tsv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting asthma attacks as TSV."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
-                "inhalation": True,
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/asthma/tsv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/tab-separated-values"
-        content = response.data.decode("utf-8")
-        assert "Пользователь" in content
-        assert "testuser" in content
-
-    def test_export_asthma_html(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting asthma attacks as HTML."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
-                "inhalation": True,
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/asthma/html?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/html"
-        assert b"<html" in response.data
-        assert "Приступы астмы".encode("utf-8") in response.data
-
-    def test_export_asthma_markdown(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting asthma attacks as Markdown."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
-                "inhalation": True,
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/asthma/md?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/markdown"
-        assert b"# " in response.data
-        assert "Приступы астмы".encode("utf-8") in response.data
-
-    def test_export_defecation_csv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting defecations as CSV."""
-        from web.app import db
-
-        db["defecations"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "stool_type": "Normal",
-                "color": "Brown",
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/defecation/csv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/csv"
-
-    def test_export_defecation_html(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting defecations as HTML."""
-        from web.app import db
-
-        db["defecations"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "stool_type": "Normal",
-                "color": "Brown",
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/defecation/html?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/html"
-        assert b"<html" in response.data
-
-    def test_export_defecation_markdown(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting defecations as Markdown."""
-        from web.app import db
-
-        db["defecations"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "stool_type": "Normal",
-                "color": "Brown",
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/defecation/md?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/markdown"
-
-    def test_export_litter_csv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting litter changes as CSV."""
-        from web.app import db
-
-        db["litter_changes"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "comment": "Test change",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/litter/csv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/csv"
-
-    def test_export_litter_tsv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting litter changes as TSV."""
-        from web.app import db
-
-        db["litter_changes"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "comment": "Test change",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/litter/tsv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/tab-separated-values"
-
-    def test_export_litter_html(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting litter changes as HTML."""
-        from web.app import db
-
-        db["litter_changes"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "comment": "Test change",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/litter/html?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/html"
-
-    def test_export_weight_csv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting weights as CSV."""
-        from web.app import db
-
-        db["weights"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "weight": 4.5,
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/weight/csv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/csv"
-
-    def test_export_weight_tsv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting weights as TSV."""
-        from web.app import db
-
-        db["weights"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "weight": 4.5,
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/weight/tsv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/tab-separated-values"
-
-    def test_export_weight_markdown(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting weights as Markdown."""
-        from web.app import db
-
-        db["weights"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "weight": 4.5,
-                "food": "Dry food",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/weight/md?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/markdown"
-
-    def test_export_feeding_tsv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting feedings as TSV."""
-        from web.app import db
-
-        db["feedings"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 8, 0),
-                "food_weight": 100,
-                "comment": "Morning feeding",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/feeding/tsv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/tab-separated-values"
-
-    def test_export_feeding_html(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting feedings as HTML."""
-        from web.app import db
-
-        db["feedings"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 8, 0),
-                "food_weight": 100,
-                "comment": "Morning feeding",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/feeding/html?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/html"
-
-    def test_export_feeding_markdown(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting feedings as Markdown."""
-        from web.app import db
-
-        db["feedings"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 8, 0),
-                "food_weight": 100,
-                "comment": "Morning feeding",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/feeding/md?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/markdown"
-
     def test_export_handles_empty_values(self, client, mock_db, regular_user_token, test_pet):
-        """Test export handles empty comments and food values."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
-                "inhalation": True,
-                "comment": "",  # Empty comment
-                "username": "testuser",
-            }
+        """Test export handles empty comments correctly."""
+        _insert_event(
+            mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30),
+            {"duration": "5 minutes", "reason": "Stress"}, comment="",
         )
 
         response = client.get(
@@ -618,20 +248,16 @@ class TestDataExport:
 
         assert response.status_code == 200
         content = response.data.decode("utf-8-sig")
-        # Empty comment should be replaced with "-"
         assert "-" in content
 
     def test_export_handles_missing_username(self, client, mock_db, regular_user_token, test_pet):
         """Test export handles records without username (old records)."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_one(
+        mock_db["events"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
+                "type": "asthma",
                 "date_time": datetime(2024, 1, 15, 14, 30),
-                "duration": "5 minutes",
-                "reason": "Stress",
-                "inhalation": True,
+                "fields": {"duration": "5 minutes", "reason": "Stress"},
                 "comment": "Test",
                 # No username field
             }
@@ -644,43 +270,14 @@ class TestDataExport:
 
         assert response.status_code == 200
         content = response.data.decode("utf-8-sig")
-        # Missing username should be replaced with "-"
         assert "-" in content
 
-    def test_export_handles_boolean_inhalation(self, client, mock_db, regular_user_token, test_pet):
-        """Test export handles boolean inhalation values correctly."""
-        from web.app import db
-
-        db["asthma_attacks"].insert_many(
-            [
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 15, 14, 30),
-                    "duration": "5 minutes",
-                    "reason": "Stress",
-                    "inhalation": True,
-                    "comment": "Test 1",
-                    "username": "testuser",
-                },
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 16, 10, 0),
-                    "duration": "3 minutes",
-                    "reason": "Exercise",
-                    "inhalation": False,
-                    "comment": "Test 2",
-                    "username": "testuser",
-                },
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 17, 12, 0),
-                    "duration": "2 minutes",
-                    "reason": "Other",
-                    # No inhalation field
-                    "comment": "Test 3",
-                    "username": "testuser",
-                },
-            ]
+    def test_export_humanizes_select_values(self, client, mock_db, regular_user_token, test_pet):
+        """A select field's stored value (e.g. inhalation='true') is shown by
+        its display text ('Да'), not the raw stored value."""
+        _insert_event(
+            mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30),
+            {"duration": "5 minutes", "reason": "Stress", "inhalation": "true"},
         )
 
         response = client.get(
@@ -690,23 +287,15 @@ class TestDataExport:
 
         assert response.status_code == 200
         content = response.data.decode("utf-8-sig")
-        # True should be "Да", False should be "Нет", missing should be "-"
-        assert "Да" in content or "Нет" in content or "-" in content
+        assert "Да" in content
+        assert "true" not in content
 
     def test_export_handles_special_characters(self, client, mock_db, regular_user_token, test_pet):
         """Test export handles special characters in data."""
-        from web.app import db
-
-        db["defecations"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "stool_type": "Normal",
-                "color": "Brown",
-                "food": "Food with | pipe & < > symbols",
-                "comment": "Comment with <script>alert('xss')</script>",
-                "username": "testuser",
-            }
+        _insert_event(
+            mock_db, str(test_pet["_id"]), "defecation", datetime(2024, 1, 15, 14, 30),
+            {"stool_type": "Normal", "food": "Food with | pipe & < > symbols"},
+            comment="Comment with <script>alert('xss')</script>",
         )
 
         response = client.get(
@@ -716,24 +305,14 @@ class TestDataExport:
 
         assert response.status_code == 200
         content = response.data.decode("utf-8")
-        # HTML should escape special characters
         assert "&lt;" in content or "&gt;" in content
-        # But should not contain raw script tags
         assert "<script>" not in content
 
     def test_export_markdown_escapes_pipes(self, client, mock_db, regular_user_token, test_pet):
         """Test Markdown export escapes pipe characters."""
-        from web.app import db
-
-        db["weights"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "weight": 4.5,
-                "food": "Food | with | pipes",
-                "comment": "Test",
-                "username": "testuser",
-            }
+        _insert_event(
+            mock_db, str(test_pet["_id"]), "weight", datetime(2024, 1, 15, 14, 30),
+            {"weight": 4.5, "food": "Food | with | pipes"},
         )
 
         response = client.get(
@@ -743,122 +322,4 @@ class TestDataExport:
 
         assert response.status_code == 200
         content = response.data.decode("utf-8")
-        # Pipes should be escaped in markdown
         assert "\\|" in content
-
-    def test_export_tooth_brushing_csv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting tooth brushing records as CSV."""
-        from web.app import db
-
-        db["tooth_brushing"].insert_many(
-            [
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 15, 14, 30),
-                    "brushing_type": "Щетка",
-                    "comment": "Morning brushing",
-                    "username": "testuser",
-                },
-                {
-                    "pet_id": str(test_pet["_id"]),
-                    "date_time": datetime(2024, 1, 16, 20, 0),
-                    "brushing_type": "Марля",
-                    "comment": "Evening brushing",
-                    "username": "testuser",
-                },
-            ]
-        )
-
-        response = client.get(
-            f"/api/export/tooth_brushing/csv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/csv"
-        assert "attachment" in response.headers.get("Content-Disposition", "")
-
-        # Verify CSV content
-        content = response.data.decode("utf-8-sig")
-        reader = csv.reader(io.StringIO(content))
-        rows = list(reader)
-        assert len(rows) == 3  # Header + 2 data rows
-        assert "Дата и время" in rows[0]
-        assert "Пользователь" in rows[0]
-        assert "Способ чистки" in rows[0]
-        assert "Комментарий" in rows[0]
-
-    def test_export_tooth_brushing_tsv(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting tooth brushing records as TSV."""
-        from web.app import db
-
-        db["tooth_brushing"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "brushing_type": "Щетка",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/tooth_brushing/tsv?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/tab-separated-values"
-        content = response.data.decode("utf-8")
-        assert "Пользователь" in content
-        assert "Способ чистки" in content
-
-    def test_export_tooth_brushing_html(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting tooth brushing records as HTML."""
-        from web.app import db
-
-        db["tooth_brushing"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "brushing_type": "Щетка",
-                "comment": "Test",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/tooth_brushing/html?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/html"
-        assert b"<html" in response.data
-        assert "Чистка зубов".encode("utf-8") in response.data
-        assert "Пользователь".encode("utf-8") in response.data
-
-    def test_export_tooth_brushing_markdown(self, client, mock_db, regular_user_token, test_pet):
-        """Test exporting tooth brushing records as Markdown."""
-        from web.app import db
-
-        db["tooth_brushing"].insert_one(
-            {
-                "pet_id": str(test_pet["_id"]),
-                "date_time": datetime(2024, 1, 15, 14, 30),
-                "brushing_type": "Марля",
-                "comment": "Test change",
-                "username": "testuser",
-            }
-        )
-
-        response = client.get(
-            f"/api/export/tooth_brushing/md?pet_id={test_pet['_id']}",
-            headers={"Authorization": f"Bearer {regular_user_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.content_type == "text/markdown"
-        assert b"# " in response.data
-        assert "Чистка зубов".encode("utf-8") in response.data
-        assert "Пользователь".encode("utf-8") in response.data
