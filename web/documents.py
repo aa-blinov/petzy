@@ -68,19 +68,18 @@ def _serialize_document(doc: dict) -> dict:
 def create_document():
     """Attach a new document (image or PDF) to a pet.
 
-    Always multipart/form-data — a file is mandatory, unlike pet
-    creation where a photo is optional. Mirrors the multipart branch of
-    ``pets.create_pet``: ``@api.validate`` has already checked the text
-    form fields against ``DocumentCreate``, ``validate_request_data`` is
-    called again purely to get the parsed model back (same two-step
-    dance ``create_pet`` uses, kept for consistency rather than relying
-    on ``request.context.body`` directly).
+    Request must be ``multipart/form-data`` with the ``DocumentCreate``
+    fields (``pet_id``, ``category``, ``title``, optional ``note``) as
+    form fields and the file itself under the ``file`` field — unlike
+    pet creation, the file is mandatory here, not optional.
     """
     try:
-        # @api.validate(body=Request(DocumentCreate)) already aborted the
-        # request with its own validation error if the form fields were
-        # invalid, so the error branch here is unreachable — same as
-        # pets.create_pet's identical multipart re-parse.
+        # @api.validate(body=Request(DocumentCreate)) already parsed and
+        # validated the form fields (aborting with its own error response
+        # if they were invalid), so this call only re-parses to get the
+        # model back — same two-step dance pets.create_pet's identical
+        # multipart route uses, rather than relying on the private
+        # request.context.body attribute directly.
         data, _ = validate_request_data(request, DocumentCreate, context="document creation")
 
         username = request.current_user
@@ -199,8 +198,10 @@ def get_document(id):
 )
 @require_record_access("documents")
 def update_document(id):
-    """Update a document's metadata (category/title/note). The file itself
-    is immutable in v1 — delete and re-upload to replace it."""
+    """Update a document's metadata (category/title/note).
+
+    The file itself is immutable in v1 — delete and re-upload to replace it.
+    """
     try:
         document = g.record
         data = request.context.body  # type: ignore[attr-defined]

@@ -159,9 +159,12 @@ def update_event_type(key):
 )
 @login_required
 def delete_event_type(key):
-    """Delete a custom event type. Builtin types can't be deleted, and a
-    custom type with existing events can't either — its history would
-    otherwise lose its field labels and rendering."""
+    """Delete a custom event type.
+
+    Builtin types can't be deleted, and a custom type with existing events
+    can't either — its history would otherwise lose its field labels and
+    rendering.
+    """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
 
