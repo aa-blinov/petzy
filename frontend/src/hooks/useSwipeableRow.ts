@@ -91,13 +91,6 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
     startYRef.current = e.clientY;
     startTimeRef.current = Date.now();
     lockedRef.current = null;
-    // Keep receiving moves even if the cursor leaves the row mid-drag —
-    // with a mouse that happens constantly near the edges.
-    try {
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    } catch {
-      /* capture unsupported or pointer already gone — tracking still works */
-    }
   }, [disabled]);
 
   const onPointerMove = useCallback((e: ReactPointerEvent) => {
@@ -119,6 +112,15 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
         // Cancel the text selection a horizontal mouse drag would
         // otherwise start; touch is already handled by touch-action.
         e.preventDefault();
+        // Capture only once this is confirmed to be a horizontal drag —
+        // capturing unconditionally on pointerdown retargeted the
+        // eventual click event to this element for every plain tap too,
+        // so a row's own onClick (e.g. "tap to open") never fired.
+        try {
+          (e.currentTarget as Element).setPointerCapture(e.pointerId);
+        } catch {
+          /* capture unsupported or pointer already gone — tracking still works */
+        }
       } else {
         // Vertical — let the parent handle scroll and bail out.
         return;

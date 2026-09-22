@@ -66,7 +66,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
           Что записать?
         </h3>
 
-        <Grid columns={2} gap={12}>
+        <Grid columns={2} gap={10}>
           {tiles.map(tile => {
             const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
             const Icon = displayConfigs[tile.id]?.icon;
@@ -81,12 +81,11 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                   }}
                   style={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: '8px',
-                    padding: '14px',
-                    height: '100px',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px',
+                    height: '56px',
                     width: '100%',
                     background: bg,
                     border: 'none',
@@ -101,17 +100,20 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                 >
                   {Icon && (
                     <Icon
-                      size={24}
+                      size={20}
                       strokeWidth={2}
-                      style={{ display: 'block', color: 'var(--app-text-on-tile)' }}
+                      style={{ display: 'block', flexShrink: 0, color: 'var(--app-text-on-tile)' }}
                     />
                   )}
                   <span
                     style={{
-                      fontSize: '14px',
+                      fontSize: '13px',
                       fontWeight: 600,
                       lineHeight: 1.25,
                       letterSpacing: '-0.01em',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {tile.title}

@@ -304,6 +304,15 @@
     background-color: var(--app-card-background) !important;
 }
 
+/* CapsuleTabs (the History chart's date-range switcher) hardcodes a
+   20px pill radius in its own CSS, not a CSS variable — the app's
+   other segmented controls (view-mode toggle, category filter) use
+   the shared radius scale instead of a full pill, so this one stood
+   out. */
+.adm-capsule-tabs-tab {
+    border-radius: var(--radius-md);
+}
+
 /* antd-mobile wraps every Form.Item in an .adm-list-item, which paints
    `#ffffff` via `--adm-color-background`. Against a warm off-white card
    this reads as two stark horizontal bands. Drop the white fill and
@@ -611,6 +620,14 @@ body {
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
+    /* One blanket rule instead of the growing pile of one-off
+       `-webkit-tap-highlight-color: transparent` declarations scattered
+       across this file (buttons, tab-bar items, setting rows, filter
+       chips, …) — every new tappable element (the SearchBar input, a
+       plain Card used as a button, …) inherited WebKit's default gray/blue
+       flash until someone noticed and patched that one selector. This
+       covers all of them, present and future, at the source. */
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Outfit is a clean display font — apply it to all text nodes by default.
@@ -1007,21 +1024,9 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    Lightweight Animations (GPU-accelerated)
    ======================================== */
 
-/* Keyframes — three primitives cover every entrance. They all share
+/* Keyframes — these primitives cover every entrance. They all share
    the same duration token via var(--motion-duration-base) so a
    global "speed up the UI" change in :root moves them together. */
-@keyframes motion-appear {
-    from {
-        opacity: 0;
-        transform: translateY(6px) translateZ(0);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) translateZ(0);
-    }
-}
-
 @keyframes motion-scale-in {
     from {
         opacity: 0;
@@ -1067,9 +1072,15 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    skeletons) used to fade+slide in with `.motion-enter`/`.motion-stagger-*`
    on every mount — removed: it fired on every navigation and every
    list refresh, which read as the whole screen re-appearing rather than
-   just updating. The only entrance motion left is the route transition
-   itself (see below) and antd's own `.adm-card`/`.adm-form` animation.
-   Plus a shared `prefers-reduced-motion` override below.
+   just updating. `.adm-card`/`.adm-list-card`/`.adm-form` used to carry
+   their own `motion-appear` entrance for the same "every screen gets a
+   consistent arrival" reason — removed too: any screen whose cards can
+   remount without a full navigation (a live search re-filtering the
+   list, for one) replayed it on every keystroke, on top of the route
+   slide that had already played. One motion per navigation, from
+   RouteTransition alone, covers "the screen arrived"; nothing here
+   should re-announce it. Plus a shared `prefers-reduced-motion`
+   override below.
    ============================================================ */
 
 .motion-scale-in {
@@ -1078,20 +1089,6 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 
 .motion-press:active {
     animation: motion-press var(--motion-duration-instant) var(--motion-ease-standard);
-}
-
-/* Card and form animations — applied at the .adm-card / .adm-form
-   level so every screen automatically gets the same entrance.
-   Drawn from the same --motion-duration-base token so changing it
-   in :root updates cards, forms, lists, and route transitions
-   together. */
-.adm-card,
-.adm-list-card {
-    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
-}
-
-.adm-form {
-    animation: motion-appear var(--motion-duration-base) var(--motion-ease-decelerate) both;
 }
 
 /* Popups and dialogs are deliberately NOT animated here.
@@ -1203,6 +1200,32 @@ textarea:focus-visible,
        transparent and borderless, so the radius only shapes the ring
        and matches the app's rounded language. */
     border-radius: var(--radius-sm);
+}
+
+/* SearchBar is the one antd-mobile field with its own baked-in focus
+   indicator: library CSS turns .adm-search-bar-input-box's border the
+   same copper as --app-primary-color the moment its input is focused
+   (.adm-search-bar-active) — one clean ring around the whole pill,
+   icon included. The shared inset ring above only wraps the bare
+   <input> (the icon sits outside it), so here it drew a second,
+   smaller ring inside the first. Keep the search bar's own outer ring
+   and drop the inset one just for this field. */
+.adm-search-bar-input .adm-input-element:focus-visible {
+    outline: none;
+}
+
+/* Recharts focuses an internal <g tabindex="-1"> on tap (its own
+   accessibility hook — not part of anyone's Tab order, since -1 never
+   receives focus via keyboard). That draws the browser's plain UA
+   `:focus` outline (`outline: auto`, Chrome's own orange ring) around
+   the whole plot area — not our themed `:focus-visible` ring, which
+   doesn't match here, so overriding only `:focus-visible` left this
+   untouched. A chart already showing its own tooltip and active
+   point/bar state doesn't need a second highlight boxing the whole
+   thing either way. */
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible {
+    outline: none;
 }
 
 /* Buttons get a tighter outline — the default 2px offset looks too
@@ -1338,7 +1361,7 @@ button:focus-visible,
        left margin does what .safe-area-padding does for block
        containers — lines the trigger up with the heading above it. */
     margin: 0 0 var(--spacing-md) var(--layout-padding-left);
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--app-border-color);
     background: var(--app-card-background);
     color: var(--app-text-secondary);

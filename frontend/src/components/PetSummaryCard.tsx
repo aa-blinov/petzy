@@ -186,14 +186,20 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             {pet.name}
           </div>
 
-          {/* Meta line — only render the parts we have */}
+          {/* Meta line — only render the parts we have. Wraps instead of
+              truncating: age + breed + gender together routinely overrun
+              one line on a phone-width card, and unlike the name above,
+              losing the tail of this line loses actual information
+              (which breed) rather than just a stylistic flourish.
+              Lowercased for display only — breed and gender aren't proper
+              nouns in Russian, so mid-sentence capitals (from the stored
+              breed text and genderLabel()) read as an artifact here.
+              Doesn't touch the underlying data or other screens. */}
           <div
             style={{
               fontSize: "var(--text-sm)",
               color: "var(--app-text-secondary)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              textTransform: "lowercase",
             }}
           >
             {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ") || "—"}

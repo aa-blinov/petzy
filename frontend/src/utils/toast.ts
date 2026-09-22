@@ -2,8 +2,7 @@
  * Unified toast helpers.
  *
  * Wraps antd-mobile's Toast so every message in the app:
- *   - sits at the bottom of the screen (not centred over it, which is
- *     antd's default and reads like a modal system alert)
+ *   - is centred on screen (antd's own default)
  *   - auto-dismisses after 1.6s for neutral / 2.4s for failures
  *   - uses the same icon vocabulary as the rest of the UI
  *
@@ -12,12 +11,20 @@
  * 'bottom', and success durations came in five different values
  * (unset, 1000, 1500, 1600, 2000). Route every message through here so
  * the same kind of message always looks and lasts the same.
+ *
+ * This used to pin every toast to `position: 'bottom'` (`top: 80%`) to
+ * avoid looking like a centred modal alert. In practice that only
+ * works for a short text-only toast — the icon variant (success/fail)
+ * is a much taller box, and at 80% down the screen its bottom edge
+ * crowds the bottom tab bar, landing in an awkward middle ground that
+ * reads as neither "docked at the bottom" nor "centred" — just
+ * mispositioned. Centring is the one placement that looks right at
+ * every toast height.
  */
 
 import { Toast } from 'antd-mobile';
 
 const COMMON = {
-  position: 'bottom' as const,
   maskClassName: 'app-toast-mask',
 };
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -23,6 +23,41 @@ export function Dashboard() {
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
+
+  // FloatingBubble is draggable (@use-gesture/react under the hood), and
+  // — even for a plain tap with zero movement — the gesture library's own
+  // pointerdown handling stops the browser from ever synthesizing the
+  // follow-up "click" event: pointerdown and pointerup both fire, but
+  // click never does, so the `onClick` prop antd-mobile exposes silently
+  // never runs and the button reads as dead. Track the tap ourselves from
+  // the pointer events that do fire reliably, and open the sheet only if
+  // the pointer barely moved (a real drag reports here too, but with far
+  // more travel than a finger/cursor wobbles on a tap).
+  const fabTapStart = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const button = document.querySelector<HTMLElement>('.adm-floating-bubble-button');
+    if (!button) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      fabTapStart.current = { x: e.clientX, y: e.clientY };
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      const start = fabTapStart.current;
+      fabTapStart.current = null;
+      if (!start) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
+        hapticFeedback('medium');
+        setActionSheetVisible(true);
+      }
+    };
+
+    button.addEventListener('pointerdown', onPointerDown);
+    button.addEventListener('pointerup', onPointerUp);
+    return () => {
+      button.removeEventListener('pointerdown', onPointerDown);
+      button.removeEventListener('pointerup', onPointerUp);
+    };
+  }, []);
 
   const pageSize = 20;
 
@@ -210,10 +245,6 @@ export function Dashboard() {
             boxShadow: '0 4px 16px rgba(196, 106, 63, 0.45)',
             zIndex: 200,
           } as React.CSSProperties}
-          onClick={() => {
-            hapticFeedback('medium');
-            setActionSheetVisible(true);
-          }}
         >
           <AddOutline fontSize={28} color="#ffffff" />
         </FloatingBubble>,

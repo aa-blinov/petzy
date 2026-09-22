@@ -47,12 +47,22 @@ export function History() {
     const [filterSheetVisible, setFilterSheetVisible] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
 
-    // Build filter options from the tiles the user has enabled. "Все"
-    // first, then each visible type — shown as a grid of tiles in
-    // HistoryFilterSheet, same look as the dashboard's "+" sheet.
+    // Build filter options from every registered type. "Все" first, then
+    // each type — shown as a grid of tiles in HistoryFilterSheet, same
+    // look as the dashboard's "+" sheet.
+    //
+    // `tilesSettings.visible` only decides what the dashboard's quick-add
+    // sheet offers — hiding a rarely-logged type there so it doesn't
+    // clutter "+" says nothing about whether the user still wants to
+    // filter their History by it (they usually do: a type hidden from
+    // quick-add still has past records worth looking back at). This used
+    // to filter by that same visibility, so a type hidden from the
+    // dashboard silently vanished from the History filter too, with no
+    // way to reach it short of un-hiding it again in Settings. Only the
+    // *order* is still worth sharing — it's the arrangement the user
+    // already knows from the dashboard.
     const filterOptions: HistoryFilterOption[] = useMemo(() => {
-        const visibleTiles = buildTiles(eventTypes)
-            .filter(tile => tilesSettings.visible[tile.id] !== false)
+        const orderedTiles = buildTiles(eventTypes)
             .sort((a, b) => {
                 const aIndex = tilesSettings.order.indexOf(a.id);
                 const bIndex = tilesSettings.order.indexOf(b.id);
@@ -60,7 +70,7 @@ export function History() {
             });
         return [
             { id: FILTER_ALL, label: 'Все', color: 'gray', Icon: Rows3 },
-            ...visibleTiles.map(tile => {
+            ...orderedTiles.map(tile => {
                 const cfg = historyConfig[tile.id];
                 return {
                     id: tile.id,
@@ -255,7 +265,7 @@ export function History() {
                             display: 'flex',
                             backgroundColor: 'var(--app-card-background)',
                             padding: 3,
-                            borderRadius: '999px',
+                            borderRadius: 'var(--radius-md)',
                             boxShadow: 'var(--app-shadow-light)',
                             border: '1px solid var(--app-border-color)',
                         }}>
@@ -267,7 +277,7 @@ export function History() {
                                     background: viewMode === 'list' ? 'var(--app-primary-color)' : 'transparent',
                                     color: viewMode === 'list' ? '#FFFFFF' : 'var(--app-text-secondary)',
                                     border: 'none',
-                                    borderRadius: '999px',
+                                    borderRadius: 'var(--radius-sm)',
                                     padding: '7px 16px',
                                     fontSize: 'var(--text-sm)',
                                     fontWeight: 600,
@@ -287,7 +297,7 @@ export function History() {
                                     background: viewMode === 'chart' ? 'var(--app-primary-color)' : 'transparent',
                                     color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
                                     border: 'none',
-                                    borderRadius: '999px',
+                                    borderRadius: 'var(--radius-sm)',
                                     padding: '7px 16px',
                                     fontSize: 'var(--text-sm)',
                                     fontWeight: 600,

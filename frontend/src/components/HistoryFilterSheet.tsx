@@ -58,7 +58,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
           Показать записи
         </h3>
 
-        <Grid columns={2} gap={12}>
+        <Grid columns={2} gap={10}>
           {options.map(option => {
             const active = option.id === activeId;
             const bg = pastelColorMap[option.color] ?? 'var(--tile-blue)';
@@ -76,12 +76,11 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                   style={{
                     position: 'relative',
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: '8px',
-                    padding: '14px',
-                    height: '100px',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px',
+                    height: '56px',
                     width: '100%',
                     background: bg,
                     border: active ? '2px solid var(--app-text-on-tile)' : '2px solid transparent',
@@ -94,15 +93,35 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                     boxShadow: 'var(--app-shadow-light)',
                   }}
                 >
+                  {Icon && (
+                    <Icon
+                      size={20}
+                      strokeWidth={2}
+                      style={{ display: 'block', flexShrink: 0, color: 'var(--app-text-on-tile)' }}
+                    />
+                  )}
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      lineHeight: 1.25,
+                      letterSpacing: '-0.01em',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {option.label}
+                  </span>
                   {active && (
                     <div
                       aria-hidden
                       style={{
-                        position: 'absolute',
-                        top: 10,
-                        right: 10,
-                        width: 20,
-                        height: 20,
+                        flexShrink: 0,
+                        width: 18,
+                        height: 18,
                         borderRadius: '50%',
                         background: 'var(--app-text-on-tile)',
                         display: 'flex',
@@ -110,26 +129,9 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                         justifyContent: 'center',
                       }}
                     >
-                      <Check size={13} strokeWidth={3} style={{ color: bg }} />
+                      <Check size={12} strokeWidth={3} style={{ color: bg }} />
                     </div>
                   )}
-                  {Icon && (
-                    <Icon
-                      size={24}
-                      strokeWidth={2}
-                      style={{ display: 'block', color: 'var(--app-text-on-tile)' }}
-                    />
-                  )}
-                  <span
-                    style={{
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      lineHeight: 1.25,
-                      letterSpacing: '-0.01em',
-                    }}
-                  >
-                    {option.label}
-                  </span>
                 </button>
               </Grid.Item>
             );
