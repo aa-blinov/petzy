@@ -1,49 +1,40 @@
 /**
- * Bottom sheet listing all record types in a 2-column grid.
+ * Bottom sheet for picking the History screen's type filter.
  *
- * Replaces the older ActionSheet (vertical list of titles) with a
- * grid of icon-tiles so the user can see all options at a glance and
- * tap the one they want in a single gesture.
- *
- * Uses antd-mobile `Popup` rather than `ActionSheet` — ActionSheet
- * ignores children and only renders the `actions` array, so any custom
- * body content has to live inside a Popup.
+ * Replaces the old horizontally-scrolling chip rail: with more than a
+ * handful of event types the rail needed a swipe just to see what was
+ * even available, and nothing on screen hinted that it scrolled. This
+ * mirrors QuickAddSheet's grid-of-tiles look (same component people
+ * already know from the dashboard's "+" button) instead of introducing
+ * a third pattern, but adds a checkmark on the active tile since a
+ * filter — unlike "what do you want to add" — has a current selection
+ * to show.
  */
 
 import { Popup, Grid } from 'antd-mobile';
-import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Check } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-import { buildTiles } from '../utils/tilesConfig';
-import { buildEventDisplayConfigs } from '../utils/eventDisplay';
-import { useEventTypes } from '../hooks/useEventTypes';
-import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
-import { usePet } from '../hooks/usePet';
-import { hapticFeedback } from '../utils/haptic';
 import { pastelColorMap } from '../utils/constants';
+import { hapticFeedback } from '../utils/haptic';
 import { DraggableSheetBody } from './DraggableSheetBody';
 
-
-interface QuickAddSheetProps {
-  visible: boolean;
-  onClose: () => void;
+export interface HistoryFilterOption {
+  id: string;
+  label: string;
+  color: string;
+  Icon: LucideIcon | null;
 }
 
-export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
-  const navigate = useNavigate();
-  const { selectedPetId } = usePet();
-  const { tilesSettings } = usePetTilesSettings(selectedPetId);
-  const { eventTypes } = useEventTypes();
-  const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
+interface HistoryFilterSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  options: HistoryFilterOption[];
+  activeId: string;
+  onSelect: (id: string) => void;
+}
 
-  const tiles = buildTiles(eventTypes)
-    .filter(t => t.isTile !== false && tilesSettings.visible[t.id] !== false)
-    .sort((a, b) => {
-      const ai = tilesSettings.order.indexOf(a.id);
-      const bi = tilesSettings.order.indexOf(b.id);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-
+export function HistoryFilterSheet({ visible, onClose, options, activeId, onSelect }: HistoryFilterSheetProps) {
   return (
     <Popup
       visible={visible}
@@ -54,13 +45,11 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         borderTopLeftRadius: 'var(--radius-xl)',
         borderTopRightRadius: 'var(--radius-xl)',
         backgroundColor: 'var(--app-card-background)',
-        minHeight: '60vh',
+        maxHeight: '75vh',
         paddingBottom: 'calc(var(--safe-area-bottom) + 24px)',
       }}
     >
       <DraggableSheetBody visible={visible} onClose={onClose}>
-
-        {/* Title */}
         <h3
           className="section-header"
           style={{
@@ -69,23 +58,26 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
             fontSize: '1.125rem',
           }}
         >
-          Что записать?
+          Показать записи
         </h3>
 
         <Grid columns={2} gap={12}>
-          {tiles.map(tile => {
-            const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
-            const Icon = displayConfigs[tile.id]?.icon;
+          {options.map(option => {
+            const active = option.id === activeId;
+            const bg = pastelColorMap[option.color] ?? 'var(--tile-blue)';
+            const Icon = option.Icon;
             return (
-              <Grid.Item key={tile.id}>
+              <Grid.Item key={option.id}>
                 <button
                   type="button"
                   onClick={() => {
                     hapticFeedback('light');
+                    onSelect(option.id);
                     onClose();
-                    navigate(`/form/${tile.id}`);
                   }}
+                  aria-pressed={active}
                   style={{
+                    position: 'relative',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
@@ -95,7 +87,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     height: '100px',
                     width: '100%',
                     background: bg,
-                    border: 'none',
+                    border: active ? '2px solid var(--app-text-on-tile)' : '2px solid transparent',
                     borderRadius: '14px',
                     color: 'var(--app-text-on-tile)',
                     textAlign: 'left',
@@ -103,6 +95,25 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     boxShadow: 'var(--app-shadow-light)',
                   }}
                 >
+                  {active && (
+                    <div
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        top: 10,
+                        right: 10,
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: 'var(--app-text-on-tile)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Check size={13} strokeWidth={3} style={{ color: bg }} />
+                    </div>
+                  )}
                   {Icon && (
                     <Icon
                       size={24}
@@ -118,7 +129,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                       letterSpacing: '-0.01em',
                     }}
                   >
-                    {tile.title}
+                    {option.label}
                   </span>
                 </button>
               </Grid.Item>

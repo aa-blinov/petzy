@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PullToRefresh } from 'antd-mobile';
-import { Download, Notebook } from 'lucide-react';
+import { Download, Notebook, ChevronDown, Rows3 } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
@@ -9,6 +9,7 @@ import { HistoryItem } from '../components/HistoryItem';
 import { HistoryChart } from '../components/HistoryChart';
 import { EmptyState } from '../components/EmptyState';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
+import { HistoryFilterSheet, type HistoryFilterOption } from '../components/HistoryFilterSheet';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { buildTiles } from '../utils/tilesConfig';
 import { healthRecordsService, type TimelineResponse, type HealthRecord } from '../services/healthRecords.service';
@@ -43,11 +44,13 @@ export function History() {
     const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
     const [filterType, setFilterType] = useState<string>(FILTER_ALL);
     const [exportVisible, setExportVisible] = useState(false);
+    const [filterSheetVisible, setFilterSheetVisible] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
 
-    // Build filter chips from the tiles the user has enabled. "Все" first,
-    // then each visible type. Chip = lucide icon + label.
-    const filterChips = useMemo(() => {
+    // Build filter options from the tiles the user has enabled. "Все"
+    // first, then each visible type — shown as a grid of tiles in
+    // HistoryFilterSheet, same look as the dashboard's "+" sheet.
+    const filterOptions: HistoryFilterOption[] = useMemo(() => {
         const visibleTiles = buildTiles(eventTypes)
             .filter(tile => tilesSettings.visible[tile.id] !== false)
             .sort((a, b) => {
@@ -56,17 +59,20 @@ export function History() {
                 return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
             });
         return [
-            { id: FILTER_ALL, label: 'Все', Icon: null },
+            { id: FILTER_ALL, label: 'Все', color: 'gray', Icon: Rows3 },
             ...visibleTiles.map(tile => {
                 const cfg = historyConfig[tile.id];
                 return {
                     id: tile.id,
                     label: cfg?.displayName || tile.title,
+                    color: tile.color,
                     Icon: cfg?.icon || null,
                 };
             }),
         ];
     }, [tilesSettings, eventTypes, historyConfig]);
+
+    const activeFilterOption = filterOptions.find(o => o.id === filterType) ?? filterOptions[0];
 
     // Timeline query — single fetch, single source for the whole feed.
     // The backend's timeline endpoint returns all record types mixed
@@ -309,31 +315,33 @@ export function History() {
                     </div>
                 </div>
 
-                {/* Type filter — horizontal scrollable chip rail.
-                   Single-select: "Все" + each visible tile type. */}
-                <div
-                    className="history-filter-rail"
-                    role="tablist"
-                    aria-label="Фильтр по типу записи"
+                {/* Type filter — a single trigger opening a bottom sheet
+                   (HistoryFilterSheet), same grid-of-tiles pattern as the
+                   dashboard's "+" sheet, instead of a horizontally
+                   scrolling chip rail that gave no hint it scrolled. */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        hapticFeedback('light');
+                        setFilterSheetVisible(true);
+                    }}
+                    aria-haspopup="dialog"
+                    className="history-filter-trigger"
                 >
-                    {filterChips.map(chip => {
-                        const active = chip.id === filterType;
-                        const Icon = chip.Icon;
-                        return (
-                            <button
-                                key={chip.id}
-                                type="button"
-                                role="tab"
-                                aria-selected={active}
-                                onClick={() => handleFilterChange(chip.id)}
-                                className={`history-filter-chip ${active ? 'history-filter-chip--active' : ''}`}
-                            >
-                                {Icon ? <Icon size={16} strokeWidth={2.4} aria-hidden /> : null}
-                                <span>{chip.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                    {activeFilterOption.Icon && (
+                        <activeFilterOption.Icon size={16} strokeWidth={2.4} aria-hidden />
+                    )}
+                    <span>{activeFilterOption.label}</span>
+                    <ChevronDown size={16} strokeWidth={2.4} aria-hidden style={{ marginLeft: 2 }} />
+                </button>
+
+                <HistoryFilterSheet
+                    visible={filterSheetVisible}
+                    onClose={() => setFilterSheetVisible(false)}
+                    options={filterOptions}
+                    activeId={filterType}
+                    onSelect={handleFilterChange}
+                />
 
                 <div style={{ minHeight: '400px' }}>
                     {viewMode === 'list' ? (

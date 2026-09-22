@@ -10,6 +10,7 @@ export const TILE_COLORS = {
   yellow: 'yellow',
   blue: 'blue',
   pink: 'pink',
+  gray: 'gray',
 } as const;
 
 export type TileColor = typeof TILE_COLORS[keyof typeof TILE_COLORS];
@@ -26,6 +27,7 @@ export const pastelColorMap: Record<string, string> = {
   yellow: 'var(--tile-yellow)',
   blue: 'var(--tile-blue)',
   pink: 'var(--tile-pink)',
+  gray: 'var(--tile-gray)',
 };
 
 import {
