@@ -159,6 +159,7 @@ class TestParseEventDateTimeSafe:
         assert isinstance(event_dt1, datetime)
         assert isinstance(event_dt2, datetime)
 
+
 class TestParseEventDatetime:
     """parse_event_datetime (the raising variant, distinct from
     parse_event_datetime_safe's tuple-returning contract used by
@@ -168,6 +169,7 @@ class TestParseEventDatetime:
 
     def test_both_present_parses_combined_datetime(self):
         from web.helpers import parse_event_datetime
+
         result = parse_event_datetime("2024-01-15", "14:30")
         assert result.hour == 14
         assert result.minute == 30
@@ -175,6 +177,7 @@ class TestParseEventDatetime:
     def test_neither_present_returns_now(self):
         from web.helpers import parse_event_datetime
         from datetime import datetime, timedelta
+
         before = datetime.now()
         result = parse_event_datetime("", "")
         after = datetime.now()
@@ -182,17 +185,18 @@ class TestParseEventDatetime:
 
     def test_only_date_present_raises(self):
         from web.helpers import parse_event_datetime
+
         with pytest.raises(ValueError, match="вместе"):
             parse_event_datetime("2024-01-15", "")
 
     def test_only_time_present_raises(self):
         from web.helpers import parse_event_datetime
+
         with pytest.raises(ValueError, match="вместе"):
             parse_event_datetime("", "14:30")
 
 
 class TestGetRecordAndValidateAccessMalformedRecord:
-
     def test_record_without_pet_id_is_rejected(self, client, mock_db):
         from web.helpers import get_record_and_validate_access
         from bson import ObjectId
@@ -210,7 +214,6 @@ class TestGetRecordAndValidateAccessMalformedRecord:
 
 
 class TestOptimizeImagePaletteMode:
-
     def test_palette_mode_image_converts_correctly(self):
         import io
         from PIL import Image

@@ -370,70 +370,47 @@ class TestPetManagement:
     def test_delete_pet_cascades_to_all_records(self, client, mock_db, regular_user_token, test_pet):
         """Test that deleting a pet cascades to all related records."""
         from web.app import db
-        
+
         pet_id = str(test_pet["_id"])
-        
+
         # Create various related records
         # Health records
-        db["asthma_attacks"].insert_one({
-            "pet_id": pet_id,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        db["defecations"].insert_one({
-            "pet_id": pet_id,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        db["weights"].insert_one({
-            "pet_id": pet_id,
-            "date": datetime.now(timezone.utc),
-            "weight": 5.0,
-            "username": "testuser"
-        })
-        db["feedings"].insert_one({
-            "pet_id": pet_id,
-            "date": datetime.now(timezone.utc),
-            "amount": 100,
-            "username": "testuser"
-        })
-        db["litter_changes"].insert_one({
-            "pet_id": pet_id,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        db["eye_drops"].insert_one({
-            "pet_id": pet_id,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        db["ear_cleaning"].insert_one({
-            "pet_id": pet_id,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        db["tooth_brushing"].insert_one({
-            "pet_id": pet_id,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        
+        db["asthma_attacks"].insert_one(
+            {"pet_id": pet_id, "date_time": datetime.now(timezone.utc), "username": "testuser"}
+        )
+        db["defecations"].insert_one(
+            {"pet_id": pet_id, "date_time": datetime.now(timezone.utc), "username": "testuser"}
+        )
+        db["weights"].insert_one(
+            {"pet_id": pet_id, "date": datetime.now(timezone.utc), "weight": 5.0, "username": "testuser"}
+        )
+        db["feedings"].insert_one(
+            {"pet_id": pet_id, "date": datetime.now(timezone.utc), "amount": 100, "username": "testuser"}
+        )
+        db["litter_changes"].insert_one(
+            {"pet_id": pet_id, "date_time": datetime.now(timezone.utc), "username": "testuser"}
+        )
+        db["eye_drops"].insert_one({"pet_id": pet_id, "date_time": datetime.now(timezone.utc), "username": "testuser"})
+        db["ear_cleaning"].insert_one(
+            {"pet_id": pet_id, "date_time": datetime.now(timezone.utc), "username": "testuser"}
+        )
+        db["tooth_brushing"].insert_one(
+            {"pet_id": pet_id, "date_time": datetime.now(timezone.utc), "username": "testuser"}
+        )
+
         # Medications and intakes
         med_id = ObjectId()
-        db["medications"].insert_one({
-            "_id": med_id,
-            "pet_id": pet_id,
-            "name": "Test Med",
-            "owner": "testuser"
-        })
-        db["medication_intakes"].insert_one({
-            "medication_id": str(med_id),
-            "pet_id": pet_id,
-            "dose_taken": 1.0,
-            "date_time": datetime.now(timezone.utc),
-            "username": "testuser"
-        })
-        
+        db["medications"].insert_one({"_id": med_id, "pet_id": pet_id, "name": "Test Med", "owner": "testuser"})
+        db["medication_intakes"].insert_one(
+            {
+                "medication_id": str(med_id),
+                "pet_id": pet_id,
+                "dose_taken": 1.0,
+                "date_time": datetime.now(timezone.utc),
+                "username": "testuser",
+            }
+        )
+
         # Verify records exist
         assert db["asthma_attacks"].count_documents({"pet_id": pet_id}) == 1
         assert db["defecations"].count_documents({"pet_id": pet_id}) == 1
@@ -445,18 +422,15 @@ class TestPetManagement:
         assert db["tooth_brushing"].count_documents({"pet_id": pet_id}) == 1
         assert db["medications"].count_documents({"pet_id": pet_id}) == 1
         assert db["medication_intakes"].count_documents({"pet_id": pet_id}) == 1
-        
+
         # Delete pet
-        response = client.delete(
-            f"/api/pets/{pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
-        
+        response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
+
         assert response.status_code == 200
-        
+
         # Verify pet is deleted
         assert db["pets"].find_one({"_id": test_pet["_id"]}) is None
-        
+
         # Verify all related records are deleted
         assert db["asthma_attacks"].count_documents({"pet_id": pet_id}) == 0
         assert db["defecations"].count_documents({"pet_id": pet_id}) == 0
@@ -473,14 +447,11 @@ class TestPetManagement:
         """Test that deleting a pet also deletes its photo from GridFS."""
         from web.app import db, fs
         from unittest.mock import patch
-        
+
         # Add photo to pet
         photo_file_id = ObjectId()
-        db["pets"].update_one(
-            {"_id": test_pet["_id"]},
-            {"$set": {"photo_file_id": str(photo_file_id)}}
-        )
-        
+        db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}})
+
         # Track if fs.delete was called
         delete_called = False
 
@@ -488,57 +459,52 @@ class TestPetManagement:
             nonlocal delete_called
             delete_called = True
             # Don't actually delete since we didn't create the file
-            
-        with patch.object(fs, 'delete', side_effect=mock_delete):
+
+        with patch.object(fs, "delete", side_effect=mock_delete):
             response = client.delete(
-                f"/api/pets/{test_pet['_id']}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
+                f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
             )
-        
+
         assert response.status_code == 200
         assert delete_called, "Photo deletion should have been attempted"
-        
+
         # Verify pet is deleted
         assert db["pets"].find_one({"_id": test_pet["_id"]}) is None
 
     def test_delete_pet_with_multiple_medications_and_intakes(self, client, mock_db, regular_user_token, test_pet):
         """Test deleting pet with multiple medications each having multiple intakes."""
         from web.app import db
-        
+
         pet_id = str(test_pet["_id"])
-        
+
         # Create 3 medications
         med_ids = [ObjectId() for _ in range(3)]
         for med_id in med_ids:
-            db["medications"].insert_one({
-                "_id": med_id,
-                "pet_id": pet_id,
-                "name": f"Med {med_id}",
-                "owner": "testuser"
-            })
-            
+            db["medications"].insert_one(
+                {"_id": med_id, "pet_id": pet_id, "name": f"Med {med_id}", "owner": "testuser"}
+            )
+
             # Create 5 intakes for each medication
             for _ in range(5):
-                db["medication_intakes"].insert_one({
-                    "medication_id": str(med_id),
-                    "pet_id": pet_id,
-                    "dose_taken": 1.0,
-                    "date_time": datetime.now(timezone.utc),
-                    "username": "testuser"
-                })
-        
+                db["medication_intakes"].insert_one(
+                    {
+                        "medication_id": str(med_id),
+                        "pet_id": pet_id,
+                        "dose_taken": 1.0,
+                        "date_time": datetime.now(timezone.utc),
+                        "username": "testuser",
+                    }
+                )
+
         # Verify we have 3 medications and 15 intakes
         assert db["medications"].count_documents({"pet_id": pet_id}) == 3
         assert db["medication_intakes"].count_documents({"pet_id": pet_id}) == 15
-        
+
         # Delete pet
-        response = client.delete(
-            f"/api/pets/{pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
-        
+        response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
+
         assert response.status_code == 200
-        
+
         # Verify everything is deleted
         assert db["pets"].find_one({"_id": test_pet["_id"]}) is None
         assert db["medications"].count_documents({"pet_id": pet_id}) == 0
@@ -553,9 +519,7 @@ class TestPetListFormatting:
 
     def test_get_pets_includes_photo_url_with_cache_busting(self, client, mock_db, regular_user_token, test_pet):
         photo_file_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}})
 
         response = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"})
 
@@ -573,9 +537,7 @@ class TestPetListFormatting:
         produces it.
         """
         legacy_uid = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"shared_with": [legacy_uid, "someone"]}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": [legacy_uid, "someone"]}})
 
         response = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"})
 
@@ -586,16 +548,11 @@ class TestPetListFormatting:
 
 @pytest.mark.pets
 class TestGetPetDetail:
-
     def test_get_pet_includes_photo_url_when_photo_set(self, client, mock_db, regular_user_token, test_pet):
         photo_file_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}})
 
-        response = client.get(
-            f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
+        response = client.get(f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 200
         pet = response.get_json()["pet"]
@@ -604,7 +561,6 @@ class TestGetPetDetail:
 
 @pytest.mark.pets
 class TestCreatePetValidationAndFields:
-
     def test_create_pet_multipart_missing_name_rejected(self, client, regular_user_token):
         response = client.post(
             "/api/pets",
@@ -632,7 +588,6 @@ class TestCreatePetValidationAndFields:
 
 @pytest.mark.pets
 class TestUpdatePetFieldsAndValidation:
-
     def test_update_pet_multipart_invalid_data_rejected(self, client, mock_db, regular_user_token, test_pet):
         response = client.put(
             f"/api/pets/{test_pet['_id']}",
@@ -674,9 +629,7 @@ class TestUpdatePetFieldsAndValidation:
 
         # remove_photo via JSON clears both fields, independent of the
         # multipart-only GridFS cleanup path.
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(ObjectId())}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(ObjectId())}})
         response = client.put(
             f"/api/pets/{test_pet['_id']}",
             json={"remove_photo": True},
@@ -696,9 +649,7 @@ class TestUpdatePetFieldsAndValidation:
 
         assert response.status_code == 422
 
-    def test_update_pet_old_photo_delete_failure_still_succeeds(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_update_pet_old_photo_delete_failure_still_succeeds(self, client, mock_db, regular_user_token, test_pet):
         """Losing the old GridFS blob shouldn't block replacing it — the
         code logs and continues, matching the same tolerance already
         relied on for delete_pet's own photo cleanup."""
@@ -708,15 +659,15 @@ class TestUpdatePetFieldsAndValidation:
         from web.app import fs
 
         old_photo_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}})
         buf = io.BytesIO()
         Image.new("RGB", (10, 10), (1, 2, 3)).save(buf, format="PNG")
         buf.seek(0)
 
-        with patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")), \
-             patch.object(fs, "put", return_value=ObjectId()) as mock_put:
+        with (
+            patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")),
+            patch.object(fs, "put", return_value=ObjectId()) as mock_put,
+        ):
             response = client.put(
                 f"/api/pets/{test_pet['_id']}",
                 data={"name": test_pet["name"], "photo_file": (buf, "new.png")},
@@ -727,9 +678,7 @@ class TestUpdatePetFieldsAndValidation:
         assert response.status_code == 200
         mock_put.assert_called_once()
 
-    def test_update_pet_remove_photo_delete_failure_still_succeeds(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_update_pet_remove_photo_delete_failure_still_succeeds(self, client, mock_db, regular_user_token, test_pet):
         """Same tolerance as the replace-photo path, but for a bare
         remove_photo=true request with no new file — losing the old
         GridFS blob shouldn't block the update."""
@@ -737,9 +686,7 @@ class TestUpdatePetFieldsAndValidation:
         from web.app import fs
 
         old_photo_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}})
 
         with patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")):
             response = client.put(
@@ -760,8 +707,10 @@ class TestUpdatePetFieldsAndValidation:
         from unittest.mock import patch
         from web.app import fs
 
-        with patch("web.pets.optimize_image", return_value=None), \
-             patch.object(fs, "put", return_value=ObjectId()) as mock_put:
+        with (
+            patch("web.pets.optimize_image", return_value=None),
+            patch.object(fs, "put", return_value=ObjectId()) as mock_put,
+        ):
             response = client.put(
                 f"/api/pets/{test_pet['_id']}",
                 data={"name": test_pet["name"], "photo_file": (io.BytesIO(b"raw"), "raw.png")},
@@ -777,7 +726,6 @@ class TestUpdatePetFieldsAndValidation:
 
 @pytest.mark.pets
 class TestSharePetValidation:
-
     def test_share_pet_missing_username(self, client, mock_db, regular_user_token, test_pet):
         response = client.post(
             f"/api/pets/{test_pet['_id']}/share",
@@ -816,21 +764,17 @@ class TestSharePetValidation:
 
 @pytest.mark.pets
 class TestDeletePetEdgeCases:
-
     def test_delete_pet_photo_deletion_failure_does_not_fail_request(
         self, client, mock_db, regular_user_token, test_pet
     ):
         from unittest.mock import patch
         from web.app import fs
 
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(ObjectId())}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(ObjectId())}})
 
         with patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")):
             response = client.delete(
-                f"/api/pets/{test_pet['_id']}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
+                f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
             )
 
         assert response.status_code == 200
@@ -849,8 +793,7 @@ class TestDeletePetEdgeCases:
         no_match = MagicMock(deleted_count=0)
         with patch.object(app.db.pets, "delete_one", return_value=no_match):
             response = client.delete(
-                f"/api/pets/{test_pet['_id']}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
+                f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
             )
 
         assert response.status_code == 404
@@ -866,8 +809,7 @@ class TestDeletePetEdgeCases:
 
         with patch.object(app.db.client, "start_session", side_effect=RuntimeError("totally unrelated failure")):
             response = client.delete(
-                f"/api/pets/{test_pet['_id']}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
+                f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
             )
 
         assert response.status_code == 500
@@ -891,10 +833,16 @@ class TestDeletePetEdgeCases:
         pet_id = str(test_pet["_id"])
         med_id = ObjectId()
         mock_db["medications"].insert_one({"_id": med_id, "pet_id": pet_id, "name": "M", "owner": "testuser"})
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "feeding", "date_time": datetime.now(timezone.utc),
-            "fields": {}, "comment": "", "username": "testuser",
-        })
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "feeding",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
 
         mock_session = MagicMock()
         session_cm = MagicMock()
@@ -916,22 +864,19 @@ class TestDeletePetEdgeCases:
             kwargs.pop("session", None)
             return real_delete_one(self, *args, **kwargs)
 
-        with patch.object(app.db.client, "start_session", return_value=session_cm), \
-             patch.object(Collection, "delete_many", tolerant_delete_many), \
-             patch.object(Collection, "delete_one", tolerant_delete_one):
-            response = client.delete(
-                f"/api/pets/{pet_id}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
-            )
+        with (
+            patch.object(app.db.client, "start_session", return_value=session_cm),
+            patch.object(Collection, "delete_many", tolerant_delete_many),
+            patch.object(Collection, "delete_one", tolerant_delete_one),
+        ):
+            response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 200
         assert mock_db["pets"].find_one({"_id": test_pet["_id"]}) is None
         assert mock_db["medications"].count_documents({"pet_id": pet_id}) == 0
         assert mock_db["events"].count_documents({"pet_id": pet_id}) == 0
 
-    def test_delete_pet_transaction_failure_does_not_fall_back(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_delete_pet_transaction_failure_does_not_fall_back(self, client, mock_db, regular_user_token, test_pet):
         """If the pet document itself fails to delete inside a `with
         session.start_transaction()` block, that's raised as
         PetNotFoundDuringDeletion — a genuine application error, not a
@@ -973,23 +918,22 @@ class TestDeletePetEdgeCases:
         def vanished_delete_one(self, *args, **kwargs):
             return MagicMock(deleted_count=0)
 
-        with patch.object(app.db.client, "start_session", return_value=session_cm), \
-             patch.object(Collection, "delete_many", tolerant_delete_many), \
-             patch.object(Collection, "delete_one", vanished_delete_one):
-            response = client.delete(
-                f"/api/pets/{pet_id}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
-            )
+        with (
+            patch.object(app.db.client, "start_session", return_value=session_cm),
+            patch.object(Collection, "delete_many", tolerant_delete_many),
+            patch.object(Collection, "delete_one", vanished_delete_one),
+        ):
+            response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 500
 
 
 @pytest.mark.pets
 class TestGetPetPhotoResize:
-
     def _real_photo_bytes(self, size=(400, 200)):
         import io
         from PIL import Image
+
         buf = io.BytesIO()
         Image.new("RGB", size, (10, 20, 30)).save(buf, format="PNG")
         buf.seek(0)
@@ -1000,9 +944,7 @@ class TestGetPetPhotoResize:
         from web.app import fs
 
         photo_file_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}})
         mock_file = MagicMock()
         mock_file.read.return_value = self._real_photo_bytes(size=(400, 200))
         mock_file.content_type = "image/png"
@@ -1017,6 +959,7 @@ class TestGetPetPhotoResize:
         assert response.content_type == "image/webp"
         from PIL import Image
         import io
+
         img = Image.open(io.BytesIO(response.data))
         assert img.width == 100
         assert img.height == 50  # 400x200 at width=100 keeps 2:1
@@ -1026,9 +969,7 @@ class TestGetPetPhotoResize:
         from web.app import fs
 
         photo_file_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}})
         mock_file = MagicMock()
         mock_file.read.return_value = self._real_photo_bytes(size=(400, 200))
         mock_file.content_type = "image/png"
@@ -1042,6 +983,7 @@ class TestGetPetPhotoResize:
         assert response.status_code == 200
         from PIL import Image
         import io
+
         img = Image.open(io.BytesIO(response.data))
         assert img.height == 50
         assert img.width == 100
@@ -1053,9 +995,7 @@ class TestGetPetPhotoResize:
         from web.app import fs
 
         photo_file_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(photo_file_id)}})
         mock_file = MagicMock()
         mock_file.read.return_value = b"not a real image"
         mock_file.content_type = "image/png"
@@ -1084,6 +1024,7 @@ class TestRouteLevelValueErrorHandling:
 
     def test_get_pet_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         with patch("web.pets.get_pet_and_validate", side_effect=ValueError("simulated")):
             response = client.get(
                 f"/api/pets/{test_pet['_id']}",
@@ -1093,6 +1034,7 @@ class TestRouteLevelValueErrorHandling:
 
     def test_update_pet_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         with patch("web.pets.get_pet_and_validate", side_effect=ValueError("simulated")):
             response = client.put(
                 f"/api/pets/{test_pet['_id']}",
@@ -1103,6 +1045,7 @@ class TestRouteLevelValueErrorHandling:
 
     def test_share_pet_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         with patch("web.pets.get_pet_and_validate", side_effect=ValueError("simulated")):
             response = client.post(
                 f"/api/pets/{test_pet['_id']}/share",
@@ -1113,6 +1056,7 @@ class TestRouteLevelValueErrorHandling:
 
     def test_unshare_pet_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         with patch("web.pets.get_pet_and_validate", side_effect=ValueError("simulated")):
             response = client.delete(
                 f"/api/pets/{test_pet['_id']}/share/admin",
@@ -1122,6 +1066,7 @@ class TestRouteLevelValueErrorHandling:
 
     def test_delete_pet_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         with patch("web.pets.get_pet_and_validate", side_effect=ValueError("simulated")):
             response = client.delete(
                 f"/api/pets/{test_pet['_id']}",
@@ -1131,6 +1076,7 @@ class TestRouteLevelValueErrorHandling:
 
     def test_create_pet_value_error_handled(self, client, mock_db, regular_user_token):
         from unittest.mock import patch
+
         with patch("web.pets.parse_date", side_effect=ValueError("simulated")):
             response = client.post(
                 "/api/pets",
@@ -1139,15 +1085,11 @@ class TestRouteLevelValueErrorHandling:
             )
         assert response.status_code == 422
 
-    def test_get_pet_returns_stored_tiles_settings_not_default(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_get_pet_returns_stored_tiles_settings_not_default(self, client, mock_db, regular_user_token, test_pet):
         custom = {"order": ["weight"], "visible": {"weight": True}}
         mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"tiles_settings": custom}})
 
-        response = client.get(
-            f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
+        response = client.get(f"/api/pets/{test_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 200
         assert response.get_json()["pet"]["tiles_settings"]["order"] == ["weight"]

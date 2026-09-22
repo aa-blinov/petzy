@@ -51,16 +51,16 @@ def search_users():
     """Get list of active usernames for autocomplete (any logged-in user)."""
     # Use a query parameter to filter if provided, or just return some/all active usernames
     query = request.args.get("q", "").strip()
-    
+
     find_query = {"is_active": True}
     if query:
         find_query["username"] = {"$regex": query, "$options": "i"}
-        
+
     users = list(app.db["users"].find(find_query, {"username": 1}).limit(20))
-    
+
     # Format for response
     results = [{"username": u["username"]} for u in users]
-    
+
     return jsonify({"users": results})
 
 

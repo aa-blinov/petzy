@@ -52,12 +52,8 @@ async def check_list(page, path, screenshot_name, simulate_swipe=False):
             right_label = (await label_el.inner_text()).strip()
 
     # Legacy buttons (should be gone from card body — not part of action layer)
-    legacy_pencils = await page.query_selector_all(
-        ".swipeable-row__surface button[aria-label='Редактировать']"
-    )
-    legacy_trash = await page.query_selector_all(
-        ".swipeable-row__surface button[aria-label='Удалить']"
-    )
+    legacy_pencils = await page.query_selector_all(".swipeable-row__surface button[aria-label='Редактировать']")
+    legacy_trash = await page.query_selector_all(".swipeable-row__surface button[aria-label='Удалить']")
 
     swipe_evidence = None
     if simulate_swipe and rows:

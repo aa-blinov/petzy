@@ -52,6 +52,7 @@ def set_auth_cookie(response: Response, key: str, value: str, max_age: int) -> N
         samesite=COOKIE_SAMESITE,
     )
 
+
 # Validate required environment variables
 if not ADMIN_PASSWORD_HASH:
     raise RuntimeError(
@@ -187,11 +188,7 @@ def validate_refresh_token(refresh_token: str):
     expires_at = token_record.get("expires_at")
     if expires_at is not None:
         now_naive_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-        expires_naive = (
-            expires_at.replace(tzinfo=None)
-            if expires_at.tzinfo is not None
-            else expires_at
-        )
+        expires_naive = expires_at.replace(tzinfo=None) if expires_at.tzinfo is not None else expires_at
         if expires_naive < now_naive_utc:
             db["refresh_tokens"].delete_one({"_id": token_record["_id"]})
             return None

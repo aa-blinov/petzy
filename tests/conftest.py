@@ -41,7 +41,12 @@ def mock_db():
     mock_db = mock_client["test_db"]
 
     # Patch the db module and GridFS
-    with patch("web.db.db", mock_db), patch("web.app.db", mock_db), patch("web.security.db", mock_db), patch("web.app.fs", MagicMock()):
+    with (
+        patch("web.db.db", mock_db),
+        patch("web.app.db", mock_db),
+        patch("web.security.db", mock_db),
+        patch("web.app.fs", MagicMock()),
+    ):
         # Clear any existing data
         mock_db["users"].delete_many({})
         mock_db["pets"].delete_many({})

@@ -1,4 +1,5 @@
 """Comprehensive swipe test — various swipe lengths."""
+
 import asyncio
 import sys
 
@@ -8,23 +9,32 @@ FRONTEND = "http://localhost:5173"
 
 
 async def swipe_cdp(client, x1, y1, x2, y2, steps=10, delay=15):
-    await client.send("Input.dispatchTouchEvent", {
-        "type": "touchStart",
-        "touchPoints": [{"x": x1, "y": y1, "id": 1}],
-    })
+    await client.send(
+        "Input.dispatchTouchEvent",
+        {
+            "type": "touchStart",
+            "touchPoints": [{"x": x1, "y": y1, "id": 1}],
+        },
+    )
     for i in range(1, steps):
         t = i / steps
         x = x1 + (x2 - x1) * t
         y = y1 + (y2 - y1) * t
-        await client.send("Input.dispatchTouchEvent", {
-            "type": "touchMove",
-            "touchPoints": [{"x": x, "y": y, "id": 1}],
-        })
+        await client.send(
+            "Input.dispatchTouchEvent",
+            {
+                "type": "touchMove",
+                "touchPoints": [{"x": x, "y": y, "id": 1}],
+            },
+        )
         await asyncio.sleep(delay / 1000)
-    await client.send("Input.dispatchTouchEvent", {
-        "type": "touchEnd",
-        "touchPoints": [],
-    })
+    await client.send(
+        "Input.dispatchTouchEvent",
+        {
+            "type": "touchEnd",
+            "touchPoints": [],
+        },
+    )
 
 
 async def get_state(page):
@@ -88,7 +98,7 @@ async def main() -> int:
                     pass
                 await page.wait_for_timeout(400)
 
-            await swipe_cdp(client, cx + dx/2, cy, cx - dx/2, cy, steps=10, delay=12)
+            await swipe_cdp(client, cx + dx / 2, cy, cx - dx / 2, cy, steps=10, delay=12)
             await page.wait_for_timeout(350)
             state = await get_state(page)
             committed = state["dialogs"] > 0

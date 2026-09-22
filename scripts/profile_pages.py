@@ -14,6 +14,7 @@ can spot warning spam, slow renders, and broken routes at a glance.
 
 Usage:  python3 scripts/profile_pages.py
 """
+
 from __future__ import annotations
 
 import json
@@ -44,20 +45,20 @@ PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 # Routes to profile. Order matches the user-visible navigation so any
 # shared fetch errors cascade predictably.
 ROUTES: list[tuple[str, str]] = [
-    ("login",            "/login"),
-    ("dashboard",        "/"),
-    ("pets",             "/pets"),
-    ("history_list",     "/history"),
-    ("history_chart",    "/history?view=chart"),
-    ("medications",      "/medications"),
-    ("settings",         "/settings"),
-    ("pet_form",         "/pets/new"),
-    ("health_form",      "/form/feeding"),
-    ("medication_form",  "/medications/new"),
-    ("tiles_settings",   "/tiles-settings"),
-    ("form_defaults",    "/form-defaults"),
-    ("admin_panel",      "/admin"),
-    ("user_form",        "/admin/users/new"),
+    ("login", "/login"),
+    ("dashboard", "/"),
+    ("pets", "/pets"),
+    ("history_list", "/history"),
+    ("history_chart", "/history?view=chart"),
+    ("medications", "/medications"),
+    ("settings", "/settings"),
+    ("pet_form", "/pets/new"),
+    ("health_form", "/form/feeding"),
+    ("medication_form", "/medications/new"),
+    ("tiles_settings", "/tiles-settings"),
+    ("form_defaults", "/form-defaults"),
+    ("admin_panel", "/admin"),
+    ("user_form", "/admin/users/new"),
 ]
 
 # Web Vitals JS — LCP, FCP, CLS. Inlined because the page doesn't ship
@@ -156,41 +157,50 @@ def attach_listeners(page: Page, report: PageReport) -> list:
     that, listeners from earlier routes would keep firing and pollute
     later reports.
     """
+
     def on_console(msg: ConsoleMessage) -> None:
         # Filter out HMR noise that isn't actionable.
         if msg.type == "error":
-            report.console_errors.append({
-                "text": msg.text[:300],
-                "location": msg.location,
-            })
+            report.console_errors.append(
+                {
+                    "text": msg.text[:300],
+                    "location": msg.location,
+                }
+            )
         elif msg.type == "warning":
             # Skip the well-known dev-only noise.
             t = msg.text
             if "Download the React DevTools" in t:
                 return
-            report.console_warnings.append({
-                "text": t[:300],
-                "location": msg.location,
-            })
+            report.console_warnings.append(
+                {
+                    "text": t[:300],
+                    "location": msg.location,
+                }
+            )
 
     def on_pageerror(exc: PWError) -> None:
         report.page_errors.append(str(exc)[:400])
 
     def on_requestfailed(req: Request) -> None:
-        report.failed_requests.append({
-            "url": req.url,
-            "method": req.method,
-            "failure": req.failure,
-        })
+        report.failed_requests.append(
+            {
+                "url": req.url,
+                "method": req.method,
+                "failure": req.failure,
+            }
+        )
 
     def on_response(res: Response) -> None:
         # Track 4xx/5xx on API requests so we can distinguish auth
         # races from genuine backend errors.
         if res.status >= 400 and "/api/" in res.url:
-            report.failed_requests.append({
-                "url": res.url,
-                "status": res.status,
-            })
+            report.failed_requests.append(
+                {
+                    "url": res.url,
+                    "status": res.status,
+                }
+            )
 
     page.on("console", on_console)
     page.on("pageerror", on_pageerror)
@@ -302,34 +312,37 @@ def main() -> int:
         # listeners before returning, so successive calls stay isolated.
         for name, path in ROUTES[1:]:
             reports.append(profile_route(page, name, path))
-            print(f"  profiled {name:18s} {path:32s} load={reports[-1].load_ms}ms "
-                  f"err={len(reports[-1].console_errors)} warn={len(reports[-1].console_warnings)}")
+            print(
+                f"  profiled {name:18s} {path:32s} load={reports[-1].load_ms}ms "
+                f"err={len(reports[-1].console_errors)} warn={len(reports[-1].console_warnings)}"
+            )
 
         browser.close()
 
     # ---------- Summary ----------
     print("\n" + "=" * 78)
-    print(f"{'route':20s} {'load(ms)':>9s} {'idle(ms)':>9s} {'FCP':>7s} {'LCP':>7s} {'CLS':>7s} {'err':>4s} {'warn':>5s}")
+    print(
+        f"{'route':20s} {'load(ms)':>9s} {'idle(ms)':>9s} {'FCP':>7s} {'LCP':>7s} {'CLS':>7s} {'err':>4s} {'warn':>5s}"
+    )
     print("-" * 78)
     for r in reports:
-        print(f"{r.name:20s} "
-              f"{(r.load_ms or 0):>9.0f} "
-              f"{(r.network_idle_ms or 0):>9.0f} "
-              f"{(r.fcp_ms or 0):>7.0f} "
-              f"{(r.lcp_ms or 0):>7.0f} "
-              f"{r.cls:>7.4f} "
-              f"{len(r.console_errors):>4d} "
-              f"{len(r.console_warnings):>5d}")
+        print(
+            f"{r.name:20s} "
+            f"{(r.load_ms or 0):>9.0f} "
+            f"{(r.network_idle_ms or 0):>9.0f} "
+            f"{(r.fcp_ms or 0):>7.0f} "
+            f"{(r.lcp_ms or 0):>7.0f} "
+            f"{r.cls:>7.4f} "
+            f"{len(r.console_errors):>4d} "
+            f"{len(r.console_warnings):>5d}"
+        )
 
     # Surface anything noteworthy: errors, page errors, failed requests,
     # and the most common warning message per route.
     print("\n" + "=" * 78)
     print("Issues per route:")
     for r in reports:
-        flagged = (
-            r.console_errors or r.page_errors or r.failed_requests
-            or r.status != "ok" or r.note
-        )
+        flagged = r.console_errors or r.page_errors or r.failed_requests or r.status != "ok" or r.note
         if not flagged:
             continue
         print(f"\n  [{r.name}]  {r.path}  ({r.note or 'ok'})")
@@ -355,11 +368,13 @@ def main() -> int:
 
     # Persist raw JSON for later diffing.
     json_path = PROFILE_DIR / "report.json"
-    json_path.write_text(json.dumps(
-        {"routes": [r.to_dict() for r in reports]},
-        indent=2,
-        ensure_ascii=False,
-    ))
+    json_path.write_text(
+        json.dumps(
+            {"routes": [r.to_dict() for r in reports]},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     print(f"\nFull JSON report → {json_path}")
     return 0
 

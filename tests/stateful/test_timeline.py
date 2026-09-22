@@ -17,20 +17,29 @@ class TestTimeline:
         """Test getting timeline records."""
         pet_id = str(test_pet["_id"])
 
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "weight",
-            "date_time": datetime.now(timezone.utc) - timedelta(hours=1),
-            "fields": {"weight": 5.0}, "comment": "", "username": "testuser",
-        })
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "asthma",
-            "date_time": datetime.now(timezone.utc),
-            "fields": {}, "comment": "", "username": "testuser",
-        })
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "weight",
+                "date_time": datetime.now(timezone.utc) - timedelta(hours=1),
+                "fields": {"weight": 5.0},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "asthma",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
-            f"/api/history/timeline?pet_id={pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            f"/api/history/timeline?pet_id={pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
         assert response.status_code == 200
@@ -45,14 +54,18 @@ class TestTimeline:
         """Medications aren't part of the events collection but still show up."""
         pet_id = str(test_pet["_id"])
         med = mock_db["medications"].insert_one({"pet_id": pet_id, "name": "Vitamin C", "username": "testuser"})
-        mock_db["medication_intakes"].insert_one({
-            "pet_id": pet_id, "medication_id": str(med.inserted_id),
-            "date_time": datetime.now(timezone.utc), "dose_taken": "1", "username": "testuser",
-        })
+        mock_db["medication_intakes"].insert_one(
+            {
+                "pet_id": pet_id,
+                "medication_id": str(med.inserted_id),
+                "date_time": datetime.now(timezone.utc),
+                "dose_taken": "1",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
-            f"/api/history/timeline?pet_id={pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            f"/api/history/timeline?pet_id={pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
         assert response.status_code == 200
         items = response.get_json()["items"]
@@ -71,18 +84,27 @@ class TestTimeline:
         pet_id = str(test_pet["_id"])
         med_a = mock_db["medications"].insert_one({"pet_id": pet_id, "name": "Vitamin C", "username": "testuser"})
         med_b = mock_db["medications"].insert_one({"pet_id": pet_id, "name": "Antibiotic", "username": "testuser"})
-        mock_db["medication_intakes"].insert_one({
-            "pet_id": pet_id, "medication_id": str(med_a.inserted_id),
-            "date_time": datetime.now(timezone.utc), "dose_taken": "1", "username": "testuser",
-        })
-        mock_db["medication_intakes"].insert_one({
-            "pet_id": pet_id, "medication_id": str(med_b.inserted_id),
-            "date_time": datetime.now(timezone.utc) - timedelta(minutes=1), "dose_taken": "1", "username": "testuser",
-        })
+        mock_db["medication_intakes"].insert_one(
+            {
+                "pet_id": pet_id,
+                "medication_id": str(med_a.inserted_id),
+                "date_time": datetime.now(timezone.utc),
+                "dose_taken": "1",
+                "username": "testuser",
+            }
+        )
+        mock_db["medication_intakes"].insert_one(
+            {
+                "pet_id": pet_id,
+                "medication_id": str(med_b.inserted_id),
+                "date_time": datetime.now(timezone.utc) - timedelta(minutes=1),
+                "dose_taken": "1",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
-            f"/api/history/timeline?pet_id={pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            f"/api/history/timeline?pet_id={pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
         assert response.status_code == 200
         items = response.get_json()["items"]
@@ -94,20 +116,30 @@ class TestTimeline:
         """Test getting timeline records with type filtering."""
         pet_id = str(test_pet["_id"])
 
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "weight",
-            "date_time": datetime.now(timezone.utc) - timedelta(hours=1),
-            "fields": {"weight": 5.0}, "comment": "", "username": "testuser",
-        })
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "asthma",
-            "date_time": datetime.now(timezone.utc),
-            "fields": {}, "comment": "", "username": "testuser",
-        })
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "weight",
+                "date_time": datetime.now(timezone.utc) - timedelta(hours=1),
+                "fields": {"weight": 5.0},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "asthma",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
             f"/api/history/timeline?pet_id={pet_id}&type=weight",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
@@ -117,19 +149,30 @@ class TestTimeline:
 
     def test_get_timeline_filtering_medications_excludes_events(self, client, mock_db, regular_user_token, test_pet):
         pet_id = str(test_pet["_id"])
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "weight", "date_time": datetime.now(timezone.utc),
-            "fields": {"weight": 5.0}, "comment": "", "username": "testuser",
-        })
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "weight",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {"weight": 5.0},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
         med = mock_db["medications"].insert_one({"pet_id": pet_id, "name": "Vitamin C", "username": "testuser"})
-        mock_db["medication_intakes"].insert_one({
-            "pet_id": pet_id, "medication_id": str(med.inserted_id),
-            "date_time": datetime.now(timezone.utc), "dose_taken": "1", "username": "testuser",
-        })
+        mock_db["medication_intakes"].insert_one(
+            {
+                "pet_id": pet_id,
+                "medication_id": str(med.inserted_id),
+                "date_time": datetime.now(timezone.utc),
+                "dose_taken": "1",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
             f"/api/history/timeline?pet_id={pet_id}&type=medications",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 200
         items = response.get_json()["items"]
@@ -141,15 +184,20 @@ class TestTimeline:
         pet_id = str(test_pet["_id"])
 
         for i in range(5):
-            mock_db["events"].insert_one({
-                "pet_id": pet_id, "type": "asthma",
-                "date_time": datetime.now(timezone.utc) - timedelta(minutes=i),
-                "fields": {}, "comment": "", "username": "testuser",
-            })
+            mock_db["events"].insert_one(
+                {
+                    "pet_id": pet_id,
+                    "type": "asthma",
+                    "date_time": datetime.now(timezone.utc) - timedelta(minutes=i),
+                    "fields": {},
+                    "comment": "",
+                    "username": "testuser",
+                }
+            )
 
         response = client.get(
             f"/api/history/timeline?pet_id={pet_id}&page=1&page_size=2",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
@@ -161,7 +209,7 @@ class TestTimeline:
 
         response = client.get(
             f"/api/history/timeline?pet_id={pet_id}&page=3&page_size=2",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
         assert response.status_code == 200
@@ -189,24 +237,33 @@ class TestTimeline:
         for i in range(6):
             minutes_ago = i
             if i % 2 == 0:
-                mock_db["events"].insert_one({
-                    "pet_id": pet_id, "type": "asthma",
-                    "date_time": now - timedelta(minutes=minutes_ago),
-                    "fields": {}, "comment": "", "username": "testuser",
-                })
+                mock_db["events"].insert_one(
+                    {
+                        "pet_id": pet_id,
+                        "type": "asthma",
+                        "date_time": now - timedelta(minutes=minutes_ago),
+                        "fields": {},
+                        "comment": "",
+                        "username": "testuser",
+                    }
+                )
             else:
-                mock_db["medication_intakes"].insert_one({
-                    "pet_id": pet_id, "medication_id": str(med.inserted_id),
-                    "date_time": now - timedelta(minutes=minutes_ago),
-                    "dose_taken": "1", "username": "testuser",
-                })
+                mock_db["medication_intakes"].insert_one(
+                    {
+                        "pet_id": pet_id,
+                        "medication_id": str(med.inserted_id),
+                        "date_time": now - timedelta(minutes=minutes_ago),
+                        "dose_taken": "1",
+                        "username": "testuser",
+                    }
+                )
 
         expected_types = ["asthma", "medications", "asthma", "medications", "asthma", "medications"]
         seen_types = []
         for page in (1, 2, 3):
             response = client.get(
                 f"/api/history/timeline?pet_id={pet_id}&page={page}&page_size=2",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
+                headers={"Authorization": f"Bearer {regular_user_token}"},
             )
             assert response.status_code == 200
             data = response.get_json()
@@ -221,8 +278,7 @@ class TestTimeline:
         pet_id = str(admin_pet["_id"])
 
         response = client.get(
-            f"/api/history/timeline?pet_id={pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            f"/api/history/timeline?pet_id={pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
         assert response.status_code == 403
@@ -230,8 +286,7 @@ class TestTimeline:
     def test_get_timeline_invalid_pet_id(self, client, regular_user_token):
         """Test timeline with invalid pet_id format."""
         response = client.get(
-            "/api/history/timeline?pet_id=invalid_id",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
+            "/api/history/timeline?pet_id=invalid_id", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
         assert response.status_code == 422

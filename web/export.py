@@ -65,9 +65,7 @@ def _enrich_medication_names(_record: dict, records: list[dict]) -> None:
         return
     meds = {
         str(m["_id"]): m.get("name", "Unknown")
-        for m in app.db.medications.find(
-            {"_id": {"$in": [ObjectId(mid) for mid in med_ids]}}
-        )
+        for m in app.db.medications.find({"_id": {"$in": [ObjectId(mid) for mid in med_ids]}})
     }
     for r in records:
         r["medication_name"] = meds.get(r.get("medication_id"), "Unknown")
@@ -167,9 +165,9 @@ def _serialize_tsv(records: list[dict], fields: list[FieldSpec]) -> tuple[bytes,
 
 def _serialize_html(title: str, records: list[dict], fields: list[FieldSpec]) -> tuple[bytes, str, str]:
     parts: list[str] = [
-        "<!DOCTYPE html><html lang=\"ru\"><head>",
-        "<meta charset=\"UTF-8\">",
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
+        '<!DOCTYPE html><html lang="ru"><head>',
+        '<meta charset="UTF-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
         f"<title>{title}</title>",
         "<style>"
         "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
@@ -200,13 +198,7 @@ def _serialize_md(title: str, records: list[dict], fields: list[FieldSpec]) -> t
     lines.append("| " + " | ".join(ru for _, ru in fields) + " |")
     lines.append("|" + "---|" * len(fields))
     for r in records:
-        lines.append(
-            "| "
-            + " | ".join(
-                str(r.get(en, "") or "").replace("|", "\\|") for en, _ in fields
-            )
-            + " |"
-        )
+        lines.append("| " + " | ".join(str(r.get(en, "") or "").replace("|", "\\|") for en, _ in fields) + " |")
     return ("\n".join(lines) + "\n").encode("utf-8"), "text/markdown", "md"
 
 
@@ -247,9 +239,7 @@ def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
     # Common per-row cleanup shared by every export format.
     for r in records:
         dt = r.get("date_time")
-        r["date_time"] = (
-            dt.strftime("%d.%m.%Y %H:%M") if isinstance(dt, datetime) else str(dt or "")
-        )
+        r["date_time"] = dt.strftime("%d.%m.%Y %H:%M") if isinstance(dt, datetime) else str(dt or "")
         if not r.get("username"):
             r["username"] = "-"
         r["comment"] = _replace_skip_blank(r.get("comment", ""))
@@ -329,18 +319,13 @@ def export_data(export_type, format_type):
                 return error_response("no_data_for_export")
             title, included = spec.title, [spec.title]
 
-        filename_base = (
-            f"{title.replace(' ', '_').lower()}_"
-            f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
-        )
+        filename_base = f"{title.replace(' ', '_').lower()}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
         filename = f"{filename_base}.{suffix}"
         encoded_filename = quote(filename)
 
         response = make_response(content)
         response.headers["Content-Type"] = mimetype
-        response.headers["Content-Disposition"] = (
-            f"attachment; filename*=UTF-8''{encoded_filename}"
-        )
+        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
         response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
         app.logger.info(
             f"Data exported: type={export_type}, format={format_type}, "

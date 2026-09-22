@@ -7,7 +7,6 @@ import pytest
 
 @pytest.mark.unit
 class TestGetMessageFallbacks:
-
     def test_unknown_key_returns_generic_success_message(self):
         from flask import Flask
         from web.messages import get_message

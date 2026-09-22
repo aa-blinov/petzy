@@ -33,14 +33,14 @@ pets_bp = Blueprint("pets", __name__)
 # Default tiles settings (alphabetical order in Russian)
 DEFAULT_TILES_SETTINGS = {
     "order": [
-        "weight",        # Вес
-        "defecation",    # Дефекация
-        "feeding",       # Дневная порция корма
-        "eye_drops",     # Закапывание глаз
-        "asthma",        # Приступ астмы
-        "litter",        # Смена лотка
+        "weight",  # Вес
+        "defecation",  # Дефекация
+        "feeding",  # Дневная порция корма
+        "eye_drops",  # Закапывание глаз
+        "asthma",  # Приступ астмы
+        "litter",  # Смена лотка
         "ear_cleaning",  # Чистка ушей
-        "tooth_brushing" # Чистка зубов
+        "tooth_brushing",  # Чистка зубов
     ],
     "visible": {
         "weight": True,
@@ -51,7 +51,7 @@ DEFAULT_TILES_SETTINGS = {
         "litter": True,
         "ear_cleaning": True,
         "tooth_brushing": True,
-    }
+    },
 }
 
 
@@ -96,7 +96,9 @@ def get_pets():
         if pet.get("photo_file_id"):
             pet["photo_file_id"] = str(pet["photo_file_id"])
             # Add cache-busting parameter using photo_file_id so browser gets new image when it changes
-            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
+            pet["photo_url"] = (
+                url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
+            )
 
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
@@ -162,7 +164,9 @@ def create_pet():
                     optimized_file, content_type = optimized_result
                     # Generate filename with .webp extension
                     original_filename = photo_file.filename
-                    filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                    filename_without_ext = (
+                        original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                    )
                     optimized_filename = f"{filename_without_ext}.webp"
 
                     photo_file_id = str(
@@ -265,7 +269,9 @@ def get_pet(pet_id):
             pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
 
         if pet.get("photo_file_id"):
-            pet["photo_url"] = url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
+            pet["photo_url"] = (
+                url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
+            )
 
         pet["current_user_is_owner"] = pet.get("owner") == username
 
@@ -345,7 +351,9 @@ def update_pet(pet_id):
                     optimized_file, content_type = optimized_result
                     # Generate filename with .webp extension
                     original_filename = photo_file.filename
-                    filename_without_ext = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                    filename_without_ext = (
+                        original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+                    )
                     optimized_filename = f"{filename_without_ext}.webp"
 
                     photo_file_id = str(
@@ -371,9 +379,7 @@ def update_pet(pet_id):
                     try:
                         app.fs.delete(ObjectId(old_photo_id))
                     except Exception as e:
-                        logger.warning(
-                            f"Failed to delete photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
-                        )
+                        logger.warning(f"Failed to delete photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}")
                 photo_file_id = None
 
         birth_date = parse_date(data.birth_date, allow_future=False)
@@ -399,7 +405,9 @@ def update_pet(pet_id):
 
         # Handle photo fields based on request type
         if is_multipart:
-            logger.info(f"Photo handling: photo_file_id={photo_file_id}, remove_photo={request.form.get('remove_photo')}")
+            logger.info(
+                f"Photo handling: photo_file_id={photo_file_id}, remove_photo={request.form.get('remove_photo')}"
+            )
             # Check remove_photo FIRST - it takes precedence over any photo data
             if request.form.get("remove_photo") == "true":
                 # Photo was explicitly removed - clear BOTH fields in database
@@ -584,11 +592,13 @@ def delete_pet(pet_id):
         except Exception as tx_error:
             # Fallback for standalone MongoDB (no replica set) or mongomock
             error_msg = str(tx_error).lower()
-            if ("transaction" in error_msg or "replica" in error_msg or
-                "session" in error_msg or "mongomock" in error_msg):
-                logger.warning(
-                    f"Transactions not supported, using fallback cascading delete: {tx_error}"
-                )
+            if (
+                "transaction" in error_msg
+                or "replica" in error_msg
+                or "session" in error_msg
+                or "mongomock" in error_msg
+            ):
+                logger.warning(f"Transactions not supported, using fallback cascading delete: {tx_error}")
 
                 # Delete pet first, then related records (prevents foreign key issues)
                 result = app.db["pets"].delete_one({"_id": pet_id_obj})
@@ -608,9 +618,7 @@ def delete_pet(pet_id):
                             )
                             total_deleted += result.deleted_count
                     except Exception as col_error:
-                        logger.error(
-                            f"Failed to delete from {collection_name} for pet {pet_id}: {col_error}"
-                        )
+                        logger.error(f"Failed to delete from {collection_name} for pet {pet_id}: {col_error}")
                         failed_collections.append(collection_name)
 
                 if failed_collections:
@@ -620,8 +628,7 @@ def delete_pet(pet_id):
                     )
 
                 logger.info(
-                    f"Pet deleted (fallback): id={pet_id}, user={username}, "
-                    f"total_related_records={total_deleted}"
+                    f"Pet deleted (fallback): id={pet_id}, user={username}, total_related_records={total_deleted}"
                 )
             else:
                 # Re-raise if it's not a transaction-related error
@@ -634,9 +641,7 @@ def delete_pet(pet_id):
                 logger.info(f"Deleted photo {old_photo_id} for pet {pet_id}")
             except Exception as photo_error:
                 # Log but don't fail the request
-                logger.warning(
-                    f"Failed to delete photo {old_photo_id} for pet {pet_id}: {photo_error}"
-                )
+                logger.warning(f"Failed to delete photo {old_photo_id} for pet {pet_id}: {photo_error}")
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
         return get_message("pet_deleted")

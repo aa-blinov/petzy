@@ -159,6 +159,7 @@ def test_error_response_helper_unknown_key(monkeypatch, flask_app):
     assert payload["success"] is False
     assert payload["code"] == "nope_does_not_exist"
 
+
 def test_json_body_of_literal_null_returns_validation_error(flask_app):
     """A syntactically valid JSON body that parses to None (the literal
     `null`) must produce a clean validation_error rather than crashing

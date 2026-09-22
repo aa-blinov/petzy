@@ -44,11 +44,17 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "color": "red",
         "fields": [
             {
-                "name": "duration", "label": "Длительность", "type": "select", "required": True,
+                "name": "duration",
+                "label": "Длительность",
+                "type": "select",
+                "required": True,
                 "options": _opts("Короткий", "Длительный"),
             },
             {
-                "name": "inhalation", "label": "Ингаляция", "type": "select", "required": True,
+                "name": "inhalation",
+                "label": "Ингаляция",
+                "type": "select",
+                "required": True,
                 "options": [{"value": "false", "text": "Нет"}, {"value": "true", "text": "Да"}],
             },
             {"name": "reason", "label": "Причина", "type": "text", "required": True, "options": None},
@@ -62,11 +68,17 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "color": "green",
         "fields": [
             {
-                "name": "stool_type", "label": "Тип стула", "type": "select", "required": True,
+                "name": "stool_type",
+                "label": "Тип стула",
+                "type": "select",
+                "required": True,
                 "options": _opts("Обычный", "Твердый", "Жидкий"),
             },
             {
-                "name": "color", "label": "Цвет стула", "type": "select", "required": True,
+                "name": "color",
+                "label": "Цвет стула",
+                "type": "select",
+                "required": True,
                 "options": _opts("Коричневый", "Темно-коричневый", "Светло-коричневый", "Другой"),
             },
             {"name": "food", "label": "Корм", "type": "text", "required": False, "options": None},
@@ -88,7 +100,10 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "color": "teal",
         "fields": [
             {
-                "name": "drops_type", "label": "Тип капель", "type": "select", "required": True,
+                "name": "drops_type",
+                "label": "Тип капель",
+                "type": "select",
+                "required": True,
                 "options": _opts("Обычные", "Гелевые"),
             },
         ],
@@ -101,7 +116,10 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "color": "cyan",
         "fields": [
             {
-                "name": "brushing_type", "label": "Способ чистки", "type": "select", "required": True,
+                "name": "brushing_type",
+                "label": "Способ чистки",
+                "type": "select",
+                "required": True,
                 "options": _opts("Щетка", "Марля", "Игрушка"),
             },
         ],
@@ -114,7 +132,10 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "color": "yellow",
         "fields": [
             {
-                "name": "cleaning_type", "label": "Способ чистки", "type": "select", "required": True,
+                "name": "cleaning_type",
+                "label": "Способ чистки",
+                "type": "select",
+                "required": True,
                 "options": _opts("Салфетка/Марля", "Капли"),
             },
         ],

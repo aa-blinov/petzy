@@ -49,11 +49,7 @@ def migrate(db, dry_run: bool = False) -> dict[str, int]:
         for doc in db[collection_name].find({}):
             if str(doc["_id"]) in already_migrated:
                 continue
-            fields = {
-                name: doc[name]
-                for name in field_names
-                if doc.get(name) not in (None, "")
-            }
+            fields = {name: doc[name] for name in field_names if doc.get(name) not in (None, "")}
             to_insert.append(
                 {
                     "pet_id": doc.get("pet_id"),

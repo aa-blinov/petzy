@@ -19,10 +19,19 @@ def legacy_db():
 
 def test_migrate_seeds_builtin_types(legacy_db):
     counts = migrate(legacy_db)
-    assert counts == {name: 0 for name in [
-        "asthma_attacks", "defecations", "litter_changes", "weights",
-        "feedings", "eye_drops", "tooth_brushing", "ear_cleaning",
-    ]}
+    assert counts == {
+        name: 0
+        for name in [
+            "asthma_attacks",
+            "defecations",
+            "litter_changes",
+            "weights",
+            "feedings",
+            "eye_drops",
+            "tooth_brushing",
+            "ear_cleaning",
+        ]
+    }
     keys = {d["key"] for d in legacy_db.event_types.find({})}
     assert keys == {t["key"] for t in BUILTIN_EVENT_TYPES}
 
@@ -31,17 +40,38 @@ def test_migrate_moves_legacy_documents(legacy_db):
     pet_id = "507f1f77bcf86cd799439011"
     now = datetime.now(timezone.utc)
 
-    legacy_db.asthma_attacks.insert_one({
-        "pet_id": pet_id, "date_time": now, "duration": "5 минут",
-        "reason": "Стресс", "inhalation": True, "comment": "c", "username": "u",
-    })
-    legacy_db.defecations.insert_one({
-        "pet_id": pet_id, "date_time": now, "stool_type": "Обычный",
-        "color": "Коричневый", "food": "", "comment": "", "username": "u",
-    })
-    legacy_db.weights.insert_one({
-        "pet_id": pet_id, "date_time": now, "weight": 4.5, "food": "", "comment": "", "username": "u",
-    })
+    legacy_db.asthma_attacks.insert_one(
+        {
+            "pet_id": pet_id,
+            "date_time": now,
+            "duration": "5 минут",
+            "reason": "Стресс",
+            "inhalation": True,
+            "comment": "c",
+            "username": "u",
+        }
+    )
+    legacy_db.defecations.insert_one(
+        {
+            "pet_id": pet_id,
+            "date_time": now,
+            "stool_type": "Обычный",
+            "color": "Коричневый",
+            "food": "",
+            "comment": "",
+            "username": "u",
+        }
+    )
+    legacy_db.weights.insert_one(
+        {
+            "pet_id": pet_id,
+            "date_time": now,
+            "weight": 4.5,
+            "food": "",
+            "comment": "",
+            "username": "u",
+        }
+    )
 
     counts = migrate(legacy_db)
     assert counts["asthma_attacks"] == 1
@@ -62,10 +92,16 @@ def test_migrate_moves_legacy_documents(legacy_db):
 
 
 def test_migrate_dry_run_writes_nothing(legacy_db):
-    legacy_db.weights.insert_one({
-        "pet_id": "p1", "date_time": datetime.now(timezone.utc), "weight": 4.5,
-        "food": "", "comment": "", "username": "u",
-    })
+    legacy_db.weights.insert_one(
+        {
+            "pet_id": "p1",
+            "date_time": datetime.now(timezone.utc),
+            "weight": 4.5,
+            "food": "",
+            "comment": "",
+            "username": "u",
+        }
+    )
 
     counts = migrate(legacy_db, dry_run=True)
     assert counts["weights"] == 1
@@ -76,10 +112,16 @@ def test_migrate_dry_run_writes_nothing(legacy_db):
 
 
 def test_migrate_is_idempotent(legacy_db):
-    legacy_db.weights.insert_one({
-        "pet_id": "p1", "date_time": datetime.now(timezone.utc), "weight": 4.5,
-        "food": "", "comment": "", "username": "u",
-    })
+    legacy_db.weights.insert_one(
+        {
+            "pet_id": "p1",
+            "date_time": datetime.now(timezone.utc),
+            "weight": 4.5,
+            "food": "",
+            "comment": "",
+            "username": "u",
+        }
+    )
 
     migrate(legacy_db)
     counts_second_run = migrate(legacy_db)

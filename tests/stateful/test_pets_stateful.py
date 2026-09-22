@@ -21,7 +21,6 @@ import web.app as app
 
 @pytest.mark.pets
 class TestPetDeletionStateConsistency:
-
     def test_delete_pet_removes_its_events(self, client, mock_db, regular_user_token, test_pet):
         """A pet's events (the unified events collection, not the retired
         per-type collections) must not survive its own deletion.
@@ -33,20 +32,22 @@ class TestPetDeletionStateConsistency:
         reach anymore.
         """
         pet_id = str(test_pet["_id"])
-        mock_db["events"].insert_many([
-            {
-                "pet_id": pet_id, "type": "feeding",
-                "date_time": datetime.now(timezone.utc),
-                "fields": {}, "comment": "", "username": "testuser",
-            }
-            for _ in range(3)
-        ])
+        mock_db["events"].insert_many(
+            [
+                {
+                    "pet_id": pet_id,
+                    "type": "feeding",
+                    "date_time": datetime.now(timezone.utc),
+                    "fields": {},
+                    "comment": "",
+                    "username": "testuser",
+                }
+                for _ in range(3)
+            ]
+        )
         assert mock_db["events"].count_documents({"pet_id": pet_id}) == 3
 
-        response = client.delete(
-            f"/api/pets/{pet_id}",
-            headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
+        response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 200
         assert mock_db["events"].count_documents({"pet_id": pet_id}) == 0
@@ -62,18 +63,33 @@ class TestPetDeletionStateConsistency:
         """
         pet_id = str(test_pet["_id"])
         med_id = ObjectId()
-        mock_db["medications"].insert_one({
-            "_id": med_id, "pet_id": pet_id, "name": "Test Med", "owner": "testuser",
-        })
-        mock_db["medication_intakes"].insert_one({
-            "medication_id": str(med_id), "pet_id": pet_id, "dose_taken": 1.0,
-            "date_time": datetime.now(timezone.utc), "username": "testuser",
-        })
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "feeding",
-            "date_time": datetime.now(timezone.utc),
-            "fields": {}, "comment": "", "username": "testuser",
-        })
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": pet_id,
+                "name": "Test Med",
+                "owner": "testuser",
+            }
+        )
+        mock_db["medication_intakes"].insert_one(
+            {
+                "medication_id": str(med_id),
+                "pet_id": pet_id,
+                "dose_taken": 1.0,
+                "date_time": datetime.now(timezone.utc),
+                "username": "testuser",
+            }
+        )
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "feeding",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
 
         real_delete_many = mock_db["medications"].delete_many
 
@@ -83,10 +99,7 @@ class TestPetDeletionStateConsistency:
             return real_delete_many(query, *args, **kwargs)
 
         with patch.object(app.db.medications, "delete_many", side_effect=flaky_delete_many):
-            response = client.delete(
-                f"/api/pets/{pet_id}",
-                headers={"Authorization": f"Bearer {regular_user_token}"}
-            )
+            response = client.delete(f"/api/pets/{pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         # The endpoint tolerates a partial cascade failure by design
         # (it logs `failed_collections` and continues) rather than

@@ -8,7 +8,6 @@ import pytest
 
 @pytest.mark.auth
 class TestEnsureDefaultAdmin:
-
     def test_creates_admin_when_missing(self, mock_db):
         from web.security import ensure_default_admin, ADMIN_USERNAME
 
@@ -44,7 +43,6 @@ class TestEnsureDefaultAdmin:
 
 @pytest.mark.auth
 class TestVerifyUserCredentialsEnvFallback:
-
     def test_falls_back_to_env_admin_hash_when_no_db_user_exists(self, mock_db):
         """Before ensure_default_admin has ever run (or if the admin row
         was somehow removed), login must still work against the
@@ -81,7 +79,6 @@ class TestModuleLevelAdminHashValidation:
 
 @pytest.mark.auth
 class TestVerifyUserCredentialsCorruptedAdminHash:
-
     def test_corrupted_admin_password_hash_fails_cleanly(self, mock_db, monkeypatch):
         """If ADMIN_PASSWORD_HASH itself isn't a valid bcrypt hash (bad
         deploy config, truncated env var, ...), the env-fallback branch
@@ -97,7 +94,6 @@ class TestVerifyUserCredentialsCorruptedAdminHash:
 
 @pytest.mark.auth
 class TestLoginRequiredRefreshEdgeCase:
-
     def test_freshly_refreshed_token_failing_reverification_is_treated_as_unauthenticated(self):
         """If try_refresh_access_token() hands back a token that then
         immediately fails verify_token() (a same-request inconsistency
@@ -116,8 +112,10 @@ class TestLoginRequiredRefreshEdgeCase:
         def _protected():
             return "ok"
 
-        with patch.object(security_module, "try_refresh_access_token", return_value="freshly.issued.token"), \
-             patch.object(security_module, "verify_token", return_value=None):
+        with (
+            patch.object(security_module, "try_refresh_access_token", return_value="freshly.issued.token"),
+            patch.object(security_module, "verify_token", return_value=None),
+        ):
             with app.test_client() as c:
                 response = c.get("/_protected")
 

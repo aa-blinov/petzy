@@ -64,11 +64,10 @@ def main() -> None:
     _patch_with_mongomock()
 
     import bcrypt
+
     # Pin the admin password hash for the local dev runner so the seed
     # user is deterministic and we know the credentials at the UI.
-    os.environ["ADMIN_PASSWORD_HASH"] = bcrypt.hashpw(
-        b"test1234", bcrypt.gensalt()
-    ).decode()
+    os.environ["ADMIN_PASSWORD_HASH"] = bcrypt.hashpw(b"test1234", bcrypt.gensalt()).decode()
 
     from web.app import app
     from web.security import ensure_default_admin

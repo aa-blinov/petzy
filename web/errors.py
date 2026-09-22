@@ -88,9 +88,7 @@ ERRORS: Dict[str, ErrorDef] = {
     "event_type_builtin_immutable": ErrorDef(
         "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
     ),
-    "event_type_has_events": ErrorDef(
-        "event_type_has_events", "У этого типа есть записи — сначала удалите их", 422
-    ),
+    "event_type_has_events": ErrorDef("event_type_has_events", "У этого типа есть записи — сначала удалите их", 422),
     # Other
     "no_data_for_export": ErrorDef("no_data_for_export", "Нет данных для экспорта", 404),
     "upload_error": ErrorDef("upload_error", "Ошибка при загрузке файла", 404),

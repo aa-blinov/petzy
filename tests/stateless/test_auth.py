@@ -130,7 +130,9 @@ class TestAuthentication:
         from uuid import uuid4
         from web.app import db
         from web.security import (
-            JWT_SECRET_KEY, JWT_ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS,
+            JWT_SECRET_KEY,
+            JWT_ALGORITHM,
+            REFRESH_TOKEN_EXPIRE_DAYS,
         )
 
         # Ensure cookie token exists (fixture already does this).
@@ -171,6 +173,7 @@ class TestAuthentication:
 
         # And one for a DIFFERENT user — must NOT be dropped.
         from tests.conftest import _mock_db  # noqa: F401 — ensures conftest imported
+
         db["refresh_tokens"].insert_one(
             {
                 "jti": uuid4().hex,
@@ -293,7 +296,8 @@ class TestAuthentication:
         from uuid import uuid4
         from web.app import db
         from web.security import (
-            JWT_SECRET_KEY, JWT_ALGORITHM,
+            JWT_SECRET_KEY,
+            JWT_ALGORITHM,
         )
 
         # Mint a refresh token whose stored expires_at is yesterday, but
@@ -327,7 +331,6 @@ class TestAuthentication:
         # should have already deleted the row.
         assert response.status_code in (401, 403), response.get_json()
         assert db["refresh_tokens"].find_one({"token": token}) is None
-
 
     def test_expired_token_rejection(self, client):
         """Test that expired tokens are rejected."""
@@ -393,9 +396,7 @@ class TestSessionProbe:
         assert data["is_admin"] is True
 
     def test_session_returns_identity_for_regular_user(self, client, mock_db, regular_user_token):
-        response = client.get(
-            "/api/auth/session", headers={"Authorization": f"Bearer {regular_user_token}"}
-        )
+        response = client.get("/api/auth/session", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 200
         data = response.get_json()
@@ -479,9 +480,7 @@ class TestSessionProbe:
         set_cookie_headers = response.headers.getlist("Set-Cookie")
         assert any("access_token=" in h for h in set_cookie_headers)
 
-    def test_logout_deletes_refresh_token_by_raw_value_when_undecodable(
-        self, client, mock_db
-    ):
+    def test_logout_deletes_refresh_token_by_raw_value_when_undecodable(self, client, mock_db):
         """A refresh_token cookie holding garbage (not a valid JWT at all)
         can't be decoded to find its jti, so logout falls back to
         deleting by the raw token string — otherwise an unparseable
@@ -507,10 +506,13 @@ class TestSessionProbe:
         """
         from web.security import verify_user_credentials
 
-        mock_db["users"].insert_one({
-            "username": "corrupted", "password_hash": "not-a-real-bcrypt-hash",
-            "is_active": True,
-        })
+        mock_db["users"].insert_one(
+            {
+                "username": "corrupted",
+                "password_hash": "not-a-real-bcrypt-hash",
+                "is_active": True,
+            }
+        )
 
         assert verify_user_credentials("corrupted", "anything") is False
 
@@ -527,16 +529,13 @@ class TestSessionProbe:
 
     def test_check_admin_returns_false_on_unexpected_error(self, client, mock_db, admin_token):
         from unittest.mock import patch
+
         with patch("web.security.is_admin", side_effect=RuntimeError("boom")):
-            response = client.get(
-                "/api/auth/check-admin", headers={"Authorization": f"Bearer {admin_token}"}
-            )
+            response = client.get("/api/auth/check-admin", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == 200
         assert response.get_json()["is_admin"] is False
 
-    def test_page_login_required_normalizes_tuple_response_when_renewing_token(
-        self, client, mock_db, auth_cookies
-    ):
+    def test_page_login_required_normalizes_tuple_response_when_renewing_token(self, client, mock_db, auth_cookies):
         """When the wrapped view returns a (body, status) tuple instead of
         a Response object, and the token was refreshed mid-request, the
         cookie-setting code must normalize it to a real Response first —
@@ -575,8 +574,10 @@ class TestSessionProbe:
         from unittest.mock import patch
         import web.auth as auth_module
 
-        with patch.object(auth_module, "try_refresh_access_token", return_value="freshly.issued.token"), \
-             patch.object(auth_module, "verify_token", return_value=None):
+        with (
+            patch.object(auth_module, "try_refresh_access_token", return_value="freshly.issued.token"),
+            patch.object(auth_module, "verify_token", return_value=None),
+        ):
             response = client.get("/dashboard", follow_redirects=False)
 
         assert response.status_code == 302

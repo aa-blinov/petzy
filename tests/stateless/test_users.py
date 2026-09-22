@@ -204,6 +204,7 @@ class TestUserManagement:
 
     def test_update_user_password_gets_hashed(self, client, mock_db, auth_headers, regular_user):
         import bcrypt
+
         response = client.put(
             f"/api/users/{regular_user['username']}",
             json={"password": "newpass456"},
@@ -225,9 +226,13 @@ class TestSearchUsers:
         assert response.status_code == 401
 
     def test_returns_only_active_users_matching_query(self, client, mock_db, auth_headers, regular_user):
-        mock_db["users"].insert_one({
-            "username": "inactive_match", "password_hash": "x", "is_active": False,
-        })
+        mock_db["users"].insert_one(
+            {
+                "username": "inactive_match",
+                "password_hash": "x",
+                "is_active": False,
+            }
+        )
 
         response = client.get("/api/users/search?q=test", headers=auth_headers)
 
@@ -254,6 +259,7 @@ class TestSearchUsers:
         concurrent deactivation/delete) before update_one ran."""
         import web.app as app
         from unittest.mock import patch, MagicMock
+
         with patch.object(app.db.users, "update_one", return_value=MagicMock(matched_count=0)):
             response = client.put(
                 f"/api/users/{regular_user['username']}",
@@ -262,11 +268,10 @@ class TestSearchUsers:
             )
         assert response.status_code == 404
 
-    def test_reset_user_password_race_condition_reports_not_found(
-        self, client, mock_db, auth_headers, regular_user
-    ):
+    def test_reset_user_password_race_condition_reports_not_found(self, client, mock_db, auth_headers, regular_user):
         import web.app as app
         from unittest.mock import patch, MagicMock
+
         with patch.object(app.db.users, "update_one", return_value=MagicMock(matched_count=0)):
             response = client.post(
                 f"/api/users/{regular_user['username']}/reset-password",
@@ -287,6 +292,7 @@ class TestUserRouteValueErrorHandling:
 
     def test_create_user_value_error_handled(self, client, mock_db, auth_headers):
         from unittest.mock import patch
+
         with patch("web.users.bcrypt.hashpw", side_effect=ValueError("simulated")):
             response = client.post(
                 "/api/users",
@@ -297,6 +303,7 @@ class TestUserRouteValueErrorHandling:
 
     def test_update_user_value_error_handled(self, client, mock_db, auth_headers, regular_user):
         from unittest.mock import patch
+
         with patch("web.users.bcrypt.hashpw", side_effect=ValueError("simulated")):
             response = client.put(
                 f"/api/users/{regular_user['username']}",
@@ -308,14 +315,17 @@ class TestUserRouteValueErrorHandling:
     def test_delete_user_value_error_handled(self, client, mock_db, auth_headers, regular_user):
         import web.app as app
         from unittest.mock import patch
+
         with patch.object(app.db.users, "update_one", side_effect=ValueError("simulated")):
             response = client.delete(
-                f"/api/users/{regular_user['username']}", headers=auth_headers,
+                f"/api/users/{regular_user['username']}",
+                headers=auth_headers,
             )
         assert response.status_code == 422
 
     def test_reset_user_password_value_error_handled(self, client, mock_db, auth_headers, regular_user):
         from unittest.mock import patch
+
         with patch("web.users.bcrypt.hashpw", side_effect=ValueError("simulated")):
             response = client.post(
                 f"/api/users/{regular_user['username']}/reset-password",

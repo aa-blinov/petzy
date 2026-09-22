@@ -42,6 +42,7 @@ class TestGlobalErrorHandlers:
         )
         def _x():
             from flask import jsonify
+
             return jsonify({"ok": True})
 
         client = app.test_client()
@@ -253,6 +254,7 @@ class TestGlobalErrorHandlers:
 
     def test_favicon_falls_back_to_icon_192_when_svg_missing(self, client):
         from unittest.mock import patch
+
         with patch("web.app.os.path.exists", return_value=False):
             response = client.get("/favicon.ico")
         assert response.status_code == 200

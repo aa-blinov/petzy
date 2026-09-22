@@ -16,6 +16,10 @@ jobs:
         with:
           args: check --output-format=github
           version: 0.14.9
+      - uses: astral-sh/ruff-action@v1
+        with:
+          args: format --check
+          version: 0.14.9
 
   test-stateless:
     name: Pytest (stateless)

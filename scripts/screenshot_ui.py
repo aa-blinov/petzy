@@ -82,9 +82,7 @@ def main() -> int:
         # Use a programmatic click() instead of locator.click() — Playwright's
         # actionability checks don't always trigger React's synthetic onClick
         # on the FAB's inner button (it's a styled div, not a native button).
-        page.evaluate(
-            "document.querySelector('.adm-floating-bubble-button')?.click()"
-        )
+        page.evaluate("document.querySelector('.adm-floating-bubble-button')?.click()")
         # QuickAddSheet is rendered as antd-mobile Popup. Wait for the grid
         # items to appear rather than the popup container — the spring-animated
         # popup body is sometimes flagged "hidden" by Playwright's checks

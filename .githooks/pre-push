@@ -12,7 +12,19 @@ if [ -x .venv/bin/python ]; then
 else
     PYTHON=python3
 fi
+if [ -x .venv/bin/ruff ]; then
+    RUFF=.venv/bin/ruff
+else
+    RUFF=ruff
+fi
 
+echo "Running ruff (check + format) over the whole backend before push..."
+$RUFF check .
+[ $? -ne 0 ] && status=1
+$RUFF format --check .
+[ $? -ne 0 ] && status=1
+
+echo ""
 echo "Running backend test suite before push..."
 $PYTHON -m pytest tests/ --tb=short -q
 [ $? -ne 0 ] && status=1

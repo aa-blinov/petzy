@@ -48,7 +48,7 @@ def validate_request_data(
             data_dict = request.form.to_dict()
             # Parse JSON strings in form data (e.g., tiles_settings)
             for key, value in data_dict.items():
-                if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+                if isinstance(value, str) and (value.startswith("{") or value.startswith("[")):
                     try:
                         data_dict[key] = json.loads(value)
                     except (json.JSONDecodeError, ValueError):
@@ -68,8 +68,9 @@ def validate_request_data(
         # but we return a generic validation error here for consistency
         if context:
             from web.app import logger
+
             logger.warning(f"Validation error in {context}: {e}")
-        
+
         # Get first error message
         errors = e.errors()
         if errors and len(errors) > 0:
@@ -77,12 +78,12 @@ def validate_request_data(
             if msg.startswith("Value error, "):
                 msg = msg[len("Value error, ") :]
             return None, error_response("validation_error", msg)
-            
+
         return None, error_response("validation_error", str(e))
     except Exception as e:
         # Handle other unexpected errors
         if context:
             from web.app import logger
+
             logger.warning(f"Unexpected error validating {context}: {e}")
         return None, error_response("validation_error", str(e))
-

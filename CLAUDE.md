@@ -14,10 +14,16 @@ Enable them once per clone:
 git config core.hooksPath .githooks
 ```
 
-- `pre-commit` runs `eslint` on staged `frontend/**/*.{ts,tsx}` files and `ruff`
-  on staged `*.py` files — fast, per-commit checks. Blocks the commit on any
-  error (skip with `git commit --no-verify` if truly needed).
-- `pre-push` runs the full backend test suite (`pytest tests/`) and a full
+- `pre-commit` runs `eslint` on staged `frontend/**/*.{ts,tsx}` files and
+  `ruff check` + `ruff format --check` on staged `*.py` files — fast,
+  per-commit checks. Blocks the commit on any error (skip with
+  `git commit --no-verify` if truly needed).
+- `pre-push` runs `ruff check` + `ruff format --check` over the whole
+  backend, the full backend test suite (`pytest tests/`), and a full
   frontend lint (`npm run lint`, all files, not just staged ones). Slower
   (~45s), so it only runs before push rather than every commit. Blocks the
   push on any failure (skip with `git push --no-verify` if truly needed).
+
+Backend code is formatted with `ruff format` (line length 120, see
+`pyproject.toml`). Both the hooks above and CI's `Ruff` job enforce it —
+run `ruff format .` locally if either one complains.

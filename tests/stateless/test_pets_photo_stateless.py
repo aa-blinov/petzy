@@ -129,9 +129,7 @@ class TestPetPhotoEndpointStateless:
         from unittest.mock import patch
 
         old_photo_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}})
 
         with patch.object(fs, "delete") as mock_delete, patch.object(fs, "put", return_value=ObjectId()) as mock_put:
             response = client.put(
@@ -155,9 +153,7 @@ class TestPetPhotoEndpointStateless:
         from unittest.mock import patch
 
         old_photo_id = ObjectId()
-        mock_db["pets"].update_one(
-            {"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}}
-        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_photo_id)}})
 
         with patch.object(fs, "delete") as mock_delete:
             response = client.put(
@@ -176,8 +172,10 @@ class TestPetPhotoEndpointStateless:
         from web.app import fs
         from unittest.mock import patch
 
-        with patch("web.pets.optimize_image", return_value=None), \
-             patch.object(fs, "put", return_value=ObjectId()) as mock_put:
+        with (
+            patch("web.pets.optimize_image", return_value=None),
+            patch.object(fs, "put", return_value=ObjectId()) as mock_put,
+        ):
             response = client.post(
                 "/api/pets",
                 data={

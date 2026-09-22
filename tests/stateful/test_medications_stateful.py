@@ -35,14 +35,16 @@ class TestMedicationInventoryStateConsistency:
         simulates sustained contention.
         """
         med_id = ObjectId()
-        mock_db["medications"].insert_one({
-            "_id": med_id,
-            "pet_id": str(test_pet["_id"]),
-            "name": "Antibiotic",
-            "inventory_enabled": True,
-            "inventory_current": 9.0,
-            "owner": "testuser",
-        })
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "inventory_enabled": True,
+                "inventory_current": 9.0,
+                "owner": "testuser",
+            }
+        )
 
         now = datetime.now(timezone.utc)
         log_data = {
@@ -78,14 +80,16 @@ class TestMedicationInventoryStateConsistency:
         stock silently vanishes for a dose that was never recorded.
         """
         med_id = ObjectId()
-        mock_db["medications"].insert_one({
-            "_id": med_id,
-            "pet_id": str(test_pet["_id"]),
-            "name": "Antibiotic",
-            "inventory_enabled": True,
-            "inventory_current": 9.0,
-            "owner": "testuser",
-        })
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "inventory_enabled": True,
+                "inventory_current": 9.0,
+                "owner": "testuser",
+            }
+        )
 
         now = datetime.now(timezone.utc)
         log_data = {
@@ -94,9 +98,7 @@ class TestMedicationInventoryStateConsistency:
             "dose_taken": 1.0,
         }
 
-        with patch.object(
-            app.db.medication_intakes, "insert_one", side_effect=RuntimeError("simulated write failure")
-        ):
+        with patch.object(app.db.medication_intakes, "insert_one", side_effect=RuntimeError("simulated write failure")):
             response = client.post(
                 f"/api/medications/{med_id}/log",
                 json=log_data,
@@ -113,22 +115,22 @@ class TestMedicationInventoryStateConsistency:
         assert med["inventory_current"] == 9.0
         assert mock_db["medication_intakes"].count_documents({"medication_id": str(med_id)}) == 0
 
-    def test_log_intake_succeeds_normally_without_mocks(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_log_intake_succeeds_normally_without_mocks(self, client, mock_db, regular_user_token, test_pet):
         """Control case: with nothing mocked, a normal intake decrements
         inventory by exactly the dose and is recorded once. Anchors the
         two failure-path tests above against a working baseline.
         """
         med_id = ObjectId()
-        mock_db["medications"].insert_one({
-            "_id": med_id,
-            "pet_id": str(test_pet["_id"]),
-            "name": "Antibiotic",
-            "inventory_enabled": True,
-            "inventory_current": 9.0,
-            "owner": "testuser",
-        })
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "inventory_enabled": True,
+                "inventory_current": 9.0,
+                "owner": "testuser",
+            }
+        )
 
         now = datetime.now(timezone.utc)
         log_data = {

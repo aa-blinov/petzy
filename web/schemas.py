@@ -194,11 +194,15 @@ class AuthSessionResponse(BaseModel):
 
 class UserSearchItem(BaseModel):
     """Simple user item for search/autocomplete."""
+
     username: str
+
 
 class UserSearchResponse(BaseModel):
     """List of usernames for autocomplete."""
+
     users: List[UserSearchItem]
+
 
 # ============================================================================
 # User Schemas
@@ -312,7 +316,16 @@ class TilesSettings(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                "order": [
+                    "weight",
+                    "defecation",
+                    "feeding",
+                    "eye_drops",
+                    "asthma",
+                    "litter",
+                    "ear_cleaning",
+                    "tooth_brushing",
+                ],
                 "visible": {
                     "weight": True,
                     "defecation": True,
@@ -359,7 +372,16 @@ class PetCreate(BaseModel):
                 "health_notes": "Здоров, аллергий нет",
                 "photo_url": "https://example.com/photo.jpg",
                 "tiles_settings": {
-                    "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                    "order": [
+                        "weight",
+                        "defecation",
+                        "feeding",
+                        "eye_drops",
+                        "asthma",
+                        "litter",
+                        "ear_cleaning",
+                        "tooth_brushing",
+                    ],
                     "visible": {
                         "weight": True,
                         "defecation": True,
@@ -369,8 +391,8 @@ class PetCreate(BaseModel):
                         "litter": True,
                         "ear_cleaning": True,
                         "tooth_brushing": True,
-                    }
-                }
+                    },
+                },
             }
         }
     )
@@ -409,7 +431,16 @@ class PetUpdate(BaseModel):
                 "photo_url": "https://example.com/photo.jpg",
                 "remove_photo": False,
                 "tiles_settings": {
-                    "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                    "order": [
+                        "weight",
+                        "defecation",
+                        "feeding",
+                        "eye_drops",
+                        "asthma",
+                        "litter",
+                        "ear_cleaning",
+                        "tooth_brushing",
+                    ],
                     "visible": {
                         "weight": True,
                         "defecation": True,
@@ -419,8 +450,8 @@ class PetUpdate(BaseModel):
                         "litter": True,
                         "ear_cleaning": True,
                         "tooth_brushing": True,
-                    }
-                }
+                    },
+                },
             }
         }
     )
@@ -466,7 +497,16 @@ class PetResponse(BaseModel):
                 "created_by": "admin",
                 "current_user_is_owner": True,
                 "tiles_settings": {
-                    "order": ["weight", "defecation", "feeding", "eye_drops", "asthma", "litter", "ear_cleaning", "tooth_brushing"],
+                    "order": [
+                        "weight",
+                        "defecation",
+                        "feeding",
+                        "eye_drops",
+                        "asthma",
+                        "litter",
+                        "ear_cleaning",
+                        "tooth_brushing",
+                    ],
                     "visible": {
                         "weight": True,
                         "defecation": True,
@@ -476,8 +516,8 @@ class PetResponse(BaseModel):
                         "litter": True,
                         "ear_cleaning": True,
                         "tooth_brushing": True,
-                    }
-                }
+                    },
+                },
             }
         },
     )
@@ -671,9 +711,7 @@ class EventTypeCreate(BaseModel):
                 "label": "Игра",
                 "icon": "paw",
                 "color": "blue",
-                "fields": [
-                    {"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}
-                ],
+                "fields": [{"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}],
                 "chart": {"kind": "count"},
             }
         }
@@ -841,6 +879,7 @@ class HealthStatsResponse(BaseModel):
 # Medication Schemas
 # ============================================================================
 
+
 class MedicationSchedule(BaseModel):
     days: List[int] = Field(..., description="Дни недели (0-6, где 0 - Пн, 6 - Вс)")
     times: List[str] = Field(..., description="Время приема (HH:mm)")
@@ -848,11 +887,13 @@ class MedicationSchedule(BaseModel):
 
 class MedicationListQuery(PetIdQuery):
     """Query parameters for listing medications with timezone support."""
+
     client_date: Optional[str] = Field(None, description="Client local date (YYYY-MM-DD)")
 
 
 class UpcomingDosesQuery(PetIdQuery):
     """Query parameters for upcoming doses with timezone support."""
+
     client_datetime: Optional[str] = Field(None, description="Client local datetime (ISO format)")
 
 
@@ -927,7 +968,7 @@ class MedicationDetailResponse(BaseModel):
 class MedicationIntakeCreate(BaseModel):
     date: str
     time: str
-    dose_taken: Optional[float] = None # Uses default_dose if not provided
+    dose_taken: Optional[float] = None  # Uses default_dose if not provided
     comment: Optional[str] = None
 
 
@@ -963,8 +1004,10 @@ class UpcomingDosesResponse(BaseModel):
 # History Timeline Schemas
 # ============================================================================
 
+
 class TimelineQuery(PetIdPaginationQuery):
     """Query parameters for timeline with optional filtering by type."""
+
     type: Optional[str] = Field("all", description="Тип записи (all, feeding, asthma и т.д.)")
 
 
@@ -974,9 +1017,10 @@ class TimelineItem(BaseModel):
     pet_id: str
     date_time: str
     username: str
-    
+
     # Allows additional dynamic fields from different record types
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
+
 
 class TimelineResponse(PaginatedResponse):
-    items: List[dict] # Use dict to allow flexibility of various record types
+    items: List[dict]  # Use dict to allow flexibility of various record types

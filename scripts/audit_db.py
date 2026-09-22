@@ -12,6 +12,7 @@ Scans web/*.py for common DB anti-patterns:
 
 Prints findings grouped by file. Writes audit/db_audit.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,7 +48,7 @@ def find_enclosing_loop(text: str, pos: int) -> int:
     for pat in (r"\.for [\w,\s]+ in ", r"\.while "):
         for m in re.finditer(pat, chunk):
             if m.start() < pos:
-                return chunk[:m.start()].count("\n") + 1
+                return chunk[: m.start()].count("\n") + 1
     return 0
 
 
@@ -74,30 +75,36 @@ def main() -> int:
 
             loop_line = find_enclosing_loop(text, m.start())
             if loop_line > 0 and op in {"find_one", "find", "count_documents", "aggregate"}:
-                findings["n_plus_one"].append({
-                    "file": relname,
-                    "line": line_no,
-                    "loop_line": loop_line,
-                    "code": full,
-                    "collection": coll,
-                    "op": op,
-                })
+                findings["n_plus_one"].append(
+                    {
+                        "file": relname,
+                        "line": line_no,
+                        "loop_line": loop_line,
+                        "code": full,
+                        "collection": coll,
+                        "op": op,
+                    }
+                )
 
             # find() without projection loads full docs.
-            if op == "find" and not re.search(r"projection", text[m.end(): m.end() + 200]):
-                findings["find_no_projection"].append({
-                    "file": relname,
-                    "line": line_no,
-                    "code": full,
-                })
+            if op == "find" and not re.search(r"projection", text[m.end() : m.end() + 200]):
+                findings["find_no_projection"].append(
+                    {
+                        "file": relname,
+                        "line": line_no,
+                        "code": full,
+                    }
+                )
 
             # count_documents inside a loop = O(N*M).
             if op == "count_documents" and loop_line > 0:
-                findings["count_in_loop"].append({
-                    "file": relname,
-                    "line": line_no,
-                    "loop_line": loop_line,
-                })
+                findings["count_in_loop"].append(
+                    {
+                        "file": relname,
+                        "line": line_no,
+                        "loop_line": loop_line,
+                    }
+                )
 
         # ObjectId round-trips: str(ObjectId("...")) on an already-string id.
         for m in re.finditer(r"ObjectId\(\s*(['\"])?([\w]+)\1?\s*\)", text):
@@ -105,13 +112,15 @@ def main() -> int:
             # Heuristic: if the argument looks like a variable already, suspect.
             if not (var.startswith('"') or var.startswith("'")):
                 # Look back for whether `var` was already str-converted.
-                preceding = text[max(0, m.start() - 60): m.start()]
+                preceding = text[max(0, m.start() - 60) : m.start()]
                 if re.search(rf"str\(\s*{var}\s*\)|['\"]{var}['\"]", preceding):
-                    findings["object_id_redundant_str"].append({
-                        "file": relname,
-                        "line": text[:m.start()].count("\n") + 1,
-                        "code": m.group(0),
-                    })
+                    findings["object_id_redundant_str"].append(
+                        {
+                            "file": relname,
+                            "line": text[: m.start()].count("\n") + 1,
+                            "code": m.group(0),
+                        }
+                    )
 
         # Bare db.X.insert_one / find / etc. without surrounding try.
         # Walk back through lines; check if any `try:` was opened before
@@ -127,11 +136,13 @@ def main() -> int:
                     try_stack.pop()
             elif re.match(r"app\.db\.\w+\.\w+\(", stripped):
                 if not try_stack:
-                    findings["db_no_try"].append({
-                        "file": relname,
-                        "line": i + 1,
-                        "code": stripped[:200],
-                    })
+                    findings["db_no_try"].append(
+                        {
+                            "file": relname,
+                            "line": i + 1,
+                            "code": stripped[:200],
+                        }
+                    )
 
     # Indexes — flag absence for the queried collections.
     queried_collections: set[str] = set()
@@ -164,10 +175,12 @@ def main() -> int:
         findings.pop("no_indexes", None)
     else:
         for coll in sorted(queried_collections):
-            findings["no_indexes"].append({
-                "collection": coll,
-                "issue": "no create_index calls anywhere; production queries will full-scan",
-            })
+            findings["no_indexes"].append(
+                {
+                    "collection": coll,
+                    "issue": "no create_index calls anywhere; production queries will full-scan",
+                }
+            )
 
     # ---- Report ----
     print("=" * 78)

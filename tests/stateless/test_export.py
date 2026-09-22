@@ -65,15 +65,21 @@ class TestDataExport:
         assert "Пользователь" in rows[0]
         assert expected_header in rows[0]
 
-    @pytest.mark.parametrize("format_type,content_type", [
-        ("tsv", "text/tab-separated-values"),
-        ("html", "text/html"),
-        ("md", "text/markdown"),
-    ])
+    @pytest.mark.parametrize(
+        "format_type,content_type",
+        [
+            ("tsv", "text/tab-separated-values"),
+            ("html", "text/html"),
+            ("md", "text/markdown"),
+        ],
+    )
     def test_export_other_formats(self, client, mock_db, regular_user_token, test_pet, format_type, content_type):
         """The other three formats also work for an events-backed type."""
         _insert_event(
-            mock_db, str(test_pet["_id"]), "defecation", datetime(2024, 1, 15, 14, 30),
+            mock_db,
+            str(test_pet["_id"]),
+            "defecation",
+            datetime(2024, 1, 15, 14, 30),
             {"stool_type": "Обычный", "color": "Коричневый"},
         )
 
@@ -121,8 +127,11 @@ class TestDataExport:
         med = mock_db["medications"].insert_one({"pet_id": pet_id, "name": "Vitamin C", "username": "testuser"})
         mock_db["medication_intakes"].insert_one(
             {
-                "pet_id": pet_id, "medication_id": str(med.inserted_id),
-                "date_time": datetime(2024, 1, 15, 9, 0), "dose_taken": "1", "username": "testuser",
+                "pet_id": pet_id,
+                "medication_id": str(med.inserted_id),
+                "date_time": datetime(2024, 1, 15, 9, 0),
+                "dose_taken": "1",
+                "username": "testuser",
             }
         )
 
@@ -146,7 +155,9 @@ class TestDataExport:
         create = client.post(
             "/api/event-types",
             json={
-                "label": "Игра", "icon": "paw", "color": "blue",
+                "label": "Игра",
+                "icon": "paw",
+                "color": "blue",
                 "fields": [{"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}],
                 "chart": {"kind": "count"},
             },
@@ -222,8 +233,12 @@ class TestDataExport:
     def test_export_csv_encoding(self, client, mock_db, regular_user_token, test_pet):
         """Test CSV export has proper encoding (UTF-8 with BOM for Excel)."""
         _insert_event(
-            mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30),
-            {"duration": "5 минут", "reason": "Стресс"}, comment="Тест",
+            mock_db,
+            str(test_pet["_id"]),
+            "asthma",
+            datetime(2024, 1, 15, 14, 30),
+            {"duration": "5 минут", "reason": "Стресс"},
+            comment="Тест",
         )
 
         response = client.get(
@@ -237,8 +252,12 @@ class TestDataExport:
     def test_export_handles_empty_values(self, client, mock_db, regular_user_token, test_pet):
         """Test export handles empty comments correctly."""
         _insert_event(
-            mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30),
-            {"duration": "5 minutes", "reason": "Stress"}, comment="",
+            mock_db,
+            str(test_pet["_id"]),
+            "asthma",
+            datetime(2024, 1, 15, 14, 30),
+            {"duration": "5 minutes", "reason": "Stress"},
+            comment="",
         )
 
         response = client.get(
@@ -276,7 +295,10 @@ class TestDataExport:
         """A select field's stored value (e.g. inhalation='true') is shown by
         its display text ('Да'), not the raw stored value."""
         _insert_event(
-            mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30),
+            mock_db,
+            str(test_pet["_id"]),
+            "asthma",
+            datetime(2024, 1, 15, 14, 30),
             {"duration": "5 minutes", "reason": "Stress", "inhalation": "true"},
         )
 
@@ -293,7 +315,10 @@ class TestDataExport:
     def test_export_handles_special_characters(self, client, mock_db, regular_user_token, test_pet):
         """Test export handles special characters in data."""
         _insert_event(
-            mock_db, str(test_pet["_id"]), "defecation", datetime(2024, 1, 15, 14, 30),
+            mock_db,
+            str(test_pet["_id"]),
+            "defecation",
+            datetime(2024, 1, 15, 14, 30),
             {"stool_type": "Normal", "food": "Food with | pipe & < > symbols"},
             comment="Comment with <script>alert('xss')</script>",
         )
@@ -311,7 +336,10 @@ class TestDataExport:
     def test_export_markdown_escapes_pipes(self, client, mock_db, regular_user_token, test_pet):
         """Test Markdown export escapes pipe characters."""
         _insert_event(
-            mock_db, str(test_pet["_id"]), "weight", datetime(2024, 1, 15, 14, 30),
+            mock_db,
+            str(test_pet["_id"]),
+            "weight",
+            datetime(2024, 1, 15, 14, 30),
             {"weight": 4.5, "food": "Food | with | pipes"},
         )
 
@@ -335,6 +363,7 @@ class TestDataExport:
 
     def test_export_unexpected_value_error_handled(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         with patch("web.export._build_export_specs", side_effect=ValueError("simulated")):
             response = client.get(
                 f"/api/export/asthma/csv?pet_id={test_pet['_id']}",

@@ -14,6 +14,7 @@ audit/backend_crud_audit.json for machine consumption.
 
 Usage:  python3 scripts/audit_backend.py
 """
+
 from __future__ import annotations
 
 import json
@@ -30,13 +31,13 @@ OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 # Map an entity (noun) to the CRUD operations it should expose, based on
 # the route prefixes we know exist in the app.
 ENTITIES = {
-    "auth":      {"path": "/api/auth"},
-    "pets":      {"path": "/api/pets"},
-    "users":     {"path": "/api/users"},
+    "auth": {"path": "/api/auth"},
+    "pets": {"path": "/api/pets"},
+    "users": {"path": "/api/users"},
     "medications": {"path": "/api/medications  (incl. intakes + /log)"},
-    "export":    {"path": "/api/export"},
-    "stats":     {"path": "/api/stats"},
-    "timeline":  {"path": "/api/history"},
+    "export": {"path": "/api/export"},
+    "stats": {"path": "/api/stats"},
+    "timeline": {"path": "/api/history"},
     "health_records": {"path": "/api/{asthma,defecation,litter,weight,feeding,eye_drops,tooth_brushing,ear_cleaning}"},
 }
 
@@ -119,7 +120,7 @@ def parse_routes() -> list[Route]:
             methods = [x.strip().strip("'\"") for x in methods_raw.split(",")]
             if not methods:
                 methods = ["GET"]
-            line_no = text[:m.start()].count("\n") + 1
+            line_no = text[: m.start()].count("\n") + 1
 
             # Pull decorators from BOTH directions: many handlers stack
             # `@bp.route(...)` first and then `@login_required`,
@@ -138,7 +139,7 @@ def parse_routes() -> list[Route]:
                 if prev_nl == -1:
                     break
                 line_start = prev_nl + 1
-                line = text[line_start: cursor]
+                line = text[line_start:cursor]
                 stripped = line.strip()
                 if stripped.startswith("@"):
                     # Update paren depth walking backwards.
@@ -161,7 +162,7 @@ def parse_routes() -> list[Route]:
                 next_nl = text.find("\n", cursor)
                 if next_nl == -1:
                     break
-                line = text[cursor: next_nl]
+                line = text[cursor:next_nl]
                 stripped = line.strip()
                 if stripped.startswith("@") and paren_depth == 0:
                     block_end = next_nl
@@ -177,7 +178,7 @@ def parse_routes() -> list[Route]:
                     cursor = next_nl + 1
                     continue
                 break
-            block = text[block_start: block_end]
+            block = text[block_start:block_end]
             auth_used = sorted({name for name in AUTH_DECORATORS if f"@{name}" in block})
             rate_limited = "@limiter.limit" in block
             validated = "@api.validate" in block
@@ -186,7 +187,7 @@ def parse_routes() -> list[Route]:
             # We look at the next 60 lines for a return that hits jsonify
             # / get_message / error_response / redirect.
             handler_start = text.find("\n", m.end()) + 1
-            body = text[handler_start: handler_start + 4000]
+            body = text[handler_start : handler_start + 4000]
             if "return redirect(" in body:
                 response_kind = "redirect"
             elif "get_message(" in body:
@@ -238,10 +239,19 @@ def classify_entity(url: str) -> str:
         return "timeline"
     # Health-record factory endpoints: asthma / defecation / litter / weight /
     # feeding / eye_drops / tooth_brushing / ear_cleaning.
-    if any(url.startswith(f"/api/{slug}") for slug in (
-        "asthma", "defecation", "litter", "weight", "feeding",
-        "eye_drops", "tooth_brushing", "ear_cleaning",
-    )):
+    if any(
+        url.startswith(f"/api/{slug}")
+        for slug in (
+            "asthma",
+            "defecation",
+            "litter",
+            "weight",
+            "feeding",
+            "eye_drops",
+            "tooth_brushing",
+            "ear_cleaning",
+        )
+    ):
         return "health_records"
     return "misc"
 
@@ -255,15 +265,15 @@ def audit(routes: list[Route]) -> dict[str, Any]:
     report: dict[str, Any] = {}
 
     expected_crud = {
-        "pets":             {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
-        "users":            {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
-        "medications":      {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
-        "health_records":   {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
-        "auth":             {"CREATE"},   # login only, refresh+logout are session ops
-        "export":            set(),        # GET only
-        "stats":            set(),         # GET only
-        "timeline":         set(),         # GET only
-        "misc":             set(),
+        "pets": {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
+        "users": {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
+        "medications": {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
+        "health_records": {"CREATE", "READ_LIST", "READ_ONE", "UPDATE", "DELETE"},
+        "auth": {"CREATE"},  # login only, refresh+logout are session ops
+        "export": set(),  # GET only
+        "stats": set(),  # GET only
+        "timeline": set(),  # GET only
+        "misc": set(),
     }
 
     for entity, entity_routes in sorted(by_entity.items()):
@@ -287,7 +297,9 @@ def audit(routes: list[Route]) -> dict[str, Any]:
             # even when the session is already expired, otherwise the
             # user can't clear their cookies.
             if entity in {"auth"} and r.path in {
-                "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
+                "/api/auth/login",
+                "/api/auth/refresh",
+                "/api/auth/logout",
                 "/api/auth/check-admin",
             }:
                 continue
@@ -327,7 +339,9 @@ def audit(routes: list[Route]) -> dict[str, Any]:
         if "PATCH" in methods and "PUT" in methods:
             inconsistencies.append(f"{entity}: mixes PUT and PATCH for UPDATE")
         if "PATCH" in methods:
-            inconsistencies.append(f"{entity}: uses PATCH instead of PUT (REST convention is PUT for full-resource updates)")
+            inconsistencies.append(
+                f"{entity}: uses PATCH instead of PUT (REST convention is PUT for full-resource updates)"
+            )
 
     # Rate limit coverage for login.
     auth_login = next(
@@ -370,11 +384,13 @@ def main() -> int:
             print(f"  ⚠ {i}")
         print()
 
-    OUTPUT_PATH.write_text(json.dumps(
-        {"routes": [r.to_dict() for r in routes], **audit_data},
-        indent=2,
-        ensure_ascii=False,
-    ))
+    OUTPUT_PATH.write_text(
+        json.dumps(
+            {"routes": [r.to_dict() for r in routes], **audit_data},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     print(f"Full JSON → {OUTPUT_PATH}")
     return 0
 

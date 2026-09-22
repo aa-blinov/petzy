@@ -53,9 +53,9 @@ async def _apply_throttling(context, page):
         "Network.emulateNetworkConditions",
         {
             "offline": False,
-            "latency": 150,           # ms RTT
-            "downloadThroughput": 1.6 * 1024 * 1024 / 8,   # 1.6 Mbps → bytes/s
-            "uploadThroughput": 0.75 * 1024 * 1024 / 8,    # 750 Kbps → bytes/s
+            "latency": 150,  # ms RTT
+            "downloadThroughput": 1.6 * 1024 * 1024 / 8,  # 1.6 Mbps → bytes/s
+            "uploadThroughput": 0.75 * 1024 * 1024 / 8,  # 750 Kbps → bytes/s
         },
     )
 
@@ -69,24 +69,17 @@ async def _proxy_api_to_backend(context):
         if "/api/" in url or "/uploads/" in url:
             target = url.replace(FRONTEND, BACKEND)
             method = route.request.method
-            headers = {
-                k: v
-                for k, v in route.request.headers.items()
-                if k.lower() not in {"host", "content-length"}
-            }
+            headers = {k: v for k, v in route.request.headers.items() if k.lower() not in {"host", "content-length"}}
             post_data = route.request.post_data
             try:
-                resp = await context.request.fetch(
-                    target, method=method, headers=headers, data=post_data
-                )
+                resp = await context.request.fetch(target, method=method, headers=headers, data=post_data)
                 body = await resp.body()
                 await route.fulfill(
                     status=resp.status,
                     headers={
                         k: v
                         for k, v in resp.headers.items()
-                        if k.lower()
-                        not in {"content-encoding", "transfer-encoding", "content-length"}
+                        if k.lower() not in {"content-encoding", "transfer-encoding", "content-length"}
                     },
                     body=body,
                 )
@@ -244,13 +237,11 @@ async def main():
             f"p95={summary['aggregate']['cold_lcp_p95_ms']}ms"
         )
         print(
-            f"Warm  LCP p50={summary['aggregate']['warm_lcp_p50_ms']}ms "
-            f"p95={summary['aggregate']['warm_lcp_p95_ms']}ms"
+            f"Warm  LCP p50={summary['aggregate']['warm_lcp_p50_ms']}ms p95={summary['aggregate']['warm_lcp_p95_ms']}ms"
         )
 
         # Pass criteria: warm LCP p95 < 2500ms (Google "Good" threshold for 4G).
-        ok = summary["aggregate"]["warm_lcp_p95_ms"] is not None and \
-             summary["aggregate"]["warm_lcp_p95_ms"] < 2500
+        ok = summary["aggregate"]["warm_lcp_p95_ms"] is not None and summary["aggregate"]["warm_lcp_p95_ms"] < 2500
         print(f"\nVerdict: {'PASS' if ok else 'NEEDS WORK'} (warm p95 < 2500ms)")
         return 0 if ok else 1
 

@@ -230,18 +230,14 @@ def favicon():
         # Fallback to config
         app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         static_folder = os.path.join(app_root, "web", FLASK_CONFIG["static_folder"])
-    
+
     # Try to serve optimized favicon.svg, fallback to icon-192.svg
     favicon_path = os.path.join(static_folder, "favicon.svg")
     if os.path.exists(favicon_path):
-        return send_from_directory(
-            static_folder, "favicon.svg", mimetype="image/svg+xml"
-        )
+        return send_from_directory(static_folder, "favicon.svg", mimetype="image/svg+xml")
     else:
         # Fallback to icon-192.svg if favicon.svg doesn't exist
-        return send_from_directory(
-            static_folder, "icon-192.svg", mimetype="image/svg+xml"
-        )
+        return send_from_directory(static_folder, "icon-192.svg", mimetype="image/svg+xml")
 
 
 @app.route("/")

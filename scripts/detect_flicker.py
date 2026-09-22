@@ -29,17 +29,13 @@ async def main() -> int:
         api_calls: list[tuple[float, str, int | None]] = []
         page.on(
             "response",
-            lambda r: api_calls.append((time.time(), r.url, r.status))
-            if "/api/" in r.url
-            else None,
+            lambda r: api_calls.append((time.time(), r.url, r.status)) if "/api/" in r.url else None,
         )
 
         console_errors: list[str] = []
         page.on(
             "console",
-            lambda msg: console_errors.append(f"{msg.type}: {msg.text}")
-            if msg.type in ("error", "warning")
-            else None,
+            lambda msg: console_errors.append(f"{msg.type}: {msg.text}") if msg.type in ("error", "warning") else None,
         )
 
         # 1. Login
@@ -60,7 +56,7 @@ async def main() -> int:
         frames = []
         for i in range(20):
             t_now = time.time() - t0
-            shot = OUT / f"frame_{i:02d}_{int(t_now*1000):05d}ms.png"
+            shot = OUT / f"frame_{i:02d}_{int(t_now * 1000):05d}ms.png"
             try:
                 await page.screenshot(path=str(shot), full_page=False)
             except Exception as e:
@@ -69,7 +65,7 @@ async def main() -> int:
             print(f"  frame {i:2d} @ {t_now:.2f}s -> {shot.name}")
             await page.wait_for_timeout(250)
 
-        print(f"\n=== Captured {len(api_calls)} /api calls in {time.time()-t0:.1f}s ===")
+        print(f"\n=== Captured {len(api_calls)} /api calls in {time.time() - t0:.1f}s ===")
         api_summary: dict[str, int] = {}
         for _ts, url, status in api_calls:
             path = url.split("?")[0].replace(FRONTEND, "")
@@ -84,6 +80,7 @@ async def main() -> int:
         print("\n=== Per-frame perceptual diff (pixel diff vs prev) ===")
         try:
             from PIL import Image, ImageChops
+
             prev_img = None
             for i, t_now, shot in frames:
                 img = Image.open(shot).convert("RGB")

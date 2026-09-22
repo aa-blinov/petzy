@@ -239,7 +239,9 @@ def apply_pagination(query, page: int, page_size: int):
     return query.skip(skip).limit(page_size), skip
 
 
-def optimize_image(file_storage: FileStorage, max_width: int = 1920, max_height: int = 1920, quality: int = 85) -> Optional[Tuple[BytesIO, str]]:
+def optimize_image(
+    file_storage: FileStorage, max_width: int = 1920, max_height: int = 1920, quality: int = 85
+) -> Optional[Tuple[BytesIO, str]]:
     """
     Optimize image by converting to WebP format and resizing if necessary.
 
@@ -257,7 +259,7 @@ def optimize_image(file_storage: FileStorage, max_width: int = 1920, max_height:
         # Read the original image
         file_storage.seek(0)
         image = Image.open(file_storage)
-        
+
         # Convert RGBA to RGB if necessary (WebP supports both, but RGB is smaller)
         if image.mode in ("RGBA", "LA", "P"):
             # Create white background for transparency

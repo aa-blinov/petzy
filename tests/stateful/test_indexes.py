@@ -37,9 +37,7 @@ def test_ensure_indexes_creates_expected_indexes():
     # the same compound pet_id+date_time index.
     for coll_name in HEALTH_RECORD_COLLECTIONS:
         info = mock_db[coll_name].index_information()
-        assert f"{coll_name}_pet_date" in info, (
-            f"{coll_name} missing pet+date index; have {list(info.keys())}"
-        )
+        assert f"{coll_name}_pet_date" in info, f"{coll_name} missing pet+date index; have {list(info.keys())}"
 
 
 def test_ensure_indexes_idempotent():
@@ -49,6 +47,7 @@ def test_ensure_indexes_idempotent():
         ensure_indexes()
         # Second call should be a no-op for every collection.
         ensure_indexes()
+
 
 def test_get_env_raises_when_required_var_missing():
     from web.db import get_env

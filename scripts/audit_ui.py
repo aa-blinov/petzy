@@ -12,6 +12,7 @@ Walks frontend/src and reports findings on:
 
 Prints a per-category summary and writes audit/ui_audit.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -67,12 +68,14 @@ def main() -> int:
                 line_no = text[: m.start()].count("\n") + 1
                 # Skip @ts-expect-error when it's actually expected to fail.
                 snippet = text.splitlines()[line_no - 1].strip()[:120]
-                findings[label].append({
-                    "file": relname,
-                    "line": line_no,
-                    "snippet": snippet,
-                    "severity": severity,
-                })
+                findings[label].append(
+                    {
+                        "file": relname,
+                        "line": line_no,
+                        "snippet": snippet,
+                        "severity": severity,
+                    }
+                )
                 pattern_hits[label] += 1
 
     # Per-file style hoisting: count inline-style occurrences.
@@ -118,11 +121,13 @@ def main() -> int:
         for fname, count in inline_style_per_file.most_common(10):
             print(f"  {count:>4d}  {fname}")
 
-    OUTPUT_PATH.write_text(json.dumps(
-        {"file_count": file_count, "line_count": line_count, "findings": findings},
-        indent=2,
-        ensure_ascii=False,
-    ))
+    OUTPUT_PATH.write_text(
+        json.dumps(
+            {"file_count": file_count, "line_count": line_count, "findings": findings},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     print(f"\nFull JSON → {OUTPUT_PATH}")
     return 0
 

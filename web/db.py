@@ -29,14 +29,14 @@ mongo_uri: str = f"mongodb://{mongo_user}:{mongo_pass}@{MONGO_HOST}:{MONGO_PORT}
 
 # MongoDB connection pool settings
 MONGO_POOL_CONFIG = {
-    "maxPoolSize": 50,           # Maximum number of connections in the pool
-    "minPoolSize": 5,            # Minimum number of connections to maintain
-    "maxIdleTimeMS": 30000,      # Close idle connections after 30 seconds
+    "maxPoolSize": 50,  # Maximum number of connections in the pool
+    "minPoolSize": 5,  # Minimum number of connections to maintain
+    "maxIdleTimeMS": 30000,  # Close idle connections after 30 seconds
     "serverSelectionTimeoutMS": 5000,  # Timeout for server selection (5 seconds)
-    "connectTimeoutMS": 10000,   # Timeout for initial connection (10 seconds)
-    "socketTimeoutMS": 30000,    # Timeout for socket operations (30 seconds)
-    "retryWrites": True,         # Enable automatic retry for write operations
-    "retryReads": True,          # Enable automatic retry for read operations
+    "connectTimeoutMS": 10000,  # Timeout for initial connection (10 seconds)
+    "socketTimeoutMS": 30000,  # Timeout for socket operations (30 seconds)
+    "retryWrites": True,  # Enable automatic retry for write operations
+    "retryReads": True,  # Enable automatic retry for read operations
 }
 
 # Create MongoDB client and database connection with pool configuration
@@ -110,7 +110,10 @@ def ensure_indexes() -> None:
         (db.event_types, [("key", ASCENDING)], "event_types_key_unique", {"unique": True}),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
-        (db.refresh_tokens, [("jti", ASCENDING)], "refresh_token_jti_unique",
+        (
+            db.refresh_tokens,
+            [("jti", ASCENDING)],
+            "refresh_token_jti_unique",
             {
                 "unique": True,
                 # Only enforce uniqueness on rows that actually have a
@@ -121,7 +124,8 @@ def ensure_indexes() -> None:
                 # against a pre-existing legacy collection, while
                 # still preventing any future duplicate.
                 "partialFilterExpression": {"jti": {"$exists": True}},
-            }),
+            },
+        ),
         # TTL index — MongoDB's background TTL monitor sweeps every ~60s
         # and drops any document whose `expires_at` is in the past. This
         # is the right answer for "no application-level cleanup needed":
@@ -135,19 +139,21 @@ def ensure_indexes() -> None:
         # match the index), so existing tokens keep working until they
         # naturally get used-and-replaced. A one-shot deleteMany is run
         # via the `inspect_db` workflow to prune legacy rows.
-        (db.refresh_tokens, [("expires_at", ASCENDING)], "refresh_token_ttl",
+        (
+            db.refresh_tokens,
+            [("expires_at", ASCENDING)],
+            "refresh_token_ttl",
             {
                 "expireAfterSeconds": 0,
                 # Same partial filter story — legacy rows without
                 # expires_at shouldn't appear "in the past" to TTL.
                 "partialFilterExpression": {"expires_at": {"$exists": True}},
-            }),
+            },
+        ),
     ]
     for coll_name in HEALTH_RECORD_COLLECTIONS:
         coll = db[coll_name]
-        declarations.append(
-            (coll, [("pet_id", ASCENDING), ("date_time", DESCENDING)], f"{coll_name}_pet_date")
-        )
+        declarations.append((coll, [("pet_id", ASCENDING), ("date_time", DESCENDING)], f"{coll_name}_pet_date"))
 
     for spec in declarations:
         coll = spec[0]

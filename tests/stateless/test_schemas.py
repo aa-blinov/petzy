@@ -17,36 +17,41 @@ import pytest
 
 @pytest.mark.unit
 class TestValidateDateLogic:
-
     def test_empty_value_passes_through(self):
         from web.schemas import validate_date_logic
+
         assert validate_date_logic("", allow_future=True) == ""
 
     def test_invalid_format_rejected(self):
         from web.schemas import validate_date_logic
+
         with pytest.raises(ValueError, match="формат"):
             validate_date_logic("15/01/2024", allow_future=True)
 
     def test_future_rejected_when_not_allowed(self):
         from web.schemas import validate_date_logic
+
         tomorrow = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
         with pytest.raises(ValueError, match="будущем"):
             validate_date_logic(tomorrow, allow_future=False)
 
     def test_future_beyond_max_future_days_rejected(self):
         from web.schemas import validate_date_logic
+
         too_far = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
         with pytest.raises(ValueError, match="будущем"):
             validate_date_logic(too_far, allow_future=True, max_future_days=1)
 
     def test_past_beyond_max_past_years_rejected(self):
         from web.schemas import validate_date_logic
+
         too_old = (datetime.now() - timedelta(days=366 * 60)).strftime("%Y-%m-%d")
         with pytest.raises(ValueError, match="прошлом"):
             validate_date_logic(too_old, allow_future=True, max_past_years=50)
 
     def test_valid_date_within_bounds_returned_unchanged(self):
         from web.schemas import validate_date_logic
+
         assert validate_date_logic("2024-06-15", allow_future=True) == "2024-06-15"
 
 
@@ -86,7 +91,6 @@ class TestHealthRecordTimeAndDateEdgeCases:
 
 @pytest.mark.unit
 class TestEventTypeFieldAndChartValidators:
-
     def test_event_type_field_rejects_unknown_type(self):
         from web.schemas import EventTypeField
         from pydantic import ValidationError

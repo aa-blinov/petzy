@@ -3,8 +3,14 @@
 import pytest
 
 BUILTIN_KEYS = {
-    "feeding", "weight", "asthma", "defecation", "litter",
-    "eye_drops", "tooth_brushing", "ear_cleaning",
+    "feeding",
+    "weight",
+    "asthma",
+    "defecation",
+    "litter",
+    "eye_drops",
+    "tooth_brushing",
+    "ear_cleaning",
 }
 
 
@@ -41,7 +47,9 @@ class TestCreateEventType:
         response = client.post(
             "/api/event-types",
             json={
-                "label": "Игра", "icon": "paw", "color": "blue",
+                "label": "Игра",
+                "icon": "paw",
+                "color": "blue",
                 "fields": [{"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}],
                 "chart": {"kind": "count"},
             },
@@ -59,7 +67,12 @@ class TestCreateEventType:
     def test_reserved_field_name_rejected(self, client, regular_user_token):
         response = client.post(
             "/api/event-types",
-            json={"label": "x", "icon": "i", "color": "blue", "fields": [{"name": "pet_id", "label": "y", "type": "text"}]},
+            json={
+                "label": "x",
+                "icon": "i",
+                "color": "blue",
+                "fields": [{"name": "pet_id", "label": "y", "type": "text"}],
+            },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
@@ -68,7 +81,9 @@ class TestCreateEventType:
         response = client.post(
             "/api/event-types",
             json={
-                "label": "x", "icon": "i", "color": "blue",
+                "label": "x",
+                "icon": "i",
+                "color": "blue",
                 "fields": [
                     {"name": "dup", "label": "a", "type": "text"},
                     {"name": "dup", "label": "b", "type": "text"},
@@ -81,7 +96,12 @@ class TestCreateEventType:
     def test_select_without_options_rejected(self, client, regular_user_token):
         response = client.post(
             "/api/event-types",
-            json={"label": "x", "icon": "i", "color": "blue", "fields": [{"name": "s", "label": "S", "type": "select"}]},
+            json={
+                "label": "x",
+                "icon": "i",
+                "color": "blue",
+                "fields": [{"name": "s", "label": "S", "type": "select"}],
+            },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422

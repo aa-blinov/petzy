@@ -33,8 +33,11 @@ class TestCreateEvent:
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(admin_pet["_id"]), "type": "defecation",
-                "date": "2024-01-01", "time": "12:00", "fields": {"stool_type": "Обычный", "color": "Коричневый"},
+                "pet_id": str(admin_pet["_id"]),
+                "type": "defecation",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"stool_type": "Обычный", "color": "Коричневый"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -80,8 +83,11 @@ class TestCreateEvent:
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "defecation",
-                "date": "2024-01-15", "time": "14:30", "fields": {},
+                "pet_id": str(test_pet["_id"]),
+                "type": "defecation",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "fields": {},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -91,8 +97,10 @@ class TestCreateEvent:
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "defecation",
-                "date": "2024-01-15", "time": "14:30",
+                "pet_id": str(test_pet["_id"]),
+                "type": "defecation",
+                "date": "2024-01-15",
+                "time": "14:30",
                 "fields": {"stool_type": "Не существует", "color": "Коричневый"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
@@ -103,8 +111,11 @@ class TestCreateEvent:
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "weight",
-                "date": "2024-01-15", "time": "14:30", "fields": {"weight": "not-a-number"},
+                "pet_id": str(test_pet["_id"]),
+                "type": "weight",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "fields": {"weight": "not-a-number"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -114,8 +125,11 @@ class TestCreateEvent:
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "litter",
-                "date": "2024-01-15", "time": "14:30", "fields": {"bogus_field": "x"},
+                "pet_id": str(test_pet["_id"]),
+                "type": "litter",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "fields": {"bogus_field": "x"},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -147,14 +161,26 @@ class TestListEvents:
 
     def test_list_filtered_by_type(self, client, mock_db, regular_user_token, test_pet):
         pet_id = str(test_pet["_id"])
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "weight", "date_time": datetime.now(timezone.utc),
-            "fields": {"weight": 4.5}, "comment": "", "username": "testuser",
-        })
-        mock_db["events"].insert_one({
-            "pet_id": pet_id, "type": "feeding", "date_time": datetime.now(timezone.utc),
-            "fields": {"food_weight": 50}, "comment": "", "username": "testuser",
-        })
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "weight",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {"weight": 4.5},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
+        mock_db["events"].insert_one(
+            {
+                "pet_id": pet_id,
+                "type": "feeding",
+                "date_time": datetime.now(timezone.utc),
+                "fields": {"food_weight": 50},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
             f"/api/events?pet_id={pet_id}&type=weight",
@@ -168,10 +194,16 @@ class TestListEvents:
     def test_list_without_type_returns_all(self, client, mock_db, regular_user_token, test_pet):
         pet_id = str(test_pet["_id"])
         for t in ("weight", "feeding"):
-            mock_db["events"].insert_one({
-                "pet_id": pet_id, "type": t, "date_time": datetime.now(timezone.utc),
-                "fields": {}, "comment": "", "username": "testuser",
-            })
+            mock_db["events"].insert_one(
+                {
+                    "pet_id": pet_id,
+                    "type": t,
+                    "date_time": datetime.now(timezone.utc),
+                    "fields": {},
+                    "comment": "",
+                    "username": "testuser",
+                }
+            )
         response = client.get(f"/api/events?pet_id={pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
         assert response.status_code == 200
         assert response.get_json()["total"] == 2
@@ -179,10 +211,16 @@ class TestListEvents:
     def test_pagination(self, client, mock_db, regular_user_token, test_pet):
         pet_id = str(test_pet["_id"])
         for i in range(5):
-            mock_db["events"].insert_one({
-                "pet_id": pet_id, "type": "litter", "date_time": datetime.now(timezone.utc),
-                "fields": {}, "comment": f"{i}", "username": "testuser",
-            })
+            mock_db["events"].insert_one(
+                {
+                    "pet_id": pet_id,
+                    "type": "litter",
+                    "date_time": datetime.now(timezone.utc),
+                    "fields": {},
+                    "comment": f"{i}",
+                    "username": "testuser",
+                }
+            )
 
         response = client.get(
             f"/api/events?pet_id={pet_id}&page=1&page_size=2",
@@ -211,7 +249,10 @@ class TestGetUpdateDeleteEvent:
         response = client.post(
             "/api/events",
             json={
-                "pet_id": pet_id, "type": event_type, "date": "2024-01-15", "time": "14:30",
+                "pet_id": pet_id,
+                "type": event_type,
+                "date": "2024-01-15",
+                "time": "14:30",
                 "fields": fields or {"weight": 4.5},
             },
             headers={"Authorization": f"Bearer {token}"},
@@ -283,13 +324,15 @@ class TestGetUpdateDeleteEvent:
 
 @pytest.mark.health_records
 class TestCreateEventDatetimeValidation:
-
     def test_invalid_date_rejected(self, client, mock_db, regular_user_token, test_pet):
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "not-a-date", "time": "12:00", "fields": {},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "not-a-date",
+                "time": "12:00",
+                "fields": {},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -298,13 +341,15 @@ class TestCreateEventDatetimeValidation:
 
 @pytest.mark.health_records
 class TestUpdateEventEdgeCases:
-
     def test_update_rejects_invalid_datetime(self, client, mock_db, regular_user_token, test_pet):
         create_resp = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "2024-01-01", "time": "12:00", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -322,8 +367,11 @@ class TestUpdateEventEdgeCases:
         create_resp = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "weight",
-                "date": "2024-01-01", "time": "12:00", "fields": {"weight": 4.5},
+                "pet_id": str(test_pet["_id"]),
+                "type": "weight",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"weight": 4.5},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -345,8 +393,11 @@ class TestUpdateEventEdgeCases:
         create_resp = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "2024-01-01", "time": "12:00", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -415,12 +466,19 @@ class TestGetHealthStats:
 
     def test_count_type_returns_one_point_per_event(self, client, mock_db, regular_user_token, test_pet):
         now = datetime.now(timezone.utc)
-        mock_db["events"].insert_many([
-            {"pet_id": str(test_pet["_id"]), "type": "asthma", "date_time": now,
-             "fields": {"duration": "Короткий", "inhalation": "false", "reason": "test"},
-             "comment": "", "username": "testuser"}
-            for _ in range(3)
-        ])
+        mock_db["events"].insert_many(
+            [
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "asthma",
+                    "date_time": now,
+                    "fields": {"duration": "Короткий", "inhalation": "false", "reason": "test"},
+                    "comment": "",
+                    "username": "testuser",
+                }
+                for _ in range(3)
+            ]
+        )
 
         response = client.get(
             f"/api/stats/health?pet_id={test_pet['_id']}&type=asthma&days=30",
@@ -433,10 +491,16 @@ class TestGetHealthStats:
 
     def test_value_type_returns_field_value(self, client, mock_db, regular_user_token, test_pet):
         now = datetime.now(timezone.utc)
-        mock_db["events"].insert_one({
-            "pet_id": str(test_pet["_id"]), "type": "weight", "date_time": now,
-            "fields": {"weight": 4.2}, "comment": "", "username": "testuser",
-        })
+        mock_db["events"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "type": "weight",
+                "date_time": now,
+                "fields": {"weight": 4.2},
+                "comment": "",
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
             f"/api/stats/health?pet_id={test_pet['_id']}&type=weight&days=30",
@@ -448,12 +512,20 @@ class TestGetHealthStats:
 
     def test_medications_type_counts_intakes(self, client, mock_db, regular_user_token, test_pet):
         from bson import ObjectId
+
         med_id = ObjectId()
-        mock_db["medications"].insert_one({"_id": med_id, "pet_id": str(test_pet["_id"]), "name": "M", "owner": "testuser"})
-        mock_db["medication_intakes"].insert_one({
-            "medication_id": str(med_id), "pet_id": str(test_pet["_id"]),
-            "dose_taken": 1.0, "date_time": datetime.now(timezone.utc), "username": "testuser",
-        })
+        mock_db["medications"].insert_one(
+            {"_id": med_id, "pet_id": str(test_pet["_id"]), "name": "M", "owner": "testuser"}
+        )
+        mock_db["medication_intakes"].insert_one(
+            {
+                "medication_id": str(med_id),
+                "pet_id": str(test_pet["_id"]),
+                "dose_taken": 1.0,
+                "date_time": datetime.now(timezone.utc),
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
             f"/api/stats/health?pet_id={test_pet['_id']}&type=medications&days=30",
@@ -465,18 +537,20 @@ class TestGetHealthStats:
 
 @pytest.mark.health_records
 class TestTimelineToleratesMalformedMedicationId:
-
-    def test_unparseable_medication_id_is_skipped_not_crashed(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_unparseable_medication_id_is_skipped_not_crashed(self, client, mock_db, regular_user_token, test_pet):
         """A medication_intake row with a corrupt medication_id (not a
         valid ObjectId) shouldn't crash the whole timeline — its name is
         just left unresolved."""
         pet_id = str(test_pet["_id"])
-        mock_db["medication_intakes"].insert_one({
-            "pet_id": pet_id, "medication_id": "not-a-valid-object-id",
-            "dose_taken": 1.0, "date_time": datetime.now(timezone.utc), "username": "testuser",
-        })
+        mock_db["medication_intakes"].insert_one(
+            {
+                "pet_id": pet_id,
+                "medication_id": "not-a-valid-object-id",
+                "dose_taken": 1.0,
+                "date_time": datetime.now(timezone.utc),
+                "username": "testuser",
+            }
+        )
 
         response = client.get(
             f"/api/history/timeline?pet_id={pet_id}&page=1&page_size=20",
@@ -498,28 +572,30 @@ class TestEventDatetimeCombinedBoundsCheck:
     further than 24h out even though "tomorrow" alone is not.
     """
 
-    def test_create_event_rejects_combined_datetime_too_far_future(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_create_event_rejects_combined_datetime_too_far_future(self, client, mock_db, regular_user_token, test_pet):
         tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
         response = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": tomorrow, "time": "23:59", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": tomorrow,
+                "time": "23:59",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
 
-    def test_update_event_rejects_combined_datetime_too_far_future(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_update_event_rejects_combined_datetime_too_far_future(self, client, mock_db, regular_user_token, test_pet):
         create_resp = client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "2024-01-01", "time": "12:00", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -537,14 +613,17 @@ class TestEventDatetimeCombinedBoundsCheck:
 
 @pytest.mark.health_records
 class TestEventRouteRaceConditionsAndErrors:
-
     def test_get_event_unexpected_error(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import patch
+
         client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "2024-01-01", "time": "12:00", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -557,9 +636,7 @@ class TestEventRouteRaceConditionsAndErrors:
             )
         assert response.status_code == 500
 
-    def test_update_event_race_condition_reports_not_found(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_update_event_race_condition_reports_not_found(self, client, mock_db, regular_user_token, test_pet):
         """The record existed for @require_record_access's own lookup but
         vanished (concurrent delete) before this handler's own
         update_one ran."""
@@ -569,8 +646,11 @@ class TestEventRouteRaceConditionsAndErrors:
         client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "2024-01-01", "time": "12:00", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -584,17 +664,18 @@ class TestEventRouteRaceConditionsAndErrors:
             )
         assert response.status_code == 404
 
-    def test_delete_event_race_condition_reports_not_found(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
+    def test_delete_event_race_condition_reports_not_found(self, client, mock_db, regular_user_token, test_pet):
         import web.app as app
         from unittest.mock import patch, MagicMock
 
         client.post(
             "/api/events",
             json={
-                "pet_id": str(test_pet["_id"]), "type": "feeding",
-                "date": "2024-01-01", "time": "12:00", "fields": {"food_weight": 50},
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "fields": {"food_weight": 50},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )

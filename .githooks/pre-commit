@@ -19,22 +19,30 @@ fi
 
 staged_py_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.py')
 if [ -n "$staged_py_files" ]; then
-    echo "Running ruff on staged backend files..."
     # .venv/bin/ruff explicitly — a ruff on $PATH can be a different,
     # unpinned version that flags things the CI-pinned one doesn't.
     if [ -x .venv/bin/ruff ]; then
-        # shellcheck disable=SC2086
-        .venv/bin/ruff check $staged_py_files
+        RUFF=.venv/bin/ruff
     else
-        # shellcheck disable=SC2086
-        ruff check $staged_py_files
+        RUFF=ruff
     fi
+
+    echo "Running ruff check on staged backend files..."
+    # shellcheck disable=SC2086
+    $RUFF check $staged_py_files
+    [ $? -ne 0 ] && status=1
+
+    echo "Running ruff format --check on staged backend files..."
+    # shellcheck disable=SC2086
+    $RUFF format --check $staged_py_files
     [ $? -ne 0 ] && status=1
 fi
 
 if [ $status -ne 0 ]; then
     echo ""
-    echo "Lint failed — fix the errors above or run 'git commit --no-verify' to skip (not recommended)."
+    echo "Lint/format failed — fix the errors above (a format failure is usually"
+    echo "just 'ruff format <file>' or 'npx eslint --fix <file>' away) or run"
+    echo "'git commit --no-verify' to skip (not recommended)."
     exit 1
 fi
 

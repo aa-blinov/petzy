@@ -492,9 +492,7 @@ def get_history_timeline():
     if include_medications:
         intakes_query = {"pet_id": pet_id}
         total += app.db["medication_intakes"].count_documents(intakes_query)
-        intake_records = list(
-            app.db["medication_intakes"].find(intakes_query).sort("date_time", -1).limit(fetch_limit)
-        )
+        intake_records = list(app.db["medication_intakes"].find(intakes_query).sort("date_time", -1).limit(fetch_limit))
 
         from bson import ObjectId  # local import keeps module-load cheap
 
@@ -506,12 +504,14 @@ def get_history_timeline():
                     med_object_ids.append(ObjectId(raw_id))
                 except Exception:
                     pass
-        med_names = {
-            str(med["_id"]): med.get("name", "Unknown")
-            for med in app.db["medications"].find(
-                {"_id": {"$in": med_object_ids}}, {"name": 1}
-            )
-        } if med_object_ids else {}
+        med_names = (
+            {
+                str(med["_id"]): med.get("name", "Unknown")
+                for med in app.db["medications"].find({"_id": {"$in": med_object_ids}}, {"name": 1})
+            }
+            if med_object_ids
+            else {}
+        )
 
         for record in intake_records:
             record["_id"] = str(record["_id"])
