@@ -90,7 +90,9 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     width: '100%',
                     background: bg,
                     border: 'none',
-                    borderRadius: '14px',
+                    // Concentric with the sheet's own 24px corner, 12px
+                    // (--spacing-md) in from it: 24 − 12 = 12.
+                    borderRadius: 'var(--radius-md)',
                     color: 'var(--app-text-on-tile)',
                     textAlign: 'left',
                     cursor: 'pointer',

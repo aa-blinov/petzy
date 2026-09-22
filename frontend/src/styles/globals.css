@@ -113,7 +113,20 @@
     --spacing-xl: 24px;
     --spacing-xxl: 32px;
 
-    /* Border Radius Scale */
+    /* Border Radius Scale — concentric by construction: this ladder and
+       the Spacing Scale below share the same step values (4/8/12/16/24)
+       on purpose. When a rounded element sits inset from a rounded
+       parent by one of the standard spacing tokens, picking the radius
+       token exactly one rung down (parent radius − that spacing =
+       child radius) keeps the two curves parallel instead of the child
+       looking either too sharp or too round for the gap around it —
+       e.g. a --radius-xl card padded by --spacing-md holds
+       --radius-md children (24 − 12 = 12), not an arbitrary value.
+       Reach for --radius-xs once that arithmetic bottoms out below 8.
+       This only applies to nested panels/tiles/cards — small badges,
+       icons and circular avatars are their own shape and don't need to
+       trace the parent's curve. */
+    --radius-xs: 4px;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;

@@ -85,7 +85,9 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                     width: '100%',
                     background: bg,
                     border: active ? '2px solid var(--app-text-on-tile)' : '2px solid transparent',
-                    borderRadius: '14px',
+                    // Concentric with the sheet's own 24px corner, 12px
+                    // (--spacing-md) in from it: 24 − 12 = 12.
+                    borderRadius: 'var(--radius-md)',
                     color: 'var(--app-text-on-tile)',
                     textAlign: 'left',
                     cursor: 'pointer',
