@@ -63,7 +63,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-md);
+    /* Concentric with the row's 16px corner, 6px in from it on every
+       side: 16 − 6 = 10, which isn't one of our tokens. Round down to
+       --radius-sm (8) rather than up to --radius-md (12) — undershooting
+       just reads as a touch sharper than perfectly nested, overshooting
+       would make this pill's curve start before the row's own does. */
+    border-radius: var(--radius-sm);
     color: var(--app-text-on-dark);
     /* Stay behind the surface so the row's card-soft covers them. */
     z-index: 0;
