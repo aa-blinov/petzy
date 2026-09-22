@@ -1,7 +1,11 @@
 #!/bin/sh
-# Runs the full backend test suite before allowing a push — catches
-# regressions the fast per-commit ruff/eslint checks can't.
+# Runs the full backend test suite and a full frontend lint before
+# allowing a push — catches regressions and drift the fast per-commit
+# staged-files-only checks can't (e.g. a file that changed across
+# several commits, or a --no-verify commit).
 # Enabled via: git config core.hooksPath .githooks (one-time per clone).
+
+status=0
 
 if [ -x .venv/bin/python ]; then
     PYTHON=.venv/bin/python
@@ -11,11 +15,19 @@ fi
 
 echo "Running backend test suite before push..."
 $PYTHON -m pytest tests/ --tb=short -q
-status=$?
+[ $? -ne 0 ] && status=1
+
+echo ""
+echo "Running full frontend lint before push..."
+(
+    cd frontend || exit 1
+    npm run lint
+)
+[ $? -ne 0 ] && status=1
 
 if [ $status -ne 0 ]; then
     echo ""
-    echo "Tests failed — fix them or run 'git push --no-verify' to skip (not recommended)."
+    echo "Checks failed — fix them or run 'git push --no-verify' to skip (not recommended)."
     exit 1
 fi
 
