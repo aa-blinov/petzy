@@ -121,6 +121,10 @@ export function History() {
     const handleFilterChange = (id: string) => {
         hapticFeedback('light');
         setFilterType(id);
+        // A chart across every event type mixed together doesn't mean
+        // anything — chart mode only makes sense once a specific type is
+        // picked, so falling back to "Все" drops back to the list.
+        if (id === FILTER_ALL) setViewMode('list');
     };
 
     const handleViewModeChange = (mode: 'list' | 'chart') => {
@@ -276,7 +280,9 @@ export function History() {
                             <button
                                 type="button"
                                 onClick={() => handleViewModeChange('chart')}
+                                disabled={filterType === FILTER_ALL}
                                 aria-pressed={viewMode === 'chart'}
+                                title={filterType === FILTER_ALL ? 'Выберите тип события, чтобы построить график' : undefined}
                                 style={{
                                     background: viewMode === 'chart' ? 'var(--app-primary-color)' : 'transparent',
                                     color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
@@ -285,7 +291,8 @@ export function History() {
                                     padding: '7px 16px',
                                     fontSize: 'var(--text-sm)',
                                     fontWeight: 600,
-                                    cursor: 'pointer',
+                                    cursor: filterType === FILTER_ALL ? 'not-allowed' : 'pointer',
+                                    opacity: filterType === FILTER_ALL ? 0.5 : 1,
                                     transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
                                 }}
                             >
@@ -365,12 +372,11 @@ export function History() {
                         </PullToRefresh>
                     ) : (
                         <div className="safe-area-padding">
-                            {/* Chart view uses the selected type; "Все" falls
-                                back to feeding (the most charted metric). */}
-                            <HistoryChart
-                                type={filterType === FILTER_ALL ? 'feeding' : filterType}
-                                petId={selectedPetId}
-                            />
+                            {/* Chart mode is only reachable with a specific
+                                type selected — the toggle above is disabled
+                                on "Все", and picking "Все" drops back to the
+                                list — so filterType is never FILTER_ALL here. */}
+                            <HistoryChart type={filterType} petId={selectedPetId} />
                         </div>
                     )}
                 </div>
