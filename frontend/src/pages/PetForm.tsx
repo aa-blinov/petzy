@@ -3,6 +3,7 @@ import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
+import { goBack } from '../utils/navigation';
 import { Button, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
@@ -263,7 +264,7 @@ export function PetForm() {
       }
 
       showToast.success(isEditing ? 'Питомец обновлен' : 'Питомец добавлен', {
-        afterClose: () => navigate('/pets'),
+        afterClose: () => goBack(navigate, '/pets'),
       });
     } catch (error) {
       const errorMessage = getApiErrorMessage(error, 'Ошибка при сохранении');
@@ -757,7 +758,7 @@ export function PetForm() {
             <Button
               block
               size="large"
-              onClick={() => navigate('/pets')}
+              onClick={() => goBack(navigate, '/pets')}
               style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
             >
               Отмена

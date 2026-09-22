@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
-import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { goBack } from '../utils/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,7 +37,6 @@ export function HealthRecordForm() {
   const { type, id } = useParams<{ type: string; id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const { selectedPetId } = usePet();
   const queryClient = useQueryClient();
   const { eventTypesByKey, isLoading: eventTypesLoading } = useEventTypes();
@@ -207,14 +207,12 @@ export function HealthRecordForm() {
       });
 
       showToast.success(response.message, {
-        afterClose: () => {
-          if (id) {
-            const activeTab = searchParams.get('tab');
-            navigate(activeTab ? `/history?tab=${activeTab}` : '/history');
-          } else {
-            navigate('/');
-          }
-        },
+        // Not a fixed destination: this form opens from the Dashboard's
+        // quick-add (create) and from an edit swipe on either the
+        // Dashboard's or History's timeline (edit) — going back lands on
+        // whichever of those actually opened it, tab/scroll position and
+        // all, instead of assuming History every time an id is present.
+        afterClose: () => goBack(navigate, id ? '/history' : '/'),
       });
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -309,14 +307,7 @@ export function HealthRecordForm() {
             <Button
               block
               size="large"
-              onClick={() => {
-                if (id) {
-                  const activeTab = searchParams.get('tab');
-                  navigate(activeTab ? `/history?tab=${activeTab}` : '/history');
-                } else {
-                  navigate('/');
-                }
-              }}
+              onClick={() => goBack(navigate, id ? '/history' : '/')}
               style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
             >
               Отмена

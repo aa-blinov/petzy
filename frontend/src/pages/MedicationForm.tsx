@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
+import { goBack } from '../utils/navigation';
 import { Button, Form, Input, Switch, Selector, Picker, Popup, List } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
@@ -175,7 +176,7 @@ export function MedicationForm() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
             showToast.success(isEditing ? 'Курс обновлен' : 'Курс создан', {
-                afterClose: () => navigate('/medications'),
+                afterClose: () => goBack(navigate, '/medications'),
             });
         },
         onError: (err: unknown) => {
@@ -594,7 +595,7 @@ export function MedicationForm() {
                         <Button
                             block
                             size="large"
-                            onClick={() => navigate('/medications')}
+                            onClick={() => goBack(navigate, '/medications')}
                             style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
                         >
                             Отмена

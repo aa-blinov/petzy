@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
+import { goBack } from '../utils/navigation';
 import { Button, Form, Input } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -71,7 +72,7 @@ export function UserForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success('Пользователь успешно создан');
-      setTimeout(() => navigate('/admin'), 500);
+      setTimeout(() => goBack(navigate, '/admin'), 500);
     },
     onError: (err: unknown) => {
       showToast.failure(getApiErrorMessage(err, 'Ошибка при создании пользователя'));
@@ -84,7 +85,7 @@ export function UserForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success('Пользователь успешно обновлен');
-      setTimeout(() => navigate('/admin'), 500);
+      setTimeout(() => goBack(navigate, '/admin'), 500);
     },
     onError: (err: unknown) => {
       showToast.failure(getApiErrorMessage(err, 'Ошибка при обновлении пользователя'));
@@ -250,7 +251,7 @@ export function UserForm() {
             <Button
               block
               size="large"
-              onClick={() => navigate('/admin')}
+              onClick={() => goBack(navigate, '/admin')}
               style={{ borderRadius: '12px', fontWeight: 500 }}
             >
               Отмена

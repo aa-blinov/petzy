@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { goBack } from '../utils/navigation';
 import { Button, Input, Switch, Selector, TextArea } from 'antd-mobile';
 import { Trash2, Plus } from 'lucide-react';
 
@@ -218,7 +219,7 @@ export function EventTypeForm() {
       }
       invalidate();
       showToast.success(isEditing ? 'Тип события обновлён' : 'Тип события создан');
-      navigate('/event-types');
+      goBack(navigate, '/event-types');
     } catch (error) {
       const message = getApiErrorMessage(error, 'Не удалось сохранить тип события');
       showToast.failure(message);
@@ -235,7 +236,7 @@ export function EventTypeForm() {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <p>Тип события не найден</p>
-        <Button onClick={() => navigate('/event-types')}>Назад</Button>
+        <Button onClick={() => goBack(navigate, '/event-types')}>Назад</Button>
       </div>
     );
   }
@@ -433,7 +434,7 @@ export function EventTypeForm() {
           >
             {isEditing ? 'Сохранить' : 'Создать'}
           </Button>
-          <Button block size="large" onClick={() => navigate('/event-types')} style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}>
+          <Button block size="large" onClick={() => goBack(navigate, '/event-types')} style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}>
             Отмена
           </Button>
         </div>
