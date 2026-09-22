@@ -57,7 +57,7 @@ export function Dashboard() {
     enabled: !!selectedPetId
   });
 
-  const allItems = data?.pages.flatMap(page => page.items) ?? [];
+  const allItems = useMemo(() => data?.pages.flatMap(page => page.items) ?? [], [data]);
 
   const groupedItems = useMemo(() => {
     return allItems.reduce<Record<string, HealthRecord[]>>((acc, item) => {

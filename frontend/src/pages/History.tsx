@@ -93,7 +93,7 @@ export function History() {
         enabled: !!selectedPetId,
     });
 
-    const allRecords = data?.pages.flatMap(page => page.items) || [];
+    const allRecords = useMemo(() => data?.pages.flatMap(page => page.items) || [], [data]);
 
     // Apply chip filter client-side.
     const filteredRecords = useMemo(() => {

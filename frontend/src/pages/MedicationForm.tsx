@@ -4,7 +4,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Form, Input, Switch, Selector, Picker, Popup, List } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { DeleteOutline, SearchOutline } from 'antd-mobile-icons';
@@ -55,6 +55,11 @@ export function MedicationForm() {
     const queryClient = useQueryClient();
     const [typePickerVisible, setTypePickerVisible] = useState(false);
     const [showCustomType, setShowCustomType] = useState(false);
+    // Tracks the last med.type we derived showCustomType from, so the
+    // derivation below runs during render (React's sanctioned pattern for
+    // "adjust state when a prop/query result changes") instead of in an
+    // effect, which would cause an extra cascading render.
+    const [lastSeenMedType, setLastSeenMedType] = useState<string | undefined>(undefined);
     const [showCommonMeds, setShowCommonMeds] = useState(false);
     const [activeTimeIndex, setActiveTimeIndex] = useState<number | null>(null);
     const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -64,7 +69,7 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
-    const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+    const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
         resolver: zodResolver(medicationSchema),
         defaultValues: {
             name: '',
@@ -88,8 +93,15 @@ export function MedicationForm() {
         name: 'schedule.times' as never,
     });
 
-    const inventoryEnabled = watch('inventory_enabled');
-    const doseUnit = watch('dose_unit') || 'ед.';
+    // useWatch (a subscription) rather than calling watch() inline is
+    // what React Compiler can actually verify is safe to memoize — watch()
+    // returns a live function whose output it can't prove is stable.
+    const inventoryEnabled = useWatch({ control, name: 'inventory_enabled' });
+    const watchedDoseUnit = useWatch({ control, name: 'dose_unit' });
+    const doseUnit = watchedDoseUnit || 'ед.';
+    const watchedDoseUnitForPicker = watchedDoseUnit || 'ед';
+    const watchedDefaultDose = useWatch({ control, name: 'default_dose' }) || 1;
+    const watchedTimes = useWatch({ control, name: 'schedule.times' });
 
     const { data: med, isLoading: isLoadingMed } = useQuery({
         queryKey: ['medication', id],
@@ -121,11 +133,18 @@ export function MedicationForm() {
                 is_active: med.is_active,
                 comment: med.comment || '',
             });
-            if (!COMMON_TYPES.includes(med.type)) {
-                setShowCustomType(true);
-            }
         }
     }, [med, reset]);
+
+    // Adjust showCustomType during render when a newly-loaded med's type
+    // isn't one of the presets — see the lastSeenMedType comment above for
+    // why this runs here instead of in a useEffect.
+    if (med && med.type !== lastSeenMedType) {
+        setLastSeenMedType(med.type);
+        if (!COMMON_TYPES.includes(med.type)) {
+            setShowCustomType(true);
+        }
+    }
 
     const handleCommonMedSelect = (common: typeof COMMON_MEDICATIONS[0]) => {
         setValue('name', common.name);
@@ -356,7 +375,7 @@ export function MedicationForm() {
                                             columns={[['таб', 'мл', 'мг', 'капс', 'шт', 'ед'].map(u => ({ label: u, value: u }))]}
                                             visible={unitPickerVisible}
                                             onClose={() => setUnitPickerVisible(false)}
-                                            value={[watch('dose_unit') || 'ед']}
+                                            value={[watchedDoseUnitForPicker]}
                                             onConfirm={v => {
                                                 if (v[0]) setValue('dose_unit', v[0] as string);
                                             }}
@@ -461,7 +480,7 @@ export function MedicationForm() {
                                     setTimePickerVisible(false);
                                     setActiveTimeIndex(null);
                                 }}
-                                value={activeTimeIndex !== null ? (watch(`schedule.times.${activeTimeIndex}`) || '08:00').split(':') : ['08', '00']}
+                                value={activeTimeIndex !== null ? (watchedTimes?.[activeTimeIndex] || '08:00').split(':') : ['08', '00']}
                                 onConfirm={(val) => {
                                     if (activeTimeIndex !== null) {
                                         const newTime = `${val[0]}:${val[1]}`;
@@ -484,7 +503,7 @@ export function MedicationForm() {
                                 <Form.Item
                                     label="Включить"
                                     extra={<Switch checked={field.value} onChange={field.onChange} />}
-                                    description={field.value ? `Будем списывать по ${watch('default_dose') || 1} ${doseUnit} за прием` : undefined}
+                                    description={field.value ? `Будем списывать по ${watchedDefaultDose} ${doseUnit} за прием` : undefined}
                                 />
                             )}
                         />
