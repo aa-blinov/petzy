@@ -50,15 +50,9 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
       onMaskClick={onClose}
       position="bottom"
       closeOnSwipe
-      bodyStyle={{
-        borderTopLeftRadius: 'var(--radius-xl)',
-        borderTopRightRadius: 'var(--radius-xl)',
-        backgroundColor: 'var(--app-card-background)',
-        minHeight: '60vh',
-        paddingBottom: 'calc(var(--safe-area-bottom) + 24px)',
-      }}
+      bodyStyle={{ background: 'transparent' }}
     >
-      <DraggableSheetBody visible={visible} onClose={onClose}>
+      <DraggableSheetBody visible={visible} onClose={onClose} minHeight="60vh">
 
         {/* Title */}
         <h3

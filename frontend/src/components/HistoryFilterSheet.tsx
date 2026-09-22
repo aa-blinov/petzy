@@ -41,21 +41,12 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
       onMaskClick={onClose}
       position="bottom"
       closeOnSwipe
-      bodyStyle={{
-        borderTopLeftRadius: 'var(--radius-xl)',
-        borderTopRightRadius: 'var(--radius-xl)',
-        backgroundColor: 'var(--app-card-background)',
-        maxHeight: '75vh',
-        // With enough event types the grid is taller than 75vh — scroll
-        // it in place instead of silently spilling content off the
-        // bottom of the screen. `contain` stops an over-scroll at either
-        // end from chaining into the page behind the sheet.
-        overflowY: 'auto',
-        overscrollBehavior: 'contain',
-        paddingBottom: 'calc(var(--safe-area-bottom) + 24px)',
-      }}
+      // The visible card (background, radius, height) lives on
+      // DraggableSheetBody now, so the whole card moves as one rigid
+      // block while dragging — this slot just needs to be invisible.
+      bodyStyle={{ background: 'transparent' }}
     >
-      <DraggableSheetBody visible={visible} onClose={onClose}>
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh">
         <h3
           className="section-header"
           style={{

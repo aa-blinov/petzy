@@ -9,9 +9,17 @@
  * the gesture wasn't landing. With a cursor people drag slowly, so the
  * handle looked grabbable and did nothing at all.
  *
- * The offset lives on this wrapper rather than the popup body: antd
- * drives the body's transform with react-spring for the open/close
- * animation, and writing to the same property would fight it.
+ * This component — not antd's `.adm-popup-body` — owns the sheet's
+ * visible card: background, rounded top corners, height bounds. It
+ * used to be the other way round (the card look lived on `bodyStyle`,
+ * this component was just a transparent, undecorated wrapper around
+ * the handle + content), which meant dragging translated the handle
+ * and content while the actual card background stayed put underneath
+ * — the handle visibly pulled away from its own card instead of
+ * carrying it along. antd's body is now just an invisible slot sized
+ * to hold this card (for its own open/close slide animation); this
+ * component is the one thing that moves as a single rigid block when
+ * dragged, background included.
  *
  * `visible` resets the drag offset — but only when the sheet is
  * (re)opening, not when it closes. This used to be done by the parent
@@ -25,14 +33,14 @@
  * change without an extra effect-triggered render) means a
  * swipe-dismiss keeps animating from wherever the finger left it.
  *
- * Content taller than the sheet's max height (HistoryFilterSheet, once
- * there are enough event types) scrolls inside antd's own `.adm-popup-
- * body` element (the caller opts in with `overflowY: 'auto'` on
- * `bodyStyle` — see HistoryFilterSheet). Dragging from inside that
- * scrolled content only dismisses the sheet once it's scrolled back to
- * the top and the finger keeps pulling down — same as a native bottom
- * sheet — so an ordinary scroll gesture doesn't fight the close
- * gesture, and a mid-scroll pull can't yank the sheet shut.
+ * Content taller than the sheet's own max height (HistoryFilterSheet,
+ * once there are enough event types) scrolls inside this component's
+ * own content region instead of overflowing past the card's bounds.
+ * Dragging from inside that scrolled content only dismisses the sheet
+ * once it's scrolled back to the top and the finger keeps pulling
+ * down — same as a native bottom sheet — so an ordinary scroll gesture
+ * doesn't fight the close gesture, and a mid-scroll pull can't yank
+ * the sheet shut.
  */
 
 import { useRef, useState, type ReactNode } from 'react';
@@ -44,10 +52,16 @@ export function DraggableSheetBody({
   visible,
   onClose,
   children,
+  minHeight,
+  maxHeight,
 }: {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
+  /** Floor for the card's height — content shorter than this still gets a full-size sheet. */
+  minHeight?: string;
+  /** Ceiling for the card's height — taller content scrolls inside instead of growing past it. */
+  maxHeight?: string;
 }) {
   const [dragY, setDragY] = useState(0);
   // State, not a ref: the render below picks its transition from this,
@@ -55,10 +69,8 @@ export function DraggableSheetBody({
   // under concurrent rendering.
   const [dragging, setDragging] = useState(false);
   const dragFrom = useRef<number | null>(null);
-  // The scrollable ancestor for the drag in progress, if any — found by
-  // walking up from wherever the pointer went down, since antd owns
-  // that element and doesn't hand us a ref to it.
-  const scrollElRef = useRef<HTMLElement | null>(null);
+  // The scrollable content region for the drag in progress, if any.
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const [wasVisible, setWasVisible] = useState(visible);
   if (visible !== wasVisible) {
@@ -69,7 +81,6 @@ export function DraggableSheetBody({
   const onPointerDown = (e: React.PointerEvent) => {
     if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     dragFrom.current = e.clientY;
-    scrollElRef.current = (e.target as HTMLElement).closest('.adm-popup-body');
     setDragging(true);
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -81,7 +92,7 @@ export function DraggableSheetBody({
   const onPointerMove = (e: React.PointerEvent) => {
     if (dragFrom.current === null) return;
     const delta = e.clientY - dragFrom.current;
-    const atTop = (scrollElRef.current?.scrollTop ?? 0) <= 0;
+    const atTop = (contentRef.current?.scrollTop ?? 0) <= 0;
     if (delta > 0 && atTop) {
       // Scrolled to the top (or never scrollable) and still pulling
       // down — drag the sheet closed instead of letting the content
@@ -110,7 +121,19 @@ export function DraggableSheetBody({
   return (
     <div
       style={{
-        padding: 'var(--spacing-lg) var(--spacing-md) 0',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight,
+        maxHeight,
+        // The card itself — background and rounded top corners live
+        // here so they travel with the drag instead of staying behind
+        // as a static frame around moving content.
+        backgroundColor: 'var(--app-card-background)',
+        borderTopLeftRadius: 'var(--radius-xl)',
+        borderTopRightRadius: 'var(--radius-xl)',
+        // Clips scrolled content to the rounded corners instead of it
+        // showing square behind them.
+        overflow: 'hidden',
         transform: `translateY(${dragY}px)`,
         transition: dragging
           ? 'none'
@@ -136,11 +159,12 @@ export function DraggableSheetBody({
           }
         }}
         style={{
+          flexShrink: 0,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           height: 28,
-          marginBottom: 'var(--spacing-sm)',
+          marginTop: 'var(--spacing-sm)',
           cursor: 'grab',
           touchAction: 'none',
         }}
@@ -151,16 +175,24 @@ export function DraggableSheetBody({
         />
       </div>
 
-      {/* The content itself stays a normal in-flow block — antd's own
-          .adm-popup-body is what actually scrolls (see the comment
-          above) — this just also accepts the drag gesture so dismissing
-          isn't limited to the thin handle strip above. */}
+      {/* Scrolls in place once content is taller than the card's own
+          max height, instead of spilling past its rounded corners. */}
       <div
+        ref={contentRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        style={{ touchAction: 'pan-y' }}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          // Stop an over-scroll at the top/bottom from chaining into
+          // the page behind the sheet once this can't scroll further.
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
+          padding: 'var(--spacing-md) var(--spacing-md) calc(var(--safe-area-bottom) + 24px)',
+        }}
       >
         {children}
       </div>
