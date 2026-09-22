@@ -89,6 +89,21 @@
     --tile-yellow: #FFF6CC;
     --tile-blue: #D4E4F2;
     --tile-pink: #FFE0E8;
+    --tile-gray: #E4E0DA;
+
+    /* Species Placeholder Gradients — the pet photo tile's background
+       when no photo is uploaded (Pets list card, PetSummaryCard hero).
+       Same "135deg, light hue → deep hue" treatment as
+       --app-brand-gradient below (cat and the "unrecognized species"
+       fallback both just point at it) so every species reads as its own
+       identity color instead of one generic orange for everything.
+       Keys match speciesIconMap / speciesGradientMap in constants.ts. */
+    --species-gradient-cat: var(--app-brand-gradient);
+    --species-gradient-dog: linear-gradient(135deg, #E8B558 0%, #B8842A 100%);
+    --species-gradient-bird: linear-gradient(135deg, #7FCBA8 0%, #3F9873 100%);
+    --species-gradient-fish: linear-gradient(135deg, #7FB8E0 0%, #3F7FB0 100%);
+    --species-gradient-rabbit: linear-gradient(135deg, #E89EC0 0%, #B85A8A 100%);
+    --species-gradient-default: var(--app-brand-gradient);
 
     /* Spacing Scale */
     --spacing-xs: 4px;
@@ -145,7 +160,6 @@
     --app-font-bubble: 'DynaPuff', system-ui, sans-serif;
     /* Brand gradient (warm copper — used for hero/CTA) */
     --app-brand-gradient: linear-gradient(135deg, #E8946A 0%, #C46A3F 100%);
-    --app-blue-gradient: linear-gradient(135deg, var(--app-primary-color) 0%, #4a90e2 100%);
 
     /* Compatibility with old variable names */
     --app-text-color: var(--app-text-primary);
@@ -230,19 +244,7 @@
     background: var(--app-accent-soft);
     color: var(--app-accent-deep);
     white-space: nowrap;
-    /* Transparent border so a chip and the dashed .chip--muted stand-in
-       occupy exactly the same box — otherwise the placeholder made its
-       row 2 px taller and the cards in a list no longer matched. */
     border: 1px solid transparent;
-}
-
-/* Stand-in for a metadata row that has nothing to show yet. Keeps the
-   row's height so cards in a list stay the same size, and reads as a
-   prompt rather than as data. */
-.chip--muted {
-    background: transparent;
-    color: var(--app-text-tertiary);
-    border: 1px dashed var(--app-border-color);
 }
 
 /* Soft card — warm off-white card with subtle warm shadow on cream.
@@ -1308,43 +1310,21 @@ button:focus-visible,
     padding-right: 8px;
 }
 
-/* History filter rail — horizontal scrollable chips for type filtering.
-   Replaces the per-type antd-mobile Tabs (too many entries, each one
-   a separate pane was overkill — the timeline endpoint already returns
-   all types mixed). */
-.history-filter-rail {
-    display: flex;
-    gap: var(--spacing-xs);
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    /* Side padding matches the page gutter (.safe-area-padding uses the
-       same tokens), so the rail's first chip lines up with the heading
-       above it. The rail itself still spans edge to edge — it lives in
-       .max-width-container, not in a padded wrapper — so without this
-       the leading chip sat flush at x=0, 16 px left of the title, and
-       read as clipped rather than as a scrollable rail. The padding is
-       part of the scroll area, so chips still run to the edge once the
-       rail is scrolled. */
-    padding: 0 var(--layout-padding-right) var(--spacing-sm) var(--layout-padding-left);
-    scroll-padding-left: var(--layout-padding-left);
-    margin: 0 0 var(--spacing-md);
-}
-.history-filter-rail::-webkit-scrollbar {
-    display: none;
-}
-
-.history-filter-chip {
-    flex-shrink: 0;
+/* History filter trigger — a single pill that opens HistoryFilterSheet
+   (a bottom sheet, same grid-of-tiles pattern as the dashboard's "+"
+   button). Replaces a horizontally-scrolling chip rail that gave no
+   visual hint it scrolled once there were more than a handful of
+   event types. */
+.history-filter-trigger {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    /* These are tap targets, not status badges. At --text-xs with 6 px
-       of vertical padding they rendered 29 px tall under a 24 px
-       heading, which read as a caption rather than a control (and sat
-       well under a comfortable touch target). */
+    /* Tap target, not a status badge — matches the old chip's size. */
     padding: 8px 14px;
+    /* Sits in .max-width-container (no padding of its own), so the
+       left margin does what .safe-area-padding does for block
+       containers — lines the trigger up with the heading above it. */
+    margin: 0 0 var(--spacing-md) var(--layout-padding-left);
     border-radius: 999px;
     border: 1px solid var(--app-border-color);
     background: var(--app-card-background);
@@ -1356,19 +1336,10 @@ button:focus-visible,
     white-space: nowrap;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color var(--motion-duration-fast) var(--motion-ease-standard),
-        color var(--motion-duration-fast) var(--motion-ease-standard),
-        border-color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
-.history-filter-chip:active {
+.history-filter-trigger:active {
     transform: scale(0.97);
-}
-
-.history-filter-chip--active {
-    background: var(--app-primary-color);
-    border-color: var(--app-primary-color);
-    color: var(--app-text-on-dark);
 }
 
 /* FloatingBubble sits in a portal and ignores the CSS variables we set
