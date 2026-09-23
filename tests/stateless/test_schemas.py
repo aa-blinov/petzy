@@ -104,3 +104,35 @@ class TestEventTypeFieldAndChartValidators:
 
         with pytest.raises(ValidationError, match="kind"):
             EventChartConfig(kind="not_count_or_value")
+
+    def test_number_field_with_no_explicit_min_defaults_to_zero(self):
+        """There's no UI for a custom event type to declare a
+        negative-capable numeric field, so "no min given" must not mean
+        "no floor at all" — it means 0, decided once here rather than by
+        every consumer of the field def."""
+        from web.schemas import EventTypeField
+
+        field = EventTypeField(name="distance_km", label="Дистанция", type="number")
+
+        assert field.min == 0.0
+
+    def test_number_field_with_explicit_min_keeps_it(self):
+        from web.schemas import EventTypeField
+
+        field = EventTypeField(name="temp_delta", label="Дельта температуры", type="number", min=-10)
+
+        assert field.min == -10
+
+    def test_non_number_field_is_not_given_a_min(self):
+        from web.schemas import EventTypeField
+
+        field = EventTypeField(name="note", label="Заметка", type="text")
+
+        assert field.min is None
+
+    def test_deviation_threshold_must_be_a_fraction(self):
+        from web.schemas import EventTypeField
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            EventTypeField(name="x", label="X", type="number", deviation_threshold=1.5)

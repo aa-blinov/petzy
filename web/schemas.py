@@ -675,6 +675,13 @@ class EventTypeField(BaseModel):
     min: Optional[float] = None
     max: Optional[float] = None
     step: Optional[float] = None
+    # How far a new reading may drift from this field's own rolling average
+    # before it's pushed as a trend anomaly (see web/trend_alerts.py) — e.g.
+    # 0.15 for 15%. A stable field (weight) and a naturally noisy one (a
+    # feeding portion) don't belong under the same fixed sensitivity, so
+    # this is per-field rather than one constant for every numeric type.
+    # None means "use the module default".
+    deviation_threshold: Optional[float] = Field(None, gt=0, lt=1)
 
     @field_validator("type")
     @classmethod
@@ -693,6 +700,17 @@ class EventTypeField(BaseModel):
     def validate_min_max_range(self):
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("Минимум не может быть больше максимума")
+        return self
+
+    @model_validator(mode="after")
+    def default_number_min_to_zero(self):
+        # There's no UI yet for a custom event type to declare a field that
+        # can legitimately go negative, so a number field with no explicit
+        # min defaults to 0 here — the one place this is decided — rather
+        # than every consumer (frontend Zod schema, backend field
+        # validation) treating "no min" as "no floor at all".
+        if self.type == "number" and self.min is None:
+            self.min = 0.0
         return self
 
 
