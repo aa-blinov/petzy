@@ -2,7 +2,7 @@ from functools import wraps
 from flask import request, g
 
 from web.security import get_current_user, login_required
-from web.helpers import validate_pet_access, get_record_and_validate_access
+from web.helpers import validate_pet_access_and_get, get_record_and_validate_access
 
 
 def require_pet_access(f):
@@ -36,15 +36,18 @@ def require_pet_access(f):
         if not pet_id:
             pet_id = request.args.get("pet_id")
 
-        # 3. Validate Access
-        success, access_error = validate_pet_access(pet_id, username)
-        if not success:
+        # 3. Validate Access (and keep the pet doc — callers downstream that
+        # need it, e.g. trend-anomaly notifications, reuse g.pet instead of
+        # fetching it again).
+        pet, access_error = validate_pet_access_and_get(pet_id, username)
+        if pet is None:
             # error_response helper returns (json, status_code)
             return access_error[0], access_error[1]
 
         # 4. Set Context
         g.username = username
         g.pet_id = pet_id
+        g.pet = pet
 
         return f(*args, **kwargs)
 

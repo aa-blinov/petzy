@@ -46,13 +46,13 @@ def mock_auth(monkeypatch):
 
 @pytest.fixture
 def mock_validate_access(monkeypatch):
-    """Mock validate_pet_access."""
+    """Mock validate_pet_access_and_get."""
 
     def _mock_validate(success=True, error=None):
-        def mock_validate_pet_access(pet_id, username):
-            return success, error
+        def mock_validate_pet_access_and_get(pet_id, username):
+            return ({"_id": pet_id} if success else None), error
 
-        monkeypatch.setattr("web.decorators.validate_pet_access", mock_validate_pet_access)
+        monkeypatch.setattr("web.decorators.validate_pet_access_and_get", mock_validate_pet_access_and_get)
 
     return _mock_validate
 

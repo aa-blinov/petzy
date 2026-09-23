@@ -17,6 +17,12 @@ from pywebpush import webpush, WebPushException
 
 logger = logging.getLogger("push_delivery")
 
+# A push service that's slow or unreachable must not be able to hang the
+# caller indefinitely — this bounds how long `web/events.py`'s create_event
+# (which calls this synchronously, in-request, on the anomaly path) can be
+# blocked by any single subscription.
+WEBPUSH_TIMEOUT_SECONDS = 5
+
 
 def send_push_to_subscriptions(
     db, subscriptions: list, payload: dict, vapid_private_key: str, vapid_claims: dict
@@ -37,6 +43,7 @@ def send_push_to_subscriptions(
                 # subscription in the loop would inherit the first
                 # endpoint's audience.
                 vapid_claims=dict(vapid_claims),
+                timeout=WEBPUSH_TIMEOUT_SECONDS,
             )
             sent += 1
         except WebPushException as e:

@@ -129,6 +129,33 @@ def check_pet_access(pet_id, username):
         return False
 
 
+def validate_pet_access_and_get(pet_id, username):
+    """
+    Same validation as validate_pet_access, but also returns the pet
+    document on success — for callers (e.g. require_pet_access) that need
+    the pet right after checking access, so they don't have to fetch it
+    a second time later in the same request.
+
+    Returns:
+        tuple: (pet, error_response) where error_response is None if
+               successful, or (None, (jsonify_response, status_code)) if
+               validation/access fails.
+    """
+    if not pet_id:
+        return None, error_response("validation_error_pet_id_required")
+
+    try:
+        object_id = ObjectId(pet_id)
+    except (InvalidId, TypeError, ValueError):
+        return None, error_response("invalid_pet_id")
+
+    pet = app.db["pets"].find_one({"_id": object_id})
+    if not pet or not (pet.get("owner") == username or username in pet.get("shared_with", [])):
+        return None, error_response("pet_forbidden")
+
+    return pet, None
+
+
 def validate_pet_access(pet_id, username):
     """
     Validate pet_id format and check if user has access to the pet.
@@ -137,18 +164,8 @@ def validate_pet_access(pet_id, username):
         tuple: (success, error_response) where success is True if access granted,
                or (False, (jsonify_response, status_code)) if validation/access fails
     """
-    if not pet_id:
-        return False, error_response("validation_error_pet_id_required")
-
-    try:
-        ObjectId(pet_id)
-    except (InvalidId, TypeError, ValueError):
-        return False, error_response("invalid_pet_id")
-
-    if not check_pet_access(pet_id, username):
-        return False, error_response("pet_forbidden")
-
-    return True, None
+    pet, error = validate_pet_access_and_get(pet_id, username)
+    return pet is not None, error
 
 
 def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, username=None, max_future_days=1):

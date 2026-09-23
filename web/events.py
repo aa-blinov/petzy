@@ -239,18 +239,16 @@ def _serialize_event(record: dict) -> dict:
     return record
 
 
-def _notify_trend_anomaly(pet_id: str, event_type_label: str, field_label: str, new_value, anomaly: dict) -> None:
+def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, new_value, anomaly: dict) -> None:
     """Push the pet's subscribers that a reading looks abnormal compared
     to its own recent history. Never raises — a push failure must not
-    turn an already-successfully-saved event into a failed request."""
-    if not PUSH_CONFIG.get("vapid_private_key"):
-        return
-    try:
-        from bson import ObjectId
+    turn an already-successfully-saved event into a failed request.
 
-        pet = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
-        if not pet:
-            return
+    Takes the pet document itself (the caller already has it from
+    @require_pet_access's own lookup) rather than a pet_id, so this
+    doesn't repeat a fetch that just happened earlier in the same request.
+    """
+    try:
         subscriptions = get_pet_push_subscriptions(app.db, pet)
         if not subscriptions:
             return
@@ -262,7 +260,7 @@ def _notify_trend_anomaly(pet_id: str, event_type_label: str, field_label: str, 
         vapid_claims = {"sub": f"mailto:{PUSH_CONFIG.get('vapid_claims_email', 'admin@example.com')}"}
         send_push_to_subscriptions(app.db, subscriptions, payload, PUSH_CONFIG["vapid_private_key"], vapid_claims)
     except Exception:
-        app.logger.exception(f"Failed to send trend-anomaly push for pet_id={pet_id}")
+        app.logger.exception(f"Failed to send trend-anomaly push for pet_id={pet.get('_id')}")
 
 
 @events_bp.route("/api/events", methods=["POST"])
@@ -296,14 +294,26 @@ def create_event():
         return dt_error[0], dt_error[1]
 
     # Checked against history BEFORE inserting the new record — the value
-    # being judged must never be part of its own baseline.
+    # being judged must never be part of its own baseline. Skipped
+    # entirely (no history query at all) when push isn't configured on
+    # this deployment — an anomaly here only ever leads to a push, so
+    # there's nothing to detect it for.
     chart = event_type.get("chart") or {}
     anomaly = None
+    field_def = None
     value_field = chart.get("value_field") if chart.get("kind") == "value" else None
-    if value_field is not None:
+    if value_field is not None and PUSH_CONFIG.get("vapid_private_key"):
         new_value = cleaned_fields.get(value_field)
         if isinstance(new_value, (int, float)):
-            anomaly = detect_anomaly(app.db, pet_id, data.type, value_field, new_value)
+            field_def = next((f for f in event_type.get("fields", []) if f["name"] == value_field), None)
+            anomaly = detect_anomaly(
+                app.db,
+                pet_id,
+                data.type,
+                value_field,
+                new_value,
+                deviation_threshold=(field_def or {}).get("deviation_threshold"),
+            )
 
     doc = {
         "pet_id": pet_id,
@@ -317,8 +327,8 @@ def create_event():
     app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
 
     if anomaly:
-        field_label = next((f["label"] for f in event_type.get("fields", []) if f["name"] == value_field), value_field)
-        _notify_trend_anomaly(pet_id, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
+        field_label = (field_def or {}).get("label", value_field)
+        _notify_trend_anomaly(g.pet, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
 
     return get_message("event_created", status=201, label=event_type["label"])
 

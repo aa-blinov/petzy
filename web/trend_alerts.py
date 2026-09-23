@@ -31,17 +31,32 @@ ROLLING_WINDOW = 5
 DEVIATION_THRESHOLD = 0.15
 
 
-def detect_anomaly(db, pet_id: str, event_type: str, field_name: str, new_value: float) -> Optional[dict]:
+def detect_anomaly(
+    db,
+    pet_id: str,
+    event_type: str,
+    field_name: str,
+    new_value: float,
+    deviation_threshold: Optional[float] = None,
+) -> Optional[dict]:
     """None if there's not enough history yet, the average is degenerate
-    (zero), or `new_value` is within DEVIATION_THRESHOLD of the average of
+    (zero), or `new_value` is within `deviation_threshold` of the average of
     the pet's last ROLLING_WINDOW readings for this (event_type,
     field_name) — otherwise ``{"average": float, "deviation": float}``.
+
+    `deviation_threshold` lets a caller use a field's own declared
+    sensitivity (``EventTypeField.deviation_threshold``) instead of the
+    module-wide default — a stable field (weight) and a naturally noisy one
+    (a feeding portion) don't need the same threshold.
 
     Must be called with `new_value` NOT YET inserted into the events
     collection — the caller's own about-to-be-saved value has to stay out
     of its own baseline, or a single big jump would just average itself in
     and quietly fail to look abnormal.
     """
+    if deviation_threshold is None:
+        deviation_threshold = DEVIATION_THRESHOLD
+
     history_cursor = (
         db.events.find({"pet_id": pet_id, "type": event_type, f"fields.{field_name}": {"$exists": True}})
         .sort("date_time", -1)
@@ -59,8 +74,8 @@ def detect_anomaly(db, pet_id: str, event_type: str, field_name: str, new_value:
     if average == 0:
         return None
 
-    deviation = abs(new_value - average) / average
-    if deviation < DEVIATION_THRESHOLD:
+    deviation = abs(new_value - average) / abs(average)
+    if deviation < deviation_threshold:
         return None
 
     return {"average": round(average, 2), "deviation": deviation}

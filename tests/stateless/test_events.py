@@ -438,6 +438,116 @@ class TestCreateEventTrendAlert:
         assert response.status_code == 201
         assert mock_db["events"].find_one({"type": "weight", "fields.weight": 6.5}) is not None
 
+    def test_push_not_configured_skips_the_anomaly_query_entirely(self, client, mock_db, regular_user_token, test_pet):
+        """Not just "no push sent" (already covered above) — the history
+        query itself must not run when push isn't configured, since it
+        exists purely to feed a push that can never be sent here."""
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": None}),
+            patch("web.events.detect_anomaly") as mock_detect_anomaly,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 6.5},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        mock_detect_anomaly.assert_not_called()
+
+    def test_pet_is_not_refetched_for_the_notification(self, client, mock_db, regular_user_token, test_pet):
+        """@require_pet_access already fetches the pet to check access;
+        the anomaly notification must reuse that document (g.pet) instead
+        of querying `pets` a second time."""
+        from unittest.mock import patch
+
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db)
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush"),
+            patch.object(mock_db["pets"], "find_one", wraps=mock_db["pets"].find_one) as spy_find_one,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 6.5},  # anomalous -> triggers the notification path
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        assert spy_find_one.call_count == 1  # require_pet_access's own lookup, not repeated
+
+    def test_food_weight_uses_its_own_wider_deviation_threshold(self, client, mock_db, regular_user_token, test_pet):
+        """food_weight declares a wider deviation_threshold (0.35) than the
+        module default (0.15) since a feeding portion naturally varies more
+        than a pet's weight does — a swing that would trip the default must
+        not trip food_weight's own threshold."""
+        for i, v in enumerate([100.0, 100.0, 100.0, 100.0]):
+            mock_db.events.insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "feeding",
+                    "date_time": datetime(2024, 1, 1 + i),
+                    "fields": {"food_weight": v},
+                }
+            )
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            # +20%: would exceed the module-wide 15% default, but not
+            # food_weight's own 35% threshold.
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "feeding",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"food_weight": 120.0},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+            assert response.status_code == 201
+            mock_webpush.assert_not_called()
+
+            # +50%: comfortably past even food_weight's wider threshold.
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "feeding",
+                    "date": "2024-01-11",
+                    "time": "10:00",
+                    "fields": {"food_weight": 150.0},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+            assert response.status_code == 201
+            mock_webpush.assert_called_once()
+
 
 @pytest.mark.health_records
 class TestListEvents:

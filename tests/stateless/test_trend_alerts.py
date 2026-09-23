@@ -125,6 +125,32 @@ class TestDetectAnomaly:
         assert result is not None
         assert result["average"] == 5.0  # not contaminated by pet-2's much larger values
 
+    def test_negative_average_still_flags_a_large_swing(self, mock_db):
+        """The deviation formula divides by abs(average), not the raw
+        (possibly negative) average — otherwise a negative baseline flips
+        the sign and the comparison against DEVIATION_THRESHOLD always
+        looks "normal" no matter how far off the new value is."""
+        pet_id = "pet-1"
+        _insert_weight_events(mock_db, pet_id, [-2.0, -2.5, -2.0, -3.0])  # average -2.375
+
+        result = detect_anomaly(mock_db, pet_id, "weight", "weight", -10.0)  # ~320% off
+
+        assert result is not None
+        assert result["average"] == -2.38
+        assert result["deviation"] == pytest.approx(abs(-10.0 - (-2.375)) / abs(-2.375), abs=1e-6)
+
+    def test_custom_deviation_threshold_overrides_the_module_default(self, mock_db):
+        """A caller can pass a field's own declared sensitivity instead of
+        the module-wide DEVIATION_THRESHOLD (e.g. a naturally noisy field
+        that shouldn't fire at the default 15%)."""
+        pet_id = "pet-1"
+        _insert_weight_events(mock_db, pet_id, [5.0, 5.0, 5.0, 5.0])  # average 5.0
+
+        # +30% would be flagged at the default threshold...
+        assert detect_anomaly(mock_db, pet_id, "weight", "weight", 6.5) is not None
+        # ...but not against an explicit, wider threshold.
+        assert detect_anomaly(mock_db, pet_id, "weight", "weight", 6.5, deviation_threshold=0.35) is None
+
     def test_different_type_or_field_history_is_not_mixed_in(self, mock_db):
         pet_id = "pet-1"
         _insert_weight_events(mock_db, pet_id, [5.0, 5.0, 5.0])

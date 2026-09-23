@@ -30,6 +30,11 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
                 "options": None,
                 "min": 0,
                 "step": 0.1,
+                # A feeding portion swings meal-to-meal far more than a
+                # pet's own weight does — the module-wide 15% default (right
+                # for `weight`, below) would false-positive on ordinary
+                # portion variation, so this field gets a wider band.
+                "deviation_threshold": 0.35,
             },
         ],
         "chart": {"kind": "value", "value_field": "food_weight", "value_label": "Вес порции (г)"},
@@ -210,8 +215,9 @@ def seed_builtin_event_types(db) -> int:
 
 
 def _backfill_numeric_bounds(db, existing: dict, spec: dict) -> None:
-    """Fill in a numeric field's ``min``/``max``/``step`` on an already-seeded
-    builtin type, e.g. an install running from before those bounds existed.
+    """Fill in a numeric field's ``min``/``max``/``step``/``deviation_threshold``
+    on an already-seeded builtin type, e.g. an install running from before
+    those existed.
 
     Only adds keys a field doesn't have at all yet — a field the user has
     since customized (including deliberately clearing a bound) keeps
@@ -224,7 +230,7 @@ def _backfill_numeric_bounds(db, existing: dict, spec: dict) -> None:
         stored_field = existing_fields.get(spec_field["name"])
         if not stored_field:
             continue
-        for bound in ("min", "max", "step"):
+        for bound in ("min", "max", "step", "deviation_threshold"):
             if bound in spec_field and bound not in stored_field:
                 stored_field[bound] = spec_field[bound]
                 changed = True
