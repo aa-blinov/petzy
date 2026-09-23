@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { showToast } from '../utils/toast';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Form } from 'antd-mobile';
 import { isAxiosError } from 'axios';
@@ -9,8 +9,24 @@ export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  // useSession() forces isAuthenticated to false on this page (the login
+  // screen must not fire the authenticated session probe), so it can't
+  // tell us whether the visitor is actually already signed in. `username`
+  // is the one signal still available here: with the probe disabled it
+  // falls back to the last-known-signed-in name kept in localStorage — set
+  // on login, cleared on logout or a real 401. A bookmark or the back
+  // button landing here with that name still present means the httpOnly
+  // cookies are very likely still good, so send them straight to the
+  // dashboard instead of making them look at (and possibly resubmit) the
+  // login form. If the cookies actually did expire, ProtectedRoute's own
+  // probe on "/" finds out and bounces back here — this is an optimistic
+  // redirect, not a claim that the session is confirmed valid.
+  const { login, username: storedUsername } = useAuth();
   const navigate = useNavigate();
+
+  if (storedUsername) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async () => {
     if (!username.trim()) {
