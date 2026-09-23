@@ -23,10 +23,6 @@ export interface UserUpdate {
   is_active?: boolean;
 }
 
-export interface UserPasswordReset {
-  new_password: string;
-}
-
 export interface UserListResponse {
   users: User[];
 }
@@ -65,9 +61,5 @@ export const usersService = {
     const response = await api.delete<{ message: string }>(`/users/${username}`);
     return response.data;
   },
-
-  async resetPassword(username: string, newPassword: string): Promise<void> {
-    await api.post(`/users/${username}/reset-password`, { new_password: newPassword });
-  }
 };
 
