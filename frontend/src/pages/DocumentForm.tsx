@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FileText, Image as ImageIcon, Upload } from 'lucide-react';
@@ -47,11 +47,14 @@ export function DocumentForm() {
   // replace, per the v1 scope), so it lives in its own bit of state.
   const [file, setFile] = useState<File | null>(null);
 
-  const { control, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
+  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
     resolver: zodResolver(documentSchema),
     defaultValues: { category: '', title: '', note: '', expires_at: '' },
   });
-  const expiresAtValue = watch('expires_at');
+  // useWatch (a proper subscribing hook) instead of methods.watch(name) —
+  // the latter is what the React Compiler flags as an "incompatible
+  // library" API and opts the whole component out of memoization for.
+  const expiresAtValue = useWatch({ control, name: 'expires_at' });
 
   // Documents don't all expire on the same kind of schedule as a birth
   // date (which only ever looks backward) — an already-expired policy
@@ -85,8 +88,12 @@ export function DocumentForm() {
     const currentYear = new Date().getFullYear();
     // Mirrors the backend's own cap (web/schemas.py, validate_expires_at:
     // max_future_days=3650) so the picker can't offer a date the server
-    // will then reject with a 422 at submit time.
-    const maxYear = new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).getFullYear();
+    // will then reject with a 422 at submit time. `new Date()` + setDate,
+    // not Date.now() — the compiler treats the latter as an impure call
+    // during render.
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 3650);
+    const maxYear = maxDate.getFullYear();
     const years = Array.from({ length: maxYear - (currentYear - 2) + 1 }, (_, i) => {
       const y = currentYear - 2 + i;
       return { label: String(y), value: String(y) };
