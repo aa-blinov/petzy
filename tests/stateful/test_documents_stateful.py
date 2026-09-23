@@ -383,6 +383,24 @@ class TestGetUpdateDeleteDocument:
 
         assert response.status_code == 422
 
+    def test_update_document_clears_expiry_date(self, client, mock_db, regular_user_token, test_pet):
+        """Regression test: an earlier version sent `expires_at: data.expires_at
+        || undefined` from the frontend, so clearing the field (empty string,
+        falsy) turned into `undefined` and vanished from the request body
+        entirely, silently leaving the old date in place."""
+        doc = _insert_document(mock_db, str(test_pet["_id"]))
+        mock_db["documents"].update_one({"_id": doc["_id"]}, {"$set": {"expires_at": "2028-01-15"}})
+
+        response = client.put(
+            f"/api/documents/{doc['_id']}",
+            json={"expires_at": ""},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        updated = mock_db["documents"].find_one({"_id": doc["_id"]})
+        assert updated["expires_at"] == ""
+
     def test_update_document_no_update_data(self, client, mock_db, regular_user_token, test_pet):
         doc = _insert_document(mock_db, str(test_pet["_id"]))
 

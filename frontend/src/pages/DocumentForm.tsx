@@ -83,7 +83,11 @@ export function DocumentForm() {
       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
     ].map((m, i) => ({ label: m, value: String(i) }));
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 22 }, (_, i) => {
+    // Mirrors the backend's own cap (web/schemas.py, validate_expires_at:
+    // max_future_days=3650) so the picker can't offer a date the server
+    // will then reject with a 422 at submit time.
+    const maxYear = new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).getFullYear();
+    const years = Array.from({ length: maxYear - (currentYear - 2) + 1 }, (_, i) => {
       const y = currentYear - 2 + i;
       return { label: String(y), value: String(y) };
     });

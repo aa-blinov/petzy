@@ -238,6 +238,20 @@ class TestFindDueDocumentExpiryReminders:
 
         assert find_due_document_expiry_reminders(mock_db, DUE_NOW_UTC) == []
 
+    def test_malformed_expiry_date_is_skipped_without_affecting_other_documents(self, mock_db):
+        """A document with an unparseable expires_at (e.g. from data entered
+        before validation existed, or written directly to the DB) must not
+        crash the poller or hide a real due reminder on another document."""
+        pet_id = _make_pet(mock_db)
+        _make_document(mock_db, pet_id, title="Битая дата", expires_at="not-a-date")
+        doc_id = _make_document(mock_db, pet_id, title="Прививка", expires_at="2024-01-16")
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+
+        due = find_due_document_expiry_reminders(mock_db, DUE_NOW_UTC)
+
+        assert len(due) == 1
+        assert due[0]["document"]["_id"] == doc_id
+
 
 @pytest.mark.push
 class TestSendReminders:
