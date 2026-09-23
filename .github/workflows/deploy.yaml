@@ -37,6 +37,23 @@ jobs:
             # rather than needing someone to reconcile history by hand.
             git fetch origin master
             git reset --hard origin/master
+
+            # Push (Web Push/VAPID) is optional and reads its keys from
+            # .env — an untracked file `git reset` never touches — so they
+            # have to be kept in sync here instead. Upsert rather than
+            # append: re-running this must update an existing line (e.g.
+            # after rotating a key), not pile up duplicates.
+            upsert_env() {
+              if grep -q "^$1=" .env 2>/dev/null; then
+                sed -i "s|^$1=.*|$1=$2|" .env
+              else
+                echo "$1=$2" >> .env
+              fi
+            }
+            upsert_env VAPID_PUBLIC_KEY "${{ secrets.VAPID_PUBLIC_KEY }}"
+            upsert_env VAPID_PRIVATE_KEY "${{ secrets.VAPID_PRIVATE_KEY }}"
+            upsert_env VAPID_CLAIMS_EMAIL "${{ secrets.VAPID_CLAIMS_EMAIL }}"
+
             # Rebuild everything that has its own Dockerfile / depends on the
             # backend source. Previously only `frontend` was rebuilt, which
             # meant backend changes (jti migration, ensure_indexes TTL,
