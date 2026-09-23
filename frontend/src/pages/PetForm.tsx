@@ -656,6 +656,15 @@ export function PetForm() {
             </Form.Item>
           </Form>
 
+          {/* Sharing is an owner-only capability — the backend already
+              rejects a non-owner's attempt to add/remove access, but the
+              legacy app also kept the whole section out of a shared
+              user's view (and never showed it while creating a new pet,
+              since ownership only exists once the pet does). Showing it
+              unconditionally here let a shared user see who else has
+              access and try owner-only actions the old app deliberately
+              hid from them. */}
+          {isEditing && pet?.current_user_is_owner && (
           <Form layout="horizontal" mode="card">
             <Form.Header>Поделиться доступом</Form.Header>
             <Form.Item layout="vertical">
@@ -726,6 +735,7 @@ export function PetForm() {
               </Form.Item>
             ))}
           </Form>
+          )}
 
           {isEditing && id && (
             <Form layout="horizontal" mode="card">

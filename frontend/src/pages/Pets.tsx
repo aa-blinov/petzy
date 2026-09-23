@@ -228,12 +228,18 @@ function PetCard({
     color: 'var(--app-accent)',
     onTrigger: onEdit,
   };
-  const rightAction: SwipeAction = {
-    icon: <Trash2 size={20} strokeWidth={2.4} />,
-    label: 'Удалить',
-    color: 'var(--app-danger-color)',
-    onTrigger: onDelete,
-  };
+  // Only the owner can delete a pet (the backend rejects a shared user's
+  // attempt outright) — offering the swipe action to everyone just let a
+  // shared user discover that the hard way. The legacy app hid the same
+  // button behind this exact check.
+  const rightAction: SwipeAction | undefined = pet.current_user_is_owner
+    ? {
+        icon: <Trash2 size={20} strokeWidth={2.4} />,
+        label: 'Удалить',
+        color: 'var(--app-danger-color)',
+        onTrigger: onDelete,
+      }
+    : undefined;
 
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction}>
