@@ -94,8 +94,14 @@ export function DocumentForm() {
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 3650);
     const maxYear = maxDate.getFullYear();
-    const years = Array.from({ length: maxYear - (currentYear - 2) + 1 }, (_, i) => {
-      const y = currentYear - 2 + i;
+    // `year` above already accounts for an existing document's own expiry
+    // year (possibly well in the past, e.g. an intentionally-kept expired
+    // record) — the range must stretch to include it, or the picker has no
+    // matching option and silently snaps to whatever it defaults to.
+    const minYearBound = Math.min(currentYear - 2, year);
+    const maxYearBound = Math.max(maxYear, year);
+    const years = Array.from({ length: maxYearBound - minYearBound + 1 }, (_, i) => {
+      const y = minYearBound + i;
       return { label: String(y), value: String(y) };
     });
     return [days, months, years];
