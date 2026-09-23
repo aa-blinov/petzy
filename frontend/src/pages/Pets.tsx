@@ -22,6 +22,7 @@ import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { UserAvatar } from '../components/UserAvatar';
 
 export function Pets() {
   const navigate = useNavigate();
@@ -350,6 +351,38 @@ function PetCard({
               >
                 <Scale size={13} strokeWidth={2.2} style={{ display: 'block' }} />
                 {lastWeight.fields?.weight as number} кг
+              </span>
+            )}
+            {/* Nothing indicated a pet was shared anywhere outside its own
+                edit form — an owner had no quick way to see at a glance
+                which of their pets someone else already has access to. */}
+            {pet.shared_with && pet.shared_with.length > 0 && (
+              <span
+                className="chip"
+                style={{
+                  alignSelf: 'flex-start',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <div style={{ display: 'flex' }}>
+                  {pet.shared_with.slice(0, 3).map((username, i) => (
+                    <UserAvatar
+                      key={username}
+                      username={username}
+                      size={16}
+                      style={i > 0 ? { marginLeft: -4, border: '1.5px solid var(--app-card-background)' } : undefined}
+                    />
+                  ))}
+                </div>
+                {pet.shared_with.length > 3
+                  ? `+${pet.shared_with.length - 3}`
+                  : pet.shared_with.length === 1
+                    ? 'Общий доступ'
+                    : `Общий доступ (${pet.shared_with.length})`}
               </span>
             )}
           </div>

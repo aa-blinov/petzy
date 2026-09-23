@@ -302,6 +302,27 @@ class UserPasswordResetRequest(BaseModel):
     )
 
 
+class UserPublicProfile(BaseModel):
+    """The subset of a user's profile visible to a co-owner they share a
+    pet with — not the full admin UserResponse (no email, no is_active)."""
+
+    username: str
+    full_name: Optional[str] = None
+    created_at: str
+    shared_pets: List[str] = Field(default_factory=list, description="Имена питомцев, доступных обоим")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "user2",
+                "full_name": "Мария Петрова",
+                "created_at": "2024-01-15 14:30",
+                "shared_pets": ["Рекс"],
+            }
+        }
+    )
+
+
 # ============================================================================
 # Pet Schemas
 # ============================================================================
@@ -965,6 +986,7 @@ class MedicationItem(BaseModel):
     comment: Optional[str] = None
     last_taken_at: Optional[str] = None
     intakes_today: int = 0
+    username: Optional[str] = None
 
 
 class MedicationListResponse(BaseModel):

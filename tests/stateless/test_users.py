@@ -281,6 +281,89 @@ class TestSearchUsers:
         assert response.status_code == 404
 
 
+@pytest.mark.auth
+class TestGetUserPublicProfile:
+    """GET /api/users/<username>/profile — a co-owner's public profile.
+
+    Unlike GET /api/users/<username>, not admin-only: gated on actually
+    sharing a pet with the target instead.
+    """
+
+    def _create_second_user(self, mock_db, username="shareuser", full_name="Share User"):
+        password_hash = bcrypt.hashpw("pass123".encode(), bcrypt.gensalt()).decode()
+        mock_db["users"].insert_one(
+            {
+                "username": username,
+                "password_hash": password_hash,
+                "full_name": full_name,
+                "email": "",
+                "created_at": datetime(2024, 1, 15, 14, 30, tzinfo=timezone.utc),
+                "created_by": "admin",
+                "is_active": True,
+            }
+        )
+        from web.security import create_access_token
+
+        return create_access_token(username)
+
+    def test_requires_authentication(self, client, regular_user):
+        response = client.get(f"/api/users/{regular_user['username']}/profile")
+        assert response.status_code == 401
+
+    def test_nonexistent_user_returns_404(self, client, regular_user_token):
+        response = client.get(
+            "/api/users/nonexistent/profile", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 404
+
+    def test_no_shared_pet_returns_404_not_403(self, client, mock_db, regular_user_token, regular_user):
+        """No sharing relationship — same 404 as a nonexistent username,
+        so the endpoint can't be used to confirm a username exists."""
+        self._create_second_user(mock_db, username="stranger")
+
+        response = client.get("/api/users/stranger/profile", headers={"Authorization": f"Bearer {regular_user_token}"})
+        assert response.status_code == 404
+
+    def test_sharing_a_pet_grants_access_to_the_profile(
+        self, client, mock_db, regular_user_token, regular_user, test_pet
+    ):
+        other_token = self._create_second_user(mock_db)
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["shareuser"]}})
+
+        # The pet's owner can view the shared user's profile...
+        response = client.get("/api/users/shareuser/profile", headers={"Authorization": f"Bearer {regular_user_token}"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["username"] == "shareuser"
+        assert data["full_name"] == "Share User"
+        assert data["created_at"] == "2024-01-15 14:30"
+        assert data["shared_pets"] == [test_pet["name"]]
+
+        # ...and the shared user can view the owner's profile back.
+        response = client.get(
+            f"/api/users/{regular_user['username']}/profile",
+            headers={"Authorization": f"Bearer {other_token}"},
+        )
+        assert response.status_code == 200
+        assert response.get_json()["shared_pets"] == [test_pet["name"]]
+
+    def test_can_always_view_own_profile(self, client, regular_user_token, regular_user):
+        response = client.get(
+            f"/api/users/{regular_user['username']}/profile",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 200
+        assert response.get_json()["username"] == regular_user["username"]
+
+    def test_admin_can_view_any_profile_without_sharing(self, client, auth_headers, mock_db):
+        self._create_second_user(mock_db, username="lonelyuser")
+
+        response = client.get("/api/users/lonelyuser/profile", headers=auth_headers)
+
+        assert response.status_code == 200
+        assert response.get_json()["username"] == "lonelyuser"
+
+
 @pytest.mark.admin
 class TestUserRouteValueErrorHandling:
     """Same defensive-net-verification pattern as pets.py: each of these

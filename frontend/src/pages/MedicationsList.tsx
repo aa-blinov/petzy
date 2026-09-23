@@ -9,13 +9,16 @@ import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
+import { useAuth } from '../hooks/useAuth';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
+import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
 import { SwipeableRow } from '../components/SwipeableRow';
 
 export function MedicationsList() {
     const { selectedPetId } = usePet();
+    const { username: currentUsername } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -259,6 +262,35 @@ export function MedicationsList() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-color)' }}>
                                                 <span>Последний приём: {formatRelativeTime(med.last_taken_at)}</span>
                                             </div>
+                                        )}
+
+                                        {/* Who added this course — hidden when it's the
+                                            current user, same convention as HistoryItem's
+                                            author chip (single-owner households shouldn't
+                                            see their own name everywhere). */}
+                                        {med.username && med.username !== currentUsername && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/users/${med.username}`);
+                                                }}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    marginBottom: 'var(--spacing-sm)',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    padding: 0,
+                                                    cursor: 'pointer',
+                                                    font: 'inherit',
+                                                    color: 'var(--app-text-secondary)',
+                                                }}
+                                            >
+                                                <UserAvatar username={med.username} size={16} />
+                                                Добавил(а) {med.username}
+                                            </button>
                                         )}
 
                                         {med.inventory_enabled && med.inventory_current !== undefined && (

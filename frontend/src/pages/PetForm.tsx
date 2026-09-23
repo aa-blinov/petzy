@@ -33,6 +33,7 @@ const NEUTERED_OPTIONS = [
 import { petsService } from '../services/pets.service';
 import { usersService } from '../services/users.service';
 import { TilesEditor } from '../components/TilesEditor';
+import { UserAvatar } from '../components/UserAvatar';
 import { GENDER_OPTIONS } from '../utils/constants';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
@@ -667,6 +668,13 @@ export function PetForm() {
           {isEditing && pet?.current_user_is_owner && (
           <Form layout="horizontal" mode="card">
             <Form.Header>Поделиться доступом</Form.Header>
+            <p style={{
+              margin: '0 var(--spacing-md) var(--spacing-sm)',
+              fontSize: 'var(--text-sm)',
+              color: 'var(--app-text-secondary)',
+            }}>
+              Пользователь сможет добавлять и просматривать записи этого питомца — так же, как вы.
+            </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <SearchBar
@@ -731,7 +739,24 @@ export function PetForm() {
                   </Button>
                 }
               >
-                <span style={{ fontWeight: 500 }}>{username}</span>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/users/${username}`)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: 'inherit',
+                  }}
+                >
+                  <UserAvatar username={username} size={24} />
+                  <span style={{ fontWeight: 500 }}>{username}</span>
+                </button>
               </Form.Item>
             ))}
           </Form>

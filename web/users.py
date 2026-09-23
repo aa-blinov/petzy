@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 
 from web.app import api, logger  # shared logger and api
-from web.security import login_required, admin_required
+from web.security import login_required, admin_required, is_admin
 import web.app as app  # to access patched app.db in tests
 from web.security import ADMIN_USERNAME
 from web.messages import get_message
@@ -18,6 +18,7 @@ from web.schemas import (
     UserListResponse,
     UserSearchResponse,
     UserPasswordResetRequest,
+    UserPublicProfile,
     SuccessResponse,
     ErrorResponse,
 )
@@ -62,6 +63,60 @@ def search_users():
     results = [{"username": u["username"]} for u in users]
 
     return jsonify({"users": results})
+
+
+@users_bp.route("/api/users/<username>/profile", methods=["GET"])
+@login_required
+@api.validate(resp=Response(HTTP_200=UserPublicProfile, HTTP_404=ErrorResponse), tags=["users"])
+def get_user_public_profile(username):
+    """A co-owner's public profile — name and pets you both have access to.
+
+    Deliberately not admin-only (unlike GET /api/users/<username>): the
+    point is letting a shared user see who they're sharing a pet with.
+    Gated on actually sharing a pet instead, so it can't be used to look
+    up an arbitrary username — a mismatch returns the same 404 as a
+    genuinely nonexistent one, rather than a distinguishable 403, so it
+    doesn't confirm a username exists to someone who isn't sharing
+    anything with them.
+    """
+    requester = request.current_user
+
+    target = app.db["users"].find_one({"username": username})
+    if not target:
+        return error_response("user_not_found")
+
+    common_pets: list[str] = []
+    if requester != username and not is_admin(requester):
+        pets_cursor = app.db["pets"].find(
+            {
+                "$and": [
+                    {"$or": [{"owner": requester}, {"shared_with": requester}]},
+                    {"$or": [{"owner": username}, {"shared_with": username}]},
+                ]
+            },
+            {"name": 1},
+        )
+        common_pets = [p["name"] for p in pets_cursor]
+        if not common_pets:
+            return error_response("user_not_found")
+    else:
+        # Self, or an admin looking someone up — no sharing requirement,
+        # but still worth surfacing the pets in common for an admin.
+        pets_cursor = app.db["pets"].find({"$or": [{"owner": username}, {"shared_with": username}]}, {"name": 1})
+        common_pets = [p["name"] for p in pets_cursor]
+
+    created_at = target.get("created_at")
+    if isinstance(created_at, datetime):
+        created_at = created_at.strftime("%Y-%m-%d %H:%M")
+
+    return jsonify(
+        {
+            "username": target["username"],
+            "full_name": target.get("full_name") or None,
+            "created_at": created_at or "",
+            "shared_pets": common_pets,
+        }
+    )
 
 
 @users_bp.route("/api/users", methods=["POST"])

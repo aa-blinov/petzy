@@ -25,6 +25,7 @@ export interface Medication {
     comment?: string;
     last_taken_at?: string;
     intakes_today?: number;
+    username?: string;
 }
 
 export interface MedicationCreate {

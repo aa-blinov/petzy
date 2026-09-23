@@ -31,6 +31,15 @@ export interface UserResponse {
   user: User;
 }
 
+/** The subset of a user visible to a co-owner they share a pet with —
+ *  no email, no is_active, unlike the admin-only `User` above. */
+export interface UserPublicProfile {
+  username: string;
+  full_name?: string | null;
+  created_at: string;
+  shared_pets: string[];
+}
+
 export const usersService = {
   async getUsers(): Promise<User[]> {
     const response = await api.get<UserListResponse>('/users');
@@ -59,6 +68,11 @@ export const usersService = {
 
   async deleteUser(username: string): Promise<{ message: string }> {
     const response = await api.delete<{ message: string }>(`/users/${username}`);
+    return response.data;
+  },
+
+  async getPublicProfile(username: string): Promise<UserPublicProfile> {
+    const response = await api.get<UserPublicProfile>(`/users/${username}/profile`);
     return response.data;
   },
 };

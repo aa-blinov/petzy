@@ -7,6 +7,7 @@ import { AddOutline } from 'antd-mobile-icons';
 import { FileText, Pencil, Trash2, X } from 'lucide-react';
 
 import { usePet } from '../hooks/usePet';
+import { useAuth } from '../hooks/useAuth';
 import { hapticFeedback } from '../utils/haptic';
 import { formatRelativeDateTime, parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
@@ -18,6 +19,7 @@ import {
 } from '../services/documents.service';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
 
 /**
@@ -73,6 +75,7 @@ function describeExpiry(expiresAt: string): { text: string; color: string; bg: s
 
 export function DocumentsList() {
   const { selectedPetId } = usePet();
+  const { username: currentUsername } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -338,6 +341,31 @@ export function DocumentsList() {
                                 <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
                                   {formatRelativeDateTime(doc.created_at)}
                                 </p>
+                                {doc.username && doc.username !== currentUsername && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/users/${doc.username}`);
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      marginTop: '4px',
+                                      background: 'none',
+                                      border: 'none',
+                                      padding: 0,
+                                      cursor: 'pointer',
+                                      font: 'inherit',
+                                      fontSize: 'var(--text-xs)',
+                                      color: 'var(--app-text-tertiary)',
+                                    }}
+                                  >
+                                    <UserAvatar username={doc.username} size={16} />
+                                    Добавил(а) {doc.username}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </Card>

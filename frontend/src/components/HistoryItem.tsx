@@ -10,6 +10,7 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { pastelColorMap } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
+import { UserAvatar } from './UserAvatar';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -127,9 +128,29 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
             </div>
 
             {showAuthor && (
-              <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/users/${item.username}`);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  alignSelf: 'flex-start',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  color: 'var(--app-text-secondary)',
+                  font: 'inherit',
+                }}
+              >
+                <UserAvatar username={item.username!} size={16} />
                 {item.username}
-              </span>
+              </button>
             )}
 
             {/* Details — rendered as plain text blocks */}
