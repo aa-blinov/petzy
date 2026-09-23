@@ -12,6 +12,10 @@ export interface EventTypeField {
   type: 'text' | 'number' | 'select' | 'textarea';
   required: boolean;
   options?: EventFieldOption[];
+  /** Only meaningful for type: 'number'. */
+  min?: number | null;
+  max?: number | null;
+  step?: number | null;
 }
 
 export interface EventTypeChart {

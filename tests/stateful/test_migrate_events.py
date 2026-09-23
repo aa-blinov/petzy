@@ -6,7 +6,7 @@ import mongomock
 import pytest
 
 from scripts.migrate_events import migrate
-from web.builtin_event_types import BUILTIN_EVENT_TYPES
+from web.builtin_event_types import BUILTIN_EVENT_TYPES, seed_builtin_event_types
 
 
 @pytest.fixture
@@ -137,3 +137,42 @@ def test_migrate_seeding_does_not_clobber_edited_builtin_label(legacy_db):
     migrate(legacy_db)
 
     assert legacy_db.event_types.find_one({"key": "weight"})["label"] == "Взвешивание"
+
+
+def test_seed_backfills_numeric_bounds_onto_a_pre_existing_builtin_type(legacy_db):
+    """An install seeded before min/max/step existed on the weight field
+    must pick them up on the next restart — otherwise every already-running
+    deployment stays unbounded forever, bounds fixed only for brand new ones."""
+    weight_spec = next(t for t in BUILTIN_EVENT_TYPES if t["key"] == "weight")
+    pre_bounds_field = {k: v for k, v in weight_spec["fields"][0].items() if k not in ("min", "max", "step")}
+    legacy_db.event_types.insert_one(
+        {
+            **weight_spec,
+            "fields": [pre_bounds_field, weight_spec["fields"][1]],
+            "is_builtin": True,
+            "created_by": None,
+        }
+    )
+
+    seed_builtin_event_types(legacy_db)
+
+    backfilled = legacy_db.event_types.find_one({"key": "weight"})["fields"][0]
+    assert backfilled["min"] == weight_spec["fields"][0]["min"]
+    assert backfilled["max"] == weight_spec["fields"][0]["max"]
+    assert backfilled["step"] == weight_spec["fields"][0]["step"]
+
+
+def test_seed_does_not_override_a_customized_bound(legacy_db):
+    """A bound the user already set (even to something other than the
+    builtin default) is left alone — only a field missing the key
+    entirely gets it filled in."""
+    seed_builtin_event_types(legacy_db)
+    legacy_db.event_types.update_one(
+        {"key": "weight", "fields.name": "weight"},
+        {"$set": {"fields.$.max": 50}},
+    )
+
+    seed_builtin_event_types(legacy_db)
+
+    weight_field = legacy_db.event_types.find_one({"key": "weight"})["fields"][0]
+    assert weight_field["max"] == 50

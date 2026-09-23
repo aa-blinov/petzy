@@ -648,6 +648,12 @@ class EventTypeField(BaseModel):
     type: str = Field(..., description="text | number | select | textarea")
     required: bool = False
     options: Optional[List[EventFieldOption]] = None
+    # Only meaningful for type="number" — e.g. a weight field capped at a
+    # plausible range instead of accepting any float a fat-fingered digit
+    # can produce.
+    min: Optional[float] = None
+    max: Optional[float] = None
+    step: Optional[float] = None
 
     @field_validator("type")
     @classmethod
@@ -660,6 +666,12 @@ class EventTypeField(BaseModel):
     def validate_select_has_options(self):
         if self.type == "select" and not self.options:
             raise ValueError("Для поля типа select нужно указать варианты")
+        return self
+
+    @model_validator(mode="after")
+    def validate_min_max_range(self):
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("Минимум не может быть больше максимума")
         return self
 
 

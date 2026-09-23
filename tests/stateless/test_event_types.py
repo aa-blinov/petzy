@@ -106,6 +106,35 @@ class TestCreateEventType:
         )
         assert response.status_code == 422
 
+    def test_number_field_with_min_above_max_rejected(self, client, regular_user_token):
+        response = client.post(
+            "/api/event-types",
+            json={
+                "label": "x",
+                "icon": "i",
+                "color": "blue",
+                "fields": [{"name": "n", "label": "N", "type": "number", "min": 10, "max": 5}],
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 422
+
+    def test_number_field_with_bounds_accepted(self, client, mock_db, regular_user_token):
+        response = client.post(
+            "/api/event-types",
+            json={
+                "label": "x",
+                "icon": "i",
+                "color": "blue",
+                "fields": [{"name": "n", "label": "N", "type": "number", "min": 0, "max": 100, "step": 1}],
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 201
+        stored = mock_db["event_types"].find_one({"key": response.get_json()["key"]})
+        assert stored["fields"][0]["min"] == 0
+        assert stored["fields"][0]["max"] == 100
+
 
 @pytest.mark.health_records
 class TestUpdateEventType:

@@ -29,6 +29,9 @@ function buildFields(eventType: EventType): FormFieldType[] {
     label: f.label,
     required: f.required,
     options: f.options,
+    min: f.min ?? undefined,
+    max: f.max ?? undefined,
+    step: f.step ?? undefined,
     id: `${eventType.key}-${f.name}`,
   }));
 }
@@ -57,10 +60,20 @@ export function HealthRecordForm() {
     return z.object(
       fields.reduce((acc: Record<string, z.ZodTypeAny>, field) => {
         if (field.type === 'number') {
+          // Only enforce a bound the field actually declares — `field.min
+          // || 0` used to apply an implicit "can't be negative" to every
+          // numeric field, including ones with no declared min at all.
+          let numberSchema = z.coerce.number({ error: 'Введите число' });
+          if (field.min !== undefined) {
+            numberSchema = numberSchema.min(field.min, `Минимум ${field.min}`);
+          }
+          if (field.max !== undefined) {
+            numberSchema = numberSchema.max(field.max, `Максимум ${field.max}`);
+          }
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
             return val;
-          }, z.coerce.number({ error: 'Введите число' }).min(field.min || 0, `Минимум ${field.min || 0}`));
+          }, numberSchema);
 
           acc[field.name] = field.required ? baseSchema : baseSchema.optional().nullable();
         } else {

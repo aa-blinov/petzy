@@ -208,6 +208,12 @@ def _validate_event_fields(raw_fields: dict, field_defs: list) -> tuple[Optional
                 value = float(value)
             except (TypeError, ValueError):
                 return None, f"Поле «{field_def['label']}» должно быть числом"
+            field_min = field_def.get("min")
+            field_max = field_def.get("max")
+            if field_min is not None and value < field_min:
+                return None, f"Поле «{field_def['label']}» не может быть меньше {field_min:g}"
+            if field_max is not None and value > field_max:
+                return None, f"Поле «{field_def['label']}» не может быть больше {field_max:g}"
         elif field_type == "select":
             allowed = {opt["value"] for opt in field_def.get("options") or []}
             if str(value) not in allowed:

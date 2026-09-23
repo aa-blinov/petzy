@@ -22,7 +22,15 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "icon": "utensils",
         "color": "brown",
         "fields": [
-            {"name": "food_weight", "label": "Вес корма", "type": "number", "required": True, "options": None},
+            {
+                "name": "food_weight",
+                "label": "Вес корма",
+                "type": "number",
+                "required": True,
+                "options": None,
+                "min": 0,
+                "step": 0.1,
+            },
         ],
         "chart": {"kind": "value", "value_field": "food_weight", "value_label": "Вес порции (г)"},
     },
@@ -32,7 +40,16 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "icon": "scale",
         "color": "orange",
         "fields": [
-            {"name": "weight", "label": "Вес (кг)", "type": "number", "required": True, "options": None},
+            {
+                "name": "weight",
+                "label": "Вес (кг)",
+                "type": "number",
+                "required": True,
+                "options": None,
+                "min": 0,
+                "max": 20,
+                "step": 0.01,
+            },
             {"name": "food", "label": "Корм", "type": "text", "required": False, "options": None},
         ],
         "chart": {"kind": "value", "value_field": "weight", "value_label": "Вес (кг)"},
@@ -160,9 +177,10 @@ LEGACY_COLLECTION_MAP: dict[str, dict[str, Any]] = {
 def seed_builtin_event_types(db) -> int:
     """Insert any builtin event type missing from ``db.event_types``.
 
-    Idempotent: existing documents (matched by ``key``) are left untouched,
-    so re-running after a user has edited a builtin type's label/icon/color
-    doesn't clobber their change.
+    Idempotent: existing documents (matched by ``key``) are left untouched
+    beyond the numeric-bounds backfill below, so re-running after a user
+    has edited a builtin type's label/icon/color doesn't clobber their
+    change.
 
     Returns the number of documents inserted.
     """
@@ -170,15 +188,40 @@ def seed_builtin_event_types(db) -> int:
 
     inserted = 0
     for spec in BUILTIN_EVENT_TYPES:
-        if db.event_types.find_one({"key": spec["key"]}):
+        existing = db.event_types.find_one({"key": spec["key"]})
+        if not existing:
+            db.event_types.insert_one(
+                {
+                    **spec,
+                    "is_builtin": True,
+                    "created_by": None,
+                    "created_at": datetime.now(timezone.utc),
+                }
+            )
+            inserted += 1
             continue
-        db.event_types.insert_one(
-            {
-                **spec,
-                "is_builtin": True,
-                "created_by": None,
-                "created_at": datetime.now(timezone.utc),
-            }
-        )
-        inserted += 1
+        _backfill_numeric_bounds(db, existing, spec)
     return inserted
+
+
+def _backfill_numeric_bounds(db, existing: dict, spec: dict) -> None:
+    """Fill in a numeric field's ``min``/``max``/``step`` on an already-seeded
+    builtin type, e.g. an install running from before those bounds existed.
+
+    Only adds keys a field doesn't have at all yet — a field the user has
+    since customized (including deliberately clearing a bound) keeps
+    whatever it already has, matching the "don't clobber an edit" contract
+    of the insert path above.
+    """
+    existing_fields = {f["name"]: f for f in existing.get("fields", [])}
+    changed = False
+    for spec_field in spec.get("fields", []):
+        stored_field = existing_fields.get(spec_field["name"])
+        if not stored_field:
+            continue
+        for bound in ("min", "max", "step"):
+            if bound in spec_field and bound not in stored_field:
+                stored_field[bound] = spec_field[bound]
+                changed = True
+    if changed:
+        db.event_types.update_one({"_id": existing["_id"]}, {"$set": {"fields": list(existing_fields.values())}})

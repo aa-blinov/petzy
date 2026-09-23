@@ -121,6 +121,66 @@ class TestCreateEvent:
         )
         assert response.status_code == 422
 
+    def test_number_field_below_min_rejected(self, client, mock_db, regular_user_token, test_pet):
+        response = client.post(
+            "/api/events",
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "weight",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "fields": {"weight": -1},
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 422
+
+    def test_number_field_above_max_rejected(self, client, mock_db, regular_user_token, test_pet):
+        response = client.post(
+            "/api/events",
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "weight",
+                "date": "2024-01-15",
+                "time": "14:30",
+                # weight's builtin bound is max=20 — a fat-fingered extra
+                # digit like this must not be accepted as a real weight.
+                "fields": {"weight": 5000},
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 422
+
+    def test_number_field_within_bounds_accepted(self, client, mock_db, regular_user_token, test_pet):
+        response = client.post(
+            "/api/events",
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "weight",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "fields": {"weight": 19.99},
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 201
+
+    def test_number_field_with_only_a_min_rejects_negative(self, client, mock_db, regular_user_token, test_pet):
+        # feeding's food_weight declares min=0 but no max — the negative
+        # side is still worth rejecting even without an upper bound.
+        response = client.post(
+            "/api/events",
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "feeding",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "fields": {"food_weight": -5},
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 422
+
     def test_unknown_field_keys_are_dropped_not_rejected(self, client, mock_db, regular_user_token, test_pet):
         response = client.post(
             "/api/events",
