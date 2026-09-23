@@ -83,10 +83,16 @@ export function History() {
 
     const activeFilterOption = filterOptions.find(o => o.id === filterType) ?? filterOptions[0];
 
-    // Timeline query — single fetch, single source for the whole feed.
-    // The backend's timeline endpoint returns all record types mixed
-    // (with `record_type` on each item); we filter client-side from the
-    // chip selection so toggling chips is instant, no round-trip.
+    // Timeline query — the chip's filter is sent straight to the backend
+    // (which already supports a `type` param) rather than always fetching
+    // `type=all` and filtering the loaded page client-side. The client
+    // filter looked instant, but it only ever saw whatever mixed page
+    // had already loaded — a type that logs rarely next to one that logs
+    // constantly (e.g. weight next to feeding) could read as empty, or
+    // silently drop older matches, until "Загрузить ещё" was tapped
+    // enough times to page past the noise. filterType is part of the
+    // query key, so switching chips starts its own fresh, correctly
+    // paginated fetch instead of re-slicing an unrelated one.
     const pageSize = 100;
     const {
         data,
@@ -97,9 +103,9 @@ export function History() {
         error,
         refetch,
     } = useInfiniteQuery({
-        queryKey: ['history-timeline', selectedPetId],
+        queryKey: ['history-timeline', selectedPetId, filterType],
         queryFn: async ({ pageParam = 1 }) => {
-            return healthRecordsService.getTimeline(selectedPetId!, pageParam as number, pageSize, 'all');
+            return healthRecordsService.getTimeline(selectedPetId!, pageParam as number, pageSize, filterType);
         },
         getNextPageParam: (lastPage: TimelineResponse) => {
             return lastPage.page * pageSize < lastPage.total ? lastPage.page + 1 : undefined;
@@ -108,13 +114,11 @@ export function History() {
         enabled: !!selectedPetId,
     });
 
-    const allRecords = useMemo(() => data?.pages.flatMap(page => page.items) || [], [data]);
-
-    // Apply chip filter client-side.
-    const filteredRecords = useMemo(() => {
-        if (filterType === FILTER_ALL) return allRecords;
-        return allRecords.filter(r => r.record_type === filterType);
-    }, [allRecords, filterType]);
+    // Already filtered server-side by `filterType` — kept as its own name
+    // (rather than inlining `data?.pages...` everywhere below) since
+    // that's still what every consumer below conceptually wants: "the
+    // records for the current filter."
+    const filteredRecords = useMemo(() => data?.pages.flatMap(page => page.items) || [], [data]);
 
     // Group by date for the section headers.
     const groupedItems = useMemo(() => {
