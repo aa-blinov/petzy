@@ -142,15 +142,15 @@ export function Settings() {
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Напоминания о приёме лекарств"
+              label="Push-уведомления"
               description={
                 pushState === 'unsupported'
                   ? 'Этот браузер не поддерживает push-уведомления'
                   : pushState === 'denied'
                     ? 'Заблокированы в настройках браузера'
                     : pushState === 'on'
-                      ? 'Включены на этом устройстве'
-                      : 'Выключены на этом устройстве'
+                      ? 'Включены на этом устройстве — лекарства, документы, необычные показатели'
+                      : 'Лекарства, документы, необычные показатели'
               }
               control={
                 <Switch
