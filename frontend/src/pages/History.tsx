@@ -45,7 +45,6 @@ export function History() {
     const [filterType, setFilterType] = useState<string>(FILTER_ALL);
     const [exportVisible, setExportVisible] = useState(false);
     const [filterSheetVisible, setFilterSheetVisible] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
 
     // Build filter options from every registered type. "Все" first, then
     // each type — shown as a grid of tiles in HistoryFilterSheet, same
@@ -131,15 +130,6 @@ export function History() {
     const handleFilterChange = (id: string) => {
         hapticFeedback('light');
         setFilterType(id);
-        // A chart across every event type mixed together doesn't mean
-        // anything — chart mode only makes sense once a specific type is
-        // picked, so falling back to "Все" drops back to the list.
-        if (id === FILTER_ALL) setViewMode('list');
-    };
-
-    const handleViewModeChange = (mode: 'list' | 'chart') => {
-        hapticFeedback('light');
-        setViewMode(mode);
     };
 
     if (!selectedPetId) {
@@ -245,10 +235,12 @@ export function History() {
                    This screen used to stack a title row, the filter rail
                    and a third row holding just the list/chart pill, so
                    three bands of chrome pushed the records below the
-                   fold. The pill now sits in the dead space on the title
-                   line and export is icon-only (it is an occasional
-                   action, and the tab is already labelled "История", so
-                   "История записей" was saying it twice). */}
+                   fold. Export is icon-only (it is an occasional action,
+                   and the tab is already labelled "История", so "История
+                   записей" was saying it twice). The old list/chart
+                   toggle is gone too — trends are no longer a mode you
+                   switch into instead of the list, they're their own
+                   section shown above it (see below). */}
                 <div className="safe-area-padding" style={{
                     marginBottom: 'var(--spacing-md)',
                     display: 'flex',
@@ -260,76 +252,23 @@ export function History() {
                     <h1 className="display-headline" style={{ fontSize: '24px', margin: 0 }}>
                         История
                     </h1>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                        <div style={{
+                    <button
+                        type="button"
+                        onClick={() => setExportVisible(true)}
+                        aria-label="Экспорт"
+                        title="Экспорт"
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--app-accent-deep)',
+                            cursor: 'pointer',
+                            padding: 10,
                             display: 'flex',
-                            backgroundColor: 'var(--app-card-background)',
-                            padding: 3,
-                            borderRadius: 'var(--radius-md)',
-                            boxShadow: 'var(--app-shadow-light)',
-                            border: '1px solid var(--app-border-color)',
-                        }}>
-                            <button
-                                type="button"
-                                onClick={() => handleViewModeChange('list')}
-                                aria-pressed={viewMode === 'list'}
-                                style={{
-                                    background: viewMode === 'list' ? 'var(--app-primary-color)' : 'transparent',
-                                    color: viewMode === 'list' ? '#FFFFFF' : 'var(--app-text-secondary)',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-sm)',
-                                    padding: '7px 16px',
-                                    fontSize: 'var(--text-sm)',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
-                                }}
-                            >
-                                Список
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleViewModeChange('chart')}
-                                disabled={filterType === FILTER_ALL}
-                                aria-pressed={viewMode === 'chart'}
-                                title={filterType === FILTER_ALL ? 'Выберите тип события, чтобы построить график' : undefined}
-                                style={{
-                                    background: viewMode === 'chart' ? 'var(--app-primary-color)' : 'transparent',
-                                    color: viewMode === 'chart' ? '#FFFFFF' : 'var(--app-text-secondary)',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-sm)',
-                                    padding: '7px 16px',
-                                    fontSize: 'var(--text-sm)',
-                                    fontWeight: 600,
-                                    cursor: filterType === FILTER_ALL ? 'not-allowed' : 'pointer',
-                                    opacity: filterType === FILTER_ALL ? 0.5 : 1,
-                                    transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
-                                }}
-                            >
-                                График
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setExportVisible(true)}
-                            aria-label="Экспорт"
-                            title="Экспорт"
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--app-accent-deep)',
-                                cursor: 'pointer',
-                                /* 10 px around a 20 px icon gives 40 px —
-                                   the same height as the view pill beside
-                                   it, so the two read as one control group. */
-                                padding: 10,
-                                display: 'flex',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Download size={20} strokeWidth={2} style={{ display: 'block' }} />
-                        </button>
-                    </div>
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Download size={20} strokeWidth={2} style={{ display: 'block' }} />
+                    </button>
                 </div>
 
                 {/* Type filter — a single trigger opening a bottom sheet
@@ -360,35 +299,38 @@ export function History() {
                     onSelect={handleFilterChange}
                 />
 
+                {/* Trends — a chart across every event type mixed together
+                   doesn't mean anything, so this section only appears once
+                   a specific type is filtered, sitting above the (also
+                   filtered) event list below it rather than replacing it. */}
+                {filterType !== FILTER_ALL && (
+                    <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-md)' }}>
+                        <h3 className="section-header" style={{ marginBottom: 0, paddingLeft: 4 }}>
+                            Тренды
+                        </h3>
+                        <HistoryChart type={filterType} petId={selectedPetId} />
+                    </div>
+                )}
+
                 <div style={{ minHeight: '400px' }}>
-                    {viewMode === 'list' ? (
-                        <PullToRefresh
-                            onRefresh={async () => {
-                                hapticFeedback('medium');
-                                await refetch();
-                            }}
-                            headHeight={48}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '4px',
-                                paddingLeft: 'max(16px, env(safe-area-inset-left))',
-                                paddingRight: 'max(16px, env(safe-area-inset-right))',
-                                paddingTop: '8px',
-                            }}>
-                                {content}
-                            </div>
-                        </PullToRefresh>
-                    ) : (
-                        <div className="safe-area-padding">
-                            {/* Chart mode is only reachable with a specific
-                                type selected — the toggle above is disabled
-                                on "Все", and picking "Все" drops back to the
-                                list — so filterType is never FILTER_ALL here. */}
-                            <HistoryChart type={filterType} petId={selectedPetId} />
+                    <PullToRefresh
+                        onRefresh={async () => {
+                            hapticFeedback('medium');
+                            await refetch();
+                        }}
+                        headHeight={48}
+                    >
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                            paddingRight: 'max(16px, env(safe-area-inset-right))',
+                            paddingTop: '8px',
+                        }}>
+                            {content}
                         </div>
-                    )}
+                    </PullToRefresh>
                 </div>
             </div>
 
