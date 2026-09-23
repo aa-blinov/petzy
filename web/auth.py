@@ -281,7 +281,7 @@ def check_admin():
 @auth_bp.route("/login", methods=["GET", "POST"], endpoint="login")
 @limiter.limit(
     lambda: RATE_LIMIT_CONFIG["login_page_limit"],
-    error_message="Слишком много запросов. Попробуйте позже.",
+    error_message="Слишком много запросов. Попробуйте позже",
 )
 def login():
     """Login page."""

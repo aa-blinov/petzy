@@ -121,7 +121,7 @@ export function Pets() {
           <EmptyState
             icon={Cat}
             title="Здесь будут ваши питомцы"
-            description="Добавьте первого — Petzy будет считать кормления, вес и напомнит о лекарствах."
+            description="Добавьте первого — Petzy будет считать кормления, вес и напомнит о лекарствах"
             actionLabel="Добавить питомца"
             onAction={handleAddPet}
           />

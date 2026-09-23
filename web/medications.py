@@ -380,7 +380,7 @@ def log_intake(id):
                 # All retries exhausted, return error to user instead of silently proceeding
                 app.logger.error(f"Failed to update inventory for medication {id} after {max_retries} retries")
                 return error_response(
-                    "conflict", "Не удалось обновить остаток лекарства из-за конкуренции запросов. Попробуйте снова."
+                    "conflict", "Не удалось обновить остаток лекарства из-за конкуренции запросов. Попробуйте снова"
                 )
 
         intake_data = {

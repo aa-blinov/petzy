@@ -171,7 +171,7 @@ export function AdminPanel() {
           <EmptyState
             icon={Users}
             title="Пользователей пока нет"
-            description="Добавьте первого пользователя — у каждого будут свои питомцы и права."
+            description="Добавьте первого пользователя — у каждого будут свои питомцы и права"
           />
         ) : (
           /* Pull-to-refresh, same as the other lists — this was the
@@ -276,7 +276,7 @@ export function AdminPanel() {
         visible={deleteDialog.visible}
         title="Деактивация пользователя"
         content={deleteDialog.username
-          ? `Пользователь "${deleteDialog.username}" потеряет доступ к аккаунту. Его можно будет активировать обратно в любой момент.`
+          ? `Пользователь "${deleteDialog.username}" потеряет доступ к аккаунту. Его можно будет активировать обратно в любой момент`
           : ''}
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, username: null })}

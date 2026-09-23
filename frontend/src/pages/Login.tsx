@@ -48,14 +48,14 @@ export function Login() {
       await login({ username: username.trim(), password });
       navigate('/', { replace: true });
     } catch (err) {
-      let errorMessage = 'Ошибка входа. Проверьте соединение или учетные данные.';
+      let errorMessage = 'Ошибка входа. Проверьте соединение или учетные данные';
       if (isAxiosError<{ error?: string; message?: string }>(err)) {
         const status = err.response?.status;
         const data = err.response?.data;
-        if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные.';
-        else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль.';
-        else if (status === 429) errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже.';
-        else if (err.message === 'Network Error') errorMessage = 'Ошибка сети. Проверьте, запущен ли бэкенд.';
+        if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные';
+        else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль';
+        else if (status === 429) errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже';
+        else if (err.message === 'Network Error') errorMessage = 'Ошибка сети. Проверьте, запущен ли бэкенд';
         else errorMessage = data?.error || data?.message || err.message || errorMessage;
       } else if (err instanceof Error && err.message) {
         errorMessage = err.message;

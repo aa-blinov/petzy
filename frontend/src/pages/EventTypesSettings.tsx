@@ -61,7 +61,7 @@ export function EventTypesSettings() {
           <EmptyState
             icon={Sparkles}
             title="Типов пока нет"
-            description="Создайте первый тип события, чтобы записывать что-то своё."
+            description="Создайте первый тип события, чтобы записывать что-то своё"
           />
         ) : (
           <div className="safe-area-padding">
@@ -147,7 +147,7 @@ export function EventTypesSettings() {
       <Dialog
         visible={!!confirmKey}
         title="Удаление типа события"
-        content="Тип и его настройки будут удалены. Это действие необратимо."
+        content="Тип и его настройки будут удалены. Это действие необратимо"
         closeOnAction
         onClose={() => setConfirmKey(null)}
         actions={[

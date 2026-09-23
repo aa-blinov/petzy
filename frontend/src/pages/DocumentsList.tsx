@@ -232,7 +232,7 @@ export function DocumentsList() {
           <EmptyState
             icon={FileText}
             title="Здесь будут документы животного"
-            description="Прививочные справки, анализы, страховка и фото — всё в одном месте."
+            description="Прививочные справки, анализы, страховка и фото — всё в одном месте"
             actionLabel="Добавить документ"
             onAction={() => navigate('/documents/new')}
           />
@@ -240,7 +240,7 @@ export function DocumentsList() {
           <EmptyState
             icon={FileText}
             title="Ничего не найдено"
-            description="Попробуйте изменить запрос."
+            description="Попробуйте изменить запрос"
           />
         ) : (
           <PullToRefresh

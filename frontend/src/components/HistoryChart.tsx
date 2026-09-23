@@ -171,7 +171,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                 <EmptyState
                     icon={ChartNoAxesColumn}
                     title="Нет данных за период"
-                    description="Переключите вкладку или добавьте записи — график построится автоматически."
+                    description="Переключите вкладку или добавьте записи — график построится автоматически"
                     compact
                 />
             );

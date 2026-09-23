@@ -46,8 +46,8 @@ export function TilesSettings() {
                 per-pet: without it, switching pets would silently change
                 what this screen edits. */}
             {selectedPetName
-              ? <>Настройки для питомца <strong>{selectedPetName}</strong>. Перетащите, чтобы изменить порядок, переключатель скрывает тайл. Изменения сохраняются сразу.</>
-              : 'Перетащите, чтобы изменить порядок, переключатель скрывает тайл.'}
+              ? <>Настройки для питомца <strong>{selectedPetName}</strong>. Перетащите, чтобы изменить порядок, переключатель скрывает тайл. Изменения сохраняются сразу</>
+              : 'Перетащите, чтобы изменить порядок, переключатель скрывает тайл'}
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export function TilesSettings() {
           <EmptyState
             icon={LayoutGrid}
             title="Сначала выберите питомца"
-            description="Тайлы дневника настраиваются отдельно для каждого питомца."
+            description="Тайлы дневника настраиваются отдельно для каждого питомца"
             actionLabel="К питомцам"
             onAction={() => navigate('/pets')}
           />

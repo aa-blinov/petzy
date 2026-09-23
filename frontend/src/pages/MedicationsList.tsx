@@ -181,7 +181,7 @@ export function MedicationsList() {
                     <EmptyState
                         icon={Pill}
                         title="Здесь будут курсы препаратов"
-                        description="Добавьте лекарство — Petzy напомнит о приёме и покажет остаток."
+                        description="Добавьте лекарство — Petzy напомнит о приёме и покажет остаток"
                         actionLabel="Добавить препарат"
                         onAction={() => navigate('/medications/new')}
                     />
