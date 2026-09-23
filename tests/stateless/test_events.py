@@ -143,7 +143,7 @@ class TestCreateEvent:
                 "type": "weight",
                 "date": "2024-01-15",
                 "time": "14:30",
-                # weight's builtin bound is max=20 — a fat-fingered extra
+                # weight's builtin bound is max=100 — a fat-fingered extra
                 # digit like this must not be accepted as a real weight.
                 "fields": {"weight": 5000},
             },
@@ -159,7 +159,9 @@ class TestCreateEvent:
                 "type": "weight",
                 "date": "2024-01-15",
                 "time": "14:30",
-                "fields": {"weight": 19.99},
+                # Comfortably above a small pet but still a realistic large
+                # dog breed — and still well under the max=100 bound.
+                "fields": {"weight": 38.5},
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )

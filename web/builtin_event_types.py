@@ -47,7 +47,12 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
                 "required": True,
                 "options": None,
                 "min": 0,
-                "max": 20,
+                # The legacy app capped this at 20 — clearly sized for cats
+                # and small dogs only, since it would reject a real
+                # Labrador/Retriever-sized dog (25-40kg is normal). 100
+                # comfortably covers every realistic dog breed while still
+                # catching a fat-fingered extra digit.
+                "max": 100,
                 "step": 0.01,
             },
             {"name": "food", "label": "Корм", "type": "text", "required": False, "options": None},
