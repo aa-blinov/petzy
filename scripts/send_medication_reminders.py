@@ -20,13 +20,10 @@ Usage:
     python -m scripts.send_medication_reminders
 """
 
-import json
 import logging
 import time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-
-from pywebpush import webpush, WebPushException
 
 # Must be imported before web.medications: that module does `import web.app
 # as app` for shared app.db/app.logger access (the convention every
@@ -42,6 +39,7 @@ from pywebpush import webpush, WebPushException
 # has to be explicit.
 import web.app  # noqa: F401
 from web.medications import UPCOMING_LOOKAHEAD_DAYS, compute_taken_counts
+from web.push_delivery import send_push_to_subscriptions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("send_medication_reminders")
@@ -206,39 +204,6 @@ def find_due_document_expiry_reminders(
     return due
 
 
-def _send_push_to_subscriptions(
-    db, subscriptions: list, payload: dict, vapid_private_key: str, vapid_claims: dict
-) -> int:
-    """Send one push payload to each subscription; on 404/410 the push
-    service is telling us the subscription is gone, so prune it. Returns
-    the number of subscriptions actually delivered to."""
-    data = json.dumps(payload)
-    sent = 0
-    for sub in subscriptions:
-        try:
-            webpush(
-                subscription_info={"endpoint": sub["endpoint"], "keys": sub["keys"]},
-                data=data,
-                vapid_private_key=vapid_private_key,
-                # webpush() sets claims["aud"] from the endpoint's own
-                # origin — a fresh copy per call, or the second
-                # subscription in the loop would inherit the first
-                # endpoint's audience.
-                vapid_claims=dict(vapid_claims),
-            )
-            sent += 1
-        except WebPushException as e:
-            status = e.response.status_code if e.response is not None else None
-            if status in (404, 410):
-                db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
-                logger.info(f"Removed expired push subscription: endpoint={sub['endpoint']}")
-            else:
-                logger.warning(f"webpush failed (status={status}): {e}")
-        except Exception:
-            logger.exception(f"Unexpected error sending push notification to endpoint={sub['endpoint']}")
-    return sent
-
-
 def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: dict) -> int:
     """find_due_medication_reminders + find_due_document_expiry_reminders,
     push each one, and record a dedupe row per item. Returns the number
@@ -249,7 +214,7 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
     for slot in find_due_medication_reminders(db, now_utc):
         medication = slot["medication"]
         payload = {"title": "Пора дать лекарство", "body": f"{medication['name']} — {slot['time']}", "url": "/"}
-        sent += _send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
+        sent += send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
 
         # Written after the sends above, not before: if the process is
         # killed between a successful webpush() call and this insert, a
@@ -282,7 +247,7 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             "body": f"{document.get('title', 'Документ')} — до {expiry['expires_at']}",
             "url": "/documents",
         }
-        sent += _send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)
+        sent += send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)
 
         try:
             db.document_expiry_reminders_sent.insert_one(

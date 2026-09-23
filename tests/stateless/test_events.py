@@ -209,6 +209,236 @@ class TestCreateEvent:
         assert response.status_code == 201
 
 
+def _insert_prior_weight_events(mock_db, pet_id, values):
+    for i, v in enumerate(values):
+        mock_db.events.insert_one(
+            {
+                "pet_id": str(pet_id),
+                "type": "weight",
+                "date_time": datetime(2024, 1, 1 + i),
+                "fields": {"weight": v},
+            }
+        )
+
+
+def _subscribe_owner(mock_db, username="testuser", endpoint="https://push.example/owner-device"):
+    mock_db.push_subscriptions.insert_one(
+        {
+            "username": username,
+            "endpoint": endpoint,
+            "keys": {"p256dh": "p256dh-key", "auth": "auth-key"},
+            "timezone": "UTC",
+        }
+    )
+
+
+@pytest.mark.health_records
+class TestCreateEventTrendAlert:
+    """POST /api/events also pushes the pet's subscribers when the new
+    reading looks abnormal against that pet's own recent history for a
+    numeric ("value" chart) field — see web/trend_alerts.py."""
+
+    def test_abnormal_weight_sends_a_push(self, client, mock_db, regular_user_token, test_pet):
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key", "vapid_claims_email": "a@b.c"}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 6.5},  # +30% vs. the 5.0 average
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        mock_webpush.assert_called_once()
+        assert mock_webpush.call_args.kwargs["subscription_info"]["endpoint"] == "https://push.example/owner-device"
+        import json as json_module
+
+        payload = json_module.loads(mock_webpush.call_args.kwargs["data"])
+        assert "6.5" in payload["body"]
+        assert "5.0" in payload["body"]
+
+    def test_normal_weight_sends_no_push(self, client, mock_db, regular_user_token, test_pet):
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 5.1},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        mock_webpush.assert_not_called()
+
+    def test_not_enough_history_sends_no_push(self, client, mock_db, regular_user_token, test_pet):
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0])  # only 1, need 3
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 50.0},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        mock_webpush.assert_not_called()
+
+    def test_push_not_configured_sends_no_push(self, client, mock_db, regular_user_token, test_pet):
+        """Push is an optional, self-hostable feature — an abnormal
+        reading must never fail event creation just because no VAPID key
+        is configured on this deployment."""
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": None}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 6.5},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        mock_webpush.assert_not_called()
+
+    def test_count_type_event_never_checked(self, client, mock_db, regular_user_token, test_pet):
+        """asthma is a `count`-chart type — it has no numeric value_field,
+        so there's nothing here to compare against a "normal" average."""
+        for i in range(5):
+            mock_db.events.insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "asthma",
+                    "date_time": datetime(2024, 1, 1 + i),
+                    "fields": {"duration": "Короткий", "inhalation": "false", "reason": "x"},
+                }
+            )
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "asthma",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"duration": "Длительный", "inhalation": "true", "reason": "y"},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        mock_webpush.assert_not_called()
+
+    def test_shared_user_is_also_notified(self, client, mock_db, regular_user_token, test_pet):
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["frienduser"]}})
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db, username="testuser", endpoint="https://push.example/owner-device")
+        _subscribe_owner(mock_db, username="frienduser", endpoint="https://push.example/friend-device")
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush") as mock_webpush,
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 6.5},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        assert mock_webpush.call_count == 2
+        notified_endpoints = {c.kwargs["subscription_info"]["endpoint"] for c in mock_webpush.call_args_list}
+        assert notified_endpoints == {"https://push.example/owner-device", "https://push.example/friend-device"}
+
+    def test_a_push_failure_does_not_fail_the_request(self, client, mock_db, regular_user_token, test_pet):
+        """The event itself must still be saved and the request must still
+        succeed even if sending the follow-up push blows up."""
+        _insert_prior_weight_events(mock_db, test_pet["_id"], [5.0, 5.0, 5.0, 5.0])
+        _subscribe_owner(mock_db)
+
+        from unittest.mock import patch
+
+        with (
+            patch.dict("web.events.PUSH_CONFIG", {"vapid_private_key": "fake-key"}),
+            patch("web.push_delivery.webpush", side_effect=RuntimeError("network is down")),
+        ):
+            response = client.post(
+                "/api/events",
+                json={
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date": "2024-01-10",
+                    "time": "10:00",
+                    "fields": {"weight": 6.5},
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 201
+        assert mock_db["events"].find_one({"type": "weight", "fields.weight": 6.5}) is not None
+
+
 @pytest.mark.health_records
 class TestListEvents:
     """GET /api/events"""

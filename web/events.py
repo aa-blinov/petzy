@@ -19,10 +19,13 @@ from flask_pydantic_spec import Request, Response
 
 import web.app as app  # use app.db and app.logger so test patches are visible
 from web.app import api
+from web.configs import PUSH_CONFIG
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
 from web.helpers import apply_pagination, parse_event_datetime_safe
 from web.messages import get_message
+from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
+from web.trend_alerts import detect_anomaly
 from web.schemas import (
     ErrorResponse,
     EventCreate,
@@ -236,6 +239,32 @@ def _serialize_event(record: dict) -> dict:
     return record
 
 
+def _notify_trend_anomaly(pet_id: str, event_type_label: str, field_label: str, new_value, anomaly: dict) -> None:
+    """Push the pet's subscribers that a reading looks abnormal compared
+    to its own recent history. Never raises — a push failure must not
+    turn an already-successfully-saved event into a failed request."""
+    if not PUSH_CONFIG.get("vapid_private_key"):
+        return
+    try:
+        from bson import ObjectId
+
+        pet = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
+        if not pet:
+            return
+        subscriptions = get_pet_push_subscriptions(app.db, pet)
+        if not subscriptions:
+            return
+        payload = {
+            "title": f"Необычное значение: {event_type_label}",
+            "body": f"{pet.get('name', 'Питомец')} — {field_label}: {new_value} (обычно ~{anomaly['average']})",
+            "url": "/history",
+        }
+        vapid_claims = {"sub": f"mailto:{PUSH_CONFIG.get('vapid_claims_email', 'admin@example.com')}"}
+        send_push_to_subscriptions(app.db, subscriptions, payload, PUSH_CONFIG["vapid_private_key"], vapid_claims)
+    except Exception:
+        app.logger.exception(f"Failed to send trend-anomaly push for pet_id={pet_id}")
+
+
 @events_bp.route("/api/events", methods=["POST"])
 @api.validate(
     body=Request(EventCreate),
@@ -266,6 +295,16 @@ def create_event():
     if dt_error:
         return dt_error[0], dt_error[1]
 
+    # Checked against history BEFORE inserting the new record — the value
+    # being judged must never be part of its own baseline.
+    chart = event_type.get("chart") or {}
+    anomaly = None
+    value_field = chart.get("value_field") if chart.get("kind") == "value" else None
+    if value_field is not None:
+        new_value = cleaned_fields.get(value_field)
+        if isinstance(new_value, (int, float)):
+            anomaly = detect_anomaly(app.db, pet_id, data.type, value_field, new_value)
+
     doc = {
         "pet_id": pet_id,
         "type": data.type,
@@ -276,6 +315,11 @@ def create_event():
     }
     app.db[EVENTS_COLLECTION].insert_one(doc)
     app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
+
+    if anomaly:
+        field_label = next((f["label"] for f in event_type.get("fields", []) if f["name"] == value_field), value_field)
+        _notify_trend_anomaly(pet_id, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
+
     return get_message("event_created", status=201, label=event_type["label"])
 
 

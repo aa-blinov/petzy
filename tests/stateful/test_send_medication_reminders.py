@@ -260,7 +260,7 @@ class TestSendReminders:
         med_id = _make_medication(mock_db, pet_id)
         _subscribe(mock_db, "testuser", "https://push.example/owner-device")
 
-        with patch("scripts.send_medication_reminders.webpush") as mock_webpush:
+        with patch("web.push_delivery.webpush") as mock_webpush:
             sent = send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
 
         assert sent == 1
@@ -281,7 +281,7 @@ class TestSendReminders:
         doc_id = _make_document(mock_db, pet_id, title="Прививка от бешенства", expires_at="2024-01-16")
         _subscribe(mock_db, "testuser", "https://push.example/owner-device")
 
-        with patch("scripts.send_medication_reminders.webpush") as mock_webpush:
+        with patch("web.push_delivery.webpush") as mock_webpush:
             sent = send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
 
         assert sent == 1
@@ -302,7 +302,7 @@ class TestSendReminders:
         _make_medication(mock_db, pet_id)
         _subscribe(mock_db, "testuser", "https://push.example/owner-device")
 
-        with patch("scripts.send_medication_reminders.webpush") as mock_webpush:
+        with patch("web.push_delivery.webpush") as mock_webpush:
             send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
             mock_webpush.reset_mock()
             sent_again = send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
@@ -317,7 +317,7 @@ class TestSendReminders:
 
         gone_response = MagicMock(status_code=410)
         with patch(
-            "scripts.send_medication_reminders.webpush",
+            "web.push_delivery.webpush",
             side_effect=WebPushException("gone", response=gone_response),
         ):
             sent = send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
@@ -332,7 +332,7 @@ class TestSendReminders:
 
         server_error_response = MagicMock(status_code=500)
         with patch(
-            "scripts.send_medication_reminders.webpush",
+            "web.push_delivery.webpush",
             side_effect=WebPushException("server error", response=server_error_response),
         ):
             send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
