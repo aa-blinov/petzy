@@ -1,4 +1,5 @@
-"""Sends a Web Push notification when a scheduled medication dose becomes due.
+"""Sends a Web Push notification for two kinds of due reminders:
+medication doses, and documents whose expiry date is coming up.
 
 Runs as its own long-lived process (the ``reminders`` service in
 docker-compose.yml) rather than inside the gunicorn app — gunicorn runs
@@ -10,9 +11,10 @@ Timezone: the app has never stored one anywhere (every other "what time is
 it" check takes the client's own wall clock instead), but a background job
 has no client to ask. A push subscription now carries the browser's own
 IANA timezone name, captured once at subscribe time — that's what "the
-scheduled 08:00" is interpreted in for a pet's owner. A pet whose owner
-hasn't subscribed has no timezone to go on, so its reminders simply never
-fire (documented v1 limitation), even if a shared_with user has.
+scheduled 08:00" (or "N days before expiry") is interpreted in for a pet's
+owner. A pet whose owner hasn't subscribed has no timezone to go on, so its
+reminders simply never fire (documented v1 limitation), even if a
+shared_with user has.
 
 Usage:
     python -m scripts.send_medication_reminders
@@ -49,43 +51,31 @@ logger = logging.getLogger("send_medication_reminders")
 # GC pause doesn't let a slot fall through the gap between two polls.
 TICK_SECONDS = 90
 
+# How many days ahead of a document's own expires_at to send the one-time
+# "this is expiring soon" heads up (a vaccination certificate, insurance
+# policy, etc.) — long enough to actually book a vet appointment before
+# it lapses.
+DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE = 14
 
-def find_due_reminders(db, now_utc: datetime, tick_seconds: int = TICK_SECONDS) -> list:
-    """Active medications whose next scheduled slot just became due, not
-    yet taken, and not yet notified about.
 
-    Returns a list of ``{"medication": <doc>, "date": "YYYY-MM-DD", "time":
-    "HH:MM", "subscriptions": [<push_subscriptions doc>, ...]}`` — one
-    entry per due slot, carrying every subscription (owner's own devices
-    plus any shared_with user's) that should be notified about it.
+def _iter_subscribed_pets(db, now_utc: datetime):
+    """Yields ``(pet, now_local, recipient_subs)`` for every pet whose
+    owner has an active push subscription — shared groundwork for both
+    medication-dose and document-expiry due-checking below.
+
+    ``now_local`` is naive, in the owner's own IANA timezone (captured at
+    subscribe time), so it compares directly against other naive local
+    values already stored elsewhere (medication_intakes.date_time, a
+    document's plain "YYYY-MM-DD" expires_at). ``recipient_subs`` is the
+    owner's own subscriptions plus any shared_with user's.
     """
     subscriptions_by_username: dict = {}
     for sub in db.push_subscriptions.find({}):
         subscriptions_by_username.setdefault(sub["username"], []).append(sub)
-
     if not subscriptions_by_username:
-        return []
+        return
 
-    pets = list(db.pets.find({"owner": {"$in": list(subscriptions_by_username.keys())}}))
-    if not pets:
-        return []
-    pets_by_id = {str(p["_id"]): p for p in pets}
-
-    pet_ids = list(pets_by_id.keys())
-    medications = list(db.medications.find({"pet_id": {"$in": pet_ids}, "is_active": True}))
-    if not medications:
-        return []
-
-    meds_by_pet: dict = {}
-    for med in medications:
-        meds_by_pet.setdefault(med["pet_id"], []).append(med)
-
-    due = []
-    for pet_id, pet_meds in meds_by_pet.items():
-        pet = pets_by_id.get(pet_id)
-        if not pet:
-            continue
-
+    for pet in db.pets.find({"owner": {"$in": list(subscriptions_by_username.keys())}}):
         owner = pet.get("owner")
         owner_subs = subscriptions_by_username.get(owner)
         if not owner_subs:
@@ -98,34 +88,53 @@ def find_due_reminders(db, now_utc: datetime, tick_seconds: int = TICK_SECONDS) 
         try:
             owner_tz = ZoneInfo(owner_subs[0]["timezone"])
         except Exception:
-            logger.warning(f"Unknown timezone {owner_subs[0]['timezone']!r} for user {owner}; skipping pet {pet_id}")
+            logger.warning(
+                f"Unknown timezone {owner_subs[0]['timezone']!r} for user {owner}; skipping pet {pet['_id']}"
+            )
             continue
 
-        # Naive, representing the owner's local wall clock — matching how
-        # every intake's own date_time is already stored (parse_datetime
-        # builds it straight from client-supplied date+time strings, no
-        # tzinfo at all), so it compares directly against them.
-        #
-        # Known gap: a dose scheduled inside a spring-forward DST gap
+        # Known gap: a moment scheduled inside a spring-forward DST gap
         # (e.g. 02:30 on the day Europe/Berlin jumps 02:00->03:00) can
-        # never equal any real UTC instant's local time, so it's silently
-        # skipped for that one day, once a year, in DST-observing zones —
-        # accepted as a v1 limitation rather than tracking each owner's
-        # last-checked local time to catch skipped slots after the fact.
+        # never equal any real UTC instant's local time, so a medication
+        # dose there is silently skipped for that one day, once a year,
+        # in DST-observing zones — accepted as a v1 limitation rather
+        # than tracking each owner's last-checked local time to catch
+        # skipped slots after the fact. Document-expiry checks (whole
+        # calendar days, not exact times) aren't affected by this.
         now_local = now_utc.astimezone(owner_tz).replace(tzinfo=None)
-        weekday = now_local.weekday()
-        today_start = datetime(now_local.year, now_local.month, now_local.day)
-        window_end = today_start + timedelta(days=UPCOMING_LOOKAHEAD_DAYS + 1)
-        date_key = today_start.strftime("%Y-%m-%d")
-
-        pet_med_ids = [str(m["_id"]) for m in pet_meds]
-        taken_counts = compute_taken_counts(db, pet_med_ids, today_start, window_end)
 
         recipient_subs = list(owner_subs)
         for shared_username in pet.get("shared_with", []):
             recipient_subs.extend(subscriptions_by_username.get(shared_username, []))
 
-        for med in pet_meds:
+        yield pet, now_local, recipient_subs
+
+
+def find_due_medication_reminders(db, now_utc: datetime, tick_seconds: int = TICK_SECONDS) -> list:
+    """Active medications whose next scheduled slot just became due, not
+    yet taken, and not yet notified about.
+
+    Returns a list of ``{"medication": <doc>, "date": "YYYY-MM-DD", "time":
+    "HH:MM", "subscriptions": [<push_subscriptions doc>, ...]}`` — one
+    entry per due slot, carrying every subscription (owner's own devices
+    plus any shared_with user's) that should be notified about it.
+    """
+    due = []
+    for pet, now_local, recipient_subs in _iter_subscribed_pets(db, now_utc):
+        pet_id = str(pet["_id"])
+        medications = list(db.medications.find({"pet_id": pet_id, "is_active": True}))
+        if not medications:
+            continue
+
+        weekday = now_local.weekday()
+        today_start = datetime(now_local.year, now_local.month, now_local.day)
+        window_end = today_start + timedelta(days=UPCOMING_LOOKAHEAD_DAYS + 1)
+        date_key = today_start.strftime("%Y-%m-%d")
+
+        pet_med_ids = [str(m["_id"]) for m in medications]
+        taken_counts = compute_taken_counts(db, pet_med_ids, today_start, window_end)
+
+        for med in medications:
             schedule = med.get("schedule", {})
             if weekday not in schedule.get("days", []):
                 continue
@@ -157,45 +166,90 @@ def find_due_reminders(db, now_utc: datetime, tick_seconds: int = TICK_SECONDS) 
     return due
 
 
-def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: dict) -> int:
-    """find_due_reminders + push each one, recording a dedupe row per slot
-    and pruning subscriptions the push service reports as gone.
+def find_due_document_expiry_reminders(
+    db, now_utc: datetime, days_before: int = DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE
+) -> list:
+    """Documents with a set ``expires_at`` that has just entered the
+    "remind me" window (0 to ``days_before`` days out), not yet notified
+    about for that exact expiry date.
 
-    Returns the number of notifications actually delivered.
+    Unlike medication doses, this fires once per document (not once per
+    day) — dedupe is keyed on (document_id, expires_at), so editing a
+    document's expiry date (e.g. after renewing a vaccination) naturally
+    produces a fresh reminder instead of staying silenced by the old one.
+    """
+    due = []
+    for pet, now_local, recipient_subs in _iter_subscribed_pets(db, now_utc):
+        pet_id = str(pet["_id"])
+        today = now_local.date()
+
+        for document in db.documents.find({"pet_id": pet_id, "expires_at": {"$nin": [None, ""]}}):
+            expires_at_str = document.get("expires_at")
+            try:
+                expires_date = datetime.strptime(expires_at_str, "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                continue
+
+            days_until = (expires_date - today).days
+            if not (0 <= days_until <= days_before):
+                continue
+
+            doc_id_str = str(document["_id"])
+            already_sent = db.document_expiry_reminders_sent.find_one(
+                {"document_id": doc_id_str, "expires_at": expires_at_str}
+            )
+            if already_sent:
+                continue
+
+            due.append({"document": document, "expires_at": expires_at_str, "subscriptions": recipient_subs})
+
+    return due
+
+
+def _send_push_to_subscriptions(
+    db, subscriptions: list, payload: dict, vapid_private_key: str, vapid_claims: dict
+) -> int:
+    """Send one push payload to each subscription; on 404/410 the push
+    service is telling us the subscription is gone, so prune it. Returns
+    the number of subscriptions actually delivered to."""
+    data = json.dumps(payload)
+    sent = 0
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info={"endpoint": sub["endpoint"], "keys": sub["keys"]},
+                data=data,
+                vapid_private_key=vapid_private_key,
+                # webpush() sets claims["aud"] from the endpoint's own
+                # origin — a fresh copy per call, or the second
+                # subscription in the loop would inherit the first
+                # endpoint's audience.
+                vapid_claims=dict(vapid_claims),
+            )
+            sent += 1
+        except WebPushException as e:
+            status = e.response.status_code if e.response is not None else None
+            if status in (404, 410):
+                db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
+                logger.info(f"Removed expired push subscription: endpoint={sub['endpoint']}")
+            else:
+                logger.warning(f"webpush failed (status={status}): {e}")
+        except Exception:
+            logger.exception(f"Unexpected error sending push notification to endpoint={sub['endpoint']}")
+    return sent
+
+
+def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: dict) -> int:
+    """find_due_medication_reminders + find_due_document_expiry_reminders,
+    push each one, and record a dedupe row per item. Returns the number
+    of notifications actually delivered.
     """
     sent = 0
-    for slot in find_due_reminders(db, now_utc):
-        medication = slot["medication"]
-        payload = json.dumps(
-            {
-                "title": "Пора дать лекарство",
-                "body": f"{medication['name']} — {slot['time']}",
-                "url": "/",
-            }
-        )
 
-        for sub in slot["subscriptions"]:
-            try:
-                webpush(
-                    subscription_info={"endpoint": sub["endpoint"], "keys": sub["keys"]},
-                    data=payload,
-                    vapid_private_key=vapid_private_key,
-                    # webpush() sets claims["aud"] from the endpoint's own
-                    # origin — a fresh copy per call, or the second
-                    # subscription in the loop would inherit the first
-                    # endpoint's audience.
-                    vapid_claims=dict(vapid_claims),
-                )
-                sent += 1
-            except WebPushException as e:
-                status = e.response.status_code if e.response is not None else None
-                if status in (404, 410):
-                    db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
-                    logger.info(f"Removed expired push subscription: endpoint={sub['endpoint']}")
-                else:
-                    logger.warning(f"webpush failed (status={status}): {e}")
-            except Exception:
-                logger.exception(f"Unexpected error sending push notification to endpoint={sub['endpoint']}")
+    for slot in find_due_medication_reminders(db, now_utc):
+        medication = slot["medication"]
+        payload = {"title": "Пора дать лекарство", "body": f"{medication['name']} — {slot['time']}", "url": "/"}
+        sent += _send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
 
         # Written after the sends above, not before: if the process is
         # killed between a successful webpush() call and this insert, a
@@ -221,6 +275,34 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             # recorded either way, nothing more to do.
             logger.warning(f"Could not record dedupe row for medication={medication['_id']}, slot={slot['time']}")
 
+    for expiry in find_due_document_expiry_reminders(db, now_utc):
+        document = expiry["document"]
+        payload = {
+            "title": "Скоро истекает срок документа",
+            "body": f"{document.get('title', 'Документ')} — до {expiry['expires_at']}",
+            "url": "/documents",
+        }
+        sent += _send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)
+
+        try:
+            db.document_expiry_reminders_sent.insert_one(
+                {
+                    "document_id": str(document["_id"]),
+                    "expires_at": expiry["expires_at"],
+                    "created_at": now_utc,
+                    # Named differently from medication_reminders_sent's
+                    # own "expires_at" TTL field on purpose — this
+                    # collection's "expires_at" already means the
+                    # document's own expiry date (the dedupe key), so the
+                    # TTL trigger needs a field name of its own.
+                    "purge_at": now_utc + timedelta(days=90),
+                }
+            )
+        except Exception:
+            logger.warning(
+                f"Could not record dedupe row for document={document['_id']}, expires_at={expiry['expires_at']}"
+            )
+
     return sent
 
 
@@ -238,7 +320,7 @@ if __name__ == "__main__":
 
     vapid_claims = {"sub": f"mailto:{vapid_claims_email}"}
 
-    logger.info("Medication reminder sender started (60s poll interval).")
+    logger.info("Reminder sender started (60s poll interval).")
     while True:
         try:
             sent = send_reminders(real_db, datetime.now(timezone.utc), vapid_private_key, vapid_claims)

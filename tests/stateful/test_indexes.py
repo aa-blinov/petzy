@@ -30,6 +30,10 @@ def test_ensure_indexes_creates_expected_indexes():
         "documents": ["documents_pet_created", "documents_pet_category_created"],
         "push_subscriptions": ["push_subscriptions_endpoint_unique", "push_subscriptions_username"],
         "medication_reminders_sent": ["reminders_sent_slot_unique", "reminders_sent_ttl"],
+        "document_expiry_reminders_sent": [
+            "document_expiry_reminders_sent_unique",
+            "document_expiry_reminders_sent_ttl",
+        ],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()

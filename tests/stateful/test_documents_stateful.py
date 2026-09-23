@@ -73,6 +73,48 @@ class TestCreateDocument:
         assert doc["content_type"] == "application/pdf"
         assert doc["note"] == "Плановый"
 
+    def test_create_document_with_expiry_date(self, client, mock_db, regular_user_token, test_pet):
+        from web.app import fs
+
+        with patch.object(fs, "put", return_value=ObjectId()):
+            response = client.post(
+                "/api/documents",
+                data={
+                    "pet_id": str(test_pet["_id"]),
+                    "category": "vaccination",
+                    "title": "Прививка от бешенства",
+                    "expires_at": "2027-05-01",
+                    "file": (io.BytesIO(_make_png_bytes()), "cert.png", "image/png"),
+                },
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+                content_type="multipart/form-data",
+            )
+
+        assert response.status_code == 201
+        data = response.get_json()
+        doc = mock_db["documents"].find_one({"_id": ObjectId(data["id"])})
+        assert doc["expires_at"] == "2027-05-01"
+
+        get_response = client.get(
+            f"/api/documents/{data['id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert get_response.get_json()["document"]["expires_at"] == "2027-05-01"
+
+    def test_create_document_rejects_malformed_expiry_date(self, client, mock_db, regular_user_token, test_pet):
+        response = client.post(
+            "/api/documents",
+            data={
+                "pet_id": str(test_pet["_id"]),
+                "category": "vaccination",
+                "title": "Прививка",
+                "expires_at": "не дата",
+                "file": (io.BytesIO(_make_png_bytes()), "cert.png", "image/png"),
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+            content_type="multipart/form-data",
+        )
+        assert response.status_code == 422
+
     def test_create_document_missing_file(self, client, mock_db, regular_user_token, test_pet):
         response = client.post(
             "/api/documents",
@@ -316,6 +358,30 @@ class TestGetUpdateDeleteDocument:
         updated = mock_db["documents"].find_one({"_id": doc["_id"]})
         assert updated["title"] == "Новое название"
         assert updated["category"] == "insurance"
+
+    def test_update_document_expiry_date(self, client, mock_db, regular_user_token, test_pet):
+        doc = _insert_document(mock_db, str(test_pet["_id"]))
+
+        response = client.put(
+            f"/api/documents/{doc['_id']}",
+            json={"expires_at": "2028-01-15"},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        updated = mock_db["documents"].find_one({"_id": doc["_id"]})
+        assert updated["expires_at"] == "2028-01-15"
+
+    def test_update_document_rejects_malformed_expiry_date(self, client, mock_db, regular_user_token, test_pet):
+        doc = _insert_document(mock_db, str(test_pet["_id"]))
+
+        response = client.put(
+            f"/api/documents/{doc['_id']}",
+            json={"expires_at": "31-31-2028"},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 422
 
     def test_update_document_no_update_data(self, client, mock_db, regular_user_token, test_pet):
         doc = _insert_document(mock_db, str(test_pet["_id"]))

@@ -17,6 +17,10 @@ export interface PetDocument {
   category: DocumentCategory;
   title: string;
   note?: string;
+  /** "YYYY-MM-DD", when this document (a vaccination cert, an insurance
+   *  policy, etc.) stops being valid. Optional — not every category has
+   *  one (lab results, conclusions usually don't). */
+  expires_at?: string;
   original_filename: string;
   content_type: string;
   file_size: number;
@@ -28,6 +32,7 @@ export interface DocumentCreateInput {
   category: DocumentCategory;
   title: string;
   note?: string;
+  expires_at?: string;
   file: File;
 }
 
@@ -35,6 +40,7 @@ export interface DocumentUpdateInput {
   category?: DocumentCategory;
   title?: string;
   note?: string;
+  expires_at?: string;
 }
 
 export interface DocumentListResponse {
@@ -63,6 +69,7 @@ export const documentsService = {
     formData.append('category', data.category);
     formData.append('title', data.title);
     if (data.note) formData.append('note', data.note);
+    if (data.expires_at) formData.append('expires_at', data.expires_at);
     formData.append('file', data.file);
 
     const response = await api.post<{ message: string; id: string }>('/documents', formData);

@@ -8,7 +8,7 @@ import { FileText, Pencil, Trash2, X } from 'lucide-react';
 
 import { usePet } from '../hooks/usePet';
 import { hapticFeedback } from '../utils/haptic';
-import { formatRelativeDateTime } from '../utils/relativeTime';
+import { formatRelativeDateTime, parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import {
   documentsService,
@@ -45,6 +45,31 @@ const FORMAT_BADGES: Record<string, { label: string; bg: string; fg: string }> =
   pdf: { label: 'PDF', bg: 'rgba(255, 69, 58, 0.12)', fg: '#FF453A' },
 };
 const DEFAULT_FORMAT_BADGE = { label: 'FILE', bg: 'var(--app-accent-soft)', fg: 'var(--app-accent-deep)' };
+
+/** How many days out "expiring soon" starts — matches the backend's own
+ *  DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE in send_medication_reminders.py,
+ *  so the badge that turns orange here is the same window that triggers
+ *  a push notification, not two independently-tuned thresholds. */
+const EXPIRY_WARNING_DAYS = 14;
+
+function describeExpiry(expiresAt: string): { text: string; color: string; bg: string } | null {
+  const expiryDate = parseRecordDate(expiresAt);
+  if (!expiryDate) return null;
+
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfExpiry = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
+  const daysUntil = Math.round((startOfExpiry.getTime() - startOfToday.getTime()) / 86_400_000);
+  const formatted = expiryDate.toLocaleDateString('ru-RU');
+
+  if (daysUntil < 0) {
+    return { text: `Истёк ${formatted}`, color: '#FF453A', bg: 'rgba(255, 69, 58, 0.12)' };
+  }
+  if (daysUntil <= EXPIRY_WARNING_DAYS) {
+    return { text: `Истекает ${formatted}`, color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.14)' };
+  }
+  return { text: `До ${formatted}`, color: 'var(--app-text-tertiary)', bg: 'var(--app-accent-soft)' };
+}
 
 export function DocumentsList() {
   const { selectedPetId } = usePet();
@@ -237,6 +262,7 @@ export function DocumentsList() {
                       // category already reads from the section header above.
                       const subtype = doc.content_type.split('/')[1]?.toLowerCase() ?? '';
                       const badge = FORMAT_BADGES[subtype] ?? { ...DEFAULT_FORMAT_BADGE, label: subtype ? subtype.toUpperCase().slice(0, 4) : 'FILE' };
+                      const expiry = doc.expires_at ? describeExpiry(doc.expires_at) : null;
                       return (
                         <SwipeableRow
                           key={doc._id}
@@ -281,6 +307,21 @@ export function DocumentsList() {
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
                                   <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{doc.title}</h3>
+                                  {expiry && (
+                                    <span
+                                      style={{
+                                        fontSize: 'var(--text-xs)',
+                                        fontWeight: 600,
+                                        color: expiry.color,
+                                        background: expiry.bg,
+                                        padding: '2px 8px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {expiry.text}
+                                    </span>
+                                  )}
                                 </div>
                                 <p
                                   style={{

@@ -93,6 +93,10 @@ def ensure_indexes() -> None:
                           medication_id + date + time unique (dedupe: one
                                               reminder per scheduled slot)
                           expires_at TTL    (auto-prune after 30 days)
+      document_expiry_reminders_sent
+                          document_id + expires_at unique (dedupe: one
+                                              reminder per document expiry date)
+                          purge_at TTL      (auto-prune after 90 days)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -179,6 +183,21 @@ def ensure_indexes() -> None:
             db.medication_reminders_sent,
             [("expires_at", ASCENDING)],
             "reminders_sent_ttl",
+            {"expireAfterSeconds": 0},
+        ),
+        (
+            db.document_expiry_reminders_sent,
+            [("document_id", ASCENDING), ("expires_at", ASCENDING)],
+            "document_expiry_reminders_sent_unique",
+            {"unique": True},
+        ),
+        # Field is named purge_at, not expires_at — this collection's own
+        # "expires_at" already means the document's expiry date (part of
+        # the dedupe key above), so the TTL trigger needed a name of its own.
+        (
+            db.document_expiry_reminders_sent,
+            [("purge_at", ASCENDING)],
+            "document_expiry_reminders_sent_ttl",
             {"expireAfterSeconds": 0},
         ),
     ]

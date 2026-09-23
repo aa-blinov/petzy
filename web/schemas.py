@@ -1013,12 +1013,33 @@ class DocumentCreate(PetIdQuery):
     category: str = Field(..., description="Категория документа")
     title: str = Field(..., min_length=1, max_length=100)
     note: Optional[str] = Field(None, max_length=500)
+    expires_at: Optional[str] = Field(
+        None, description="Срок действия (YYYY-MM-DD) — прививки, страховка и т.п.; необязателен"
+    )
+
+    @field_validator("expires_at")
+    @classmethod
+    def validate_expires_at(cls, v):
+        # Unlike birth_date, a document's own validity is legitimately in
+        # the future (that's the whole point) — parse_date's allow_future
+        # path hardcodes max_future_days=0, which would reject literally
+        # any future date, so this goes through validate_date_logic
+        # directly instead, with a generous ~10-year ceiling (long enough
+        # for any real insurance/vaccination cycle, still catching a typo
+        # landing centuries out).
+        return validate_date_logic(v, allow_future=True, max_future_days=3650)
 
 
 class DocumentUpdate(BaseModel):
     category: Optional[str] = None
     title: Optional[str] = Field(None, min_length=1, max_length=100)
     note: Optional[str] = Field(None, max_length=500)
+    expires_at: Optional[str] = Field(None, description="Срок действия (YYYY-MM-DD)")
+
+    @field_validator("expires_at")
+    @classmethod
+    def validate_expires_at(cls, v):
+        return validate_date_logic(v, allow_future=True, max_future_days=3650)
 
 
 class DocumentListQuery(PetIdPaginationQuery):
@@ -1032,6 +1053,7 @@ class DocumentItem(BaseModel):
     category: str
     title: str
     note: Optional[str] = None
+    expires_at: Optional[str] = None
     original_filename: str
     content_type: str
     file_size: int

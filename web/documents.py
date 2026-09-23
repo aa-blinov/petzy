@@ -131,6 +131,7 @@ def create_document():
             "category": data.category,
             "title": data.title,
             "note": data.note or "",
+            "expires_at": data.expires_at,
             "file_id": str(file_id),
             "original_filename": original_filename,
             "content_type": stored_content_type,

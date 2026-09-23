@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { parseRecordDate } from '../utils/relativeTime';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
@@ -26,6 +27,7 @@ const documentSchema = z.object({
   category: z.string().min(1, 'Выберите категорию'),
   title: z.string().min(1, 'Название обязательно').max(100),
   note: z.string().max(500).optional(),
+  expires_at: z.string().optional(),
 });
 
 type DocumentFormData = z.infer<typeof documentSchema>;
@@ -38,15 +40,55 @@ export function DocumentForm() {
   const queryClient = useQueryClient();
 
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [expiryPickerVisible, setExpiryPickerVisible] = useState(false);
+  const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
   // The file itself isn't a react-hook-form field — it's a one-shot pick
   // for create only; editing never touches it (delete + re-upload to
   // replace, per the v1 scope), so it lives in its own bit of state.
   const [file, setFile] = useState<File | null>(null);
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
+  const { control, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
     resolver: zodResolver(documentSchema),
-    defaultValues: { category: '', title: '', note: '' },
+    defaultValues: { category: '', title: '', note: '', expires_at: '' },
   });
+  const expiresAtValue = watch('expires_at');
+
+  // Documents don't all expire on the same kind of schedule as a birth
+  // date (which only ever looks backward) — an already-expired policy
+  // can legitimately be logged for the record, and a fresh one can be
+  // valid many years out, so the year range runs a couple of years back
+  // and comfortably far forward instead of only backward like PetForm's.
+  const expiryDateColumns = useMemo(() => {
+    let month = new Date().getMonth();
+    let year = new Date().getFullYear();
+
+    if (internalPickerDate.length === 3) {
+      month = parseInt(internalPickerDate[1]);
+      year = parseInt(internalPickerDate[2]);
+    } else if (expiresAtValue) {
+      const d = parseRecordDate(expiresAtValue);
+      if (d) {
+        month = d.getMonth();
+        year = d.getFullYear();
+      }
+    }
+
+    const daysCount = new Date(year, month + 1, 0).getDate();
+    const days = Array.from({ length: daysCount }, (_, i) => ({
+      label: String(i + 1).padStart(2, '0'),
+      value: String(i + 1),
+    }));
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+    ].map((m, i) => ({ label: m, value: String(i) }));
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 22 }, (_, i) => {
+      const y = currentYear - 2 + i;
+      return { label: String(y), value: String(y) };
+    });
+    return [days, months, years];
+  }, [internalPickerDate, expiresAtValue]);
 
   const { data: document, isLoading: isLoadingDocument } = useQuery({
     queryKey: ['document', id],
@@ -56,7 +98,12 @@ export function DocumentForm() {
 
   useEffect(() => {
     if (document) {
-      reset({ category: document.category, title: document.title, note: document.note || '' });
+      reset({
+        category: document.category,
+        title: document.title,
+        note: document.note || '',
+        expires_at: document.expires_at || '',
+      });
     }
   }, [document, reset]);
 
@@ -67,6 +114,7 @@ export function DocumentForm() {
         category: data.category as DocumentCategory,
         title: data.title,
         note: data.note,
+        expires_at: data.expires_at || undefined,
         file: file!,
       }),
     onSuccess: () => {
@@ -85,6 +133,14 @@ export function DocumentForm() {
         category: data.category as DocumentCategory,
         title: data.title,
         note: data.note,
+        // Always the current form value, including '' — unlike create
+        // (where an empty value just means "don't set one"), update has
+        // to be able to clear an expiry date that was set before (a
+        // typo fix, or a renewed document that no longer expires the
+        // old way). Falling back to undefined here would make that
+        // value vanish from the request entirely, so the backend would
+        // never see the clear and the stale date would silently persist.
+        expires_at: data.expires_at,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
@@ -242,6 +298,77 @@ export function DocumentForm() {
                   <TextArea {...field} placeholder="Необязательно" rows={3} />
                 </Form.Item>
               )}
+            />
+
+            <Controller
+              name="expires_at"
+              control={control}
+              render={({ field: { value, onChange } }) => {
+                const displayDate = value ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value) : '';
+                let pickerValue: string[] = [];
+                if (value) {
+                  const d = parseRecordDate(value);
+                  if (d) pickerValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
+                } else {
+                  const now = new Date();
+                  pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
+                }
+                return (
+                  <Form.Item
+                    label="Действует до"
+                    clickable
+                    arrow
+                    onClick={() => {
+                      setInternalPickerDate(pickerValue);
+                      setExpiryPickerVisible(true);
+                    }}
+                    extra={
+                      value && (
+                        // A plain click target, not a Button — the row
+                        // is already clickable to open the picker, and a
+                        // full-width Button here would visually compete
+                        // with that instead of reading as a small aside.
+                        <span
+                          role="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChange('');
+                          }}
+                          style={{ color: 'var(--app-danger-color)', fontSize: 'var(--text-sm)' }}
+                        >
+                          Убрать
+                        </span>
+                      )
+                    }
+                  >
+                    <Input
+                      readOnly
+                      value={displayDate}
+                      placeholder="Не указано — например, для прививок и страховки"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <Picker
+                      columns={expiryDateColumns}
+                      visible={expiryPickerVisible}
+                      onClose={() => setExpiryPickerVisible(false)}
+                      value={internalPickerDate.length ? internalPickerDate : pickerValue}
+                      onSelect={(val) => setInternalPickerDate(val as string[])}
+                      onConfirm={(val) => {
+                        const day = val[0];
+                        const month = parseInt(val[1] as string);
+                        const year = val[2];
+                        const monthStr = String(month + 1).padStart(2, '0');
+                        const dayStr = String(day).padStart(2, '0');
+                        onChange(`${year}-${monthStr}-${dayStr}`);
+                        setExpiryPickerVisible(false);
+                        setInternalPickerDate([]);
+                      }}
+                      cancelText="Отмена"
+                      confirmText="Сохранить"
+                    />
+                  </Form.Item>
+                );
+              }}
             />
           </Form>
 
