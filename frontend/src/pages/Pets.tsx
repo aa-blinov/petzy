@@ -355,8 +355,10 @@ function PetCard({
             )}
             {/* Nothing indicated a pet was shared anywhere outside its own
                 edit form — an owner had no quick way to see at a glance
-                which of their pets someone else already has access to. */}
-            {pet.shared_with && pet.shared_with.length > 0 && (
+                which of their pets someone else already has access to.
+                Owner-only, like the sharing form itself (PetForm.tsx) —
+                a shared (non-owner) user isn't shown who else has access. */}
+            {pet.current_user_is_owner && pet.shared_with && pet.shared_with.length > 0 && (
               <span
                 className="chip"
                 style={{
@@ -377,12 +379,11 @@ function PetCard({
                       style={i > 0 ? { marginLeft: -4, border: '1.5px solid var(--app-card-background)' } : undefined}
                     />
                   ))}
+                  {pet.shared_with.length > 3 && (
+                    <span style={{ marginLeft: '2px' }}>+{pet.shared_with.length - 3}</span>
+                  )}
                 </div>
-                {pet.shared_with.length > 3
-                  ? `+${pet.shared_with.length - 3}`
-                  : pet.shared_with.length === 1
-                    ? 'Общий доступ'
-                    : `Общий доступ (${pet.shared_with.length})`}
+                {`Общий доступ${pet.shared_with.length > 1 ? ` (${pet.shared_with.length})` : ''}`}
               </span>
             )}
           </div>
