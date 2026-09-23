@@ -108,7 +108,9 @@ def _iter_subscribed_pets(db, now_utc: datetime):
         yield pet, now_local, recipient_subs
 
 
-def find_due_medication_reminders(db, now_utc: datetime, tick_seconds: int = TICK_SECONDS) -> list:
+def find_due_medication_reminders(
+    db, now_utc: datetime, tick_seconds: int = TICK_SECONDS, subscribed_pets=None
+) -> list:
     """Active medications whose next scheduled slot just became due, not
     yet taken, and not yet notified about.
 
@@ -116,9 +118,17 @@ def find_due_medication_reminders(db, now_utc: datetime, tick_seconds: int = TIC
     "HH:MM", "subscriptions": [<push_subscriptions doc>, ...]}`` — one
     entry per due slot, carrying every subscription (owner's own devices
     plus any shared_with user's) that should be notified about it.
+
+    ``subscribed_pets`` lets a caller that also needs
+    ``find_due_document_expiry_reminders`` in the same tick pass in an
+    already-materialized ``list(_iter_subscribed_pets(...))`` instead of
+    this function running that same subscriptions+pets scan a second time
+    (see ``send_reminders``). Defaults to computing it itself so this stays
+    usable on its own.
     """
     due = []
-    for pet, now_local, recipient_subs in _iter_subscribed_pets(db, now_utc):
+    pets_iter = subscribed_pets if subscribed_pets is not None else _iter_subscribed_pets(db, now_utc)
+    for pet, now_local, recipient_subs in pets_iter:
         pet_id = str(pet["_id"])
         medications = list(db.medications.find({"pet_id": pet_id, "is_active": True}))
         if not medications:
@@ -165,7 +175,7 @@ def find_due_medication_reminders(db, now_utc: datetime, tick_seconds: int = TIC
 
 
 def find_due_document_expiry_reminders(
-    db, now_utc: datetime, days_before: int = DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE
+    db, now_utc: datetime, days_before: int = DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE, subscribed_pets=None
 ) -> list:
     """Documents with a set ``expires_at`` that has just entered the
     "remind me" window (0 to ``days_before`` days out), not yet notified
@@ -175,9 +185,12 @@ def find_due_document_expiry_reminders(
     day) — dedupe is keyed on (document_id, expires_at), so editing a
     document's expiry date (e.g. after renewing a vaccination) naturally
     produces a fresh reminder instead of staying silenced by the old one.
+
+    See ``find_due_medication_reminders`` for what ``subscribed_pets`` is for.
     """
     due = []
-    for pet, now_local, recipient_subs in _iter_subscribed_pets(db, now_utc):
+    pets_iter = subscribed_pets if subscribed_pets is not None else _iter_subscribed_pets(db, now_utc)
+    for pet, now_local, recipient_subs in pets_iter:
         pet_id = str(pet["_id"])
         today = now_local.date()
 
@@ -210,8 +223,11 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
     of notifications actually delivered.
     """
     sent = 0
+    # Computed once and shared — otherwise each of the two finders below
+    # would independently re-run the same push_subscriptions + pets scan.
+    subscribed_pets = list(_iter_subscribed_pets(db, now_utc))
 
-    for slot in find_due_medication_reminders(db, now_utc):
+    for slot in find_due_medication_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         medication = slot["medication"]
         payload = {"title": "Пора дать лекарство", "body": f"{medication['name']} — {slot['time']}", "url": "/"}
         sent += send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
@@ -240,7 +256,7 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             # recorded either way, nothing more to do.
             logger.warning(f"Could not record dedupe row for medication={medication['_id']}, slot={slot['time']}")
 
-    for expiry in find_due_document_expiry_reminders(db, now_utc):
+    for expiry in find_due_document_expiry_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         document = expiry["document"]
         payload = {
             "title": "Скоро истекает срок документа",

@@ -297,6 +297,27 @@ class TestSendReminders:
         assert dedupe_row is not None
         assert "purge_at" in dedupe_row
 
+    def test_scans_subscriptions_and_pets_only_once_per_tick(self, mock_db):
+        """Medication and document-expiry reminders each need the same
+        subscribed-pets groundwork (_iter_subscribed_pets) — send_reminders
+        must compute it once and share it, not have each of the two
+        finders re-run the push_subscriptions/pets scan independently."""
+        pet_id = _make_pet(mock_db)
+        _make_medication(mock_db, pet_id)
+        _make_document(mock_db, pet_id, expires_at="2024-01-16")
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+
+        with (
+            patch("web.push_delivery.webpush"),
+            patch.object(mock_db.push_subscriptions, "find", wraps=mock_db.push_subscriptions.find) as spy_find_subs,
+            patch.object(mock_db.pets, "find", wraps=mock_db.pets.find) as spy_find_pets,
+        ):
+            sent = send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
+
+        assert sent == 2  # both the medication dose and the document expiry fired
+        assert spy_find_subs.call_count == 1
+        assert spy_find_pets.call_count == 1
+
     def test_second_tick_does_not_resend_after_dedupe_row_exists(self, mock_db):
         pet_id = _make_pet(mock_db)
         _make_medication(mock_db, pet_id)
