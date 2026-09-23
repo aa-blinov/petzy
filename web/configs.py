@@ -82,6 +82,15 @@ def load_config() -> Dict[str, Any]:
             "username": os.getenv("ADMIN_USERNAME", "admin"),
             "password_hash": os.getenv("ADMIN_PASSWORD_HASH"),
         },
+        # Web Push (VAPID). All optional — an unset VAPID_PUBLIC_KEY means
+        # push notifications are simply unavailable (GET /api/push/
+        # vapid-public-key returns push_not_configured) rather than a
+        # startup failure, since not every deployment needs this feature.
+        "push": {
+            "vapid_public_key": os.getenv("VAPID_PUBLIC_KEY"),
+            "vapid_private_key": os.getenv("VAPID_PRIVATE_KEY"),
+            "vapid_claims_email": os.getenv("VAPID_CLAIMS_EMAIL", "admin@example.com"),
+        },
         # MongoDB settings
         "mongodb": {
             "user": mongo_user,
@@ -115,6 +124,8 @@ def get_config_json() -> str:
         safe_config["jwt"]["secret_key"] = "***MASKED***"
     if safe_config["mongodb"]["pass"]:
         safe_config["mongodb"]["pass"] = "***MASKED***"
+    if safe_config["push"]["vapid_private_key"]:
+        safe_config["push"]["vapid_private_key"] = "***MASKED***"
 
     return json.dumps(safe_config, indent=2, ensure_ascii=False)
 
@@ -128,5 +139,6 @@ JWT_CONFIG = _config["jwt"]
 RATE_LIMIT_CONFIG = _config["rate_limit"]
 LOGGING_CONFIG = _config["logging"]
 ADMIN_CONFIG = _config["admin"]
+PUSH_CONFIG = _config["push"]
 MONGODB_CONFIG = _config["mongodb"]
 CORS_CONFIG = _config["cors"]

@@ -1,12 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
+import { Bell, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { SettingsRow } from '../components/SettingsRow';
+import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
+import {
+  getPushSubscriptionState,
+  subscribeToPush,
+  unsubscribeFromPush,
+  type PushSupportState,
+} from '../utils/pushNotifications';
 
 export function Settings() {
   const navigate = useNavigate();
@@ -14,6 +23,51 @@ export function Settings() {
   const { logout } = useAuth();
   const { isAdmin } = useAdmin();
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+
+  // null while the initial serviceWorker.ready + getSubscription() check
+  // is in flight — the row renders once that resolves, since flashing
+  // "off" then immediately "on" reads as a bug rather than a toggle.
+  const [pushState, setPushState] = useState<PushSupportState | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPushSubscriptionState().then((state) => {
+      if (!cancelled) setPushState(state);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handlePushToggle = async (checked: boolean) => {
+    setPushBusy(true);
+    try {
+      if (checked) {
+        await subscribeToPush();
+        setPushState('on');
+        showToast.success('Уведомления включены');
+      } else {
+        await unsubscribeFromPush();
+        setPushState('off');
+        showToast.success('Уведомления отключены');
+      }
+    } catch (error) {
+      // pushNotifications.ts throws plain Errors with an already
+      // user-facing message (unsupported browser, permission denied,
+      // etc.); getApiErrorMessage only unwraps axios errors (e.g. the
+      // backend's "push_not_configured"), so a plain Error needs its
+      // own .message instead of falling through to a generic fallback.
+      const message = isAxiosError(error)
+        ? getApiErrorMessage(error, 'Не удалось изменить настройку уведомлений')
+        : error instanceof Error
+          ? error.message
+          : 'Не удалось изменить настройку уведомлений';
+      showToast.failure(message);
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const confirmLogout = async () => {
     setLogoutDialogVisible(false);
@@ -69,6 +123,40 @@ export function Settings() {
                 <Switch
                   checked={theme === 'system'}
                   onChange={(checked) => setTheme(checked ? 'system' : (isDark ? 'dark' : 'light'))}
+                />
+              }
+            />
+          </div>
+
+          {/* Section: Push-уведомления. The row itself only ever shows
+              a switch — "unsupported"/"denied" states disable it with an
+              explanatory description instead of hiding the row, so a
+              user on an unsupported browser at least understands why
+              it's not available rather than wondering if it's missing. */}
+          <h3
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            Уведомления
+          </h3>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Напоминания о приёме лекарств"
+              description={
+                pushState === 'unsupported'
+                  ? 'Этот браузер не поддерживает push-уведомления'
+                  : pushState === 'denied'
+                    ? 'Заблокированы в настройках браузера'
+                    : pushState === 'on'
+                      ? 'Включены на этом устройстве'
+                      : 'Выключены на этом устройстве'
+              }
+              control={
+                <Switch
+                  checked={pushState === 'on'}
+                  disabled={pushState === null || pushState === 'unsupported' || pushState === 'denied' || pushBusy}
+                  onChange={handlePushToggle}
                 />
               }
             />

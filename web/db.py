@@ -87,6 +87,12 @@ def ensure_indexes() -> None:
                                               index, which collided when
                                               two logins landed in the
                                               same wall-clock second)
+      push_subscriptions  endpoint unique   (upsert on re-subscribe)
+                          username          (list a user's own devices)
+      medication_reminders_sent
+                          medication_id + date + time unique (dedupe: one
+                                              reminder per scheduled slot)
+                          expires_at TTL    (auto-prune after 30 days)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -157,6 +163,23 @@ def ensure_indexes() -> None:
                 # expires_at shouldn't appear "in the past" to TTL.
                 "partialFilterExpression": {"expires_at": {"$exists": True}},
             },
+        ),
+        (db.push_subscriptions, [("endpoint", ASCENDING)], "push_subscriptions_endpoint_unique", {"unique": True}),
+        (db.push_subscriptions, [("username", ASCENDING)], "push_subscriptions_username"),
+        (
+            db.medication_reminders_sent,
+            [("medication_id", ASCENDING), ("date", ASCENDING), ("time", ASCENDING)],
+            "reminders_sent_slot_unique",
+            {"unique": True},
+        ),
+        # TTL — a sent-reminder row only exists to stop the ~60s poll from
+        # re-sending the same slot; nothing ever reads it again after the
+        # day it was written, so it can expire like refresh_tokens above.
+        (
+            db.medication_reminders_sent,
+            [("expires_at", ASCENDING)],
+            "reminders_sent_ttl",
+            {"expireAfterSeconds": 0},
         ),
     ]
     for coll_name in HEALTH_RECORD_COLLECTIONS:

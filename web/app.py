@@ -159,6 +159,7 @@ from web.users import users_bp  # noqa: E402
 from web.events import events_bp  # noqa: E402
 from web.medications import medications_bp  # noqa: E402
 from web.documents import documents_bp  # noqa: E402
+from web.push import push_bp  # noqa: E402
 from web.export import export_bp  # noqa: E402
 from web.builtin_event_types import seed_builtin_event_types  # noqa: E402
 
@@ -168,6 +169,7 @@ app.register_blueprint(users_bp)
 app.register_blueprint(events_bp)
 app.register_blueprint(medications_bp)
 app.register_blueprint(documents_bp)
+app.register_blueprint(push_bp)
 app.register_blueprint(export_bp)
 
 # Build the indexes the application relies on. MongoDB makes

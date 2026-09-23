@@ -1049,6 +1049,75 @@ class DocumentDetailResponse(BaseModel):
 
 
 # ============================================================================
+# Push Notification Schemas
+# ============================================================================
+
+
+class PushSubscriptionKeys(BaseModel):
+    """The two keys the browser's PushManager returns alongside an
+    endpoint — required by the Web Push encryption scheme (RFC 8291)."""
+
+    p256dh: str
+    auth: str
+
+
+# The reminder sender later does, on a recurring schedule the subscriber
+# fully controls (their own medication's days/times), an authenticated-
+# looking server-side HTTP POST to whatever `endpoint` is stored here.
+# Without this allowlist, `endpoint` is a self-service SSRF primitive:
+# any logged-in user could subscribe an internal address (a cloud
+# metadata IP, another service on the docker network) or a third
+# party's server and have this app hit it on repeat, indefinitely.
+# Real push services are always one of a handful of DNS names — an IP
+# literal or an unrelated domain is never a legitimate subscription.
+_ALLOWED_PUSH_ENDPOINT_SUFFIXES = (
+    "googleapis.com",  # Chrome, Edge, Opera, other Chromium-based (FCM)
+    "mozilla.com",  # Firefox
+    "apple.com",  # Safari (web.push.apple.com)
+    "windows.com",  # legacy Edge (WNS)
+)
+
+
+def _validate_push_endpoint(v: str) -> str:
+    from ipaddress import ip_address
+    from urllib.parse import urlparse
+
+    parsed = urlparse(v)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ValueError("Endpoint должен быть https-адресом известного push-сервиса")
+
+    host = parsed.hostname
+    try:
+        ip_address(host)
+        is_ip_literal = True
+    except ValueError:
+        is_ip_literal = False
+    if is_ip_literal:
+        raise ValueError("Endpoint не может быть IP-адресом")
+
+    if not any(host == suffix or host.endswith(f".{suffix}") for suffix in _ALLOWED_PUSH_ENDPOINT_SUFFIXES):
+        raise ValueError("Endpoint не относится к известному push-сервису")
+
+    return v
+
+
+class PushSubscribeRequest(BaseModel):
+    endpoint: str = Field(..., min_length=1, max_length=2048, description="URL пуш-сервиса браузера")
+    keys: PushSubscriptionKeys
+    timezone: str = Field(..., min_length=1, max_length=64, description="IANA-имя часового пояса (напр. Asia/Almaty)")
+
+    _check_endpoint = field_validator("endpoint")(_validate_push_endpoint)
+
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str = Field(..., min_length=1)
+
+
+class VapidPublicKeyResponse(BaseModel):
+    public_key: str = Field(..., description="VAPID-ключ для PushManager.subscribe()")
+
+
+# ============================================================================
 # History Timeline Schemas
 # ============================================================================
 

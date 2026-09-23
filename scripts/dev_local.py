@@ -415,6 +415,17 @@ def main() -> None:
     os.environ.setdefault("ADMIN_USERNAME", "admin")
     os.environ.setdefault("RATELIMIT_STORAGE_URI", "memory://")
 
+    # Fixed dev-only VAPID pair (generated once via
+    # `python -m scripts.generate_vapid_keys`) so a browser subscription
+    # survives across dev-server restarts instead of needing to
+    # re-subscribe every time. Never used outside this local runner.
+    os.environ.setdefault(
+        "VAPID_PUBLIC_KEY",
+        "BEAFT_kVkSueKANpSxD1htnxIIKLln9mYnYUPHqF1LkASgjesy5mQzNdPKdlrd5gdf2KENSuqrpT_2WfqMpLxuY",
+    )
+    os.environ.setdefault("VAPID_PRIVATE_KEY", "ay_H1xDEhyWhfOJ1rEF67WpPjJdX7z9CpsgQjvyP3zo")
+    os.environ.setdefault("VAPID_CLAIMS_EMAIL", "dev@example.com")
+
     _patch_with_mongomock()
 
     import bcrypt
@@ -433,6 +444,32 @@ def main() -> None:
     from web.db import db
 
     _seed_demo_data(db, fs)
+
+    # Run the reminder sender in-process on a background thread — only
+    # safe here because dev_local.py is single-process. In production
+    # this is its own container (docker-compose's `reminders` service)
+    # specifically because gunicorn runs several worker processes, and
+    # an in-process thread there would send every reminder once per
+    # worker. A short 20s interval (vs. production's 60s) just makes
+    # manual testing faster, not more correct.
+    import threading
+    import time
+    from datetime import datetime, timezone
+
+    from scripts.send_medication_reminders import send_reminders
+
+    def _reminder_loop():
+        vapid_claims = {"sub": f"mailto:{os.environ['VAPID_CLAIMS_EMAIL']}"}
+        while True:
+            try:
+                sent = send_reminders(db, datetime.now(timezone.utc), os.environ["VAPID_PRIVATE_KEY"], vapid_claims)
+                if sent:
+                    logger.info(f"[reminders] sent {sent} notification(s)")
+            except Exception:
+                logger.exception("[reminders] tick failed")
+            time.sleep(20)
+
+    threading.Thread(target=_reminder_loop, daemon=True).start()
 
     logger.info("Listening on http://0.0.0.0:5001")
     app.run(host="0.0.0.0", port=5001, debug=False, use_reloader=False)

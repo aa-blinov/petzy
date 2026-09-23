@@ -12,6 +12,17 @@ export default defineConfig(() => {
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // generateSW (the default) has Workbox author the whole service
+      // worker for us — no room to add our own `push`/`notificationclick`
+      // listeners. injectManifest instead builds frontend/src/sw.ts,
+      // which owns those listeners itself and calls precacheAndRoute()
+      // with the same asset list generateSW would have produced.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      },
       includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg', 'logo.svg'],
       manifest: {
         name: 'Petzy',
@@ -36,46 +47,12 @@ export default defineConfig(() => {
             purpose: 'any maskable'
           }
         ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        // Vite emits <link rel="modulepreload" crossorigin> for every
-        // vendor chunk. Workbox's navigation-fallback handler intercepts
-        // those as navigations and throws "cross-origin service worker
-        // resource mismatch" in the console — the preloads become
-        // dead weight. Tell Workbox to keep its hands off hashed asset
-        // bundles; the browser's HTTP cache + Workbox precache handle
-        // them just fine.
-        navigateFallbackDenylist: [/^\/assets\//],
-        runtimeCaching: [
-          {
-            // No API response is ever served from a cache.
-            //
-            // This used to be NetworkFirst with a 60-second TTL (and
-            // /api/pets was CacheFirst for five minutes). Both were a
-            // bad trade for a health diary: a one-minute window buys
-            // essentially no offline capability — anything longer than
-            // a minute offline and the cache is stale anyway — while
-            // it did leave one user's pet roster and medical records
-            // in Cache Storage on a possibly shared device, ready to
-            // be served to whoever signed in next, and let a slow
-            // backend (mid-deploy) answer from a stale entry so the
-            // UI rendered old data and then corrected itself.
-            //
-            // It matters most for /auth/session, the app's "am I
-            // signed in?" probe: a cached 200 there would keep a
-            // signed-out user looking signed in, and it has to fail
-            // loudly during a deploy rather than answer from a stale
-            // entry.
-            //
-            // The app shell is still precached, so the PWA installs
-            // and launches offline; data simply requires the network
-            // and says so when it is missing.
-            urlPattern: /^\/api\/.*/i,
-            handler: 'NetworkOnly',
-          }
-        ]
       }
+      // The `workbox: { navigateFallbackDenylist, runtimeCaching }` that
+      // used to live here only applies to the generateSW strategy —
+      // injectManifest ignores it silently. That same navigation-route
+      // and NetworkOnly-for-/api/ behavior now lives directly in
+      // frontend/src/sw.ts, with the same reasoning preserved there.
     })
   ],
   // Use root path everywhere

@@ -76,6 +76,23 @@ services:
     networks:
       - app-network
 
+  # Polls for medication doses that just became due and sends a Web Push
+  # notification for each. Deliberately its own service rather than a
+  # thread inside `web` — that service runs several gunicorn worker
+  # processes (see gunicorn.conf.py), and an in-process thread there
+  # would send every reminder once per worker.
+  reminders:
+    build: .
+    env_file:
+      - .env
+    command: "python -m scripts.send_medication_reminders"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
 volumes:
   mongodata:
   static_content:

@@ -38,6 +38,36 @@ medications_bp = Blueprint("medications", __name__)
 UPCOMING_LOOKAHEAD_DAYS = 7
 
 
+def compute_taken_counts(db, med_ids: list, window_start: datetime, window_end: datetime) -> dict:
+    """(medication_id, 'YYYY-MM-DD') -> how many intakes already exist that day.
+
+    Deliberately a plain count, not a match against the schedule's own
+    HH:MM — an intake's date_time is whenever it was actually logged
+    (e.g. MedicationsList's "Отметить приём" stamps the real tap time,
+    not the schedule's "08:00"), so comparing HH:MM strings against the
+    schedule almost never matched. Same convention get_medications
+    already uses for intakes_today: consume the day's scheduled slots in
+    chronological order against this count, regardless of which screen
+    (or, for the reminder sender, which cron tick) logged them.
+
+    Shared by get_upcoming_doses below and
+    scripts/send_medication_reminders.py, so "is this dose already
+    given today" can't quietly drift between the two.
+    """
+    window_intakes = db.medication_intakes.find(
+        {"medication_id": {"$in": med_ids}, "date_time": {"$gte": window_start, "$lt": window_end}}
+    )
+    taken_count_by_med_day: dict = {}
+    for intake in window_intakes:
+        med_id = intake.get("medication_id")
+        dt = intake.get("date_time")
+        if not dt:
+            continue
+        key = (med_id, dt.strftime("%Y-%m-%d"))
+        taken_count_by_med_day[key] = taken_count_by_med_day.get(key, 0) + 1
+    return taken_count_by_med_day
+
+
 @medications_bp.route("/api/medications", methods=["POST"])
 @api.validate(
     body=Request(MedicationCreate),
@@ -529,35 +559,13 @@ def get_upcoming_doses():
         today_start = datetime(now.year, now.month, now.day)
         window_end = today_start + timedelta(days=UPCOMING_LOOKAHEAD_DAYS + 1)
 
-        # Batch fetch every intake across the whole lookahead window (not
-        # just today) in one query — "Отметить заранее" lets a dose several
-        # days out be pre-logged, and without this the day it landed on
-        # kept re-offering it as still due, exactly like the original
-        # same-day bug this endpoint already had to fix once.
+        # "Отметить заранее" lets a dose several days out be pre-logged,
+        # and without checking the whole lookahead window (not just
+        # today) the day it landed on kept re-offering it as still due —
+        # exactly like the original same-day bug this endpoint already
+        # had to fix once.
         med_ids = [str(med["_id"]) for med in medications]
-        window_intakes = list(
-            app.db.medication_intakes.find(
-                {"medication_id": {"$in": med_ids}, "date_time": {"$gte": today_start, "$lt": window_end}}
-            )
-        )
-
-        # Count intakes per (medication, calendar day) — not matched
-        # against the exact scheduled time. An intake's own date_time is
-        # whenever it was actually logged (e.g. MedicationsList's
-        # "Отметить приём" stamps the real tap time, not the schedule's
-        # "08:00"), so comparing HH:MM strings against the schedule almost
-        # never matched and a dose already given kept reappearing here as
-        # due. Same convention get_medications already uses for
-        # intakes_today: a plain count, consumed against that day's
-        # scheduled slots in chronological order.
-        taken_count_by_med_day: dict[tuple[str, str], int] = {}
-        for intake in window_intakes:
-            med_id = intake.get("medication_id")
-            dt = intake.get("date_time")
-            if not dt:
-                continue
-            key = (med_id, dt.strftime("%Y-%m-%d"))
-            taken_count_by_med_day[key] = taken_count_by_med_day.get(key, 0) + 1
+        taken_count_by_med_day = compute_taken_counts(app.db, med_ids, today_start, window_end)
 
         # Walk today, then each following day in the lookahead window,
         # stopping at the first day that still has anything due — showing

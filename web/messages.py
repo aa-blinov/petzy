@@ -41,6 +41,9 @@ MESSAGES: Dict[str, MessageDef] = {
     "document_created": MessageDef("Документ добавлен"),
     "document_updated": MessageDef("Документ обновлён"),
     "document_deleted": MessageDef("Документ удалён"),
+    # Push notifications
+    "push_subscribed": MessageDef("Уведомления включены"),
+    "push_unsubscribed": MessageDef("Уведомления отключены"),
 }
 
 
