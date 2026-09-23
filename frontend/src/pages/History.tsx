@@ -302,8 +302,13 @@ export function History() {
                 {/* Trends — a chart across every event type mixed together
                    doesn't mean anything, so this section only appears once
                    a specific type is filtered, sitting above the (also
-                   filtered) event list below it rather than replacing it. */}
-                {filterType !== FILTER_ALL && (
+                   filtered) event list below it rather than replacing it.
+                   Also skipped when that type has no records at all yet —
+                   otherwise a type with zero history showed its own "Нет
+                   данных за период" right above the list's identical
+                   "Записей пока нет", two empty states saying the same
+                   thing back to back. */}
+                {filterType !== FILTER_ALL && filteredRecords.length > 0 && (
                     <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-md)' }}>
                         <h3 className="section-header" style={{ marginBottom: 0, paddingLeft: 4 }}>
                             Тренды
