@@ -16,6 +16,13 @@ jobs:
           username: ${{ secrets.SERVER_PETZY_USER }}
           key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
           script: |
+            # Without this, any failing command below (a diverged git pull,
+            # a failed build) just gets skipped over silently — the job
+            # still ends on `docker compose ps`, which always succeeds, so
+            # GitHub reports a green "Deploy to Server" run that actually
+            # deployed nothing new.
+            set -euo pipefail
+
             echo "--- Debug Info ---"
             pwd
             ls -la ~/services
@@ -23,7 +30,13 @@ jobs:
             cd ~/services/cat-health-control-bot || cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
             pwd
             echo "--- Deployment ---"
-            git pull origin master
+            # `git pull` fails outright if the server's checkout has ever
+            # diverged from origin/master (a stray local commit, a manual
+            # edit to a tracked file) — this is a deploy target, not a dev
+            # clone, so it should always end up exactly at origin/master
+            # rather than needing someone to reconcile history by hand.
+            git fetch origin master
+            git reset --hard origin/master
             # Rebuild everything that has its own Dockerfile / depends on the
             # backend source. Previously only `frontend` was rebuilt, which
             # meant backend changes (jti migration, ensure_indexes TTL,
