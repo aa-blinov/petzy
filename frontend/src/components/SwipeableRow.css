@@ -29,14 +29,13 @@
     /* Cancel the spring while the pointer is down — direct manipulation
        feels native, the bounce only kicks in on release. */
     transition: none;
-    /* A horizontal mouse drag would otherwise select the row's text and
-       start a native image drag on the pet photo. */
+    /* A horizontal mouse drag would otherwise select the row's text. */
     user-select: none;
     -webkit-user-select: none;
 }
 
+/* A swipe that started on the photo must not end as a tap that opens it. */
 .swipeable-row--dragging img {
-    -webkit-user-drag: none;
     pointer-events: none;
 }
 

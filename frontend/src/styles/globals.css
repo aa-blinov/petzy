@@ -628,6 +628,16 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Photos are never dragged or long-pressed as files here. A swipe that
+   started on a pet photo became a native image drag instead: the browser
+   pulled a ghost of the picture, cancelled the pointer, and the card
+   itself stayed put. The iOS long-press callout ("Save image") likewise
+   hijacked the same gesture. */
+img {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
 /* Outfit is a clean display font — apply it to all text nodes by default.
    Components opt out via .adm-* classes (antd-mobile brings its own metrics). */
 body,

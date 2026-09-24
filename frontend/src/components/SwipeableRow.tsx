@@ -87,6 +87,9 @@ export function SwipeableRow({ leftAction, rightAction, children, disabled }: Sw
       <div
         className="swipeable-row__surface"
         style={{ transform: `translate3d(${offset}px, 0, 0)` }}
+        // Firefox ignores -webkit-user-drag (globals.css): without this a
+        // swipe that starts on a photo drags the image, not the row.
+        onDragStart={(e) => e.preventDefault()}
         {...handlers}
       >
         {children}
