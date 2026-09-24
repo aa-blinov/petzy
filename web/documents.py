@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from io import BytesIO
 from urllib.parse import quote
 
-from bson import ObjectId
 from flask import Blueprint, g, jsonify, make_response, request
 from flask_pydantic_spec import Request, Response
 
@@ -21,8 +20,10 @@ from web.errors import error_response
 from web.helpers import (
     PRIVATE_IMMUTABLE_CACHE,
     apply_pagination,
+    delete_stored_file,
+    load_image_variant,
     optimize_image,
-    resize_image_bytes,
+    snap_thumbnail_size,
     validate_pet_access,
 )
 from web.messages import get_message
@@ -236,7 +237,7 @@ def delete_document(id):
         document = g.record
         app.db.documents.delete_one({"_id": document["_id"]})
         try:
-            app.fs.delete(ObjectId(document["file_id"]))
+            delete_stored_file(document["file_id"])
         except Exception as file_error:
             app.logger.warning(f"Failed to delete document file: file_id={document['file_id']}, error={file_error}")
         return get_message("document_deleted")
@@ -282,8 +283,8 @@ def get_document_file(id):
     unchanged.
     """
     document = g.record
-    width = request.args.get("w", type=int)
-    height = request.args.get("h", type=int)
+    width = snap_thumbnail_size(request.args.get("w", type=int))
+    height = snap_thumbnail_size(request.args.get("h", type=int))
     etag = f"{document['file_id']}_{width}_{height}"
     if request.if_none_match.contains(etag):
         response = make_response("", 304)
@@ -292,17 +293,7 @@ def get_document_file(id):
         return response
 
     try:
-        grid_file = app.fs.get(ObjectId(document["file_id"]))
-        data = grid_file.read()
-        content_type = document.get("content_type") or "application/octet-stream"
-
-        if content_type.startswith("image/"):
-            try:
-                resized = resize_image_bytes(data, width, height)
-                if resized is not None:
-                    data, content_type = resized, "image/webp"
-            except Exception as resize_err:
-                app.logger.warning(f"Document thumbnail resize failed: {resize_err}")
+        data, content_type = load_image_variant(document["file_id"], width, height, document.get("content_type"))
 
         is_inline = content_type.startswith("image/") or content_type == "application/pdf"
         disposition = "inline" if is_inline else "attachment"

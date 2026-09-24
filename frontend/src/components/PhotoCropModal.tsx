@@ -22,7 +22,7 @@ import { hapticFeedback } from '../utils/haptic';
 interface PhotoCropModalProps {
   /** object URL of the just-picked file. */
   imageSrc: string;
-  /** Original filename — reused (with a .jpg extension) for the crop output. */
+  /** Original filename, reused (with the encoded extension) for the crop output. */
   filename: string;
   onCancel: () => void;
   onCropped: (file: File) => void;

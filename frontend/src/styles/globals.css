@@ -1236,18 +1236,6 @@ button:focus-visible,
     100% { background-position: -200% 0; }
 }
 
-/* High refresh rate display optimizations (120Hz+) */
-@media (prefers-reduced-motion: no-preference) {
-
-    /* Optimize scrolling containers for smooth 120Hz performance */
-    .page-container,
-    .adm-list,
-    .adm-infinite-scroll {
-        contain: layout style paint;
-        content-visibility: auto;
-    }
-}
-
 /* Optimize for users who prefer reduced motion */
 /* ============================================================
    Reduced motion — the single place motion is switched off.

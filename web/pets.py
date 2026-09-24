@@ -12,10 +12,12 @@ from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
 from web.helpers import (
     PRIVATE_IMMUTABLE_CACHE,
+    delete_stored_file,
     get_pet_and_validate,
+    load_image_variant,
     optimize_image,
     parse_date,
-    resize_image_bytes,
+    snap_thumbnail_size,
 )
 from web.errors import error_response, PetNotFoundDuringDeletion
 from web.messages import get_message
@@ -430,7 +432,7 @@ def update_pet(pet_id):
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$set": update_data})
         if stale_photo_id and stale_photo_id != update_data.get("photo_file_id", photo_file_id):
             try:
-                app.fs.delete(ObjectId(stale_photo_id))
+                delete_stored_file(stale_photo_id)
             except Exception as e:
                 logger.warning(f"Failed to delete old photo: photo_id={stale_photo_id}, pet_id={pet_id}, error={e}")
         logger.info(f"Pet updated: id={pet_id}, user={username}")
@@ -647,7 +649,7 @@ def delete_pet(pet_id):
         # Delete photo from GridFS (outside transaction as GridFS doesn't support transactions)
         if old_photo_id:
             try:
-                app.fs.delete(ObjectId(old_photo_id))
+                delete_stored_file(old_photo_id)
                 logger.info(f"Deleted photo {old_photo_id} for pet {pet_id}")
             except Exception as photo_error:
                 # Log but don't fail the request
@@ -656,7 +658,7 @@ def delete_pet(pet_id):
         # Same rationale — document files live in GridFS, outside the transaction.
         for file_id in doc_file_ids:
             try:
-                app.fs.delete(ObjectId(file_id))
+                delete_stored_file(file_id)
             except Exception as file_error:
                 logger.warning(f"Failed to delete document file {file_id} for pet {pet_id}: {file_error}")
 
@@ -700,8 +702,8 @@ def get_pet_photo(pet_id):
             return error_response("photo_not_found")
 
         # Get optional width and height for resizing
-        width = request.args.get("w", type=int)
-        height = request.args.get("h", type=int)
+        width = snap_thumbnail_size(request.args.get("w", type=int))
+        height = snap_thumbnail_size(request.args.get("h", type=int))
 
         etag = f"{photo_file_id}_{width}_{height}"
         if request.if_none_match.contains(etag):
@@ -713,17 +715,7 @@ def get_pet_photo(pet_id):
             return response
 
         try:
-            photo_file = app.fs.get(ObjectId(photo_file_id))
-            photo_data = photo_file.read()
-            content_type = photo_file.content_type or "image/jpeg"
-
-            if content_type.startswith("image/"):
-                try:
-                    resized = resize_image_bytes(photo_data, width, height)
-                    if resized is not None:
-                        photo_data, content_type = resized, "image/webp"
-                except Exception as resize_err:
-                    logger.warning(f"Resizing failed: {resize_err}")
+            photo_data, content_type = load_image_variant(photo_file_id, width, height)
 
             response = make_response(photo_data)
             response.headers.set("Content-Type", content_type)

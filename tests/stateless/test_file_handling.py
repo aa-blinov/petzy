@@ -10,12 +10,24 @@ from PIL import Image
 from werkzeug.datastructures import FileStorage
 
 from web.documents import content_disposition
-from web.helpers import PRIVATE_IMMUTABLE_CACHE, optimize_image, resize_image_bytes
+from web.helpers import (
+    PRIVATE_IMMUTABLE_CACHE,
+    delete_stored_file,
+    optimize_image,
+    resize_image_bytes,
+    snap_thumbnail_size,
+)
 
 
 def _png_bytes(size=(40, 20), color=(200, 50, 50)) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", size, color).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _webp_bytes(size=(40, 20), mode="RGB") -> bytes:
+    buf = io.BytesIO()
+    Image.new(mode, size, (200, 50, 50, 255)[: len(mode)]).save(buf, format="WEBP", quality=85)
     return buf.getvalue()
 
 
@@ -54,6 +66,30 @@ class TestImageProcessing:
         output, content_type = result
         assert content_type == "image/webp"
         assert Image.open(output).size == (64, 32)
+
+    @pytest.mark.parametrize("mode", ["RGB", "RGBA"])
+    def test_ready_webp_is_stored_without_a_second_lossy_pass(self, mode):
+        # The crop modal exports WebP already; re-encoding it would only
+        # compress the same photo twice.
+        data = _webp_bytes((300, 300), mode)
+        output, content_type = optimize_image(FileStorage(stream=io.BytesIO(data), filename="p.webp"))
+
+        assert content_type == "image/webp"
+        assert output.getvalue() == data
+
+    def test_oversized_webp_is_still_downscaled(self):
+        data = _webp_bytes((2400, 1200))
+        output, _ = optimize_image(FileStorage(stream=io.BytesIO(data), filename="p.webp"))
+
+        assert output.getvalue() != data
+        assert Image.open(output).size == (1920, 960)
+
+    def test_thumbnail_sizes_snap_up_to_a_bucket(self):
+        assert snap_thumbnail_size(None) is None
+        assert snap_thumbnail_size(96) == 96
+        assert snap_thumbnail_size(97) == 128
+        assert snap_thumbnail_size(1) == 20
+        assert snap_thumbnail_size(4000) is None  # bigger than any bucket: the original
 
     def test_resize_returns_none_when_no_size_or_image_already_small(self):
         data = _png_bytes((40, 20))
@@ -121,8 +157,8 @@ class TestServingFiles:
         doc = self._document(mock_db, str(test_pet["_id"]))
         with patch.object(fs, "get") as mock_get:
             response = client.get(
-                f"/api/documents/{doc['_id']}/file?w=200",
-                headers={**_auth(regular_user_token), "If-None-Match": f'"{doc["file_id"]}_200_None"'},
+                f"/api/documents/{doc['_id']}/file?w=192",
+                headers={**_auth(regular_user_token), "If-None-Match": f'"{doc["file_id"]}_192_None"'},
             )
 
         assert response.status_code == 304
@@ -148,6 +184,80 @@ class TestServingFiles:
             )
         assert again.status_code == 304
         mock_get.assert_not_called()
+
+
+@pytest.mark.pets
+class TestThumbnailCache:
+    def _pet_with_photo(self, mock_db, test_pet):
+        photo_id = str(ObjectId())
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": photo_id}})
+        return photo_id
+
+    def test_second_request_is_served_from_the_cache(self, client, mock_db, regular_user_token, test_pet):
+        from web.app import fs
+
+        photo_id = self._pet_with_photo(mock_db, test_pet)
+        stored = MagicMock(read=MagicMock(return_value=_png_bytes((1000, 1000))), content_type="image/webp")
+        url = f"/api/pets/{test_pet['_id']}/photo?w=90"
+
+        with patch.object(fs, "get", return_value=stored):
+            first = client.get(url, headers=_auth(regular_user_token))
+        with patch.object(fs, "get") as mock_get:
+            second = client.get(url, headers=_auth(regular_user_token))
+
+        mock_get.assert_not_called()
+        assert second.data == first.data
+        assert Image.open(io.BytesIO(second.data)).size == (96, 96)  # 90 snapped up to 96
+        assert mock_db["image_thumbnails"].count_documents({"source_file_id": photo_id}) == 1
+
+    def test_nearby_sizes_share_one_cached_variant(self, client, mock_db, regular_user_token, test_pet):
+        from web.app import fs
+
+        photo_id = self._pet_with_photo(mock_db, test_pet)
+        stored = MagicMock(read=MagicMock(return_value=_png_bytes((1000, 1000))), content_type="image/webp")
+
+        with patch.object(fs, "get", return_value=stored):
+            for width in (81, 90, 96):
+                client.get(f"/api/pets/{test_pet['_id']}/photo?w={width}", headers=_auth(regular_user_token))
+
+        assert mock_db["image_thumbnails"].count_documents({"source_file_id": photo_id}) == 1
+
+    def test_small_original_is_not_cached(self, client, mock_db, regular_user_token, test_pet):
+        from web.app import fs
+
+        self._pet_with_photo(mock_db, test_pet)
+        stored = MagicMock(read=MagicMock(return_value=_png_bytes((30, 30))), content_type="image/png")
+
+        with patch.object(fs, "get", return_value=stored):
+            response = client.get(f"/api/pets/{test_pet['_id']}/photo?w=96", headers=_auth(regular_user_token))
+
+        assert response.data == _png_bytes((30, 30))
+        assert mock_db["image_thumbnails"].count_documents({}) == 0
+
+    def test_deleting_a_file_drops_its_thumbnails(self, mock_db):
+        from web.app import fs
+
+        keep, gone = str(ObjectId()), str(ObjectId())
+        mock_db["image_thumbnails"].insert_many(
+            [{"_id": f"{keep}_96_None", "source_file_id": keep}, {"_id": f"{gone}_96_None", "source_file_id": gone}]
+        )
+
+        with patch.object(fs, "delete") as mock_delete:
+            delete_stored_file(gone)
+
+        mock_delete.assert_called_once_with(ObjectId(gone))
+        assert [t["source_file_id"] for t in mock_db["image_thumbnails"].find()] == [keep]
+
+    def test_replacing_a_photo_drops_the_old_thumbnails(self, client, mock_db, regular_user_token, test_pet):
+        from web.app import fs
+
+        old_id = self._pet_with_photo(mock_db, test_pet)
+        mock_db["image_thumbnails"].insert_one({"_id": f"{old_id}_96_None", "source_file_id": old_id})
+
+        with patch.object(fs, "delete"):
+            client.put(f"/api/pets/{test_pet['_id']}", json={"remove_photo": True}, headers=_auth(regular_user_token))
+
+        assert mock_db["image_thumbnails"].count_documents({}) == 0
 
 
 class TestNoOrphanedFiles:

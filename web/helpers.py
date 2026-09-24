@@ -4,11 +4,11 @@ This module is intentionally independent from `web.app` to avoid circular import
 Helpers are imported into `web.app` and used by blueprints via `web.app.*`.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from typing import Optional, Tuple
 
-from bson import ObjectId
+from bson import Binary, ObjectId
 from bson.errors import InvalidId
 from werkzeug.datastructures import FileStorage
 
@@ -286,6 +286,13 @@ def optimize_image(
         # Read the original image
         file_storage.seek(0)
         image = Image.open(file_storage)
+        if _is_ready_webp(image, max_width, max_height):
+            # The crop modal already exports WebP at a sane size; decoding
+            # and re-encoding it again only stacks a second lossy pass.
+            file_storage.seek(0)
+            output = BytesIO(file_storage.read())
+            file_storage.seek(0)
+            return output, "image/webp"
         # Phones store rotation as an EXIF tag rather than rotating the
         # pixels; re-encoding to WebP drops that tag, so without this a
         # portrait photo was stored (and shown) sideways.
@@ -320,6 +327,18 @@ def optimize_image(
         return None
 
 
+def _is_ready_webp(image: Image.Image, max_width: int, max_height: int) -> bool:
+    """True for a WebP that optimize_image would only re-encode, not change."""
+    if image.format != "WEBP" or image.width > max_width or image.height > max_height:
+        return False
+    if image.getexif().get(0x0112, 1) != 1:  # needs rotating
+        return False
+    if image.mode == "RGB":
+        return True
+    # A canvas export may carry an alpha channel that is fully opaque.
+    return image.mode == "RGBA" and image.getchannel("A").getextrema() == (255, 255)
+
+
 # Private, per-user files: fine to cache forever in the viewer's own
 # browser (every URL is versioned or immutable), never in a shared cache.
 PRIVATE_IMMUTABLE_CACHE = "private, max-age=31536000, immutable"
@@ -346,3 +365,67 @@ def resize_image_bytes(data: bytes, width: Optional[int], height: Optional[int])
     output = BytesIO()
     img.save(output, format="WEBP", quality=85, method=4)
     return output.getvalue()
+
+
+# Requested thumbnail sizes are rounded up to one of these, so ``?w=1..4000``
+# can't fill the cache with thousands of variants of one photo; the browser
+# scales the slightly larger image down. Anything bigger is served as the
+# original, which upload already caps at 1920px.
+THUMBNAIL_SIZES = (20, 40, 48, 64, 96, 128, 144, 192, 256, 288, 384, 512, 768, 1024, 1440)
+
+
+def snap_thumbnail_size(value: Optional[int]) -> Optional[int]:
+    if not value:
+        return None
+    return next((size for size in THUMBNAIL_SIZES if value <= size), None)
+
+
+def load_image_variant(file_id: str, width: Optional[int], height: Optional[int], content_type: Optional[str] = None):
+    """Bytes and content type to serve for a stored file at ``?w=&h=``.
+
+    Resized variants are kept in ``image_thumbnails``: resizing a 1920px
+    photo on every cache miss cost a full GridFS read plus a WebP encode,
+    and a list of pets asks for several sizes per photo. ``width`` and
+    ``height`` should already be snapped with ``snap_thumbnail_size``.
+    Raises if the original file can't be read.
+    """
+    key = f"{file_id}_{width}_{height}"
+    if width or height:
+        cached = app.db.image_thumbnails.find_one({"_id": key})
+        if cached:
+            return bytes(cached["data"]), cached["content_type"]
+
+    grid_file = app.fs.get(ObjectId(file_id))
+    data = grid_file.read()
+    content_type = content_type or grid_file.content_type or "application/octet-stream"
+    if not (width or height) or not content_type.startswith("image/"):
+        return data, content_type
+
+    try:
+        resized = resize_image_bytes(data, width, height)
+    except Exception as e:
+        logger.warning(f"Thumbnail resize failed: file_id={file_id}, error={e}")
+        return data, content_type
+    if resized is None:
+        return data, content_type
+
+    try:
+        app.db.image_thumbnails.replace_one(
+            {"_id": key},
+            {
+                "source_file_id": file_id,
+                "data": Binary(resized),
+                "content_type": "image/webp",
+                "created_at": datetime.now(timezone.utc),
+            },
+            upsert=True,
+        )
+    except Exception as e:  # the thumbnail is still served, just not cached
+        logger.warning(f"Failed to cache thumbnail: key={key}, error={e}")
+    return resized, "image/webp"
+
+
+def delete_stored_file(file_id: str) -> None:
+    """Delete a GridFS file together with its cached thumbnails."""
+    app.db.image_thumbnails.delete_many({"source_file_id": file_id})
+    app.fs.delete(ObjectId(file_id))

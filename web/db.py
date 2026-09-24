@@ -97,6 +97,7 @@ def ensure_indexes() -> None:
                           document_id + expires_at unique (dedupe: one
                                               reminder per document expiry date)
                           purge_at TTL      (auto-prune after 90 days)
+      image_thumbnails    source_file_id    (drop a file's variants with it)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -126,6 +127,7 @@ def ensure_indexes() -> None:
             [("pet_id", ASCENDING), ("category", ASCENDING), ("created_at", DESCENDING)],
             "documents_pet_category_created",
         ),
+        (db.image_thumbnails, [("source_file_id", ASCENDING)], "image_thumbnails_source"),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (

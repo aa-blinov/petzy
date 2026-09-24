@@ -1036,7 +1036,7 @@ class TestGetPetPhotoResize:
 
         with patch.object(fs, "get", return_value=mock_file):
             response = client.get(
-                f"/api/pets/{test_pet['_id']}/photo?w=100",
+                f"/api/pets/{test_pet['_id']}/photo?w=96",
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
 
@@ -1046,8 +1046,8 @@ class TestGetPetPhotoResize:
         import io
 
         img = Image.open(io.BytesIO(response.data))
-        assert img.width == 100
-        assert img.height == 50  # 400x200 at width=100 keeps 2:1
+        assert img.width == 96
+        assert img.height == 48  # 400x200 at width=96 keeps 2:1
 
     def test_resize_by_height_only_preserves_aspect_ratio(self, client, mock_db, regular_user_token, test_pet):
         from unittest.mock import MagicMock, patch
@@ -1061,7 +1061,7 @@ class TestGetPetPhotoResize:
 
         with patch.object(fs, "get", return_value=mock_file):
             response = client.get(
-                f"/api/pets/{test_pet['_id']}/photo?h=50",
+                f"/api/pets/{test_pet['_id']}/photo?h=48",
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
 
@@ -1070,8 +1070,8 @@ class TestGetPetPhotoResize:
         import io
 
         img = Image.open(io.BytesIO(response.data))
-        assert img.height == 50
-        assert img.width == 100
+        assert img.height == 48
+        assert img.width == 96
 
     def test_resize_failure_falls_back_to_original_bytes(self, client, mock_db, regular_user_token, test_pet):
         """A corrupt/unreadable image shouldn't 500 the whole request —

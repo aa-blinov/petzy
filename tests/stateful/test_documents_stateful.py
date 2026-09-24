@@ -14,7 +14,7 @@ from PIL import Image
 
 def _make_png_bytes() -> bytes:
     buf = io.BytesIO()
-    Image.new("RGB", (10, 10), (1, 2, 3)).save(buf, format="PNG")
+    Image.new("RGB", (100, 100), (1, 2, 3)).save(buf, format="PNG")
     return buf.getvalue()
 
 
