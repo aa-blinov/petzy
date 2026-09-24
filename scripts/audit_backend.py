@@ -303,10 +303,6 @@ def audit(routes: list[Route]) -> dict[str, Any]:
                 "/api/auth/check-admin",
             }:
                 continue
-            if entity in {"auth"} and r.path.startswith("/login"):
-                continue
-            if entity in {"misc"} and r.path in {"/favicon.ico", "/", "/dashboard"}:
-                continue
             if not r.auth and r.crud_op != "?":
                 unauth.append({"path": r.path, "methods": r.methods, "file": r.file, "line": r.line})
 

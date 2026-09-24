@@ -280,9 +280,7 @@ def login_required(f):
         # dropping the renewed cookie, though, which would leave the
         # session limping along on refresh_token alone for every
         # request. make_response accepts either shape, so the renewal
-        # no longer depends on where the decorator sits. The HTML twin
-        # of this decorator (page_login_required) already normalises
-        # this way.
+        # no longer depends on where the decorator sits.
         if new_token:
             response = make_response(response)
             set_auth_cookie(

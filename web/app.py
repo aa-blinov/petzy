@@ -1,10 +1,9 @@
 """Flask web application for pet health tracking - Petzy."""
 
 import logging
-import os
 import sys
 
-from flask import Flask, make_response, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.errors import RateLimitExceeded
@@ -17,13 +16,6 @@ from web import security
 from web.configs import CORS_CONFIG, FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
 from web.db import db, ensure_indexes
 from web.errors import error_response
-from web.security import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    get_token_from_request,
-    set_auth_cookie,
-    try_refresh_access_token,
-    verify_token,
-)
 
 
 # Configure logging
@@ -51,12 +43,9 @@ def setup_logging(app):
 # Initialize GridFS for file storage
 fs = GridFS(db)
 
-# Configure Flask app with proper template and static folders
-app = Flask(
-    __name__,
-    template_folder=FLASK_CONFIG["template_folder"],
-    static_folder=FLASK_CONFIG["static_folder"],
-)
+# JSON API only — the UI is the React app, served by nginx. No static
+# folder, so Flask doesn't register a /static route of its own.
+app = Flask(__name__, static_folder=None)
 # When CORS_ALLOWED_ORIGINS is set, use it as an explicit whitelist.
 # When empty, flask-cors reflects the request Origin header — safe because the
 # frontend (same host via Nginx) does not need to send an Origin header.
@@ -153,7 +142,7 @@ def handle_unexpected_error(e):
     return e
 
 
-from web.auth import auth_bp, page_login_required  # noqa: E402
+from web.auth import auth_bp  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
 from web.events import events_bp  # noqa: E402
@@ -208,74 +197,7 @@ api.spec["security"] = [{"bearerAuth": []}]
 @app.errorhandler(RateLimitExceeded)
 def handle_rate_limit_exceeded(e):
     """Handle rate limit exceeded errors."""
-    # Check if request is JSON (API) or HTML (web page)
-    if request.is_json or request.path.startswith("/api/"):
-        return error_response("rate_limit_exceeded")
-    else:
-        # For HTML requests, render login page with error
-        return render_template("login.html", error=str(e.description)), 429
-
-
-@app.route("/favicon.ico")
-def favicon():
-    """Serve favicon.ico to prevent 404 errors."""
-    # Return optimized SVG version of icon-192.svg as favicon
-    # Get the absolute path to static folder
-    static_folder = app.static_folder
-    if static_folder and not os.path.isabs(static_folder):  # pragma: no cover
-        # Flask's static_folder property getter always joins whatever was
-        # configured onto app.root_path (an absolute path derived from
-        # __file__), so a truthy-but-relative value can't actually occur
-        # through Flask's normal API — this only guards a hypothetical
-        # future Flask behavior change.
-        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        static_folder = os.path.join(app_root, "web", static_folder)
-    elif not static_folder:
-        # Fallback to config
-        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        static_folder = os.path.join(app_root, "web", FLASK_CONFIG["static_folder"])
-
-    # Try to serve optimized favicon.svg, fallback to icon-192.svg
-    favicon_path = os.path.join(static_folder, "favicon.svg")
-    if os.path.exists(favicon_path):
-        return send_from_directory(static_folder, "favicon.svg", mimetype="image/svg+xml")
-    else:
-        # Fallback to icon-192.svg if favicon.svg doesn't exist
-        return send_from_directory(static_folder, "icon-192.svg", mimetype="image/svg+xml")
-
-
-@app.route("/")
-def index():
-    """Redirect to login or dashboard."""
-    token = get_token_from_request()
-    if token:
-        payload = verify_token(token, "access")
-        if payload:
-            return redirect(url_for("dashboard"))
-
-    # Try to refresh using refresh token
-    new_token = try_refresh_access_token()
-    if new_token:
-        payload = verify_token(new_token, "access")
-        if payload:
-            response = make_response(redirect(url_for("dashboard")))
-            set_auth_cookie(
-                response,
-                "access_token",
-                new_token,
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            )
-            return response
-
-    return redirect(url_for("auth.login"))
-
-
-@app.route("/dashboard")
-@page_login_required
-def dashboard():
-    """Main dashboard page."""
-    username = getattr(request, "current_user", "admin")
-    return render_template("dashboard.html", username=username)
+    return error_response("rate_limit_exceeded")
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -198,86 +198,7 @@ class TestAuthentication:
         # Other user untouched
         assert db["refresh_tokens"].find_one({"token": "other-user-token"}) is not None
 
-    def test_login_page_get(self, client):
-        """Test GET login page."""
-        response = client.get("/login")
-        assert response.status_code == 200
-
-    def test_login_page_post_success(self, client, mock_db):
-        """Test POST login page with valid credentials."""
-        response = client.post("/login", data={"username": "admin", "password": "admin123"}, follow_redirects=False)
-
-        # Should redirect to dashboard (302) or return success
-        assert response.status_code in [200, 302]
-        # Check cookies are set in response headers if redirecting
-        if response.status_code == 302:
-            set_cookie_headers = [h for h in response.headers.getlist("Set-Cookie")]
-            cookie_names = " ".join(set_cookie_headers)
-            assert "access_token" in cookie_names
-
-    def test_login_page_post_invalid(self, client, mock_db):
-        """Test POST login page with invalid credentials."""
-        response = client.post("/login", data={"username": "admin", "password": "wrongpassword"})
-
-        assert response.status_code == 200
         # Should render login page with error
-
-    def test_index_redirects_to_login_when_not_authenticated(self, client):
-        """Test index redirects to login when not authenticated."""
-        response = client.get("/", follow_redirects=False)
-        assert response.status_code == 302
-        assert "/login" in response.location
-
-    def test_index_redirects_to_dashboard_when_authenticated(self, client, auth_cookies):
-        """Test index redirects to dashboard when authenticated."""
-        client.set_cookie("access_token", auth_cookies["access_token"])
-        client.set_cookie("refresh_token", auth_cookies["refresh_token"])
-        response = client.get("/", follow_redirects=False)
-        assert response.status_code == 302
-        assert "/dashboard" in response.location
-
-    def test_index_renews_access_from_refresh_token_only(self, client, auth_cookies):
-        """No access_token cookie at all, only a valid refresh_token — index()
-        should mint a fresh access token and still redirect to /dashboard,
-        setting the new cookie rather than bouncing to /login."""
-        client.set_cookie("refresh_token", auth_cookies["refresh_token"])
-        response = client.get("/", follow_redirects=False)
-
-        assert response.status_code == 302
-        assert "/dashboard" in response.location
-        set_cookie_headers = response.headers.getlist("Set-Cookie")
-        assert any("access_token=" in h for h in set_cookie_headers)
-
-    def test_dashboard_requires_authentication(self, client):
-        """Test dashboard requires authentication."""
-        response = client.get("/dashboard", follow_redirects=False)
-        assert response.status_code == 302
-        assert "/login" in response.location
-
-    def test_dashboard_accessible_with_token(self, client, auth_headers):
-        """Test dashboard is accessible with valid token."""
-        response = client.get("/dashboard", headers=auth_headers)
-        assert response.status_code == 200
-
-    def test_logout_route(self, client, mock_db, admin_refresh_token):
-        """Test logout route."""
-        # Store refresh token
-        from web.app import db
-
-        db["refresh_tokens"].insert_one(
-            {
-                "token": admin_refresh_token,
-                "username": "admin",
-                "created_at": datetime.now(timezone.utc),
-                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
-            }
-        )
-
-        client.set_cookie("refresh_token", admin_refresh_token)
-        response = client.get("/logout", follow_redirects=False)
-
-        assert response.status_code == 302
-        assert "/login" in response.location
 
     def test_token_verification(self, client, admin_token):
         """Test token verification."""
@@ -342,11 +263,9 @@ class TestAuthentication:
         }
         expired_token = jwt.encode(expired_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
-        response = client.get(
-            "/dashboard", headers={"Authorization": f"Bearer {expired_token}"}, follow_redirects=False
-        )
+        response = client.get("/api/auth/session", headers={"Authorization": f"Bearer {expired_token}"})
 
-        assert response.status_code == 302  # Should redirect to login
+        assert response.status_code == 401
 
     def test_check_admin_requires_authentication(self, client):
         """Test that check-admin requires authentication."""
@@ -442,44 +361,6 @@ class TestSessionProbe:
         response = client.get("/api/auth/session")
         assert response.status_code == 401
 
-    def test_login_page_get_redirects_when_already_authenticated(self, client, auth_cookies):
-        """GET /login with a valid access token should bounce straight to
-        the dashboard rather than showing the form again."""
-        client.set_cookie("access_token", auth_cookies["access_token"])
-        response = client.get("/login", follow_redirects=False)
-
-        assert response.status_code == 302
-        assert "/dashboard" in response.location
-
-    def test_login_page_get_renews_from_refresh_token_only(self, client, auth_cookies):
-        """Same as above but with only a refresh_token — should mint a
-        fresh access token and still redirect, rather than showing the
-        login form to an already-authenticated visitor."""
-        client.set_cookie("refresh_token", auth_cookies["refresh_token"])
-        response = client.get("/login", follow_redirects=False)
-
-        assert response.status_code == 302
-        assert "/dashboard" in response.location
-        set_cookie_headers = response.headers.getlist("Set-Cookie")
-        assert any("access_token=" in h for h in set_cookie_headers)
-
-    def test_login_page_post_missing_credentials(self, client):
-        response = client.post("/login", data={"username": "", "password": ""})
-
-        assert response.status_code == 200
-        assert "Введите логин и пароль" in response.get_data(as_text=True)
-
-    def test_dashboard_renews_access_from_refresh_token_only(self, client, auth_cookies):
-        """page_login_required's own refresh path: a page protected by it
-        (here /dashboard) should silently renew from a refresh-only
-        cookie instead of redirecting to /login."""
-        client.set_cookie("refresh_token", auth_cookies["refresh_token"])
-        response = client.get("/dashboard", follow_redirects=False)
-
-        assert response.status_code == 200
-        set_cookie_headers = response.headers.getlist("Set-Cookie")
-        assert any("access_token=" in h for h in set_cookie_headers)
-
     def test_logout_deletes_refresh_token_by_raw_value_when_undecodable(self, client, mock_db):
         """A refresh_token cookie holding garbage (not a valid JWT at all)
         can't be decoded to find its jti, so logout falls back to
@@ -534,51 +415,3 @@ class TestSessionProbe:
             response = client.get("/api/auth/check-admin", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == 200
         assert response.get_json()["is_admin"] is False
-
-    def test_page_login_required_normalizes_tuple_response_when_renewing_token(self, client, mock_db, auth_cookies):
-        """When the wrapped view returns a (body, status) tuple instead of
-        a Response object, and the token was refreshed mid-request, the
-        cookie-setting code must normalize it to a real Response first —
-        otherwise .set_cookie() has nothing to call.
-        """
-        from flask import Flask
-
-        import web.auth as auth_module
-
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.secret_key = "test"
-
-        @app.route("/_tuple_view")
-        @auth_module.page_login_required
-        def _tuple_view():
-            return ("tuple body", 200)
-
-        with app.test_client() as c:
-            c.set_cookie("refresh_token", auth_cookies["refresh_token"])
-            response = c.get("/_tuple_view", follow_redirects=False)
-
-        assert response.status_code == 200
-        assert response.get_data(as_text=True) == "tuple body"
-        set_cookie_headers = response.headers.getlist("Set-Cookie")
-        assert any("access_token=" in h for h in set_cookie_headers)
-
-    def test_page_login_required_redirects_when_refreshed_token_fails_reverification(self, client, mock_db):
-        """Mirrors the same edge case in security.login_required: a
-        freshly-issued refresh token that immediately fails its own
-        re-verification must not be trusted — the page decorator falls
-        through to the login redirect instead. Uses the real app's
-        /dashboard route (the one page_login_required actually guards)
-        since url_for("auth.login") needs the real auth blueprint.
-        """
-        from unittest.mock import patch
-        import web.auth as auth_module
-
-        with (
-            patch.object(auth_module, "try_refresh_access_token", return_value="freshly.issued.token"),
-            patch.object(auth_module, "verify_token", return_value=None),
-        ):
-            response = client.get("/dashboard", follow_redirects=False)
-
-        assert response.status_code == 302
-        assert "/login" in response.headers["Location"]

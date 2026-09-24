@@ -237,24 +237,10 @@ class TestGlobalErrorHandlers:
         assert response.status_code == 500
         assert response.get_json() is None
 
-    def test_favicon_serves_svg(self, client):
-        response = client.get("/favicon.ico")
-        assert response.status_code == 200
-        assert "svg" in response.content_type
-
-    def test_favicon_falls_back_to_config_when_static_folder_unset(self, client, monkeypatch):
-        """If static_folder is None (Flask allows disabling the static
-        route entirely), favicon() must still be able to locate the
-        icon files via FLASK_CONFIG instead of crashing."""
-        import web.app as app_module
-
-        monkeypatch.setattr(app_module.app, "static_folder", None)
-        response = client.get("/favicon.ico")
-        assert response.status_code == 200
-
-    def test_favicon_falls_back_to_icon_192_when_svg_missing(self, client):
-        from unittest.mock import patch
-
-        with patch("web.app.os.path.exists", return_value=False):
-            response = client.get("/favicon.ico")
-        assert response.status_code == 200
+    @pytest.mark.parametrize("path", ["/", "/login", "/logout", "/dashboard", "/favicon.ico", "/static/css/style.css"])
+    def test_legacy_html_routes_are_gone(self, client, path):
+        """The old server-rendered UI (Jinja templates + vanilla JS) was
+        removed in favour of the React app; Flask serves the JSON API only,
+        so none of its former page routes may answer with a page anymore."""
+        response = client.get(path, follow_redirects=False)
+        assert response.status_code == 404

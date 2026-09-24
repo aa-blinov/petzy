@@ -1,16 +1,11 @@
-"""Authentication and login-related routes (API + HTML)."""
+"""Authentication routes (JSON API only — the UI is the React app)."""
 
 from flask import (
     Blueprint,
     jsonify,
-    make_response,
-    redirect,
-    render_template,
     request,
-    url_for,
 )
 
-from functools import wraps
 
 from flask_pydantic_spec import Request, Response
 
@@ -21,12 +16,9 @@ from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
     get_current_user,
-    get_token_from_request,
     login_required,
     set_auth_cookie,
-    try_refresh_access_token,
     validate_refresh_token,
-    verify_token,
     create_access_token,
     create_refresh_token,
     verify_user_credentials,
@@ -43,56 +35,6 @@ from web.schemas import (
 )
 from web.errors import error_response
 from web.messages import get_message
-
-
-def page_login_required(f):
-    """Login-required decorator for HTML pages (redirects to login instead of JSON 401)."""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        token = get_token_from_request()
-        payload = None
-        new_token = None
-
-        if token:
-            payload = verify_token(token, "access")
-
-        if not payload:
-            # Token missing or invalid, try to refresh
-            new_token = try_refresh_access_token()
-            if new_token:
-                payload = verify_token(new_token, "access")
-                if not payload:
-                    new_token = None
-
-        if not payload:
-            # No valid token available -> redirect to login page
-            return redirect(url_for("auth.login"))
-
-        # We have valid token (either original or refreshed)
-        request.current_user = payload.get("username")
-
-        # Execute the function
-        response = f(*args, **kwargs)
-
-        # If we refreshed the token, set it in the response cookie
-        if new_token:
-            if isinstance(response, tuple):
-                response_obj, status_code = response[0], response[1] if len(response) > 1 else 200
-                response = make_response(response_obj, status_code)
-            elif not hasattr(response, "set_cookie"):
-                response = make_response(response)
-
-            set_auth_cookie(
-                response,
-                "access_token",
-                new_token,
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            )
-
-        return response
-
-    return decorated_function
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -276,83 +218,3 @@ def check_admin():
             exc_info=True,
         )
         return jsonify({"is_admin": False}), 200  # Return false instead of error
-
-
-@auth_bp.route("/login", methods=["GET", "POST"], endpoint="login")
-@limiter.limit(
-    lambda: RATE_LIMIT_CONFIG["login_page_limit"],
-    error_message="Слишком много запросов. Попробуйте позже",
-)
-def login():
-    """Login page."""
-    # Check if already logged in
-    token = get_token_from_request()
-    if token:
-        payload = verify_token(token, "access")
-        if payload:
-            return redirect(url_for("dashboard"))
-
-    # If no access token, try to refresh using refresh token
-    new_token = try_refresh_access_token()
-    if new_token:
-        payload = verify_token(new_token, "access")
-        if payload:
-            response = make_response(redirect(url_for("dashboard")))
-            set_auth_cookie(
-                response,
-                "access_token",
-                new_token,
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            )
-            return response
-
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        client_ip = request.remote_addr
-
-        if not username or not password:
-            return render_template("login.html", error="Введите логин и пароль")
-
-        # Verify username and password
-        if verify_user_credentials(username, password):
-            # Create tokens
-            access_token = create_access_token(username)
-            refresh_token = create_refresh_token(username)
-
-            logger.info(f"Successful login: user={username}, ip={client_ip}")
-
-            # Create response with redirect
-            response = make_response(redirect(url_for("dashboard")))
-
-            # Set tokens in cookies
-            set_auth_cookie(
-                response,
-                "access_token",
-                access_token,
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            )
-            set_auth_cookie(
-                response,
-                "refresh_token",
-                refresh_token,
-                max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-            )
-
-            return response
-
-        # Failed login
-        logger.warning(f"Failed login attempt (HTML): user={username}, ip={client_ip}")
-        return render_template("login.html", error="Неверный логин или пароль")
-
-    # GET request - render login page
-    return render_template("login.html")
-
-
-@auth_bp.route("/logout", methods=["GET"], endpoint="logout")
-def logout():
-    """Logout route - clear tokens and redirect to login."""
-    response = make_response(redirect(url_for("auth.login")))
-    response.set_cookie("access_token", "", max_age=0)
-    response.set_cookie("refresh_token", "", max_age=0)
-    return response

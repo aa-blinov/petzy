@@ -23,25 +23,16 @@ class TestErrorHandling:
         data = response.get_json()
         assert "error" in data
 
-    def test_rate_limit_exceeded_html(self, client, mock_db):
-        """Test rate limit exceeded for HTML requests."""
+    def test_rate_limit_exceeded_is_json_even_outside_the_api(self, client, mock_db):
+        """There are no HTML pages left to render an error into — a rate
+        limit hit anywhere gets the same JSON error as the API."""
         from web.app import app, handle_rate_limit_exceeded
 
-        # Create a mock RateLimitExceeded error
-        mock_error = MagicMock()
-        mock_error.description = "Too many requests"
+        with app.test_request_context("/anything", method="GET"):
+            response, status = handle_rate_limit_exceeded(MagicMock(description="Too many requests"))
 
-        # Mock request to be HTML (not JSON/API)
-        with app.test_request_context("/login", method="POST"):
-            with patch("web.app.request") as mock_request:
-                mock_request.is_json = False
-                mock_request.path = "/login"
-
-                response = handle_rate_limit_exceeded(mock_error)
-
-                assert response[1] == 429  # status code
-                # Should render login page with error (HTML response)
-                assert "login" in str(response[0]).lower() or "error" in str(response[0]).lower()
+        assert status == 429
+        assert response.get_json()["code"] == "rate_limit_exceeded"
 
     def test_update_record_invalid_id_format(self, client, mock_db, regular_user_token, test_pet):
         """Test updating record with invalid ID format."""

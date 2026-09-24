@@ -46,28 +46,6 @@ server {
         proxy_buffering off;
     }
 
-    # Flask static files (for old implementation, if needed)
-    location /static/ {
-        proxy_pass http://127.0.0.1:5001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Flask login page (old implementation) - keep original /login for Flask
-    location = /login {
-        proxy_pass http://127.0.0.1:5001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        # Important for cookies
-        proxy_cookie_path / /;
-        proxy_cookie_flags ~ nosecure samesite=lax;
-        proxy_pass_header Set-Cookie;
-    }
-
     # React app static assets (JS, CSS, images, etc.)
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|webmanifest)$ {
         root /home/justcomex/services/cat-health-control/frontend/dist;
@@ -76,7 +54,7 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # React app routes - SPA fallback (serve index.html for all routes except API, static, login)
+    # React app routes - SPA fallback (everything except the API is the React app, /login included)
     location / {
         root /home/justcomex/services/cat-health-control/frontend/dist;
         try_files $uri $uri/ /index.html;
