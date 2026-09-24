@@ -93,6 +93,7 @@ ERRORS: Dict[str, ErrorDef] = {
     "document_file_required": ErrorDef("document_file_required", "Файл обязателен", 422),
     "document_unsupported_type": ErrorDef("document_unsupported_type", "Неподдерживаемый тип файла", 422),
     "document_file_too_large": ErrorDef("document_file_too_large", "Файл слишком большой (максимум 15 МБ)", 422),
+    "request_too_large": ErrorDef("request_too_large", "Файл слишком большой (максимум 15 МБ)", 413),
     # Push notifications
     "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
     # Other

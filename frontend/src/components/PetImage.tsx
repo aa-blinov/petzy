@@ -33,15 +33,18 @@ export function PetImage({ src, alt, size = 48, className, style, species, objec
     const generateSrcSet = (baseUrl: string, baseSize: number) => {
         if (!baseUrl.includes('/api/pets/')) return undefined;
 
-        const s1 = `${baseUrl}?w=${baseSize}`;
-        const s2 = `${baseUrl}?w=${baseSize * 2} 2x`;
-        const s3 = `${baseUrl}?w=${baseSize * 3} 3x`;
+        // photo_url already carries `?v=…` — a second `?` turned `w` into
+        // part of `v`, so every thumbnail silently fetched the full photo.
+        const sep = baseUrl.includes('?') ? '&' : '?';
+        const s1 = `${baseUrl}${sep}w=${baseSize}`;
+        const s2 = `${baseUrl}${sep}w=${baseSize * 2} 2x`;
+        const s3 = `${baseUrl}${sep}w=${baseSize * 3} 3x`;
 
         return `${s1}, ${s2}, ${s3}`;
     };
 
     const srcset = generateSrcSet(src, size);
-    const placeholderUrl = src.includes('/api/pets/') ? `${src}?w=20` : src;
+    const placeholderUrl = src.includes('/api/pets/') ? `${src}${src.includes('?') ? '&' : '?'}w=20` : src;
 
     return (
         <div

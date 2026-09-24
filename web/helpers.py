@@ -12,7 +12,17 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from werkzeug.datastructures import FileStorage
 
-from PIL import Image
+from PIL import Image, ImageOps
+
+try:
+    # iPhones upload HEIC by default; without this Pillow can't open it, so
+    # optimize_image fell back to storing the raw HEIC (uncompressed, and
+    # undisplayable in Chrome/Firefox) instead of converting it to WebP.
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:  # pragma: no cover - optional dependency
+    pass
 
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
 from web.errors import error_response
@@ -276,6 +286,10 @@ def optimize_image(
         # Read the original image
         file_storage.seek(0)
         image = Image.open(file_storage)
+        # Phones store rotation as an EXIF tag rather than rotating the
+        # pixels; re-encoding to WebP drops that tag, so without this a
+        # portrait photo was stored (and shown) sideways.
+        image = ImageOps.exif_transpose(image)
 
         # Convert RGBA to RGB if necessary (WebP supports both, but RGB is smaller)
         if image.mode in ("RGBA", "LA", "P"):
@@ -304,3 +318,31 @@ def optimize_image(
     except Exception as e:
         logger.warning(f"Failed to optimize image: {e}", exc_info=True)
         return None
+
+
+# Private, per-user files: fine to cache forever in the viewer's own
+# browser (every URL is versioned or immutable), never in a shared cache.
+PRIVATE_IMMUTABLE_CACHE = "private, max-age=31536000, immutable"
+
+
+def resize_image_bytes(data: bytes, width: Optional[int], height: Optional[int]) -> Optional[bytes]:
+    """Downscale stored image bytes for a ``?w=&h=`` request, as WebP.
+
+    Returns None when no resize applies (no size given, or the image is
+    already smaller). Runs on every cache miss, so it uses WebP ``method=4``
+    — much faster than the ``method=6`` used once at upload, for a
+    negligible size difference at thumbnail sizes.
+    """
+    if not width and not height:
+        return None
+    img = Image.open(BytesIO(data))
+    if width and not height:
+        height = max(1, int(img.height * (width / img.width)))
+    elif height and not width:
+        width = max(1, int(img.width * (height / img.height)))
+    if img.width <= width and img.height <= height:
+        return None
+    img.thumbnail((width, height), Image.Resampling.LANCZOS)
+    output = BytesIO()
+    img.save(output, format="WEBP", quality=85, method=4)
+    return output.getvalue()

@@ -62,6 +62,11 @@ else:
 app.secret_key = FLASK_CONFIG["secret_key"]
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = FLASK_CONFIG["jsonify_prettyprint_regular"]
 app.config["JSON_AS_ASCII"] = FLASK_CONFIG["json_as_ascii"]
+# Uploads (documents: 15 MB, pet photos: already cropped client-side) are
+# the only large bodies. Without a cap Flask read any size into memory
+# before the view's own check ran; nginx's 20m let everything up to that
+# through. A little over 15 MB leaves room for multipart overhead.
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 # Setup logging
 logger = setup_logging(app)
@@ -124,6 +129,8 @@ def handle_unexpected_error(e):
                 return error_response("not_found")
             elif status_code == 405:
                 return error_response("method_not_allowed")
+            elif status_code == 413:
+                return error_response("request_too_large")
             else:
                 # For other HTTP exceptions, use generic error with appropriate status
                 # This shouldn't happen often, but we handle it gracefully

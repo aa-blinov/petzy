@@ -1,9 +1,7 @@
 """Pets management routes (API)."""
 
 from datetime import datetime, timezone
-from io import BytesIO
 
-from PIL import Image
 from bson import ObjectId
 from bson.errors import InvalidId
 from flask import Blueprint, jsonify, make_response, request, url_for
@@ -12,7 +10,13 @@ from flask_pydantic_spec import Request, Response
 from web.app import api, logger  # shared logger and api
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
-from web.helpers import get_pet_and_validate, parse_date, optimize_image
+from web.helpers import (
+    PRIVATE_IMMUTABLE_CACHE,
+    get_pet_and_validate,
+    optimize_image,
+    parse_date,
+    resize_image_bytes,
+)
 from web.errors import error_response, PetNotFoundDuringDeletion
 from web.messages import get_message
 from web.pydantic_helpers import validate_request_data
@@ -332,18 +336,15 @@ def update_pet(pet_id):
         # for a real upload (photo_file present AND named) versus a
         # removal request are independent conditions now.
         photo_file_id = pet.get("photo_file_id") if pet else None
+        stale_photo_id = None
         if is_multipart:
             photo_file = request.files.get("photo_file")
             if photo_file and photo_file.filename:
-                # Delete old photo if exists
-                old_photo_id = pet.get("photo_file_id") if pet else None
-                if old_photo_id:
-                    try:
-                        app.fs.delete(ObjectId(old_photo_id))
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to delete old photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}"
-                        )
+                # The old file is only deleted once the pet document points
+                # at the new one (after update_one below) — deleting it first
+                # left the pet referencing a missing file whenever anything
+                # later in this request failed.
+                stale_photo_id = pet.get("photo_file_id") if pet else None
 
                 # Optimize image to WebP format
                 optimized_result = optimize_image(photo_file)
@@ -373,13 +374,7 @@ def update_pet(pet_id):
                         )
                     )
             elif request.form.get("remove_photo") == "true":
-                # Remove photo
-                old_photo_id = pet.get("photo_file_id") if pet else None
-                if old_photo_id:
-                    try:
-                        app.fs.delete(ObjectId(old_photo_id))
-                    except Exception as e:
-                        logger.warning(f"Failed to delete photo: photo_id={old_photo_id}, pet_id={pet_id}, error={e}")
+                stale_photo_id = pet.get("photo_file_id") if pet else None
                 photo_file_id = None
 
         birth_date = parse_date(data.birth_date, allow_future=False)
@@ -422,6 +417,8 @@ def update_pet(pet_id):
             if data.photo_url is not None:
                 update_data["photo_url"] = data.photo_url
             if data.remove_photo:
+                # Used to only clear the reference, orphaning the GridFS file.
+                stale_photo_id = pet.get("photo_file_id") if pet else None
                 update_data["photo_file_id"] = None
                 update_data["photo_url"] = None
 
@@ -431,6 +428,11 @@ def update_pet(pet_id):
             return error_response("validation_error_no_update_data")
 
         app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$set": update_data})
+        if stale_photo_id and stale_photo_id != update_data.get("photo_file_id", photo_file_id):
+            try:
+                app.fs.delete(ObjectId(stale_photo_id))
+            except Exception as e:
+                logger.warning(f"Failed to delete old photo: photo_id={stale_photo_id}, pet_id={pet_id}, error={e}")
         logger.info(f"Pet updated: id={pet_id}, user={username}")
         return get_message("pet_updated")
 
@@ -701,40 +703,33 @@ def get_pet_photo(pet_id):
         width = request.args.get("w", type=int)
         height = request.args.get("h", type=int)
 
+        etag = f"{photo_file_id}_{width}_{height}"
+        if request.if_none_match.contains(etag):
+            # Same file id + size means the same bytes — skip the GridFS read
+            # and the resize entirely.
+            response = make_response("", 304)
+            response.set_etag(etag)
+            response.headers.set("Cache-Control", PRIVATE_IMMUTABLE_CACHE)
+            return response
+
         try:
             photo_file = app.fs.get(ObjectId(photo_file_id))
             photo_data = photo_file.read()
             content_type = photo_file.content_type or "image/jpeg"
 
-            # If resizing requested
-            if (width or height) and content_type.startswith("image/"):
+            if content_type.startswith("image/"):
                 try:
-                    img = Image.open(BytesIO(photo_data))
-
-                    # Calculate aspect ratio if only one dimension is provided
-                    if width and not height:
-                        height = int(img.height * (width / img.width))
-                    elif height and not width:
-                        width = int(img.width * (height / img.height))
-
-                    if width and height:
-                        img.thumbnail((width, height), Image.Resampling.LANCZOS)
-
-                        output = BytesIO()
-                        # Use WebP if requested or keep original format (but WebP is better for optimization)
-                        format_to_save = "WEBP"
-                        img.save(output, format=format_to_save, quality=85, method=6)
-                        photo_data = output.getvalue()
-                        content_type = "image/webp"
+                    resized = resize_image_bytes(photo_data, width, height)
+                    if resized is not None:
+                        photo_data, content_type = resized, "image/webp"
                 except Exception as resize_err:
                     logger.warning(f"Resizing failed: {resize_err}")
-                    # Fallback to original data if resizing fails
 
             response = make_response(photo_data)
             response.headers.set("Content-Type", content_type)
             response.headers.set("Content-Disposition", "inline")
-            response.headers.set("Cache-Control", "public, max-age=31536000, immutable")
-            response.headers.set("ETag", f'"{photo_file_id}_{width}_{height}"')
+            response.headers.set("Cache-Control", PRIVATE_IMMUTABLE_CACHE)
+            response.set_etag(etag)
             logger.info(f"Pet photo retrieved: pet_id={pet_id}, user={username}, size={width}x{height}")
             return response
         except Exception as e:

@@ -283,7 +283,7 @@ function PetCard({
               <PetImage
                 src={pet.photo_url}
                 alt={pet.name}
-                size={200}
+                size={96}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, cursor: 'pointer' }}
               />
             ) : (

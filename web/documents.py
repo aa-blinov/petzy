@@ -8,17 +8,23 @@ else (PDF) is stored byte-for-byte with its original content type.
 
 from datetime import datetime, timezone
 from io import BytesIO
+from urllib.parse import quote
 
 from bson import ObjectId
 from flask import Blueprint, g, jsonify, make_response, request
 from flask_pydantic_spec import Request, Response
-from PIL import Image
 
 import web.app as app  # to access patched app.db/app.fs in tests
 from web.app import api
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import apply_pagination, optimize_image, validate_pet_access
+from web.helpers import (
+    PRIVATE_IMMUTABLE_CACHE,
+    apply_pagination,
+    optimize_image,
+    resize_image_bytes,
+    validate_pet_access,
+)
 from web.messages import get_message
 from web.pydantic_helpers import validate_request_data
 from web.schemas import (
@@ -239,6 +245,28 @@ def delete_document(id):
         return error_response("internal_error")
 
 
+_EXTENSION_BY_TYPE = {"image/webp": ".webp", "application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}
+
+
+def content_disposition(disposition: str, original_filename: str, content_type: str) -> str:
+    """A Content-Disposition value that survives any filename.
+
+    The raw original name went straight into ``filename="…"``: a Cyrillic
+    name can't be encoded into a latin-1 header, so the download failed,
+    and a ``"`` in the name broke the header. RFC 5987 ``filename*`` carries
+    the real UTF-8 name, with a plain-ASCII ``filename`` fallback. The
+    extension follows what's actually stored — images are converted to
+    WebP, so "photo.jpg" is served as "photo.webp".
+    """
+    stem, _, ext = original_filename.rpartition(".")
+    if not stem:
+        stem, ext = original_filename, ""
+    ext = _EXTENSION_BY_TYPE.get(content_type, f".{ext}" if ext else "")
+    name = f"{stem}{ext}"
+    ascii_stem = "".join(c for c in stem if 32 <= ord(c) < 127 and c not in '"\\').strip() or "document"
+    return f"{disposition}; filename=\"{ascii_stem}{ext}\"; filename*=UTF-8''{quote(name)}"
+
+
 @documents_bp.route("/api/documents/<id>/file", methods=["GET"])
 @api.validate(
     query=PhotoQueryParams,
@@ -254,26 +282,25 @@ def get_document_file(id):
     unchanged.
     """
     document = g.record
+    width = request.args.get("w", type=int)
+    height = request.args.get("h", type=int)
+    etag = f"{document['file_id']}_{width}_{height}"
+    if request.if_none_match.contains(etag):
+        response = make_response("", 304)
+        response.set_etag(etag)
+        response.headers.set("Cache-Control", PRIVATE_IMMUTABLE_CACHE)
+        return response
+
     try:
         grid_file = app.fs.get(ObjectId(document["file_id"]))
         data = grid_file.read()
         content_type = document.get("content_type") or "application/octet-stream"
 
-        width = request.args.get("w", type=int)
-        height = request.args.get("h", type=int)
-        if (width or height) and content_type.startswith("image/"):
+        if content_type.startswith("image/"):
             try:
-                img = Image.open(BytesIO(data))
-                if width and not height:
-                    height = int(img.height * (width / img.width))
-                elif height and not width:
-                    width = int(img.width * (height / img.height))
-                if width and height:
-                    img.thumbnail((width, height), Image.Resampling.LANCZOS)
-                    output = BytesIO()
-                    img.save(output, format="WEBP", quality=85, method=6)
-                    data = output.getvalue()
-                    content_type = "image/webp"
+                resized = resize_image_bytes(data, width, height)
+                if resized is not None:
+                    data, content_type = resized, "image/webp"
             except Exception as resize_err:
                 app.logger.warning(f"Document thumbnail resize failed: {resize_err}")
 
@@ -282,9 +309,11 @@ def get_document_file(id):
 
         response = make_response(data)
         response.headers.set("Content-Type", content_type)
-        response.headers.set("Content-Disposition", f'{disposition}; filename="{document["original_filename"]}"')
-        response.headers.set("Cache-Control", "public, max-age=31536000, immutable")
-        response.headers.set("ETag", f'"{document["file_id"]}_{width}_{height}"')
+        response.headers.set(
+            "Content-Disposition", content_disposition(disposition, document["original_filename"], content_type)
+        )
+        response.headers.set("Cache-Control", PRIVATE_IMMUTABLE_CACHE)
+        response.set_etag(etag)
         return response
     except Exception as e:
         app.logger.error(f"Error retrieving document file: id={id}, error={e}", exc_info=True)

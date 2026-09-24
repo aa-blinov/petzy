@@ -32,6 +32,8 @@ const documentSchema = z.object({
 
 type DocumentFormData = z.infer<typeof documentSchema>;
 
+const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
+
 export function DocumentForm() {
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
@@ -243,7 +245,17 @@ export function DocumentForm() {
                   type="file"
                   accept="image/*,application/pdf"
                   style={{ display: 'none' }}
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    const picked = e.target.files?.[0] ?? null;
+                    // Same cap the backend enforces — checked here so the
+                    // user hears it before a 15 MB upload, not after it.
+                    if (picked && picked.size > MAX_DOCUMENT_BYTES) {
+                      showToast.failure('Файл слишком большой (максимум 15 МБ)');
+                      e.target.value = '';
+                      return;
+                    }
+                    setFile(picked);
+                  }}
                 />
               </Form.Item>
             )}
