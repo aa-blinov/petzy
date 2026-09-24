@@ -18,12 +18,12 @@
        easings, and stagger so the whole UI feels uniform.
        Anything that previously hard-coded 200ms / 240ms / 280ms / 300ms
        with `cubic-bezier(0.4,0,0.2,1)` or `(0.34,1.56,0.64,1)` now
-       reads from these. Three durations cover every interaction:
+       reads from these. Four durations cover every interaction:
          - instant:  micro-feedback on hover/press
-         - fast:     tap targets, color transitions, FAB spin
-         - base:     cards appearing, list items, route changes
-         - slow:     reserved for hero elements (not used today)
-       Three easings:
+         - fast:     tap targets, color transitions, going back
+         - base:     screen and step entrances, route changes
+         - slow:     springs back after a drag, illustration entrances
+       Four easings (spring below):
          - standard:  the everyday decelerate curve (close to
                        cubic-bezier(0.2,0,0,1) — Material 3 "standard")
          - decelerate: gentler at the end (elements coming in)
@@ -501,8 +501,6 @@ button.setting-row:active {
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 
-    /* Hardware acceleration hints */
-    will-change: transform, opacity;
     backface-visibility: hidden;
     transform: translateZ(0);
 }
@@ -1024,9 +1022,8 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    Lightweight Animations (GPU-accelerated)
    ======================================== */
 
-/* Keyframes — these primitives cover every entrance. They all share
-   the same duration token via var(--motion-duration-base) so a
-   global "speed up the UI" change in :root moves them together. */
+/* Shared keyframes. Durations and curves always come from the
+   --motion-* tokens at the call site, never from here. */
 @keyframes motion-scale-in {
     from {
         opacity: 0;
@@ -1049,14 +1046,7 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
-@keyframes motion-press {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(0.97); }
-    100% { transform: scale(1); }
-}
-
-/* Skeleton shimmer keeps a separate keyframe — it's an indefinite
-   loop and isn't part of the entrance vocabulary. */
+/* Loading spinners (SpinnerButton) — a loop, not an entrance. */
 @keyframes spin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
@@ -1066,8 +1056,9 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    Unified motion system — one vocabulary, one set of durations.
    Replace the old `animate-fade-in / animate-slide-up / animate-scale-in /
    animate-stagger-N` mix with a smaller, predictable surface:
-     - `.motion-scale-in`     popups / dialogs / FAB / toasts
-     - `.motion-press`        press feedback on tap
+     - `motion-scale-in`      toast entrance (keyframe, below)
+     - `.tap-feedback`        the one press feedback (scale 0.98 + dim),
+                              also applied to antd buttons/list items
    Content lists (History, Pets, Medications, empty states, loading
    skeletons) used to fade+slide in with `.motion-enter`/`.motion-stagger-*`
    on every mount — removed: it fired on every navigation and every
@@ -1082,14 +1073,6 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    should re-announce it. Plus a shared `prefers-reduced-motion`
    override below.
    ============================================================ */
-
-.motion-scale-in {
-    animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
-}
-
-.motion-press:active {
-    animation: motion-press var(--motion-duration-instant) var(--motion-ease-standard);
-}
 
 /* Popups and dialogs are deliberately NOT animated here.
    antd-mobile drives them itself, with a spring on an inline
@@ -1111,13 +1094,17 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    Route Transitions (fluent-native feel)
    ======================================== */
 
-/* The RouteTransition wrapper remounts on pathname change. The
-   animation runs once on mount and then sits idle. Forward and back
-   share the base duration (240 ms); back is slightly faster because
-   returning to a previous view feels snappier than going forward. */
+/* The RouteTransition wrapper remounts on pathname change and the
+   animation runs once on mount. Forward uses base (240 ms), back uses
+   fast (160 ms) — returning to a previous view should feel snappier.
+
+   No will-change here, and fill-mode `backwards` rather than `both`:
+   either one leaves a transform on this wrapper for the life of the
+   page, which makes it the containing block and stacking context for
+   every position:fixed element inside the route — the photo crop
+   overlay then sat under the navbar and tab bar. */
 .route-transition {
     width: 100%;
-    will-change: transform, opacity;
 }
 
 /* These three were all pointing at the generic motion-appear/motion-fade
@@ -1131,11 +1118,11 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    motion-fade: a plain cross-fade carries no direction, so there was
    nothing route-specific about keeping a second identical keyframe. */
 .route-transition--forward {
-    animation: route-forward var(--motion-duration-base) var(--motion-ease-decelerate) both;
+    animation: route-forward var(--motion-duration-base) var(--motion-ease-decelerate) backwards;
 }
 
 .route-transition--back {
-    animation: route-back var(--motion-duration-fast) var(--motion-ease-standard) both;
+    animation: route-back var(--motion-duration-fast) var(--motion-ease-standard) backwards;
 }
 
 .route-transition--replace {
@@ -1151,14 +1138,6 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     from { opacity: 0; transform: translate3d(-16px, 0, 0); }
     to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
-
-/* ============================================================
-   Reduced-motion override — honored for users who set the OS-level
-   "reduce motion" preference. Keeps durations non-zero so layout
-   still updates instantly, but drops the offset/translation and
-   stiffness — elements appear in place rather than flying in. The
-   override sits at the bottom of the file so it wins the cascade.
-   ============================================================ */
 
 /* ============================================================
    Keyboard focus visibility — important for accessibility and for
@@ -1257,21 +1236,6 @@ button:focus-visible,
     100% { background-position: -200% 0; }
 }
 
-/* Skeleton shimmer is a loop, not an entrance — kill it entirely
-   under reduced-motion (the new unified motion override above
-   handles everything else). */
-/* ========================================
-   Hero parallax (subtle scroll-driven translation)
-   ======================================== */
-.parallax-hero {
-    will-change: transform;
-    /* The actual transform is set inline from the scroll handler in
-       PetSummaryCard. We just give it a hint here. */
-}
-
-/* ========================================
-   Tap ripple (CSS-only, no finger-tracking)
-   ======================================== */
 /* High refresh rate display optimizations (120Hz+) */
 @media (prefers-reduced-motion: no-preference) {
 
@@ -1281,16 +1245,6 @@ button:focus-visible,
     .adm-infinite-scroll {
         contain: layout style paint;
         content-visibility: auto;
-    }
-}
-
-/* Performance optimizations for all interactive elements */
-@media (hover: none) and (pointer: coarse) {
-
-    /* Mobile/touch devices - optimize for touch interactions */
-    * {
-        /* Reduce unnecessary GPU layers, only promote animated elements */
-        will-change: auto;
     }
 }
 
@@ -1315,8 +1269,35 @@ button:focus-visible,
     *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
+        /* A stagger delay would otherwise still hold an element
+           invisible (fill-mode backwards/both) before it pops in. */
+        animation-delay: 0s !important;
         transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
         scroll-behavior: auto !important;
+    }
+
+    /* The press feedback rule sets its transition with !important on
+       more specific selectors than `*`, so the override above never
+       reached it. Keep the dim as feedback, drop the scale. */
+    .tap-feedback,
+    .adm-button,
+    .adm-list-item-clickable,
+    .adm-list-item-active-allow,
+    .adm-tab-bar-item,
+    .adm-picker-header-button,
+    [role="button"] {
+        transition-duration: 0.01ms !important;
+    }
+
+    .tap-feedback:active,
+    .adm-button:active,
+    .adm-list-item-clickable:active,
+    .adm-list-item-active-allow:active,
+    .adm-tab-bar-item:active,
+    .adm-picker-header-button:active,
+    [role="button"]:active {
+        transform: translateZ(0) !important;
     }
 
     /* A shimmer loop has nothing to show instantly; stop it. */
@@ -1374,8 +1355,14 @@ button:focus-visible,
     -webkit-tap-highlight-color: transparent;
 }
 
+.history-filter-trigger {
+    transition: transform var(--motion-duration-instant) var(--motion-ease-standard),
+        opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
 .history-filter-trigger:active {
-    transform: scale(0.97);
+    transform: scale(0.98);
+    opacity: 0.85;
 }
 
 /* FloatingBubble sits in a portal and ignores the CSS variables we set

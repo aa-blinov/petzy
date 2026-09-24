@@ -74,7 +74,7 @@ export function BottomTabBar() {
                   style={{
                     display: 'inline-flex',
                     transform: active ? 'scale(1.12)' : 'scale(1)',
-                    transition: `transform var(--motion-duration-fast) var(--motion-ease-emphasized)`,
+                    transition: `transform var(--motion-duration-fast) var(--motion-ease-spring)`,
                     color: active ? 'var(--app-primary-color)' : 'var(--app-text-secondary)',
                   }}
                 >

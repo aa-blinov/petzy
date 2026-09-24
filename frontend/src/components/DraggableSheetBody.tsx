@@ -137,7 +137,7 @@ export function DraggableSheetBody({
         transform: `translateY(${dragY}px)`,
         transition: dragging
           ? 'none'
-          : `transform var(--motion-duration-base) var(--motion-ease-spring)`,
+          : `transform var(--motion-duration-slow) var(--motion-ease-spring)`,
       }}
     >
       {/* Grab strip — the handle plus the space around it, so the target

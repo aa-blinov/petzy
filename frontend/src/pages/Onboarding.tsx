@@ -263,7 +263,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       break;
     case 'diary':
       art = <DiaryArt />;
-      title = 'Все записи о питомце в одной ленте';
+      title = 'Все записи о питомце в одной ленте';
       lead = 'Отмечайте кормление, вес и уход в пару касаний. История всегда под рукой';
       cta = ctaButton('Дальше', next);
       break;
@@ -291,7 +291,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
               <button
                 key={s.key}
                 type="button"
-                className={`onb__species${wide ? ' onb__species--wide' : ''}`}
+                className={`onb__species tap-feedback${wide ? ' onb__species--wide' : ''}`}
                 style={floatDelay(80 + i * 60)}
                 aria-pressed={species === s.key}
                 onClick={() => pickSpecies(s.key)}
@@ -306,7 +306,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       );
       secondary = (
-        <button type="button" className="onb__secondary" onClick={waitForShare}>
+        <button type="button" className="onb__secondary tap-feedback" onClick={waitForShare}>
           Со мной поделятся питомцем
         </button>
       );
@@ -317,7 +317,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       art = (
         <button
           type="button"
-          className="onb__avatar-btn onb-float"
+          className="onb__avatar-btn onb-float tap-feedback"
           style={{ background: speciesGradient(species) }}
           onClick={() => fileInputRef.current?.click()}
           aria-label={photoPreview ? 'Сменить фото' : 'Добавить фото'}
@@ -345,7 +345,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
           />
           <button
             type="button"
-            className="onb__chip"
+            className="onb__chip tap-feedback"
             data-filled={!!birthDate}
             onClick={() => setDatePickerVisible(true)}
           >
@@ -388,7 +388,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       lead = 'Напомним о лекарствах и истекающих документах, сообщим о необычных показателях';
       cta = ctaButton('Включить', enablePush, { loading: enablingPush });
       secondary = (
-        <button type="button" className="onb__secondary" onClick={next}>
+        <button type="button" className="onb__secondary tap-feedback" onClick={next}>
           Не сейчас
         </button>
       );
@@ -420,7 +420,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       {step !== 'done' && (
         <div className="onb__top">
           {canGoBack ? (
-            <button type="button" className="onb__icon-btn" onClick={back} aria-label="Назад">
+            <button type="button" className="onb__icon-btn tap-feedback" onClick={back} aria-label="Назад">
               <ChevronLeft size={24} strokeWidth={2.2} />
             </button>
           ) : (
@@ -444,7 +444,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             ))}
           </div>
           {isIntro ? (
-            <button type="button" className="onb__text-btn" onClick={finishIntro}>
+            <button type="button" className="onb__text-btn tap-feedback" onClick={finishIntro}>
               {replay ? 'Закрыть' : 'Пропустить'}
             </button>
           ) : (

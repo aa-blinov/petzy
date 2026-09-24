@@ -95,7 +95,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={onAction}
-          className="motion-press"
+          className="tap-feedback"
           style={{
             marginTop: 'var(--spacing-lg)',
             background: 'var(--app-primary-color)',

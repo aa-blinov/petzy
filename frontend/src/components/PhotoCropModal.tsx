@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper, { type Area, type Point } from 'react-easy-crop';
 import { Slider } from 'antd-mobile';
 import { Check, X, ZoomIn } from 'lucide-react';
@@ -52,12 +53,15 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
     }
   };
 
-  return (
+  // Portaled to <body>: rendered in place, it was stacked inside the page
+  // and the navbar and tab bar drew over it, covering Отмена/Готово.
+  // 1020 sits above both (1000 / 100) and below antd toasts (1030).
+  return createPortal(
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1000,
+        zIndex: 1020,
         background: '#000',
         display: 'flex',
         flexDirection: 'column',
@@ -152,6 +156,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
