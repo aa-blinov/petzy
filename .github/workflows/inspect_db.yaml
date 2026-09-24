@@ -36,6 +36,12 @@ jobs:
             docker compose exec -T web env 2>&1 | grep -q '^VAPID_PUBLIC_KEY=.' && echo "VAPID_PUBLIC_KEY: set" || echo "VAPID_PUBLIC_KEY: NOT set"
             docker compose exec -T web env 2>&1 | grep -q '^VAPID_PRIVATE_KEY=.' && echo "VAPID_PRIVATE_KEY: set" || echo "VAPID_PRIVATE_KEY: NOT set"
             echo
+            echo "=== host nginx site config for petzy (routing only) ==="
+            grep -rlE "petzy\.duckdns\.org" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | while read -r f; do
+              echo "--- $f"
+              grep -nE "server_name|listen|root |location|proxy_pass|try_files" "$f"
+            done
+            echo
             echo "=== collections ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print(db.getCollectionNames().sort().join(', '));" 2>&1
             echo
