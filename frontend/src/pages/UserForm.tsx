@@ -71,11 +71,11 @@ export function UserForm() {
     mutationFn: (data: UserCreate) => usersService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      showToast.success('Пользователь успешно создан');
+      showToast.success('Пользователь создан');
       setTimeout(() => goBack(navigate, '/admin'), 500);
     },
     onError: (err: unknown) => {
-      showToast.failure(getApiErrorMessage(err, 'Ошибка при создании пользователя'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось создать пользователя'));
     },
   });
 
@@ -84,11 +84,11 @@ export function UserForm() {
       usersService.updateUser(username, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      showToast.success('Пользователь успешно обновлен');
+      showToast.success('Пользователь обновлён');
       setTimeout(() => goBack(navigate, '/admin'), 500);
     },
     onError: (err: unknown) => {
-      showToast.failure(getApiErrorMessage(err, 'Ошибка при обновлении пользователя'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось обновить пользователя'));
     },
   });
 

@@ -175,7 +175,7 @@ export function DocumentsList() {
   if (!selectedPetId) {
     return (
       <div style={{ minHeight: '100vh', padding: 'var(--spacing-lg)' }}>
-        <p>Выберите животное в меню навигации для просмотра документов</p>
+        <p>Выберите питомца в меню навигации, чтобы посмотреть документы</p>
       </div>
     );
   }
@@ -231,8 +231,8 @@ export function DocumentsList() {
         ) : documents.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="Здесь будут документы животного"
-            description="Прививочные справки, анализы, страховка и фото — всё в одном месте"
+            title="Здесь будут документы питомца"
+            description="Справки о прививках, анализы, страховка и фото в одном месте"
             actionLabel="Добавить документ"
             onAction={() => navigate('/documents/new')}
           />

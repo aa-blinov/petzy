@@ -64,11 +64,11 @@ export function Pets() {
         selectPet(null);
       }
 
-      showToast.success('Питомец удален');
+      showToast.success('Питомец удалён');
     } catch (error) {
       console.error('Delete pet error:', error);
       setDeleteDialog(prev => ({ ...prev, visible: false }));
-      const errorMessage = getApiErrorMessage(error, 'Ошибка при удалении');
+      const errorMessage = getApiErrorMessage(error, 'Не удалось удалить');
       showToast.failure(errorMessage);
     }
   };
@@ -121,7 +121,7 @@ export function Pets() {
           <EmptyState
             icon={Cat}
             title="Здесь будут ваши питомцы"
-            description="Добавьте первого — Petzy будет считать кормления, вес и напомнит о лекарствах"
+            description="Добавьте первого, и Petzy будет считать кормления, следить за весом и напоминать о лекарствах"
             actionLabel="Добавить питомца"
             onAction={handleAddPet}
           />
@@ -157,7 +157,7 @@ export function Pets() {
       <Dialog
         visible={deleteDialog.visible}
         title="Удаление питомца"
-        content={deleteDialog.pet ? `Вы уверены, что хотите удалить "${deleteDialog.pet.name}"?` : ''}
+        content={deleteDialog.pet ? `Вы уверены, что хотите удалить «${deleteDialog.pet.name}»?` : ''}
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, pet: null })}
         actions={[

@@ -174,7 +174,7 @@ export function HealthRecordForm() {
           reset(normalizeData(data));
         } catch (err) {
           console.error('Error loading record:', err);
-          showToast.failure('Ошибка загрузки записи');
+          showToast.failure('Не удалось загрузить запись');
           navigate('/history');
         } finally {
           setIsLoading(false);
@@ -229,7 +229,7 @@ export function HealthRecordForm() {
       });
     } catch (error) {
       console.error('Error submitting form:', error);
-      const errorMessage = getApiErrorMessage(error, 'Ошибка при сохранении');
+      const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
       showToast.failure(errorMessage);
     }
   };
@@ -237,7 +237,7 @@ export function HealthRecordForm() {
   if (!selectedPetId) {
     return (
       <div style={{ minHeight: '100vh', padding: '16px', backgroundColor: 'var(--app-page-background)' }}>
-        <p style={{ color: 'var(--app-text-color)' }}>Выберите животное в меню навигации</p>
+        <p style={{ color: 'var(--app-text-color)' }}>Выберите питомца в меню навигации</p>
       </div>
     );
   }

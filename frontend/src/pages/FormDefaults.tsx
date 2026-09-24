@@ -122,14 +122,14 @@ export function FormDefaults() {
     const handleSave = useCallback(() => {
         try {
             localStorage.setItem('formDefaults', JSON.stringify(formSettings));
-            showToast.success('Настройки успешно сохранены');
+            showToast.success('Настройки сохранены');
             setTimeout(() => {
                 if (mountedRef.current) {
                     navigate('/settings');
                 }
             }, 1000);
         } catch (err) {
-            showToast.failure('Ошибка при сохранении настроек');
+            showToast.failure('Не удалось сохранить настройки');
             console.error('Error saving settings:', err);
         }
     }, [formSettings, navigate]);
@@ -142,7 +142,7 @@ export function FormDefaults() {
                 localStorage.setItem('formDefaults', JSON.stringify(DEFAULT_FORM_SETTINGS));
                 showToast.success('Настройки сброшены');
             } catch {
-                showToast.failure('Ошибка при сбросе настроек');
+                showToast.failure('Не удалось сбросить настройки');
             }
         }
     }, []);

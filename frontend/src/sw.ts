@@ -71,7 +71,7 @@ self.addEventListener('push', (event: PushEvent) => {
 })
 
 // v1: clicking the notification just opens/focuses the app (the
-// Дневник tab already surfaces a "Принять сейчас" widget for the exact
+// Лента tab already surfaces a "Принять сейчас" widget for the exact
 // dose the notification was about). Acting on the dose straight from
 // the notification's own action buttons — no need to open the app at
 // all — is a natural next step: the SPA authenticates via an httpOnly

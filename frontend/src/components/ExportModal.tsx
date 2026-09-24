@@ -41,10 +41,10 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
     setLoading(true);
     try {
       await exportService.exportData(petId, exportType[0], format[0] as ExportFormat);
-      showToast.success('Файл успешно скачан');
+      showToast.success('Файл скачан');
       onClose();
     } catch {
-      showToast.failure('Ошибка при экспорте');
+      showToast.failure('Не удалось экспортировать');
     } finally {
       setLoading(false);
     }

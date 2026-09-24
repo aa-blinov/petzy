@@ -51,7 +51,7 @@ class TestAccessHelpers:
         response, status = error_response
         assert status == 403
         data = response.get_json()
-        assert "Нет доступа к этому животному" in data["error"]
+        assert "Нет доступа к этому питомцу" in data["error"]
 
     def test_validate_pet_access_success_owner(self, client, mock_db, regular_user, test_pet):
         """validate_pet_access should succeed for pet owner."""

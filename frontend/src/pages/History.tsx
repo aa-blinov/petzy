@@ -139,7 +139,7 @@ export function History() {
     if (!selectedPetId) {
         return (
             <div style={{ minHeight: '100vh', padding: 'var(--spacing-lg)' }}>
-                <p>Выберите животное в меню навигации для просмотра истории</p>
+                <p>Выберите питомца в меню навигации, чтобы посмотреть историю</p>
             </div>
         );
     }
@@ -152,7 +152,7 @@ export function History() {
         if (error) {
             return (
                 <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
-                    Ошибка загрузки данных
+                    Не удалось загрузить данные
                 </p>
             );
         }

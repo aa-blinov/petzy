@@ -140,7 +140,7 @@ export function DocumentForm() {
       goBack(navigate, '/documents');
     },
     onError: (err: unknown) => {
-      showToast.failure(getApiErrorMessage(err, 'Ошибка при добавлении документа'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось добавить документ'));
     },
   });
 
@@ -165,7 +165,7 @@ export function DocumentForm() {
       goBack(navigate, '/documents');
     },
     onError: (err: unknown) => {
-      showToast.failure(getApiErrorMessage(err, 'Ошибка при обновлении документа'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось обновить документ'));
     },
   });
 
@@ -255,7 +255,7 @@ export function DocumentForm() {
                   color: 'var(--app-text-tertiary)',
                 }}
               >
-                Чтобы заменить файл, удалите документ и загрузите новый.
+                Чтобы заменить файл, удалите документ и загрузите новый
               </div>
             )}
 
@@ -361,7 +361,7 @@ export function DocumentForm() {
                     <Input
                       readOnly
                       value={displayDate}
-                      placeholder="Не указано — например, для прививок и страховки"
+                      placeholder="Не указано (например, для прививок и страховки)"
                       style={{ pointerEvents: 'none' }}
                     />
                     <Picker

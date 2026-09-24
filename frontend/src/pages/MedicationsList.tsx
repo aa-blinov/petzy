@@ -74,7 +74,7 @@ export function MedicationsList() {
             showToast.success('Приём отмечен');
         },
         onError: (err: unknown) => {
-            showToast.failure(getApiErrorMessage(err, 'Ошибка при сохранении'));
+            showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
         }
     });
 
@@ -181,7 +181,7 @@ export function MedicationsList() {
                     <EmptyState
                         icon={Pill}
                         title="Здесь будут курсы препаратов"
-                        description="Добавьте лекарство — Petzy напомнит о приёме и покажет остаток"
+                        description="Добавьте лекарство, и Petzy напомнит о приёме и покажет остаток"
                         actionLabel="Добавить препарат"
                         onAction={() => navigate('/medications/new')}
                     />
@@ -396,7 +396,7 @@ export function MedicationsList() {
                 title="Удаление курса"
                 content={
                     deleteDialog.medication && (
-                        <span>Удалить курс "{deleteDialog.medication.name}" и всю его историю?</span>
+                        <span>Удалить курс «{deleteDialog.medication.name}» и всю его историю?</span>
                     )
                 }
                 onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}

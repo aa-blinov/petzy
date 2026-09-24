@@ -161,7 +161,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
         if (error || !data) {
             return (
                 <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
-                    Ошибка загрузки данных для графика
+                    Не удалось загрузить данные для графика
                 </p>
             );
         }
@@ -171,7 +171,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                 <EmptyState
                     icon={ChartNoAxesColumn}
                     title="Нет данных за период"
-                    description="Переключите вкладку или добавьте записи — график построится автоматически"
+                    description="Переключите вкладку или добавьте записи, и график построится автоматически"
                     compact
                 />
             );

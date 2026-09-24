@@ -48,7 +48,7 @@ export async function subscribeToPush(): Promise<void> {
 
   const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
   if (permission !== 'granted') {
-    throw new Error('Разрешение на уведомления не получено');
+    throw new Error('Уведомления не разрешены');
   }
 
   const publicKey = await pushService.getVapidPublicKey();

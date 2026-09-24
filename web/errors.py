@@ -56,12 +56,12 @@ ERRORS: Dict[str, ErrorDef] = {
     # Forbidden (403)
     "forbidden": ErrorDef("forbidden", "Нет доступа к этому ресурсу", 403),
     "forbidden_admin_only": ErrorDef("forbidden_admin_only", "Доступ только для администратора", 403),
-    "pet_forbidden": ErrorDef("pet_forbidden", "Нет доступа к этому животному", 403),
+    "pet_forbidden": ErrorDef("pet_forbidden", "Нет доступа к этому питомцу", 403),
     "owner_action_forbidden": ErrorDef("owner_action_forbidden", "Это действие доступно только владельцу", 403),
     # Not found (404)
     "not_found": ErrorDef("not_found", "Ресурс не найден", 404),
     "record_not_found": ErrorDef("record_not_found", "Запись не найдена", 404),
-    "pet_not_found": ErrorDef("pet_not_found", "Животное не найдено", 404),
+    "pet_not_found": ErrorDef("pet_not_found", "Питомец не найден", 404),
     "user_not_found": ErrorDef("user_not_found", "Пользователь не найден", 404),
     "photo_not_found": ErrorDef("photo_not_found", "Фото не найдено", 404),
     # Validation errors (422)
@@ -88,7 +88,7 @@ ERRORS: Dict[str, ErrorDef] = {
     "event_type_builtin_immutable": ErrorDef(
         "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
     ),
-    "event_type_has_events": ErrorDef("event_type_has_events", "У этого типа есть записи — сначала удалите их", 422),
+    "event_type_has_events": ErrorDef("event_type_has_events", "У этого типа есть записи. Сначала удалите их", 422),
     # Documents
     "document_file_required": ErrorDef("document_file_required", "Файл обязателен", 422),
     "document_unsupported_type": ErrorDef("document_unsupported_type", "Неподдерживаемый тип файла", 422),
@@ -97,7 +97,7 @@ ERRORS: Dict[str, ErrorDef] = {
     "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
     # Other
     "no_data_for_export": ErrorDef("no_data_for_export", "Нет данных для экспорта", 404),
-    "upload_error": ErrorDef("upload_error", "Ошибка при загрузке файла", 404),
+    "upload_error": ErrorDef("upload_error", "Не удалось загрузить файл", 404),
     # Rate limit (429)
     "rate_limit_exceeded": ErrorDef("rate_limit_exceeded", "Превышен лимит запросов", 429),
     # Conflict (409)

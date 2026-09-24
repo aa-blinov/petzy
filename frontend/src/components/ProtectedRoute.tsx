@@ -41,7 +41,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }}
       >
         <p style={{ color: 'var(--app-text-secondary)', fontSize: 16, margin: 0 }}>
-          Не удалось связаться с сервером.
+          Не удалось связаться с сервером
         </p>
         <Button color="primary" fill="outline" onClick={() => { void retryProbe(); }}>
           Повторить

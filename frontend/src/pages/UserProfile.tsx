@@ -101,7 +101,7 @@ export function UserProfile() {
             </div>
           ) : (
             <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)' }}>
-              Нет общих питомцев.
+              Нет общих питомцев
             </p>
           )}
         </div>

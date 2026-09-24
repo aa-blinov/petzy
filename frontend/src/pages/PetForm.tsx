@@ -264,11 +264,11 @@ export function PetForm() {
         await queryClient.invalidateQueries({ queryKey: ['pet', petId] });
       }
 
-      showToast.success(isEditing ? 'Питомец обновлен' : 'Питомец добавлен', {
+      showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен', {
         afterClose: () => goBack(navigate, '/pets'),
       });
     } catch (error) {
-      const errorMessage = getApiErrorMessage(error, 'Ошибка при сохранении');
+      const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
       showToast.failure(errorMessage);
     } finally {
       setLoading(false);
@@ -673,7 +673,7 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Пользователь сможет добавлять и просматривать записи этого питомца — так же, как вы.
+              Пользователь сможет добавлять и просматривать записи этого питомца так же, как вы
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -764,7 +764,7 @@ export function PetForm() {
 
           {isEditing && id && (
             <Form layout="horizontal" mode="card">
-              <Form.Header>Настройка разделов дневника</Form.Header>
+              <Form.Header>Плитки в ленте</Form.Header>
               <PetTilesSettingsSection petId={id} />
             </Form>
           )}
@@ -836,7 +836,7 @@ function PetTilesSettingsSection({ petId }: { petId: string }) {
         color: 'var(--app-text-tertiary)',
         lineHeight: 'var(--line-height-tight)'
       }}>
-        Перетащите тайлы для изменения порядка. Снимите галочку, чтобы скрыть тайл.
+        Перетащите плитки, чтобы поменять порядок. Снимите галочку, чтобы скрыть плитку
       </div>
     </Form.Item>
   );

@@ -16,18 +16,18 @@ class MessageDef:
 
 MESSAGES: Dict[str, MessageDef] = {
     # Auth messages
-    "auth_login_success": MessageDef("Вход выполнен успешно"),
-    "auth_logout_success": MessageDef("Выход выполнен успешно"),
-    "auth_refresh_success": MessageDef("Токен обновлен"),
+    "auth_login_success": MessageDef("Вы вошли"),
+    "auth_logout_success": MessageDef("Вы вышли"),
+    "auth_refresh_success": MessageDef("Токен обновлён"),
     # Pet messages
     "pet_created": MessageDef("Питомец создан"),
     "pet_updated": MessageDef("Данные питомца обновлены"),
-    "pet_deleted": MessageDef("Питомец удален"),
+    "pet_deleted": MessageDef("Питомец удалён"),
     "pet_shared": MessageDef("Доступ предоставлен пользователю {username}"),
     "pet_unshared": MessageDef("Доступ убран у пользователя {username}"),
     # User messages
     "user_created": MessageDef("Пользователь создан"),
-    "user_updated": MessageDef("Пользователь обновлен"),
+    "user_updated": MessageDef("Пользователь обновлён"),
     "user_deactivated": MessageDef("Пользователь деактивирован"),
     "user_password_reset": MessageDef("Пароль изменен"),
     # Events (generic engine — one message per action, parametrized by the

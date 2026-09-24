@@ -80,7 +80,7 @@ def _replace_skip_blank(value, replacement: str = "-") -> str:
 
 MEDICATIONS_EXPORT_SPEC = ExportSpec(
     collection_name="medication_intakes",
-    title="Прием препаратов",
+    title="Приём препаратов",
     fields=[
         ("date_time", "Дата и время"),
         ("username", "Пользователь"),

@@ -903,7 +903,7 @@ class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
 class EventListQuery(PetIdPaginationQuery):
     """Query parameters for listing events, optionally filtered by type."""
 
-    type: Optional[str] = Field(None, description="Фильтр по ключу типа события (опустить — все типы)")
+    type: Optional[str] = Field(None, description="Фильтр по ключу типа события (без него все типы)")
 
 
 class HealthStatsQuery(PetIdQuery):
@@ -1066,7 +1066,7 @@ class DocumentCreate(PetIdQuery):
     title: str = Field(..., min_length=1, max_length=100)
     note: Optional[str] = Field(None, max_length=500)
     expires_at: Optional[str] = Field(
-        None, description="Срок действия (YYYY-MM-DD) — прививки, страховка и т.п.; необязателен"
+        None, description="Срок действия (YYYY-MM-DD) для прививок, страховки и т.п., необязателен"
     )
 
     @field_validator("expires_at")
@@ -1095,7 +1095,7 @@ class DocumentUpdate(BaseModel):
 
 
 class DocumentListQuery(PetIdPaginationQuery):
-    category: Optional[str] = Field(None, description="Фильтр по категории (опустить — все)")
+    category: Optional[str] = Field(None, description="Фильтр по категории (без него все)")
 
 
 class DocumentItem(BaseModel):

@@ -229,7 +229,7 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
 
     for slot in find_due_medication_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         medication = slot["medication"]
-        payload = {"title": "Пора дать лекарство", "body": f"{medication['name']} — {slot['time']}", "url": "/"}
+        payload = {"title": "Пора дать лекарство", "body": f"{medication['name']}, {slot['time']}", "url": "/"}
         sent += send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
 
         # Written after the sends above, not before: if the process is
@@ -260,7 +260,7 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
         document = expiry["document"]
         payload = {
             "title": "Скоро истекает срок документа",
-            "body": f"{document.get('title', 'Документ')} — до {expiry['expires_at']}",
+            "body": f"{document.get('title', 'Документ')}: до {expiry['expires_at']}",
             "url": "/documents",
         }
         sent += send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)

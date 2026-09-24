@@ -175,12 +175,12 @@ export function MedicationForm() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            showToast.success(isEditing ? 'Курс обновлен' : 'Курс создан', {
+            showToast.success(isEditing ? 'Курс обновлён' : 'Курс создан', {
                 afterClose: () => goBack(navigate, '/medications'),
             });
         },
         onError: (err: unknown) => {
-            showToast.failure(getApiErrorMessage(err, 'Ошибка при сохранении'));
+            showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
         }
     });
 
@@ -317,7 +317,7 @@ export function MedicationForm() {
                             )}
                         />
 
-                        <Form.Header>Схема приема</Form.Header>
+                        <Form.Header>Схема приёма</Form.Header>
                         <Controller
                             name="default_dose"
                             control={control}
@@ -504,7 +504,7 @@ export function MedicationForm() {
                                 <Form.Item
                                     label="Включить"
                                     extra={<Switch checked={field.value} onChange={field.onChange} />}
-                                    description={field.value ? `Будем списывать по ${watchedDefaultDose} ${doseUnit} за прием` : undefined}
+                                    description={field.value ? `Будем списывать по ${watchedDefaultDose} ${doseUnit} за приём` : undefined}
                                 />
                             )}
                         />

@@ -25,10 +25,10 @@ export function TilesSettings() {
   const { resetSettings } = usePetTilesSettings(selectedPetId);
 
   const handleReset = () => {
-    if (!window.confirm('Сбросить порядок и видимость тайлов к значениям по умолчанию?')) return;
+    if (!window.confirm('Вернуть порядок и видимость плиток по умолчанию?')) return;
     try {
       resetSettings();
-      showToast.success('Настройки тайлов сброшены');
+      showToast.success('Настройки плиток сброшены');
     } catch {
       showToast.failure('Не удалось сбросить настройки');
     }
@@ -39,15 +39,15 @@ export function TilesSettings() {
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            Порядок тайлов
+            Порядок плиток
           </h2>
           <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             {/* Naming the pet matters now that the settings really are
                 per-pet: without it, switching pets would silently change
                 what this screen edits. */}
             {selectedPetName
-              ? <>Настройки для питомца <strong>{selectedPetName}</strong>. Перетащите, чтобы изменить порядок, переключатель скрывает тайл. Изменения сохраняются сразу</>
-              : 'Перетащите, чтобы изменить порядок, переключатель скрывает тайл'}
+              ? <>Настройки для питомца <strong>{selectedPetName}</strong>. Перетащите, чтобы изменить порядок, переключатель скрывает плитку. Изменения сохраняются сразу</>
+              : 'Перетащите, чтобы изменить порядок, переключатель скрывает плитку'}
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export function TilesSettings() {
           <EmptyState
             icon={LayoutGrid}
             title="Сначала выберите питомца"
-            description="Тайлы дневника настраиваются отдельно для каждого питомца"
+            description="Плитки в ленте настраиваются отдельно для каждого питомца"
             actionLabel="К питомцам"
             onAction={() => navigate('/pets')}
           />

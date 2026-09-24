@@ -61,7 +61,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       setDeleteDialogVisible(false);
     } catch (error) {
       console.error('Error deleting record:', error);
-      showToast.failure('Ошибка при удалении');
+      showToast.failure('Не удалось удалить');
       setDeleteDialogVisible(false);
     } finally {
       setIsDeleting(false);

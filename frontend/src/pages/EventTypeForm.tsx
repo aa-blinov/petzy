@@ -305,7 +305,7 @@ export function EventTypeForm() {
             Поля {fields.length > 0 && `(${fields.length})`}
           </h3>
           <p style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: '13px', color: 'var(--app-text-secondary)' }}>
-            Дата, время и комментарий добавляются автоматически — здесь только то, что специфично для этого типа.
+            Дата, время и комментарий добавляются автоматически. Здесь только то, что нужно именно этому типу
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -348,7 +348,7 @@ export function EventTypeForm() {
 
                 {field.type === 'select' && (
                   <>
-                    <FieldLabel>Варианты — по одному на строку</FieldLabel>
+                    <FieldLabel>Варианты, по одному на строку</FieldLabel>
                     <TextArea
                       value={field.optionsText}
                       onChange={(v) => updateField(field.key, { optionsText: v })}
@@ -397,7 +397,7 @@ export function EventTypeForm() {
             <>
               {numberFields.length === 0 ? (
                 <p style={{ fontSize: '13px', color: 'var(--app-text-secondary)' }}>
-                  Добавьте числовое поле выше, чтобы построить по нему график.
+                  Добавьте числовое поле выше, чтобы построить по нему график
                 </p>
               ) : (
                 <Selector

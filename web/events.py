@@ -254,7 +254,7 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
             return
         payload = {
             "title": f"Необычное значение: {event_type_label}",
-            "body": f"{pet.get('name', 'Питомец')} — {field_label}: {new_value} (обычно ~{anomaly['average']})",
+            "body": f"{pet.get('name', 'Питомец')}. {field_label}: {new_value} (обычно ~{anomaly['average']})",
             "url": "/history",
         }
         vapid_claims = {"sub": f"mailto:{PUSH_CONFIG.get('vapid_claims_email', 'admin@example.com')}"}
