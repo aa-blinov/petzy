@@ -9,8 +9,8 @@ export function BottomTabBar() {
 
   const { pathname } = location;
 
-  // Don't show on login page
-  if (pathname === '/login') {
+  // Login and onboarding own the whole viewport
+  if (pathname === '/login' || pathname === '/welcome') {
     return null;
   }
 
@@ -22,7 +22,7 @@ export function BottomTabBar() {
   const tabs = [
     {
       key: '/',
-      title: 'Дневник',
+      title: 'Лента',
       icon: <BookOpen size={22} strokeWidth={1.8} />,
     },
     {

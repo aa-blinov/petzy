@@ -29,8 +29,8 @@ export function Navbar() {
     }
   };
 
-  // Don't show navbar on login page
-  if (location.pathname === '/login') {
+  // Login and onboarding own the whole viewport
+  if (location.pathname === '/login' || location.pathname === '/welcome') {
     return null;
   }
 

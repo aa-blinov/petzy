@@ -1,13 +1,16 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, FloatingBubble, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
+import { PawPrint } from 'lucide-react';
 
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
+import { useSession } from '../hooks/useSession';
+import { isOnboardingDismissed } from '../utils/onboarding';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
@@ -15,10 +18,12 @@ import { DashboardSkeleton } from '../components/Skeletons';
 import { NextDoseWidget } from '../components/NextDoseWidget';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { QuickAddSheet } from '../components/QuickAddSheet';
+import { EmptyState } from '../components/EmptyState';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { selectedPetId, getSelectedPet } = usePet();
+  const { selectedPetId, getSelectedPet, pets, isFetched: petsFetched } = usePet();
+  const { username } = useSession();
   const { eventTypes } = useEventTypes();
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
@@ -121,6 +126,27 @@ export function Dashboard() {
     return `${parts[2]}.${parts[1]}.${parts[0]}`;
   };
 
+  // A brand-new account lands here with nothing to show: send it through
+  // onboarding (which ends by adding the first pet). Someone who opted to
+  // wait for a shared pet instead gets a plain explanation, not a feed
+  // that offers to log events for a pet that doesn't exist.
+  if (petsFetched && pets.length === 0) {
+    if (!isOnboardingDismissed(username)) return <Navigate to="/welcome" replace />;
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={PawPrint}
+            title="Питомцев пока нет"
+            description={`Когда с вами поделятся питомцем, он появится здесь. Ваш логин: ${username ?? ''}`}
+            actionLabel="Добавить своего"
+            onAction={() => navigate('/welcome')}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* ─── Main scrollable content ─── */}
@@ -156,7 +182,7 @@ export function Dashboard() {
               <DashboardSkeleton />
             ) : error ? (
               <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
-                Ошибка загрузки данных
+                Не удалось загрузить данные
               </p>
             ) : allItems.length === 0 ? (
               <div style={{
@@ -165,7 +191,7 @@ export function Dashboard() {
                 color: 'var(--app-text-secondary)',
               }}>
                 <p style={{ marginBottom: '16px', fontSize: '15px' }}>
-                  Лента пока пуста — запишите первое событие
+                  Лента пока пуста. Запишите первое событие
                 </p>
                 <Button
                   color="primary"
@@ -219,7 +245,7 @@ export function Dashboard() {
                       disabled={isFetchingNextPage}
                       loading={isFetchingNextPage}
                     >
-                      {isFetchingNextPage ? 'Загрузка...' : 'Загрузить еще'}
+                      {isFetchingNextPage ? 'Загрузка...' : 'Загрузить ещё'}
                     </Button>
                   </div>
                 )}

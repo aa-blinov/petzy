@@ -1,0 +1,649 @@
+/* Onboarding — a full-screen flow that owns the viewport (the navbar and
+   tab bar are hidden on /welcome). Everything is painted from the app's
+   own tokens so it follows light/dark like the rest of the app. */
+
+/* In normal flow at full viewport height rather than position: fixed —
+   the route-transition wrapper sets `will-change: transform`, which makes
+   it the containing block for fixed descendants, and with its zero height
+   a fixed `inset: 0` collapsed to nothing. */
+.onb {
+    position: relative;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--app-page-background);
+    color: var(--app-text-primary);
+    /* clip, not hidden: the glow is wider than the screen, and a hidden
+       overflow can still be scrolled programmatically (focusing the name
+       field did exactly that, shifting every later step sideways). */
+    overflow: hidden;
+    overflow: clip;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+
+/* Soft copper light behind the illustration — the one bold move on an
+   otherwise quiet cream/charcoal screen. */
+.onb__glow {
+    position: absolute;
+    top: -12vh;
+    left: 50%;
+    width: 140vw;
+    max-width: 720px;
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    background: radial-gradient(circle at 50% 50%, var(--app-accent-soft) 0%, transparent 62%);
+    pointer-events: none;
+    animation: onb-glow 9s ease-in-out infinite alternate;
+}
+
+.onb__top {
+    position: relative;
+    display: grid;
+    grid-template-columns: 44px 1fr 88px;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg) 0;
+    min-height: 52px;
+}
+
+.onb__icon-btn {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: var(--radius-round);
+    background: transparent;
+    color: var(--app-text-secondary);
+    cursor: pointer;
+}
+
+.onb__icon-btn:focus-visible,
+.onb__text-btn:focus-visible,
+.onb__species:focus-visible,
+.onb__chip:focus-visible,
+.onb__avatar-btn:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+}
+
+.onb__progress {
+    display: flex;
+    gap: 6px;
+}
+
+.onb__progress-seg {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--app-border-color);
+    overflow: hidden;
+}
+
+.onb__progress-seg > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--app-brand-gradient);
+    transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.onb__progress-seg[data-state='done'] > span,
+.onb__progress-seg[data-state='current'] > span {
+    width: 100%;
+}
+
+.onb__text-btn {
+    justify-self: end;
+    border: none;
+    background: transparent;
+    padding: 8px 4px;
+    color: var(--app-text-secondary);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* ── Stage: illustration + copy, re-keyed per step so its entry
+   animation replays on every move. ─────────────────────────────── */
+.onb__stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    overflow-y: auto;
+    text-align: center;
+}
+
+.onb__stage[data-dir='next'] { animation: onb-in-next 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.onb__stage[data-dir='prev'] { animation: onb-in-prev 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+.onb__art {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    min-height: 260px;
+    display: grid;
+    place-items: center;
+}
+
+.onb__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    max-width: 30ch;
+}
+
+.onb__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 650;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.onb__lead {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: 1.5;
+    color: var(--app-text-secondary);
+    text-wrap: pretty;
+}
+
+.onb__actions {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
+}
+
+.onb__cta.adm-button {
+    height: 54px;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--app-brand-gradient);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    box-shadow: 0 8px 24px -8px rgba(196, 106, 63, 0.55);
+}
+
+.onb__cta.adm-button-disabled {
+    opacity: 0.45;
+    box-shadow: none;
+}
+
+.onb__secondary {
+    align-self: center;
+    border: none;
+    background: transparent;
+    padding: 10px 12px;
+    color: var(--app-text-secondary);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* ── Illustration pieces ─────────────────────────────────────────── */
+
+/* Each floating piece rises in on a stagger (--d), then idles with a
+   slow bob so the screen never looks like a static slide. */
+.onb-float {
+    animation:
+        onb-rise 640ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both,
+        onb-bob 5.5s ease-in-out calc(var(--d, 0ms) + 640ms) infinite;
+}
+
+.onb-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 300px;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--app-card-background);
+    border: 1px solid var(--app-border-color);
+    box-shadow: 0 10px 30px -12px rgba(60, 40, 20, 0.28);
+    text-align: left;
+}
+
+.onb-card__tile {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-md);
+    color: #3B2A1E;
+}
+
+.onb-card__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.onb-card__title {
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-text-primary);
+}
+
+.onb-card__meta {
+    font-size: var(--text-xs);
+    color: var(--app-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.onb-card__time {
+    align-self: flex-start;
+    font-size: 11px;
+    color: var(--app-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.onb-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* A fanned stack reads as "a feed" rather than three unrelated cards. */
+.onb-stack > :nth-child(1) { transform-origin: center; margin-right: 28px; }
+.onb-stack > :nth-child(2) { margin-left: 28px; }
+.onb-stack > :nth-child(3) { margin-right: 10px; }
+
+.onb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.onb-chip--warn {
+    background: color-mix(in srgb, var(--app-warning-color) 16%, transparent);
+    color: color-mix(in srgb, var(--app-warning-color) 70%, var(--app-text-primary));
+}
+
+/* Push notification mock — the system banner look, not an app card. */
+.onb-notif {
+    width: 100%;
+    max-width: 310px;
+    padding: 12px 14px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--app-card-background) 88%, transparent);
+    border: 1px solid var(--app-border-color);
+    box-shadow: 0 14px 34px -14px rgba(60, 40, 20, 0.35);
+    backdrop-filter: blur(12px);
+    text-align: left;
+}
+
+.onb-notif__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--app-text-tertiary);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.onb-notif__app {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    background: var(--app-brand-gradient);
+    color: #fff;
+}
+
+.onb-notif__head time { margin-left: auto; text-transform: none; letter-spacing: 0; }
+
+.onb-notif__title {
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.onb-notif__body {
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}
+
+/* Mini trend chart inside the alert card */
+.onb-spark {
+    display: block;
+    width: 100%;
+    height: 44px;
+    margin-top: 8px;
+}
+
+/* Welcome — wordmark with orbiting species bubbles */
+.onb-wordmark {
+    font-family: var(--app-font-bubble);
+    font-size: 4.5rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    background: var(--app-brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--app-accent);
+}
+
+.onb-bubble {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 20px;
+    color: #fff;
+    box-shadow: 0 12px 26px -10px rgba(60, 40, 20, 0.45);
+}
+
+.onb-bubble--sm { width: 46px; height: 46px; border-radius: 16px; }
+
+/* Avatars for the family card */
+.onb-avatars { display: flex; }
+.onb-avatars > span {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    margin-left: -8px;
+    border-radius: 50%;
+    border: 2px solid var(--app-card-background);
+    color: #3B2A1E;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+}
+.onb-avatars > span:first-child { margin-left: 0; }
+
+/* ── Setup: species grid ─────────────────────────────────────────── */
+.onb__species-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 360px;
+}
+
+.onb__species {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 12px 16px;
+    border: 2px solid var(--app-border-color);
+    border-radius: var(--radius-xl);
+    background: var(--app-card-background);
+    color: var(--app-text-primary);
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    animation: onb-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both;
+}
+
+.onb__species:active { transform: scale(0.97); }
+
+.onb__species[aria-pressed='true'] {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 4px var(--app-accent-soft);
+}
+
+.onb__species--wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; }
+
+.onb__species-icon {
+    width: 64px;
+    height: 64px;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    color: #fff;
+}
+
+.onb__species--wide .onb__species-icon { width: 44px; height: 44px; border-radius: 15px; }
+
+/* ── Setup: name ─────────────────────────────────────────────────── */
+.onb__avatar-btn {
+    position: relative;
+    width: 132px;
+    height: 132px;
+    padding: 0;
+    border: none;
+    border-radius: 42px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 18px 40px -16px rgba(60, 40, 20, 0.5);
+    overflow: visible;
+}
+
+.onb__avatar-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.onb__avatar-badge {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--app-card-background);
+    color: var(--app-accent);
+    border: 1px solid var(--app-border-color);
+    box-shadow: var(--app-shadow);
+}
+
+.onb__name-input {
+    width: 100%;
+    max-width: 320px;
+}
+
+.onb__name-input .adm-input-element {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--app-text-primary);
+    padding: 12px 0;
+    border-bottom: 2px solid var(--app-border-color);
+    transition: border-color 160ms ease;
+}
+
+.onb__name-input .adm-input-element:focus { border-bottom-color: var(--app-accent); }
+
+/* The app's form defaults pin inputs left (`!important`) and draw an inset
+   focus ring — right for form rows, wrong for this single hero field,
+   where the copper underline already marks focus. */
+.onb__name-input.adm-input { --text-align: center; }
+.onb__name-input .adm-input-element { text-align: center !important; }
+.onb__name-input .adm-input-element:focus-visible { outline: none; border-radius: 0; }
+
+.onb__name-input .adm-input-element::placeholder {
+    color: var(--app-text-tertiary);
+    font-weight: 500;
+}
+
+.onb__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px dashed var(--app-border-color);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--app-text-secondary);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.onb__chip[data-filled='true'] {
+    border-style: solid;
+    border-color: transparent;
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+}
+
+/* ── Notify: ringing bell ───────────────────────────────────────── */
+.onb-bell {
+    width: 112px;
+    height: 112px;
+    display: grid;
+    place-items: center;
+    border-radius: 36px;
+    background: var(--app-brand-gradient);
+    color: #fff;
+    box-shadow: 0 20px 44px -16px rgba(196, 106, 63, 0.6);
+}
+
+.onb-bell svg { animation: onb-ring 2.6s ease-in-out 700ms infinite; transform-origin: 50% 8%; }
+
+/* ── Done: avatar + rings + confetti ─────────────────────────────── */
+.onb-done {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: grid;
+    place-items: center;
+}
+
+.onb-done__avatar {
+    position: relative;
+    z-index: 1;
+    width: 132px;
+    height: 132px;
+    display: grid;
+    place-items: center;
+    border-radius: 42px;
+    overflow: hidden;
+    color: #fff;
+    box-shadow: 0 18px 40px -16px rgba(60, 40, 20, 0.5);
+    animation: onb-pop 620ms cubic-bezier(0.34, 1.56, 0.64, 1) 120ms both;
+}
+
+.onb-done__avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.onb-done__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 48px;
+    border: 2px solid var(--app-accent);
+    opacity: 0;
+    animation: onb-ring-out 1.8s ease-out var(--d, 0ms) infinite;
+}
+
+.onb-confetti {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    background: var(--c, var(--app-accent));
+    opacity: 0;
+    animation: onb-burst 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(260ms + var(--d, 0ms)) both;
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────── */
+@keyframes onb-in-next {
+    from { opacity: 0; transform: translateX(28px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes onb-in-prev {
+    from { opacity: 0; transform: translateX(-28px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes onb-rise {
+    from { opacity: 0; transform: translateY(18px) scale(0.96); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes onb-bob {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -6px; }
+}
+
+@keyframes onb-glow {
+    from { opacity: 0.85; scale: 1; }
+    to { opacity: 1; scale: 1.08; }
+}
+
+@keyframes onb-ring {
+    0%, 60%, 100% { rotate: 0deg; }
+    8% { rotate: 14deg; }
+    16% { rotate: -12deg; }
+    24% { rotate: 9deg; }
+    32% { rotate: -6deg; }
+    40% { rotate: 3deg; }
+}
+
+@keyframes onb-pop {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes onb-ring-out {
+    0% { opacity: 0.55; transform: scale(0.9); }
+    100% { opacity: 0; transform: scale(1.45); }
+}
+
+@keyframes onb-burst {
+    0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg); }
+    15% { opacity: 1; }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r, 200deg)); }
+}
+
+/* Short landscape phones: the illustration gives way to the copy. */
+@media (max-height: 640px) {
+    .onb__art { min-height: 200px; transform: scale(0.86); }
+    .onb__stage { gap: var(--spacing-lg); }
+}

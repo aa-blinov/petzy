@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
+import { Bell, Compass, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -149,7 +149,7 @@ export function Settings() {
                   : pushState === 'denied'
                     ? 'Заблокированы в настройках браузера'
                     : pushState === 'on'
-                      ? 'Включены на этом устройстве — лекарства, документы, необычные показатели'
+                      ? 'Включены на этом устройстве: лекарства, документы, необычные показатели'
                       : 'Лекарства, документы, необычные показатели'
               }
               control={
@@ -196,7 +196,7 @@ export function Settings() {
             <SettingsRow
               icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Настройки форм"
-              description="Дефолтные значения и единицы измерения"
+              description="Значения по умолчанию и единицы измерения"
               chevron
               onClick={() => navigate('/form-defaults')}
             />
@@ -207,12 +207,12 @@ export function Settings() {
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
-            Дашборд
+            Лента
           </h3>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Порядок тайлов"
+              label="Порядок плиток"
               description="Какие записи видны и в каком порядке"
               chevron
               onClick={() => navigate('/tiles-settings')}
@@ -235,6 +235,22 @@ export function Settings() {
               description="Свои типы записей со своими полями"
               chevron
               onClick={() => navigate('/event-types')}
+            />
+          </div>
+
+          <h3
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            О приложении
+          </h3>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<Compass size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Знакомство с Petzy"
+              description="Показать вводные экраны ещё раз"
+              chevron
+              onClick={() => navigate('/welcome?replay=1')}
             />
           </div>
 
