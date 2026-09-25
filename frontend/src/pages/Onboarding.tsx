@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, DatePicker, Dialog, Input } from 'antd-mobile';
 import {
+  Archive,
   Bell,
   Bird,
   Cake,
-  CheckCheck,
   Camera,
   Cat,
   ChevronLeft,
@@ -272,7 +272,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     case 'diary':
       art = <DiaryArt />;
       title = 'Все записи о питомце в одной ленте';
-      lead = 'Отмечайте кормление, вес и уход в пару касаний. История всегда под рукой';
+      lead = 'Кормление, вес и уход отмечаются в пару касаний, а для остального можно завести свои события, например прогулки';
       cta = ctaButton('Дальше', next);
       break;
     case 'care':
@@ -284,7 +284,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     case 'family':
       art = <FamilyArt />;
       title = 'Документы и семья рядом';
-      lead = 'Храните справки о прививках и делитесь доступом с близкими: все видят одно и то же';
+      lead = 'Справки, анализы и снимки МРТ или КТ хранятся вместе. Откройте доступ близким, и все будут видеть одно и то же';
       cta = ctaButton(replay ? 'Понятно' : 'Добавить питомца', finishIntro);
       break;
     case 'species':
@@ -648,6 +648,16 @@ function FamilyArt() {
         <span className="onb-chip onb-chip--warn">до 16 янв</span>
       </div>
       <div className="onb-card onb-float" style={floatDelay(150)}>
+        <span className="onb-card__tile onb-card__tile--film">
+          <Archive size={20} strokeWidth={2.2} />
+        </span>
+        <span className="onb-card__body">
+          <span className="onb-card__title">КТ грудной клетки</span>
+          <span className="onb-card__meta">Архив со снимками</span>
+        </span>
+        <span className="onb-chip">312 МБ</span>
+      </div>
+      <div className="onb-card onb-float" style={floatDelay(300)}>
         <span className="onb-card__tile" style={{ background: 'var(--tile-pink)' }}>
           <Users size={20} strokeWidth={2.2} />
         </span>
@@ -660,9 +670,6 @@ function FamilyArt() {
           <span style={{ background: 'var(--tile-teal)' }}>А</span>
         </span>
       </div>
-      <span className="onb-chip onb-float" style={floatDelay(300)}>
-        <CheckCheck size={14} strokeWidth={2.2} /> Все записи сразу видны всем
-      </span>
     </div>
   );
 }

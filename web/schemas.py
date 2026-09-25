@@ -1112,6 +1112,11 @@ class StorageStatus(BaseModel):
     max_scan_bytes: int
 
 
+class DownloadLink(BaseModel):
+    url: str = Field(..., description="Куда перейти, чтобы скачать файл")
+    expires_in: Optional[int] = Field(None, description="Сколько секунд ссылка действует (для снимков)")
+
+
 class DocumentUpdate(BaseModel):
     category: Optional[str] = None
     title: Optional[str] = Field(None, min_length=1, max_length=100)

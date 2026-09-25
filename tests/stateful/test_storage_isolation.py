@@ -295,6 +295,37 @@ class TestScanUpload:
         assert int(query["X-Amz-Expires"][0]) <= 600
         assert "attachment" in query["response-content-disposition"][0]
 
+    def test_download_link_as_json(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        upload_id, key = _upload_scan(client, regular_user_token, mock_db, s3_storage, str(test_pet["_id"]))
+        doc_id = _complete(client, regular_user_token, upload_id).get_json()["id"]
+
+        response = client.get(f"/api/documents/{doc_id}/download", headers=_auth(regular_user_token))
+
+        body = response.get_json()
+        assert response.status_code == 200
+        assert response.headers["Cache-Control"] == "private, no-store"
+        assert urlparse(body["url"]).path.endswith(key)
+        assert body["expires_in"] == 600
+
+    def test_download_link_errors_come_back_as_json(
+        self, client, mock_db, regular_user_token, other_token, test_pet, s3_storage
+    ):
+        upload_id, _ = _upload_scan(client, regular_user_token, mock_db, s3_storage, str(test_pet["_id"]))
+        doc_id = _complete(client, regular_user_token, upload_id).get_json()["id"]
+
+        stranger = client.get(f"/api/documents/{doc_id}/download", headers=_auth(other_token))
+        anonymous = client.get(f"/api/documents/{doc_id}/download")
+
+        assert stranger.status_code in (403, 404) and "url" not in stranger.get_json()
+        assert anonymous.status_code == 401
+
+    def test_download_link_for_an_ordinary_document(self, client, regular_user_token, pet_with_files):
+        doc_id = pet_with_files["document_id"]
+
+        body = client.get(f"/api/documents/{doc_id}/download", headers=_auth(regular_user_token)).get_json()
+
+        assert body == {"url": f"/api/documents/{doc_id}/file", "expires_in": None}
+
     @pytest.mark.parametrize("filename", ["scan.exe", "scan.pdf", "archive", "scan.zip.exe"])
     def test_unsupported_types_are_refused(self, client, regular_user_token, test_pet, filename):
         response = _start_scan(client, regular_user_token, str(test_pet["_id"]), filename)
