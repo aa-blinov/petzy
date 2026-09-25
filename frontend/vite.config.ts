@@ -23,28 +23,40 @@ export default defineConfig(() => {
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       },
-      includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg', 'logo.svg'],
+      includeAssets: ['favicon.svg', 'icon.svg', 'apple-touch-icon.png', 'badge-96.png'],
+      // The one manifest (a second, hand-written public/manifest.json with
+      // a blue theme and SVG-only icons used to be linked first and win).
+      // PNG icons: iOS ignores SVG for the home screen and several Android
+      // launchers do too. The icon is a full-bleed square with the letter
+      // inside the maskable safe zone, so it serves both purposes.
       manifest: {
         name: 'Petzy',
         short_name: 'Petzy',
-        description: 'Pet health tracking application',
-        theme_color: '#000000',
-        background_color: '#000000',
+        description: 'Кормление, вес, лекарства и документы питомца в одном месте',
+        lang: 'ru',
+        theme_color: '#FEFCF6',
+        background_color: '#FAF6EF',
         display: 'standalone',
         scope: '/',
         start_url: '/',
         icons: [
           {
-            src: `${basePath}icon-192.svg`,
+            src: `${basePath}icon-192.png`,
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: `${basePath}icon-512.svg`,
+            src: `${basePath}icon-512.png`,
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any maskable'
+          },
+          {
+            src: `${basePath}icon.svg`,
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any'
           }
         ]
       }

@@ -334,13 +334,11 @@
 }
 
 .onb-notif__app {
+    /* The real app icon, as the phone would show it in a notification. */
     width: 20px;
     height: 20px;
-    display: grid;
-    place-items: center;
-    border-radius: 6px;
-    background: var(--app-brand-gradient);
-    color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 0 1px var(--app-border-color);
 }
 
 .onb-notif__head time { margin-left: auto; text-transform: none; letter-spacing: 0; }
@@ -601,6 +599,37 @@
     background: var(--c, var(--app-accent));
     opacity: 0;
     animation: onb-burst 1100ms var(--motion-ease-decelerate) calc(260ms + var(--d, 0ms)) both;
+}
+
+/* Add-to-Home-Screen steps on the iPhone push step. */
+.onb-howto {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+}
+
+.onb-howto li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--app-border-color);
+    border-radius: var(--radius-md);
+    background: var(--app-card-background);
+    color: var(--app-text-primary);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+    text-align: left;
+}
+
+.onb-howto svg {
+    flex-shrink: 0;
+    color: var(--app-primary-text);
 }
 
 /* ── Keyframes ───────────────────────────────────────────────────── */

@@ -63,8 +63,10 @@ self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     self.registration.showNotification(data.title ?? 'Petzy', {
       body: data.body,
-      icon: '/icon-192.svg',
-      badge: '/icon-192.svg',
+      // PNG: notification icons don't reliably render SVG. The badge is a
+      // white silhouette on transparent, which Android tints itself.
+      icon: '/icon-192.png',
+      badge: '/badge-96.png',
       data: { url: data.url ?? '/' },
     })
   )

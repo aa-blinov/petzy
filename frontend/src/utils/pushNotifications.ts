@@ -20,6 +20,26 @@ export function isPushSupported(): boolean {
   return typeof navigator !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 }
 
+/** iPhone/iPad Safari (iOS 16.4+) only gives Web Push to a site added to
+ *  the Home Screen; in a plain Safari tab PushManager is simply missing,
+ *  so push looks "unsupported" when one step would enable it. */
+export function needsHomeScreenForPush(): boolean {
+  if (typeof navigator === 'undefined' || isPushSupported()) return false;
+  const ua = navigator.userAgent;
+  const isIos = /iP(hone|od|ad)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!isIos) return false;
+  const standalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (standalone) return false;
+  const version = ua.match(/OS (\d+)_(\d+)/);
+  // Desktop-class iPad Safari reports a Mac UA without an OS version;
+  // those run iPadOS 13+, so assume a current one.
+  if (!version) return true;
+  const [major, minor] = [Number(version[1]), Number(version[2])];
+  return major > 16 || (major === 16 && minor >= 4);
+}
+
 /** Current state for the Settings toggle — doesn't touch the network
  *  beyond what the browser itself already knows (no VAPID-key fetch),
  *  so it's cheap enough to call on every mount. */

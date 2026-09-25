@@ -17,6 +17,8 @@ import {
   PawPrint,
   Pill,
   Scale,
+  Share,
+  SquarePlus,
   Users,
   Utensils,
   type LucideIcon,
@@ -25,7 +27,7 @@ import {
 import { usePet } from '../hooks/usePet';
 import { useSession } from '../hooks/useSession';
 import { petsService, type Pet } from '../services/pets.service';
-import { getPushSubscriptionState, isPushSupported, subscribeToPush } from '../utils/pushNotifications';
+import { getPushSubscriptionState, isPushSupported, needsHomeScreenForPush, subscribeToPush } from '../utils/pushNotifications';
 import { computePetAge, MONTHS_GENITIVE } from '../utils/relativeTime';
 import { dismissOnboarding } from '../utils/onboarding';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -35,7 +37,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PhotoCropModal } from '../components/PhotoCropModal';
 import './Onboarding.css';
 
-type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'species' | 'name' | 'notify' | 'done';
+type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'species' | 'name' | 'notify' | 'install' | 'done';
 type SpeciesKey = 'cat' | 'dog' | 'bird' | 'fish' | 'other';
 
 const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'care', 'family'];
@@ -82,8 +84,10 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   const { selectPet } = usePet();
   const { username } = useSession();
 
-  const [pushState, setPushState] = useState<'unknown' | 'offerable' | 'skip'>(
-    () => (isPushSupported() ? 'unknown' : 'skip'),
+  // 'install': Safari on iPhone, where push only works once Petzy is on
+  // the Home Screen; the step says how instead of silently skipping.
+  const [pushState, setPushState] = useState<'unknown' | 'offerable' | 'install' | 'skip'>(
+    () => (isPushSupported() ? 'unknown' : needsHomeScreenForPush() ? 'install' : 'skip'),
   );
   useEffect(() => {
     if (pushState !== 'unknown') return;
@@ -96,7 +100,13 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
 
   const steps: StepId[] = replay
     ? INTRO_STEPS
-    : [...INTRO_STEPS, 'species', 'name', ...(pushState === 'offerable' ? (['notify'] as StepId[]) : []), 'done'];
+    : [
+        ...INTRO_STEPS,
+        'species',
+        'name',
+        ...(pushState === 'offerable' ? (['notify'] as StepId[]) : pushState === 'install' ? (['install'] as StepId[]) : []),
+        'done',
+      ];
 
   const [index, setIndex] = useState(0);
   const step = steps[Math.min(index, steps.length - 1)];
@@ -391,6 +401,35 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </button>
       );
       break;
+    case 'install':
+      art = (
+        <div className="onb-stack">
+          <div className="onb-bell onb-float" style={floatDelay(0)}>
+            <Bell size={52} strokeWidth={1.75} />
+          </div>
+          <NotificationMock
+            delay={220}
+            title="Пора дать лекарство"
+            body="Синулокс, 08:00"
+          />
+        </div>
+      );
+      title = 'Напоминания на iPhone';
+      lead = 'Safari присылает уведомления только приложениям с экрана «Домой». Добавьте туда Petzy, и напоминания заработают';
+      body = (
+        <ol className="onb-howto">
+          <li>
+            <Share size={20} strokeWidth={2} aria-hidden />
+            <span>Нажмите «Поделиться» в панели Safari</span>
+          </li>
+          <li>
+            <SquarePlus size={20} strokeWidth={2} aria-hidden />
+            <span>Выберите «На экран „Домой“» и откройте Petzy оттуда</span>
+          </li>
+        </ol>
+      );
+      cta = ctaButton('Понятно', next);
+      break;
     case 'done':
       art = (
         <div className="onb-done">
@@ -405,7 +444,17 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       );
       title = `${displayName} теперь в Petzy`;
       lead = 'Добавьте первую запись, например сегодняшнее кормление';
-      cta = ctaButton('Открыть ленту', () => navigate('/', { replace: true }));
+      // Straight into the first real record: the feed underneath, so
+      // saving the form lands there rather than back in onboarding.
+      cta = ctaButton('Записать кормление', () => {
+        navigate('/', { replace: true });
+        navigate('/form/feeding');
+      });
+      secondary = (
+        <button type="button" className="onb__secondary tap-feedback" onClick={() => navigate('/', { replace: true })}>
+          Открыть ленту
+        </button>
+      );
       break;
   }
 
@@ -545,7 +594,7 @@ function NotificationMock({ title, body, delay, extra }: { title: string; body: 
   return (
     <div className="onb-notif onb-float" style={floatDelay(delay)}>
       <div className="onb-notif__head">
-        <span className="onb-notif__app"><PawPrint size={12} strokeWidth={2.4} /></span>
+        <img className="onb-notif__app" src="/icon-192.png" alt="" />
         Petzy
         <time>сейчас</time>
       </div>
