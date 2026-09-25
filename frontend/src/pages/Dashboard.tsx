@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Button, FloatingBubble, PullToRefresh } from 'antd-mobile';
+import { Button, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import { PawPrint } from 'lucide-react';
 
@@ -29,40 +29,6 @@ export function Dashboard() {
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
 
-  // FloatingBubble is draggable (@use-gesture/react under the hood), and
-  // — even for a plain tap with zero movement — the gesture library's own
-  // pointerdown handling stops the browser from ever synthesizing the
-  // follow-up "click" event: pointerdown and pointerup both fire, but
-  // click never does, so the `onClick` prop antd-mobile exposes silently
-  // never runs and the button reads as dead. Track the tap ourselves from
-  // the pointer events that do fire reliably, and open the sheet only if
-  // the pointer barely moved (a real drag reports here too, but with far
-  // more travel than a finger/cursor wobbles on a tap).
-  const fabTapStart = useRef<{ x: number; y: number } | null>(null);
-  useEffect(() => {
-    const button = document.querySelector<HTMLElement>('.adm-floating-bubble-button');
-    if (!button) return;
-
-    const onPointerDown = (e: PointerEvent) => {
-      fabTapStart.current = { x: e.clientX, y: e.clientY };
-    };
-    const onPointerUp = (e: PointerEvent) => {
-      const start = fabTapStart.current;
-      fabTapStart.current = null;
-      if (!start) return;
-      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
-        hapticFeedback('medium');
-        setActionSheetVisible(true);
-      }
-    };
-
-    button.addEventListener('pointerdown', onPointerDown);
-    button.addEventListener('pointerup', onPointerUp);
-    return () => {
-      button.removeEventListener('pointerdown', onPointerDown);
-      button.removeEventListener('pointerup', onPointerUp);
-    };
-  }, []);
 
   const pageSize = 20;
 
@@ -135,6 +101,7 @@ export function Dashboard() {
     return (
       <div className="page-container">
         <div className="max-width-container">
+          <h1 className="sr-only">Лента</h1>
           <EmptyState
             icon={PawPrint}
             title="Питомцев пока нет"
@@ -152,6 +119,9 @@ export function Dashboard() {
       {/* ─── Main scrollable content ─── */}
       <div className="page-container" style={{ paddingBottom: '80px' }}>
         <div className="max-width-container">
+          {/* The feed has no visible title (the tab says where you are),
+              but a screen reader still needs the page's h1. */}
+          <h1 className="sr-only">Лента</h1>
           <PullToRefresh
             onRefresh={async () => {
               hapticFeedback('medium');
@@ -181,7 +151,7 @@ export function Dashboard() {
             {isLoading ? (
               <DashboardSkeleton />
             ) : error ? (
-              <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ color: 'var(--app-danger-text)', textAlign: 'center', padding: '32px 0' }}>
                 Не удалось загрузить данные
               </p>
             ) : allItems.length === 0 ? (
@@ -206,7 +176,7 @@ export function Dashboard() {
                 {Object.entries(groupedItems).map(([dateStr, itemsForDate]) => (
                   <div key={dateStr} style={{ marginBottom: '16px' }}>
                     {/* Date separator */}
-                    <h3
+                    <h2
                       className="section-header"
                       style={{
                         marginBottom: '10px',
@@ -215,7 +185,7 @@ export function Dashboard() {
                       }}
                     >
                       {formatDateHeader(dateStr)}
-                    </h3>
+                    </h2>
 
                     {/* Cards for the day */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -257,23 +227,21 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ─── FAB: rendered in portal to completely escape any CSS containing blocks.
-           Actual positioning lives in globals.css under .adm-floating-bubble so
-           it pins to the bottom-right even as antd-mobile's component logic
-           sets its own transforms. ─── */}
+      {/* FAB in a portal so no page-level containing block (route
+          transitions, pull-to-refresh) can re-anchor its fixed position.
+          A real button: antd's FloatingBubble was a div that only
+          opened on pointer events, so a keyboard or screen reader
+          could never add a record. */}
       {createPortal(
-        <FloatingBubble
-          style={{
-            '--edge-distance': '24px',
-            '--size': '56px',
-            '--background': 'var(--app-primary-color)',
-            '--border-radius': '28px',
-            boxShadow: '0 4px 16px rgba(196, 106, 63, 0.45)',
-            zIndex: 200,
-          } as React.CSSProperties}
+        <button
+          type="button"
+          className="app-fab"
+          aria-label="Добавить запись"
+          aria-haspopup="dialog"
+          onClick={() => setActionSheetVisible(true)}
         >
-          <AddOutline fontSize={28} color="#ffffff" />
-        </FloatingBubble>,
+          <AddOutline fontSize={28} aria-hidden />
+        </button>,
         document.body
       )}
 

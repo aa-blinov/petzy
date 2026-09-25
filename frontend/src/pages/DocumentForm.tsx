@@ -201,9 +201,9 @@ export function DocumentForm() {
     >
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать документ' : 'Новый документ'}
-          </h2>
+          </h1>
         </div>
 
         <div>
@@ -244,7 +244,9 @@ export function DocumentForm() {
                   id="document-file-input"
                   type="file"
                   accept="image/*,application/pdf"
-                  style={{ display: 'none' }}
+                  // Visually hidden, not display:none: the input stays in
+                  // the Tab order, so the picker opens from the keyboard.
+                  className="sr-only file-picker-input"
                   onChange={(e) => {
                     const picked = e.target.files?.[0] ?? null;
                     // Same cap the backend enforces — checked here so the
@@ -357,16 +359,25 @@ export function DocumentForm() {
                         // is already clickable to open the picker, and a
                         // full-width Button here would visually compete
                         // with that instead of reading as a small aside.
-                        <span
-                          role="button"
+                        <button
+                          type="button"
+                          aria-label="Убрать срок действия"
                           onClick={(e) => {
                             e.stopPropagation();
                             onChange('');
                           }}
-                          style={{ color: 'var(--app-danger-color)', fontSize: 'var(--text-sm)' }}
+                          style={{
+                            padding: '8px 0 8px 8px',
+                            border: 'none',
+                            background: 'none',
+                            color: 'var(--app-danger-text)',
+                            fontFamily: 'inherit',
+                            fontSize: 'var(--text-sm)',
+                            cursor: 'pointer',
+                          }}
                         >
                           Убрать
-                        </span>
+                        </button>
                       )
                     }
                   >

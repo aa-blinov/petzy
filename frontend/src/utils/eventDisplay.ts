@@ -22,30 +22,43 @@ export interface EventDisplayConfig {
   displayName: string;
   color: TileColor;
   icon: LucideIcon;
-  renderDetails: (item: HistoryItem) => string;
+  /** Label/value pairs shown under the record, rendered as text.
+      This used to build an HTML string for dangerouslySetInnerHTML with
+      the raw comment, field values, field labels and medication name
+      interpolated in: anyone a pet was shared with could plant markup
+      (a script included) that ran in the other owner's app. */
+  details: (item: HistoryItem) => DetailLine[];
 }
 
-function renderMedicationDetails(item: HistoryItem): string {
-  let html = `<span><strong>Препарат:</strong> ${item.medication_name || 'Неизвестно'}</span>`;
-  html += `<span><strong>Доза:</strong> ${item.dose_taken}</span>`;
-  if (item.comment && item.comment !== '-') {
-    html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-  }
-  return html;
+export interface DetailLine {
+  label: string;
+  value: string;
+}
+
+function commentLine(item: HistoryItem): DetailLine[] {
+  return item.comment && item.comment !== '-' ? [{ label: 'Комментарий', value: String(item.comment) }] : [];
+}
+
+function medicationDetails(item: HistoryItem): DetailLine[] {
+  return [
+    { label: 'Препарат', value: String(item.medication_name || 'Неизвестно') },
+    { label: 'Доза', value: String(item.dose_taken) },
+    ...commentLine(item),
+  ];
 }
 
 export const MEDICATIONS_DISPLAY: EventDisplayConfig = {
   displayName: 'Препараты',
   color: 'purple',
   icon: getEventIcon('pill'),
-  renderDetails: renderMedicationDetails,
+  details: medicationDetails,
 };
 
 /** Render an event's field values generically, in declaration order —
  *  a select field shows its option's text, not the raw stored value. */
-export function renderEventDetails(item: HistoryItem, eventType: EventType): string {
+export function eventDetails(item: HistoryItem, eventType: EventType): DetailLine[] {
   const fields = (item.fields as Record<string, unknown>) ?? {};
-  let html = '';
+  const lines: DetailLine[] = [];
   for (const field of eventType.fields) {
     const raw = fields[field.name];
     if (raw === undefined || raw === null || raw === '') continue;
@@ -55,12 +68,9 @@ export function renderEventDetails(item: HistoryItem, eventType: EventType): str
       const option = field.options?.find((opt) => opt.value === String(raw));
       if (option) display = option.text;
     }
-    html += `<span><strong>${field.label}:</strong> ${display}</span>`;
+    lines.push({ label: field.label, value: display });
   }
-  if (item.comment && item.comment !== '-') {
-    html += `<span><strong>Комментарий:</strong> ${item.comment}</span>`;
-  }
-  return html;
+  return [...lines, ...commentLine(item)];
 }
 
 export function buildEventDisplayConfig(eventType: EventType): EventDisplayConfig {
@@ -68,7 +78,7 @@ export function buildEventDisplayConfig(eventType: EventType): EventDisplayConfi
     displayName: eventType.label,
     color: eventType.color,
     icon: getEventIcon(eventType.icon),
-    renderDetails: (item) => renderEventDetails(item, eventType),
+    details: (item) => eventDetails(item, eventType),
   };
 }
 

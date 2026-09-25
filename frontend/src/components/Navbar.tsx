@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { NavBar, Button, Popup } from 'antd-mobile';
+import { Button, Popup } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
-import { CheckOutline, DownOutline } from 'antd-mobile-icons';
+import { CheckOutline, DownOutline, LeftOutline } from 'antd-mobile-icons';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
 import { speciesIcon } from '../utils/speciesIcon';
 import type { Pet } from '../services/pets.service';
+import { SPECIES_LABELS } from '../utils/constants';
 
 export function Navbar() {
   const location = useLocation();
@@ -67,15 +68,17 @@ export function Navbar() {
     </div>
   );
 
-  // На главной странице - только логотип, на других - используем встроенную кнопку назад + логотип
+  // Main tabs show the logo; every other screen gets a back button.
   const leftContent = isMainTab ? (
-    <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-      {logo}
-    </div>
-  ) : null;
+    logo
+  ) : (
+    <button type="button" className="app-navbar__back" aria-label="Назад" onClick={handleBack}>
+      <LeftOutline aria-hidden />
+    </button>
+  );
 
   const rightContent = !showPetSwitcher ? null : (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%', minWidth: 0, maxWidth: '100%' }}>
       {/* Single-pet households get nothing here. The name already sits
           on the pet card right below, so a label in the navbar was a
           duplicate of it — and with nothing to switch to, a selector
@@ -85,14 +88,18 @@ export function Navbar() {
         <>
           <button
             type="button"
-            className="tap-feedback"
+            className="tap-feedback touch-target"
             onClick={() => {
               hapticFeedback('light');
               setPickerVisible(true);
             }}
-            aria-label="Сменить питомца"
+            aria-label={`${selectedPetName}, сменить питомца`}
             style={{
               height: '36px',
+              // A long name ("Сэр Бартоломью Пушистый Третий…") pushed the
+              // logo off-screen and clipped from the left; cap the chip.
+              maxWidth: '100%',
+              minWidth: 0,
               padding: '0 12px',
               display: 'flex',
               alignItems: 'center',
@@ -101,16 +108,26 @@ export function Navbar() {
               borderRadius: 'var(--radius-md)',
               backgroundColor: 'var(--app-page-background)',
               border: '1px solid var(--app-border-color)',
-              transition: 'all var(--motion-duration-fast) var(--motion-ease-standard)',
+              transition: 'border-color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard)',
               boxShadow: 'inset 0 1px 2px var(--app-white-05), var(--app-shadow-light)',
               color: 'inherit',
               font: 'inherit',
             }}
           >
-            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--app-text-color)' }}>
+            <span
+              style={{
+                fontSize: '15px',
+                fontWeight: 600,
+                color: 'var(--app-text-color)',
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {selectedPetName}
             </span>
-            <DownOutline style={{ fontSize: '10px', color: 'var(--app-text-secondary)' }} />
+            <DownOutline aria-hidden style={{ fontSize: '10px', color: 'var(--app-text-secondary)', flexShrink: 0 }} />
           </button>
 
           <Popup
@@ -158,7 +175,7 @@ export function Navbar() {
                       borderRadius: '12px',
                       cursor: 'pointer',
                       border: pet._id === selectedPetId ? '2px solid var(--app-primary-color)' : '1px solid var(--app-border-color)',
-                      transition: 'all var(--motion-duration-fast) var(--motion-ease-standard)',
+                      transition: 'border-color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard)',
                       color: 'inherit',
                       font: 'inherit',
                       textAlign: 'left',
@@ -193,7 +210,7 @@ export function Navbar() {
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
-                        <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || pet.species || 'Питомец'}</span>
+                        <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || (pet.species && SPECIES_LABELS[pet.species]) || 'Питомец'}</span>
                       </div>
                     </div>
                     {pet._id === selectedPetId && (
@@ -223,7 +240,7 @@ export function Navbar() {
   );
 
   return (
-    <div style={{
+    <header style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -233,19 +250,11 @@ export function Navbar() {
       paddingTop: 'var(--safe-area-top)',
       boxShadow: 'var(--app-shadow)',
     }}>
-      <NavBar
-        style={{
-          '--height': '64px',
-          paddingLeft: 0,
-          paddingRight: 0,
-          borderBottom: 'none',
-        } as React.CSSProperties}
-        back={isMainTab ? null : true}
-        onBack={handleBack}
-        left={leftContent}
-        right={rightContent}
-      />
-    </div>
+      <div className="app-navbar">
+        <div className="app-navbar__left">{leftContent}</div>
+        <div className="app-navbar__right">{rightContent}</div>
+      </div>
+    </header>
   );
 }
 

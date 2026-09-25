@@ -23,6 +23,7 @@
  */
 
 import { Toast } from 'antd-mobile';
+import { announce } from './announce';
 
 const COMMON = {
   maskClassName: 'app-toast-mask',
@@ -41,6 +42,8 @@ function show(
   defaultDuration: number,
   options?: ToastOptions,
 ) {
+  // The toast itself is silent for screen readers; say it aloud too.
+  announce(message, icon === 'fail' ? 'assertive' : 'polite');
   return Toast.show({
     ...COMMON,
     ...(icon ? { icon } : {}),

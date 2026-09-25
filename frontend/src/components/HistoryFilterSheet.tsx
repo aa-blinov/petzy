@@ -47,7 +47,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
       bodyStyle={{ background: 'transparent' }}
     >
       <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh">
-        <h3
+        <h2
           className="section-header"
           style={{
             marginBottom: 'var(--spacing-lg)',
@@ -56,7 +56,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
           }}
         >
           Показать записи
-        </h3>
+        </h2>
 
         <Grid columns={2} gap={10}>
           {options.map(option => {

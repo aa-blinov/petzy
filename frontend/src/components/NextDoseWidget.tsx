@@ -103,7 +103,7 @@ export function NextDoseWidget() {
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             Приём лекарства
                         </div>
-                        <h3
+                        <h2
                             style={{
                                 margin: '2px 0 0',
                                 fontSize: 'var(--text-lg)',
@@ -115,7 +115,7 @@ export function NextDoseWidget() {
                             }}
                         >
                             {nextDose.name}
-                        </h3>
+                        </h2>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
                             {doseDay ? `${doseDay}, ${nextDose.time}` : nextDose.time}
                         </div>
@@ -126,8 +126,8 @@ export function NextDoseWidget() {
             {nextDose.inventory_warning && (
                 <div style={{
                     marginTop: 'var(--spacing-md)',
-                    backgroundColor: 'var(--app-danger-soft, rgba(255, 69, 58, 0.12))',
-                    color: 'var(--app-danger-color)',
+                    backgroundColor: 'var(--app-danger-soft)',
+                    color: 'var(--app-danger-text)',
                     padding: 'var(--spacing-sm) var(--spacing-md)',
                     borderRadius: 'var(--radius-sm)',
                     display: 'flex',

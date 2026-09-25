@@ -54,7 +54,8 @@ export function MedicationCardSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div role="status" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <span className="sr-only">Загрузка</span>
       {/* Pet hero skeleton */}
       <div className="card-soft" style={{ overflow: 'hidden' }}>
         <div className="skeleton" style={{ width: '100%', height: 180, borderRadius: 0 }} />
@@ -100,6 +101,7 @@ export function SkeletonList({
   return (
     <div
       className="safe-area-padding"
+      role="status"
       style={{
         marginTop: 'var(--spacing-sm)',
         display: 'flex',
@@ -108,8 +110,9 @@ export function SkeletonList({
         paddingTop: topPadding || undefined,
       }}
     >
+      <span className="sr-only">Загрузка</span>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i}>{render(i)}</div>
+        <div key={i} aria-hidden>{render(i)}</div>
       ))}
     </div>
   );

@@ -265,9 +265,9 @@ export function HealthRecordForm() {
           alignItems: 'center',
           minHeight: '40px'
         }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {id ? 'Редактировать запись' : `Записать: ${eventType.label}`}
-          </h2>
+          </h1>
         </div>
 
         <div>

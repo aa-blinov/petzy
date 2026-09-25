@@ -136,10 +136,9 @@ export function Login() {
                 type="submit"
                 style={{
                   marginTop: 8,
-                  // Brand gradient — matches the Petzy wordmark above so
-                  // the two copper surfaces on this screen read as the
-                  // same identity, not two competing ones.
-                  background: 'var(--app-brand-gradient)',
+                  // The brand gradient, deepened so the white label reads
+                  // (the wordmark above keeps the lighter original).
+                  background: 'var(--app-cta-gradient)',
                   border: 'none',
                 }}
               >

@@ -94,6 +94,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
           <ZoomIn size={18} strokeWidth={2} style={{ color: '#fff', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <Slider
+              aria-label="Масштаб"
               min={1}
               max={3}
               step={0.01}
@@ -143,7 +144,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
               padding: '12px',
               borderRadius: 'var(--radius-md)',
               border: 'none',
-              background: 'var(--app-primary-color)',
+              background: 'var(--app-primary-fill)',
               color: '#fff',
               fontWeight: 600,
               fontSize: 'var(--text-md)',

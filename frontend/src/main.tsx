@@ -5,6 +5,7 @@ import { reduceMotion, restoreMotion, setDefaultConfig } from 'antd-mobile'
 import ruRU from 'antd-mobile/es/locales/ru-RU'
 import './styles/globals.css'
 import App from './App.tsx'
+import { installAntdA11y } from './utils/antdA11y'
 
 // antd-mobile ships zh-CN as its default locale, and the app never set
 // one — so every string the app didn't pass explicitly rendered in
@@ -24,6 +25,8 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 const syncMotion = () => (reducedMotion.matches ? reduceMotion() : restoreMotion())
 syncMotion()
 reducedMotion.addEventListener('change', syncMotion)
+
+installAntdA11y()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

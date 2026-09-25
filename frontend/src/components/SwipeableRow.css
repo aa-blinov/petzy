@@ -20,7 +20,7 @@
        transition is paused while dragging so the row tracks 1:1. */
     transition: transform var(--motion-duration-slow) var(--motion-ease-spring);
     will-change: transform;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     /* Allow the inner card-soft to keep its rounded corners. */
     border-radius: var(--radius-lg);
 }
@@ -68,7 +68,7 @@
        just reads as a touch sharper than perfectly nested, overshooting
        would make this pill's curve start before the row's own does. */
     border-radius: var(--radius-sm);
-    color: var(--app-text-on-dark);
+    color: var(--app-on-accent);
     /* Stay behind the surface so the row's card-soft covers them. */
     z-index: 0;
     user-select: none;
@@ -98,6 +98,36 @@
 
 .swipeable-row__action-label {
     display: none;
+}
+
+/* Actions button for keyboard and screen-reader users: out of sight
+   (but not display:none, so it stays in the Tab order and the
+   accessibility tree) until it takes keyboard focus. */
+.swipeable-row__menu {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--app-border-color);
+    border-radius: 50%;
+    background: var(--app-card-background);
+    color: var(--app-text-color);
+    font-size: 20px;
+    box-shadow: var(--app-shadow);
+    cursor: pointer;
+    clip-path: inset(50%);
+    opacity: 0;
+}
+
+.swipeable-row__menu:focus-visible {
+    clip-path: none;
+    opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

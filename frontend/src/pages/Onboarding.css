@@ -86,15 +86,18 @@
 .onb__progress-seg > span {
     display: block;
     height: 100%;
-    width: 0;
+    width: 100%;
     border-radius: inherit;
     background: var(--app-brand-gradient);
-    transition: width var(--motion-duration-base) var(--motion-ease-standard);
+    /* Grows with a transform, not width: no layout on every frame. */
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 .onb__progress-seg[data-state='done'] > span,
 .onb__progress-seg[data-state='current'] > span {
-    width: 100%;
+    transform: scaleX(1);
 }
 
 .onb__text-btn {
@@ -119,6 +122,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    /* `safe`: when a step is taller than the screen, plain centering
+       pushes its top out of the scroll range, so the illustration was
+       cut off and could not be scrolled back into view. */
+    justify-content: safe center;
     gap: var(--spacing-xl);
     padding: var(--spacing-lg) var(--spacing-xl);
     overflow-y: auto;
@@ -178,8 +185,8 @@
     height: 54px;
     border: none;
     border-radius: var(--radius-lg);
-    background: var(--app-brand-gradient);
-    color: #fff;
+    background: var(--app-cta-gradient);
+    color: var(--app-on-primary-fill);
     font-family: var(--font-display);
     font-size: var(--text-lg);
     font-weight: 600;
@@ -642,8 +649,81 @@
     100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r, 200deg)); }
 }
 
-/* Short landscape phones: the illustration gives way to the copy. */
+/* Short screens: the illustration gives way to the copy. */
 @media (max-height: 640px) {
     .onb__art { min-height: 200px; transform: scale(0.86); }
     .onb__stage { gap: var(--spacing-lg); }
+}
+
+/* A phone on its side has width to spare and no height: stacking art,
+   copy and controls pushed the copy under the button. Put the art
+   beside the text instead, as a book spread. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .onb__stage:has(> .onb__art) {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        align-content: center;
+        align-content: safe center;
+        column-gap: var(--spacing-xl);
+        row-gap: var(--spacing-md);
+        max-width: 760px;
+        width: 100%;
+        margin: 0 auto;
+        text-align: left;
+    }
+
+    /* Art fills the left column across every row; copy and each control
+       (name field, chips) stack in the right one. */
+    .onb__stage:has(> .onb__art) > .onb__art {
+        grid-column: 1;
+        grid-row: 1 / span 6;
+        /* The welcome step's orbiting bubbles are laid out against this
+           height; the 200px short-screen size, not collapsed. */
+        min-height: 200px;
+        align-self: center;
+        transform: scale(0.8);
+    }
+
+    .onb__stage:has(> .onb__art) > :not(.onb__art) {
+        grid-column: 2;
+    }
+
+    .onb__stage:has(> .onb__art) > .onb__copy {
+        max-width: 36ch;
+    }
+
+    /* Steps with controls instead of art (species, name, notifications):
+       the question on the left, the answer on the right. */
+    .onb__stage:not(:has(> .onb__art)) {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        align-items: center;
+        align-content: center;
+        align-content: safe center;
+        column-gap: var(--spacing-xl);
+        max-width: 760px;
+        width: 100%;
+        margin: 0 auto;
+        text-align: left;
+    }
+
+    .onb__stage:not(:has(> .onb__art)) > * {
+        justify-self: stretch;
+    }
+
+    .onb__title { font-size: 1.5rem; }
+
+    /* All four species in one row rather than two rows that ran off
+       the bottom of the screen. */
+    .onb__species-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        max-width: 640px;
+    }
+
+    .onb__species { padding: 12px 8px; }
+
+    /* In the right-hand column the name reads with the left-aligned
+       question above it, not centred under the art's axis. */
+    .onb__name-input.adm-input { --text-align: left; }
+    .onb__name-input .adm-input-element { text-align: left !important; }
 }

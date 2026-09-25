@@ -151,7 +151,7 @@ export function History() {
 
         if (error) {
             return (
-                <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ color: 'var(--app-danger-text)', textAlign: 'center', padding: '32px 0' }}>
                     Не удалось загрузить данные
                 </p>
             );
@@ -171,12 +171,12 @@ export function History() {
             <>
                 {groupedItems.map(([dateStr, itemsForDate]) => (
                     <div key={dateStr} style={{ marginBottom: 'var(--spacing-lg)' }}>
-                        <h3
+                        <h2
                             className="section-header"
                             style={{ marginBottom: '10px', paddingLeft: 4 }}
                         >
                             {formatDateHeader(dateStr)}
-                        </h3>
+                        </h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {itemsForDate.map((item: HealthRecord) => {
                                 const type = item.record_type;
@@ -259,6 +259,7 @@ export function History() {
                     <button
                         type="button"
                         onClick={() => setExportVisible(true)}
+                        className="touch-target"
                         aria-label="Экспорт"
                         title="Экспорт"
                         style={{
@@ -314,9 +315,9 @@ export function History() {
                    thing back to back. */}
                 {filterType !== FILTER_ALL && filteredRecords.length > 0 && (
                     <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-md)' }}>
-                        <h3 className="section-header" style={{ marginBottom: 0, paddingLeft: 4 }}>
+                        <h2 className="section-header" style={{ marginBottom: 0, paddingLeft: 4 }}>
                             Тренды
-                        </h3>
+                        </h2>
                         <HistoryChart type={filterType} petId={selectedPetId} />
                     </div>
                 )}

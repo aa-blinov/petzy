@@ -1,92 +1,48 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { TabBar } from 'antd-mobile';
+import { NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, Pill, FileText, Clock, SlidersHorizontal } from 'lucide-react';
-import { hapticFeedback } from '../utils/haptic';
 
+const tabs = [
+  { to: '/', title: 'Лента', Icon: BookOpen },
+  { to: '/medications', title: 'Лекарства', Icon: Pill },
+  { to: '/documents', title: 'Документы', Icon: FileText },
+  { to: '/history', title: 'История', Icon: Clock },
+  { to: '/settings', title: 'Настройки', Icon: SlidersHorizontal },
+];
+
+/**
+ * Real links in a <nav>. antd-mobile's TabBar rendered each tab as a
+ * bare div with an onClick: unreachable by Tab, silent to a screen
+ * reader, and the current tab was marked by colour alone. NavLink gives
+ * Enter/Space, a link role and aria-current="page" for free.
+ */
 export function BottomTabBar() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const { pathname } = location;
+  const { pathname } = useLocation();
 
   // Login and onboarding own the whole viewport
   if (pathname === '/login' || pathname === '/welcome') {
     return null;
   }
 
-  const setRouteActive = (value: string) => {
-    hapticFeedback('light');
-    navigate(value);
-  };
-
-  const tabs = [
-    {
-      key: '/',
-      title: 'Лента',
-      icon: <BookOpen size={22} strokeWidth={1.8} />,
-    },
-    {
-      key: '/medications',
-      title: 'Лекарства',
-      icon: <Pill size={22} strokeWidth={1.8} />,
-    },
-    {
-      key: '/documents',
-      title: 'Документы',
-      icon: <FileText size={22} strokeWidth={1.8} />,
-    },
-    {
-      key: '/history',
-      title: 'История',
-      icon: <Clock size={22} strokeWidth={1.8} />,
-    },
-    {
-      key: '/settings',
-      title: 'Настройки',
-      icon: <SlidersHorizontal size={22} strokeWidth={1.8} />,
-    },
-  ];
-
   return (
-    <div className="bottom-tab-bar-container">
-      <div style={{
-        height: '50px',
-        display: 'flex',
-        alignItems: 'center'
-      }}>
-        <TabBar
-          activeKey={pathname}
-          onChange={value => setRouteActive(value)}
-          safeArea={false}
-          style={{
-            '--height': '50px',
-            backgroundColor: 'transparent',
-            width: '100%',
-          } as React.CSSProperties}
-        >
-          {tabs.map(item => (
-            <TabBar.Item
-              key={item.key}
-              // Wrap icon so we can give the active state a subtle
-              // spring bounce instead of the default instant swap.
-              icon={(active: boolean) => (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    transform: active ? 'scale(1.12)' : 'scale(1)',
-                    transition: `transform var(--motion-duration-fast) var(--motion-ease-spring)`,
-                    color: active ? 'var(--app-primary-color)' : 'var(--app-text-secondary)',
-                  }}
-                >
-                  {item.icon}
-                </span>
-              )}
-              title={item.title}
-            />
-          ))}
-        </TabBar>
-      </div>
-    </div>
+    <nav className="bottom-tab-bar-container" aria-label="Разделы">
+      <ul className="app-tab-bar">
+        {tabs.map(({ to, title, Icon }) => (
+          <li key={to}>
+            <NavLink
+              to={to}
+              // Exact match, as before: /pets is reached from Settings but
+              // isn't the Settings tab itself.
+              end
+              className={({ isActive }) => `app-tab-bar__item${isActive ? ' app-tab-bar__item--active' : ''}`}
+            >
+              <span className="app-tab-bar__icon" aria-hidden>
+                <Icon size={22} strokeWidth={1.8} />
+              </span>
+              <span className="app-tab-bar__title">{title}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
-

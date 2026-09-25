@@ -15,13 +15,7 @@ import { z } from 'zod';
 
 /** Predefined species — matches speciesIcon() in utils/speciesIcon.tsx
     so the lucide placeholder stays consistent. */
-const SPECIES_OPTIONS = [
-    { label: 'Кот', value: 'cat' },
-    { label: 'Собака', value: 'dog' },
-    { label: 'Птица', value: 'bird' },
-    { label: 'Рыба', value: 'fish' },
-    { label: 'Другое', value: 'other' },
-];
+const SPECIES_OPTIONS = Object.entries(SPECIES_LABELS).map(([value, label]) => ({ label, value }));
 
 /** Sterilisation (neutered) options. */
 const NEUTERED_OPTIONS = [
@@ -34,7 +28,7 @@ import { petsService } from '../services/pets.service';
 import { usersService } from '../services/users.service';
 import { TilesEditor } from '../components/TilesEditor';
 import { UserAvatar } from '../components/UserAvatar';
-import { GENDER_OPTIONS } from '../utils/constants';
+import { GENDER_OPTIONS, SPECIES_LABELS } from '../utils/constants';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { PhotoCropModal } from '../components/PhotoCropModal';
@@ -289,9 +283,9 @@ export function PetForm() {
           alignItems: 'center',
           minHeight: '40px'
         }}>
-          <h2 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать питомца' : 'Добавить питомца'}
-          </h2>
+          </h1>
         </div>
 
         <div>
@@ -525,7 +519,9 @@ export function PetForm() {
                 type="file"
                 accept="image/*"
                 id="pet-photo-input"
-                style={{ display: 'none' }}
+                // Visually hidden, not display:none: the input stays in
+                // the Tab order, so the picker opens from the keyboard.
+                className="sr-only file-picker-input"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
@@ -608,9 +604,9 @@ export function PetForm() {
                         fontSize: '16px',
                         fontWeight: 'bold',
                       }}
-                      title="Удалить фото"
+                      aria-label="Удалить фото"
                     >
-                      ×
+                      <span aria-hidden>×</span>
                     </button>
                   </div>
                 </div>
@@ -619,31 +615,7 @@ export function PetForm() {
                 // so keyboard / screen-reader users get the same affordance
                 // as mouse users — clicking the dashed zone opens the file
                 // picker just like clicking the hidden <input>.
-                <label
-                  htmlFor="pet-photo-input"
-                  style={{
-                    display: 'flex',
-                    width: '120px',
-                    height: '120px',
-                    borderRadius: '16px',
-                    border: '2px dashed var(--adm-color-border)',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    background: 'var(--adm-color-fill-light)',
-                    transition: `all var(--motion-duration-fast) var(--motion-ease-standard)`,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--adm-color-primary)';
-                    e.currentTarget.style.background = 'var(--adm-color-fill-secondary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--adm-color-border)';
-                    e.currentTarget.style.background = 'var(--adm-color-fill-light)';
-                  }}
-                >
+                <label htmlFor="pet-photo-input" className="photo-upload-zone">
                   <Camera size={32} strokeWidth={1.5} style={{ display: 'block', opacity: 0.6 }} />
                   <span style={{
                     fontSize: '12px',
@@ -734,8 +706,9 @@ export function PetForm() {
                     color="danger"
                     fill="none"
                     onClick={() => handleRemoveSharedUser(username)}
+                    aria-label={`Закрыть доступ для ${username}`}
                   >
-                    <DeleteOutline fontSize={20} />
+                    <DeleteOutline fontSize={20} aria-hidden />
                   </Button>
                 }
               >

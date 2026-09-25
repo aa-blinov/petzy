@@ -90,9 +90,9 @@ export function Settings() {
 
         <div className="safe-area-padding">
           {/* Section: Внешний вид */}
-          <h3 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
             Внешний вид
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<Moon size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -133,12 +133,12 @@ export function Settings() {
               explanatory description instead of hiding the row, so a
               user on an unsupported browser at least understands why
               it's not available rather than wondering if it's missing. */}
-          <h3
+          <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
             Уведомления
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -169,12 +169,12 @@ export function Settings() {
               household with exactly one pet had no way to add a second
               one, edit it, or delete it. This row is always reachable,
               which also lets the navbar picker stay a pure switcher. */}
-          <h3
+          <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
             Питомцы
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<PawPrint size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -186,12 +186,12 @@ export function Settings() {
           </div>
 
           {/* Section: Defaults */}
-          <h3
+          <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
             Значения по умолчанию
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -203,12 +203,12 @@ export function Settings() {
           </div>
 
           {/* Section: Dashboard */}
-          <h3
+          <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
             Лента
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -222,12 +222,12 @@ export function Settings() {
           {/* Section: Event types — the "factory": builtin types can be
               relabelled/recolored here too, and custom ones created from
               scratch with their own fields. */}
-          <h3
+          <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
             События
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -238,12 +238,12 @@ export function Settings() {
             />
           </div>
 
-          <h3
+          <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
             О приложении
-          </h3>
+          </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<Compass size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -263,12 +263,12 @@ export function Settings() {
               reached. */}
           {isAdmin && (
             <>
-              <h3
+              <h2
                 className="section-header"
                 style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
               >
                 Администрирование
-              </h3>
+              </h2>
               <div className="card-soft" style={{ overflow: 'hidden' }}>
                 <SettingsRow
                   icon={<Users size={18} strokeWidth={2} style={{ display: 'block' }} />}

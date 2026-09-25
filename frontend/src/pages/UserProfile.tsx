@@ -66,9 +66,9 @@ export function UserProfile() {
         >
           <UserAvatar username={profile.username} fullName={profile.full_name} size={88} />
           <div style={{ textAlign: 'center' }}>
-            <div className="display-headline" style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>
+            <h1 className="display-headline" style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>
               {profile.full_name || profile.username}
-            </div>
+            </h1>
             {profile.full_name && (
               <div style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)' }}>
                 @{profile.username}
@@ -83,9 +83,9 @@ export function UserProfile() {
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-xl)' }}>
-          <h3 className="section-header" style={{ marginBottom: 10, paddingLeft: 4 }}>
+          <h2 className="section-header" style={{ marginBottom: 10, paddingLeft: 4 }}>
             Общие питомцы
-          </h3>
+          </h2>
           {profile.shared_pets.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {profile.shared_pets.map((petName) => (

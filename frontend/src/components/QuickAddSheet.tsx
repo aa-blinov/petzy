@@ -55,7 +55,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
       <DraggableSheetBody visible={visible} onClose={onClose} minHeight="60vh">
 
         {/* Title */}
-        <h3
+        <h2
           className="section-header"
           style={{
             marginBottom: 'var(--spacing-lg)',
@@ -64,7 +64,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
           }}
         >
           Что записать?
-        </h3>
+        </h2>
 
         <Grid columns={2} gap={10}>
           {tiles.map(tile => {

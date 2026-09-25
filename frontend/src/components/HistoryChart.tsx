@@ -160,7 +160,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
 
         if (error || !data) {
             return (
-                <p style={{ color: 'var(--app-danger-color)', textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ color: 'var(--app-danger-text)', textAlign: 'center', padding: '32px 0' }}>
                     Не удалось загрузить данные для графика
                 </p>
             );

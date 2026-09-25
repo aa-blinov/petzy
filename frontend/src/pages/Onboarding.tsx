@@ -429,6 +429,8 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
           <div
             className="onb__progress"
             role="progressbar"
+            aria-label="Знакомство с Petzy"
+            aria-valuetext={`Шаг ${Math.min(index + 1, progressSteps.length)} из ${progressSteps.length}`}
             aria-valuemin={1}
             aria-valuemax={progressSteps.length}
             aria-valuenow={Math.min(index + 1, progressSteps.length)}
@@ -444,7 +446,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             ))}
           </div>
           {isIntro ? (
-            <button type="button" className="onb__text-btn tap-feedback" onClick={finishIntro}>
+            <button type="button" className="onb__text-btn tap-feedback touch-target" onClick={finishIntro}>
               {replay ? 'Закрыть' : 'Пропустить'}
             </button>
           ) : (
@@ -453,14 +455,14 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       )}
 
-      <main className="onb__stage" key={step} data-dir={dir}>
+      <div className="onb__stage" key={step} data-dir={dir}>
         {art && <div className="onb__art">{art}</div>}
         <div className="onb__copy">
           <h1 className="onb__title">{title}</h1>
           <p className="onb__lead">{lead}</p>
         </div>
         {body}
-      </main>
+      </div>
 
       <div className="onb__actions">
         {cta}

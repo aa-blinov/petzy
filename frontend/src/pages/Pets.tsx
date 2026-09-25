@@ -88,6 +88,7 @@ export function Pets() {
           </h1>
           <button
             type="button"
+            className="touch-target"
             onClick={handleAddPet}
             style={{
               background: 'transparent',
@@ -243,7 +244,7 @@ function PetCard({
     : undefined;
 
   return (
-    <SwipeableRow leftAction={leftAction} rightAction={rightAction}>
+    <SwipeableRow leftAction={leftAction} rightAction={rightAction} itemLabel={pet.name}>
       {/* Editing and deleting are swipe actions. No .tap-ripple here on
           purpose: the card has no tap action, so a press animation would
           promise something that never happens. */}

@@ -217,9 +217,9 @@ export function MedicationForm() {
                     alignItems: 'center',
                     minHeight: '40px',
                 }}>
-                    <h2 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
+                    <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
                         {isEditing ? 'Редактировать курс' : 'Новый курс'}
-                    </h2>
+                    </h1>
                     {!isEditing && (
                         <Button
                             size="small"
@@ -352,7 +352,7 @@ export function MedicationForm() {
                                                             border: 'none',
                                                             padding: 0,
                                                             textAlign: 'center',
-                                                            color: 'var(--app-primary-color)',
+                                                            color: 'var(--app-primary-text)',
                                                             cursor: 'pointer',
                                                             font: 'inherit',
                                                         }}
@@ -364,7 +364,7 @@ export function MedicationForm() {
                                                             placeholder="ед."
                                                             style={{
                                                                 '--text-align': 'center',
-                                                                color: 'var(--app-primary-color)',
+                                                                color: 'var(--app-primary-text)',
                                                                 cursor: 'pointer'
                                                             }}
                                                         />
@@ -458,8 +458,9 @@ export function MedicationForm() {
                                             color="danger"
                                             fill="none"
                                             onClick={() => removeTime(index)}
+                                            aria-label="Удалить это время"
                                         >
-                                            <DeleteOutline fontSize={20} />
+                                            <DeleteOutline fontSize={20} aria-hidden />
                                         </Button>
                                     )}
                                 </div>

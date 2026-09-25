@@ -202,6 +202,7 @@ export function MedicationsList() {
                         {medications.map((med) => (
                             <SwipeableRow
                                 key={med._id}
+                                itemLabel={med.name}
                                 leftAction={{
                                     icon: <Pencil size={20} strokeWidth={2.4} />,
                                     label: 'Изменить',
@@ -239,7 +240,7 @@ export function MedicationsList() {
                                                 >
                                                     <FormFactorIcon factor={med.form_factor} />
                                                 </div>
-                                                <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h3>
+                                                <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h2>
                                                 {!med.is_active && <Tag color="default">Архив</Tag>}
                                             </div>
                                             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
@@ -259,7 +260,7 @@ export function MedicationsList() {
                                         </div>
 
                                         {med.last_taken_at && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-color)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
                                                 <span>Последний приём: {formatRelativeTime(med.last_taken_at)}</span>
                                             </div>
                                         )}
@@ -296,7 +297,13 @@ export function MedicationsList() {
                                         {med.inventory_enabled && med.inventory_current !== undefined && (
                                             <div style={{ marginTop: 'var(--spacing-md)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
-                                                    <span>Остаток: {med.inventory_current} {med.dose_unit || 'доз'}</span>
+                                                    <span>
+                                                        Остаток: {med.inventory_current} {med.dose_unit || 'доз'}
+                                                        {/* Low stock used to be told by the bar turning red alone. */}
+                                                        {med.inventory_current <= (med.inventory_warning_threshold || 0) && (
+                                                            <span style={{ color: 'var(--app-danger-text)', fontWeight: 600 }}> · заканчивается</span>
+                                                        )}
+                                                    </span>
                                                     {med.inventory_total && (
                                                         <span>{Math.round((med.inventory_current / med.inventory_total) * 100)}%</span>
                                                     )}

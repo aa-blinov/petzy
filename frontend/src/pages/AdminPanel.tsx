@@ -99,7 +99,7 @@ export function AdminPanel() {
         color: 'var(--app-text-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: '20px', margin: 0 }}>Админ-панель</h2>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: '20px', margin: 0 }}>Админ-панель</h1>
         </div>
         <div style={{ marginTop: '16px' }}>
           <Alert type="error" message="У вас нет прав доступа к админ-панели" />
@@ -118,7 +118,7 @@ export function AdminPanel() {
           alignItems: 'center',
           minHeight: '40px',
         }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Админ-панель</h2>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Админ-панель</h1>
         </div>
 
         {error && (
@@ -140,7 +140,7 @@ export function AdminPanel() {
         }}>
           {/* Same .section-header as Settings, so the admin screen reads
               as part of the app rather than a bare CRUD table. */}
-          <h3 className="section-header" style={{ fontSize: 'var(--text-lg)' }}>Пользователи</h3>
+          <h2 className="section-header" style={{ fontSize: 'var(--text-lg)' }}>Пользователи</h2>
           {/* Flat copper, like every other primary action in the app.
               The brand gradient is reserved for the wordmark and the
               single sign-in button on the login screen; using it here
@@ -149,7 +149,7 @@ export function AdminPanel() {
             type="button"
             onClick={handleNewUser}
             style={{
-              background: 'var(--app-primary-color)',
+              background: 'var(--app-primary-fill)',
               border: 'none',
               borderRadius: '999px',
               color: '#FFFFFF',
@@ -194,6 +194,7 @@ export function AdminPanel() {
                 return (
                 <SwipeableRow
                   key={user._id}
+                  itemLabel={user.full_name || user.username}
                   leftAction={{
                     icon: <Pencil size={20} strokeWidth={2.4} />,
                     label: 'Изменить',
@@ -203,7 +204,7 @@ export function AdminPanel() {
                   rightAction={isInactive ? {
                     icon: <UserCheck size={20} strokeWidth={2.4} />,
                     label: 'Активировать',
-                    color: 'var(--app-success-color)',
+                    color: 'var(--app-success-text)',
                     onTrigger: () => handleActivate(user.username),
                   } : {
                     icon: <UserX size={20} strokeWidth={2.4} />,
@@ -239,7 +240,7 @@ export function AdminPanel() {
                     {isInactive && (
                       <span
                         className="chip"
-                        style={{ background: 'var(--app-danger-soft, rgba(255,69,58,0.1))', color: 'var(--app-danger-color)' }}
+                        style={{ background: 'var(--app-danger-soft)', color: 'var(--app-danger-text)' }}
                       >
                         Деактивирован
                       </span>

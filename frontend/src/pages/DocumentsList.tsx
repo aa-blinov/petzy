@@ -39,12 +39,12 @@ const CATEGORY_ORDER = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory
  * one" while the rest get text.
  */
 const FORMAT_BADGES: Record<string, { label: string; bg: string; fg: string }> = {
-  jpeg: { label: 'JPG', bg: 'rgba(10, 132, 255, 0.14)', fg: '#0A84FF' },
-  png: { label: 'PNG', bg: 'rgba(191, 90, 242, 0.14)', fg: '#BF5AF2' },
-  webp: { label: 'WEBP', bg: 'rgba(52, 199, 89, 0.14)', fg: '#34C759' },
-  heic: { label: 'HEIC', bg: 'rgba(255, 159, 10, 0.14)', fg: '#FF9F0A' },
-  heif: { label: 'HEIF', bg: 'rgba(255, 159, 10, 0.14)', fg: '#FF9F0A' },
-  pdf: { label: 'PDF', bg: 'rgba(255, 69, 58, 0.12)', fg: '#FF453A' },
+  jpeg: { label: 'JPG', bg: 'var(--app-info-soft)', fg: 'var(--app-info-text)' },
+  png: { label: 'PNG', bg: 'var(--app-violet-soft)', fg: 'var(--app-violet-text)' },
+  webp: { label: 'WEBP', bg: 'var(--app-success-soft)', fg: 'var(--app-success-text)' },
+  heic: { label: 'HEIC', bg: 'var(--app-warning-soft)', fg: 'var(--app-warning-text)' },
+  heif: { label: 'HEIF', bg: 'var(--app-warning-soft)', fg: 'var(--app-warning-text)' },
+  pdf: { label: 'PDF', bg: 'var(--app-danger-soft)', fg: 'var(--app-danger-text)' },
 };
 const DEFAULT_FORMAT_BADGE = { label: 'FILE', bg: 'var(--app-accent-soft)', fg: 'var(--app-accent-deep)' };
 
@@ -65,10 +65,10 @@ function describeExpiry(expiresAt: string): { text: string; color: string; bg: s
   const formatted = expiryDate.toLocaleDateString('ru-RU');
 
   if (daysUntil < 0) {
-    return { text: `Истёк ${formatted}`, color: '#FF453A', bg: 'rgba(255, 69, 58, 0.12)' };
+    return { text: `Истёк ${formatted}`, color: 'var(--app-danger-text)', bg: 'var(--app-danger-soft)' };
   }
   if (daysUntil <= EXPIRY_WARNING_DAYS) {
-    return { text: `Истекает ${formatted}`, color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.14)' };
+    return { text: `Истекает ${formatted}`, color: 'var(--app-warning-text)', bg: 'var(--app-warning-soft)' };
   }
   return { text: `До ${formatted}`, color: 'var(--app-text-tertiary)', bg: 'var(--app-accent-soft)' };
 }
@@ -198,6 +198,7 @@ export function DocumentsList() {
           </h1>
           <button
             type="button"
+            className="touch-target"
             onClick={() => navigate('/documents/new')}
             style={{
               background: 'transparent',
@@ -256,9 +257,9 @@ export function DocumentsList() {
             >
               {groupedDocuments.map(([category, docs]) => (
                 <div key={category} style={{ marginBottom: 'var(--spacing-lg)' }}>
-                  <h3 className="section-header" style={{ marginBottom: '10px', paddingLeft: 4 }}>
+                  <h2 className="section-header" style={{ marginBottom: '10px', paddingLeft: 4 }}>
                     {DOCUMENT_CATEGORY_LABELS[category]}
-                  </h3>
+                  </h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
                     {docs.map((doc) => {
                       // Preview reflects the file's actual format — the
@@ -269,6 +270,8 @@ export function DocumentsList() {
                       return (
                         <SwipeableRow
                           key={doc._id}
+                          itemLabel={doc.title}
+                          openAction={{ label: 'Открыть', onTrigger: () => handleOpen(doc) }}
                           leftAction={{
                             icon: <Pencil size={20} strokeWidth={2.4} />,
                             label: 'Изменить',
@@ -403,6 +406,7 @@ export function DocumentsList() {
             hapticFeedback('light');
             setImageViewer((prev) => ({ ...prev, visible: false }));
           }}
+          className="touch-target"
           aria-label="Закрыть"
           style={{
             position: 'fixed',
@@ -431,9 +435,9 @@ export function DocumentsList() {
           style={{
             position: 'fixed',
             inset: 0,
-            // The page content sits inside RouteTransition, which sets
-            // `will-change: transform` for its slide animation — that
-            // alone opens a new stacking context, so a z-index here would
+            // The page content sits inside RouteTransition, whose slide
+            // animation transforms it — that opens a new stacking
+            // context while it runs, so a z-index here would
             // only ever compete within it and never actually beat the
             // Navbar's fixed z-index:1000 sitting outside it. Portalling
             // to <body> escapes that context entirely, same as antd-mobile's
@@ -473,6 +477,7 @@ export function DocumentsList() {
                 hapticFeedback('light');
                 setFileViewer({ visible: false, url: null, title: '' });
               }}
+              className="touch-target"
               aria-label="Закрыть"
               style={{
                 background: 'var(--app-accent-soft)',

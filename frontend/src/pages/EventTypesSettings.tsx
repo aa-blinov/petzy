@@ -47,9 +47,9 @@ export function EventTypesSettings() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             Типы событий
-          </h2>
+          </h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Встроенные типы можно переименовать и перекрасить. Свои можно создать с нуля, набор полей вы задаёте сами
           </p>
@@ -116,7 +116,7 @@ export function EventTypesSettings() {
                           aria-label={`Удалить ${eventType.label}`}
                           onClick={() => setConfirmKey(eventType.key)}
                           disabled={deletingKey === eventType.key}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--app-danger-color)', cursor: 'pointer', padding: 6, display: 'flex' }}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--app-danger-text)', cursor: 'pointer', padding: 6, display: 'flex' }}
                         >
                           <Trash2 size={17} strokeWidth={2} />
                         </button>

@@ -15,6 +15,31 @@ export const TILE_COLORS = {
 
 export type TileColor = typeof TILE_COLORS[keyof typeof TILE_COLORS];
 
+/** Russian names for the stored species keys. */
+export const SPECIES_LABELS: Record<string, string> = {
+  cat: 'Кот',
+  dog: 'Собака',
+  bird: 'Птица',
+  fish: 'Рыба',
+  other: 'Другое',
+};
+
+/** Spoken names for the colour swatches: the keys are English, and a
+ *  Russian screen reader read "teal" or "cyan" out as gibberish. */
+export const TILE_COLOR_LABELS: Record<TileColor, string> = {
+  brown: 'Коричневый',
+  orange: 'Оранжевый',
+  red: 'Красный',
+  green: 'Зелёный',
+  purple: 'Фиолетовый',
+  teal: 'Бирюзовый',
+  cyan: 'Голубой',
+  yellow: 'Жёлтый',
+  blue: 'Синий',
+  pink: 'Розовый',
+  gray: 'Серый',
+};
+
 /** Maps a tile's color id to its pastel CSS custom-property. */
 export const pastelColorMap: Record<string, string> = {
   brown: 'var(--tile-brown)',

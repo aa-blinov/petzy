@@ -17,7 +17,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useEventTypes, useInvalidateEventTypes } from '../hooks/useEventTypes';
 import { eventTypesService, type EventTypeField } from '../services/eventTypes.service';
-import { TILE_COLORS, pastelColorMap, type TileColor } from '../utils/constants';
+import { TILE_COLORS, TILE_COLOR_LABELS, pastelColorMap, type TileColor } from '../utils/constants';
 import { ICON_OPTIONS } from '../utils/iconRegistry';
 import { slugifyFieldName } from '../utils/slugify';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -245,18 +245,18 @@ export function EventTypeForm() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать тип' : 'Новый тип события'}
-          </h2>
+          </h1>
         </div>
 
         <div className="safe-area-padding">
-          <h3 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h3>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
           <Input value={label} onChange={setLabel} placeholder="Например, Игра" clearable />
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
-          <h3 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Иконка</h3>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Иконка</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: '8px' }}>
             {ICON_OPTIONS.map(({ key: iconKey, Icon }) => (
               <button
@@ -280,14 +280,15 @@ export function EventTypeForm() {
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
-          <h3 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Цвет</h3>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Цвет</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {Object.values(TILE_COLORS).map((c) => (
               <button
                 key={c}
                 type="button"
+                className="touch-target"
                 onClick={() => setColor(c)}
-                aria-label={c}
+                aria-label={TILE_COLOR_LABELS[c]}
                 aria-pressed={color === c}
                 style={{
                   width: 32, height: 32, borderRadius: '50%',
@@ -301,9 +302,9 @@ export function EventTypeForm() {
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
-          <h3 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
             Поля {fields.length > 0 && `(${fields.length})`}
-          </h3>
+          </h2>
           <p style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: '13px', color: 'var(--app-text-secondary)' }}>
             Дата, время и комментарий добавляются автоматически. Здесь только то, что нужно именно этому типу
           </p>
@@ -322,7 +323,7 @@ export function EventTypeForm() {
                     type="button"
                     aria-label="Удалить поле"
                     onClick={() => removeField(field.key)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--app-danger-color)', cursor: 'pointer', padding: 4, display: 'flex' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--app-danger-text)', cursor: 'pointer', padding: 4, display: 'flex' }}
                   >
                     <Trash2 size={17} strokeWidth={2} />
                   </button>
@@ -382,7 +383,7 @@ export function EventTypeForm() {
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
-          <h3 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>График в истории</h3>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>График в истории</h2>
           <Selector
             options={[
               { label: 'Считать количество за день', value: 'count' },

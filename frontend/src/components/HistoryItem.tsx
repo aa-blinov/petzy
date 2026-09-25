@@ -93,6 +93,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
         leftAction={leftAction}
         rightAction={rightAction}
         disabled={deleteDialogVisible}
+        itemLabel={`${config.displayName}, ${formatRelativeDateTime(item.date_time)}`}
       >
         <div
           className="card-soft card-soft--interactive"
@@ -130,6 +131,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
             {showAuthor && (
               <button
                 type="button"
+                className="touch-target"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate(`/users/${item.username}`);
@@ -162,9 +164,15 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
                 color: 'var(--app-text-primary)',
                 fontSize: '14px',
                 lineHeight: 1.45,
+                overflowWrap: 'anywhere',
               }}
-              dangerouslySetInnerHTML={{ __html: config.renderDetails(item) }}
-            />
+            >
+              {config.details(item).map((line, i) => (
+                <span key={i}>
+                  <strong>{line.label}:</strong> {line.value}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </SwipeableRow>

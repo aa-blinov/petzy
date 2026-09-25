@@ -42,11 +42,41 @@
 
     --app-accent-deep: #9F4F2A;
 
-    /* Neutral / Text Colors (warm) */
+    /* Neutral / Text Colors (warm). Secondary and tertiary were 4.4:1
+       and 2.6:1 on the cream page, below WCAG AA for their text sizes;
+       now 5.2:1 and 4.6:1 on both page and card. Tertiary doubles as
+       the placeholder colour, which was a near-invisible 1.2:1. */
     --app-text-primary: #1F1B16;
-    --app-text-secondary: #7A7268;
-    --app-text-tertiary: #A39A8E;
+    --app-text-secondary: #6F675D;
+    --app-text-tertiary: #786E62;
+    --app-text-placeholder: var(--app-text-tertiary);
     --app-text-on-dark: #FFFFFF;
+
+    /* The one copper did three jobs: accent (icons, active tab, rings),
+       a fill under white text (only 3.8:1) and copper text on cream
+       (3.7:1). Accent stays --app-primary-color; fills and text get
+       their own deeper values so white on copper reads at 5:1. */
+    --app-primary-fill: #AD5830;
+    --app-on-primary-fill: #FFFFFF;
+    --app-primary-text: #AD5830;
+    /* Icon colour on the accent / status pills behind swipe rows. */
+    --app-on-accent: #FFFFFF;
+    /* Brand gradient, deepened, for the buttons that carry white text. */
+    --app-cta-gradient: linear-gradient(135deg, #B35C33 0%, #93441F 100%);
+
+    /* Status colours as text and as soft tints. The bright iOS values
+       above are for fills and icons: as small text on cream they read
+       at 1.8-3.3:1. */
+    --app-danger-text: #B3261E;
+    --app-warning-text: #9A5800;
+    --app-success-text: #1E7A3C;
+    --app-info-text: #0062C4;
+    --app-violet-text: #8E3BB8;
+    --app-danger-soft: rgba(255, 69, 58, 0.12);
+    --app-warning-soft: rgba(255, 159, 10, 0.14);
+    --app-success-soft: rgba(52, 199, 89, 0.14);
+    --app-info-soft: rgba(10, 132, 255, 0.14);
+    --app-violet-soft: rgba(191, 90, 242, 0.14);
 
     /* Layout Colors (warm cream background, warm off-white cards) */
     --app-page-background: #FAF6EF;
@@ -162,6 +192,10 @@
 
     /* Layout Spacing (Safe Area aware) */
     --layout-padding-left: max(var(--spacing-lg), var(--safe-area-left));
+    /* The one content column. The top bar, tab bar and add button line
+       up with it too, so on a desktop they stop stretching to the
+       window edges while the page itself sits in 800px. */
+    --content-max-width: 800px;
     --layout-padding-right: max(var(--spacing-lg), var(--safe-area-right));
 
     /* Main Page Content Padding */
@@ -197,7 +231,7 @@
 }
 
 .max-width-container {
-    max-width: 800px;
+    max-width: var(--content-max-width);
     margin: 0 auto;
 }
 
@@ -471,12 +505,12 @@ button.setting-row:active {
 }
 
 .setting-row--danger .setting-row__label {
-    color: var(--app-danger-color);
+    color: var(--app-danger-text);
 }
 
 .setting-row--danger .setting-row__icon {
-    background: rgba(255, 69, 58, 0.10);
-    color: var(--app-danger-color);
+    background: var(--app-danger-soft);
+    color: var(--app-danger-text);
 }
 
 /* Display headline — used on the pet hero card and page titles. */
@@ -492,7 +526,7 @@ button.setting-row:active {
 .adm-button,
 .adm-list-item-clickable,
 .adm-list-item-active-allow,
-.adm-tab-bar-item,
+.app-tab-bar__item,
 .adm-picker-header-button,
 [role="button"] {
     /* Optimized for 120Hz displays - using cubic-bezier for natural motion */
@@ -509,7 +543,7 @@ button.setting-row:active {
 .adm-button:active,
 .adm-list-item-clickable:active,
 .adm-list-item-active-allow:active,
-.adm-tab-bar-item:active,
+.app-tab-bar__item:active,
 .adm-picker-header-button:active,
 [role="button"]:active {
     /* GPU-accelerated scale for smooth feedback */
@@ -535,6 +569,28 @@ html[data-prefers-color-scheme='dark'] {
     --app-border-color: #3A342E;
     --app-divider-color: #2E2925;
     --app-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    /* The brown light-theme shadows vanish on charcoal. */
+    --app-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --app-shadow-strong: 0 8px 28px rgba(0, 0, 0, 0.5);
+
+    /* Was left at the light #C46A3F while --app-accent went to the
+       lighter #E8946A, so the tab bar and add button were a different
+       copper from the rest of the dark UI. */
+    --app-primary-color: #E8946A;
+    --app-primary-text: #E8946A;
+    --app-on-accent: #1F1B16;
+    --app-text-tertiary: #9A907E;
+
+    --app-danger-text: #FF7A70;
+    --app-warning-text: #FFB340;
+    --app-success-text: #5FD47E;
+    --app-info-text: #64B5FF;
+    --app-violet-text: #DA8FFF;
+    --app-danger-soft: rgba(255, 69, 58, 0.18);
+    --app-warning-soft: rgba(255, 159, 10, 0.18);
+    --app-success-soft: rgba(52, 199, 89, 0.18);
+    --app-info-soft: rgba(10, 132, 255, 0.2);
+    --app-violet-soft: rgba(191, 90, 242, 0.2);
 }
 
 /* ── antd-mobile token bridge ────────────────────────────────────────
@@ -553,10 +609,13 @@ html[data-prefers-color-scheme='dark'] {
    dark copy has to match antd's selector to outrank it. */
 :root,
 html[data-prefers-color-scheme='dark'] {
-    --adm-color-primary: var(--app-primary-color);
-    --adm-color-success: var(--app-success-color);
-    --adm-color-warning: var(--app-warning-color);
-    --adm-color-danger: var(--app-danger-color);
+    /* antd paints text, outlines and checked states with these, so
+       they take the text-strength values; solid buttons get the fill
+       token separately below. */
+    --adm-color-primary: var(--app-primary-text);
+    --adm-color-success: var(--app-success-text);
+    --adm-color-warning: var(--app-warning-text);
+    --adm-color-danger: var(--app-danger-text);
     --adm-color-text: var(--app-text-primary);
     --adm-color-text-secondary: var(--app-text-secondary);
     --adm-color-weak: var(--app-text-tertiary);
@@ -574,6 +633,26 @@ html[data-prefers-color-scheme='dark'] {
     --adm-color-orange: var(--app-accent);
     /* --adm-color-highlight already resolves to --adm-color-danger,
        which is mapped above, so it follows along. */
+}
+
+/* Solid primary buttons: copper fill under white text. */
+.adm-button-primary:not(.adm-button-fill-outline):not(.adm-button-fill-none) {
+    --background-color: var(--app-primary-fill);
+    --border-color: var(--app-primary-fill);
+    --text-color: var(--app-on-primary-fill);
+}
+
+/* Placeholders used antd's --adm-color-light, which is mapped to the
+   border colour (1.2:1). */
+.adm-input,
+.adm-text-area,
+.adm-search-bar {
+    --placeholder-color: var(--app-text-placeholder);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--app-text-placeholder);
 }
 
 /* iOS Safe Area Overrides for antd-mobile components */
@@ -615,7 +694,11 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior-y: none;
-    touch-action: none;
+    /* Pans and pinch-zoom stay with the browser; only the double-tap
+       zoom (and its tap delay) is switched off. This used to be `none`,
+       which together with the viewport's user-scalable=no left no way
+       to enlarge text (WCAG 1.4.4). */
+    touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
     /* One blanket rule instead of the growing pile of one-off
@@ -653,7 +736,6 @@ select {
     min-height: 100vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
 }
 
 /* Fix Dropdown title styling in dark mode and mobile */
@@ -668,85 +750,112 @@ select {
     background-color: transparent !important;
 }
 
-/* NavBar styling */
-.adm-nav-bar {
-    padding-left: max(var(--spacing-lg), env(safe-area-inset-left)) !important;
-    padding-right: max(var(--spacing-lg), env(safe-area-inset-right)) !important;
-    background-color: transparent !important;
+/* Top bar (Navbar.tsx): logo or back button on the left, pet
+   switcher on the right. */
+.app-navbar {
+    display: flex;
+    align-items: center;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    height: 64px;
+    padding-left: max(var(--spacing-lg), env(safe-area-inset-left));
+    padding-right: max(var(--spacing-lg), env(safe-area-inset-right));
+    white-space: nowrap;
 }
 
-/* Force the NavBar back-arrow + right-side icons + any leftover
-   antd-mobile primary-styled glyphs to inherit the navbar's text
-   color instead of antd-mobile's default blue (#1677ff). The custom
-   logo and pet-switcher already use explicit colors, but the stock
-   back-arrow renders through .adm-nav-bar-back which leaks blue
-   unless overridden here. */
-.adm-nav-bar-back,
-.adm-nav-bar-back-arrow,
-.adm-nav-bar-left .adm-nav-bar-back,
-.adm-nav-bar-right .adm-nav-bar-back {
-    color: var(--app-text-color) !important;
-}
-
-.adm-nav-bar-back svg,
-.adm-nav-bar-back-arrow svg,
-.adm-nav-bar-back path,
-.adm-nav-bar-back-arrow path,
-.adm-nav-bar-back polygon,
-.adm-nav-bar-back-arrow polygon {
-    fill: currentColor !important;
-    stroke: currentColor !important;
-}
-
-/* Bottom tab bar — same anti-blue override for stock antd-mobile
-   components that pin to --adm-color-primary. */
-.adm-tab-bar-item-active {
-    color: var(--app-primary-color) !important;
-}
-.adm-tab-bar-item-active .adm-tab-bar-item-icon,
-.adm-tab-bar-item-active .adm-tab-bar-item-title {
-    color: var(--app-primary-color) !important;
-}
-
-/* FAB — primary action stays in our copper accent, not blue.
-   NOTE: the wrapper `.adm-floating-bubble` itself spans the whole
-   viewport (`position: fixed; inset: 0`) and is just a positioning
-   shim for the inner button. Painting the wrapper leaks our copper
-   across the entire screen — only the inner button should carry the
-   background. */
-.adm-floating-bubble {
-    background: transparent !important;
-}
-
-.adm-floating-bubble-button {
-    background: var(--app-primary-color) !important;
-    border-color: var(--app-primary-color) !important;
-}
-
-.adm-nav-bar-left {
-    padding-left: 0 !important;
+.app-navbar__left {
     flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
 }
 
-.adm-nav-bar-right {
+.app-navbar__right {
     flex: 2;
-    padding-right: 0 !important;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
-.adm-nav-bar-title {
-    display: none !important;
+/* 44px target; the negative margin keeps the arrow itself on the
+   page's left gutter, where the old antd arrow sat. */
+.app-navbar__back {
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--app-text-color);
+    font-size: 24px;
+    cursor: pointer;
 }
 
-/* TabBar styling */
-.adm-tab-bar-item-icon {
-    font-size: var(--spacing-xl) !important;
-    margin-bottom: var(--spacing-xs) !important;
+/* Bottom tab bar: five NavLinks in a <nav> (BottomTabBar.tsx). */
+.app-tab-bar {
+    display: flex;
+    align-items: stretch;
+    max-width: var(--content-max-width);
+    height: 50px;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
 }
 
-.adm-tab-bar-item-title {
-    font-size: 10px !important;
-    /* Extremely small for tab bar title */
+.app-tab-bar > li {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+}
+
+.app-tab-bar__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    color: var(--app-text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    border-radius: var(--radius-md);
+    transition: color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.app-tab-bar__item--active {
+    /* Text-strength copper: the label is 11px text, not just an icon. */
+    color: var(--app-primary-text);
+}
+
+.app-tab-bar__icon {
+    display: inline-flex;
+    height: 24px;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+    transition: transform var(--motion-duration-fast) var(--motion-ease-spring);
+}
+
+.app-tab-bar__item--active .app-tab-bar__icon {
+    transform: scale(1.12);
+}
+
+.app-tab-bar__title {
+    font-size: 11px;
+    line-height: 15px;
     font-weight: 500;
+}
+
+/* Inset, so the ring stays inside the fixed bar instead of being
+   drawn over the page edge below it. */
+.app-tab-bar__item:focus-visible {
+    outline-offset: -4px;
 }
 
 /* TabBar fixed positioning */
@@ -773,17 +882,6 @@ select {
     will-change: transform;
 }
 
-/* Tab bar items — colour and title-weight transitions for the active
-   state. The icon scale is handled inline in BottomTabBar.tsx so it
-   can use a spring easing. */
-.adm-tab-bar-item {
-    transition: color var(--motion-duration-fast) var(--motion-ease-standard);
-}
-
-.adm-tab-bar-item-title {
-    transition: color var(--motion-duration-fast) var(--motion-ease-standard),
-        font-weight var(--motion-duration-fast) var(--motion-ease-standard);
-}
 
 /* TabBar icons styling */
 input,
@@ -814,11 +912,14 @@ a,
     touch-action: none;
 }
 
-/* Same story for PullToRefresh — antd-mobile wires @use-gesture for
-   the top-of-list pull gesture and warns loudly when the container's
-   touch-action isn't 'none'. */
+/* PullToRefresh wraps the whole feed, history and pet list. It used
+   to carry `touch-action: none` to silence @use-gesture's advisory
+   console warning, which also switched off native finger scrolling
+   and pinch-zoom for everything inside it: in Chromium on Android the
+   feed would not scroll. The pull gesture only needs the vertical
+   touch events, which it still gets with pan-y. */
 .adm-pull-to-refresh {
-    touch-action: none;
+    touch-action: pan-y pinch-zoom;
 }
 
 /* Theme the pull-to-refresh head: copper accent, warm typography, the
@@ -845,6 +946,25 @@ a,
     .admin-username {
         display: none !important;
     }
+}
+
+/* Selector chips (weekday row, options) stay compact on screen but get
+   the same 44px hit area as .touch-target. antd clips both the chip and
+   the group (overflow: hidden, for the corner checkmark hidden below),
+   which would cut the extended area off. */
+.adm-selector,
+.adm-selector-item {
+    overflow: visible;
+}
+
+.adm-selector-item::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
 }
 
 /* Allow text wrapping in Selector items to prevent truncation */
@@ -1008,11 +1128,11 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 .error-boundary-details {
     margin-top: var(--spacing-xl);
     padding: var(--spacing-md);
-    background: rgba(255, 69, 58, 0.1);
-    border: 1px solid rgba(255, 69, 58, 0.2);
+    background: var(--app-danger-soft);
+    border: 1px solid var(--app-danger-soft);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
-    color: var(--app-danger-color);
+    color: var(--app-danger-text);
     text-align: left;
     width: 100%;
     max-height: 200px;
@@ -1282,7 +1402,7 @@ button:focus-visible,
     .adm-button,
     .adm-list-item-clickable,
     .adm-list-item-active-allow,
-    .adm-tab-bar-item,
+    .app-tab-bar__item,
     .adm-picker-header-button,
     [role="button"] {
         transition-duration: 0.01ms !important;
@@ -1292,7 +1412,7 @@ button:focus-visible,
     .adm-button:active,
     .adm-list-item-clickable:active,
     .adm-list-item-active-allow:active,
-    .adm-tab-bar-item:active,
+    .app-tab-bar__item:active,
     .adm-picker-header-button:active,
     [role="button"]:active {
         transform: translateZ(0) !important;
@@ -1363,19 +1483,107 @@ button:focus-visible,
     opacity: 0.85;
 }
 
-/* FloatingBubble sits in a portal and ignores the CSS variables we set
-   on the outer wrapper, so we position the inner button directly. */
-.adm-floating-bubble {
+/* Dashboard "add record" button (Dashboard.tsx), pinned above the tab bar. */
+.app-fab {
     position: fixed;
-    inset: 0;
-    pointer-events: none;
+    /* 24px from the edge on a phone; on a wide window, at the right
+       edge of the content column rather than of the screen. */
+    right: max(24px, calc((100vw - var(--content-max-width)) / 2 + var(--spacing-lg)));
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    z-index: 200;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--app-primary-fill);
+    color: var(--app-on-primary-fill);
+    box-shadow: 0 4px 16px rgba(173, 88, 48, 0.45);
+    cursor: pointer;
+    transition: transform var(--motion-duration-instant) var(--motion-ease-standard);
 }
-.adm-floating-bubble-button {
-    position: fixed !important;
-    right: 24px !important;
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;
-    pointer-events: auto;
+
+.app-fab:active {
+    transform: scale(0.94);
+}
+
+/* A visually hidden file input (PetForm, DocumentForm) takes the
+   keyboard focus; show the ring on the visible picker next to it. */
+label:has(~ .file-picker-input:focus-visible),
+.file-picker-input:focus-visible ~ label {
+    outline: 2px solid var(--app-primary-color);
+    outline-offset: 2px;
+}
+
+/* Empty photo tile in PetForm. The hover highlight used to be set from
+   onMouseEnter/Leave, which a tap on a phone fires without the matching
+   leave, so the tile stayed highlighted; now it's pointer-only CSS. */
+.photo-upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    border: 2px dashed var(--adm-color-border);
+    background: var(--adm-color-fill-light);
+    cursor: pointer;
+    transition: border-color var(--motion-duration-fast) var(--motion-ease-standard),
+        background-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .photo-upload-zone:hover {
+        border-color: var(--adm-color-primary);
+        background: var(--adm-color-fill-secondary);
+    }
+}
+
+/* Compact controls (pet switcher chip, header "Добавить", close and
+   export icons, colour swatches) keep their visible size but get an
+   invisible hit area of at least 44×44, the Apple HIG / WCAG 2.5.5
+   size. Inline position (fixed, absolute) still wins over this. */
+.touch-target,
+.history-filter-trigger {
+    position: relative;
+}
+
+.touch-target::after,
+.history-filter-trigger::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+}
+
+/* SearchBar: 44px tall, and 16px text so iOS doesn't zoom the page in
+   when the field is focused (it does for anything under 16px). */
+.adm-search-bar {
+    --height: 44px;
+}
+
+.adm-search-bar .adm-input-element {
+    font-size: 16px !important;
+}
+
+/* Content that only screen readers get: page headings a sighted user
+   reads from the layout, labels for icon-only controls. */
+.sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
 }

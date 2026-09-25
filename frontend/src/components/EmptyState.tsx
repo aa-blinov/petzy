@@ -65,7 +65,7 @@ export function EmptyState({
         <Icon size={36} strokeWidth={1.6} style={{ display: 'block' }} />
       </div>
 
-      <h3
+      <h2
         className="display-headline"
         style={{
           margin: 0,
@@ -75,7 +75,7 @@ export function EmptyState({
         }}
       >
         {title}
-      </h3>
+      </h2>
 
       {description && (
         <p
@@ -98,11 +98,11 @@ export function EmptyState({
           className="tap-feedback"
           style={{
             marginTop: 'var(--spacing-lg)',
-            background: 'var(--app-primary-color)',
-            color: '#FFFFFF',
+            background: 'var(--app-primary-fill)',
+            color: 'var(--app-on-primary-fill)',
             border: 'none',
             borderRadius: 'var(--radius-md)',
-            padding: '10px 20px',
+            padding: '12px 20px',
             fontSize: 'var(--text-md)',
             fontWeight: 600,
             cursor: 'pointer',

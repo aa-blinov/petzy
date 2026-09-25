@@ -16,7 +16,7 @@ export function HapticListener() {
             // form that left nine pressable controls (seven weekday
             // chips and two toggles) silent while every button on the
             // same screen buzzed.
-            const interactiveElement = target.closest('button, .tap-feedback, .adm-button, .adm-list-item-clickable, .adm-list-item-active-allow, .adm-tab-bar-item, .adm-picker-header-button, .adm-switch, .adm-selector-item, .adm-checkbox, .adm-radio, [role="button"]');
+            const interactiveElement = target.closest('button, .tap-feedback, .adm-button, .adm-list-item-clickable, .adm-list-item-active-allow, .app-tab-bar__item, .adm-picker-header-button, .adm-switch, .adm-selector-item, .adm-checkbox, .adm-radio, [role="button"]');
 
             if (interactiveElement) {
                 // Use a slight delay to not interfere with potential immediate navigation

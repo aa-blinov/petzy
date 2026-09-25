@@ -163,7 +163,7 @@ export function FormDefaults() {
         <div className="page-container">
             <div className="max-width-container">
                 <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-                    <h2 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h2>
+                    <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
                 </div>
 
                 <Form layout="horizontal" mode="card" style={{ '--prefix-width': '7em' } as React.CSSProperties}>
@@ -206,7 +206,6 @@ export function FormDefaults() {
                             placeholder="Пил"
                             style={{
                                 border: 'none',
-                                outline: 'none',
                                 background: 'transparent',
                                 color: 'var(--app-text-primary)',
                                 fontSize: 'var(--text-md)',
@@ -259,7 +258,6 @@ export function FormDefaults() {
                             placeholder="Royal Canin Fibre Response"
                             style={{
                                 border: 'none',
-                                outline: 'none',
                                 background: 'transparent',
                                 color: 'var(--app-text-primary)',
                                 fontSize: 'var(--text-md)',
@@ -288,7 +286,6 @@ export function FormDefaults() {
                             placeholder="Royal Canin Fibre Response"
                             style={{
                                 border: 'none',
-                                outline: 'none',
                                 background: 'transparent',
                                 color: 'var(--app-text-primary)',
                                 fontSize: 'var(--text-md)',

@@ -11,6 +11,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HapticListener } from './components/HapticListener';
 import { RouteTransition } from './components/RouteTransition';
+import { RouteFocus } from './components/RouteFocus';
 
 // Lazy load pages for code splitting. Every route is split, Dashboard
 // included: these five used to be eager imports, which meant every
@@ -95,206 +96,209 @@ function AppRoutes() {
     <>
       <SessionExpiryBridge />
       <Navbar />
-      <Suspense fallback={<LoadingSpinner />}>
-        <RouteTransition>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/welcome"
-              element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <History />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pets"
-              element={
-                <ProtectedRoute>
-                  <Pets />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pets/new"
-              element={
-                <ProtectedRoute>
-                  <PetForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pets/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <PetForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/users/:username"
-              element={
-                <ProtectedRoute>
-                  <UserProfile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/form/:type"
-              element={
-                <ProtectedRoute>
-                  <HealthRecordForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/form/:type/:id"
-              element={
-                <ProtectedRoute>
-                  <HealthRecordForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminPanel />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users/new"
-              element={
-                <ProtectedRoute>
-                  <UserForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users/:username/edit"
-              element={
-                <ProtectedRoute>
-                  <UserForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/medications"
-              element={
-                <ProtectedRoute>
-                  <MedicationsList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/medications/new"
-              element={
-                <ProtectedRoute>
-                  <MedicationForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/medications/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <MedicationForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/documents"
-              element={
-                <ProtectedRoute>
-                  <DocumentsList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/documents/new"
-              element={
-                <ProtectedRoute>
-                  <DocumentForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/documents/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <DocumentForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/form-defaults"
-              element={
-                <ProtectedRoute>
-                  <FormDefaults />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tiles-settings"
-              element={
-                <ProtectedRoute>
-                  <TilesSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/event-types"
-              element={
-                <ProtectedRoute>
-                  <EventTypesSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/event-types/new"
-              element={
-                <ProtectedRoute>
-                  <EventTypeForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/event-types/:key/edit"
-              element={
-                <ProtectedRoute>
-                  <EventTypeForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </RouteTransition>
-      </Suspense>
+      <RouteFocus />
+      <main id="main-content">
+        <Suspense fallback={<LoadingSpinner />}>
+          <RouteTransition>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/welcome"
+                element={
+                  <ProtectedRoute>
+                    <Onboarding />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <ProtectedRoute>
+                    <History />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pets"
+                element={
+                  <ProtectedRoute>
+                    <Pets />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pets/new"
+                element={
+                  <ProtectedRoute>
+                    <PetForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pets/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <PetForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/users/:username"
+                element={
+                  <ProtectedRoute>
+                    <UserProfile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/form/:type"
+                element={
+                  <ProtectedRoute>
+                    <HealthRecordForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/form/:type/:id"
+                element={
+                  <ProtectedRoute>
+                    <HealthRecordForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminPanel />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users/new"
+                element={
+                  <ProtectedRoute>
+                    <UserForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users/:username/edit"
+                element={
+                  <ProtectedRoute>
+                    <UserForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/medications"
+                element={
+                  <ProtectedRoute>
+                    <MedicationsList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/medications/new"
+                element={
+                  <ProtectedRoute>
+                    <MedicationForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/medications/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <MedicationForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documents"
+                element={
+                  <ProtectedRoute>
+                    <DocumentsList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documents/new"
+                element={
+                  <ProtectedRoute>
+                    <DocumentForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documents/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <DocumentForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/form-defaults"
+                element={
+                  <ProtectedRoute>
+                    <FormDefaults />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tiles-settings"
+                element={
+                  <ProtectedRoute>
+                    <TilesSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/event-types"
+                element={
+                  <ProtectedRoute>
+                    <EventTypesSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/event-types/new"
+                element={
+                  <ProtectedRoute>
+                    <EventTypeForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/event-types/:key/edit"
+                element={
+                  <ProtectedRoute>
+                    <EventTypeForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </RouteTransition>
+        </Suspense>
+      </main>
       <BottomTabBar />
     </>
   );
