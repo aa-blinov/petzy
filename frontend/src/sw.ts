@@ -17,9 +17,13 @@ precacheAndRoute(self.__WB_MANIFEST)
 // mismatch" in the console — the preloads become dead weight. Keep
 // Workbox's hands off hashed asset bundles; the browser's HTTP cache
 // + Workbox precache handle them just fine.
+//
+// /api/ too: opening a document (the PDF viewer's iframe, a scan
+// download that redirects to the bucket) is a navigation, and answering
+// it with index.html shows the app inside the viewer instead of the file.
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL('index.html'), {
-    denylist: [/^\/assets\//],
+    denylist: [/^\/assets\//, /^\/api\//],
   })
 )
 

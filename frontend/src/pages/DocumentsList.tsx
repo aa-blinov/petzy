@@ -10,6 +10,7 @@ import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { hapticFeedback } from '../utils/haptic';
 import { formatRelativeDateTime, parseRecordDate } from '../utils/relativeTime';
+import { formatFileSize } from '../utils/fileSize';
 import { showToast } from '../utils/toast';
 import {
   documentsService,
@@ -47,6 +48,24 @@ const FORMAT_BADGES: Record<string, { label: string; bg: string; fg: string }> =
   pdf: { label: 'PDF', bg: 'var(--app-danger-soft)', fg: 'var(--app-danger-text)' },
 };
 const DEFAULT_FORMAT_BADGE = { label: 'FILE', bg: 'var(--app-accent-soft)', fg: 'var(--app-accent-deep)' };
+
+/** Scans read as film: the page's own text and ground swapped, so the
+ *  chip is dark on a light theme and light on a dark one. The label is
+ *  the archive's extension (".tar.gz" and ".tgz" share a content type). */
+const SCAN_BADGE_COLORS = { bg: 'var(--app-text-color)', fg: 'var(--app-page-background)' };
+
+function scanBadgeLabel(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz')) return 'TGZ';
+  if (lower.endsWith('.dcm')) return 'DCM';
+  return lower.split('.').pop()?.toUpperCase().slice(0, 4) || 'ZIP';
+}
+
+function formatBadge(doc: PetDocument) {
+  if (doc.scan) return { ...SCAN_BADGE_COLORS, label: scanBadgeLabel(doc.original_filename) };
+  const subtype = doc.content_type.split('/')[1]?.toLowerCase() ?? '';
+  return FORMAT_BADGES[subtype] ?? { ...DEFAULT_FORMAT_BADGE, label: subtype ? subtype.toUpperCase().slice(0, 4) : 'FILE' };
+}
 
 /** How many days out "expiring soon" starts — matches the backend's own
  *  DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE in send_medication_reminders.py,
@@ -165,6 +184,14 @@ export function DocumentsList() {
   const handleOpen = (doc: PetDocument) => {
     hapticFeedback('light');
     const url = documentsService.getFileUrl(doc._id);
+    if (doc.scan) {
+      // An archive has nothing to preview: the server answers with a
+      // short-lived link to the file in storage, sent as a download, so
+      // the app stays where it is.
+      window.location.assign(url);
+      showToast.info('Скачиваем архив');
+      return;
+    }
     if (doc.content_type.startsWith('image/')) {
       setImageViewer({ visible: true, image: url });
     } else {
@@ -233,7 +260,7 @@ export function DocumentsList() {
           <EmptyState
             icon={FileText}
             title="Здесь будут документы питомца"
-            description="Справки о прививках, анализы, страховка и фото в одном месте"
+            description="Справки о прививках, анализы, снимки МРТ и КТ, страховка в одном месте"
             actionLabel="Добавить документ"
             onAction={() => navigate('/documents/new')}
           />
@@ -264,14 +291,13 @@ export function DocumentsList() {
                     {docs.map((doc) => {
                       // Preview reflects the file's actual format — the
                       // category already reads from the section header above.
-                      const subtype = doc.content_type.split('/')[1]?.toLowerCase() ?? '';
-                      const badge = FORMAT_BADGES[subtype] ?? { ...DEFAULT_FORMAT_BADGE, label: subtype ? subtype.toUpperCase().slice(0, 4) : 'FILE' };
+                      const badge = formatBadge(doc);
                       const expiry = doc.expires_at ? describeExpiry(doc.expires_at) : null;
                       return (
                         <SwipeableRow
                           key={doc._id}
                           itemLabel={doc.title}
-                          openAction={{ label: 'Открыть', onTrigger: () => handleOpen(doc) }}
+                          openAction={{ label: doc.scan ? 'Скачать' : 'Открыть', onTrigger: () => handleOpen(doc) }}
                           leftAction={{
                             icon: <Pencil size={20} strokeWidth={2.4} />,
                             label: 'Изменить',
@@ -341,8 +367,16 @@ export function DocumentsList() {
                                 >
                                   {doc.original_filename}
                                 </p>
-                                <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
+                                <p
+                                  style={{
+                                    margin: '4px 0 0',
+                                    fontSize: 'var(--text-xs)',
+                                    color: 'var(--app-text-tertiary)',
+                                    fontVariantNumeric: 'tabular-nums',
+                                  }}
+                                >
                                   {formatRelativeDateTime(doc.created_at)}
+                                  {doc.file_size > 0 && ` · ${formatFileSize(doc.file_size)}`}
                                 </p>
                                 {doc.username && doc.username !== currentUsername && (
                                   <button

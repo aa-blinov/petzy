@@ -92,8 +92,32 @@ ERRORS: Dict[str, ErrorDef] = {
     # Documents
     "document_file_required": ErrorDef("document_file_required", "Файл обязателен", 422),
     "document_unsupported_type": ErrorDef("document_unsupported_type", "Неподдерживаемый тип файла", 422),
-    "document_file_too_large": ErrorDef("document_file_too_large", "Файл слишком большой (максимум 15 МБ)", 422),
-    "request_too_large": ErrorDef("request_too_large", "Файл слишком большой (максимум 15 МБ)", 413),
+    "document_file_too_large": ErrorDef(
+        "document_file_too_large", "Файл больше 10 МБ. Большие архивы и снимки загружайте в «Снимки»", 422
+    ),
+    "request_too_large": ErrorDef(
+        "request_too_large", "Файл больше 10 МБ. Большие архивы и снимки загружайте в «Снимки»", 413
+    ),
+    # Scans (web/storage.py)
+    "storage_not_configured": ErrorDef(
+        "storage_not_configured", "Хранилище файлов сейчас недоступно. Попробуйте позже", 503
+    ),
+    "scan_unsupported_type": ErrorDef(
+        "scan_unsupported_type", "Этот формат не подходит. Нужен ZIP, 7z, RAR, TAR, GZ, DICOM или ISO", 422
+    ),
+    "scan_too_large": ErrorDef("scan_too_large", "Файл больше 500 МБ. Разделите архив на части", 422),
+    "scan_upload_not_found": ErrorDef(
+        "scan_upload_not_found", "Загрузка не найдена или устарела. Выберите файл ещё раз", 404
+    ),
+    "scan_upload_incomplete": ErrorDef(
+        "scan_upload_incomplete", "Файл загрузился не полностью. Попробуйте ещё раз", 422
+    ),
+    "scan_category_fixed": ErrorDef("scan_category_fixed", "Архив со снимками остаётся в «Снимках»", 422),
+    "scan_content_mismatch": ErrorDef(
+        "scan_content_mismatch",
+        "Внутри не архив и не DICOM, хотя расширение такое. Проверьте файл и выберите его ещё раз",
+        422,
+    ),
     # Push notifications
     "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
     # Other

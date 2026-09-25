@@ -62,10 +62,11 @@ else:
 app.secret_key = FLASK_CONFIG["secret_key"]
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = FLASK_CONFIG["jsonify_prettyprint_regular"]
 app.config["JSON_AS_ASCII"] = FLASK_CONFIG["json_as_ascii"]
-# Uploads (documents: 15 MB, pet photos: already cropped client-side) are
+# Uploads (documents: 10 MB, pet photos: already cropped client-side) are
 # the only large bodies. Without a cap Flask read any size into memory
 # before the view's own check ran; nginx's 20m let everything up to that
-# through. A little over 15 MB leaves room for multipart overhead.
+# through. The host proxy caps bodies at 10 MB anyway; 16 MB here only
+# bounds what reaches the app if that ever changes.
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 # Setup logging
@@ -172,6 +173,17 @@ app.register_blueprint(export_bp)
 # create_index a no-op when an identical index already exists, so
 # running this at every startup is safe and free.
 ensure_indexes()
+
+# Scans are uploaded from the browser straight to the bucket, which needs
+# CORS rules for the app's origins. Idempotent, best effort: without them
+# only scan uploads fail, and the warning in the log says why.
+from web import storage as _storage  # noqa: E402
+
+if _storage.storage_configured():
+    _storage.ensure_bucket_cors(logger)
+    # gunicorn preloads the app and forks: each worker opens its own
+    # connections rather than sharing this process's pool.
+    _storage.reset_client()
 
 # Seed the builtin event types (idempotent — skips any key that already
 # exists, so a user's edits to a builtin type's label/icon/color survive

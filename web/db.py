@@ -98,6 +98,7 @@ def ensure_indexes() -> None:
                                               reminder per document expiry date)
                           purge_at TTL      (auto-prune after 90 days)
       image_thumbnails    source_file_id    (drop a file's variants with it)
+      document_uploads    created_at        (sweep abandoned scan uploads)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -128,6 +129,8 @@ def ensure_indexes() -> None:
             "documents_pet_category_created",
         ),
         (db.image_thumbnails, [("source_file_id", ASCENDING)], "image_thumbnails_source"),
+        # Scan upload slots, swept by created_at (web/storage.py).
+        (db.document_uploads, [("created_at", ASCENDING)], "document_uploads_created"),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (

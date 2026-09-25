@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { parseRecordDate } from '../utils/relativeTime';
@@ -7,21 +7,26 @@ import { goBack } from '../utils/navigation';
 import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch, Controller, type FieldErrors } from 'react-hook-form';
+import { isAxiosError } from 'axios';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FileText, Image as ImageIcon, Upload } from 'lucide-react';
+import { Archive, FileText, Image as ImageIcon, Upload } from 'lucide-react';
 import {
   documentsService,
   DOCUMENT_CATEGORY_LABELS,
+  SCAN_EXTENSIONS,
+  ScanUploadError,
+  isScanFilename,
   type DocumentCategory,
 } from '../services/documents.service';
+import { formatFileSize } from '../utils/fileSize';
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 
-const CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
+const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
 );
 
@@ -34,7 +39,16 @@ const documentSchema = z.object({
 
 type DocumentFormData = z.infer<typeof documentSchema>;
 
-const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
+// The host proxy caps request bodies at 10 MB; bigger files are scans.
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_ACCEPT = 'image/*,application/pdf';
+const SCAN_ACCEPT = SCAN_EXTENSIONS.join(',');
+const SCAN_FORMATS_HINT = 'ZIP, 7Z, RAR, TAR, GZ, DICOM и ISO';
+
+function scanErrorMessage(err: unknown): string {
+  if (err instanceof ScanUploadError) return err.message;
+  return getApiErrorMessage(err, 'Не удалось загрузить снимки');
+}
 
 export function DocumentForm() {
   const { id } = useParams<{ id: string }>();
@@ -54,7 +68,14 @@ export function DocumentForm() {
   // and merged into the same inline error flow as the schema fields.
   const [fileError, setFileError] = useState<string | undefined>();
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
+  // Scan upload progress (0..1) while the archive goes to storage.
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadAbort = useRef<AbortController | null>(null);
+  // Leaving the screen mid-upload stops it; the unconfirmed slot is
+  // swept on the server.
+  useEffect(() => () => uploadAbort.current?.abort(), []);
+
+  const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
     shouldFocusError: false,
@@ -65,6 +86,11 @@ export function DocumentForm() {
   // the latter is what the React Compiler flags as an "incompatible
   // library" API and opts the whole component out of memoization for.
   const expiresAtValue = useWatch({ control, name: 'expires_at' });
+  const categoryValue = useWatch({ control, name: 'category' });
+  const isImaging = categoryValue === 'imaging';
+  // An archive goes straight to storage (up to 500 MB); photos and PDFs,
+  // scans included, take the ordinary upload.
+  const fileIsArchive = !!file && isScanFilename(file.name);
 
   // Documents don't all expire on the same kind of schedule as a birth
   // date (which only ever looks backward) — an already-expired policy
@@ -123,6 +149,48 @@ export function DocumentForm() {
     enabled: isEditing && !!id,
   });
 
+  const { data: storageStatus } = useQuery({
+    queryKey: ['documents-storage'],
+    queryFn: () => documentsService.getStorageStatus(),
+    enabled: !isEditing,
+    staleTime: 5 * 60_000,
+  });
+  const scansEnabled = !!storageStatus?.scans_enabled;
+  const maxScanBytes = storageStatus?.max_scan_bytes ?? 500 * 1024 * 1024;
+
+  // A scan archive is downloaded rather than previewed, so it stays in
+  // «Снимки» (the backend holds it there too).
+  const isEditingScan = isEditing && !!document?.scan;
+
+  /** Why ``picked`` can't be uploaded, if it can't. */
+  const fileProblem = (picked: File): string | undefined => {
+    if (isScanFilename(picked.name)) {
+      if (!scansEnabled) return 'Архивы сейчас не принимаются. Загрузите фото или PDF';
+      if (picked.size > maxScanBytes) return `Архив больше ${formatFileSize(maxScanBytes)}. Разделите его на части`;
+      return undefined;
+    }
+    if (picked.size > MAX_DOCUMENT_BYTES) {
+      return scansEnabled
+        ? 'Файл больше 10 МБ. Если это снимки, упакуйте их в ZIP: архивы принимаются до 500 МБ'
+        : 'Файл больше 10 МБ';
+    }
+    return undefined;
+  };
+
+  const pickFile = (picked: File | null) => {
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    const problem = fileProblem(picked);
+    setFileError(problem);
+    setFile(problem ? null : picked);
+    // Only scans come as archives, so an archive files itself there.
+    if (!problem && isScanFilename(picked.name) && !isImaging) {
+      setValue('category', 'imaging', { shouldValidate: true });
+    }
+  };
+
   useEffect(() => {
     if (document) {
       reset({
@@ -154,6 +222,41 @@ export function DocumentForm() {
     },
   });
 
+  const scanMutation = useMutation({
+    mutationFn: (data: DocumentFormData) => {
+      const controller = new AbortController();
+      uploadAbort.current = controller;
+      setUploadProgress(0);
+      return documentsService.createScan({
+        pet_id: selectedPetId!,
+        title: data.title,
+        note: data.note,
+        expires_at: data.expires_at || undefined,
+        file: file!,
+        onProgress: setUploadProgress,
+        signal: controller.signal,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
+      showToast.success('Снимки загружены');
+      goBack(navigate, '/documents');
+    },
+    onError: (err: unknown) => {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      // A rejected file (wrong format inside, size changed) has to be
+      // picked again; anything else can simply be retried.
+      if (isAxiosError(err) && err.response?.data?.code === 'scan_content_mismatch') setFile(null);
+      showToast.failure(scanErrorMessage(err));
+    },
+    onSettled: () => {
+      uploadAbort.current = null;
+      setUploadProgress(null);
+    },
+  });
+
+  const cancelUpload = () => uploadAbort.current?.abort();
+
   const updateMutation = useMutation({
     mutationFn: (data: DocumentFormData) =>
       documentsService.update(id!, {
@@ -182,6 +285,8 @@ export function DocumentForm() {
   const onSubmit = (data: DocumentFormData) => {
     if (isEditing) {
       updateMutation.mutate(data);
+    } else if (fileIsArchive) {
+      scanMutation.mutate(data);
     } else {
       createMutation.mutate(data);
     }
@@ -190,7 +295,7 @@ export function DocumentForm() {
   // A missing file used to be reported by a toast, and only after every
   // other field had passed, so a user fixed one thing and hit the next.
   const submit = () => {
-    const missingFile = !isEditing && !file ? 'Выберите фото или PDF' : undefined;
+    const missingFile = !isEditing && !file ? (isImaging ? 'Выберите снимки: фото, PDF или архив' : 'Выберите фото или PDF') : undefined;
     setFileError((current) => missingFile ?? (file ? undefined : current));
     const fileErrors = missingFile ? { file: { type: 'required', message: missingFile } } : {};
     handleSubmit(
@@ -203,7 +308,8 @@ export function DocumentForm() {
     return <LoadingSpinner />;
   }
 
-  const isLoading = isSubmitting || createMutation.isPending || updateMutation.isPending;
+  const isUploading = uploadProgress !== null;
+  const isLoading = isSubmitting || createMutation.isPending || updateMutation.isPending || scanMutation.isPending;
 
   return (
     <div
@@ -228,14 +334,33 @@ export function DocumentForm() {
             {isEditing ? (
               <Form.Item label="Файл">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--app-text-secondary)' }}>
-                  <FileText size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
+                  {isEditingScan ? (
+                    <Archive size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
+                  ) : (
+                    <FileText size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
+                  )}
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {document?.original_filename}
                   </span>
+                  {document && (
+                    <span style={{ flexShrink: 0, color: 'var(--app-text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatFileSize(document.file_size)}
+                    </span>
+                  )}
                 </div>
               </Form.Item>
             ) : (
-              <Form.Item label="Файл" required description={fileError ? <FieldError message={fileError} /> : undefined}>
+              <Form.Item
+                label="Файл"
+                required
+                description={
+                  fileError ? (
+                    <FieldError message={fileError} />
+                  ) : isImaging && scansEnabled && !file ? (
+                    `Фото и PDF до 10 МБ, архивы ${SCAN_FORMATS_HINT} до ${formatFileSize(maxScanBytes)}`
+                  ) : undefined
+                }
+              >
                 <label
                   htmlFor="document-file-input"
                   style={{
@@ -249,34 +374,108 @@ export function DocumentForm() {
                 >
                   {file?.type.startsWith('image/') ? (
                     <ImageIcon size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
+                  ) : fileIsArchive ? (
+                    <Archive size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
                   ) : (
                     <Upload size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
                   )}
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {file ? file.name : 'Выбрать фото или PDF'}
+                    {file ? file.name : isImaging ? 'Выбрать снимки' : 'Выбрать фото или PDF'}
                   </span>
+                  {file && (
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        fontWeight: 400,
+                        color: 'var(--app-text-tertiary)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatFileSize(file.size)}
+                    </span>
+                  )}
                 </label>
                 <input
                   id="document-file-input"
                   type="file"
-                  accept="image/*,application/pdf"
+                  // Archives only where they can go: «Снимки», or no
+                  // category yet (picking one files it there).
+                  accept={scansEnabled && (!categoryValue || isImaging) ? `${DOCUMENT_ACCEPT},${SCAN_ACCEPT}` : DOCUMENT_ACCEPT}
+                  disabled={isUploading}
                   // Visually hidden, not display:none: the input stays in
                   // the Tab order, so the picker opens from the keyboard.
                   className="sr-only file-picker-input"
                   onChange={(e) => {
-                    const picked = e.target.files?.[0] ?? null;
-                    // Same cap the backend enforces — checked here so the
-                    // user hears it before a 15 MB upload, not after it.
-                    if (picked && picked.size > MAX_DOCUMENT_BYTES) {
-                      setFileError('Файл больше 15 МБ, выберите поменьше');
-                      e.target.value = '';
-                      return;
-                    }
-                    setFileError(undefined);
-                    setFile(picked);
+                    // Same limits the backend enforces, checked here so the
+                    // user hears about them before the upload, not after it.
+                    pickFile(e.target.files?.[0] ?? null);
+                    e.target.value = '';
                   }}
                 />
               </Form.Item>
+            )}
+            {isUploading && file && (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  padding: 'var(--spacing-sm) var(--spacing-lg) var(--spacing-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    gap: 'var(--spacing-md)',
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--app-text-secondary)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  <span>
+                    {uploadProgress! < 1
+                      ? `Загружено ${formatFileSize(file.size * uploadProgress!)} из ${formatFileSize(file.size)}`
+                      : 'Проверяем архив…'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelUpload}
+                    style={{
+                      padding: '8px 0 8px 8px',
+                      border: 'none',
+                      background: 'none',
+                      color: 'var(--app-danger-text)',
+                      fontFamily: 'inherit',
+                      fontSize: 'var(--text-sm)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Остановить
+                  </button>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label="Загрузка снимков"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(uploadProgress! * 100)}
+                  style={{ height: 6, borderRadius: 3, background: 'var(--app-accent-soft)', overflow: 'hidden' }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${Math.round(uploadProgress! * 100)}%`,
+                      background: 'var(--app-accent)',
+                      borderRadius: 3,
+                      transition: 'width 200ms linear',
+                    }}
+                  />
+                </div>
+              </div>
             )}
             {isEditing && (
               <div
@@ -300,10 +499,10 @@ export function DocumentForm() {
                   <Form.Item
                     label="Категория"
                     required
-                    onClick={() => setCategoryPickerVisible(true)}
+                    onClick={isEditingScan || isUploading ? undefined : () => setCategoryPickerVisible(true)}
                     description={errors.category?.message ? <FieldError message={errors.category.message} /> : undefined}
-                    style={{ cursor: 'pointer' }}
-                    arrow
+                    style={{ cursor: isEditingScan || isUploading ? 'default' : 'pointer' }}
+                    arrow={!isEditingScan && !isUploading}
                   >
                     <Input
                       readOnly
@@ -313,13 +512,19 @@ export function DocumentForm() {
                     />
                   </Form.Item>
                   <Picker
-                    columns={[CATEGORY_OPTIONS]}
+                    columns={[ALL_CATEGORY_OPTIONS]}
                     visible={categoryPickerVisible}
                     onClose={() => setCategoryPickerVisible(false)}
                     value={[field.value]}
                     onConfirm={(val) => {
-                      field.onChange(val[0] as string);
+                      const next = val[0] as string;
+                      field.onChange(next);
                       setCategoryPickerVisible(false);
+                      // An archive can only be filed under «Снимки».
+                      if (fileIsArchive && next !== 'imaging') {
+                        setFile(null);
+                        setFileError('Архив можно добавить только в «Снимки». Выберите фото или PDF');
+                      }
                     }}
                     cancelText="Отмена"
                     confirmText="Выбрать"
@@ -449,9 +654,17 @@ export function DocumentForm() {
               }}
             />
             <SpinnerButton loading={isLoading} onClick={() => submit()} style={{ borderRadius: '12px', fontWeight: 600 }}>
-              {isEditing ? 'Сохранить' : 'Добавить'}
+              {isEditing ? 'Сохранить' : isUploading ? 'Загружаем…' : 'Добавить'}
             </SpinnerButton>
-            <Button block size="large" onClick={() => goBack(navigate, '/documents')} style={{ borderRadius: '12px', fontWeight: 500 }}>
+            <Button
+              block
+              size="large"
+              onClick={() => {
+                cancelUpload();
+                goBack(navigate, '/documents');
+              }}
+              style={{ borderRadius: '12px', fontWeight: 500 }}
+            >
               Отмена
             </Button>
           </div>

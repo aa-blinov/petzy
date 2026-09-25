@@ -4,11 +4,11 @@ This module is intentionally independent from `web.app` to avoid circular import
 Helpers are imported into `web.app` and used by blueprints via `web.app.*`.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Optional, Tuple
 
-from bson import Binary, ObjectId
+from bson import ObjectId
 from bson.errors import InvalidId
 from werkzeug.datastructures import FileStorage
 
@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover - optional dependency
     pass
 
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
+from web import storage
 from web.errors import error_response
 
 
@@ -380,52 +381,71 @@ def snap_thumbnail_size(value: Optional[int]) -> Optional[int]:
     return next((size for size in THUMBNAIL_SIZES if value <= size), None)
 
 
-def load_image_variant(file_id: str, width: Optional[int], height: Optional[int], content_type: Optional[str] = None):
+def store_file(owner_username: str, pet_id, kind: str, data: bytes, content_type: str, ext: str) -> str:
+    """Put a file in object storage under its owner's prefix; returns the key.
+
+    ``kind`` is the folder under the pet ("photos", "documents"). The key
+    is what the record keeps in ``photo_file_id`` / ``file_id``.
+    """
+    key = storage.new_key(app.db, owner_username, pet_id, kind, ext)
+    storage.put_bytes(key, data, content_type)
+    return key
+
+
+def read_stored_file(ref: str, content_type: Optional[str] = None) -> Tuple[bytes, str]:
+    """Bytes and content type of a stored file.
+
+    ``ref`` is an object-storage key, or for records not yet moved by
+    scripts/migrate_files_to_s3.py, a legacy GridFS id.
+    """
+    if storage.is_storage_key(ref):
+        data, stored_type = storage.get_bytes(ref)
+        return data, content_type or stored_type
+    grid_file = app.fs.get(ObjectId(ref))
+    return grid_file.read(), content_type or grid_file.content_type or "application/octet-stream"
+
+
+def load_image_variant(ref: str, width: Optional[int], height: Optional[int], content_type: Optional[str] = None):
     """Bytes and content type to serve for a stored file at ``?w=&h=``.
 
-    Resized variants are kept in ``image_thumbnails``: resizing a 1920px
-    photo on every cache miss cost a full GridFS read plus a WebP encode,
-    and a list of pets asks for several sizes per photo. ``width`` and
-    ``height`` should already be snapped with ``snap_thumbnail_size``.
-    Raises if the original file can't be read.
+    Resized variants are kept in object storage next to their original
+    (``<key>.thumbs/<w>x<h>.webp``): resizing a 1920px photo on every
+    cache miss cost a full read plus a WebP encode, and a list of pets
+    asks for several sizes per photo. ``width`` and ``height`` should
+    already be snapped with ``snap_thumbnail_size``. Raises if the
+    original can't be read.
     """
-    key = f"{file_id}_{width}_{height}"
-    if width or height:
-        cached = app.db.image_thumbnails.find_one({"_id": key})
+    in_storage = storage.is_storage_key(ref)
+    if (width or height) and in_storage:
+        cached = storage.get_bytes_if_exists(storage.thumb_key(ref, width, height))
         if cached:
-            return bytes(cached["data"]), cached["content_type"]
+            return cached[0], "image/webp"
 
-    grid_file = app.fs.get(ObjectId(file_id))
-    data = grid_file.read()
-    content_type = content_type or grid_file.content_type or "application/octet-stream"
+    data, content_type = read_stored_file(ref, content_type)
     if not (width or height) or not content_type.startswith("image/"):
         return data, content_type
 
     try:
         resized = resize_image_bytes(data, width, height)
     except Exception as e:
-        logger.warning(f"Thumbnail resize failed: file_id={file_id}, error={e}")
+        logger.warning(f"Thumbnail resize failed: ref={ref}, error={e}")
         return data, content_type
     if resized is None:
         return data, content_type
 
-    try:
-        app.db.image_thumbnails.replace_one(
-            {"_id": key},
-            {
-                "source_file_id": file_id,
-                "data": Binary(resized),
-                "content_type": "image/webp",
-                "created_at": datetime.now(timezone.utc),
-            },
-            upsert=True,
-        )
-    except Exception as e:  # the thumbnail is still served, just not cached
-        logger.warning(f"Failed to cache thumbnail: key={key}, error={e}")
+    if in_storage:
+        try:
+            storage.put_bytes(storage.thumb_key(ref, width, height), resized, "image/webp")
+        except Exception as e:  # the thumbnail is still served, just not cached
+            logger.warning(f"Failed to cache thumbnail: ref={ref}, error={e}")
     return resized, "image/webp"
 
 
-def delete_stored_file(file_id: str) -> None:
-    """Delete a GridFS file together with its cached thumbnails."""
-    app.db.image_thumbnails.delete_many({"source_file_id": file_id})
-    app.fs.delete(ObjectId(file_id))
+def delete_stored_file(ref: str) -> None:
+    """Delete a stored file together with its thumbnails."""
+    if storage.is_storage_key(ref):
+        storage.delete_object(ref)
+        storage.delete_prefix(storage.thumb_prefix(ref))
+        return
+    app.db.image_thumbnails.delete_many({"source_file_id": ref})
+    app.fs.delete(ObjectId(ref))

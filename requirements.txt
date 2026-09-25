@@ -16,3 +16,5 @@ Pillow>=10.0.0
 pillow-heif>=0.18.0
 flask-cors>=4.0.0
 pywebpush>=2.0.0
+boto3>=1.34.0
+moto[s3,server]>=5.0.0

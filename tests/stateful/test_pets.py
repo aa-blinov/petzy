@@ -610,8 +610,11 @@ class TestPetListFormatting:
 
         assert response.status_code == 200
         pet = response.get_json()["pets"][0]
-        assert pet["photo_file_id"] == str(photo_file_id)
-        assert f"?v={str(photo_file_id)[:8]}" in pet["photo_url"]
+        from web.storage import file_version
+
+        assert f"?v={file_version(str(photo_file_id))}" in pet["photo_url"]
+        # The stored reference (a bucket key) stays on the server.
+        assert "photo_file_id" not in pet
 
     def test_get_pets_converts_legacy_objectid_in_shared_with(self, client, mock_db, regular_user_token, test_pet):
         """shared_with is always written as a username string by share_pet,
@@ -641,7 +644,10 @@ class TestGetPetDetail:
 
         assert response.status_code == 200
         pet = response.get_json()["pet"]
-        assert f"?v={str(photo_file_id)[:8]}" in pet["photo_url"]
+        from web.storage import file_version
+
+        assert f"?v={file_version(str(photo_file_id))}" in pet["photo_url"]
+        assert "photo_file_id" not in pet
 
 
 @pytest.mark.pets
@@ -749,10 +755,7 @@ class TestUpdatePetFieldsAndValidation:
         Image.new("RGB", (10, 10), (1, 2, 3)).save(buf, format="PNG")
         buf.seek(0)
 
-        with (
-            patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")),
-            patch.object(fs, "put", return_value=ObjectId()) as mock_put,
-        ):
+        with patch.object(fs, "delete", side_effect=RuntimeError("gridfs unavailable")):
             response = client.put(
                 f"/api/pets/{test_pet['_id']}",
                 data={"name": test_pet["name"], "photo_file": (buf, "new.png")},
@@ -761,7 +764,8 @@ class TestUpdatePetFieldsAndValidation:
             )
 
         assert response.status_code == 200
-        mock_put.assert_called_once()
+        # The new photo is in object storage and the pet points at it.
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["photo_file_id"].startswith("users/")
 
     def test_update_pet_remove_photo_delete_failure_still_succeeds(self, client, mock_db, regular_user_token, test_pet):
         """Same tolerance as the replace-photo path, but for a bare
@@ -786,16 +790,12 @@ class TestUpdatePetFieldsAndValidation:
         assert pet.get("photo_file_id") is None
 
     def test_update_pet_photo_optimization_failure_falls_back_to_original(
-        self, client, mock_db, regular_user_token, test_pet
+        self, client, mock_db, regular_user_token, test_pet, s3_storage
     ):
         import io
         from unittest.mock import patch
-        from web.app import fs
 
-        with (
-            patch("web.pets.optimize_image", return_value=None),
-            patch.object(fs, "put", return_value=ObjectId()) as mock_put,
-        ):
+        with patch("web.pets.optimize_image", return_value=None):
             response = client.put(
                 f"/api/pets/{test_pet['_id']}",
                 data={"name": test_pet["name"], "photo_file": (io.BytesIO(b"raw"), "raw.png")},
@@ -804,9 +804,11 @@ class TestUpdatePetFieldsAndValidation:
             )
 
         assert response.status_code == 200
-        _, kwargs = mock_put.call_args
-        assert kwargs["filename"] == "raw.png"
-        assert kwargs["content_type"] == "image/png"
+        key = mock_db["pets"].find_one({"_id": test_pet["_id"]})["photo_file_id"]
+        assert key.endswith(".png")  # stored as uploaded, not converted
+        obj = s3_storage.get_object(Bucket="petzy-test", Key=key)
+        assert obj["Body"].read() == b"raw"
+        assert obj["ContentType"] == "image/png"
 
 
 @pytest.mark.pets

@@ -24,6 +24,16 @@ os.environ["MONGO_PORT"] = "27017"
 os.environ["MONGO_DB"] = "test_db"
 # Use memory storage for Flask-Limiter in tests
 os.environ["RATELIMIT_STORAGE_URI"] = "memory://"
+# Object storage: every test runs against moto's in-memory S3 (the
+# s3_storage fixture below). An amazonaws endpoint so moto intercepts it;
+# dummy credentials so nothing can reach a real bucket.
+os.environ["S3_ENDPOINT"] = "https://s3.us-east-1.amazonaws.com"
+os.environ["S3_REGION"] = "us-east-1"
+os.environ["S3_BUCKET"] = "petzy-test"
+os.environ["S3_KEY_ID"] = "testing"
+os.environ["S3_SECRET_KEY"] = "testing"
+os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 
 # Create mock database and patch before importing app
 _mock_client = MongoClient()
@@ -32,6 +42,22 @@ _mock_db = _mock_client["test_db"]
 with patch("web.db.db", _mock_db), patch("web.db.client", _mock_client), patch("gridfs.GridFS", MagicMock):
     from web.app import app
     from web.security import create_access_token
+
+
+@pytest.fixture(autouse=True)
+def s3_storage():
+    """A fresh, empty in-memory bucket for every test."""
+    import boto3
+    from moto import mock_aws
+
+    from web import storage
+
+    with mock_aws():
+        storage.reset_client()
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket=os.environ["S3_BUCKET"])
+        yield s3
+    storage.reset_client()
 
 
 @pytest.fixture(scope="function")

@@ -301,7 +301,10 @@ if __name__ == "__main__":
 
     vapid_claims = {"sub": f"mailto:{vapid_claims_email}"}
 
+    from web.storage import cleanup_abandoned_uploads
+
     logger.info("Reminder sender started (60s poll interval).")
+    tick = 0
     while True:
         try:
             sent = send_reminders(real_db, datetime.now(timezone.utc), vapid_private_key, vapid_claims)
@@ -311,4 +314,14 @@ if __name__ == "__main__":
             # Never let one bad tick kill the whole process — the next
             # tick tries again on its own.
             logger.exception("Reminder tick failed")
+        # This is the app's one periodic worker, so it also sweeps scan
+        # uploads that were never confirmed, about once an hour.
+        if tick % 60 == 0:
+            try:
+                removed = cleanup_abandoned_uploads(real_db)
+                if removed:
+                    logger.info(f"Removed {removed} abandoned scan upload(s).")
+            except Exception:
+                logger.exception("Scan upload cleanup failed")
+        tick += 1
         time.sleep(60)

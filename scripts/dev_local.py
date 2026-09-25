@@ -72,8 +72,8 @@ def _patch_with_mongomock() -> None:
     pymongo.MongoClient = lambda *a, **kw: mock_client  # type: ignore[assignment]
 
     # gridfs.GridFS rejects mongomock databases, so swap in a minimal
-    # working stand-in before web.app imports it — pet photo upload and
-    # the demo seed's own photos need it to actually store bytes.
+    # stand-in before web.app imports it. Files go to object storage now
+    # (_start_local_storage); GridFS is only read for legacy records.
     sys.modules.setdefault("gridfs", type(sys)("gridfs"))
     sys.modules["gridfs"].GridFS = lambda *_a, **_kw: _InMemoryGridFS()  # type: ignore[attr-defined]
 
@@ -86,21 +86,53 @@ def _patch_with_mongomock() -> None:
     _web_db.db = mock_db
 
 
-def _seed_demo_photo(fs, filename: str) -> "object | None":
-    """Load one of scripts/demo_photos/*.jpg into fs, return its file id.
+def _seed_demo_photo(db, owner: str, pet_id, filename: str) -> "str | None":
+    """Store one of scripts/demo_photos/*.jpg for a pet, return its key.
 
     Returns None (no photo, falls back to the species icon) if the file
     is missing — the demo still works without it.
     """
+    from web import storage
+
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_photos", filename)
     if not os.path.exists(path):
         logger.warning("Demo photo not found, skipping: %s", path)
         return None
+    key = storage.new_key(db, owner, pet_id, "photos", ".jpg")
     with open(path, "rb") as f:
-        return fs.put(f.read(), filename=filename, content_type="image/jpeg")
+        storage.put_bytes(key, f.read(), "image/jpeg")
+    return key
 
 
-def _seed_demo_data(db, fs) -> None:
+def _start_local_storage() -> None:
+    """Point object storage at an in-memory S3 (moto) unless S3_* is set.
+
+    Files (photos, documents, scans) live in S3 in production; locally a
+    moto server on 127.0.0.1:5002 stands in, so nothing touches the real
+    bucket. It answers CORS preflights, so the browser can PUT scans to
+    signed URLs just like against Backblaze. Export S3_ENDPOINT & co. to
+    run against a real bucket instead.
+    """
+    if os.getenv("S3_ENDPOINT"):
+        logger.info("Object storage: %s (from the environment)", os.environ["S3_ENDPOINT"])
+        return
+    from moto.server import ThreadedMotoServer
+
+    ThreadedMotoServer(ip_address="127.0.0.1", port=5002, verbose=False).start()
+    os.environ.update(
+        S3_ENDPOINT="http://127.0.0.1:5002",
+        S3_REGION="us-east-1",
+        S3_BUCKET="petzy-dev",
+        S3_KEY_ID="dev",
+        S3_SECRET_KEY="dev",
+    )
+    from web import storage
+
+    storage._client().create_bucket(Bucket="petzy-dev")
+    logger.info("Object storage: in-memory S3 at http://127.0.0.1:5002 (bucket petzy-dev)")
+
+
+def _seed_demo_data(db) -> None:
     """Populate ~2 months of realistic-looking history for two pets.
 
     Deterministic (fixed random seed) so re-running this script always
@@ -140,8 +172,8 @@ def _seed_demo_data(db, fs) -> None:
         }
 
     # --- Pet 1: Барсик, cat, ~60 days of rich multi-type history -----
-    cat_photo_id = _seed_demo_photo(fs, "cat.jpg")
     cat_id = ObjectId()
+    cat_photo_key = _seed_demo_photo(db, "admin", cat_id, "cat.jpg")
     db.pets.insert_one(
         {
             "_id": cat_id,
@@ -154,7 +186,7 @@ def _seed_demo_data(db, fs) -> None:
             "health_notes": "Лёгкая астма — приступы редкие, под контролем.",
             "owner": "admin",
             "shared_with": [],
-            "photo_file_id": str(cat_photo_id) if cat_photo_id else None,
+            "photo_file_id": cat_photo_key,
             "tiles_settings": tiles_settings(
                 [
                     "feeding",
@@ -316,8 +348,8 @@ def _seed_demo_data(db, fs) -> None:
     db.medication_intakes.insert_many(antibiotic_intakes)
 
     # --- Pet 2: Рекс, dog, lighter ~2-week history for the pet switcher --
-    dog_photo_id = _seed_demo_photo(fs, "dog.jpg")
     dog_id = ObjectId()
+    dog_photo_key = _seed_demo_photo(db, "admin", dog_id, "dog.jpg")
     db.pets.insert_one(
         {
             "_id": dog_id,
@@ -330,7 +362,7 @@ def _seed_demo_data(db, fs) -> None:
             "health_notes": "",
             "owner": "admin",
             "shared_with": [],
-            "photo_file_id": str(dog_photo_id) if dog_photo_id else None,
+            "photo_file_id": dog_photo_key,
             "tiles_settings": tiles_settings(["feeding", "defecation", "weight", "tooth_brushing", "medications"]),
             "created_at": days_ago(14, 9, 0),
             "updated_at": now,
@@ -427,6 +459,7 @@ def main() -> None:
     os.environ.setdefault("VAPID_CLAIMS_EMAIL", "dev@example.com")
 
     _patch_with_mongomock()
+    _start_local_storage()
 
     import bcrypt
 
@@ -434,7 +467,7 @@ def main() -> None:
     # user is deterministic and we know the credentials at the UI.
     os.environ["ADMIN_PASSWORD_HASH"] = bcrypt.hashpw(b"test1234", bcrypt.gensalt()).decode()
 
-    from web.app import app, fs
+    from web.app import app
     from web.security import ensure_default_admin
 
     ensure_default_admin()
@@ -443,7 +476,7 @@ def main() -> None:
     # the UI has something worth demoing instead of an empty state.
     from web.db import db
 
-    _seed_demo_data(db, fs)
+    _seed_demo_data(db)
 
     # Run the reminder sender in-process on a background thread — only
     # safe here because dev_local.py is single-process. In production
