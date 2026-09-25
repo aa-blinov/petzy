@@ -1,5 +1,9 @@
 name: Inspect remote DB
 
+# The repository is public, and so are these logs: print structure and
+# counts only, never documents (usernames, pet names, medications and
+# tokens used to be dumped here), and mask identifiers in log lines.
+
 on:
   workflow_dispatch:
 
@@ -29,8 +33,14 @@ jobs:
             mongo_eval() {
               docker compose exec -T db mongosh $mongosh_args --eval "$1" 2>&1
             }
-            echo "=== web container last 60 log lines (look for index errors) ==="
-            docker compose logs --tail=60 web 2>&1 | tail -60
+            mask() {
+              sed -E \
+                -e 's/(user|username|owner|created_by|pet_id|id)=[^ ,]+/\1=***/g' \
+                -e 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/x.x.x.x/g' \
+                -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/***@***/g'
+            }
+            echo "=== web container last 60 log lines, masked (look for index errors) ==="
+            docker compose logs --tail=60 web 2>&1 | tail -60 | mask
             echo
             echo "=== push (VAPID) configuration — presence only, never the values ==="
             docker compose exec -T web env 2>&1 | grep -q '^VAPID_PUBLIC_KEY=.' && echo "VAPID_PUBLIC_KEY: set" || echo "VAPID_PUBLIC_KEY: NOT set"
@@ -45,17 +55,14 @@ jobs:
             echo "=== indexes (incl. TTL flags) ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.getCollectionNames().sort().forEach(c => { print('\n--- ' + c + ' ---'); db[c].getIndexes().forEach(i => print('  ' + i.name + ': ' + JSON.stringify(i.key) + (i.unique ? ' [unique]' : '') + (i.expireAfterSeconds !== undefined ? ' [TTL=' + i.expireAfterSeconds + 's]' : ''))); });" 2>&1
             echo
-            echo "=== users ==="
-            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.users.find({}, {username:1, role:1, is_active:1, is_admin:1, _id:0}).forEach(u => printjson(u));" 2>&1
+            echo "=== users: counts by role and status (no names) ==="
+            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.users.aggregate([{\$group: {_id: {role: '\$role', active: '\$is_active'}, n: {\$sum: 1}}}]).forEach(g => print(JSON.stringify(g._id) + ': ' + g.n));" 2>&1
             echo
-            echo "=== pets ==="
-            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.pets.find({}, {name:1, species:1, owner:1, created_by:1, _id:1}).forEach(p => printjson(p));" 2>&1
+            echo "=== pets / medications: counts only ==="
+            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print('pets: ' + db.pets.countDocuments()); print('medications active: ' + db.medications.countDocuments({is_active: true}) + ' / total: ' + db.medications.countDocuments());" 2>&1
             echo
-            echo "=== medications ==="
-            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); db.medications.find({}, {name:1, pet_id:1, is_active:1, schedule:1, _id:1}).forEach(m => printjson(m));" 2>&1
-            echo
-            echo "=== refresh_tokens (count + sample 5) ==="
-            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments()); db.refresh_tokens.find({}, {username:1, jti:1, created_at:1, expires_at:1, _id:0}).limit(5).forEach(t => printjson(t));" 2>&1
+            echo "=== refresh_tokens: count and expiry range (no users or ids) ==="
+            mongo_eval "db = db.getSiblingDB('$MONGO_DB'); print('count: ' + db.refresh_tokens.countDocuments()); const a = db.refresh_tokens.find({}, {expires_at: 1, _id: 0}).sort({expires_at: 1}).limit(1).toArray(); const z = db.refresh_tokens.find({}, {expires_at: 1, _id: 0}).sort({expires_at: -1}).limit(1).toArray(); print('earliest expiry: ' + (a[0] && a[0].expires_at) + ', latest: ' + (z[0] && z[0].expires_at));" 2>&1
             echo
             echo "=== health-records counts ==="
             mongo_eval "db = db.getSiblingDB('$MONGO_DB'); ['asthma_attacks','defecations','litter_changes','weights','feedings','eye_drops','tooth_brushing','ear_cleaning','medication_intakes'].forEach(c => print(c + ': ' + db[c].countDocuments()));" 2>&1

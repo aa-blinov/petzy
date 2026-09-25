@@ -2,7 +2,10 @@ services:
   db:
     image: mongo:latest
     ports:
-      - "27017:27017"
+      # Loopback only: the app, backups and reminders reach it over
+      # app-network, and nothing outside the host should. For a GUI
+      # client, tunnel in: ssh -L 27017:127.0.0.1:27017 <server>.
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongodata:/data/db
     env_file:
