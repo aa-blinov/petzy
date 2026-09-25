@@ -272,7 +272,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     case 'diary':
       art = <DiaryArt />;
       title = 'Все записи о питомце в одной ленте';
-      lead = 'Кормление, вес и уход отмечаются в пару касаний, а для остального можно завести свои события, например прогулки';
+      lead = 'Отмечайте кормление, вес и уход в пару касаний, а для остального заведите свои события, например прогулки';
       cta = ctaButton('Дальше', next);
       break;
     case 'care':
@@ -284,7 +284,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     case 'family':
       art = <FamilyArt />;
       title = 'Документы и семья рядом';
-      lead = 'Справки, анализы и снимки МРТ или КТ хранятся вместе. Откройте доступ близким, и все будут видеть одно и то же';
+      lead = 'Храните здесь справки, анализы и снимки МРТ или КТ. Откройте доступ близким, и все будут видеть одно и то же';
       cta = ctaButton(replay ? 'Понятно' : 'Добавить питомца', finishIntro);
       break;
     case 'species':
