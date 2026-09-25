@@ -32,9 +32,11 @@ import { GENDER_OPTIONS, SPECIES_LABELS } from '../utils/constants';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { PhotoCropModal } from '../components/PhotoCropModal';
+import { FieldError } from '../components/FieldError';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 const petSchema = z.object({
-  name: z.string().min(1, 'Имя питомца обязательно'),
+  name: z.string().min(1, 'Введите имя питомца'),
   breed: z.string().optional(),
   species: z.string().optional(),
   birth_date: z.string().optional(),
@@ -80,6 +82,9 @@ export function PetForm() {
   const healthNotesInputRef = useRef<TextAreaRef>(null);
 
   const { control, handleSubmit, reset, watch } = useForm<PetFormData>({
+    // onInvalidSubmit scrolls to and focuses the first error in page order;
+    // RHF's own focus picked the first registered ref instead.
+    shouldFocusError: false,
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: '',
@@ -304,7 +309,7 @@ export function PetForm() {
                 <Form.Item
                   label="Имя"
                   required
-                  help={error?.message}
+                  description={error?.message ? <FieldError message={error.message} /> : undefined}
                   clickable
                   onClick={() => nameInputRef.current?.focus()}
                 >
@@ -754,11 +759,11 @@ export function PetForm() {
             <button
               style={{ display: 'none' }}
               type="submit"
-              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
             />
             <SpinnerButton
               loading={loading}
-              onClick={() => handleSubmit(onSubmit)()}
+              onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
               style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
             >
               {isEditing ? 'Сохранить' : 'Добавить'}

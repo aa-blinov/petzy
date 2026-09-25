@@ -1574,6 +1574,14 @@ label:has(~ .file-picker-input:focus-visible),
     font-size: 16px !important;
 }
 
+/* Validation message under a form field (FieldError.tsx). */
+.field-error {
+    margin-top: 4px;
+    color: var(--app-danger-text);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+}
+
 /* Content that only screen readers get: page headings a sighted user
    reads from the layout, labels for icon-only controls. */
 .sr-only {

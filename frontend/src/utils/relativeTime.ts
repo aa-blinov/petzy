@@ -158,7 +158,7 @@ export function computePetAge(birthDateStr: string, now: Date = new Date()): str
 
 
 /** Russian plural form helper: 1 "год", 2 "года", 5 "лет". */
-function pluralRu(n: number, one: string, few: string, many: string): string {
+export function pluralRu(n: number, one: string, few: string, many: string): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 === 1 && mod100 !== 11) return one;

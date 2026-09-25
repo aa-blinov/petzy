@@ -6,6 +6,7 @@ import { Input, TextArea, Picker, Form } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime, parseDateTime } from '../utils/dateUtils';
+import { FieldError } from './FieldError';
 
 interface FormFieldProps {
   field: FormFieldType;
@@ -307,7 +308,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               width: '100%',
               cursor: 'pointer'
             }}
-            help={error ? (error.message as string) : undefined}
+            description={error ? <FieldError message={error.message as string} /> : undefined}
           >
             {renderInput()}
           </Form.Item>

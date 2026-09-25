@@ -11,7 +11,8 @@
  *
  *   - rows get role="button" and tabindex=0 as they mount
  *     (disabled rows get aria-disabled and stay out of the Tab order);
- *   - Enter or Space on a patched row clicks it, as on a real button.
+ *   - Enter or Space on a patched row clicks it, as on a real button;
+ *   - form labels are linked to their fields (see linkLabel).
  */
 
 const ROW_SELECTOR = 'a.adm-list-item:not([href]), a.adm-action-sheet-button-item:not([href])';
@@ -35,9 +36,29 @@ function patch(row: Element) {
   if (disabled) row.setAttribute('aria-disabled', 'true');
 }
 
+let fieldSeq = 0;
+
+// Form.Item only points its <label for> at the field when antd's own
+// form store owns it; these forms use react-hook-form, so every label
+// was unattached and fields were announced by placeholder alone. Link
+// each label to the text field inside its item, and mark it required
+// when antd drew the asterisk.
+function linkLabel(item: Element) {
+  if (item.hasAttribute('data-a11y-label')) return;
+  item.setAttribute('data-a11y-label', '');
+  const label = item.querySelector<HTMLLabelElement>('label.adm-form-item-label');
+  const field = item.querySelector<HTMLElement>(EDITABLE);
+  if (!label || !field) return;
+  if (!field.id) field.id = `form-field-${++fieldSeq}`;
+  if (!label.htmlFor) label.htmlFor = field.id;
+  if (label.querySelector('.adm-form-item-required-asterisk')) field.setAttribute('aria-required', 'true');
+}
+
 function patchWithin(root: ParentNode) {
   if (root instanceof Element && root.matches(ROW_SELECTOR)) patch(root);
   root.querySelectorAll(ROW_SELECTOR).forEach(patch);
+  if (root instanceof Element && root.matches('.adm-form-item')) linkLabel(root);
+  root.querySelectorAll('.adm-form-item').forEach(linkLabel);
 }
 
 export function installAntdA11y() {

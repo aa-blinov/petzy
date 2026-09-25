@@ -13,24 +13,41 @@ import { medicationsService, type MedicationCreate, COMMON_MEDICATIONS } from '.
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { FieldError } from '../components/FieldError';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 const medicationSchema = z.object({
-    name: z.string().min(1, 'Название обязательно'),
-    type: z.string().min(1, 'Тип обязателен'),
+    name: z.string().min(1, 'Введите название'),
+    type: z.string().min(1, 'Выберите форму'),
     form_factor: z.string().optional(),
     strength: z.string().optional(),
     dose_unit: z.string().optional(),
-    default_dose: z.coerce.number().min(0.0001, 'Доза должна быть больше 0'),
+    default_dose: z.coerce.number({ error: 'Введите число' }).min(0.0001, 'Доза должна быть больше нуля'),
     schedule: z.object({
         days: z.array(z.number()).min(1, 'Выберите хотя бы один день'),
-        times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Некорректное время')).min(1, 'Добавьте хотя бы одно время'),
+        times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Выберите время')).min(1, 'Добавьте хотя бы одно время'),
     }),
     inventory_enabled: z.boolean(),
-    inventory_total: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number().nullable().optional()),
-    inventory_current: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number().nullable().optional()),
-    inventory_warning_threshold: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number().nullable().optional()),
+    inventory_total: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
+    inventory_current: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
+    inventory_warning_threshold: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
     is_active: z.boolean(),
     comment: z.string().optional(),
+}).superRefine((data, ctx) => {
+    // Checked here rather than in onSubmit, where they were toasts with
+    // no link to the field they were about.
+    if (!data.inventory_enabled) return;
+    const total = data.inventory_total as number | null | undefined;
+    const current = data.inventory_current as number | null | undefined;
+    if (total !== null && total !== undefined && total <= 0) {
+        ctx.addIssue({ code: 'custom', path: ['inventory_total'], message: 'Общее количество должно быть больше нуля' });
+    }
+    if (current !== null && current !== undefined && current < 0) {
+        ctx.addIssue({ code: 'custom', path: ['inventory_current'], message: 'Остаток не может быть меньше нуля' });
+    }
+    if (current !== null && current !== undefined && total !== null && total !== undefined && current > total) {
+        ctx.addIssue({ code: 'custom', path: ['inventory_current'], message: `Остаток больше общего количества (${total})` });
+    }
 });
 
 type MedicationFormInput = z.input<typeof medicationSchema>;
@@ -71,6 +88,9 @@ export function MedicationForm() {
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
     const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+        // onInvalidSubmit scrolls to and focuses the first error in page order;
+        // RHF's own focus picked the first registered ref instead.
+        shouldFocusError: false,
         resolver: zodResolver(medicationSchema),
         defaultValues: {
             name: '',
@@ -185,23 +205,6 @@ export function MedicationForm() {
     });
 
     const onSubmit = (data: MedicationFormData) => {
-        if (data.inventory_enabled) {
-            if (data.inventory_total !== null && data.inventory_total !== undefined && data.inventory_total <= 0) {
-                showToast.failure('Общее количество должно быть больше 0');
-                return;
-            }
-            if (data.inventory_current !== null && data.inventory_current !== undefined) {
-                if (data.inventory_current < 0) {
-                    showToast.failure('Текущий остаток не может быть отрицательным');
-                    return;
-                }
-                if (data.inventory_total !== null && data.inventory_total !== undefined &&
-                    data.inventory_current > data.inventory_total) {
-                    showToast.failure('Текущий остаток не может превышать общее количество');
-                    return;
-                }
-            }
-        }
         mutation.mutate(data);
     };
 
@@ -237,7 +240,7 @@ export function MedicationForm() {
                     <Form
                         layout="horizontal"
                         mode="card"
-                        onFinish={handleSubmit(onSubmit)}
+                        onFinish={handleSubmit(onSubmit, onInvalidSubmit)}
                         style={{ '--prefix-width': '7em' } as React.CSSProperties}
                     >
                         <Form.Header>Препарат</Form.Header>
@@ -245,7 +248,7 @@ export function MedicationForm() {
                             name="name"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Название" required help={errors.name?.message}>
+                                <Form.Item label="Название" required description={errors.name?.message ? <FieldError message={errors.name.message} /> : undefined}>
                                     <Input
                                         value={field.value}
                                         onChange={field.onChange}
@@ -265,14 +268,14 @@ export function MedicationForm() {
                                         label="Форма"
                                         required
                                         onClick={() => setTypePickerVisible(true)}
-                                        help={errors.type?.message}
+                                        description={errors.type?.message ? <FieldError message={errors.type.message} /> : undefined}
                                         style={{ cursor: 'pointer' }}
                                         arrow
                                     >
                                         <Input
                                             readOnly
                                             value={field.value}
-                                            placeholder="Выберите тип"
+                                            placeholder="Выберите форму"
                                             style={{ pointerEvents: 'none' }}
                                         />
                                     </Form.Item>
@@ -322,7 +325,7 @@ export function MedicationForm() {
                             name="default_dose"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Разовая" required help={errors.default_dose?.message}>
+                                <Form.Item label="Разовая" required description={errors.default_dose?.message ? <FieldError message={errors.default_dose.message} /> : undefined}>
                                     <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
                                         <Input
                                             value={field.value?.toString()}
@@ -408,6 +411,9 @@ export function MedicationForm() {
                                         />
                                     )}
                                 />
+                                {/* Right under the chips it is about, not at the
+                                    bottom of the whole schedule block. */}
+                                {errors.schedule?.days?.message && <FieldError message={errors.schedule.days.message} />}
                             </div>
 
                             {timeFields.map((timeField: { id: string }, index) => (
@@ -474,6 +480,9 @@ export function MedicationForm() {
                             >
                                 + Время
                             </Button>
+                            {(errors.schedule?.times?.message || errors.schedule?.times?.root?.message) && (
+                                <FieldError message={errors.schedule?.times?.message || errors.schedule?.times?.root?.message} />
+                            )}
 
                             <Picker
                                 columns={[hours, minutes]}
@@ -515,8 +524,11 @@ export function MedicationForm() {
                                 <Controller
                                     name="inventory_current"
                                     control={control}
-                                    render={({ field }) => (
-                                        <Form.Item label={`Остаток (${doseUnit})`}>
+                                    render={({ field, fieldState: { error } }) => (
+                                        <Form.Item
+                                            label={`Остаток (${doseUnit})`}
+                                            description={error?.message ? <FieldError message={error.message} /> : undefined}
+                                        >
                                             <Input
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
@@ -534,8 +546,11 @@ export function MedicationForm() {
                                 <Controller
                                     name="inventory_warning_threshold"
                                     control={control}
-                                    render={({ field }) => (
-                                        <Form.Item label="Мин. остаток">
+                                    render={({ field, fieldState: { error } }) => (
+                                        <Form.Item
+                                            label="Предупредить при остатке"
+                                            description={error?.message ? <FieldError message={error.message} /> : undefined}
+                                        >
                                             <Input
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
@@ -588,7 +603,7 @@ export function MedicationForm() {
                     }}>
                         <SpinnerButton
                             loading={mutation.isPending || isSubmitting}
-                            onClick={() => handleSubmit(onSubmit)()}
+                            onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
                             style={{ borderRadius: 'var(--radius-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}
                         >
                             {isEditing ? 'Сохранить' : 'Создать'}

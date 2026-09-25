@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, useWatch, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FileText, Image as ImageIcon, Upload } from 'lucide-react';
@@ -18,6 +18,8 @@ import {
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { FieldError } from '../components/FieldError';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 const CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -25,8 +27,8 @@ const CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentC
 
 const documentSchema = z.object({
   category: z.string().min(1, 'Выберите категорию'),
-  title: z.string().min(1, 'Название обязательно').max(100),
-  note: z.string().max(500).optional(),
+  title: z.string().min(1, 'Введите название').max(100, 'Не длиннее 100 символов'),
+  note: z.string().max(500, 'Не длиннее 500 символов').optional(),
   expires_at: z.string().optional(),
 });
 
@@ -48,8 +50,14 @@ export function DocumentForm() {
   // for create only; editing never touches it (delete + re-upload to
   // replace, per the v1 scope), so it lives in its own bit of state.
   const [file, setFile] = useState<File | null>(null);
+  // The file lives outside react-hook-form, so its message is kept here
+  // and merged into the same inline error flow as the schema fields.
+  const [fileError, setFileError] = useState<string | undefined>();
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
+    // onInvalidSubmit scrolls to and focuses the first error in page order;
+    // RHF's own focus picked the first registered ref instead.
+    shouldFocusError: false,
     resolver: zodResolver(documentSchema),
     defaultValues: { category: '', title: '', note: '', expires_at: '' },
   });
@@ -172,15 +180,23 @@ export function DocumentForm() {
   });
 
   const onSubmit = (data: DocumentFormData) => {
-    if (!isEditing && !file) {
-      showToast.failure('Выберите файл');
-      return;
-    }
     if (isEditing) {
       updateMutation.mutate(data);
     } else {
       createMutation.mutate(data);
     }
+  };
+
+  // A missing file used to be reported by a toast, and only after every
+  // other field had passed, so a user fixed one thing and hit the next.
+  const submit = () => {
+    const missingFile = !isEditing && !file ? 'Выберите фото или PDF' : undefined;
+    setFileError((current) => missingFile ?? (file ? undefined : current));
+    const fileErrors = missingFile ? { file: { type: 'required', message: missingFile } } : {};
+    handleSubmit(
+      (data) => (missingFile ? onInvalidSubmit(fileErrors as FieldErrors) : onSubmit(data)),
+      (errors) => onInvalidSubmit({ ...errors, ...fileErrors } as FieldErrors),
+    )();
   };
 
   if (isEditing && isLoadingDocument) {
@@ -219,7 +235,7 @@ export function DocumentForm() {
                 </div>
               </Form.Item>
             ) : (
-              <Form.Item label="Файл" required>
+              <Form.Item label="Файл" required description={fileError ? <FieldError message={fileError} /> : undefined}>
                 <label
                   htmlFor="document-file-input"
                   style={{
@@ -252,10 +268,11 @@ export function DocumentForm() {
                     // Same cap the backend enforces — checked here so the
                     // user hears it before a 15 MB upload, not after it.
                     if (picked && picked.size > MAX_DOCUMENT_BYTES) {
-                      showToast.failure('Файл слишком большой (максимум 15 МБ)');
+                      setFileError('Файл больше 15 МБ, выберите поменьше');
                       e.target.value = '';
                       return;
                     }
+                    setFileError(undefined);
                     setFile(picked);
                   }}
                 />
@@ -284,7 +301,7 @@ export function DocumentForm() {
                     label="Категория"
                     required
                     onClick={() => setCategoryPickerVisible(true)}
-                    help={errors.category?.message}
+                    description={errors.category?.message ? <FieldError message={errors.category.message} /> : undefined}
                     style={{ cursor: 'pointer' }}
                     arrow
                   >
@@ -315,7 +332,7 @@ export function DocumentForm() {
               name="title"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label="Название" required help={error?.message}>
+                <Form.Item label="Название" required description={error?.message ? <FieldError message={error.message} /> : undefined}>
                   <Input {...field} placeholder="Например, Прививка от бешенства" clearable />
                 </Form.Item>
               )}
@@ -428,10 +445,10 @@ export function DocumentForm() {
               type="submit"
               onClick={(e) => {
                 e.preventDefault();
-                handleSubmit(onSubmit)();
+                submit();
               }}
             />
-            <SpinnerButton loading={isLoading} onClick={() => handleSubmit(onSubmit)()} style={{ borderRadius: '12px', fontWeight: 600 }}>
+            <SpinnerButton loading={isLoading} onClick={() => submit()} style={{ borderRadius: '12px', fontWeight: 600 }}>
               {isEditing ? 'Сохранить' : 'Добавить'}
             </SpinnerButton>
             <Button block size="large" onClick={() => goBack(navigate, '/documents')} style={{ borderRadius: '12px', fontWeight: 500 }}>

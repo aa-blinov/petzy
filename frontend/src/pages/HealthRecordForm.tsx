@@ -17,6 +17,7 @@ import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { FormField } from '../components/FormField';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 /** Builds the field list + title for a registered event type. Date, time
  *  and comment aren't part of `eventType.fields` — every type gets them
@@ -52,8 +53,8 @@ export function HealthRecordForm() {
   const schema = useMemo(() => {
     const baseFields: Record<string, z.ZodTypeAny> = {
       pet_id: z.string().min(1),
-      date: z.string().min(1, 'Обязательное поле'),
-      time: z.string().min(1, 'Обязательное поле'),
+      date: z.string().min(1, 'Укажите дату'),
+      time: z.string().min(1, 'Укажите время'),
       comment: z.string().optional(),
     };
 
@@ -65,10 +66,10 @@ export function HealthRecordForm() {
           // numeric field, including ones with no declared min at all.
           let numberSchema = z.coerce.number({ error: 'Введите число' });
           if (field.min !== undefined) {
-            numberSchema = numberSchema.min(field.min, `Минимум ${field.min}`);
+            numberSchema = numberSchema.min(field.min, `Не меньше ${field.min}`);
           }
           if (field.max !== undefined) {
-            numberSchema = numberSchema.max(field.max, `Максимум ${field.max}`);
+            numberSchema = numberSchema.max(field.max, `Не больше ${field.max}`);
           }
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
@@ -78,7 +79,7 @@ export function HealthRecordForm() {
           acc[field.name] = field.required ? baseSchema : baseSchema.optional().nullable();
         } else {
           acc[field.name] = field.required
-            ? z.string().min(1, 'Обязательное поле')
+            ? z.string().min(1, 'Заполните это поле')
             : z.string().optional();
         }
         return acc;
@@ -109,6 +110,9 @@ export function HealthRecordForm() {
   }, [isEditing, type, selectedPetId, fields]);
 
   const methods = useForm({
+    // onInvalidSubmit scrolls to and focuses the first error in page order;
+    // RHF's own focus picked the first registered ref instead.
+    shouldFocusError: false,
     resolver: zodResolver(schema),
     defaultValues
   });
@@ -305,13 +309,13 @@ export function HealthRecordForm() {
             <button
               style={{ display: 'none' }}
               type="submit"
-              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
             />
             <Button
               block
               color="primary"
               size="large"
-              onClick={() => handleSubmit(onSubmit)()}
+              onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
               loading={isSubmitting}
               style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
             >

@@ -11,15 +11,20 @@ import { z } from 'zod';
 import { usersService, type UserCreate, type UserUpdate } from '../services/users.service';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { FieldError } from '../components/FieldError';
+import { onInvalidSubmit } from '../utils/formErrors';
 
-const userSchema = z.object({
-  username: z.string().min(1, 'Имя пользователя обязательно'),
-  password: z.string().optional(),
+// A new user needs a password; an edit leaves it blank to keep the old
+// one. This was a toast in onSubmit, shown only once every other field
+// passed.
+const buildUserSchema = (isEditing: boolean) => z.object({
+  username: z.string().min(1, 'Введите логин'),
+  password: isEditing ? z.string().optional() : z.string().min(1, 'Придумайте пароль'),
   full_name: z.string().optional(),
-  email: z.string().email('Некорректный email').optional().or(z.literal('')),
+  email: z.string().email('Проверьте email, например name@mail.ru').optional().or(z.literal('')),
 });
 
-type UserFormData = z.infer<typeof userSchema>;
+type UserFormData = z.infer<ReturnType<typeof buildUserSchema>>;
 
 export function UserForm() {
   const navigate = useNavigate();
@@ -28,7 +33,10 @@ export function UserForm() {
   const queryClient = useQueryClient();
 
   const { control, handleSubmit, reset, formState: { isSubmitting } } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
+    // onInvalidSubmit scrolls to and focuses the first error in page order;
+    // RHF's own focus picked the first registered ref instead.
+    shouldFocusError: false,
+    resolver: zodResolver(buildUserSchema(isEditing)),
     defaultValues: {
       username: '',
       password: '',
@@ -93,11 +101,6 @@ export function UserForm() {
   });
 
   const onSubmit = (formData: UserFormData) => {
-    if (!isEditing && !formData.password) {
-      showToast.failure('Пароль обязателен для нового пользователя');
-      return;
-    }
-
     const data: UserCreate | UserUpdate = {
       ...(isEditing ? {} : { username: formData.username, password: formData.password || '' }),
       ...(isEditing && formData.password?.trim() && { password: formData.password.trim() }),
@@ -148,7 +151,7 @@ export function UserForm() {
                 name="username"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <Form.Item label="Логин" required help={error?.message}>
+                  <Form.Item label="Логин" required description={error?.message ? <FieldError message={error.message} /> : undefined}>
                     <Input
                       {...field}
                       id="username"
@@ -164,7 +167,7 @@ export function UserForm() {
             <Controller
               name="password"
               control={control}
-              render={({ field }) => (
+              render={({ field, fieldState: { error } }) => (
                 <>
                   {isEditing && (
                     <input
@@ -177,7 +180,11 @@ export function UserForm() {
                       aria-hidden="true"
                     />
                   )}
-                  <Form.Item label={isEditing ? "Новый пароль" : "Пароль"} required={!isEditing}>
+                  <Form.Item
+                    label={isEditing ? "Новый пароль" : "Пароль"}
+                    required={!isEditing}
+                    description={error?.message ? <FieldError message={error.message} /> : undefined}
+                  >
                     <Input
                       {...field}
                       id="password"
@@ -213,7 +220,7 @@ export function UserForm() {
               name="email"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label="Email" help={error?.message}>
+                <Form.Item label="Email" description={error?.message ? <FieldError message={error.message} /> : undefined}>
                   <Input
                     {...field}
                     id="email"
@@ -239,11 +246,11 @@ export function UserForm() {
             <button
               style={{ display: 'none' }}
               type="submit"
-              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}
+              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
             />
             <SpinnerButton
               loading={isLoading}
-              onClick={() => handleSubmit(onSubmit)()}
+              onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
               style={{ borderRadius: '12px', fontWeight: 600 }}
             >
               {isEditing ? 'Сохранить' : 'Создать'}
