@@ -37,6 +37,8 @@ jobs:
           echo '<svg xmlns="http://www.w3.org/2000/svg"/>' > "$root/favicon.svg"
           echo '{"name":"Petzy"}' > "$root/manifest.webmanifest"
           echo '<!doctype html><title>Petzy</title>' > "$root/index.html"
+          # mktemp -d is 0700; nginx's worker user must be able to read it.
+          chmod -R a+rX "$root"
           docker run -d --name nginx-check -p 8080:80 \
             -v "$PWD/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
             -v "$root:/usr/share/nginx/html:ro" nginx:alpine
