@@ -22,6 +22,8 @@ at all: the client gets a signed PUT URL, uploads straight to the bucket
 the object's size and first bytes before a document exists.
 
 Configured by S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_KEY_ID, S3_SECRET_KEY.
+S3_PREFIX (empty in production) puts every key under a namespace: local
+runs (scripts/dev_local.py) share the production bucket under "dev/".
 """
 
 import hashlib
@@ -120,9 +122,15 @@ def owner_id(db, username: str) -> str:
     return str(user["_id"]) if user else "u-" + _SAFE.sub("_", username or "unknown")
 
 
+def key_prefix() -> str:
+    """Namespace in front of every key: "" in production, "dev/" locally."""
+    prefix = _env("S3_PREFIX").strip("/")
+    return f"{prefix}/" if prefix else ""
+
+
 def pet_prefix(db, owner_username: str, pet_id) -> str:
     """Everything stored for one pet: users/<owner id>/pets/<pet id>/."""
-    return f"users/{owner_id(db, owner_username)}/pets/{_SAFE.sub('_', str(pet_id))}/"
+    return f"{key_prefix()}users/{owner_id(db, owner_username)}/pets/{_SAFE.sub('_', str(pet_id))}/"
 
 
 def new_key(db, owner_username: str, pet_id, kind: str, ext: str) -> str:

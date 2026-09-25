@@ -104,18 +104,63 @@ def _seed_demo_photo(db, owner: str, pet_id, filename: str) -> "str | None":
     return key
 
 
-def _start_local_storage() -> None:
-    """Point object storage at an in-memory S3 (moto) unless S3_* is set.
+# Local runs share the production bucket, but only ever under this prefix.
+# The database here is in-memory and rebuilt on every start, so whatever
+# the last run left under it points at nothing and is cleared.
+DEV_STORAGE_PREFIX = "dev/"
 
-    Files (photos, documents, scans) live in S3 in production; locally a
-    moto server on 127.0.0.1:5002 stands in, so nothing touches the real
-    bucket. It answers CORS preflights, so the browser can PUT scans to
-    signed URLs just like against Backblaze. Export S3_ENDPOINT & co. to
-    run against a real bucket instead.
+
+def _read_dotenv(path: str) -> dict:
+    """KEY=value lines of a .env file (no expansion, quotes stripped)."""
+    values = {}
+    if not os.path.exists(path):
+        return values
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            values[key.strip()] = value.strip().strip("'\"")
+    return values
+
+
+def _start_local_storage() -> None:
+    """Point object storage at the real bucket, under dev/, or an in-memory S3.
+
+    The bucket and key come from S3_* in the environment or the repo's
+    .env, the same bucket production uses, so there is one place to look
+    at and manage files. Every key a local run writes starts with dev/
+    (S3_PREFIX), and dev/ is emptied at start: production keys start with
+    users/ and are never listed or deleted from here.
+
+    Without a key in .env (or with DEV_STORAGE=memory) a moto server on
+    127.0.0.1:5002 stands in instead.
     """
-    if os.getenv("S3_ENDPOINT"):
-        logger.info("Object storage: %s (from the environment)", os.environ["S3_ENDPOINT"])
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for key, value in _read_dotenv(os.path.join(root, ".env")).items():
+        if key.startswith("S3_"):
+            os.environ.setdefault(key, value)
+
+    from web import storage
+
+    if os.getenv("DEV_STORAGE", "").lower() != "memory" and storage.storage_configured():
+        os.environ["S3_PREFIX"] = DEV_STORAGE_PREFIX
+        prefix = storage.key_prefix()
+        # Never anything but the dev namespace: an empty or other prefix
+        # here would reach production files.
+        if not prefix.startswith("dev/") or prefix != DEV_STORAGE_PREFIX:
+            raise RuntimeError(f"refusing to clear {prefix!r}: local runs may only clear {DEV_STORAGE_PREFIX!r}")
+        cleared = storage.delete_prefix(prefix)
+        logger.info(
+            "Object storage: bucket %s at %s, keys under %s (%d left from the last run cleared)",
+            os.environ["S3_BUCKET"],
+            os.environ["S3_ENDPOINT"],
+            prefix,
+            cleared,
+        )
         return
+
     from moto.server import ThreadedMotoServer
 
     ThreadedMotoServer(ip_address="127.0.0.1", port=5002, verbose=False).start()
@@ -126,10 +171,9 @@ def _start_local_storage() -> None:
         S3_KEY_ID="dev",
         S3_SECRET_KEY="dev",
     )
-    from web import storage
-
+    storage.reset_client()
     storage._client().create_bucket(Bucket="petzy-dev")
-    logger.info("Object storage: in-memory S3 at http://127.0.0.1:5002 (bucket petzy-dev)")
+    logger.info("Object storage: in-memory S3 at http://127.0.0.1:5002 (no S3 key in .env)")
 
 
 def _seed_demo_data(db) -> None:
