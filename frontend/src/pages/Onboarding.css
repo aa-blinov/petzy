@@ -36,7 +36,11 @@
     transform: translateX(-50%);
     background: radial-gradient(circle at 50% 50%, var(--app-accent-soft) 0%, transparent 62%);
     pointer-events: none;
-    animation: onb-glow 9s ease-in-out infinite alternate;
+    /* One slow bloom on arrival, then it holds. Every loop on these
+       screens now settles within ~5s: motion that keeps going next to
+       text the person is reading pulls the eye away from it (and WCAG
+       2.2.2 asks for anything longer to be pausable). */
+    animation: onb-glow 2.4s var(--motion-ease-decelerate) both;
 }
 
 .onb__top {
@@ -132,8 +136,9 @@
     text-align: center;
 }
 
-.onb__stage[data-dir='next'] { animation: onb-in-next var(--motion-duration-base) var(--motion-ease-decelerate) backwards; }
-.onb__stage[data-dir='prev'] { animation: onb-in-prev var(--motion-duration-fast) var(--motion-ease-standard) backwards; }
+/* A step change is the same fade as every screen change in the app
+   (.route-transition in globals.css). */
+.onb__stage { animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) backwards; }
 
 .onb__art {
     position: relative;
@@ -212,12 +217,12 @@
 
 /* ── Illustration pieces ─────────────────────────────────────────── */
 
-/* Each floating piece rises in on a stagger (--d), then idles with a
-   slow bob so the screen never looks like a static slide. */
+/* Each floating piece rises in on a stagger (--d), bobs twice so the
+   screen feels alive, then comes to rest. */
 .onb-float {
     animation:
         onb-rise var(--motion-duration-slow) var(--motion-ease-decelerate) var(--d, 0ms) both,
-        onb-bob 5.5s ease-in-out calc(var(--d, 0ms) + var(--motion-duration-slow)) infinite;
+        onb-bob 2s ease-in-out calc(var(--d, 0ms) + var(--motion-duration-slow)) 2;
 }
 
 .onb-card {
@@ -550,7 +555,7 @@
     box-shadow: 0 20px 44px -16px rgba(196, 106, 63, 0.6);
 }
 
-.onb-bell svg { animation: onb-ring 2.6s ease-in-out 700ms infinite; transform-origin: 50% 8%; }
+.onb-bell svg { animation: onb-ring 2.6s ease-in-out 700ms 2; transform-origin: 50% 8%; }
 
 /* ── Done: avatar + rings + confetti ─────────────────────────────── */
 .onb-done {
@@ -583,7 +588,7 @@
     border-radius: 48px;
     border: 2px solid var(--app-accent);
     opacity: 0;
-    animation: onb-ring-out 1.8s ease-out var(--d, 0ms) infinite;
+    animation: onb-ring-out 1.8s ease-out var(--d, 0ms) 2 both;
 }
 
 .onb-confetti {
@@ -599,16 +604,6 @@
 }
 
 /* ── Keyframes ───────────────────────────────────────────────────── */
-@keyframes onb-in-next {
-    from { opacity: 0; transform: translateX(24px); }
-    to { opacity: 1; transform: none; }
-}
-
-@keyframes onb-in-prev {
-    from { opacity: 0; transform: translateX(-16px); }
-    to { opacity: 1; transform: none; }
-}
-
 @keyframes onb-rise {
     from { opacity: 0; transform: translateY(18px) scale(0.96); }
     to { opacity: 1; transform: none; }

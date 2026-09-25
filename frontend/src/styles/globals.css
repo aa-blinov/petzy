@@ -1235,38 +1235,12 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    overlay then sat under the navbar and tab bar. */
 .route-transition {
     width: 100%;
-}
-
-/* These three were all pointing at the generic motion-appear/motion-fade
-   pair, which meant "forward" was a 6 px vertical nudge and "back" was a
-   plain cross-fade identical to "replace" — while the dedicated
-   route-forward / route-back keyframes below sat unused and
-   RouteTransition's docstring described horizontal slides that nothing
-   implemented. Point each state at its own keyframes: forward enters
-   from the right, back from the left (shorter travel, shorter duration,
-   since returning should feel quicker). "Replace" reuses the generic
-   motion-fade: a plain cross-fade carries no direction, so there was
-   nothing route-specific about keeping a second identical keyframe. */
-.route-transition--forward {
-    animation: route-forward var(--motion-duration-base) var(--motion-ease-decelerate) backwards;
-}
-
-.route-transition--back {
-    animation: route-back var(--motion-duration-fast) var(--motion-ease-standard) backwards;
-}
-
-.route-transition--replace {
-    animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) both;
-}
-
-@keyframes route-forward {
-    from { opacity: 0; transform: translate3d(24px, 0, 0); }
-    to   { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-
-@keyframes route-back {
-    from { opacity: 0; transform: translate3d(-16px, 0, 0); }
-    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    /* Every screen change is the same short fade in place: tabs, forms,
+       nested screens, going back, redirects, onboarding steps. It used to
+       be four variants (slide in from the right going forward, from the
+       left going back, a fade for tabs and redirects), so opening a form
+       and switching a tab felt like two different apps. */
+    animation: motion-fade var(--motion-duration-fast) var(--motion-ease-standard) backwards;
 }
 
 /* ============================================================

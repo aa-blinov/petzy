@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PullToRefresh } from 'antd-mobile';
 import { Download, Notebook, ChevronDown, Rows3 } from 'lucide-react';
@@ -6,7 +6,11 @@ import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { HistoryItem } from '../components/HistoryItem';
-import { HistoryChart } from '../components/HistoryChart';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+
+// recharts is most of this page's 365 KB chunk, and the chart only shows
+// once a type filter is picked; fetch it then, not on every visit.
+const HistoryChart = lazy(() => import('../components/HistoryChart').then((m) => ({ default: m.HistoryChart })));
 import { EmptyState } from '../components/EmptyState';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { HistoryFilterSheet, type HistoryFilterOption } from '../components/HistoryFilterSheet';
@@ -318,7 +322,9 @@ export function History() {
                         <h2 className="section-header" style={{ marginBottom: 0, paddingLeft: 4 }}>
                             Тренды
                         </h2>
-                        <HistoryChart type={filterType} petId={selectedPetId} />
+                        <Suspense fallback={<LoadingSpinner fullscreen={false} />}>
+                            <HistoryChart type={filterType} petId={selectedPetId} />
+                        </Suspense>
                     </div>
                 )}
 

@@ -99,7 +99,6 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     : [...INTRO_STEPS, 'species', 'name', ...(pushState === 'offerable' ? (['notify'] as StepId[]) : []), 'done'];
 
   const [index, setIndex] = useState(0);
-  const [dir, setDir] = useState<'next' | 'prev'>('next');
   const step = steps[Math.min(index, steps.length - 1)];
 
   const [species, setSpecies] = useState<SpeciesKey | null>(null);
@@ -119,7 +118,6 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   const go = (target: number) => {
     const clamped = Math.max(0, Math.min(target, steps.length - 1));
     if (clamped === index) return;
-    setDir(clamped > index ? 'next' : 'prev');
     setIndex(clamped);
     hapticFeedback('light');
   };
@@ -455,7 +453,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       )}
 
-      <div className="onb__stage" key={step} data-dir={dir}>
+      <div className="onb__stage" key={step}>
         {art && <div className="onb__art">{art}</div>}
         <div className="onb__copy">
           <h1 className="onb__title">{title}</h1>

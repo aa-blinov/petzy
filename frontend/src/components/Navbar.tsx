@@ -8,6 +8,7 @@ import { PetImage } from './PetImage';
 import { speciesIcon } from '../utils/speciesIcon';
 import type { Pet } from '../services/pets.service';
 import { SPECIES_LABELS } from '../utils/constants';
+import { MAIN_TAB_PATHS } from '../utils/navigation';
 
 export function Navbar() {
   const location = useLocation();
@@ -36,8 +37,7 @@ export function Navbar() {
   }
 
   // Show back button only on pages that are not main tabs
-  const mainTabs = ['/', '/medications', '/documents', '/settings', '/history'];
-  const isMainTab = mainTabs.includes(location.pathname) || location.pathname === '';
+  const isMainTab = MAIN_TAB_PATHS.includes(location.pathname) || location.pathname === '';
 
   // The pet switcher only belongs on screens whose content is scoped to
   // one pet, or on the other main tabs for a consistent topbar — not on
@@ -46,8 +46,7 @@ export function Navbar() {
   // different animal. Settings has both reasons to carry it: it's a main
   // tab like the others, and one of its own rows (dashboard tile order)
   // is itself per-pet.
-  const petScopedRoutes = ['/', '/medications', '/documents', '/history', '/settings'];
-  const showPetSwitcher = petScopedRoutes.includes(location.pathname) || location.pathname === '';
+  const showPetSwitcher = isMainTab;
 
   const logo = (
     <div

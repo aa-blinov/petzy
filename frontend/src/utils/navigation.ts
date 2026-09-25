@@ -1,5 +1,8 @@
 import type { NavigateFunction } from 'react-router-dom';
 
+/** The bottom tab bar's sections: peers, not steps in a hierarchy. */
+export const MAIN_TAB_PATHS = ['/', '/medications', '/documents', '/history', '/settings'];
+
 /**
  * Leave a form the same way the user arrived at it — by going back,
  * not by jumping to one hardcoded destination.
