@@ -66,6 +66,53 @@ jobs:
             docker compose exec -T web python -c "from web.db import client;import time;t=time.time();print(client.admin.command('ping'), round(time.time()-t,2),'s')" 2>&1 | tail -3 | mask
 
             echo
+            echo "=== inside web: object storage (counts and statuses only) ==="
+            docker compose exec -T web python - <<'PY' 2>&1 | grep -v "WARNING - Could not create index" | mask
+            import logging, os, urllib.request, uuid
+            logging.disable(logging.WARNING)
+            from web import storage
+            from web.app import db
+            from web.helpers import load_image_variant
+            print("configured:", storage.storage_configured(), "| key prefix:", repr(storage.key_prefix()))
+            try:
+                rules = storage._client().get_bucket_cors(Bucket=storage._bucket())["CORSRules"]
+                print("CORS origins:", rules[0]["AllowedOrigins"], "methods:", sorted(rules[0]["AllowedMethods"]))
+            except Exception as e:
+                print("CORS: FAIL", type(e).__name__)
+            key = f"healthcheck/server-{uuid.uuid4().hex}.txt"
+            try:
+                storage.put_bytes(key, b"petzy", "text/plain")
+                ok_read = storage.get_bytes(key)[0] == b"petzy"
+                with urllib.request.urlopen(storage.download_url(key, "attachment"), timeout=20) as r:
+                    ok_signed = r.read() == b"petzy"
+                storage.delete_object(key)
+                print("write/read/signed/delete:", ok_read, ok_signed, "versions left:", len(list(storage._versions(key))))
+            except Exception as e:
+                print("write test: FAIL", type(e).__name__, e)
+            def refs(coll, field):
+                values = [str(d[field]) for d in db[coll].find({field: {"$nin": [None, ""]}}, {field: 1})]
+                keys = [v for v in values if storage.is_storage_key(v)]
+                present = sum(storage.object_size(k) is not None for k in keys)
+                bad_prefix = sum(not k.startswith("users/") for k in keys)
+                print(f"{coll}.{field}: {len(values)} refs, {len(keys)} in storage, {present} present,"
+                      f" {len(values) - len(keys)} legacy, {bad_prefix} outside users/")
+                return keys
+            photos = refs("pets", "photo_file_id")
+            refs("documents", "file_id")
+            print("scan documents:", db.documents.count_documents({"scan": True}),
+                  "| pending upload slots:", db.document_uploads.count_documents({}),
+                  "| GridFS files left:", db["fs.files"].count_documents({}))
+            if photos:
+                try:
+                    data, content_type = load_image_variant(photos[0], 96, None)
+                    print("thumbnail pipeline:", content_type, len(data) > 0)
+                except Exception as e:
+                    print("thumbnail pipeline: FAIL", type(e).__name__)
+            PY
+            echo "--- storage-related errors in web logs since start"
+            docker compose logs --no-color web 2>&1 | grep -iE "storage|s3|boto|ClientError|bucket" | grep -iE "error|fail|warn|exception" | mask | tail -10
+            echo "(end)"
+            echo
             echo "=== web: what each gunicorn thread is blocked on (from /proc) ==="
             # The image has no ps/py-spy; /proc still shows, per thread, its
             # state, kernel wait channel and current syscall, and the fds it
