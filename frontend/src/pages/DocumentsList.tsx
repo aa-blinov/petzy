@@ -370,13 +370,16 @@ export function DocumentsList() {
                                 <p
                                   style={{
                                     margin: '4px 0 0',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    columnGap: 'var(--spacing-md)',
                                     fontSize: 'var(--text-xs)',
                                     color: 'var(--app-text-tertiary)',
                                     fontVariantNumeric: 'tabular-nums',
                                   }}
                                 >
-                                  {formatRelativeDateTime(doc.created_at)}
-                                  {doc.file_size > 0 && ` · ${formatFileSize(doc.file_size)}`}
+                                  <span>{formatRelativeDateTime(doc.created_at)}</span>
+                                  {doc.file_size > 0 && <span>{formatFileSize(doc.file_size)}</span>}
                                 </p>
                                 {doc.username && doc.username !== currentUsername && (
                                   <button
