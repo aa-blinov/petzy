@@ -46,18 +46,39 @@ server {
         proxy_buffering off;
     }
 
-    # React app static assets (JS, CSS, images, etc.)
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|webmanifest)$ {
+    # Build output under /assets/ has a content hash in every file name,
+    # so it can be cached for good.
+    location ^~ /assets/ {
         root /home/justcomex/services/cat-health-control/frontend/dist;
         try_files $uri =404;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
+    # Everything else at the root keeps its name when its content changes
+    # (favicon.svg, the icons, sw.js, registerSW.js): revalidate on every
+    # use. These used to share the year-long immutable rule above, so a new
+    # favicon or manifest never reached anyone who had opened the site.
+    location = /manifest.webmanifest {
+        root /home/justcomex/services/cat-health-control/frontend/dist;
+        types { }
+        default_type application/manifest+json;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache";
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ {
+        root /home/justcomex/services/cat-health-control/frontend/dist;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache";
+    }
+
     # React app routes - SPA fallback (everything except the API is the React app, /login included)
     location / {
         root /home/justcomex/services/cat-health-control/frontend/dist;
         try_files $uri $uri/ /index.html;
+        # index.html names the current hashed bundle; never serve it stale.
+        add_header Cache-Control "no-cache";
     }
 
     # Health check
