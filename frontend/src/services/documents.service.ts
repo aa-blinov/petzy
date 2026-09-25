@@ -1,14 +1,73 @@
 import api from './api';
 
-export type DocumentCategory = 'vaccination' | 'lab_result' | 'conclusion' | 'insurance' | 'other';
+export type DocumentCategory = 'vaccination' | 'lab_result' | 'conclusion' | 'imaging' | 'insurance' | 'other';
 
 export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   vaccination: 'Прививки',
   lab_result: 'Анализы',
   conclusion: 'Заключения',
+  imaging: 'Снимки',
   insurance: 'Страховка',
   other: 'Другое',
 };
+
+/** Scans (MRI/CT/X-ray exports) come as archives or DICOM files; the same
+ *  list the backend accepts (SCAN_FORMATS in web/storage.py). */
+export const SCAN_EXTENSIONS = ['.zip', '.7z', '.rar', '.tar', '.tar.gz', '.tgz', '.gz', '.dcm', '.iso'];
+
+export function isScanFilename(name: string): boolean {
+  const lower = name.toLowerCase();
+  return SCAN_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+export interface StorageStatus {
+  scans_enabled: boolean;
+  max_scan_bytes: number;
+}
+
+interface ScanUploadSlot {
+  upload_id: string;
+  upload_url: string;
+  content_type: string;
+  max_bytes: number;
+}
+
+export interface ScanCreateInput {
+  pet_id: string;
+  title: string;
+  note?: string;
+  expires_at?: string;
+  file: File;
+  onProgress?: (fraction: number) => void;
+  signal?: AbortSignal;
+}
+
+/** PUT straight to the bucket's signed URL. XHR rather than fetch: fetch
+ *  still can't report upload progress, and a 500 MB upload needs it. */
+function putToSignedUrl(url: string, file: File, contentType: string, onProgress?: (f: number) => void, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', contentType);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new ScanUploadError('upload')));
+    xhr.onerror = () => reject(new ScanUploadError('network'));
+    xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
+    signal?.addEventListener('abort', () => xhr.abort(), { once: true });
+    xhr.send(file);
+  });
+}
+
+export class ScanUploadError extends Error {
+  readonly reason: 'upload' | 'network';
+
+  constructor(reason: 'upload' | 'network') {
+    super(reason === 'network' ? 'Нет связи с хранилищем. Проверьте интернет и попробуйте ещё раз' : 'Хранилище не приняло файл. Попробуйте ещё раз');
+    this.reason = reason;
+  }
+}
 
 export interface PetDocument {
   _id: string;
@@ -24,6 +83,8 @@ export interface PetDocument {
   original_filename: string;
   content_type: string;
   file_size: number;
+  /** A scan archive: downloaded, not previewed. */
+  scan?: boolean;
   created_at: string;
 }
 
@@ -73,6 +134,29 @@ export const documentsService = {
     formData.append('file', data.file);
 
     const response = await api.post<{ message: string; id: string }>('/documents', formData);
+    return response.data.id;
+  },
+
+  async getStorageStatus(): Promise<StorageStatus> {
+    const response = await api.get<StorageStatus>('/documents/storage');
+    return response.data;
+  },
+
+  /** Reserve a slot, upload the file straight to storage, then confirm:
+   *  the backend checks the stored size and format before the document
+   *  appears. */
+  async createScan(data: ScanCreateInput): Promise<string> {
+    const { data: slot } = await api.post<ScanUploadSlot>('/documents/scans', {
+      pet_id: data.pet_id,
+      filename: data.file.name,
+      size: data.file.size,
+    });
+    await putToSignedUrl(slot.upload_url, data.file, slot.content_type, data.onProgress, data.signal);
+    const response = await api.post<{ message: string; id: string }>(`/documents/scans/${slot.upload_id}/complete`, {
+      title: data.title,
+      note: data.note || undefined,
+      expires_at: data.expires_at || undefined,
+    });
     return response.data.id;
   },
 

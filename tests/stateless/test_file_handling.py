@@ -153,12 +153,13 @@ class TestServingFiles:
         self, client, mock_db, regular_user_token, test_pet
     ):
         from web.app import fs
+        from web.storage import file_version
 
         doc = self._document(mock_db, str(test_pet["_id"]))
         with patch.object(fs, "get") as mock_get:
             response = client.get(
                 f"/api/documents/{doc['_id']}/file?w=192",
-                headers={**_auth(regular_user_token), "If-None-Match": f'"{doc["file_id"]}_192_None"'},
+                headers={**_auth(regular_user_token), "If-None-Match": f'"{file_version(doc["file_id"])}_192_None"'},
             )
 
         assert response.status_code == 304
@@ -188,75 +189,82 @@ class TestServingFiles:
 
 @pytest.mark.pets
 class TestThumbnailCache:
-    def _pet_with_photo(self, mock_db, test_pet):
-        photo_id = str(ObjectId())
-        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": photo_id}})
-        return photo_id
+    """Resized variants live in the bucket next to their original."""
 
-    def test_second_request_is_served_from_the_cache(self, client, mock_db, regular_user_token, test_pet):
-        from web.app import fs
+    def _pet_with_photo(self, mock_db, test_pet, s3, size=(1000, 1000)):
+        key = f"users/u1/pets/{test_pet['_id']}/photos/original.webp"
+        buf = io.BytesIO()
+        Image.new("RGB", size, (200, 50, 50)).save(buf, format="WEBP")
+        s3.put_object(Bucket="petzy-test", Key=key, Body=buf.getvalue(), ContentType="image/webp")
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": key}})
+        return key
 
-        photo_id = self._pet_with_photo(mock_db, test_pet)
-        stored = MagicMock(read=MagicMock(return_value=_png_bytes((1000, 1000))), content_type="image/webp")
+    @staticmethod
+    def _keys(s3, prefix=""):
+        return {o["Key"] for o in s3.list_objects_v2(Bucket="petzy-test", Prefix=prefix).get("Contents", [])}
+
+    def test_second_request_is_served_from_the_cache(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        key = self._pet_with_photo(mock_db, test_pet, s3_storage)
         url = f"/api/pets/{test_pet['_id']}/photo?w=90"
 
-        with patch.object(fs, "get", return_value=stored):
-            first = client.get(url, headers=_auth(regular_user_token))
-        with patch.object(fs, "get") as mock_get:
+        first = client.get(url, headers=_auth(regular_user_token))
+        with patch("web.helpers.read_stored_file") as read_original:
             second = client.get(url, headers=_auth(regular_user_token))
 
-        mock_get.assert_not_called()
+        read_original.assert_not_called()
         assert second.data == first.data
         assert Image.open(io.BytesIO(second.data)).size == (96, 96)  # 90 snapped up to 96
-        assert mock_db["image_thumbnails"].count_documents({"source_file_id": photo_id}) == 1
+        assert self._keys(s3_storage, f"{key}.thumbs/") == {f"{key}.thumbs/96x0.webp"}
 
-    def test_nearby_sizes_share_one_cached_variant(self, client, mock_db, regular_user_token, test_pet):
-        from web.app import fs
+    def test_nearby_sizes_share_one_cached_variant(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        key = self._pet_with_photo(mock_db, test_pet, s3_storage)
 
-        photo_id = self._pet_with_photo(mock_db, test_pet)
-        stored = MagicMock(read=MagicMock(return_value=_png_bytes((1000, 1000))), content_type="image/webp")
+        for width in (81, 90, 96):
+            client.get(f"/api/pets/{test_pet['_id']}/photo?w={width}", headers=_auth(regular_user_token))
 
-        with patch.object(fs, "get", return_value=stored):
-            for width in (81, 90, 96):
-                client.get(f"/api/pets/{test_pet['_id']}/photo?w={width}", headers=_auth(regular_user_token))
+        assert len(self._keys(s3_storage, f"{key}.thumbs/")) == 1
 
-        assert mock_db["image_thumbnails"].count_documents({"source_file_id": photo_id}) == 1
+    def test_small_original_is_not_cached(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        key = self._pet_with_photo(mock_db, test_pet, s3_storage, size=(30, 30))
 
-    def test_small_original_is_not_cached(self, client, mock_db, regular_user_token, test_pet):
-        from web.app import fs
+        response = client.get(f"/api/pets/{test_pet['_id']}/photo?w=96", headers=_auth(regular_user_token))
 
-        self._pet_with_photo(mock_db, test_pet)
-        stored = MagicMock(read=MagicMock(return_value=_png_bytes((30, 30))), content_type="image/png")
+        assert Image.open(io.BytesIO(response.data)).size == (30, 30)
+        assert self._keys(s3_storage, f"{key}.thumbs/") == set()
 
-        with patch.object(fs, "get", return_value=stored):
-            response = client.get(f"/api/pets/{test_pet['_id']}/photo?w=96", headers=_auth(regular_user_token))
+    def test_deleting_a_file_drops_its_thumbnails(self, mock_db, s3_storage):
+        keep, gone = "users/u1/pets/p1/photos/keep.webp", "users/u1/pets/p1/photos/gone.webp"
+        for key in (keep, f"{keep}.thumbs/96x0.webp", gone, f"{gone}.thumbs/96x0.webp", f"{gone}.thumbs/192x0.webp"):
+            s3_storage.put_object(Bucket="petzy-test", Key=key, Body=b"x")
 
-        assert response.data == _png_bytes((30, 30))
-        assert mock_db["image_thumbnails"].count_documents({}) == 0
+        delete_stored_file(gone)
 
-    def test_deleting_a_file_drops_its_thumbnails(self, mock_db):
-        from web.app import fs
+        assert self._keys(s3_storage) == {keep, f"{keep}.thumbs/96x0.webp"}
 
-        keep, gone = str(ObjectId()), str(ObjectId())
-        mock_db["image_thumbnails"].insert_many(
-            [{"_id": f"{keep}_96_None", "source_file_id": keep}, {"_id": f"{gone}_96_None", "source_file_id": gone}]
+    def test_removing_a_photo_drops_the_file_and_its_thumbnails(
+        self, client, mock_db, regular_user_token, test_pet, s3_storage
+    ):
+        key = self._pet_with_photo(mock_db, test_pet, s3_storage)
+        client.get(f"/api/pets/{test_pet['_id']}/photo?w=96", headers=_auth(regular_user_token))
+        assert self._keys(s3_storage) == {key, f"{key}.thumbs/96x0.webp"}
+
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}", json={"remove_photo": True}, headers=_auth(regular_user_token)
         )
 
-        with patch.object(fs, "delete") as mock_delete:
-            delete_stored_file(gone)
+        assert response.status_code == 200
+        assert self._keys(s3_storage) == set()
 
-        mock_delete.assert_called_once_with(ObjectId(gone))
-        assert [t["source_file_id"] for t in mock_db["image_thumbnails"].find()] == [keep]
-
-    def test_replacing_a_photo_drops_the_old_thumbnails(self, client, mock_db, regular_user_token, test_pet):
+    def test_legacy_gridfs_file_delete_still_clears_its_mongo_thumbnails(self, mock_db):
         from web.app import fs
 
-        old_id = self._pet_with_photo(mock_db, test_pet)
-        mock_db["image_thumbnails"].insert_one({"_id": f"{old_id}_96_None", "source_file_id": old_id})
+        legacy = str(ObjectId())
+        mock_db["image_thumbnails"].insert_one({"_id": f"{legacy}_96_None", "source_file_id": legacy})
 
-        with patch.object(fs, "delete"):
-            client.put(f"/api/pets/{test_pet['_id']}", json={"remove_photo": True}, headers=_auth(regular_user_token))
+        with patch.object(fs, "delete") as mock_delete:
+            delete_stored_file(legacy)
 
+        mock_delete.assert_called_once_with(ObjectId(legacy))
         assert mock_db["image_thumbnails"].count_documents({}) == 0
 
 
@@ -281,7 +289,7 @@ class TestNoOrphanedFiles:
     ):
         from web.app import fs
 
-        old_id, new_id = ObjectId(), ObjectId()
+        old_id = ObjectId()
         mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(old_id)}})
         calls = []
 
@@ -289,7 +297,7 @@ class TestNoOrphanedFiles:
             # By the time the old file goes, the pet must already point at the new one.
             calls.append((file_id, mock_db["pets"].find_one({"_id": test_pet["_id"]})["photo_file_id"]))
 
-        with patch.object(fs, "put", return_value=new_id), patch.object(fs, "delete", side_effect=fake_delete):
+        with patch.object(fs, "delete", side_effect=fake_delete):
             response = client.put(
                 f"/api/pets/{test_pet['_id']}",
                 data={"name": "Test Cat", "photo_file": (io.BytesIO(_png_bytes()), "cat.png", "image/png")},
@@ -298,7 +306,10 @@ class TestNoOrphanedFiles:
             )
 
         assert response.status_code == 200
-        assert calls == [(old_id, str(new_id))]
+        assert len(calls) == 1
+        deleted, pointing_at = calls[0]
+        assert deleted == old_id
+        assert pointing_at.startswith("users/")  # already the new object in storage
 
 
 @pytest.mark.documents

@@ -10,10 +10,12 @@ from flask_pydantic_spec import Request, Response
 from web.app import api, logger  # shared logger and api
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
+from web import storage
 from web.helpers import (
     PRIVATE_IMMUTABLE_CACHE,
     delete_stored_file,
     get_pet_and_validate,
+    store_file,
     load_image_variant,
     optimize_image,
     parse_date,
@@ -61,6 +63,35 @@ DEFAULT_TILES_SETTINGS = {
 }
 
 
+def _expose_photo(pet: dict) -> None:
+    """Swap the stored file reference for the URL clients load the photo from.
+
+    The reference is a bucket key naming the owner's internal id and the
+    storage layout: ours to know, not the client's. The URL carries a
+    version token so a new photo is a new URL for the browser cache.
+    """
+    ref = pet.pop("photo_file_id", None)
+    if ref:
+        pet["photo_url"] = (
+            url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={storage.file_version(ref)}"
+        )
+
+
+def _store_pet_photo(photo_file, owner_username: str, pet_id) -> str:
+    """Optimise an uploaded photo and put it in object storage; returns its key."""
+    optimized = optimize_image(photo_file)
+    if optimized:
+        data, content_type, ext = optimized[0].getvalue(), optimized[1], ".webp"
+    else:
+        # Not an image Pillow can read: keep the upload as it came.
+        photo_file.seek(0)
+        data = photo_file.read()
+        content_type = photo_file.content_type or "application/octet-stream"
+        name = photo_file.filename or ""
+        ext = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    return store_file(owner_username, pet_id, "photos", data, content_type, ext)
+
+
 def get_tiles_settings(pet: dict) -> dict:
     """Get tiles settings from pet, or return default if not set."""
     if pet and pet.get("tiles_settings"):
@@ -98,13 +129,7 @@ def get_pets():
         # Ensure _id is string (already converted by convert_objectid_to_str, but double-check)
         pet["_id"] = str(pet["_id"])
 
-        # Convert photo_file_id to string if it exists
-        if pet.get("photo_file_id"):
-            pet["photo_file_id"] = str(pet["photo_file_id"])
-            # Add cache-busting parameter using photo_file_id so browser gets new image when it changes
-            pet["photo_url"] = (
-                url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
-            )
+        _expose_photo(pet)
 
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
@@ -159,42 +184,19 @@ def create_pet():
             # JSON request - already validated by @api.validate(body=Request(PetCreate))
             data = request.context.body  # type: ignore[attr-defined]
 
-        # Handle photo file upload (only for multipart/form-data)
+        # Handle photo file upload (only for multipart/form-data). The id is
+        # chosen up front: the photo's storage key includes it.
+        new_pet_id = ObjectId()
         photo_file_id = None
         if is_multipart and "photo_file" in request.files:
             photo_file = request.files["photo_file"]
             if photo_file.filename:
-                # Optimize image to WebP format
-                optimized_result = optimize_image(photo_file)
-                if optimized_result:
-                    optimized_file, content_type = optimized_result
-                    # Generate filename with .webp extension
-                    original_filename = photo_file.filename
-                    filename_without_ext = (
-                        original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
-                    )
-                    optimized_filename = f"{filename_without_ext}.webp"
-
-                    photo_file_id = str(
-                        app.fs.put(
-                            optimized_file,
-                            filename=optimized_filename,
-                            content_type=content_type,
-                        )
-                    )
-                else:
-                    # Fallback to original file if optimization fails
-                    photo_file_id = str(
-                        app.fs.put(
-                            photo_file,
-                            filename=photo_file.filename,
-                            content_type=photo_file.content_type,
-                        )
-                    )
+                photo_file_id = _store_pet_photo(photo_file, username, new_pet_id)
 
         birth_date = parse_date(data.birth_date, allow_future=False)
 
         pet_data = {
+            "_id": new_pet_id,
             "name": data.name,
             "breed": data.breed or "",
             "species": data.species or "",
@@ -230,15 +232,13 @@ def create_pet():
         # Mirror get_pet/get_pets: a photo uploaded on create should come
         # back with a usable photo_url in this same response, not only
         # once the caller re-fetches the pet.
-        if pet_data.get("photo_file_id"):
-            pet_data["photo_url"] = (
-                url_for("pets.get_pet_photo", pet_id=pet_data["_id"], _external=False)
-                + f"?v={pet_data['photo_file_id'][:8]}"
-            )
+        _expose_photo(pet_data)
 
         logger.info(f"Pet created: id={pet_data['_id']}, name={pet_data['name']}, owner={username}")
         return get_message("pet_created", status=201, pet=pet_data)
 
+    except storage.StorageNotConfigured:
+        return error_response("storage_not_configured")
     except ValueError as e:
         app.logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
         return error_response("validation_error", str(e))
@@ -274,10 +274,7 @@ def get_pet(pet_id):
         if isinstance(pet.get("created_at"), datetime):
             pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
 
-        if pet.get("photo_file_id"):
-            pet["photo_url"] = (
-                url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={pet['photo_file_id'][:8]}"
-            )
+        _expose_photo(pet)
 
         pet["current_user_is_owner"] = pet.get("owner") == username
 
@@ -348,33 +345,8 @@ def update_pet(pet_id):
                 # later in this request failed.
                 stale_photo_id = pet.get("photo_file_id") if pet else None
 
-                # Optimize image to WebP format
-                optimized_result = optimize_image(photo_file)
-                if optimized_result:
-                    optimized_file, content_type = optimized_result
-                    # Generate filename with .webp extension
-                    original_filename = photo_file.filename
-                    filename_without_ext = (
-                        original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
-                    )
-                    optimized_filename = f"{filename_without_ext}.webp"
-
-                    photo_file_id = str(
-                        app.fs.put(
-                            optimized_file,
-                            filename=optimized_filename,
-                            content_type=content_type,
-                        )
-                    )
-                else:
-                    # Fallback to original file if optimization fails
-                    photo_file_id = str(
-                        app.fs.put(
-                            photo_file,
-                            filename=photo_file.filename,
-                            content_type=photo_file.content_type,
-                        )
-                    )
+                # The photo belongs under the pet owner's prefix, whoever uploads it.
+                photo_file_id = _store_pet_photo(photo_file, pet["owner"], pet_id)
             elif request.form.get("remove_photo") == "true":
                 stale_photo_id = pet.get("photo_file_id") if pet else None
                 photo_file_id = None
@@ -438,6 +410,8 @@ def update_pet(pet_id):
         logger.info(f"Pet updated: id={pet_id}, user={username}")
         return get_message("pet_updated")
 
+    except storage.StorageNotConfigured:
+        return error_response("storage_not_configured")
     except ValueError as e:
         app.logger.warning(f"Invalid pet_id for pet retrieval: pet_id={pet_id}, user={username}, error={e}")
         return error_response("validation_error", str(e))
@@ -567,10 +541,10 @@ def delete_pet(pet_id):
             ("documents", {"pet_id": pet_id}),
         ]
 
-        # Delete photo from GridFS if exists
+        # Captured before the record goes
         old_photo_id = pet.get("photo_file_id") if pet else None
 
-        # Documents' GridFS files need the same capture-before-delete
+        # Documents' files need the same capture-before-delete
         # treatment as the pet photo — the Mongo rows disappear once
         # collections_to_clean runs, so grab their file_ids now.
         doc_file_ids = [
@@ -646,7 +620,7 @@ def delete_pet(pet_id):
                 # Re-raise if it's not a transaction-related error
                 raise
 
-        # Delete photo from GridFS (outside transaction as GridFS doesn't support transactions)
+        # Delete the photo (outside the transaction: storage isn't part of it)
         if old_photo_id:
             try:
                 delete_stored_file(old_photo_id)
@@ -655,12 +629,21 @@ def delete_pet(pet_id):
                 # Log but don't fail the request
                 logger.warning(f"Failed to delete photo {old_photo_id} for pet {pet_id}: {photo_error}")
 
-        # Same rationale — document files live in GridFS, outside the transaction.
+        # Same rationale: files live outside the database and its transaction.
         for file_id in doc_file_ids:
             try:
                 delete_stored_file(file_id)
             except Exception as file_error:
                 logger.warning(f"Failed to delete document file {file_id} for pet {pet_id}: {file_error}")
+
+        # Unconfirmed scan uploads, and anything else left under the pet's
+        # prefix (thumbnails, an object whose record write failed).
+        app.db["document_uploads"].delete_many({"pet_id": pet_id})
+        if storage.storage_configured():
+            try:
+                storage.delete_prefix(storage.pet_prefix(app.db, pet["owner"], pet_id))
+            except Exception as prefix_error:
+                logger.warning(f"Failed to clear stored files for pet {pet_id}: {prefix_error}")
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
         return get_message("pet_deleted")
@@ -705,7 +688,7 @@ def get_pet_photo(pet_id):
         width = snap_thumbnail_size(request.args.get("w", type=int))
         height = snap_thumbnail_size(request.args.get("h", type=int))
 
-        etag = f"{photo_file_id}_{width}_{height}"
+        etag = f"{storage.file_version(photo_file_id)}_{width}_{height}"
         if request.if_none_match.contains(etag):
             # Same file id + size means the same bytes — skip the GridFS read
             # and the resize entirely.

@@ -53,6 +53,14 @@ jobs:
             upsert_env VAPID_PUBLIC_KEY "${{ secrets.VAPID_PUBLIC_KEY }}"
             upsert_env VAPID_PRIVATE_KEY "${{ secrets.VAPID_PRIVATE_KEY }}"
             upsert_env VAPID_CLAIMS_EMAIL "${{ secrets.VAPID_CLAIMS_EMAIL }}"
+            # Object storage (Backblaze B2) holds every file: photos,
+            # documents, scans. Endpoint and bucket aren't secret; the key
+            # pair is. Without it uploads answer "storage unavailable".
+            upsert_env S3_ENDPOINT "https://s3.eu-central-003.backblazeb2.com"
+            upsert_env S3_REGION "eu-central-003"
+            upsert_env S3_BUCKET "petzy-1"
+            upsert_env S3_KEY_ID "${{ secrets.S3_KEY_ID }}"
+            upsert_env S3_SECRET_KEY "${{ secrets.S3_SECRET_KEY }}"
 
             # Rebuild everything that has its own Dockerfile / depends on the
             # backend source. Previously only `frontend` was rebuilt, which
@@ -62,3 +70,6 @@ jobs:
             docker compose build
             docker compose up -d --remove-orphans
             docker compose ps
+            # Files still in GridFS move to object storage; skips what has
+            # moved already and does nothing when storage isn't configured.
+            docker compose exec -T web python -m scripts.migrate_files_to_s3

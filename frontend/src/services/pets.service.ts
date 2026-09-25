@@ -11,7 +11,6 @@ export interface Pet {
   is_neutered?: boolean;
   health_notes?: string;
   photo_url?: string;
-  photo_file_id?: string;
   tiles_settings?: TilesSettings;
   owner: string;
   shared_with?: string[];

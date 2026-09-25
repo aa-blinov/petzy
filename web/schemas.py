@@ -490,7 +490,6 @@ class PetResponse(BaseModel):
     is_neutered: Optional[bool] = None
     health_notes: Optional[str] = None
     photo_url: Optional[str] = None
-    photo_file_id: Optional[str] = None
     tiles_settings: Optional[TilesSettings] = None
     owner: str
     shared_with: Optional[List[str]] = None
@@ -511,7 +510,6 @@ class PetResponse(BaseModel):
                 "is_neutered": True,
                 "health_notes": "Здоров",
                 "photo_url": "/api/pets/507f1f77bcf86cd799439011/photo?v=abc12345",
-                "photo_file_id": "507f1f77bcf86cd799439012",
                 "owner": "admin",
                 "shared_with": ["user2"],
                 "created_at": "2024-01-15 14:30",
@@ -1080,6 +1078,38 @@ class DocumentCreate(PetIdQuery):
         # for any real insurance/vaccination cycle, still catching a typo
         # landing centuries out).
         return validate_date_logic(v, allow_future=True, max_future_days=3650)
+
+
+class ScanUploadRequest(PetIdQuery):
+    """Ask for a slot to upload a scan archive straight to object storage."""
+
+    filename: str = Field(..., min_length=1, max_length=255, description="Имя файла с расширением")
+    size: int = Field(..., gt=0, description="Размер файла в байтах")
+
+
+class ScanUploadSlot(BaseModel):
+    upload_id: str
+    upload_url: str = Field(..., description="Куда отправить файл методом PUT")
+    content_type: str = Field(..., description="Заголовок Content-Type для PUT")
+    max_bytes: int
+
+
+class ScanUploadComplete(BaseModel):
+    """Turn an uploaded scan into a document."""
+
+    title: str = Field(..., min_length=1, max_length=100)
+    note: Optional[str] = Field(None, max_length=500)
+    expires_at: Optional[str] = Field(None, description="Срок действия (YYYY-MM-DD)")
+
+    @field_validator("expires_at")
+    @classmethod
+    def validate_expires_at(cls, v):
+        return validate_date_logic(v, allow_future=True, max_future_days=3650)
+
+
+class StorageStatus(BaseModel):
+    scans_enabled: bool
+    max_scan_bytes: int
 
 
 class DocumentUpdate(BaseModel):

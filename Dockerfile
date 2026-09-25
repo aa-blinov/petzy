@@ -13,4 +13,7 @@ COPY web ./web
 # dev password, one-off audit and migration scripts, screenshot
 # helpers) that has no business in a shipped image.
 COPY scripts/send_medication_reminders.py ./scripts/send_medication_reminders.py
+# Run by the deploy after every start: moves any file still in GridFS to
+# object storage (idempotent, a no-op once everything has moved).
+COPY scripts/migrate_files_to_s3.py ./scripts/migrate_files_to_s3.py
 COPY gunicorn.conf.py ./

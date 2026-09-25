@@ -12,6 +12,17 @@ from bson import ObjectId
 from PIL import Image
 
 
+def _stored(s3, key: str) -> tuple[bytes, str]:
+    """The object behind a record's file_id, straight from the (moto) bucket."""
+    obj = s3.get_object(Bucket="petzy-test", Key=key)
+    return obj["Body"].read(), obj["ContentType"]
+
+
+def _owner_prefix(mock_db, username: str, pet_id) -> str:
+    user_id = mock_db["users"].find_one({"username": username})["_id"]
+    return f"users/{user_id}/pets/{pet_id}/"
+
+
 def _make_png_bytes() -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (100, 100), (1, 2, 3)).save(buf, format="PNG")
@@ -20,28 +31,28 @@ def _make_png_bytes() -> bytes:
 
 @pytest.mark.documents
 class TestCreateDocument:
-    def test_create_document_with_image_success(self, client, mock_db, regular_user_token, test_pet):
-        from web.app import fs
-
-        with patch.object(fs, "put", return_value=ObjectId()) as mock_put:
-            response = client.post(
-                "/api/documents",
-                data={
-                    "pet_id": str(test_pet["_id"]),
-                    "category": "vaccination",
-                    "title": "Прививка от бешенства",
-                    "file": (io.BytesIO(_make_png_bytes()), "cert.png", "image/png"),
-                },
-                headers={"Authorization": f"Bearer {regular_user_token}"},
-                content_type="multipart/form-data",
-            )
+    def test_create_document_with_image_success(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        response = client.post(
+            "/api/documents",
+            data={
+                "pet_id": str(test_pet["_id"]),
+                "category": "vaccination",
+                "title": "Прививка от бешенства",
+                "file": (io.BytesIO(_make_png_bytes()), "cert.png", "image/png"),
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+            content_type="multipart/form-data",
+        )
 
         assert response.status_code == 201
         data = response.get_json()
         assert "id" in data
-        mock_put.assert_called_once()
 
         doc = mock_db["documents"].find_one({"_id": ObjectId(data["id"])})
+        # Stored in the bucket under the pet owner's own prefix.
+        assert doc["file_id"].startswith(_owner_prefix(mock_db, "testuser", test_pet["_id"]) + "documents/")
+        stored, stored_type = _stored(s3_storage, doc["file_id"])
+        assert stored_type == "image/webp" and stored[:4] == b"RIFF"
         assert doc["category"] == "vaccination"
         assert doc["title"] == "Прививка от бешенства"
         assert doc["content_type"] == "image/webp"  # real PNG -> optimize_image succeeds
@@ -49,27 +60,25 @@ class TestCreateDocument:
         assert doc["pet_id"] == str(test_pet["_id"])
         assert doc["username"] == "testuser"
 
-    def test_create_document_with_pdf_success(self, client, mock_db, regular_user_token, test_pet):
-        from web.app import fs
-
-        with patch.object(fs, "put", return_value=ObjectId()) as mock_put:
-            response = client.post(
-                "/api/documents",
-                data={
-                    "pet_id": str(test_pet["_id"]),
-                    "category": "lab_result",
-                    "title": "Анализ крови",
-                    "note": "Плановый",
-                    "file": (io.BytesIO(b"%PDF-1.4 fake"), "blood.pdf", "application/pdf"),
-                },
-                headers={"Authorization": f"Bearer {regular_user_token}"},
-                content_type="multipart/form-data",
-            )
+    def test_create_document_with_pdf_success(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        response = client.post(
+            "/api/documents",
+            data={
+                "pet_id": str(test_pet["_id"]),
+                "category": "lab_result",
+                "title": "Анализ крови",
+                "note": "Плановый",
+                "file": (io.BytesIO(b"%PDF-1.4 fake"), "blood.pdf", "application/pdf"),
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+            content_type="multipart/form-data",
+        )
 
         assert response.status_code == 201
-        mock_put.assert_called_once()
         data = response.get_json()
         doc = mock_db["documents"].find_one({"_id": ObjectId(data["id"])})
+        assert _stored(s3_storage, doc["file_id"]) == (b"%PDF-1.4 fake", "application/pdf")
+        assert doc["file_id"].endswith(".pdf")
         assert doc["content_type"] == "application/pdf"
         assert doc["note"] == "Плановый"
 
@@ -178,27 +187,25 @@ class TestCreateDocument:
 
         assert response.status_code == 403
 
-    def test_create_document_image_optimization_failure_falls_back(self, client, mock_db, regular_user_token, test_pet):
+    def test_create_document_image_optimization_failure_falls_back(
+        self, client, mock_db, regular_user_token, test_pet, s3_storage
+    ):
         """A file declared as image/* but not actually decodable (Pillow
         can't open it) falls back to storing the raw bytes untouched,
         same tolerance as pets.create_pet's own optimize_image fallback."""
-        from web.app import fs
-
-        with patch.object(fs, "put", return_value=ObjectId()) as mock_put:
-            response = client.post(
-                "/api/documents",
-                data={
-                    "pet_id": str(test_pet["_id"]),
-                    "category": "other",
-                    "title": "Не настоящее изображение",
-                    "file": (io.BytesIO(b"not actually a jpeg"), "fake.jpg", "image/jpeg"),
-                },
-                headers={"Authorization": f"Bearer {regular_user_token}"},
-                content_type="multipart/form-data",
-            )
+        response = client.post(
+            "/api/documents",
+            data={
+                "pet_id": str(test_pet["_id"]),
+                "category": "other",
+                "title": "Не настоящее изображение",
+                "file": (io.BytesIO(b"not actually a jpeg"), "fake.jpg", "image/jpeg"),
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+            content_type="multipart/form-data",
+        )
 
         assert response.status_code == 201
-        mock_put.assert_called_once()
         data = response.get_json()
         doc = mock_db["documents"].find_one({"_id": ObjectId(data["id"])})
         assert doc["content_type"] == "image/jpeg"  # unchanged — optimization was skipped
