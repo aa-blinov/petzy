@@ -126,6 +126,18 @@ class TestKeysAreNamespacedByOwner:
         assert ".." not in key
         assert key.count("/") == 5  # users/<id>/pets/<pet>/scans/<name>
 
+    def test_a_key_prefix_namespaces_every_key(self, mock_db, regular_user, monkeypatch):
+        monkeypatch.setenv("S3_PREFIX", "dev")
+
+        key = storage.new_key(mock_db, "testuser", "p1", "scans", ".zip")
+
+        assert key.startswith("dev/users/")
+        assert storage.pet_prefix(mock_db, "testuser", "p1").startswith("dev/users/")
+        assert storage.thumb_key(key, 96, None).startswith("dev/users/")
+
+    def test_production_keys_have_no_prefix(self, mock_db, regular_user):
+        assert storage.new_key(mock_db, "testuser", "p1", "photos", ".webp").startswith("users/")
+
     def test_responses_never_carry_a_key(self, client, regular_user_token, pet_with_files):
         pet = client.get(f"/api/pets/{pet_with_files['pet_id']}", headers=_auth(regular_user_token))
         docs = client.get(f"/api/documents?pet_id={pet_with_files['pet_id']}", headers=_auth(regular_user_token))
@@ -511,3 +523,41 @@ class TestMigrationFromGridFS:
         assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["photo_file_id"] == str(photo_id)
         assert _keys(s3_storage) == set()
         fs.delete.assert_not_called()
+
+
+class TestLocalRunsShareTheBucketUnderDev:
+    def test_start_clears_only_dev(self, s3_storage, monkeypatch):
+        from scripts import dev_local
+
+        for key in ("dev/users/u1/pets/p1/photos/a.jpg", "users/u1/pets/p1/photos/prod.webp", "healthcheck/x"):
+            s3_storage.put_object(Bucket=BUCKET, Key=key, Body=b"x")
+        monkeypatch.setenv("S3_PREFIX", "")  # restored (removed) after the test
+        monkeypatch.delenv("DEV_STORAGE", raising=False)
+        monkeypatch.setattr(dev_local, "_read_dotenv", lambda path: {})
+
+        dev_local._start_local_storage()
+
+        assert storage.key_prefix() == "dev/"
+        assert _keys(s3_storage) == {"users/u1/pets/p1/photos/prod.webp", "healthcheck/x"}
+
+    def test_refuses_to_clear_anything_else(self, monkeypatch):
+        from scripts import dev_local
+
+        monkeypatch.setattr(dev_local, "DEV_STORAGE_PREFIX", "")
+        monkeypatch.setenv("S3_PREFIX", "")
+        monkeypatch.setattr(dev_local, "_read_dotenv", lambda path: {})
+        monkeypatch.delenv("DEV_STORAGE", raising=False)
+        cleared = MagicMock()
+        monkeypatch.setattr(storage, "delete_prefix", cleared)
+
+        with pytest.raises(RuntimeError):
+            dev_local._start_local_storage()
+        cleared.assert_not_called()
+
+    def test_dotenv_values_do_not_override_the_environment(self, tmp_path, monkeypatch):
+        from scripts import dev_local
+
+        env = tmp_path / ".env"
+        env.write_text('# comment\nS3_BUCKET="from-file"\nS3_REGION=eu\n\nBROKEN\n')
+
+        assert dev_local._read_dotenv(str(env)) == {"S3_BUCKET": "from-file", "S3_REGION": "eu"}

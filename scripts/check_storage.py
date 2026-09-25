@@ -58,7 +58,19 @@ def main() -> int:
     )
     with urllib.request.urlopen(url, timeout=20) as r:
         print("ok    signed URL serves the object" if r.read() == body else "FAIL  signed URL content differs")
-    step("delete object", lambda: s3.delete_object(Bucket=BUCKET, Key=key))
+
+    # The bucket keeps every version: a plain delete would only hide it.
+    def delete_all_versions():
+        page = s3.list_object_versions(Bucket=BUCKET, Prefix=key)
+        objects = [
+            {"Key": v["Key"], "VersionId": v["VersionId"]}
+            for v in page.get("Versions", []) + page.get("DeleteMarkers", [])
+            if v["Key"] == key
+        ]
+        if objects:
+            s3.delete_objects(Bucket=BUCKET, Delete={"Objects": objects, "Quiet": True})
+
+    step("delete object (all versions)", delete_all_versions)
     print("The key can write to the bucket.")
     return 0
 
