@@ -26,7 +26,7 @@ export function RouteFocus() {
       const heading = main.querySelector('h1');
       if (!heading) return false;
       const text = heading.textContent?.trim();
-      document.title = text && text !== 'Petzy' ? `${text} · Petzy` : 'Petzy';
+      document.title = text && text !== 'Petzy' ? `${text}, Petzy` : 'Petzy';
       const active = document.activeElement;
       // A page that focused its own field (onboarding's name input) keeps it.
       const pageTookFocus = active instanceof HTMLElement && active !== main && main.contains(active);

@@ -14,6 +14,7 @@ import { Plus, Trash2, Sparkles } from 'lucide-react';
 
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { pluralRu } from '../utils/relativeTime';
 import { useEventTypes, useInvalidateEventTypes } from '../hooks/useEventTypes';
 import { eventTypesService } from '../services/eventTypes.service';
 import { pastelColorMap } from '../utils/constants';
@@ -104,7 +105,7 @@ export function EventTypesSettings() {
                           {eventType.label}
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 2 }}>
-                          {eventType.is_builtin ? 'Встроенный' : `Свой · ${eventType.fields.length} пол.`}
+                          {eventType.is_builtin ? 'Встроенный' : `Свой, ${eventType.fields.length} ${pluralRu(eventType.fields.length, 'поле', 'поля', 'полей')}`}
                         </div>
                       </div>
                     </button>

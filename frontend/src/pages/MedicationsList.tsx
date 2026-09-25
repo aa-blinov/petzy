@@ -297,11 +297,11 @@ export function MedicationsList() {
                                         {med.inventory_enabled && med.inventory_current !== undefined && (
                                             <div style={{ marginTop: 'var(--spacing-md)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
-                                                    <span>
-                                                        Остаток: {med.inventory_current} {med.dose_unit || 'доз'}
+                                                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', columnGap: 'var(--spacing-sm)' }}>
+                                                        <span>Остаток: {med.inventory_current} {med.dose_unit || 'доз'}</span>
                                                         {/* Low stock used to be told by the bar turning red alone. */}
                                                         {med.inventory_current <= (med.inventory_warning_threshold || 0) && (
-                                                            <span style={{ color: 'var(--app-danger-text)', fontWeight: 600 }}> · заканчивается</span>
+                                                            <span style={{ color: 'var(--app-danger-text)', fontWeight: 600 }}>заканчивается</span>
                                                         )}
                                                     </span>
                                                     {med.inventory_total && (

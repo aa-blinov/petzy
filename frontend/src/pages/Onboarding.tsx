@@ -358,7 +358,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             onClick={() => setDatePickerVisible(true)}
           >
             <Cake size={16} strokeWidth={2} />
-            {birthDate ? `${d} ${MONTHS_GENITIVE[m - 1]} ${y}${age ? ` · ${age}` : ''}` : 'Добавить день рождения'}
+            {birthDate ? `${d} ${MONTHS_GENITIVE[m - 1]} ${y}${age ? `, ${age}` : ''}` : 'Добавить день рождения'}
           </button>
           <DatePicker
             visible={datePickerVisible}
@@ -583,7 +583,7 @@ function EventCard({
 function DiaryArt() {
   return (
     <div className="onb-stack" aria-hidden>
-      <EventCard icon={Utensils} tile="brown" title="Кормление" meta="Вес корма · 280 г" time="08:00" delay={0} />
+      <EventCard icon={Utensils} tile="brown" title="Кормление" meta="280 г корма" time="08:00" delay={0} />
       <EventCard icon={Scale} tile="orange" title="Вес" meta="4.6 кг" time="вчера" delay={140} />
       <EventCard icon={Footprints} tile="green" title="Прогулка" meta="45 минут" time="вчера" delay={280} />
     </div>
