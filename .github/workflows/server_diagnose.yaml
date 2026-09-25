@@ -1,0 +1,78 @@
+name: Diagnose server
+
+# Read-only health check of the running stack. The repository is public,
+# so its Actions logs are too: this prints container state, resource use,
+# connectivity and error lines only, with usernames, IPs and emails
+# masked. Nothing from the database is printed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      restart_web:
+        description: "Restart the web container after the checks"
+        type: boolean
+        default: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into petzy server and diagnose
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_PETZY_HOST }}
+          username: ${{ secrets.SERVER_PETZY_USER }}
+          key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
+          script: |
+            set +e
+            cd ~/services/cat-health-control-bot || exit 1
+            mask() {
+              sed -E \
+                -e 's/(user|username|owner|created_by|pet_id|id)=[^ ,]+/\1=***/g' \
+                -e 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/x.x.x.x/g' \
+                -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/***@***/g'
+            }
+
+            echo "=== containers ==="
+            docker compose ps
+            echo
+            echo "=== resource use ==="
+            docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.PIDs}}'
+            echo
+            echo "=== host ==="
+            uptime; free -m | head -2; df -h / | tail -1
+
+            echo
+            echo "=== nginx -> web: /api/auth/session (expect 401 quickly) ==="
+            docker compose exec -T nginx sh -c 'wget -q -S -O /dev/null -T 15 http://web:5000/api/auth/session 2>&1 | head -1' 2>&1
+            echo
+            echo "=== inside web: gunicorn itself (expect 401 quickly) ==="
+            docker compose exec -T web python -c "import urllib.request,time,urllib.error;t=time.time()
+            try: urllib.request.urlopen('http://127.0.0.1:5000/api/auth/session', timeout=15)
+            except urllib.error.HTTPError as e: print('HTTP', e.code, round(time.time()-t,2), 's')
+            except Exception as e: print('FAIL', type(e).__name__, e, round(time.time()-t,2), 's')" 2>&1
+            echo
+            echo "=== inside web: MongoDB ping ==="
+            docker compose exec -T web python -c "from web.db import client;import time;t=time.time();print(client.admin.command('ping'), round(time.time()-t,2),'s')" 2>&1 | tail -3 | mask
+
+            echo
+            echo "=== web: gunicorn processes ==="
+            docker compose exec -T web sh -c 'ps -eo pid,etime,stat,pcpu,rss,args 2>/dev/null | grep -v " ps " | head -20' 2>&1
+            echo
+            echo "=== web: error lines, last 12h (masked) ==="
+            docker compose logs --since 12h web 2>&1 | grep -Ei 'error|exception|traceback|critical|timeout|killed|booting|exiting|worker|signal' | tail -60 | mask
+            echo
+            echo "=== web: last 25 lines (masked) ==="
+            docker compose logs --tail 25 web 2>&1 | mask
+            echo
+            echo "=== nginx: upstream errors, last 12h (masked) ==="
+            docker compose logs --since 12h nginx 2>&1 | grep -Ei 'upstream|error|timed out|resolve' | tail -30 | mask
+
+            if [ "${{ inputs.restart_web }}" = "true" ]; then
+              echo
+              echo "=== restarting web ==="
+              docker compose restart web
+              sleep 8
+              docker compose ps web
+              docker compose exec -T nginx sh -c 'wget -q -S -O /dev/null -T 15 http://web:5000/api/auth/session 2>&1 | head -1' 2>&1
+            fi
