@@ -1,0 +1,73 @@
+name: Check object storage
+
+# Writes a small object to the bucket, reads it back, compares and deletes
+# it, using the S3_KEY_ID / S3_SECRET_KEY repository secrets. Runs on the
+# GitHub runner, not on the server: it proves the key can write to the
+# bucket without touching production. Prints results only, never the key.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      S3_ENDPOINT: https://s3.eu-central-003.backblazeb2.com
+      S3_REGION: eu-central-003
+      S3_BUCKET: petzy-1
+      S3_KEY_ID: ${{ secrets.S3_KEY_ID }}
+      S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+    steps:
+      - name: Install boto3
+        run: pip install --quiet "boto3>=1.34"
+      - name: Write, read back, delete
+        run: |
+          python - <<'PY'
+          import os, sys, time, uuid
+          import boto3
+          from botocore.config import Config
+          from botocore.exceptions import ClientError
+
+          missing = [n for n in ("S3_KEY_ID", "S3_SECRET_KEY") if not os.environ.get(n)]
+          if missing:
+              print("Secrets not set:", ", ".join(missing)); sys.exit(1)
+
+          s3 = boto3.client(
+              "s3",
+              endpoint_url=os.environ["S3_ENDPOINT"],
+              region_name=os.environ["S3_REGION"],
+              aws_access_key_id=os.environ["S3_KEY_ID"],
+              aws_secret_access_key=os.environ["S3_SECRET_KEY"],
+              config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+          )
+          bucket = os.environ["S3_BUCKET"]
+          key = f"healthcheck/{os.environ.get('GITHUB_RUN_ID', 'local')}-{uuid.uuid4().hex}.txt"
+          body = f"petzy storage check {time.time()}".encode()
+
+          def step(name, fn):
+              try:
+                  out = fn()
+                  print(f"ok    {name}")
+                  return out
+              except ClientError as e:
+                  err = e.response.get("Error", {})
+                  print(f"FAIL  {name}: {err.get('Code')} {err.get('Message')}"); sys.exit(1)
+
+          step("put object", lambda: s3.put_object(Bucket=bucket, Key=key, Body=body, ContentType="text/plain"))
+          got = step("get object", lambda: s3.get_object(Bucket=bucket, Key=key)["Body"].read())
+          if got != body:
+              print("FAIL  read-back differs from what was written"); sys.exit(1)
+          print("ok    read-back matches")
+          url = step("signed download URL", lambda: s3.generate_presigned_url(
+              "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=60))
+          import urllib.request
+          with urllib.request.urlopen(url, timeout=20) as r:
+              print("ok    signed URL serves the object" if r.read() == body else "FAIL  signed URL content differs")
+          step("delete object", lambda: s3.delete_object(Bucket=bucket, Key=key))
+          try:
+              cors = s3.get_bucket_cors(Bucket=bucket)["CORSRules"]
+              print(f"info  bucket CORS rules: {len(cors)}")
+          except ClientError as e:
+              print(f"info  bucket CORS: {e.response.get('Error', {}).get('Code')} (browser uploads need rules; set later)")
+          print("Bucket is writable with this key.")
+          PY
