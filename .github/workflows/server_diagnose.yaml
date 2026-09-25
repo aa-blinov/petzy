@@ -46,6 +46,14 @@ jobs:
             echo "=== nginx -> web: /api/auth/session (expect 401 quickly) ==="
             docker compose exec -T nginx sh -c 'wget -q -S -O /dev/null -T 15 http://web:5000/api/auth/session 2>&1 | head -1' 2>&1
             echo
+            echo "=== host: what listens on 80/443 and forwards to the stack ==="
+            (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep -E ':(80|443|3000) ' | sed -E 's/users:.*"([a-z0-9_.-]+)".*/\1/' | awk '{print $4, $NF}'
+            for d in /etc/nginx/sites-enabled /etc/nginx/conf.d; do
+              [ -d "$d" ] || continue
+              echo "--- $d"
+              grep -rnE 'server_name|listen|client_max_body_size|proxy_pass|proxy_request_buffering|proxy_read_timeout|location' "$d" 2>&1 | mask
+            done
+            echo
             echo "=== inside web: gunicorn itself (expect 401 quickly) ==="
             docker compose exec -T web python -c "import urllib.request,time,urllib.error;t=time.time()
             try: urllib.request.urlopen('http://127.0.0.1:5000/api/auth/session', timeout=15)
