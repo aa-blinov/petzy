@@ -48,11 +48,13 @@ jobs:
             echo
             echo "=== host: what listens on 80/443 and forwards to the stack ==="
             (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep -E ':(80|443|3000) ' | sed -E 's/users:.*"([a-z0-9_.-]+)".*/\1/' | awk '{print $4, $NF}'
-            for d in /etc/nginx/sites-enabled /etc/nginx/conf.d; do
-              [ -d "$d" ] || continue
-              echo "--- $d"
-              grep -rnE 'server_name|listen|client_max_body_size|proxy_pass|proxy_request_buffering|proxy_read_timeout|location' "$d" 2>&1 | mask
-            done
+            echo "--- nginx config files"
+            ls -la /etc/nginx /etc/nginx/sites-enabled /etc/nginx/sites-available /etc/nginx/conf.d 2>&1 | grep -v '^total' | awk '{print $1, $NF}'
+            echo "--- directives (whole /etc/nginx, certbot/ssl lines skipped)"
+            grep -rnE 'include|server_name|listen|client_max_body_size|proxy_pass|proxy_request_buffering|proxy_read_timeout|location|root ' /etc/nginx 2>&1 \
+              | grep -vE 'mime.types|/modules-enabled|fastcgi|scgi|uwsgi|koi-|win-utf|snippets/' | mask | head -80
+            echo "--- can this user reload nginx without a password?"
+            sudo -n true 2>/dev/null && echo "sudo: yes" || echo "sudo: no"
             echo
             echo "=== inside web: gunicorn itself (expect 401 quickly) ==="
             docker compose exec -T web python -c "import urllib.request,time,urllib.error;t=time.time()
