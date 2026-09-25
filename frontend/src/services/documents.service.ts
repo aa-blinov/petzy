@@ -168,6 +168,14 @@ export const documentsService = {
     await api.delete(`/documents/${id}`);
   },
 
+  /** Where to download the file from: for a scan, a short-lived signed
+   *  link to storage. Asked for first, so an error (session gone, access
+   *  revoked) reaches the page instead of replacing it. */
+  async getDownloadUrl(id: string): Promise<string> {
+    const response = await api.get<{ url: string }>(`/documents/${id}/download`);
+    return response.data.url;
+  },
+
   getFileUrl(id: string): string {
     return `/api/documents/${id}/file`;
   },

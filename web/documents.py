@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 from uuid import uuid4
 
-from flask import Blueprint, g, jsonify, make_response, redirect, request
+from flask import Blueprint, g, jsonify, make_response, redirect, request, url_for
 from flask_pydantic_spec import Request, Response
 
 import web.app as app  # to access patched app.db/app.fs in tests
@@ -37,6 +37,7 @@ from web.schemas import (
     DocumentListQuery,
     DocumentListResponse,
     DocumentUpdate,
+    DownloadLink,
     ErrorResponse,
     PhotoQueryParams,
     SuccessResponse,
@@ -434,6 +435,35 @@ def content_disposition(disposition: str, original_filename: str, content_type: 
     return f"{disposition}; filename=\"{ascii_stem}{ext}\"; filename*=UTF-8''{quote(name)}"
 
 
+def _scan_download_url(document: dict) -> str:
+    """A 10-minute signed link that downloads the scan under its own name."""
+    disposition = content_disposition("attachment", document["original_filename"], document["content_type"])
+    return storage.download_url(document["file_id"], disposition)
+
+
+@documents_bp.route("/api/documents/<id>/download", methods=["GET"])
+@api.validate(
+    resp=Response(HTTP_200=DownloadLink, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_503=ErrorResponse),
+    tags=["documents"],
+)
+@require_record_access("documents")
+def get_document_download(id):
+    """Where to download the document's file from, as JSON.
+
+    The app asks here first instead of navigating to ``/file``: an error
+    (session gone, access revoked) then comes back to the page as a
+    message, rather than replacing the app with a bare error response.
+    """
+    document = g.record
+    if not document.get("scan"):
+        return jsonify({"url": url_for("documents.get_document_file", id=id), "expires_in": None})
+    if not storage.storage_configured():
+        return error_response("storage_not_configured")
+    response = jsonify({"url": _scan_download_url(document), "expires_in": storage.DOWNLOAD_URL_TTL_SECONDS})
+    response.headers.set("Cache-Control", "private, no-store")
+    return response
+
+
 @documents_bp.route("/api/documents/<id>/file", methods=["GET"])
 @api.validate(
     query=PhotoQueryParams,
@@ -454,8 +484,7 @@ def get_document_file(id):
         # streaming it through this process.
         if not storage.storage_configured():
             return error_response("storage_not_configured")
-        disposition = content_disposition("attachment", document["original_filename"], document["content_type"])
-        response = redirect(storage.download_url(document["file_id"], disposition), code=302)
+        response = redirect(_scan_download_url(document), code=302)
         response.headers.set("Cache-Control", "private, no-store")
         return response
 

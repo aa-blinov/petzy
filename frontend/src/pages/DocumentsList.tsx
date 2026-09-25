@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,8 @@ import { hapticFeedback } from '../utils/haptic';
 import { formatRelativeDateTime, parseRecordDate } from '../utils/relativeTime';
 import { formatFileSize } from '../utils/fileSize';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
+import { httpStatus } from '../services/api';
 import {
   documentsService,
   DOCUMENT_CATEGORY_LABELS,
@@ -181,17 +183,37 @@ export function DocumentsList() {
     setDeleteDialog({ visible: true, document: doc });
   };
 
+  // A double tap shouldn't start the same 500 MB download twice.
+  const fetchingDownload = useRef(false);
+
   const handleOpen = (doc: PetDocument) => {
     hapticFeedback('light');
-    const url = documentsService.getFileUrl(doc._id);
     if (doc.scan) {
-      // An archive has nothing to preview: the server answers with a
-      // short-lived link to the file in storage, sent as a download, so
-      // the app stays where it is.
-      window.location.assign(url);
-      showToast.info('Скачиваем архив');
+      if (fetchingDownload.current) return;
+      fetchingDownload.current = true;
+      // An archive has nothing to preview. The link is fetched first, so
+      // a failure is a toast here rather than an error page in place of
+      // the app; the link itself downloads (sent as an attachment), so
+      // following it leaves the app where it is.
+      documentsService
+        .getDownloadUrl(doc._id)
+        .then((link) => {
+          window.location.assign(link);
+          showToast.info('Скачивание началось');
+        })
+        .catch((err: unknown) => {
+          showToast.failure(getApiErrorMessage(err, 'Не удалось скачать архив'));
+          // Deleted meanwhile, or no longer shared: drop the stale card.
+          if ([403, 404].includes(httpStatus(err) ?? 0)) {
+            queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
+          }
+        })
+        .finally(() => {
+          fetchingDownload.current = false;
+        });
       return;
     }
+    const url = documentsService.getFileUrl(doc._id);
     if (doc.content_type.startsWith('image/')) {
       setImageViewer({ visible: true, image: url });
     } else {

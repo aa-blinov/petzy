@@ -249,6 +249,13 @@
     color: #3B2A1E;
 }
 
+/* Scans read as film, like their badge in the documents list: the
+   page's text and ground swapped. */
+.onb-card__tile--film {
+    background: var(--app-text-color);
+    color: var(--app-page-background);
+}
+
 .onb-card__body {
     flex: 1;
     min-width: 0;
