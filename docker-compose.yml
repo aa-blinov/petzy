@@ -28,7 +28,13 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     command: "gunicorn -c gunicorn.conf.py web.app:app"
     ports:
-      - "5001:5000"
+      # Loopback only. Published on all interfaces, gunicorn was reachable
+      # from the internet around nginx: clients that opened a connection
+      # and never finished the request pinned every gthread worker thread
+      # (they block on the read with no timeout), and the API stopped
+      # answering. nginx buffers whole requests, so traffic has to come
+      # through it; host-side proxies still reach 127.0.0.1:5001.
+      - "127.0.0.1:5001:5000"
     depends_on:
       db:
         condition: service_healthy
