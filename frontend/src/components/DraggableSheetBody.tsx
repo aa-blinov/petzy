@@ -52,14 +52,11 @@ export function DraggableSheetBody({
   visible,
   onClose,
   children,
-  minHeight,
   maxHeight,
 }: {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
-  /** Floor for the card's height — content shorter than this still gets a full-size sheet. */
-  minHeight?: string;
   /** Ceiling for the card's height — taller content scrolls inside instead of growing past it. */
   maxHeight?: string;
 }) {
@@ -123,7 +120,6 @@ export function DraggableSheetBody({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight,
         maxHeight,
         // The card itself — background and rounded top corners live
         // here so they travel with the drag instead of staying behind

@@ -52,7 +52,9 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
       closeOnSwipe
       bodyStyle={{ background: 'transparent' }}
     >
-      <DraggableSheetBody visible={visible} onClose={onClose} minHeight="60vh">
+      {/* Sized to its tiles; many event types scroll inside, same cap as
+          HistoryFilterSheet. */}
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh">
 
         {/* Title */}
         <h2
