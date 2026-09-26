@@ -21,7 +21,13 @@ export interface Medication {
     inventory_enabled: boolean;
     inventory_total?: number;
     inventory_current?: number;
+    /** Legacy: warn at this amount. New courses warn by days (below). */
     inventory_warning_threshold?: number;
+    /** Warn when the stock covers this many days or fewer (default 3). */
+    inventory_warning_days?: number;
+    /** How many days the stock lasts on this schedule; null without one. */
+    inventory_days_left?: number | null;
+    inventory_low?: boolean;
     is_active: boolean;
     comment?: string;
     last_taken_at?: string;
@@ -44,6 +50,7 @@ export interface MedicationCreate {
     inventory_total?: number;
     inventory_current?: number;
     inventory_warning_threshold?: number;
+    inventory_warning_days?: number;
     is_active?: boolean;
     comment?: string;
 }
@@ -107,8 +114,16 @@ export const medicationsService = {
         await api.delete(`/medications/${id}`);
     },
 
-    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string }): Promise<void> {
-        await api.post(`/medications/${id}/log`, data);
+    /** Always records the dose; ``ran_out`` says the stock is now empty. */
+    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string }): Promise<{ ran_out: boolean }> {
+        const response = await api.post<{ ran_out?: boolean }>(`/medications/${id}/log`, data);
+        return { ran_out: !!response.data.ran_out };
+    },
+
+    /** Add a bought pack to the stock. Returns the new stock. */
+    async restock(id: string, amount: number): Promise<number> {
+        const response = await api.post<{ inventory_current: number }>(`/medications/${id}/restock`, { amount });
+        return response.data.inventory_current;
     },
 
     async getUpcoming(petId: string, clientDatetime?: string): Promise<UpcomingDose[]> {

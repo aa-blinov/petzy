@@ -15,6 +15,7 @@ from web.helpers import (
 )
 from web.schemas import (
     MedicationCreate,
+    MedicationRestock,
     MedicationUpdate,
     MedicationListResponse,
     MedicationDetailResponse,
@@ -36,6 +37,42 @@ medications_bp = Blueprint("medications", __name__)
 # the dashboard widget could offer a dose as "pre-loggable" that logging
 # it would then reject.
 UPCOMING_LOOKAHEAD_DAYS = 7
+
+# «Заканчивается» once the stock covers this many days or fewer, unless
+# the course sets its own (inventory_warning_days) or, for courses made
+# before that, an amount (inventory_warning_threshold).
+DEFAULT_WARNING_DAYS = 3
+
+
+def daily_use(med: dict) -> float:
+    """How much of the stock the schedule uses per day, on average."""
+    schedule = med.get("schedule") or {}
+    times = len(schedule.get("times") or [])
+    days = len(schedule.get("days") or [])
+    return float(med.get("default_dose") or 1.0) * times * days / 7
+
+
+def stock_status(med: dict) -> "tuple[float | None, bool]":
+    """(days the stock lasts, whether it's running low). (None, False) when
+    stock isn't tracked; days is None for a course with no schedule."""
+    current = med.get("inventory_current")
+    if not med.get("inventory_enabled") or current is None:
+        return None, False
+    use = daily_use(med)
+    days_left = round(current / use, 1) if use > 0 else None
+    if current <= 0:
+        return days_left, True
+    warning_days = med.get("inventory_warning_days")
+    threshold = med.get("inventory_warning_threshold")
+    if warning_days is None and threshold is not None:
+        return days_left, current <= threshold
+    if warning_days is None:
+        warning_days = DEFAULT_WARNING_DAYS
+    return days_left, days_left is not None and days_left <= warning_days
+
+
+def _add_stock_status(doc: dict) -> None:
+    doc["inventory_days_left"], doc["inventory_low"] = stock_status(doc)
 
 
 def compute_taken_counts(db, med_ids: list, window_start: datetime, window_end: datetime) -> dict:
@@ -163,6 +200,7 @@ def get_medications():
                 doc["last_taken_at"] = None
 
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
+            _add_stock_status(doc)
 
         return jsonify({"medications": meds})
     except Exception as e:
@@ -204,6 +242,7 @@ def get_medication(id):
             record["intakes_today"] = app.db.medication_intakes.count_documents(
                 {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
             )
+        _add_stock_status(record)
         return jsonify({"medication": record})
     except Exception as e:
         app.logger.error(f"Error fetching medication: {e}")
@@ -336,9 +375,13 @@ def log_intake(id):
         if dose_taken is None:
             dose_taken = medication.get("default_dose", 1.0)
 
-        # Reserve stock before recording the intake; the insert below
-        # gives it back if it fails.
+        # Take the dose from the stock before recording the intake; the
+        # insert below gives it back if it fails. A dose is always
+        # recorded: when the stock can't cover it (a new pack not entered
+        # yet), the stock goes to zero and the client is told it ran out,
+        # instead of the diary refusing a dose the pet did get.
         inventory_decremented_by = 0.0
+        ran_out = False
         if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
             # Optimistic concurrency control with retry loop (similar to delete_intake)
             max_retries = 3
@@ -356,10 +399,8 @@ def log_intake(id):
                         break
 
                 current_inventory = medication["inventory_current"]
-                if current_inventory < dose_taken:
-                    return error_response("validation_error", "Недостаточно лекарства в остатке")
-
-                new_inventory = current_inventory - dose_taken
+                deducted = max(0.0, min(float(current_inventory), float(dose_taken)))
+                new_inventory = current_inventory - deducted
 
                 # Use atomic update with condition to prevent race conditions
                 result = app.db.medications.update_one(
@@ -369,7 +410,8 @@ def log_intake(id):
 
                 if result.matched_count > 0:
                     inventory_updated = True
-                    inventory_decremented_by = dose_taken
+                    inventory_decremented_by = deducted
+                    ran_out = new_inventory <= 0
                     break
                 # If matched_count == 0, inventory was changed by concurrent request, retry
                 app.logger.warning(
@@ -389,6 +431,9 @@ def log_intake(id):
             "pet_id": medication["pet_id"],
             "date_time": event_dt,
             "dose_taken": dose_taken,
+            # What actually left the stock (less than the dose when it ran
+            # out); deleting the intake gives back exactly this.
+            "inventory_deducted": inventory_decremented_by,
             "comment": data.comment or "",
             "username": username,
             "created_at": datetime.now(timezone.utc),
@@ -411,9 +456,39 @@ def log_intake(id):
                 )
             raise
 
-        return jsonify({"message": "Intake logged"}), 201
+        return jsonify({"message": "Intake logged", "ran_out": ran_out}), 201
     except Exception as e:
         app.logger.error(f"Error logging intake: {e}")
+        return error_response("internal_error")
+
+
+@medications_bp.route("/api/medications/<id>/restock", methods=["POST"])
+@api.validate(
+    body=Request(MedicationRestock),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["medications"],
+)
+@require_record_access("medications")
+def restock_medication(id):
+    """Add a bought pack to the stock (and start tracking it if it wasn't)."""
+    try:
+        medication = g.record
+        amount = request.context.body.amount  # type: ignore[attr-defined]
+        if medication.get("inventory_current") is None:
+            app.db.medications.update_one(
+                {"_id": medication["_id"]},
+                {"$set": {"inventory_current": amount, "inventory_enabled": True}},
+            )
+        else:
+            # $inc, not read-add-write: two restocks at once both count.
+            app.db.medications.update_one(
+                {"_id": medication["_id"]},
+                {"$inc": {"inventory_current": amount}, "$set": {"inventory_enabled": True}},
+            )
+        updated = app.db.medications.find_one({"_id": medication["_id"]}, {"inventory_current": 1})
+        return jsonify({"message": "Stock added", "inventory_current": updated.get("inventory_current")})
+    except Exception as e:
+        app.logger.error(f"Error restocking medication: {e}")
         return error_response("internal_error")
 
 
@@ -469,39 +544,15 @@ def delete_intake(id):
         intake = g.record
         intake_id = intake["_id"]
 
-        # Restore inventory if applicable
+        # Give back what this intake took from the stock. Intakes from
+        # before inventory_deducted was stored took their whole dose.
         medication_id = ObjectId(intake["medication_id"])
-        medication = app.db.medications.find_one({"_id": medication_id})
-        if medication and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
-            # Optimistic concurrency control for inventory restoration
-            # Retry loop to handle concurrent updates
-            max_retries = 3
-            for _ in range(max_retries):
-                # Fetch current state
-                current_med = app.db.medications.find_one({"_id": medication_id})
-                if not current_med:
-                    break
-
-                current_inventory = current_med.get("inventory_current")
-                if current_inventory is None:
-                    break
-
-                dose_to_restore = intake.get("dose_taken", 0)
-                new_inventory = current_inventory + dose_to_restore
-
-                # Cap at inventory_total if set
-                if current_med.get("inventory_total") is not None:
-                    new_inventory = min(new_inventory, current_med["inventory_total"])
-
-                # Try to update with version check (using current inventory value as version)
-                result = app.db.medications.update_one(
-                    {"_id": medication_id, "inventory_current": current_inventory},
-                    {"$set": {"inventory_current": new_inventory}},
-                )
-
-                if result.matched_count > 0:
-                    break
-                # If matched_count == 0, Loop will retry fetch and update
+        to_restore = intake.get("inventory_deducted", intake.get("dose_taken", 0)) or 0
+        if to_restore:
+            app.db.medications.update_one(
+                {"_id": medication_id, "inventory_enabled": True, "inventory_current": {"$ne": None}},
+                {"$inc": {"inventory_current": to_restore}},
+            )
 
         app.db.medication_intakes.delete_one({"_id": intake_id})
 
@@ -614,10 +665,7 @@ def get_upcoming_doses():
                             "time": t,
                             "date": day_key,
                             "is_overdue": is_overdue,
-                            "inventory_warning": bool(
-                                med.get("inventory_enabled", False)
-                                and (med.get("inventory_current") or 0) <= (med.get("inventory_warning_threshold") or 0)
-                            ),
+                            "inventory_warning": stock_status(med)[1],
                         }
                     )
 

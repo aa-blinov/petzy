@@ -3,6 +3,7 @@ import { formatDate, formatTime } from '../utils/dateUtils';
 import { MONTHS_GENITIVE } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { RAN_OUT_MESSAGE } from '../utils/stock';
 import { Button } from 'antd-mobile';
 import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
@@ -49,15 +50,17 @@ export function NextDoseWidget() {
 
     const intakeMutation = useMutation({
         mutationFn: (dose: UpcomingDose) => {
+            // No dose_taken: the backend uses the course's own dose. A
+            // hard-coded 1 took a whole tablet off a half-tablet course.
             return medicationsService.logIntake(dose.medication_id, {
                 date: dose.date,
                 time: dose.time,
-                dose_taken: 1, // Default
             });
         },
-        onSuccess: () => {
+        onSuccess: ({ ran_out }) => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            showToast.success('Принято!');
+            if (ran_out) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
+            else showToast.success('Принято!');
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось отметить приём'));
@@ -136,7 +139,7 @@ export function NextDoseWidget() {
                     fontSize: 'var(--text-xs)',
                 }}>
                     <TriangleAlert size={16} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
-                    <span>Мало лекарства в остатке!</span>
+                    <span>Лекарство заканчивается, пора купить</span>
                 </div>
             )}
 

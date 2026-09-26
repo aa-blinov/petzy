@@ -340,7 +340,8 @@ class TestMedicationManagement:
         assert med["last_taken_at"] is not None
 
     def test_log_intake_insufficient_inventory(self, client, mock_db, regular_user_token, test_pet):
-        """Test that logging intake fails when inventory is insufficient."""
+        """A dose the stock can't cover is still recorded: the stock goes to
+        zero and the response says it ran out (the pet did get the dose)."""
         med_id = ObjectId()
         mock_db["medications"].insert_one(
             {
@@ -366,12 +367,22 @@ class TestMedicationManagement:
             f"/api/medications/{med_id}/log", json=log_data, headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 422  # validation_error
-        data = response.get_json()
-        assert "error" in data or "message" in data
+        assert response.status_code == 201
+        assert response.get_json()["ran_out"] is True
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 0
+        intake = mock_db["medication_intakes"].find_one({"medication_id": str(med_id)})
+        assert intake["dose_taken"] == 1.0
+        assert intake["inventory_deducted"] == 0.5
+
+        # Deleting it gives back what it actually took, not the whole dose.
+        client.delete(
+            f"/api/medications/intakes/{intake['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 0.5
 
     def test_delete_intake_with_inventory_total_limit(self, client, mock_db, regular_user_token, test_pet):
-        """Test that deleting intake restores inventory but caps at inventory_total."""
+        """inventory_total is the pack size, not a cap: the stock can hold
+        more than one pack, so a restored dose isn't clipped to it."""
         med_id = ObjectId()
         mock_db["medications"].insert_one(
             {
@@ -408,9 +419,8 @@ class TestMedicationManagement:
         intake = mock_db["medication_intakes"].find_one({"_id": intake_id})
         assert intake is None
 
-        # Verify inventory restored but capped at total (9.0 + 2.0 = 11.0, but capped at 10.0)
         med = mock_db["medications"].find_one({"_id": med_id})
-        assert med["inventory_current"] == 10.0
+        assert med["inventory_current"] == 11.0
 
     def test_get_upcoming_doses_excludes_taken(self, client, mock_db, regular_user_token, test_pet):
         """Test that upcoming doses excludes already taken doses today."""

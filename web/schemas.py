@@ -960,6 +960,9 @@ class MedicationCreate(PetIdQuery):
     inventory_total: Optional[float] = None
     inventory_current: Optional[float] = None
     inventory_warning_threshold: Optional[float] = None
+    inventory_warning_days: Optional[float] = Field(
+        None, ge=0, le=60, description="Предупредить, когда запаса останется на столько дней"
+    )
     is_active: bool = True
     comment: Optional[str] = None
 
@@ -978,6 +981,7 @@ class MedicationUpdate(BaseModel):
     inventory_total: Optional[float] = None
     inventory_current: Optional[float] = None
     inventory_warning_threshold: Optional[float] = None
+    inventory_warning_days: Optional[float] = Field(None, ge=0, le=60)
     is_active: Optional[bool] = None
     comment: Optional[str] = None
 
@@ -998,11 +1002,20 @@ class MedicationItem(BaseModel):
     inventory_total: Optional[float] = None
     inventory_current: Optional[float] = None
     inventory_warning_threshold: Optional[float] = None
+    inventory_warning_days: Optional[float] = None
+    inventory_days_left: Optional[float] = Field(None, description="На сколько дней хватит остатка по расписанию")
+    inventory_low: bool = False
     is_active: bool
     comment: Optional[str] = None
     last_taken_at: Optional[str] = None
     intakes_today: int = 0
     username: Optional[str] = None
+
+
+class MedicationRestock(BaseModel):
+    """Add a bought pack (or any amount) to the stock."""
+
+    amount: float = Field(..., gt=0, le=100000, description="Сколько добавить к остатку")
 
 
 class MedicationListResponse(BaseModel):

@@ -3,7 +3,7 @@ import { formatDate, formatTime } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ProgressBar, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
+import { Button, Card, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
@@ -14,6 +14,7 @@ import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
+import { RAN_OUT_MESSAGE, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 
@@ -31,11 +32,12 @@ export function MedicationsList() {
     const [logIntakeDialog, setLogIntakeDialog] = useState<{
         visible: boolean;
         medication: Medication | null;
-        dose: number;
+        // Typed text, not a number: «0,» mid-typing must survive.
+        dose: string;
     }>({
         visible: false,
         medication: null,
-        dose: 1
+        dose: '1'
     });
 
     const [deleteDialog, setDeleteDialog] = useState<{
@@ -61,10 +63,12 @@ export function MedicationsList() {
                 dose_taken: dose,
             });
         },
-        onSuccess: () => {
+        onSuccess: ({ ran_out }) => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
             queryClient.invalidateQueries({ queryKey: ['pets'] });
-            showToast.success('Приём отмечен');
+            // The dose is recorded either way; an empty stock is news.
+            if (ran_out) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
+            else showToast.success('Приём отмечен');
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
@@ -89,17 +93,51 @@ export function MedicationsList() {
         setLogIntakeDialog({
             visible: true,
             medication: med,
-            dose: med.default_dose || 1
+            dose: formatAmount(med.default_dose || 1)
         });
     };
 
     const confirmLogIntake = () => {
         if (!logIntakeDialog.medication) return;
-        intakeMutation.mutate({
-            id: logIntakeDialog.medication._id,
-            dose: logIntakeDialog.dose
-        });
+        const dose = parseAmount(logIntakeDialog.dose);
+        if (!dose || dose <= 0) {
+            showToast.failure('Укажите, сколько дали');
+            return;
+        }
+        intakeMutation.mutate({ id: logIntakeDialog.medication._id, dose });
         setLogIntakeDialog(prev => ({ ...prev, visible: false }));
+    };
+
+    // «Пополнить»: add a bought pack without doing the sum in the edit form.
+    const [restock, setRestock] = useState<{ medication: Medication | null; amount: string }>({
+        medication: null,
+        amount: '',
+    });
+    const restockMutation = useMutation({
+        mutationFn: ({ id, amount }: { id: string; amount: number }) => medicationsService.restock(id, amount),
+        onSuccess: (current, { id }) => {
+            queryClient.invalidateQueries({ queryKey: ['medications'] });
+            const med = medications.find((m) => m._id === id);
+            showToast.success(`Остаток пополнен: ${formatAmount(current)} ${med?.dose_unit || 'доз'}`);
+        },
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Не удалось пополнить остаток'));
+        },
+    });
+    const openRestock = (med: Medication) => {
+        hapticFeedback('light');
+        // A pack size saved on the course is the likely amount.
+        setRestock({ medication: med, amount: med.inventory_total ? formatAmount(med.inventory_total) : '' });
+    };
+    const confirmRestock = () => {
+        if (!restock.medication) return;
+        const amount = parseAmount(restock.amount);
+        if (!amount || amount <= 0) {
+            showToast.failure('Укажите, сколько купили');
+            return;
+        }
+        restockMutation.mutate({ id: restock.medication._id, amount });
+        setRestock((prev) => ({ ...prev, medication: null }));
     };
 
     const formatRelativeTime = (dateStr?: string) => {
@@ -247,7 +285,7 @@ export function MedicationsList() {
                                             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
                                                 <span style={{ margin: `0 var(--spacing-xs)`, color: 'var(--app-divider-color)' }}>|</span>
-                                                По {med.default_dose || 1} {med.dose_unit || 'ед.'}
+                                                По {formatAmount(med.default_dose || 1)} {med.dose_unit || 'ед.'}
                                             </p>
                                         </div>
                                     </div>
@@ -295,29 +333,46 @@ export function MedicationsList() {
                                             </button>
                                         )}
 
-                                        {med.inventory_enabled && med.inventory_current !== undefined && (
-                                            <div style={{ marginTop: 'var(--spacing-md)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)' }}>
-                                                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', columnGap: 'var(--spacing-sm)' }}>
-                                                        <span>Остаток: {med.inventory_current} {med.dose_unit || 'доз'}</span>
-                                                        {/* Low stock used to be told by the bar turning red alone. */}
-                                                        {med.inventory_current <= (med.inventory_warning_threshold || 0) && (
-                                                            <span style={{ color: 'var(--app-danger-text)', fontWeight: 600 }}>заканчивается</span>
-                                                        )}
-                                                    </span>
-                                                    {med.inventory_total && (
-                                                        <span>{Math.round((med.inventory_current / med.inventory_total) * 100)}%</span>
-                                                    )}
-                                                </div>
-                                                <ProgressBar
-                                                    percent={med.inventory_total ? (med.inventory_current / med.inventory_total) * 100 : 0}
+                                        {(() => {
+                                            const stock = stockSummary(med);
+                                            if (!stock) return null;
+                                            const toneColor = stock.tone === 'out'
+                                                ? 'var(--app-danger-text)'
+                                                : stock.tone === 'low' ? 'var(--app-warning-text)' : 'var(--app-text-primary)';
+                                            return (
+                                                // Its own controls: a tap here isn't a tap on the card.
+                                                <div
+                                                    onClick={(e) => e.stopPropagation()}
                                                     style={{
-                                                        '--track-width': '6px',
-                                                        '--fill-color': med.inventory_current <= (med.inventory_warning_threshold || 0) ? 'var(--app-danger-color)' : 'var(--app-primary-color)'
+                                                        marginTop: 'var(--spacing-md)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        gap: 'var(--spacing-md)',
                                                     }}
-                                                />
-                                            </div>
-                                        )}
+                                                >
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 'var(--spacing-sm)', fontSize: 'var(--text-sm)', fontWeight: 600, color: toneColor }}>
+                                                            <span>{stock.amount}</span>
+                                                            {stock.flag && <span>{stock.flag}</span>}
+                                                        </div>
+                                                        {stock.lasts && (
+                                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 2 }}>
+                                                                {stock.lasts}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <Button
+                                                        size="small"
+                                                        fill="outline"
+                                                        onClick={() => openRestock(med)}
+                                                        style={{ flexShrink: 0, borderRadius: 'var(--radius-sm)' }}
+                                                    >
+                                                        Пополнить
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
 
                                     </div>
@@ -338,7 +393,7 @@ export function MedicationsList() {
                                                 disabled={(med.intakes_today || 0) >= med.schedule.times.length}
                                                 style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
-                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить приём (${med.default_dose || 1} ${med.dose_unit || ''})`}
+                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить приём (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>
                                         </div>
                                     )}
@@ -365,13 +420,11 @@ export function MedicationsList() {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                                 <Input
-                                    value={logIntakeDialog.dose.toString()}
+                                    value={logIntakeDialog.dose}
                                     type="text"
                                     inputMode="decimal"
                                     onChange={val => {
-                                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                            setLogIntakeDialog(prev => ({ ...prev, dose: val === '' ? 0 : parseFloat(val) }));
-                                        }
+                                        if (isAmountDraft(val)) setLogIntakeDialog(prev => ({ ...prev, dose: val }));
                                     }}
                                     style={{
                                         '--text-align': 'center',
@@ -390,7 +443,7 @@ export function MedicationsList() {
                     )
                 }
                 onClose={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}
-                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: 1 })}
+                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: '1' })}
                 actions={[
                     {
                         key: 'confirm',
@@ -403,6 +456,51 @@ export function MedicationsList() {
                         text: 'Отмена',
                         onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
                     },
+                ]}
+            />
+
+            <Dialog
+                visible={!!restock.medication}
+                title="Пополнить остаток"
+                content={
+                    restock.medication && (
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ marginBottom: 'var(--spacing-lg)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                                {restock.medication.name}: сейчас {formatAmount(Math.max(0, restock.medication.inventory_current ?? 0))} {restock.medication.dose_unit || 'доз'}
+                            </div>
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>
+                                Сколько купили?
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                                <Input
+                                    value={restock.amount}
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder="0"
+                                    autoFocus
+                                    onChange={(val) => {
+                                        if (isAmountDraft(val)) setRestock((prev) => ({ ...prev, amount: val }));
+                                    }}
+                                    style={{
+                                        '--text-align': 'center',
+                                        width: '80px',
+                                        fontSize: 'var(--text-lg)',
+                                        border: '1px solid var(--app-border-color)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        padding: 'var(--spacing-xs)'
+                                    }}
+                                />
+                                <span style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}>
+                                    {restock.medication.dose_unit || 'доз'}
+                                </span>
+                            </div>
+                        </div>
+                    )
+                }
+                onClose={() => setRestock((prev) => ({ ...prev, medication: null }))}
+                actions={[
+                    { key: 'confirm', text: 'Добавить', bold: true, onClick: confirmRestock },
+                    { key: 'cancel', text: 'Отмена', onClick: () => setRestock((prev) => ({ ...prev, medication: null })) },
                 ]}
             />
 
