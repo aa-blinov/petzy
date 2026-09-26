@@ -135,7 +135,6 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
               >
                 {formatRelativeDateTime(item.date_time)}
               </span>
-              {canEdit && <CardChevron />}
             </div>
 
             {showAuthor && (
@@ -184,6 +183,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
               ))}
             </div>
           </div>
+          {canEdit && <span style={{ alignSelf: 'center' }}><CardChevron /></span>}
         </div>
       </SwipeableRow>
 

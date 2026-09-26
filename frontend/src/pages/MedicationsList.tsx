@@ -229,6 +229,8 @@ export function MedicationsList() {
                                 }}
                             >
                                 <div style={{ padding: 'var(--spacing-lg)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
@@ -256,8 +258,6 @@ export function MedicationsList() {
                                                 По {med.default_dose || 1} {med.dose_unit || 'ед.'}
                                             </p>
                                         </div>
-                                        {/* Level with the name (36px icon row). */}
-                                        <span style={{ marginTop: 9 }}><CardChevron /></span>
                                     </div>
 
                                     <div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', lineHeight: 'var(--line-height-normal)' }}>
@@ -328,6 +328,11 @@ export function MedicationsList() {
                                         )}
                                     </div>
 
+                                    </div>
+                                    {/* Centred on the details, not the whole card: beside the
+                                        «Отметить приём» button it would read as the button's. */}
+                                    <CardChevron />
+                                    </div>
                                     {med.is_active && (
                                         // Logging a dose is its own action, not a tap on the card
                                         // (a disabled button's click must not open the form either).
