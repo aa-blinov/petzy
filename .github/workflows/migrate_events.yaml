@@ -1,0 +1,106 @@
+name: Migrate legacy records to events
+
+# The app reads health records from `events` only; records written before
+# the event engine still sit in the eight legacy collections and don't
+# show up. scripts/migrate_events.py copies them over (legacy collections
+# are read, never written or deleted; reruns skip what's done).
+#
+#   report: read-only. Per legacy collection: count, field names and
+#           types, records whose pet no longer exists, select values not
+#           among the type's options, and what a migration would copy.
+#   apply:  a fresh backup first (the backup service, --once), then the
+#           migration, then the same report.
+#
+# The repository is public, so are these logs: counts, field names,
+# types and select options only, never documents or identifiers.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "report (read-only) or apply"
+        type: choice
+        options: [report, apply]
+        default: report
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into petzy server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_PETZY_HOST }}
+          username: ${{ secrets.SERVER_PETZY_USER }}
+          key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/services/cat-health-control-bot
+
+            report() {
+              docker compose exec -T web python - <<'PY' 2>&1 | grep -v "WARNING - Could not create index" || true
+            import logging
+            logging.disable(logging.WARNING)
+            from collections import Counter
+            from bson import ObjectId
+            from web.app import db
+            from web.builtin_event_types import LEGACY_COLLECTION_MAP
+
+            pet_ids = {str(p["_id"]) for p in db.pets.find({}, {"_id": 1})}
+            types = {t["key"]: t for t in db.event_types.find({})}
+
+            def kind(v):
+                return type(v).__name__
+
+            for coll, mapping in LEGACY_COLLECTION_MAP.items():
+                docs = list(db[coll].find({}))
+                migrated = {d["_migrated_from_id"] for d in db.events.find(
+                    {"type": mapping["type"], "_migrated_from_id": {"$exists": True}}, {"_migrated_from_id": 1})}
+                pending = sum(str(d["_id"]) not in migrated for d in docs)
+                print(f"== {coll} -> {mapping['type']}: {len(docs)} docs, {len(docs) - pending} migrated, {pending} pending")
+                if not docs:
+                    continue
+                keys = Counter(k for d in docs for k in d if k != "_id")
+                print("   keys:", dict(keys))
+                print("   date_time:", dict(Counter(kind(d.get("date_time")) for d in docs)),
+                      "| pet_id:", dict(Counter(kind(d.get("pet_id")) for d in docs)),
+                      "| orphaned (pet gone):", sum(str(d.get("pet_id")) not in pet_ids for d in docs))
+                spec = {f["name"]: f for f in types.get(mapping["type"], {}).get("fields", [])}
+                for name in mapping["fields"]:
+                    field = spec.get(name, {})
+                    present = [d[name] for d in docs if d.get(name) not in (None, "")]
+                    line = f"   field {name} ({field.get('type', '?')}): {len(present)} set, types {dict(Counter(map(kind, present)))}"
+                    if field.get("type") == "number":
+                        def num(v):
+                            try:
+                                float(str(v).replace(",", "."))
+                                return True
+                            except ValueError:
+                                return False
+                        line += f", not numbers: {sum(not num(v) for v in present)}"
+                    if field.get("type") == "select":
+                        options = {o["value"] if isinstance(o, dict) else o for o in field.get("options", [])}
+                        values = Counter(map(str, present))
+                        line += f", values {dict(values)}, not an option: {sorted(set(values) - {str(o) for o in options})}"
+                    print(line)
+            print("events now:", db.events.count_documents({}),
+                  "| by type:", dict(Counter(e["type"] for e in db.events.find({}, {"type": 1}))))
+            PY
+            }
+
+            echo "=== before"
+            report
+
+            if [ "${{ inputs.mode }}" = "apply" ]; then
+              echo
+              echo "=== fresh backup first"
+              out="$(docker compose run --rm -T backup python3 scripts/backup_to_s3.py --once 2>&1 || true)"
+              echo "$out" | grep -E "Backup stored|ERROR" || true
+              echo "$out" | grep -q "Backup stored" || { echo "backup failed; not migrating"; exit 1; }
+              echo
+              echo "=== migrate"
+              docker compose exec -T web python - < scripts/migrate_events.py 2>&1 | grep -E " -> events|Done|Seeded|Error|Traceback" || true
+              echo
+              echo "=== after"
+              report
+            fi
