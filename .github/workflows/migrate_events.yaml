@@ -85,6 +85,17 @@ jobs:
                     print(line)
             print("events now:", db.events.count_documents({}),
                   "| by type:", dict(Counter(e["type"] for e in db.events.find({}, {"type": 1}))))
+            # Migrated events through the engine's own check, the one every
+            # save from the edit form goes through.
+            from web.events import _validate_event_fields
+            verdicts = Counter()
+            for e in db.events.find({"_migrated_from_id": {"$exists": True}}):
+                cleaned, error = _validate_event_fields(e.get("fields", {}), types[e["type"]]["fields"])
+                verdicts[(e["type"], error or ("ok" if cleaned == e["fields"] else "would change on save"))] += 1
+            print("migrated events, as the edit form would see them:",
+                  {f"{t}: {v}": n for (t, v), n in sorted(verdicts.items())})
+            print("with a note in the comment:",
+                  db.events.count_documents({"_migrated_from_id": {"$exists": True}, "comment": {"$regex": "Длительность: "}}))
             PY
             }
 
