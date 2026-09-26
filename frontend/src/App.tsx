@@ -12,6 +12,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { HapticListener } from './components/HapticListener';
 import { RouteTransition } from './components/RouteTransition';
 import { RouteFocus } from './components/RouteFocus';
+import { usePet } from './hooks/usePet';
+import { documentsListQuery } from './services/documents.service';
+import { medicationsListQuery } from './services/medications.service';
 
 // Lazy load pages for code splitting. Every route is split, Dashboard
 // included: these five used to be eager imports, which meant every
@@ -21,11 +24,13 @@ import { RouteFocus } from './components/RouteFocus';
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
-const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
+const loadHistory = () => import('./pages/History');
+const History = lazy(() => loadHistory().then(m => ({ default: m.History })));
 const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const UserForm = lazy(() => import('./pages/UserForm').then(m => ({ default: m.UserForm })));
-const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const loadSettings = () => import('./pages/Settings');
+const Settings = lazy(() => loadSettings().then(m => ({ default: m.Settings })));
 const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })));
 const UserProfile = lazy(() => import('./pages/UserProfile').then(m => ({ default: m.UserProfile })));
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
@@ -33,10 +38,15 @@ const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ defa
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
 const EventTypeForm = lazy(() => import('./pages/EventTypeForm').then(m => ({ default: m.EventTypeForm })));
-const MedicationsList = lazy(() => import('./pages/MedicationsList').then(m => ({ default: m.MedicationsList })));
+const loadMedicationsList = () => import('./pages/MedicationsList');
+const MedicationsList = lazy(() => loadMedicationsList().then(m => ({ default: m.MedicationsList })));
 const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ default: m.MedicationForm })));
-const DocumentsList = lazy(() => import('./pages/DocumentsList').then(m => ({ default: m.DocumentsList })));
+const loadDocumentsList = () => import('./pages/DocumentsList');
+const DocumentsList = lazy(() => loadDocumentsList().then(m => ({ default: m.DocumentsList })));
 const DocumentForm = lazy(() => import('./pages/DocumentForm').then(m => ({ default: m.DocumentForm })));
+
+/** The bottom tabs' pages, fetched ahead of the first tap (see PrefetchTabs). */
+const TAB_PAGE_LOADERS = [loadMedicationsList, loadDocumentsList, loadHistory, loadSettings];
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -91,10 +101,42 @@ function SessionExpiryBridge() {
   return null;
 }
 
+/**
+ * Once the app is idle after start, fetch the bottom tabs' code and the
+ * selected pet's documents and medications, so the first tap on a tab
+ * shows its screen straight away. Without this the first visit waited on
+ * the page's chunk (the old screen and tab stayed put), then flashed a
+ * blank page and a one-frame skeleton before the cards; later visits,
+ * with everything cached, just faded in.
+ */
+function PrefetchTabs() {
+  const { selectedPetId } = usePet();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!selectedPetId) return;
+    const run = () => {
+      TAB_PAGE_LOADERS.forEach((load) => load().catch(() => undefined));
+      queryClient.prefetchQuery(documentsListQuery(selectedPetId));
+      queryClient.prefetchQuery(medicationsListQuery(selectedPetId));
+    };
+    // After the current screen has settled, not competing with it.
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: 3000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 1500);
+    return () => clearTimeout(id);
+  }, [selectedPetId, queryClient]);
+
+  return null;
+}
+
 function AppRoutes() {
   return (
     <>
       <SessionExpiryBridge />
+      <PrefetchTabs />
       <Navbar />
       <RouteFocus />
       <main id="main-content">
