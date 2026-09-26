@@ -5,9 +5,8 @@ import { usePet } from '../hooks/usePet';
 import { CheckOutline, DownOutline, LeftOutline } from 'antd-mobile-icons';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
-import { speciesIcon } from '../utils/speciesIcon';
+import { getSpecies, speciesLabel } from '../utils/species';
 import type { Pet } from '../services/pets.service';
-import { SPECIES_LABELS } from '../utils/constants';
 import { MAIN_TAB_PATHS } from '../utils/navigation';
 
 export function Navbar() {
@@ -202,14 +201,14 @@ export function Navbar() {
                           justifyContent: 'center',
                         }}>
                           {(() => {
-                            const Icon = speciesIcon(pet.species);
+                            const Icon = getSpecies(pet.species).icon;
                             return <Icon size={22} strokeWidth={1.8} aria-hidden />;
                           })()}
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
-                        <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || (pet.species && SPECIES_LABELS[pet.species]) || 'Питомец'}</span>
+                        <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || speciesLabel(pet.species) || 'Питомец'}</span>
                       </div>
                     </div>
                     {pet._id === selectedPetId && (

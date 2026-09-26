@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, DatePicker, Dialog, Input } from 'antd-mobile';
+import { Button, DatePicker, Dialog, Input, Picker } from 'antd-mobile';
 import {
   Archive,
   Bell,
@@ -35,28 +35,24 @@ import { hapticFeedback } from '../utils/haptic';
 import { showToast } from '../utils/toast';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PhotoCropModal } from '../components/PhotoCropModal';
+import { SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
 import './Onboarding.css';
 
 type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'species' | 'name' | 'notify' | 'install' | 'done';
-type SpeciesKey = 'cat' | 'dog' | 'bird' | 'fish' | 'other';
 
 const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'care', 'family'];
 
-const SPECIES: { key: SpeciesKey; label: string; icon: LucideIcon; question: string }[] = [
-  { key: 'cat', label: 'Кот', icon: Cat, question: 'Как зовут вашего кота?' },
-  { key: 'dog', label: 'Собака', icon: Dog, question: 'Как зовут вашу собаку?' },
-  { key: 'bird', label: 'Птица', icon: Bird, question: 'Как зовут вашу птицу?' },
-  { key: 'fish', label: 'Рыбка', icon: Fish, question: 'Как зовут вашу рыбку?' },
-  { key: 'other', label: 'Другой питомец', icon: PawPrint, question: 'Как зовут вашего питомца?' },
-];
+/** The most common species get a tile; the rest are one tap away in
+ *  «Другой питомец» (utils/species.ts holds them all). */
+const TILE_SPECIES: SpeciesKey[] = ['cat', 'dog', 'rabbit', 'bird', 'fish'];
+const MORE_SPECIES = SPECIES.filter((s) => !TILE_SPECIES.includes(s.key)).map((s) => ({ label: s.label, value: s.key }));
 
 const MONTHS_NOMINATIVE = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
 ];
 
-const speciesGradient = (key: SpeciesKey | null) =>
-  `var(--species-gradient-${key && key !== 'other' ? key : 'default'})`;
+const speciesGradient = (key: SpeciesKey | null) => getSpecies(key).gradient;
 
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -112,6 +108,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   const step = steps[Math.min(index, steps.length - 1)];
 
   const [species, setSpecies] = useState<SpeciesKey | null>(null);
+  const [morePickerVisible, setMorePickerVisible] = useState(false);
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -194,6 +191,8 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         species: species ?? undefined,
         birth_date: birthDate || undefined,
         photo_file: photoFile ?? undefined,
+        // Only the events that make sense for this species start on.
+        tiles_settings: defaultTilesFor(species),
       });
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
       selectPet(pet);
@@ -237,7 +236,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     navigate('/', { replace: true });
   };
 
-  const speciesMeta = SPECIES.find((s) => s.key === species) ?? SPECIES[SPECIES.length - 1];
+  const speciesMeta = getSpecies(species);
   const SpeciesIcon = speciesMeta.icon;
   const displayName = (createdPet?.name ?? name.trim()) || 'Питомец';
   const avatarPhoto = createdPet?.photo_url ?? photoPreview;
@@ -292,25 +291,58 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       lead = 'Начнём знакомство. Остальное можно заполнить позже';
       body = (
         <div className="onb__species-grid" role="group" aria-label="Вид питомца">
-          {SPECIES.map((s, i) => {
+          {TILE_SPECIES.map((key, i) => {
+            const s = getSpecies(key);
             const Icon = s.icon;
-            const wide = s.key === 'other';
             return (
               <button
-                key={s.key}
+                key={key}
                 type="button"
-                className={`onb__species tap-feedback${wide ? ' onb__species--wide' : ''}`}
+                className="onb__species tap-feedback"
                 style={floatDelay(80 + i * 60)}
-                aria-pressed={species === s.key}
-                onClick={() => pickSpecies(s.key)}
+                aria-pressed={species === key}
+                onClick={() => pickSpecies(key)}
               >
-                <span className="onb__species-icon" style={{ background: speciesGradient(s.key) }}>
-                  <Icon size={wide ? 22 : 30} strokeWidth={2} />
+                <span className="onb__species-icon" style={{ background: s.gradient }}>
+                  <Icon size={30} strokeWidth={2} />
                 </span>
                 {s.label}
               </button>
             );
           })}
+          {(() => {
+            // Picked from the list: the button names it instead.
+            const picked = species && !TILE_SPECIES.includes(species) ? getSpecies(species) : null;
+            const Icon = picked?.icon ?? PawPrint;
+            return (
+              <button
+                type="button"
+                className="onb__species onb__species--more tap-feedback"
+                style={floatDelay(80 + TILE_SPECIES.length * 60)}
+                aria-pressed={!!picked}
+                aria-haspopup="dialog"
+                onClick={() => setMorePickerVisible(true)}
+              >
+                <span className="onb__species-icon" style={{ background: speciesGradient(picked?.key ?? 'other') }}>
+                  <Icon size={30} strokeWidth={2} />
+                </span>
+                <span>{picked ? picked.label : 'Другой'}</span>
+              </button>
+            );
+          })()}
+          <Picker
+            columns={[MORE_SPECIES]}
+            visible={morePickerVisible}
+            value={species && !TILE_SPECIES.includes(species) ? [species] : []}
+            onClose={() => setMorePickerVisible(false)}
+            onConfirm={(val) => {
+              setMorePickerVisible(false);
+              if (val[0]) pickSpecies(val[0] as SpeciesKey);
+            }}
+            title="Кто у вас?"
+            cancelText="Отмена"
+            confirmText="Выбрать"
+          />
         </div>
       );
       secondary = (

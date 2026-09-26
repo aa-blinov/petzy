@@ -127,12 +127,16 @@
        --app-brand-gradient below (cat and the "unrecognized species"
        fallback both just point at it) so every species reads as its own
        identity color instead of one generic orange for everything.
-       Keys match speciesIconMap / speciesGradientMap in constants.ts. */
+       Referenced from utils/species.ts, one per species family. */
     --species-gradient-cat: var(--app-brand-gradient);
     --species-gradient-dog: linear-gradient(135deg, #E8B558 0%, #B8842A 100%);
     --species-gradient-bird: linear-gradient(135deg, #7FCBA8 0%, #3F9873 100%);
     --species-gradient-fish: linear-gradient(135deg, #7FB8E0 0%, #3F7FB0 100%);
     --species-gradient-rabbit: linear-gradient(135deg, #E89EC0 0%, #B85A8A 100%);
+    /* Ferrets, guinea pigs, chinchillas, rats, hamsters. */
+    --species-gradient-small: linear-gradient(135deg, #C9A98A 0%, #8C6A4E 100%);
+    /* Turtles, lizards, snakes. */
+    --species-gradient-reptile: linear-gradient(135deg, #A9C77A 0%, #6A8F3E 100%);
     --species-gradient-default: var(--app-brand-gradient);
 
     /* Spacing Scale */

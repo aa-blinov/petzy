@@ -13,21 +13,16 @@ import { useNavigate } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 import { Skeleton } from 'antd-mobile';
 
-import { type LucideIcon } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
-import { speciesIconMap, SPECIES_FALLBACK_ICON, genderLabel } from '../utils/constants';
+import { genderLabel } from '../utils/constants';
+import { getSpecies } from '../utils/species';
 import { PetImage } from './PetImage';
 import { CountUp } from './CountUp';
 
 
-function speciesIcon(species?: string): LucideIcon {
-  if (!species) return SPECIES_FALLBACK_ICON;
-  const key = species.toLowerCase().trim();
-  return speciesIconMap[key] ?? SPECIES_FALLBACK_ICON;
-}
 
 
 interface LastEventProps {
@@ -108,10 +103,9 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const lastWeightRecord = weights.data?.items?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
-  // speciesIcon() selects among a fixed set of icons — see the identical
-  // comment in PetImage.tsx for why createElement is used below instead
-  // of JSX to render it.
-  const SpeciesIcon = speciesIcon(pet.species);
+  // A fixed set of module-level icons — see the identical comment in
+  // PetImage.tsx for why createElement is used below instead of JSX.
+  const SpeciesIcon = getSpecies(pet.species).icon;
 
   return (
     <div

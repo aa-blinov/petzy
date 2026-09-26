@@ -1,5 +1,5 @@
 import { useState, createElement } from 'react';
-import { speciesIcon } from '../utils/speciesIcon';
+import { getSpecies } from '../utils/species';
 
 interface PetImageProps {
     src: string;
@@ -21,12 +21,12 @@ interface PetImageProps {
 export function PetImage({ src, alt, size = 48, className, style, species, objectPosition = 'center 20%' }: PetImageProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(false);
-    // speciesIcon() selects among a fixed set of module-level lucide icons —
+    // getSpecies() picks among a fixed set of module-level lucide icons —
     // it never creates a new component. createElement (rather than JSX
     // <FallbackIcon .../>) keeps the react-hooks/static-components rule from
     // flagging this as a component defined during render, which it can't
     // tell apart from a real one from the syntax alone.
-    const FallbackIcon = speciesIcon(species);
+    const FallbackIcon = getSpecies(species).icon;
 
     // Generate srcset for common screen densities
     // Expecting src to be /api/pets/:id/photo

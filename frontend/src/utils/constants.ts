@@ -15,15 +15,6 @@ export const TILE_COLORS = {
 
 export type TileColor = typeof TILE_COLORS[keyof typeof TILE_COLORS];
 
-/** Russian names for the stored species keys. */
-export const SPECIES_LABELS: Record<string, string> = {
-  cat: 'Кот',
-  dog: 'Собака',
-  bird: 'Птица',
-  fish: 'Рыба',
-  other: 'Другое',
-};
-
 /** Spoken names for the colour swatches: the keys are English, and a
  *  Russian screen reader read "teal" or "cyan" out as gibberish. */
 export const TILE_COLOR_LABELS: Record<TileColor, string> = {
@@ -55,15 +46,6 @@ export const pastelColorMap: Record<string, string> = {
   gray: 'var(--tile-gray)',
 };
 
-import {
-  Footprints,
-  Cat,
-  Dog,
-  Bird,
-  Rabbit,
-  Fish,
-  type LucideIcon,
-} from 'lucide-react';
 
 /** Pet gender — the stored value and the label shown for it.
  *
@@ -96,34 +78,3 @@ export function genderLabel(value?: string | null): string {
   if (known) return known.label;
   return LEGACY_GENDER_LABELS[value] ?? value;
 }
-
-/** Species icon (lucide) for the PetSummaryCard hero fallback. */
-export const speciesIconMap: Record<string, LucideIcon> = {
-  cat: Cat,
-  dog: Dog,
-  bird: Bird,
-  rabbit: Rabbit,
-  fish: Fish,
-  // hamster, reptile and other species fall back to Footprints below.
-};
-
-/** Generic species icon used when the species isn't recognized. */
-export const SPECIES_FALLBACK_ICON: LucideIcon = Footprints;
-
-/**
- * Photo-placeholder gradient (see --species-gradient-* in globals.css)
- * for the pet's no-photo tile — keyed the same as speciesIconMap so a
- * cat's empty tile reads differently from a fish's at a glance, not just
- * by icon shape.
- */
-export const speciesGradientMap: Record<string, string> = {
-  cat: 'var(--species-gradient-cat)',
-  dog: 'var(--species-gradient-dog)',
-  bird: 'var(--species-gradient-bird)',
-  rabbit: 'var(--species-gradient-rabbit)',
-  fish: 'var(--species-gradient-fish)',
-};
-
-/** Fallback gradient for an unset or unrecognized species. */
-export const SPECIES_GRADIENT_FALLBACK = 'var(--species-gradient-default)';
-
