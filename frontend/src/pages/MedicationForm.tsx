@@ -15,6 +15,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { FormDangerButton } from '../components/FormDangerButton';
 
 const medicationSchema = z.object({
     name: z.string().min(1, 'Введите название'),
@@ -612,10 +613,28 @@ export function MedicationForm() {
                             block
                             size="large"
                             onClick={() => goBack(navigate, '/medications')}
-                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
+                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
                         >
                             Отмена
                         </Button>
+                        {isEditing && id && med && (
+                            <FormDangerButton
+                                label="Удалить курс"
+                                confirmTitle="Удаление курса"
+                                confirmContent={`Удалить курс «${med.name}» и всю его историю?`}
+                                onConfirm={async () => {
+                                    try {
+                                        await medicationsService.delete(id);
+                                    } catch (error) {
+                                        showToast.failure(getApiErrorMessage(error, 'Не удалось удалить курс'));
+                                        throw error;
+                                    }
+                                    await queryClient.invalidateQueries({ queryKey: ['medications'] });
+                                    showToast.success('Курс удалён');
+                                    goBack(navigate, '/medications');
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

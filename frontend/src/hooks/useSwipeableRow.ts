@@ -23,14 +23,16 @@
  *
  * Input: Pointer Events, so mouse, touch and pen share one path.
  * This used to listen to touch events only, which meant the row could
- * not be swiped with a cursor at all — and since the rows have no tap
- * action, edit and delete were unreachable on a desktop.
+ * not be swiped with a cursor at all.
+ *
+ * Rows open on tap as well (edit, or the file for a document); a swipe
+ * swallows the click that follows it, so it never does both.
  *
  * Why a hook instead of a library: we already own `useSwipeBack`
  * with the same tracking shape. Keep dependencies minimal.
  */
 
-import { useRef, useState, useCallback, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState, useCallback, useEffect, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 
 // Travel thresholds tuned for ~412 CSS-px viewports on iOS Safari and
 // Android Chrome — real-finger swipes rarely exceed 80 px before the
@@ -69,6 +71,9 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
   // its initial 0, so `dx = e.clientX - 0` was almost always > 4px,
   // making the row start "dragging" the instant a cursor passed over it.
   const isDownRef = useRef(false);
+  // A horizontal drag ends in a click on the row like any press does;
+  // rows now open on tap, so that click must not also fire.
+  const draggedRef = useRef(false);
   const snapBackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep ref in sync so the pointermove handler always sees the latest offset.
@@ -87,6 +92,7 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
     // Primary contact only: ignore right/middle clicks and extra fingers.
     if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     isDownRef.current = true;
+    draggedRef.current = false;
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     startTimeRef.current = Date.now();
@@ -108,6 +114,7 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
       // Horizontal lock only if horizontal travel dominates.
       if (Math.abs(dx) > Math.abs(dy)) {
         lockedRef.current = dx > 0 ? 'right' : 'left';
+        draggedRef.current = true;
         setDragging(true);
         // Cancel the text selection a horizontal mouse drag would
         // otherwise start; touch is already handled by touch-action.
@@ -200,6 +207,12 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
       // A cancelled pointer (browser gesture, window blur) must not
       // leave the row stuck mid-swipe.
       onPointerCancel: onPointerUp,
+      onClickCapture: (e: ReactMouseEvent) => {
+        if (!draggedRef.current) return;
+        draggedRef.current = false;
+        e.stopPropagation();
+        e.preventDefault();
+      },
     },
     reset,
   };

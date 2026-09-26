@@ -115,10 +115,11 @@ export function DocumentsList() {
   // no browser chrome to open a tab in at all), and navigating away loses
   // the whole SPA. An <iframe> keeps the user on this screen and works
   // everywhere a browser can render a PDF at all.
-  const [fileViewer, setFileViewer] = useState<{ visible: boolean; url: string | null; title: string }>({
+  const [fileViewer, setFileViewer] = useState<{ visible: boolean; url: string | null; title: string; id: string | null }>({
     visible: false,
     url: null,
     title: '',
+    id: null,
   });
 
   // Esc closes whichever viewer is open. Needed most for the image
@@ -217,7 +218,7 @@ export function DocumentsList() {
     if (doc.content_type.startsWith('image/')) {
       setImageViewer({ visible: true, image: url });
     } else {
-      setFileViewer({ visible: true, url, title: doc.title });
+      setFileViewer({ visible: true, url, title: doc.title, id: doc._id });
     }
   };
 
@@ -320,6 +321,9 @@ export function DocumentsList() {
                           key={doc._id}
                           itemLabel={doc.title}
                           openAction={{ label: doc.scan ? 'Скачать' : 'Открыть', onTrigger: () => handleOpen(doc) }}
+                          // Tap opens the file here, so edit and delete sit
+                          // behind a visible button as well as the swipe.
+                          menuVisible
                           leftAction={{
                             icon: <Pencil size={20} strokeWidth={2.4} />,
                             label: 'Изменить',
@@ -338,7 +342,7 @@ export function DocumentsList() {
                             style={{ borderRadius: 'var(--radius-md)', border: 'none', padding: 0, cursor: 'pointer' }}
                             onClick={() => handleOpen(doc)}
                           >
-                            <div style={{ padding: 'var(--spacing-lg)', display: 'flex', gap: 'var(--spacing-md)' }}>
+                            <div style={{ padding: 'var(--spacing-lg)', paddingRight: 48, display: 'flex', gap: 'var(--spacing-md)' }}>
                               <div
                                 aria-hidden
                                 style={{
@@ -530,11 +534,41 @@ export function DocumentsList() {
             >
               {fileViewer.title}
             </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexShrink: 0 }}>
+            {fileViewer.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  hapticFeedback('light');
+                  const docId = fileViewer.id;
+                  setFileViewer({ visible: false, url: null, title: '', id: null });
+                  navigate(`/documents/${docId}/edit`);
+                }}
+                className="touch-target"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  border: 'none',
+                  borderRadius: 999,
+                  background: 'var(--app-accent-soft)',
+                  color: 'var(--app-accent-deep)',
+                  fontFamily: 'inherit',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Pencil size={16} strokeWidth={2.4} aria-hidden />
+                Изменить
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
                 hapticFeedback('light');
-                setFileViewer({ visible: false, url: null, title: '' });
+                setFileViewer({ visible: false, url: null, title: '', id: null });
               }}
               className="touch-target"
               aria-label="Закрыть"
@@ -554,6 +588,7 @@ export function DocumentsList() {
             >
               <X size={18} strokeWidth={2.4} />
             </button>
+            </div>
           </div>
           {fileViewer.url && (
             <iframe

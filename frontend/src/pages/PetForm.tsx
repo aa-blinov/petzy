@@ -34,6 +34,8 @@ import { SpinnerButton } from '../components/SpinnerButton';
 import { PhotoCropModal } from '../components/PhotoCropModal';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { FormDangerButton } from '../components/FormDangerButton';
+import { useDeletePet } from '../hooks/useDeletePet';
 
 const petSchema = z.object({
   name: z.string().min(1, 'Введите имя питомца'),
@@ -54,6 +56,7 @@ interface PetPhotoItem {
 
 export function PetForm() {
   const navigate = useNavigate();
+  const deletePet = useDeletePet();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
   const queryClient = useQueryClient();
@@ -776,6 +779,18 @@ export function PetForm() {
             >
               Отмена
             </Button>
+            {/* Only the owner can delete; the backend refuses anyone else. */}
+            {isEditing && pet?.current_user_is_owner && (
+              <FormDangerButton
+                label="Удалить питомца"
+                confirmTitle="Удаление питомца"
+                confirmContent={`Удалить «${pet.name}»? Вместе с ним удалятся все записи, лекарства и документы`}
+                onConfirm={async () => {
+                  await deletePet(pet);
+                  goBack(navigate, '/pets');
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

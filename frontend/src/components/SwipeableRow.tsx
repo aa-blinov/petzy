@@ -27,6 +27,9 @@ interface SwipeableRowProps {
   /** The row's own tap action, when it has one (open a document), so
       the actions menu can offer it to people who can't tap the card. */
   openAction?: { label: string; onTrigger: () => void };
+  /** Show the actions button to everyone, not only keyboard users: for
+      rows whose tap opens something other than the edit form. */
+  menuVisible?: boolean;
 }
 
 /**
@@ -43,7 +46,7 @@ interface SwipeableRowProps {
  * Uses the `useSwipeableRow` hook for touch tracking. CSS handles the
  * translation so it stays on the compositor (no re-renders per frame).
  */
-export function SwipeableRow({ leftAction, rightAction, children, disabled, itemLabel, openAction }: SwipeableRowProps) {
+export function SwipeableRow({ leftAction, rightAction, children, disabled, itemLabel, openAction, menuVisible }: SwipeableRowProps) {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const handleLeft = () => {
     hapticFeedback('medium');
@@ -113,6 +116,7 @@ export function SwipeableRow({ leftAction, rightAction, children, disabled, item
         // Actions are only visible while the row is off its rest
         // position, so nothing underneath can peek out on a press.
         offset !== 0 ? 'swipeable-row--revealed' : '',
+        menuVisible ? 'swipeable-row--menu-visible' : '',
       ].filter(Boolean).join(' ')}
     >
       {/* Action layers — sit behind the row, fixed to the row's edges. */}

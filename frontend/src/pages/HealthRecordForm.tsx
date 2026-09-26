@@ -18,6 +18,7 @@ import { healthRecordsService, type HealthRecord } from '../services/healthRecor
 import { FormField } from '../components/FormField';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { FormDangerButton } from '../components/FormDangerButton';
 
 /** Builds the field list + title for a registered event type. Date, time
  *  and comment aren't part of `eventType.fields` — every type gets them
@@ -225,7 +226,7 @@ export function HealthRecordForm() {
 
       showToast.success(response.message, {
         // Not a fixed destination: this form opens from the Dashboard's
-        // quick-add (create) and from an edit swipe on either the
+        // quick-add (create) and from a tap or edit swipe on either the
         // Dashboard's or History's timeline (edit) — going back lands on
         // whichever of those actually opened it, tab/scroll position and
         // all, instead of assuming History every time an id is present.
@@ -329,6 +330,27 @@ export function HealthRecordForm() {
             >
               Отмена
             </Button>
+            {id && (
+              <FormDangerButton
+                label="Удалить запись"
+                confirmTitle="Удаление записи"
+                confirmContent="Удалить эту запись?"
+                onConfirm={async () => {
+                  try {
+                    await healthRecordsService.delete(id);
+                  } catch (error) {
+                    showToast.failure(getApiErrorMessage(error, 'Не удалось удалить'));
+                    throw error;
+                  }
+                  await queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+                  });
+                  showToast.success('Запись удалена');
+                  goBack(navigate, '/history');
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -130,6 +130,27 @@
     opacity: 1;
 }
 
+/* Rows whose tap does something other than edit (a document opens its
+   file) show the button, so edit and delete aren't swipe-only there. */
+.swipeable-row--menu-visible .swipeable-row__menu {
+    clip-path: none;
+    opacity: 1;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: var(--app-text-secondary);
+    transition: opacity var(--motion-duration-instant) linear;
+}
+
+/* It stays put while the row slides, so it steps aside meanwhile. */
+.swipeable-row--menu-visible.swipeable-row--revealed .swipeable-row__menu {
+    opacity: 0;
+    pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .swipeable-row__surface {
         transition: none;

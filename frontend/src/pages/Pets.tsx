@@ -1,13 +1,12 @@
 import { useState, useMemo } from 'react';
-import { showToast } from '../utils/toast';
-import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import { Pencil, Scale, Trash2, Cat } from 'lucide-react';
-import { petsService, type Pet } from '../services/pets.service';
+import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
+import { useDeletePet } from '../hooks/useDeletePet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
 import {
@@ -26,7 +25,7 @@ import { UserAvatar } from '../components/UserAvatar';
 
 export function Pets() {
   const navigate = useNavigate();
-  const { pets, selectPet, getSelectedPet, isLoading } = usePet();
+  const { pets, isLoading } = usePet();
 
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({
     visible: false,
@@ -43,34 +42,12 @@ export function Pets() {
   const handleAddPet = () => navigate('/pets/new');
   const handleDeleteClick = (pet: Pet) => setDeleteDialog({ visible: true, pet });
 
+  const deletePet = useDeletePet();
   const confirmDelete = async () => {
     const pet = deleteDialog.pet;
     if (!pet) return;
-
-    try {
-      const wasSelected = getSelectedPet?._id === pet._id;
-      const currentPetIndex = pets.findIndex(p => p._id === pet._id);
-
-      await petsService.deletePet(pet._id);
-      setDeleteDialog(prev => ({ ...prev, visible: false }));
-
-      const updatedPets = await petsService.getPets();
-      queryClient.setQueryData(['pets'], updatedPets);
-
-      if (wasSelected && updatedPets.length > 0) {
-        const nextPetIndex = currentPetIndex >= updatedPets.length ? updatedPets.length - 1 : currentPetIndex;
-        selectPet(updatedPets[nextPetIndex]);
-      } else if (updatedPets.length === 0) {
-        selectPet(null);
-      }
-
-      showToast.success('Питомец удалён');
-    } catch (error) {
-      console.error('Delete pet error:', error);
-      setDeleteDialog(prev => ({ ...prev, visible: false }));
-      const errorMessage = getApiErrorMessage(error, 'Не удалось удалить');
-      showToast.failure(errorMessage);
-    }
+    setDeleteDialog(prev => ({ ...prev, visible: false }));
+    await deletePet(pet).catch(() => undefined);
   };
 
   return (
@@ -158,7 +135,7 @@ export function Pets() {
       <Dialog
         visible={deleteDialog.visible}
         title="Удаление питомца"
-        content={deleteDialog.pet ? `Вы уверены, что хотите удалить «${deleteDialog.pet.name}»?` : ''}
+        content={deleteDialog.pet ? `Удалить «${deleteDialog.pet.name}»? Вместе с ним удалятся все записи, лекарства и документы` : ''}
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, pet: null })}
         actions={[
@@ -188,8 +165,8 @@ export function Pets() {
 
 
 /**
- * Pet list row — hero photo (or species icon) + headline name + meta chips
- * + a discrete edit pencil. Delete is hidden behind a long-press.
+ * Pet list row: photo (or species icon), name, meta chips. Tap opens the
+ * edit form, swipe edits or deletes.
  */
 function PetCard({
   pet,
@@ -245,10 +222,9 @@ function PetCard({
 
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction} itemLabel={pet.name}>
-      {/* Editing and deleting are swipe actions. No .tap-ripple here on
-          purpose: the card has no tap action, so a press animation would
-          promise something that never happens. */}
-      <div className="card-soft card-soft--interactive" style={{ padding: '16px' }}>
+      {/* Tap opens the edit form; swiping is the shortcut to edit or
+          delete. The photo opens on its own tap. */}
+      <div className="card-soft card-soft--interactive" style={{ padding: '16px', cursor: 'pointer' }} onClick={onEdit}>
         <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
           {/* Square avatar — image if available, else species icon on
               its gradient tile. Same treatment as PetSummaryCard on the
@@ -256,8 +232,15 @@ function PetCard({
               list is for managing pets, not logging events. */}
           <button
             type="button"
-            onClick={() => pet.photo_url && onImageTap(pet.photo_url)}
-            disabled={!pet.photo_url}
+            onClick={(e) => {
+              // The photo, not the edit form the rest of the card opens.
+              if (!pet.photo_url) return;
+              e.stopPropagation();
+              onImageTap(pet.photo_url);
+            }}
+            // Without a photo the avatar is part of the card and opens
+            // the edit form like the rest of it.
+            tabIndex={pet.photo_url ? undefined : -1}
             aria-label={pet.photo_url ? `Открыть фото ${pet.name}` : undefined}
             style={{
               position: 'relative',

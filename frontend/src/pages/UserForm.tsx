@@ -13,6 +13,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { FormDangerButton } from '../components/FormDangerButton';
+import { useAuth } from '../hooks/useAuth';
 
 // A new user needs a password; an edit leaves it blank to keep the old
 // one. This was a toast in onSubmit, shown only once every other field
@@ -31,6 +33,7 @@ export function UserForm() {
   const { username } = useParams<{ username: string }>();
   const isEditing = !!username;
   const queryClient = useQueryClient();
+  const { username: currentUsername } = useAuth();
 
   const { control, handleSubmit, reset, formState: { isSubmitting } } = useForm<UserFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
@@ -84,6 +87,23 @@ export function UserForm() {
     },
     onError: (err: unknown) => {
       showToast.failure(getApiErrorMessage(err, 'Не удалось создать пользователя'));
+    },
+  });
+
+  const setActive = useMutation({
+    mutationFn: async (active: boolean) => {
+      if (active) await usersService.updateUser(username!, { is_active: true });
+      else await usersService.deleteUser(username!);
+    },
+    onSuccess: (_data, active) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      showToast.success(active ? 'Пользователь активирован' : 'Пользователь деактивирован');
+      goBack(navigate, '/admin');
+    },
+    onError: (err: unknown, active) => {
+      showToast.failure(
+        getApiErrorMessage(err, active ? 'Не удалось активировать пользователя' : 'Не удалось деактивировать пользователя'),
+      );
     },
   });
 
@@ -263,6 +283,28 @@ export function UserForm() {
             >
               Отмена
             </Button>
+            {/* Users are never deleted, only deactivated (and back). Not
+                your own account: the server refuses, and it would lock
+                you out. */}
+            {isEditing && user && user.username !== currentUsername && (user.is_active === false ? (
+              <Button
+                block
+                size="large"
+                fill="none"
+                loading={setActive.isPending}
+                onClick={() => setActive.mutate(true)}
+                style={{ borderRadius: '12px', fontWeight: 500, color: 'var(--app-success-text)' }}
+              >
+                Активировать
+              </Button>
+            ) : (
+              <FormDangerButton
+                label="Деактивировать"
+                confirmTitle="Деактивация пользователя"
+                confirmContent={`Пользователь «${user.username}» потеряет доступ к аккаунту. Его можно будет активировать обратно в любой момент`}
+                onConfirm={() => setActive.mutateAsync(false)}
+              />
+            ))}
           </div>
         </div>
       </div>

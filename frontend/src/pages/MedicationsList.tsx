@@ -216,11 +216,17 @@ export function MedicationsList() {
                                     onTrigger: () => handleDelete(med),
                                 }}
                             >
-                            <Card className="card-soft card-soft--interactive" style={{
-                                borderRadius: 'var(--radius-md)',
-                                border: 'none',
-                                padding: 0,
-                            }}>
+                            {/* Tap opens the edit form, swipe edits or deletes. */}
+                            <Card
+                                className="card-soft card-soft--interactive"
+                                onClick={() => navigate(`/medications/${med._id}/edit`)}
+                                style={{
+                                    borderRadius: 'var(--radius-md)',
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                }}
+                            >
                                 <div style={{ padding: 'var(--spacing-lg)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
@@ -320,7 +326,9 @@ export function MedicationsList() {
                                     </div>
 
                                     {med.is_active && (
-                                        <div style={{ marginTop: 'var(--spacing-xl)' }}>
+                                        // Logging a dose is its own action, not a tap on the card
+                                        // (a disabled button's click must not open the form either).
+                                        <div style={{ marginTop: 'var(--spacing-xl)' }} onClick={(e) => e.stopPropagation()}>
                                             <Button
                                                 block
                                                 color="primary"
