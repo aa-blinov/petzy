@@ -14,6 +14,7 @@ import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
+import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 
 export function MedicationsList() {
@@ -255,6 +256,8 @@ export function MedicationsList() {
                                                 По {med.default_dose || 1} {med.dose_unit || 'ед.'}
                                             </p>
                                         </div>
+                                        {/* Level with the name (36px icon row). */}
+                                        <span style={{ marginTop: 9 }}><CardChevron /></span>
                                     </div>
 
                                     <div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', lineHeight: 'var(--line-height-normal)' }}>

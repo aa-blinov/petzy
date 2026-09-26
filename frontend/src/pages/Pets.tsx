@@ -19,6 +19,7 @@ import {
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
+import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { UserAvatar } from '../components/UserAvatar';
@@ -371,6 +372,8 @@ function PetCard({
               </span>
             )}
           </div>
+          {/* Level with the name. */}
+          <span style={{ marginTop: 6 }}><CardChevron /></span>
         </div>
       </div>
     </SwipeableRow>

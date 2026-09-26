@@ -11,6 +11,7 @@ import { pastelColorMap } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { UserAvatar } from './UserAvatar';
+import { CardChevron } from './CardChevron';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -26,6 +27,10 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
   const PillIcon = config.icon;
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  // A medication intake can't be edited: its tap explains that and
+  // offers the one thing it can do, rather than asking to delete out of
+  // the blue.
+  const [intakeInfoVisible, setIntakeInfoVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Hide the author chip when the record was logged by the current user —
@@ -59,10 +64,12 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
 
       showToast.success('Запись удалена');
       setDeleteDialogVisible(false);
+      setIntakeInfoVisible(false);
     } catch (error) {
       console.error('Error deleting record:', error);
       showToast.failure('Не удалось удалить');
       setDeleteDialogVisible(false);
+      setIntakeInfoVisible(false);
     } finally {
       setIsDeleting(false);
     }
@@ -92,14 +99,12 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       <SwipeableRow
         leftAction={leftAction}
         rightAction={rightAction}
-        disabled={deleteDialogVisible}
+        disabled={deleteDialogVisible || intakeInfoVisible}
         itemLabel={`${config.displayName}, ${formatRelativeDateTime(item.date_time)}`}
       >
         <div
           className="card-soft card-soft--interactive"
-          // Tap opens the edit form; a medication intake can't be edited,
-          // so its tap asks the one thing it can do: delete it.
-          onClick={canEdit ? handleEdit : () => setDeleteDialogVisible(true)}
+          onClick={canEdit ? handleEdit : () => setIntakeInfoVisible(true)}
           style={{
             cursor: 'pointer',
             display: 'flex',
@@ -130,6 +135,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
               >
                 {formatRelativeDateTime(item.date_time)}
               </span>
+              {canEdit && <CardChevron />}
             </div>
 
             {showAuthor && (
@@ -180,6 +186,19 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
           </div>
         </div>
       </SwipeableRow>
+
+      <Dialog
+        visible={intakeInfoVisible}
+        title="Приём лекарства"
+        content="Отмеченный приём нельзя изменить. Если отметили по ошибке, удалите его"
+        closeOnAction
+        onClose={() => setIntakeInfoVisible(false)}
+        getContainer={() => document.body}
+        actions={[
+          { key: 'delete', text: isDeleting ? 'Удаление...' : 'Удалить приём', danger: true, disabled: isDeleting, onClick: handleDelete },
+          { key: 'close', text: 'Закрыть', onClick: () => setIntakeInfoVisible(false) },
+        ]}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog
