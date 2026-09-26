@@ -139,3 +139,72 @@ jobs:
           FLASK_SECRET_KEY: ci-secret
           ADMIN_USERNAME: admin
           ADMIN_PASSWORD_HASH: $2b$12$dummyhashforCIplaceholdervalueXXXXXXXXXXXXXXXXXXXXX
+  backup:
+    name: Backup image (dump, upload, rotate, restore)
+    runs-on: ubuntu-latest
+    env:
+      # A quote and an @ on purpose: the password travels in a config
+      # file, and has to survive its quoting.
+      MONGO_PASS: 'p@ss"word'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the backup image
+        run: docker build -f backup/Dockerfile -t petzy-backup .
+      - name: MongoDB and an in-memory S3
+        run: |
+          set -euo pipefail
+          docker run -d --name mongo -p 127.0.0.1:27017:27017 \
+            -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD="$MONGO_PASS" mongo:latest
+          pip install --quiet "moto[server]>=5" boto3
+          nohup moto_server -H 127.0.0.1 -p 5000 > moto.log 2>&1 &
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet -u root -p "$MONGO_PASS" --eval 'db.adminCommand("ping").ok' 2>/dev/null | grep -q 1 && break
+            sleep 2
+          done
+          python - <<'PY'
+          import boto3, time
+          for _ in range(20):
+              try:
+                  boto3.client("s3", endpoint_url="http://127.0.0.1:5000", region_name="us-east-1",
+                               aws_access_key_id="t", aws_secret_access_key="t").create_bucket(Bucket="ci")
+                  break
+              except Exception:
+                  time.sleep(1)
+          PY
+      - name: Seed some data
+        run: |
+          docker exec mongo mongosh --quiet -u root -p "$MONGO_PASS" --authenticationDatabase admin petzy --eval '
+            db.pets.insertMany([{ name: "Рекс" }, { name: "Барсик" }]);
+            db.events.insertMany(Array.from({ length: 500 }, (_, i) => ({ i })));'
+      - name: Four backups, the newest three kept
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4; do
+            docker run --rm --network host \
+              -e MONGO_HOST=127.0.0.1 -e MONGO_PORT=27017 -e MONGO_USER=root -e MONGO_PASS -e MONGO_DB=petzy \
+              -e S3_ENDPOINT=http://127.0.0.1:5000 -e S3_REGION=us-east-1 -e S3_BUCKET=ci \
+              -e S3_KEY_ID=t -e S3_SECRET_KEY=t -e BACKUP_KEEP=3 \
+              petzy-backup python3 scripts/backup_to_s3.py --once
+            sleep 1.1  # backup keys are per second
+          done
+          python - <<'PY'
+          import boto3
+          s3 = boto3.client("s3", endpoint_url="http://127.0.0.1:5000", region_name="us-east-1",
+                            aws_access_key_id="t", aws_secret_access_key="t")
+          keys = sorted(o["Key"] for o in s3.list_objects_v2(Bucket="ci").get("Contents", []))
+          print(keys)
+          assert len(keys) == 3 and all(k.startswith("backups/mongo/petzy-") for k in keys), keys
+          s3.download_file("ci", keys[-1], "newest.archive.gz")
+          PY
+      - name: Restore the newest into a fresh database and compare
+        run: |
+          set -euo pipefail
+          docker cp newest.archive.gz mongo:/tmp/newest.archive.gz
+          docker exec mongo mongorestore -u root -p "$MONGO_PASS" --authenticationDatabase admin \
+            --archive=/tmp/newest.archive.gz --gzip --nsFrom 'petzy.*' --nsTo 'restored.*' --quiet
+          counts() {
+            docker exec mongo mongosh --quiet -u root -p "$MONGO_PASS" --authenticationDatabase admin "$1" \
+              --eval 'print(db.pets.countDocuments() + "/" + db.events.countDocuments())'
+          }
+          echo "original: $(counts petzy), restored: $(counts restored)"
+          [ "$(counts restored)" = "2/500" ] && [ "$(counts petzy)" = "$(counts restored)" ]
