@@ -15,6 +15,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { httpStatus } from '../services/api';
 import {
+  documentsListQuery,
   documentsService,
   DOCUMENT_CATEGORY_LABELS,
   type DocumentCategory,
@@ -143,8 +144,7 @@ export function DocumentsList() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['documents', selectedPetId],
-    queryFn: () => documentsService.getList(selectedPetId!).then((res) => res.documents),
+    ...documentsListQuery(selectedPetId ?? ''),
     enabled: !!selectedPetId,
   });
 

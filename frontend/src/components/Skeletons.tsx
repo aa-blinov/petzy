@@ -100,7 +100,9 @@ export function SkeletonList({
 }: SkeletonListProps) {
   return (
     <div
-      className="safe-area-padding"
+      // skeleton-list: hidden for the first 300 ms (globals.css), so a
+      // quick load never flashes it.
+      className="safe-area-padding skeleton-list"
       role="status"
       style={{
         marginTop: 'var(--spacing-sm)',

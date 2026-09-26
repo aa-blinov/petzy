@@ -7,7 +7,7 @@ import { Button, Card, ProgressBar, Tag, Dialog, Input, PullToRefresh } from 'an
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
-import { medicationsService, type Medication } from '../services/medications.service';
+import { medicationsListQuery, medicationsService, type Medication } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
@@ -24,15 +24,7 @@ export function MedicationsList() {
     const queryClient = useQueryClient();
 
     const { data: medications = [], isLoading, refetch } = useQuery({
-        queryKey: ['medications', selectedPetId],
-        queryFn: () => {
-            // Local date, not the UTC one toISOString() yields: the
-            // backend uses this as the start of "today" when deciding
-            // which doses are already taken, so a UTC date put the
-            // window on the wrong day near midnight.
-            const clientDate = formatDate(new Date());
-            return medicationsService.getList(selectedPetId!, clientDate);
-        },
+        ...medicationsListQuery(selectedPetId ?? ''),
         enabled: !!selectedPetId,
     });
 

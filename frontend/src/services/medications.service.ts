@@ -1,4 +1,5 @@
 import api from './api';
+import { formatDate } from '../utils/dateUtils';
 
 export interface MedicationSchedule {
     days: number[]; // 0-6
@@ -120,3 +121,16 @@ export const medicationsService = {
         return response.data.doses;
     }
 };
+
+/** The medications list query, shared by the page and the tab prefetch
+ *  (App.tsx) so both fill the same cache entry. */
+export function medicationsListQuery(petId: string) {
+    return {
+        queryKey: ['medications', petId] as const,
+        // Local date, not the UTC one toISOString() yields: the backend
+        // uses this as the start of "today" when deciding which doses are
+        // already taken, so a UTC date put the window on the wrong day
+        // near midnight.
+        queryFn: () => medicationsService.getList(petId, formatDate(new Date())),
+    };
+}

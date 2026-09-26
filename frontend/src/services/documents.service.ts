@@ -180,3 +180,12 @@ export const documentsService = {
     return `/api/documents/${id}/file`;
   },
 };
+
+/** The documents list query, shared by the page and the tab prefetch
+ *  (App.tsx) so both fill the same cache entry. */
+export function documentsListQuery(petId: string) {
+  return {
+    queryKey: ['documents', petId] as const,
+    queryFn: () => documentsService.getList(petId).then((res) => res.documents),
+  };
+}
