@@ -86,7 +86,9 @@
    - `FLASK_SECRET_KEY` - Secret key for Flask sessions (change in production!)
    - `ADMIN_PASSWORD_HASH` - Bcrypt hash of admin password
    - `ADMIN_USERNAME` - Admin username (default: `admin`)
-   - `BACKUP_RETENTION_DAYS` - Days to keep backups (default: 7)
+   - `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` - object storage for files and backups
+   - `BACKUP_KEEP` - How many daily backups to keep in the bucket (default: 3)
+   - `BACKUP_HOUR_UTC` - Hour (UTC) of the daily backup (default: 0)
    - `GUNICORN_WORKERS` - Number of Gunicorn workers (default: 2)
 
    To generate a password hash, run:
@@ -106,7 +108,7 @@
    - **Nginx** (port 3000): Reverse proxy serving frontend and proxying API requests
    - **Flask Backend** (port 5000): REST API with Gunicorn (2 workers by default)
    - **MongoDB** (port 27017): Database
-   - **Mongo Backup**: Automated backup service
+   - **Backup**: daily database backup to object storage
 
    You can override the number of Gunicorn workers by setting `GUNICORN_WORKERS` environment variable.
    
@@ -166,29 +168,44 @@ gunicorn -c gunicorn.conf.py --workers 4 web.app:app
 
 ### MongoDB Backups
 
-The application includes an automated backup service (`mongo-backup`) that:
+The `backup` service (`backup/Dockerfile`, `scripts/backup_to_s3.py`) backs up the
+database to the object storage bucket once a day:
 
-- **Automatically creates backups** every 24 hours
-- **Stores backups** in the `./backups/` directory (mounted as volume)
-- **Retains backups** for 7 days (configurable via `BACKUP_RETENTION_DAYS` in `.env`)
-- **Uses gzip compression** to save disk space
-- **Runs continuously** as a Docker service
+- dumps the database with `mongodump` into one gzipped archive and checks it reads
+  back (`mongorestore --dryRun`);
+- uploads it to its own folder, `backups/mongo/<db>-YYYYMMDD-HHMMSS.archive.gz`,
+  apart from users' files (`users/`) and local runs (`dev/`), and checks the stored size;
+- only then deletes all but the newest `BACKUP_KEEP` (3) backups, every version of them.
 
-Backups are stored with timestamps: `backup-YYYYMMDD_HHMMSS/`
+A failed attempt keeps the older backups and is retried an hour later. When the
+service starts and the newest backup is more than a day old, it backs up at once.
+The backups live off the server on purpose: a copy on the database's own disk is
+lost with it. Files (photos, documents, scans) are in the bucket already and are
+not part of the dump.
 
-To manually trigger a one-time backup:
+A backup right now:
 
 ```sh
-./scripts/mongo-backup-manual.sh
+docker compose run --rm backup python3 scripts/backup_to_s3.py --once
 ```
 
-To view backup service logs:
+Logs: `docker compose logs -f backup`. The "Diagnose server" workflow lists the
+backups in the bucket with their sizes and ages.
+
+**Restoring** (overwrites the collections it restores; pick the file from the list):
 
 ```sh
-docker-compose logs -f mongo-backup
+# 1. Download it into the current directory (or from the Backblaze web console)
+docker compose run --rm -v "$PWD:/out" backup python3 -c "from web import storage; \
+  storage._client().download_file(storage._bucket(), 'backups/mongo/<file>.archive.gz', '/out/b.archive.gz')"
+# 2. Restore it into the running database
+docker compose cp b.archive.gz db:/tmp/b.archive.gz
+docker compose exec db mongorestore -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin \
+  --archive=/tmp/b.archive.gz --gzip --drop
 ```
 
-**Note**: The `backups/` directory is excluded from git (see `.gitignore`). Make sure to regularly copy backups to a safe location for disaster recovery.
+To look at a backup without touching the live data, restore it under another name
+with `--nsFrom '<db>.*' --nsTo 'restored.*'` instead of `--drop`.
 
 ### Useful Commands
 
@@ -202,7 +219,7 @@ docker-compose logs -f mongo-backup
   docker-compose logs -f web          # Backend logs
   docker-compose logs -f frontend     # Frontend build logs
   docker-compose logs -f nginx        # Nginx logs
-  docker-compose logs -f mongo-backup # Backup service logs
+  docker-compose logs -f backup # Backup service logs
   ```
 
 - **Rebuild specific service**:
@@ -259,8 +276,8 @@ docker-compose logs -f mongo-backup
 ├── nginx/                # Nginx configuration
 │   └── nginx.conf       # Reverse proxy config
 ├── scripts/              # Utility scripts
-│   ├── mongo-backup.sh  # Automated backup script
-│   └── mongo-backup-manual.sh
+│   └── backup_to_s3.py  # Daily database backup to the bucket
+├── backup/Dockerfile     # Backup service image
 ├── tests/                # Backend tests
 ├── docker-compose.yml    # Docker Compose configuration
 ├── Dockerfile           # Backend Docker image
