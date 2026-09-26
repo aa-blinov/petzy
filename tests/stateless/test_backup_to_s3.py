@@ -103,6 +103,17 @@ class TestBackupOnce:
 
         assert set(others) <= set(_keys(s3_storage))
 
+    def test_a_local_stack_backs_up_under_dev_and_leaves_production_alone(self, s3_storage, monkeypatch):
+        prod = [f"backups/mongo/petzy-2026092{d}-000000.archive.gz" for d in range(0, 4)]
+        for key in prod:
+            s3_storage.put_object(Bucket=BUCKET, Key=key, Body=b"x")
+        monkeypatch.setenv("S3_PREFIX", "dev/")
+
+        key = backup.backup_once(storage, keep=1, now=_at(26), run=FakeMongoTools())
+
+        assert key.startswith("dev/backups/mongo/")
+        assert set(prod) <= set(_keys(s3_storage))
+
     @pytest.mark.parametrize("failing", ["mongodump", "mongorestore"])
     def test_a_failed_dump_or_check_keeps_the_old_backups(self, s3_storage, failing):
         for day in (20, 21, 22):
