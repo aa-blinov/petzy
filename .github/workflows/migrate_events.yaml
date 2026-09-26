@@ -90,6 +90,9 @@ jobs:
 
             echo "=== before"
             report
+            echo
+            echo "=== what a migration would do (dry run)"
+            docker compose exec -T web python - --dry-run < scripts/migrate_events.py 2>&1 | grep -E " -> events|Done" | sed -E 's/^[0-9-]+ [0-9:,]+ - //' || true
 
             if [ "${{ inputs.mode }}" = "apply" ]; then
               echo

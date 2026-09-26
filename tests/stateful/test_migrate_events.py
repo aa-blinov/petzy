@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import mongomock
 import pytest
+from bson.int64 import Int64
 
 from scripts.migrate_events import migrate
 from web.builtin_event_types import BUILTIN_EVENT_TYPES, seed_builtin_event_types
@@ -14,7 +15,10 @@ def legacy_db():
     """A standalone mongomock database seeded with old-style documents —
     deliberately not the shared `mock_db` fixture, since this exercises the
     migration script's own db-parameter wiring rather than the app."""
-    return mongomock.MongoClient()["migrate_test"]
+    db = mongomock.MongoClient()["migrate_test"]
+    # Records of pets that still exist; migration skips the others.
+    db.pets.insert_many([{"_id": "507f1f77bcf86cd799439011"}, {"_id": "p1"}])
+    return db
 
 
 def test_migrate_seeds_builtin_types(legacy_db):
@@ -83,9 +87,14 @@ def test_migrate_moves_legacy_documents(legacy_db):
     assert len(events) == 3
 
     asthma_event = next(e for e in events if e["type"] == "asthma")
-    assert asthma_event["fields"]["duration"] == "5 минут"
-    assert asthma_event["fields"]["inhalation"] is True
+    # "5 минут" is no duration option: kept in the comment, not guessed.
+    assert "duration" not in asthma_event["fields"]
+    assert asthma_event["comment"] == "c\nДлительность: 5 минут"
+    assert asthma_event["fields"]["inhalation"] == "true"
+    assert asthma_event["fields"]["reason"] == "Стресс"
     assert asthma_event["pet_id"] == pet_id
+    weight_event = next(e for e in events if e["type"] == "weight")
+    assert weight_event["fields"] == {"weight": 4.5}
 
     # Legacy collections are left untouched.
     assert legacy_db.asthma_attacks.count_documents({}) == 1
@@ -176,3 +185,71 @@ def test_seed_does_not_override_a_customized_bound(legacy_db):
 
     weight_field = legacy_db.event_types.find_one({"key": "weight"})["fields"][0]
     assert weight_field["max"] == 50
+
+
+def _legacy(db, collection, **fields):
+    db[collection].insert_one(
+        {"pet_id": "p1", "date_time": datetime.now(timezone.utc), "comment": "", "username": "u", **fields}
+    )
+
+
+def _only_event(db):
+    (event,) = list(db.events.find({}))
+    return event
+
+
+@pytest.mark.parametrize("stored", ["4.5", "4,5", 4.5, Int64(4)])
+def test_numbers_become_floats(legacy_db, stored):
+    _legacy(legacy_db, "weights", weight=stored)
+
+    migrate(legacy_db)
+
+    value = _only_event(legacy_db)["fields"]["weight"]
+    assert isinstance(value, float) and value == float(str(stored).replace(",", "."))
+
+
+def test_booleans_become_the_select_option_values(legacy_db):
+    _legacy(legacy_db, "asthma_attacks", duration="Короткий", reason="r", inhalation=False)
+
+    migrate(legacy_db)
+
+    fields = _only_event(legacy_db)["fields"]
+    assert fields == {"duration": "Короткий", "reason": "r", "inhalation": "false"}
+
+
+def test_a_known_old_label_maps_to_its_option(legacy_db):
+    _legacy(legacy_db, "defecations", stool_type="Тип 4 (Нормальный)", color="Коричневый")
+
+    migrate(legacy_db)
+
+    event = _only_event(legacy_db)
+    assert event["fields"]["stool_type"] == "Обычный"
+    assert event["comment"] == ""
+
+
+def test_migrated_values_pass_the_event_engines_own_validation(legacy_db):
+    from web.events import _validate_event_fields  # the check every save goes through
+
+    _legacy(legacy_db, "asthma_attacks", duration="Короткий", reason="r", inhalation=True)
+    _legacy(legacy_db, "feedings", food_weight="80")
+    _legacy(legacy_db, "defecations", stool_type="Тип 4 (Нормальный)", color="Коричневый", food="корм")
+
+    migrate(legacy_db)
+
+    for event in legacy_db.events.find({}):
+        spec = legacy_db.event_types.find_one({"key": event["type"]})["fields"]
+        cleaned, error = _validate_event_fields(event["fields"], spec)
+        assert error is None, (event["type"], error)
+        assert cleaned == event["fields"]
+
+
+def test_records_of_a_deleted_pet_are_skipped_and_left_in_place(legacy_db):
+    legacy_db.feedings.insert_one(
+        {"pet_id": "gone", "date_time": datetime.now(timezone.utc), "food_weight": 50, "comment": "", "username": "u"}
+    )
+
+    counts = migrate(legacy_db)
+
+    assert counts["feedings"] == 0
+    assert legacy_db.events.count_documents({}) == 0
+    assert legacy_db.feedings.count_documents({}) == 1
