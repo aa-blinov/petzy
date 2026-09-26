@@ -18,7 +18,8 @@ day old (first run, a missed day), so a deploy never leaves the data
 without a recent copy.
 
 Backups sit in their own top-level folder, apart from users' files
-(users/) and local runs (dev/). Files themselves (photos, documents,
+(users/). A local stack (S3_PREFIX=dev/) keeps its own under
+dev/backups/mongo/ and never touches production's. Files themselves (photos, documents,
 scans) are already in the bucket and aren't part of the dump.
 
     python scripts/backup_to_s3.py          # the daily loop
@@ -40,7 +41,7 @@ from typing import Callable, Optional
 
 logger = logging.getLogger("backup")
 
-PREFIX = "backups/mongo/"
+FOLDER = "backups/mongo/"
 SUFFIX = ".archive.gz"
 
 
@@ -48,13 +49,19 @@ def _env(name: str, default: str = "") -> str:
     return (os.getenv(name) or default).strip()
 
 
-def backup_key(now: datetime) -> str:
-    return f"{PREFIX}{_env('MONGO_DB', 'petzy')}-{now.strftime('%Y%m%d-%H%M%S')}{SUFFIX}"
+def backups_prefix(storage) -> str:
+    """backups/mongo/ in production; under dev/ for local runs (S3_PREFIX),
+    so a local stack sharing the bucket never rotates production's."""
+    return f"{storage.key_prefix()}{FOLDER}"
+
+
+def backup_key(storage, now: datetime) -> str:
+    return f"{backups_prefix(storage)}{_env('MONGO_DB', 'petzy')}-{now.strftime('%Y%m%d-%H%M%S')}{SUFFIX}"
 
 
 def list_backups(storage) -> list[dict]:
     """Backups in the bucket, newest first: [{key, size, modified}]."""
-    found = [b for b in storage.list_objects(PREFIX) if b["key"].endswith(SUFFIX)]
+    found = [b for b in storage.list_objects(backups_prefix(storage)) if b["key"].endswith(SUFFIX)]
     return sorted(found, key=lambda b: b["key"], reverse=True)  # the key carries the timestamp
 
 
@@ -107,7 +114,7 @@ def verify(path: str, credentials: str, run: Callable = subprocess.run) -> None:
 def backup_once(storage, keep: int, now: Optional[datetime] = None, run: Callable = subprocess.run) -> str:
     """Dump, verify, upload, check, rotate. Returns the new backup's key."""
     now = now or datetime.now(timezone.utc)
-    key = backup_key(now)
+    key = backup_key(storage, now)
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "dump.archive.gz")
         credentials = write_credentials(tmp)
@@ -168,7 +175,7 @@ def main() -> int:
         backup_once(storage, keep)
         return 0
 
-    logger.info(f"Daily backups at {hour:02d}:00 UTC to {PREFIX}, keeping the newest {keep}")
+    logger.info(f"Daily backups at {hour:02d}:00 UTC to {backups_prefix(storage)}, keeping the newest {keep}")
     pending = is_due(storage, datetime.now(timezone.utc))
     while True:
         if pending:
