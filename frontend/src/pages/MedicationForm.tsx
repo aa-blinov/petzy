@@ -15,7 +15,12 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
+import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
+
+/** A typed amount («0,5» or «0.5») for zod; '' is «not set». */
+const amount = (v: unknown) => (v === '' || v === undefined || v === null ? null : typeof v === 'string' ? v.replace(',', '.') : v);
 
 const medicationSchema = z.object({
     name: z.string().min(1, 'Введите название'),
@@ -23,15 +28,17 @@ const medicationSchema = z.object({
     form_factor: z.string().optional(),
     strength: z.string().optional(),
     dose_unit: z.string().optional(),
-    default_dose: z.coerce.number({ error: 'Введите число' }).min(0.0001, 'Доза должна быть больше нуля'),
+    default_dose: z.preprocess(amount, z.coerce.number({ error: 'Введите число' }).min(0.0001, 'Доза должна быть больше нуля')),
     schedule: z.object({
         days: z.array(z.number()).min(1, 'Выберите хотя бы один день'),
         times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Выберите время')).min(1, 'Добавьте хотя бы одно время'),
     }),
     inventory_enabled: z.boolean(),
-    inventory_total: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
-    inventory_current: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
-    inventory_warning_threshold: z.preprocess((val) => (val === '' || val === undefined) ? null : val, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
+    // Pack size: what «Пополнить» offers to add. Not a cap on the stock,
+    // which can hold more than one pack.
+    inventory_total: z.preprocess(amount, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
+    inventory_current: z.preprocess(amount, z.coerce.number({ error: 'Введите число' }).nullable().optional()),
+    inventory_warning_days: z.preprocess(amount, z.coerce.number({ error: 'Введите число' }).min(0, 'Не меньше нуля').max(60, 'Не больше 60 дней').nullable().optional()),
     is_active: z.boolean(),
     comment: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -41,13 +48,10 @@ const medicationSchema = z.object({
     const total = data.inventory_total as number | null | undefined;
     const current = data.inventory_current as number | null | undefined;
     if (total !== null && total !== undefined && total <= 0) {
-        ctx.addIssue({ code: 'custom', path: ['inventory_total'], message: 'Общее количество должно быть больше нуля' });
+        ctx.addIssue({ code: 'custom', path: ['inventory_total'], message: 'В упаковке должно быть больше нуля' });
     }
     if (current !== null && current !== undefined && current < 0) {
         ctx.addIssue({ code: 'custom', path: ['inventory_current'], message: 'Остаток не может быть меньше нуля' });
-    }
-    if (current !== null && current !== undefined && total !== null && total !== undefined && current > total) {
-        ctx.addIssue({ code: 'custom', path: ['inventory_current'], message: `Остаток больше общего количества (${total})` });
     }
 });
 
@@ -105,6 +109,7 @@ export function MedicationForm() {
                 times: ['08:00'],
             },
             inventory_enabled: false,
+            inventory_warning_days: 3,
             is_active: true,
             comment: '',
         }
@@ -124,6 +129,17 @@ export function MedicationForm() {
     const watchedDoseUnitForPicker = watchedDoseUnit || 'ед';
     const watchedDefaultDose = useWatch({ control, name: 'default_dose' }) || 1;
     const watchedTimes = useWatch({ control, name: 'schedule.times' });
+    const watchedDays = useWatch({ control, name: 'schedule.days' });
+    const watchedCurrent = useWatch({ control, name: 'inventory_current' });
+    // «Хватит примерно на 6 дней», live as the stock or schedule changes.
+    const stockPreview = (() => {
+        const current = parseAmount(String(watchedCurrent ?? ''));
+        const dose = parseAmount(String(watchedDefaultDose ?? '')) || 1;
+        const perDay = (dose * (watchedTimes?.length || 0) * (watchedDays?.length || 0)) / 7;
+        if (current === null || current <= 0 || perDay <= 0) return '';
+        const days = Math.floor(current / perDay);
+        return days < 1 ? 'Хватит меньше чем на день' : `Хватит примерно на ${days} ${pluralRu(days, 'день', 'дня', 'дней')}`;
+    })();
 
     const { data: med, isLoading: isLoadingMed } = useQuery({
         queryKey: ['medication', id],
@@ -143,15 +159,17 @@ export function MedicationForm() {
                 form_factor: med.form_factor || 'other',
                 strength: med.strength || '',
                 dose_unit: med.dose_unit || med.unit || '',
-                default_dose: med.default_dose || 1,
+                // Shown the Russian way («0,5»); the schema reads either.
+                default_dose: formatAmount(med.default_dose || 1),
                 schedule: {
                     days: med.schedule.days,
                     times: med.schedule.times,
                 },
                 inventory_enabled: med.inventory_enabled,
-                inventory_total: med.inventory_total ?? null,
-                inventory_current: med.inventory_current ?? null,
-                inventory_warning_threshold: med.inventory_warning_threshold ?? null,
+                inventory_total: med.inventory_total != null ? formatAmount(med.inventory_total) : null,
+                inventory_current: med.inventory_current != null ? formatAmount(med.inventory_current) : null,
+                // Warned by amount before days existed: saving moves it to days.
+                inventory_warning_days: med.inventory_warning_days ?? 3,
                 is_active: med.is_active,
                 comment: med.comment || '',
             });
@@ -186,7 +204,7 @@ export function MedicationForm() {
                 pet_id: selectedPetId!,
                 inventory_total: data.inventory_total ?? undefined,
                 inventory_current: data.inventory_current ?? undefined,
-                inventory_warning_threshold: data.inventory_warning_threshold ?? undefined,
+                inventory_warning_days: data.inventory_warning_days ?? undefined,
             };
             if (isEditing && id) {
                 await medicationsService.update(id, payload);
@@ -331,9 +349,7 @@ export function MedicationForm() {
                                         <Input
                                             value={field.value?.toString()}
                                             onChange={val => {
-                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    field.onChange(val);
-                                                }
+                                                if (isAmountDraft(val)) field.onChange(val);
                                             }}
                                             type="text"
                                             inputMode="decimal"
@@ -507,7 +523,7 @@ export function MedicationForm() {
                             />
                         </Form.Item>
 
-                        <Form.Header>Учет остатков</Form.Header>
+                        <Form.Header>Учёт остатков</Form.Header>
                         <Controller
                             name="inventory_enabled"
                             control={control}
@@ -515,7 +531,7 @@ export function MedicationForm() {
                                 <Form.Item
                                     label="Включить"
                                     extra={<Switch checked={field.value} onChange={field.onChange} />}
-                                    description={field.value ? `Будем списывать по ${watchedDefaultDose} ${doseUnit} за приём` : undefined}
+                                    description={field.value ? `Будем списывать по ${formatAmount(parseAmount(String(watchedDefaultDose)) || 1)} ${doseUnit} за приём` : undefined}
                                 />
                             )}
                         />
@@ -527,15 +543,15 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
-                                            label={`Остаток (${doseUnit})`}
-                                            description={error?.message ? <FieldError message={error.message} /> : undefined}
+                                            label={`Сейчас осталось (${doseUnit})`}
+                                            description={
+                                                error?.message ? <FieldError message={error.message} /> : stockPreview || undefined
+                                            }
                                         >
                                             <Input
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
-                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                        field.onChange(val === '' ? null : val);
-                                                    }
+                                                    if (isAmountDraft(val)) field.onChange(val === '' ? null : val);
                                                 }}
                                                 type="text"
                                                 inputMode="decimal"
@@ -545,23 +561,46 @@ export function MedicationForm() {
                                     )}
                                 />
                                 <Controller
-                                    name="inventory_warning_threshold"
+                                    name="inventory_total"
                                     control={control}
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
-                                            label="Предупредить при остатке"
-                                            description={error?.message ? <FieldError message={error.message} /> : undefined}
+                                            label={`В упаковке (${doseUnit})`}
+                                            description={
+                                                error?.message
+                                                    ? <FieldError message={error.message} />
+                                                    : 'Подставится, когда нажмёте «Пополнить»'
+                                            }
                                         >
                                             <Input
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
-                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                        field.onChange(val === '' ? null : val);
-                                                    }
+                                                    if (isAmountDraft(val)) field.onChange(val === '' ? null : val);
                                                 }}
                                                 type="text"
                                                 inputMode="decimal"
-                                                placeholder="0"
+                                                placeholder="Необязательно"
+                                            />
+                                        </Form.Item>
+                                    )}
+                                />
+                                <Controller
+                                    name="inventory_warning_days"
+                                    control={control}
+                                    render={({ field, fieldState: { error } }) => (
+                                        <Form.Item
+                                            label="Предупредить, когда останется на"
+                                            description={error?.message ? <FieldError message={error.message} /> : undefined}
+                                            extra={<span style={{ color: 'var(--app-text-secondary)' }}>{pluralRu(Number(field.value) || 0, 'день', 'дня', 'дней')}</span>}
+                                        >
+                                            <Input
+                                                value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
+                                                onChange={val => {
+                                                    if (val === '' || /^\d{0,2}$/.test(val)) field.onChange(val === '' ? null : val);
+                                                }}
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="3"
                                             />
                                         </Form.Item>
                                     )}
