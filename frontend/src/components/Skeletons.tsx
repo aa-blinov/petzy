@@ -54,7 +54,8 @@ export function MedicationCardSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div role="status" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    // skeleton-list: same 300 ms wait as SkeletonList, so a quick load never flashes it.
+    <div role="status" className="skeleton-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <span className="sr-only">Загрузка</span>
       {/* Pet hero skeleton */}
       <div className="card-soft" style={{ overflow: 'hidden' }}>

@@ -22,11 +22,13 @@ import { medicationsListQuery } from './services/medications.service';
 // the recharts it pulls in), AdminPanel, Settings and MedicationsList
 // before the app could render anything.
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const loadDashboard = () => import('./pages/Dashboard');
+const Dashboard = lazy(() => loadDashboard().then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
 const loadHistory = () => import('./pages/History');
 const History = lazy(() => loadHistory().then(m => ({ default: m.History })));
-const HealthRecordForm = lazy(() => import('./pages/HealthRecordForm').then(m => ({ default: m.HealthRecordForm })));
+const loadHealthRecordForm = () => import('./pages/HealthRecordForm');
+const HealthRecordForm = lazy(() => loadHealthRecordForm().then(m => ({ default: m.HealthRecordForm })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const UserForm = lazy(() => import('./pages/UserForm').then(m => ({ default: m.UserForm })));
 const loadSettings = () => import('./pages/Settings');
@@ -45,8 +47,11 @@ const loadDocumentsList = () => import('./pages/DocumentsList');
 const DocumentsList = lazy(() => loadDocumentsList().then(m => ({ default: m.DocumentsList })));
 const DocumentForm = lazy(() => import('./pages/DocumentForm').then(m => ({ default: m.DocumentForm })));
 
-/** The bottom tabs' pages, fetched ahead of the first tap (see PrefetchTabs). */
-const TAB_PAGE_LOADERS = [loadMedicationsList, loadDocumentsList, loadHistory, loadSettings];
+/** The bottom tabs' pages and the record form (opened from the feed and
+ *  history), fetched ahead of the first tap (see PrefetchTabs). */
+const TAB_PAGE_LOADERS = [
+  loadDashboard, loadMedicationsList, loadDocumentsList, loadHistory, loadSettings, loadHealthRecordForm,
+];
 
 const queryClient = new QueryClient({
   defaultOptions: {
