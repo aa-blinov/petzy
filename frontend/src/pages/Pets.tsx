@@ -372,8 +372,7 @@ function PetCard({
               </span>
             )}
           </div>
-          {/* Level with the name. */}
-          <span style={{ marginTop: 6 }}><CardChevron /></span>
+          <span style={{ alignSelf: 'center' }}><CardChevron /></span>
         </div>
       </div>
     </SwipeableRow>

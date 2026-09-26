@@ -222,8 +222,9 @@ export function AdminPanel() {
                 <div
                   className="card-soft card-soft--interactive"
                   onClick={() => handleEdit(user)}
-                  style={{ padding: 16, cursor: 'pointer' }}
+                  style={{ padding: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
                 >
+                  <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     marginBottom: 10,
                     display: 'flex',
@@ -247,7 +248,6 @@ export function AdminPanel() {
                         Деактивирован
                       </span>
                     )}
-                    <span style={{ marginLeft: 'auto' }}><CardChevron /></span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {user.full_name && (
@@ -267,6 +267,8 @@ export function AdminPanel() {
                       )}
                     </div>
                   </div>
+                  </div>
+                  <CardChevron />
                 </div>
                 </SwipeableRow>
                 );
