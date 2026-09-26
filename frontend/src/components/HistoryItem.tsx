@@ -68,9 +68,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
     }
   };
 
-  // Actions revealed by swipe. Right-swipe opens edit; left-swipe asks
-  // for delete confirmation. Edit action omitted for medication intakes
-  // — they're immutable per dose.
+  // Swipe shortcuts for what a tap and the edit form's button also do.
+  // Right-swipe opens edit; left-swipe asks to delete. No edit for
+  // medication intakes: they're immutable per dose.
   const leftAction: SwipeAction | undefined = canEdit
     ? {
         icon: <Pencil size={20} strokeWidth={2.4} />,
@@ -97,7 +97,11 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       >
         <div
           className="card-soft card-soft--interactive"
+          // Tap opens the edit form; a medication intake can't be edited,
+          // so its tap asks the one thing it can do: delete it.
+          onClick={canEdit ? handleEdit : () => setDeleteDialogVisible(true)}
           style={{
+            cursor: 'pointer',
             display: 'flex',
             // Pill-icon sits on the first text line (the title). Aligning
             // with the row's vertical centre made the title drift above
@@ -181,7 +185,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       <Dialog
         visible={deleteDialogVisible}
         title="Удаление записи"
-        content="Вы уверены, что хотите удалить эту запись?"
+        content="Удалить эту запись?"
         closeOnAction
         onClose={() => setDeleteDialogVisible(false)}
         getContainer={() => document.body}

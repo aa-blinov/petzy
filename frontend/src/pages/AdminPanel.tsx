@@ -9,6 +9,7 @@ import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SkeletonList } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
+import { useAuth } from '../hooks/useAuth';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { formatRelativeDate } from '../utils/relativeTime';
@@ -18,6 +19,7 @@ export function AdminPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { username: currentUsername } = useAuth();
   // State for alert messages
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -201,7 +203,7 @@ export function AdminPanel() {
                     color: 'var(--app-accent)',
                     onTrigger: () => handleEdit(user),
                   }}
-                  rightAction={isInactive ? {
+                  rightAction={user.username === currentUsername ? undefined : isInactive ? {
                     icon: <UserCheck size={20} strokeWidth={2.4} />,
                     label: 'Активировать',
                     color: 'var(--app-success-text)',
@@ -214,13 +216,12 @@ export function AdminPanel() {
                   }}
                   disabled={deactivateMutation.isPending || activateMutation.isPending}
                 >
-                {/* Editing and deactivating/activating are swipe actions.
-                    No .tap-ripple here on purpose: the row has no tap
-                    action, so a press animation would promise something
-                    that never happens. */}
+                {/* Tap opens the edit form (which also (de)activates);
+                    swipe is the shortcut. */}
                 <div
                   className="card-soft card-soft--interactive"
-                  style={{ padding: 16 }}
+                  onClick={() => handleEdit(user)}
+                  style={{ padding: 16, cursor: 'pointer' }}
                 >
                   <div style={{
                     marginBottom: 10,

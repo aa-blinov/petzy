@@ -25,6 +25,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { FormDangerButton } from '../components/FormDangerButton';
 
 const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -667,6 +668,24 @@ export function DocumentForm() {
             >
               Отмена
             </Button>
+            {isEditing && id && document && (
+              <FormDangerButton
+                label="Удалить документ"
+                confirmTitle="Удаление документа"
+                confirmContent={`Удалить документ «${document.title}»?`}
+                onConfirm={async () => {
+                  try {
+                    await documentsService.delete(id);
+                  } catch (error) {
+                    showToast.failure(getApiErrorMessage(error, 'Не удалось удалить документ'));
+                    throw error;
+                  }
+                  await queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
+                  showToast.success('Документ удалён');
+                  goBack(navigate, '/documents');
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
