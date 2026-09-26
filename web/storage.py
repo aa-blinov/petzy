@@ -163,6 +163,25 @@ def put_bytes(key: str, data: bytes, content_type: str) -> None:
     _client().put_object(Bucket=_bucket(), Key=key, Body=data, ContentType=content_type)
 
 
+def put_file(key: str, path: str, content_type: str) -> None:
+    """Upload a file from disk (multipart for big ones, e.g. backups)."""
+    _client().upload_file(path, _bucket(), key, ExtraArgs={"ContentType": content_type})
+
+
+def list_objects(prefix: str) -> list[dict]:
+    """Current objects under ``prefix``: [{"key", "size", "modified"}]."""
+    client = _client()
+    kwargs = {"Bucket": _bucket(), "Prefix": prefix}
+    found = []
+    while True:
+        page = client.list_objects_v2(**kwargs)
+        for obj in page.get("Contents", []):
+            found.append({"key": obj["Key"], "size": obj["Size"], "modified": obj["LastModified"]})
+        if not page.get("IsTruncated"):
+            return found
+        kwargs["ContinuationToken"] = page["NextContinuationToken"]
+
+
 def get_bytes(key: str) -> tuple[bytes, str]:
     obj = _client().get_object(Bucket=_bucket(), Key=key)
     body = obj["Body"]

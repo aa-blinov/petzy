@@ -70,14 +70,15 @@ services:
     networks:
       - app-network
 
-  mongo-backup:
-    image: mongo:latest
-    volumes:
-      - ./backups:/backups
-      - ./scripts:/backup-script:ro
+  # Daily MongoDB dump to the bucket (backups/mongo/), keeping the newest
+  # BACKUP_KEEP (3). Off the server's disk on purpose: a backup next to
+  # the database it copies is lost with it. See scripts/backup_to_s3.py.
+  backup:
+    build:
+      context: .
+      dockerfile: backup/Dockerfile
     env_file:
       - .env
-    command: ["/backup-script/mongo-backup.sh"]
     depends_on:
       db:
         condition: service_healthy
