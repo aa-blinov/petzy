@@ -206,3 +206,4 @@ backups/
 
 # Playwright flicker-detection artifacts (debug only, never committed)
 screenshots/flicker/
+.e2e-newest.archive.gz
