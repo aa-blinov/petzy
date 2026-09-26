@@ -10,6 +10,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SkeletonList } from '../components/Skeletons';
 import { hapticFeedback } from '../utils/haptic';
 import { useAuth } from '../hooks/useAuth';
+import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { formatRelativeDate } from '../utils/relativeTime';
@@ -246,6 +247,7 @@ export function AdminPanel() {
                         Деактивирован
                       </span>
                     )}
+                    <span style={{ marginLeft: 'auto' }}><CardChevron /></span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {user.full_name && (
