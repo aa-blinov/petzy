@@ -163,13 +163,16 @@ jobs:
           done
           python - <<'PY'
           import boto3, time
-          for _ in range(20):
+          for _ in range(30):
               try:
                   boto3.client("s3", endpoint_url="http://127.0.0.1:5000", region_name="us-east-1",
-                               aws_access_key_id="t", aws_secret_access_key="t").create_bucket(Bucket="ci")
+                               aws_access_key_id="t", aws_secret_access_key="t").create_bucket(Bucket="petzy-ci")
                   break
-              except Exception:
+              except Exception as e:
+                  last = e
                   time.sleep(1)
+          else:
+              raise SystemExit(f"no bucket: {last}")
           PY
       - name: Seed some data
         run: |
@@ -182,7 +185,7 @@ jobs:
           for i in 1 2 3 4; do
             docker run --rm --network host \
               -e MONGO_HOST=127.0.0.1 -e MONGO_PORT=27017 -e MONGO_USER=root -e MONGO_PASS -e MONGO_DB=petzy \
-              -e S3_ENDPOINT=http://127.0.0.1:5000 -e S3_REGION=us-east-1 -e S3_BUCKET=ci \
+              -e S3_ENDPOINT=http://127.0.0.1:5000 -e S3_REGION=us-east-1 -e S3_BUCKET=petzy-ci \
               -e S3_KEY_ID=t -e S3_SECRET_KEY=t -e BACKUP_KEEP=3 \
               petzy-backup python3 scripts/backup_to_s3.py --once
             sleep 1.1  # backup keys are per second
@@ -191,10 +194,10 @@ jobs:
           import boto3
           s3 = boto3.client("s3", endpoint_url="http://127.0.0.1:5000", region_name="us-east-1",
                             aws_access_key_id="t", aws_secret_access_key="t")
-          keys = sorted(o["Key"] for o in s3.list_objects_v2(Bucket="ci").get("Contents", []))
+          keys = sorted(o["Key"] for o in s3.list_objects_v2(Bucket="petzy-ci").get("Contents", []))
           print(keys)
           assert len(keys) == 3 and all(k.startswith("backups/mongo/petzy-") for k in keys), keys
-          s3.download_file("ci", keys[-1], "newest.archive.gz")
+          s3.download_file("petzy-ci", keys[-1], "newest.archive.gz")
           PY
       - name: Restore the newest into a fresh database and compare
         run: |

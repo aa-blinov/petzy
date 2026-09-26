@@ -123,7 +123,8 @@ def backup_once(storage, keep: int, now: Optional[datetime] = None, run: Callabl
         storage.delete_object(key)
         raise RuntimeError(f"stored size of {key} doesn't match the dump ({size} bytes)")
     deleted = rotate(storage, keep)
-    logger.info(f"Backup stored: {key} ({size / 1024 / 1024:.1f} MB); removed {len(deleted)} old: {deleted}")
+    shown = f"{size / 1024 / 1024:.1f} MB" if size >= 1024 * 1024 else f"{size / 1024:.0f} KB"
+    logger.info(f"Backup stored: {key} ({shown}); removed {len(deleted)} old: {deleted}")
     return key
 
 
