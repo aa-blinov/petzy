@@ -9,15 +9,13 @@ import type { InputRef, TextAreaRef } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { Camera } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-/** Predefined species — matches speciesIcon() in utils/speciesIcon.tsx
-    so the lucide placeholder stays consistent. */
-const SPECIES_OPTIONS = Object.entries(SPECIES_LABELS).map(([value, label]) => ({ label, value }));
+const SPECIES_OPTIONS = SPECIES.map((s) => ({ label: s.label, value: s.key }));
 
-/** Sterilisation (neutered) options. */
+/** Neutering options; the row's own label says which (see neuteringLabel). */
 const NEUTERED_OPTIONS = [
     { label: 'Не указано', value: '' },
     { label: 'Нет', value: 'false' },
@@ -28,7 +26,8 @@ import { petsService } from '../services/pets.service';
 import { usersService } from '../services/users.service';
 import { TilesEditor } from '../components/TilesEditor';
 import { UserAvatar } from '../components/UserAvatar';
-import { GENDER_OPTIONS, SPECIES_LABELS } from '../utils/constants';
+import { GENDER_OPTIONS } from '../utils/constants';
+import { SPECIES, defaultTilesFor, getSpecies, neuteringLabel, speciesLabel } from '../utils/species';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { PhotoCropModal } from '../components/PhotoCropModal';
@@ -107,6 +106,11 @@ export function PetForm() {
   const [localSharedWith, setLocalSharedWith] = useState<string[]>([]);
 
   const birthDateValue = watch('birth_date');
+  // Fields that depend on the species and gender: what «Порода» is called,
+  // and whether (and how) neutering is asked about.
+  const speciesValue = useWatch({ control, name: 'species' });
+  const genderValue = useWatch({ control, name: 'gender' });
+  const species = getSpecies(speciesValue);
 
   const { data: pet, isLoading: isLoadingPet } = useQuery({
     queryKey: ['pets', id],
@@ -127,7 +131,8 @@ export function PetForm() {
         breed: pet.breed || '',
         birth_date: pet.birth_date || '',
         gender: pet.gender || '',
-        species: pet.species || '',
+        // Hand-typed species from before the picker («Кот») map to their key.
+        species: pet.species ? (getSpecies(pet.species).key !== 'other' ? getSpecies(pet.species).key : pet.species) : '',
         is_neutered: pet.is_neutered || false,
         health_notes: pet.health_notes || '',
       });
@@ -245,7 +250,9 @@ export function PetForm() {
       if (isEditing && id) {
         await petsService.updatePet(id, petData);
       } else {
-        const newPet = await petsService.createPet(petData);
+        // A new pet starts with the events that make sense for its species
+        // (no litter or tooth brushing for a fish); all can be turned on later.
+        const newPet = await petsService.createPet({ ...petData, tiles_settings: defaultTilesFor(values.species) });
         petId = newPet._id;
       }
 
@@ -330,7 +337,7 @@ export function PetForm() {
               name="species"
               control={control}
               render={({ field }) => {
-                const selectedLabel = SPECIES_OPTIONS.find(o => o.value === field.value)?.label || '';
+                const selectedLabel = speciesLabel(field.value);
                 return (
                   <Form.Item
                     label="Тип питомца"
@@ -363,7 +370,7 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label="Порода"
+                  label={species.breedLabel}
                   clickable
                   onClick={() => breedInputRef.current?.focus()}
                 >
@@ -371,7 +378,7 @@ export function PetForm() {
                     {...field}
                     ref={breedInputRef}
                     id="breed"
-                    placeholder="Необязательно"
+                    placeholder={speciesValue ? species.breedPlaceholder : 'Необязательно'}
                   />
                 </Form.Item>
               )}
@@ -467,6 +474,8 @@ export function PetForm() {
               }}
             />
 
+            {/* Mammals only: no neutering row for a bird, fish or reptile. */}
+            {species.neutering && (
             <Controller
               name="is_neutered"
               control={control}
@@ -477,7 +486,7 @@ export function PetForm() {
                 const selectedLabel = NEUTERED_OPTIONS.find(o => o.value === displayValue)?.label || '';
                 return (
                   <Form.Item
-                    label="Стерилизация"
+                    label={neuteringLabel(genderValue)}
                     clickable
                     arrow
                     onClick={() => setNeuteredPickerVisible(true)}
@@ -503,6 +512,7 @@ export function PetForm() {
                 );
               }}
             />
+            )}
 
             <Controller
               name="health_notes"

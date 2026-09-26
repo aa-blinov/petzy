@@ -445,8 +445,6 @@
     box-shadow: 0 0 0 4px var(--app-accent-soft);
 }
 
-.onb__species--wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; }
-
 .onb__species-icon {
     width: 64px;
     height: 64px;
@@ -455,8 +453,6 @@
     border-radius: 22px;
     color: #fff;
 }
-
-.onb__species--wide .onb__species-icon { width: 44px; height: 44px; border-radius: 15px; }
 
 /* ── Setup: name ─────────────────────────────────────────────────── */
 .onb__avatar-btn {

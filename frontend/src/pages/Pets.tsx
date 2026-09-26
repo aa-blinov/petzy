@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
@@ -9,13 +9,8 @@ import { usePet } from '../hooks/usePet';
 import { useDeletePet } from '../hooks/useDeletePet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
-import {
-  speciesIconMap,
-  SPECIES_FALLBACK_ICON,
-  speciesGradientMap,
-  SPECIES_GRADIENT_FALLBACK,
-  genderLabel,
-} from '../utils/constants';
+import { genderLabel } from '../utils/constants';
+import { getSpecies } from '../utils/species';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
@@ -181,16 +176,7 @@ function PetCard({
   onImageTap: (url: string) => void;
 }) {
   const age = computePetAge(pet.birth_date ?? '');
-  const SpeciesIcon = useMemo(() => {
-    if (!pet.species) return SPECIES_FALLBACK_ICON;
-    const key = pet.species.toLowerCase().trim();
-    return speciesIconMap[key] ?? SPECIES_FALLBACK_ICON;
-  }, [pet.species]);
-  const speciesGradient = useMemo(() => {
-    if (!pet.species) return SPECIES_GRADIENT_FALLBACK;
-    const key = pet.species.toLowerCase().trim();
-    return speciesGradientMap[key] ?? SPECIES_GRADIENT_FALLBACK;
-  }, [pet.species]);
+  const { icon: SpeciesIcon, gradient: speciesGradient } = getSpecies(pet.species);
 
   // Most recent weight for the chip — uses the same endpoint as the dashboard.
   const weights = useQuery({
