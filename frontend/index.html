@@ -28,22 +28,7 @@
   <meta name="theme-color" content="#252220" media="(prefers-color-scheme: dark)" />
   <meta name="theme-color" content="#FEFCF6" media="(prefers-color-scheme: light)" />
   <title>Petzy</title>
-  <script>
-    (function () {
-      try {
-        var theme = localStorage.getItem('theme') || 'system';
-        var root = document.documentElement;
-        var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        if (isDark) {
-          root.setAttribute('data-prefers-color-scheme', 'dark');
-          root.classList.add('dark');
-        } else {
-          root.setAttribute('data-prefers-color-scheme', 'light');
-          root.classList.remove('dark');
-        }
-      } catch (e) { }
-    })();
-  </script>
+  <script src="/theme-init.js"></script>
 </head>
 
 <body>

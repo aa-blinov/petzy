@@ -1,0 +1,8 @@
+# Tests, lint and the local runner (scripts/dev_local.py: mongomock, moto).
+# Not installed in the production image.
+-r requirements.txt
+pytest==8.0.0
+pytest-cov==4.1.0
+mongomock==4.1.2
+ruff==0.14.9
+moto[s3,server]>=5.0.0
