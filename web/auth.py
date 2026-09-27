@@ -117,14 +117,24 @@ def password_problem(password: str, username: str):
     return None
 
 
-def _set_session_cookies(response, username: str) -> None:
-    set_auth_cookie(response, "access_token", create_access_token(username), max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
-    set_auth_cookie(
-        response,
-        "refresh_token",
-        create_refresh_token(username),
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-    )
+def is_native_client() -> bool:
+    """A request with no Origin header: not a page in a browser, which sends
+    Origin on every POST (same-origin included). A native app gets its
+    tokens in the body to keep itself; a page never does — a script
+    injected into it can't read the httpOnly cookies, but could read a body."""
+    return not request.headers.get("Origin")
+
+
+def signed_in_response(message_key: str, signed_in_as: str, status: int = 200, **extra):
+    """A success answer that starts a session for ``signed_in_as``: httpOnly
+    cookies for the web app, plus the tokens in the body for a native one."""
+    access_token = create_access_token(signed_in_as)
+    refresh_token = create_refresh_token(signed_in_as)
+    tokens = {"access_token": access_token, "refresh_token": refresh_token} if is_native_client() else {}
+    response, status = get_message(message_key, status=status, **extra, **tokens)
+    set_auth_cookie(response, "access_token", access_token, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    set_auth_cookie(response, "refresh_token", refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
+    return response, status
 
 
 @auth_bp.route("/api/auth/registration", methods=["GET"])
@@ -152,7 +162,7 @@ def registration_status():
 )
 @api.validate(
     body=Request(RegisterRequest),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_201=AuthTokensResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["auth"],
 )
 def api_register():
@@ -208,9 +218,7 @@ def api_register():
             # The account is made; the letter can be sent again from Settings.
             logger.error(f"Verification letter not sent at sign-up: user={username}, error={e}")
     logger.info(f"Account registered: user={username}, ip={request.remote_addr}")
-    response, status = get_message("auth_registered", status=201)
-    _set_session_cookies(response, username)
-    return response, status
+    return signed_in_response("auth_registered", username, status=201)
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
@@ -237,31 +245,8 @@ def api_login():
 
     # Verify username and password
     if verify_user_credentials(username, password):
-        # Create tokens
-        access_token = create_access_token(username)
-        refresh_token = create_refresh_token(username)
-
         logger.info(f"Successful login: user={username}, ip={client_ip}")
-
-        # The tokens go in httpOnly cookies only: in the body, a script
-        # injected into the page could read the 7-day refresh token.
-        response, status = get_message("auth_login_success")
-
-        # Set tokens in httpOnly cookies
-        set_auth_cookie(
-            response,
-            "access_token",
-            access_token,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-        set_auth_cookie(
-            response,
-            "refresh_token",
-            refresh_token,
-            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        )
-
-        return response, status
+        return signed_in_response("auth_login_success", username)
 
     # Failed login
     logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
@@ -324,7 +309,8 @@ def api_logout():
     happily mint access tokens. Deleting by username keeps the
     invariant "after logout, no refresh token for this user exists".
     """
-    refresh_token = request.cookies.get("refresh_token")
+    # A native app has no cookies: it sends its refresh token in the body.
+    refresh_token = request.cookies.get("refresh_token") or (request.get_json(silent=True) or {}).get("refresh_token")
 
     if refresh_token:
         # Must see patched app.db in tests

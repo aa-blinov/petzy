@@ -27,6 +27,7 @@ from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
 from web.schemas import (
+    EventItem,
     ErrorResponse,
     EventCreate,
     EventListQuery,
@@ -406,7 +407,7 @@ def list_events():
 
 @events_bp.route("/api/events/<record_id>", methods=["GET"])
 @api.validate(
-    resp=Response(HTTP_200=None, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=EventItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
     tags=["events"],
 )
 @require_record_access(EVENTS_COLLECTION)

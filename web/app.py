@@ -184,6 +184,7 @@ from web.auth import auth_bp  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
 from web.account import account_bp  # noqa: E402
+from web.openapi_doc import docs_bp, finish_spec  # noqa: E402
 from web.events import events_bp  # noqa: E402
 from web.medications import medications_bp  # noqa: E402
 from web.documents import documents_bp  # noqa: E402
@@ -230,23 +231,10 @@ reorder_default_tiles(db)
 # Register API spec after all blueprints are registered
 api.register(app)
 
-# Configure Swagger security
-if "components" not in api.spec:  # pragma: no cover
-    # api.register(app) above always populates "components" in every
-    # flask_pydantic_spec version this project has run against (it's
-    # produced once, at import time, from the blueprints registered
-    # above) — this guards a library-internals assumption that isn't
-    # reachable to falsify without swapping out api.spec construction
-    # itself before this module-level line runs.
-    api.spec["components"] = {}
-api.spec["components"]["securitySchemes"] = {
-    "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-    }
-}
-api.spec["security"] = [{"bearerAuth": []}]
+# What the generated spec can't know: sign-in for a native app, errors,
+# time conventions, uploads, files, public endpoints (web/openapi_doc.py).
+finish_spec(api.spec)
+app.register_blueprint(docs_bp)
 
 
 # Error handler for rate limit exceeded

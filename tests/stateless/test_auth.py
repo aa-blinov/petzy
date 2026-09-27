@@ -11,8 +11,12 @@ class TestAuthentication:
     """Test authentication endpoints."""
 
     def test_api_login_success(self, client, mock_db):
-        """Test successful API login."""
-        response = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+        """Test successful API login (from a page in a browser: it sends Origin)."""
+        response = client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "admin123"},
+            headers={"Origin": "https://petzy.duckdns.org"},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -44,8 +48,9 @@ class TestAuthentication:
         carry distinct ``jti`` claims, which is what makes the DB-side
         uniqueness work.
         """
-        r1 = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
-        r2 = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+        page = {"Origin": "https://petzy.duckdns.org"}
+        r1 = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"}, headers=page)
+        r2 = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"}, headers=page)
 
         assert r1.status_code == 200
         assert r2.status_code == 200
