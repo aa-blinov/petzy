@@ -1,0 +1,89 @@
+/* Справка: two cards of disclosure rows, in Settings' rhythm. */
+
+.help-section + .help-section {
+    margin-top: var(--spacing-xl);
+}
+
+.help-section .section-header {
+    margin-bottom: var(--spacing-sm);
+}
+
+.help-card {
+    overflow: hidden;
+    padding: 0;
+}
+
+/* /help#documents scrolls the section's title clear of the top bar. */
+.help-item {
+    scroll-margin-top: calc(env(safe-area-inset-top) + 80px);
+}
+
+.help-item + .help-item {
+    border-top: 1px solid var(--app-divider-color);
+}
+
+.help-item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    min-height: 48px;
+    padding: 12px var(--spacing-lg);
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--app-text-color);
+    cursor: pointer;
+    list-style: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Safari's own disclosure triangle; the chevron replaces it. */
+.help-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.help-item__chevron {
+    flex-shrink: 0;
+    color: var(--app-text-tertiary);
+    transition: transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.help-item[open] .help-item__chevron {
+    transform: rotate(180deg);
+}
+
+.help-item summary:focus-visible {
+    outline-offset: -2px;
+}
+
+.help-item__body {
+    padding: 0 var(--spacing-lg) var(--spacing-lg);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    /* Read as running text, so full contrast, not the secondary grey. */
+    color: var(--app-text-color);
+    /* A comfortable measure on a tablet or desktop. */
+    max-width: 62ch;
+}
+
+.help-item__body p {
+    margin: 0;
+}
+
+.help-item__body p + p,
+.help-item__body p + ul,
+.help-item__body ul + p {
+    margin-top: var(--spacing-sm);
+}
+
+.help-item__body ul {
+    margin: 0;
+    padding-left: 1.1em;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.help-item__body li::marker {
+    color: var(--app-accent);
+}

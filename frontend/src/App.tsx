@@ -46,6 +46,7 @@ const MedicationForm = lazy(() => import('./pages/MedicationForm').then(m => ({ 
 const loadDocumentsList = () => import('./pages/DocumentsList');
 const DocumentsList = lazy(() => loadDocumentsList().then(m => ({ default: m.DocumentsList })));
 const DocumentForm = lazy(() => import('./pages/DocumentForm').then(m => ({ default: m.DocumentForm })));
+const Help = lazy(() => import('./pages/Help').then(m => ({ default: m.Help })));
 
 /** The bottom tabs' pages and the record form (opened from the feed and
  *  history), fetched ahead of the first tap (see PrefetchTabs). */
@@ -314,6 +315,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <TilesSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/help"
+                element={
+                  <ProtectedRoute>
+                    <Help />
                   </ProtectedRoute>
                 }
               />
