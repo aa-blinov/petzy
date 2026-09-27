@@ -127,6 +127,7 @@ export function Login() {
             layout="vertical"
             onFinish={handleSubmit}
             footer={
+              <>
               <Button
                 color="primary"
                 block
@@ -144,6 +145,19 @@ export function Login() {
               >
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
+              {/* No self-service reset or sign-up: the admin does both. */}
+              <p
+                style={{
+                  margin: 'var(--spacing-md) 0 0',
+                  fontSize: 'var(--text-sm)',
+                  lineHeight: 1.45,
+                  color: 'var(--app-text-secondary)',
+                  textAlign: 'center',
+                }}
+              >
+                Забыли пароль или ещё нет аккаунта? Напишите администратору Petzy: он создаёт аккаунты и сбрасывает пароли.
+              </p>
+              </>
             }
           >
             <Form.Item

@@ -38,7 +38,7 @@ class TestDataExport:
             ("defecation", {"stool_type": "Обычный", "color": "Коричневый"}, "Тип стула"),
             ("litter", {}, "Комментарий"),
             ("weight", {"weight": 4.5}, "Вес (кг)"),
-            ("feeding", {"food_weight": 100}, "Вес корма"),
+            ("feeding", {"food_weight": 100}, "Вес корма (г)"),
             ("eye_drops", {"drops_type": "Обычные"}, "Тип капель"),
             ("tooth_brushing", {"brushing_type": "Щетка"}, "Способ чистки"),
             ("ear_cleaning", {"cleaning_type": "Капли"}, "Способ чистки"),
@@ -146,7 +146,7 @@ class TestDataExport:
         names = archive.namelist()
         # Only types with data are included — asthma etc. have none.
         assert any("вес" in n for n in names)
-        assert any("порц" in n for n in names)
+        assert any("кормление" in n for n in names)
         assert any("препарат" in n for n in names)
         assert not any("астма" in n for n in names)
 

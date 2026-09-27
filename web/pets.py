@@ -23,6 +23,7 @@ from web.helpers import (
 )
 from web.errors import error_response, PetNotFoundDuringDeletion
 from web.messages import get_message
+from web.builtin_event_types import BUILTIN_TYPE_ORDER
 from web.pydantic_helpers import validate_request_data
 from web.schemas import (
     PetCreate,
@@ -38,28 +39,10 @@ from web.schemas import (
 
 pets_bp = Blueprint("pets", __name__)
 
-# Default tiles settings (alphabetical order in Russian)
+# Default tiles settings: the most frequent records first (see BUILTIN_TYPE_ORDER).
 DEFAULT_TILES_SETTINGS = {
-    "order": [
-        "weight",  # Вес
-        "defecation",  # Дефекация
-        "feeding",  # Дневная порция корма
-        "eye_drops",  # Закапывание глаз
-        "asthma",  # Приступ астмы
-        "litter",  # Смена лотка
-        "ear_cleaning",  # Чистка ушей
-        "tooth_brushing",  # Чистка зубов
-    ],
-    "visible": {
-        "weight": True,
-        "defecation": True,
-        "feeding": True,
-        "eye_drops": True,
-        "asthma": True,
-        "litter": True,
-        "ear_cleaning": True,
-        "tooth_brushing": True,
-    },
+    "order": list(BUILTIN_TYPE_ORDER),
+    "visible": {key: True for key in BUILTIN_TYPE_ORDER},
 }
 
 

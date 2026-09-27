@@ -18,7 +18,8 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
 import { genderLabel } from '../utils/constants';
-import { getSpecies } from '../utils/species';
+import { getSpecies, speciesLabel } from '../utils/species';
+import { useAuth } from '../hooks/useAuth';
 import { PetImage } from './PetImage';
 import { CountUp } from './CountUp';
 
@@ -103,6 +104,12 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const lastWeightRecord = weights.data?.items?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
+  const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
+  const { username } = useAuth();
+  const navigate = useNavigate();
+  // Nothing known yet: the owner (only they can edit the pet) is asked to
+  // fill it in; someone it's shared with sees at least what animal it is.
+  const canFillIn = !meta && (pet.current_user_is_owner ?? pet.owner === username);
   // A fixed set of module-level icons — see the identical comment in
   // PetImage.tsx for why createElement is used below instead of JSX.
   const SpeciesIcon = getSpecies(pet.species).icon;
@@ -196,8 +203,29 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               textTransform: "lowercase",
             }}
           >
-            {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ") || "—"}
+            {meta || (!canFillIn && speciesLabel(pet.species))}
           </div>
+          {canFillIn && (
+            <button
+              type="button"
+              className="touch-target"
+              onClick={() => navigate(`/pets/${pet._id}/edit`)}
+              style={{
+                alignSelf: "flex-start",
+                marginTop: "-4px",
+                padding: 0,
+                border: "none",
+                background: "none",
+                font: "inherit",
+                fontSize: "var(--text-sm)",
+                fontWeight: 600,
+                color: "var(--app-accent-deep)",
+                cursor: "pointer",
+              }}
+            >
+              Добавить возраст и породу
+            </button>
+          )}
 
           {/* Weight chip — the always-relevant health metric */}
           {lastWeightRecord && (

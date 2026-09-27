@@ -10,7 +10,7 @@ import { useDeletePet } from '../hooks/useDeletePet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
 import { genderLabel } from '../utils/constants';
-import { getSpecies } from '../utils/species';
+import { getSpecies, speciesLabel } from '../utils/species';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from '../components/PetImage';
 import { PetCardSkeleton } from '../components/Skeletons';
@@ -302,7 +302,8 @@ function PetCard({
                 textOverflow: 'ellipsis',
               }}
             >
-              {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(', ') || '—'}
+              {/* Nothing known yet: at least what animal it is, not a lone dash. */}
+              {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
             </div>
             {lastWeight && (
               <span
