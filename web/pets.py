@@ -31,6 +31,7 @@ from web.schemas import (
     PetResponseWrapper,
     PetListResponse,
     PetShareRequest,
+    PetCreatedResponse,
     PetInviteListResponse,
     PhotoQueryParams,
     SuccessResponse,
@@ -150,7 +151,7 @@ def get_pets():
 @login_required
 @api.validate(
     body=Request(PetCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(HTTP_201=PetCreatedResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["pets"],
 )
 def create_pet():
