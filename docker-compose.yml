@@ -60,7 +60,10 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      # Loopback only: the host nginx (TLS) reaches it at 127.0.0.1:3000.
+      # On all interfaces the whole app answered over plain HTTP at
+      # <server ip>:3000, around TLS (Docker bypasses ufw).
+      - "127.0.0.1:3000:80"
     volumes:
       - static_content:/usr/share/nginx/html:ro
     depends_on:
