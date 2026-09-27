@@ -128,3 +128,18 @@ class TestApi:
         doses = response.get_json()["doses"]
         assert doses and all(d["inventory_warning"] for d in doses)
         assert isinstance(ObjectId(doses[0]["medication_id"]), ObjectId)
+
+
+def test_a_logged_intake_can_be_undone_by_its_id(client, regular_user_token, med_id, mock_db):
+    now = datetime.now(timezone.utc)
+    logged = client.post(
+        f"/api/medications/{med_id}/log",
+        json={"date": now.strftime("%Y-%m-%d"), "time": now.strftime("%H:%M"), "dose_taken": 1},
+        headers=_auth(regular_user_token),
+    ).get_json()
+
+    undone = client.delete(f"/api/medications/intakes/{logged['id']}", headers=_auth(regular_user_token))
+
+    assert undone.status_code == 200
+    assert mock_db["medication_intakes"].count_documents({}) == 0
+    assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 12.0

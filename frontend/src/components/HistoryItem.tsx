@@ -7,6 +7,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, EventDisplayConfig } from '../utils/eventDisplay';
 import { formatRelativeDateTime } from '../utils/relativeTime';
 import { healthRecordsService } from '../services/healthRecords.service';
+import { medicationsService } from '../services/medications.service';
+import { refreshAfterIntake } from '../utils/intakeViews';
 import { pastelColorMap } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
@@ -47,19 +49,20 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
     if (isDeleting) return;
     setIsDeleting(true);
     try {
-      await healthRecordsService.delete(item._id);
-      // See HealthRecordForm's onSubmit for why this is a predicate rather
-      // than queryKey: ['history'] — none of these views' query keys start
-      // with 'history', so that form never actually matched anything.
-      await queryClient.invalidateQueries({
-        predicate: (query) =>
-          ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
-      });
-
-      // If deleting medication intake, also invalidate medications cache to update intakes_today
       if (type === 'medications') {
-        await queryClient.invalidateQueries({ queryKey: ['medications'] });
-        await queryClient.invalidateQueries({ queryKey: ['medications', 'upcoming'] });
+        // An intake is not an event: deleting it through /events/ was a
+        // 404, so a dose could never be removed from the feed or History.
+        await medicationsService.deleteIntake(item._id);
+        await refreshAfterIntake(queryClient);
+      } else {
+        await healthRecordsService.delete(item._id);
+        // See HealthRecordForm's onSubmit for why this is a predicate rather
+        // than queryKey: ['history'] — none of these views' query keys start
+        // with 'history', so that form never actually matched anything.
+        await queryClient.invalidateQueries({
+          predicate: (query) =>
+            ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+        });
       }
 
       showToast.success('Запись удалена');
