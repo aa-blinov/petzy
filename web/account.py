@@ -17,11 +17,12 @@ from flask_pydantic_spec import Request, Response
 import web.app as app
 from web import mail
 from web.app import api, limiter, logger
-from web.auth import _set_session_cookies, password_problem
+from web.auth import password_problem, signed_in_response
 from web.errors import error_response
 from web.messages import get_message
 from web.schemas import (
     AccountResponse,
+    AuthTokensResponse,
     EmailChangeRequest,
     EmailVerifyRequest,
     ErrorResponse,
@@ -292,7 +293,7 @@ def forgot_password():
 @limiter.limit("20 per hour")
 @api.validate(
     body=Request(PasswordResetRequest),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=AuthTokensResponse, HTTP_422=ErrorResponse),
     tags=["account"],
 )
 def reset_password():
@@ -329,9 +330,7 @@ def reset_password():
     )
     logger.info(f"Password reset by link: user={username}")
     # The login comes back so the app can sign straight in with it.
-    response, status = get_message("account_password_changed", username=username)
-    _set_session_cookies(response, username)
-    return response, status
+    return signed_in_response("account_password_changed", username, username=username)
 
 
 @account_bp.route("/api/me/password", methods=["PUT"])
@@ -339,7 +338,7 @@ def reset_password():
 @login_required
 @api.validate(
     body=Request(PasswordChangeRequest),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=AuthTokensResponse, HTTP_422=ErrorResponse),
     tags=["account"],
 )
 def change_password():
@@ -366,9 +365,7 @@ def change_password():
         f"и напишите администратору Petzy.",
     )
     logger.info(f"Password changed: user={username}")
-    response, status = get_message("account_password_changed")
-    _set_session_cookies(response, username)
-    return response, status
+    return signed_in_response("account_password_changed", username)
 
 
 @account_bp.route("/api/dev/outbox", methods=["GET"])

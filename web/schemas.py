@@ -48,6 +48,7 @@ class SuccessResponse(BaseModel):
 
     success: bool = True
     message: str
+    id: Optional[str] = Field(None, description="id созданной записи, когда запрос её создаёт")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -174,6 +175,13 @@ class AuthTokensResponse(BaseModel):
 
     success: bool = True
     message: str
+    access_token: Optional[str] = Field(
+        None, description="Только для нативного клиента (запрос без заголовка Origin). Живёт 15 минут"
+    )
+    refresh_token: Optional[str] = Field(
+        None, description="Только для нативного клиента. Живёт 7 дней, обменивается на access_token в /api/auth/refresh"
+    )
+    username: Optional[str] = Field(None, description="Логин, под которым начата сессия (после сброса пароля)")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -318,7 +326,9 @@ class UserUpdate(BaseModel):
 class UserResponse(BaseModel):
     """User response model."""
 
-    _id: str
+    # Not «_id: str»: pydantic makes an underscore name private, and the
+    # id went missing from the published schema.
+    id: str = Field(alias="_id")
     username: str
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -438,7 +448,6 @@ class PetCreate(BaseModel):
     gender: Optional[str] = Field(None, max_length=20, description="Пол")
     is_neutered: Optional[bool] = Field(None, description="Кастрирован/Стерилизована")
     health_notes: Optional[str] = Field(None, max_length=1000, description="Особенности здоровья, аллергии")
-    photo_url: Optional[str] = Field(None, description="URL фотографии")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
     @field_validator("birth_date")
@@ -457,7 +466,6 @@ class PetCreate(BaseModel):
                 "gender": "Мужской",
                 "is_neutered": True,
                 "health_notes": "Здоров, аллергий нет",
-                "photo_url": "https://example.com/photo.jpg",
                 "tiles_settings": {
                     "order": [
                         "weight",
@@ -495,7 +503,6 @@ class PetUpdate(BaseModel):
     gender: Optional[str] = Field(None, max_length=20)
     is_neutered: Optional[bool] = None
     health_notes: Optional[str] = Field(None, max_length=1000)
-    photo_url: Optional[str] = None
     remove_photo: Optional[bool] = Field(None, description="True, если нужно удалить текущую фотографию")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
 
@@ -515,7 +522,6 @@ class PetUpdate(BaseModel):
                 "gender": "Мужской",
                 "is_neutered": True,
                 "health_notes": "Аллергия на курицу",
-                "photo_url": "https://example.com/photo.jpg",
                 "remove_photo": False,
                 "tiles_settings": {
                     "order": [
@@ -547,7 +553,9 @@ class PetUpdate(BaseModel):
 class PetResponse(BaseModel):
     """Pet response model."""
 
-    _id: str
+    # Not «_id: str»: pydantic makes an underscore name private, and the
+    # id went missing from the published schema.
+    id: str = Field(alias="_id")
     name: str
     breed: Optional[str] = None
     species: Optional[str] = None
@@ -914,7 +922,9 @@ class EventUpdate(HealthRecordUpdateBase):
 class EventItem(BaseModel):
     """An event as returned by the API."""
 
-    _id: str
+    # Not «_id: str»: pydantic makes an underscore name private, and the
+    # id went missing from the published schema.
+    id: str = Field(alias="_id")
     pet_id: str
     type: str
     date_time: str
@@ -1067,7 +1077,9 @@ class MedicationUpdate(BaseModel):
 
 
 class MedicationItem(BaseModel):
-    _id: str
+    # Not «_id: str»: pydantic makes an underscore name private, and the
+    # id went missing from the published schema.
+    id: str = Field(alias="_id")
     pet_id: str
     name: str
     type: str
@@ -1123,7 +1135,9 @@ class MedicationIntakeUpdate(BaseModel):
 
 
 class MedicationIntakeItem(BaseModel):
-    _id: str
+    # Not «_id: str»: pydantic makes an underscore name private, and the
+    # id went missing from the published schema.
+    id: str = Field(alias="_id")
     medication_id: str
     pet_id: str
     date_time: str
@@ -1339,7 +1353,9 @@ class TimelineQuery(PetIdPaginationQuery):
 
 
 class TimelineItem(BaseModel):
-    _id: str
+    # Not «_id: str»: pydantic makes an underscore name private, and the
+    # id went missing from the published schema.
+    id: str = Field(alias="_id")
     record_type: str = Field(..., description="Тип записи (feeding, weight, asthma, и т.д.)")
     pet_id: str
     date_time: str
