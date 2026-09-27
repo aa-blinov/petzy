@@ -202,7 +202,8 @@ def create_pet():
             "species": data.species or "",
             "birth_date": birth_date,
             "gender": data.gender or "",
-            "is_neutered": data.is_neutered if data.is_neutered is not None else False,
+            # None is «не указано», not «нет»: the form shows the difference.
+            "is_neutered": data.is_neutered,
             "health_notes": data.health_notes or "",
             "owner": username,
             "shared_with": [],

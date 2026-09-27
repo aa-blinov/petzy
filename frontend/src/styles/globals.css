@@ -991,8 +991,33 @@ a,
 }
 
 .adm-form-item-label {
-    font-size: var(--text-sm) !important;
+    /* 15px beside a 16px value (below): one scale for the pair. The value
+       was 17px next to a 14px label, so every value, and every
+       placeholder («Выберите дату»), read a size bigger than what it
+       answers. 15px has no token; it sits between --text-sm and -md. */
+    font-size: 0.9375rem !important;
     margin-bottom: 0 !important;
+    transition: color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+/* A form row's value, typed or picked: 16px (--text-md), the smallest
+   size iOS doesn't zoom the page in for when a field takes focus.
+   antd-mobile sizes its fields through --font-size (17px by default);
+   setting font-size on the .adm-input wrapper, as this file used to,
+   never reached the <input> inside. */
+.adm-form-item .adm-form-item-child-inner {
+    font-size: var(--text-md);
+}
+
+.adm-form-item .adm-input,
+.adm-form-item .adm-text-area {
+    --font-size: var(--text-md);
+}
+
+/* Where the typing goes, without boxing the field: the caret, and the
+   row's label taking the accent while its field has focus. */
+.adm-form-item:focus-within .adm-form-item-label {
+    color: var(--app-accent-deep);
 }
 
 .adm-button {
@@ -1009,13 +1034,11 @@ a,
 
 
 .adm-input {
-    font-size: var(--text-sm) !important;
     text-align: left !important;
     --text-align: left;
 }
 
 .adm-text-area {
-    font-size: var(--text-sm) !important;
     text-align: left !important;
 }
 
@@ -1267,6 +1290,15 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
        the moment they were tabbed to. */
 }
 
+/* Focus moved there by the app, not by the user: RouteFocus puts it on
+   each new page's heading (tabindex=-1) so a screen reader announces
+   the page. Chrome then drew the ring around the title after every
+   tap on a tab. Nothing there to operate, so no ring. */
+[tabindex="-1"]:focus,
+[tabindex="-1"]:focus-visible {
+    outline: none;
+}
+
 /* Text fields draw the ring INSIDE their box.
    Two reasons. First, `:focus-visible` matches a text input whenever it
    is focused — including a plain mouse click — because the browser
@@ -1289,17 +1321,25 @@ textarea:focus-visible,
     border-radius: var(--radius-sm);
 }
 
-/* SearchBar is the one antd-mobile field with its own baked-in focus
-   indicator: library CSS turns .adm-search-bar-input-box's border the
-   same copper as --app-primary-color the moment its input is focused
-   (.adm-search-bar-active) — one clean ring around the whole pill,
-   icon included. The shared inset ring above only wraps the bare
-   <input> (the icon sits outside it), so here it drew a second,
-   smaller ring inside the first. Keep the search bar's own outer ring
-   and drop the inset one just for this field. */
-.adm-search-bar-input .adm-input-element:focus-visible {
+/* antd-mobile fields drop that ring: they match :focus-visible on every
+   tap, so each tap boxed the value in copper. In a form row the caret
+   and the row's accent label (above) show where the typing goes; a field
+   with its own border (the dose and restock dialogs) turns that border
+   the accent instead of getting a second ring inside it. */
+.adm-input-element:focus-visible,
+.adm-text-area-element:focus-visible {
     outline: none;
 }
+
+.adm-input:focus-within,
+.adm-text-area:focus-within {
+    border-color: var(--app-accent) !important;
+}
+
+/* SearchBar keeps its own focus indicator: library CSS turns
+   .adm-search-bar-input-box's border copper while its input is focused
+   (.adm-search-bar-active), one ring around the whole pill, icon
+   included. The field rules above leave it be. */
 
 /* Recharts focuses an internal <g tabindex="-1"> on tap (its own
    accessibility hook — not part of anyone's Tab order, since -1 never

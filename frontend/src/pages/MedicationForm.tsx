@@ -543,7 +543,8 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
-                                            label={`Сейчас осталось (${doseUnit})`}
+                                            label="Остаток"
+                                            extra={<span style={{ color: 'var(--app-text-secondary)' }}>{doseUnit}</span>}
                                             description={
                                                 error?.message ? <FieldError message={error.message} /> : stockPreview || undefined
                                             }
@@ -565,7 +566,8 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
-                                            label={`В упаковке (${doseUnit})`}
+                                            label="В упаковке"
+                                            extra={<span style={{ color: 'var(--app-text-secondary)' }}>{doseUnit}</span>}
                                             description={
                                                 error?.message
                                                     ? <FieldError message={error.message} />
@@ -589,8 +591,8 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
-                                            label="Предупредить, когда останется на"
-                                            description={error?.message ? <FieldError message={error.message} /> : undefined}
+                                            label="Напомнить за"
+                                            description={error?.message ? <FieldError message={error.message} /> : 'До того, как лекарство закончится'}
                                             extra={<span style={{ color: 'var(--app-text-secondary)' }}>{pluralRu(Number(field.value) || 0, 'день', 'дня', 'дней')}</span>}
                                         >
                                             <Input
