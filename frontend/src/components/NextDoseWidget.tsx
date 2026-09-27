@@ -18,9 +18,14 @@ import { usePet } from '../hooks/usePet';
  * widget steps aside; the reminder brings the next dose back in time.
  *
  * A stray tap is undone from the bar that follows («Отменить»), not
- * guarded by a question before every dose.
+ * guarded by a question before every dose. A due dose can also be
+ * skipped on purpose (a vet said to, the pet refused it): the slot is
+ * handled and the reminder stops, but nothing leaves the stock.
  */
 const DUE_WINDOW_MINUTES = 30;
+
+/** «Принять» now, «Уже дали в 08:00» at the slot, or «Пропустить». */
+type IntakeKind = 'now' | 'scheduled' | 'skip';
 
 export function NextDoseWidget() {
     const { selectedPetId } = usePet();
@@ -47,30 +52,42 @@ export function NextDoseWidget() {
     });
 
     const intakeMutation = useMutation({
-        mutationFn: (dose: UpcomingDose) => {
+        mutationFn: ({ dose, kind }: { dose: UpcomingDose; kind: IntakeKind }) => {
             // No dose_taken: the backend uses the course's own dose. A
             // hard-coded 1 took a whole tablet off a half-tablet course.
-            // Logged at the moment it's given, not at the scheduled time:
-            // «Дать раньше» at 14:00 for 20:00 is a 14:00 intake.
+            // «Принять» is logged at the moment it's given, not at the
+            // scheduled time: «Дать раньше» at 14:00 for 20:00 is a 14:00
+            // intake. «Уже дали в 08:00» is for a dose given on time and
+            // marked later; a skip sits at its slot.
             const now = new Date();
-            return medicationsService.logIntake(dose.medication_id, {
-                date: formatDate(now),
-                time: formatTime(now),
-            });
+            const nowDate = formatDate(now);
+            const nowTime = formatTime(now);
+            if (kind === 'now') return medicationsService.logIntake(dose.medication_id, { date: nowDate, time: nowTime });
+            const slotIsPast = `${dose.date} ${dose.time}` <= `${nowDate} ${nowTime}`;
+            const at = slotIsPast ? { date: dose.date, time: dose.time } : { date: nowDate, time: nowTime };
+            return medicationsService.logIntake(dose.medication_id, { ...at, skipped: kind === 'skip' });
         },
-        onSuccess: ({ id, ran_out }, dose) => {
+        onSuccess: ({ id, ran_out }, { dose, kind }) => {
             refreshAfterIntake(queryClient);
+            const message =
+                kind === 'skip'
+                    ? `${dose.name}: приём пропущен`
+                    : ran_out
+                        ? `${dose.name}: принято, лекарство закончилось`
+                        : kind === 'scheduled'
+                            ? `${dose.name}: отмечено, дали в ${dose.time}`
+                            : `${dose.name}: приём отмечен`;
             showUndo({
-                message: ran_out ? `${dose.name}: принято, лекарство закончилось` : `${dose.name}: приём отмечен`,
+                message,
                 onUndo: async () => {
                     await medicationsService.deleteIntake(id);
                     await refreshAfterIntake(queryClient);
                 },
             });
-            if (ran_out) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
+            if (ran_out && kind !== 'skip') showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
         },
-        onError: (err: unknown) => {
-            showToast.failure(getApiErrorMessage(err, 'Не удалось отметить приём'));
+        onError: (err: unknown, { kind }) => {
+            showToast.failure(getApiErrorMessage(err, kind === 'skip' ? 'Не удалось пропустить приём' : 'Не удалось отметить приём'));
         }
     });
 
@@ -86,6 +103,11 @@ export function NextDoseWidget() {
     const now = new Date();
     const minutesUntil = h * 60 + m - (now.getHours() * 60 + now.getMinutes());
     const due = nextDose.is_overdue || minutesUntil <= DUE_WINDOW_MINUTES;
+    // Well past its time the dose may have been given on time and not
+    // marked: then «Уже дали в 08:00» puts it where it belongs.
+    const late = -minutesUntil > DUE_WINDOW_MINUTES;
+    const busy = intakeMutation.isPending || isFetching;
+    const pendingKind = intakeMutation.isPending ? intakeMutation.variables?.kind : undefined;
 
     return (
         <div
@@ -157,7 +179,7 @@ export function NextDoseWidget() {
                 </div>
             )}
 
-            <div style={{ marginTop: 'var(--spacing-lg)' }}>
+            <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
                 <Button
                     block
                     color="primary"
@@ -166,18 +188,45 @@ export function NextDoseWidget() {
                     fill={due ? 'solid' : 'outline'}
                     shape="rounded"
                     style={{ fontWeight: 600 }}
-                    onClick={() => intakeMutation.mutate(nextDose)}
-                    loading={intakeMutation.isPending}
+                    onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'now' })}
+                    loading={pendingKind === 'now'}
                     // Once the log request succeeds, the invalidated query
                     // needs its own refetch round-trip before `upcoming`
                     // reflects the new state — without this, that gap let a
                     // second tap (or, on a slower connection, several) log
                     // the same dose again before the button had any visible
                     // reason to stop offering it.
-                    disabled={isFetching}
+                    disabled={busy}
                 >
-                    {due ? 'Принять' : 'Дать раньше'}
+                    {!due ? 'Дать раньше' : late ? 'Принять сейчас' : 'Принять'}
                 </Button>
+                {due && (
+                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+                        {late && (
+                            <Button
+                                fill="none"
+                                color="primary"
+                                size="small"
+                                style={{ flex: 1, minHeight: 40, fontWeight: 600 }}
+                                onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'scheduled' })}
+                                loading={pendingKind === 'scheduled'}
+                                disabled={busy}
+                            >
+                                Уже дали в {nextDose.time}
+                            </Button>
+                        )}
+                        <Button
+                            fill="none"
+                            size="small"
+                            style={{ flex: 1, minHeight: 40, color: 'var(--app-text-secondary)' }}
+                            onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'skip' })}
+                            loading={pendingKind === 'skip'}
+                            disabled={busy}
+                        >
+                            Пропустить
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     );

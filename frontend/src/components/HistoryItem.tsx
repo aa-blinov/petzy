@@ -14,6 +14,8 @@ import { useAuth } from '../hooks/useAuth';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { UserAvatar } from './UserAvatar';
 import { CardChevron } from './CardChevron';
+import { IntakeTimePicker } from './IntakeTimePicker';
+import { whenLabel, whenPhrase, type IntakeWhen } from '../utils/intakeWhen';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -29,16 +31,29 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   const pillBg = pastelColorMap[config.color] || 'var(--tile-blue)';
   const PillIcon = config.icon;
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
-  // A medication intake can't be edited: its tap explains that and
-  // offers the one thing it can do, rather than asking to delete out of
-  // the blue.
+  // A medication intake isn't a form: its tap offers what can change
+  // about a dose, its time (marked late, or by mistake), or deleting it.
   const [intakeInfoVisible, setIntakeInfoVisible] = useState(false);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Hide the author chip when the record was logged by the current user —
   // single-owner households shouldn't see "admin" on every row.
   const showAuthor = item.username && item.username !== currentUsername;
-  const canEdit = type !== 'medications';
+  const isIntake = type === 'medications';
+  const canEdit = !isIntake;
+  const [intakeDate = '', intakeTime = '00:00'] = String(item.date_time).split(' ');
+  const intakeWhen: IntakeWhen = { date: intakeDate, time: intakeTime.slice(0, 5) };
+
+  const moveIntake = async (when: IntakeWhen) => {
+    try {
+      await medicationsService.updateIntakeTime(item._id, when);
+      await refreshAfterIntake(queryClient);
+      showToast.success(`Время приёма: ${whenPhrase(when)}`);
+    } catch {
+      showToast.failure('Не удалось изменить время');
+    }
+  };
 
   const handleEdit = () => {
     // Pass item data via state to avoid extra API call.
@@ -79,16 +94,13 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
   };
 
   // Swipe shortcuts for what a tap and the edit form's button also do.
-  // Right-swipe opens edit; left-swipe asks to delete. No edit for
-  // medication intakes: they're immutable per dose.
-  const leftAction: SwipeAction | undefined = canEdit
-    ? {
-        icon: <Pencil size={20} strokeWidth={2.4} />,
-        label: 'Изменить',
-        color: 'var(--app-accent)',
-        onTrigger: handleEdit,
-      }
-    : undefined;
+  // Right-swipe opens edit (for a dose, its time); left-swipe asks to delete.
+  const leftAction: SwipeAction = {
+    icon: <Pencil size={20} strokeWidth={2.4} />,
+    label: 'Изменить',
+    color: 'var(--app-accent)',
+    onTrigger: isIntake ? () => setTimePickerVisible(true) : handleEdit,
+  };
 
   const rightAction: SwipeAction = {
     icon: <Trash2 size={20} strokeWidth={2.4} />,
@@ -102,7 +114,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       <SwipeableRow
         leftAction={leftAction}
         rightAction={rightAction}
-        disabled={deleteDialogVisible || intakeInfoVisible}
+        disabled={deleteDialogVisible || intakeInfoVisible || timePickerVisible}
         itemLabel={`${config.displayName}, ${formatRelativeDateTime(item.date_time)}`}
       >
         <div
@@ -186,22 +198,41 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
               ))}
             </div>
           </div>
-          {canEdit && <span style={{ alignSelf: 'center' }}><CardChevron /></span>}
+          <span style={{ alignSelf: 'center' }}><CardChevron /></span>
         </div>
       </SwipeableRow>
 
       <Dialog
         visible={intakeInfoVisible}
-        title="Приём лекарства"
-        content="Отмеченный приём нельзя изменить. Если отметили по ошибке, удалите его"
+        title={item.skipped ? 'Пропущенный приём' : 'Приём лекарства'}
+        content={
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontWeight: 600 }}>{String(item.medication_name || 'Лекарство')}</div>
+            <div style={{ marginTop: 4 }}>{whenLabel(intakeWhen)}</div>
+            <div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+              Если время неверное, поправьте его. Отметили по ошибке? Удалите
+            </div>
+          </div>
+        }
         closeOnAction
         onClose={() => setIntakeInfoVisible(false)}
         getContainer={() => document.body}
         actions={[
-          { key: 'delete', text: isDeleting ? 'Удаление...' : 'Удалить приём', danger: true, disabled: isDeleting, onClick: handleDelete },
+          { key: 'time', text: 'Изменить время', bold: true, onClick: () => setTimePickerVisible(true) },
+          { key: 'delete', text: isDeleting ? 'Удаление...' : 'Удалить', danger: true, disabled: isDeleting, onClick: handleDelete },
           { key: 'close', text: 'Закрыть', onClick: () => setIntakeInfoVisible(false) },
         ]}
       />
+
+      {isIntake && (
+        <IntakeTimePicker
+          visible={timePickerVisible}
+          value={intakeWhen}
+          title={item.skipped ? 'Когда был приём' : 'Когда дали'}
+          onClose={() => setTimePickerVisible(false)}
+          onConfirm={moveIntake}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog

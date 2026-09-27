@@ -42,7 +42,8 @@ function commentLine(item: HistoryItem): DetailLine[] {
 function medicationDetails(item: HistoryItem): DetailLine[] {
   return [
     { label: 'Препарат', value: String(item.medication_name || 'Неизвестно') },
-    { label: 'Доза', value: String(item.dose_taken) },
+    // A dose skipped on purpose: nothing was given.
+    item.skipped ? { label: 'Приём', value: 'пропущен' } : { label: 'Доза', value: String(item.dose_taken) },
     ...commentLine(item),
   ];
 }

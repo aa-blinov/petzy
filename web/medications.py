@@ -20,6 +20,7 @@ from web.schemas import (
     MedicationListResponse,
     MedicationDetailResponse,
     MedicationIntakeCreate,
+    MedicationIntakeUpdate,
     MedicationIntakeListResponse,
     UpcomingDosesResponse,
     SuccessResponse,
@@ -42,6 +43,11 @@ UPCOMING_LOOKAHEAD_DAYS = 7
 # the course sets its own (inventory_warning_days) or, for courses made
 # before that, an amount (inventory_warning_threshold).
 DEFAULT_WARNING_DAYS = 3
+
+# A skipped dose is an intake too, so the slot counts as handled
+# (compute_taken_counts, intakes_today) and the reminder stops; it just
+# isn't a dose given: no stock taken, not «последний приём», not in stats.
+GIVEN_ONLY = {"skipped": {"$ne": True}}
 
 
 def daily_use(med: dict) -> float:
@@ -170,7 +176,7 @@ def get_medications():
 
         # Get all last intakes in one query using aggregation
         last_intakes_pipeline = [
-            {"$match": {"medication_id": {"$in": med_ids}}},
+            {"$match": {"medication_id": {"$in": med_ids}, **GIVEN_ONLY}},
             {"$sort": {"date_time": -1}},
             {"$group": {"_id": "$medication_id", "last_intake": {"$first": "$$ROOT"}}},
         ]
@@ -229,7 +235,7 @@ def get_medication(id):
         pet_id = record.get("pet_id")
         if pet_id:
             last_intake = app.db.medication_intakes.find_one(
-                {"medication_id": str(record["_id"])},
+                {"medication_id": str(record["_id"]), **GIVEN_ONLY},
                 sort=[("date_time", -1)],
             )
             if last_intake and last_intake.get("date_time"):
@@ -371,8 +377,11 @@ def log_intake(id):
         if dt_error:
             return dt_error[0], dt_error[1]
 
+        skipped = bool(data.skipped)
         dose_taken = data.dose_taken
-        if dose_taken is None:
+        if skipped:
+            dose_taken = 0.0
+        elif dose_taken is None:
             dose_taken = medication.get("default_dose", 1.0)
 
         # Take the dose from the stock before recording the intake; the
@@ -382,7 +391,7 @@ def log_intake(id):
         # instead of the diary refusing a dose the pet did get.
         inventory_decremented_by = 0.0
         ran_out = False
-        if medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
+        if not skipped and medication.get("inventory_enabled") and medication.get("inventory_current") is not None:
             # Optimistic concurrency control with retry loop (similar to delete_intake)
             max_retries = 3
             inventory_updated = False
@@ -438,6 +447,8 @@ def log_intake(id):
             "username": username,
             "created_at": datetime.now(timezone.utc),
         }
+        if skipped:
+            intake_data["skipped"] = True
 
         try:
             inserted = app.db.medication_intakes.insert_one(intake_data)
@@ -530,6 +541,37 @@ def get_medication_intakes():
         return jsonify({"intakes": intakes, "page": page, "page_size": page_size, "total": total})
     except Exception as e:
         app.logger.error(f"Error fetching intakes: {e}")
+        return error_response("internal_error")
+
+
+@medications_bp.route("/api/medications/intakes/<id>", methods=["PUT"])
+@api.validate(
+    body=Request(MedicationIntakeUpdate),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["medications"],
+)
+@require_record_access("medication_intakes")
+def update_intake(id):
+    """Move an intake to when the dose was really given (marked late, or
+    by mistake at the wrong time). Only the time: the dose and the stock
+    it took stay as they were."""
+    try:
+        intake = g.record
+        data = request.context.body  # type: ignore[attr-defined]
+        event_dt, dt_error = parse_event_datetime_safe(
+            data.date,
+            data.time,
+            "medication intake update",
+            intake.get("pet_id"),
+            g.username,
+            max_future_days=UPCOMING_LOOKAHEAD_DAYS + 1,
+        )
+        if dt_error:
+            return dt_error[0], dt_error[1]
+        app.db.medication_intakes.update_one({"_id": intake["_id"]}, {"$set": {"date_time": event_dt}})
+        return jsonify({"message": "Intake updated"})
+    except Exception as e:
+        app.logger.error(f"Error updating intake: {e}")
         return error_response("internal_error")
 
 
@@ -670,6 +712,9 @@ def get_upcoming_doses():
                         }
                     )
 
+        # In time order across courses: the widget shows the first one, and
+        # walking course by course put a 08:00 dose ahead of a 07:00 one.
+        upcoming.sort(key=lambda dose: (dose["date"], dose["time"]))
         return jsonify({"doses": upcoming})
     except Exception as e:
         app.logger.error(f"Error fetching upcoming doses: {e}")

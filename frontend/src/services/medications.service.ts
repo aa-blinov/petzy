@@ -73,6 +73,8 @@ export interface MedicationIntake {
     dose_taken: number;
     username: string;
     comment?: string;
+    /** «Пропустить»: the slot is handled, nothing was given. */
+    skipped?: boolean;
 }
 
 export interface UpcomingDose {
@@ -116,9 +118,14 @@ export const medicationsService = {
 
     /** Always records the dose; ``ran_out`` says the stock is now empty,
      *  ``id`` is the intake's, for «Отменить». */
-    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string }): Promise<{ id: string; ran_out: boolean }> {
+    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string; skipped?: boolean }): Promise<{ id: string; ran_out: boolean }> {
         const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, data);
         return { id: response.data.id, ran_out: !!response.data.ran_out };
+    },
+
+    /** Move a logged dose to when it was really given. */
+    async updateIntakeTime(intakeId: string, when: { date: string; time: string }): Promise<void> {
+        await api.put(`/medications/intakes/${intakeId}`, when);
     },
 
     /** Delete a logged dose (its stock comes back). Not /events/: intakes
