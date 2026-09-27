@@ -49,3 +49,13 @@ def test_the_login_limit_is_per_client_not_global(client):
 def test_other_sites_get_no_cors_access(client, auth_headers):
     response = client.get("/api/pets", headers={**auth_headers, "Origin": "https://evil.example"})
     assert "Access-Control-Allow-Origin" not in response.headers
+
+
+def test_a_new_password_ends_even_the_open_access_tokens(
+    client, mock_db, regular_user, regular_user_token, auth_headers
+):
+    """The access token lives 15 minutes; a password reset must not wait for it."""
+    import time as _time
+
+    mock_db["users"].update_one({"username": "testuser"}, {"$set": {"sessions_valid_after": int(_time.time()) + 1}})
+    assert client.get("/api/pets", headers=_bearer(regular_user_token)).status_code == 401

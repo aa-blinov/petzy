@@ -27,9 +27,9 @@ export function Login() {
   const { login, username: storedUsername } = useAuth();
   const navigate = useNavigate();
   // Offered only while sign-up is open (REGISTRATION_ENABLED).
-  const { data: registrationOpen } = useQuery({
-    queryKey: ['registration-open'],
-    queryFn: () => authService.registrationOpen(),
+  const { data: status } = useQuery({
+    queryKey: ['registration-status'],
+    queryFn: () => authService.registrationStatus(),
     retry: false,
   });
 
@@ -101,19 +101,12 @@ export function Login() {
               >
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
-              {/* No self-service password reset (no email yet): the admin sets a new one. */}
-              <p
-                style={{
-                  margin: 'var(--spacing-md) 0 0',
-                  fontSize: 'var(--text-sm)',
-                  lineHeight: 1.45,
-                  color: 'var(--app-text-secondary)',
-                  textAlign: 'center',
-                }}
-              >
-                Забыли пароль? Напишите администратору Petzy, он задаст новый.
+              <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
+                <Link to="/forgot-password" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
+                  Забыли пароль?
+                </Link>
               </p>
-              {registrationOpen && (
+              {status?.open && (
                 <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center', color: 'var(--app-text-secondary)' }}>
                   Нет аккаунта?{' '}
                   <Link to="/register" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>

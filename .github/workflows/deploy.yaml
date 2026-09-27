@@ -41,12 +41,12 @@ jobs:
             # have to be kept in sync here instead. Upsert rather than
             # append: re-running this must update an existing line (e.g.
             # after rotating a key), not pile up duplicates.
+            # Written as-is, not through sed: a password with «|» or «&» in
+            # it came out mangled. cat > keeps the file's permissions.
             upsert_env() {
-              if grep -q "^$1=" .env 2>/dev/null; then
-                sed -i "s|^$1=.*|$1=$2|" .env
-              else
-                echo "$1=$2" >> .env
-              fi
+              { grep -v "^$1=" .env 2>/dev/null || true; printf '%s=%s\n' "$1" "$2"; } > .env.new
+              cat .env.new > .env
+              rm -f .env.new
             }
             upsert_env VAPID_PUBLIC_KEY "${{ secrets.VAPID_PUBLIC_KEY }}"
             upsert_env VAPID_PRIVATE_KEY "${{ secrets.VAPID_PRIVATE_KEY }}"
@@ -59,6 +59,14 @@ jobs:
             upsert_env S3_BUCKET "petzy-1"
             upsert_env S3_KEY_ID "${{ secrets.S3_KEY_ID }}"
             upsert_env S3_SECRET_KEY "${{ secrets.S3_SECRET_KEY }}"
+            # Mail for password recovery (web/mail.py). Written only when the
+            # secret is set, so a value put on the server by hand stays.
+            upsert_if_set() { [ -n "$2" ] && upsert_env "$1" "$2" || true; }
+            upsert_if_set SMTP_HOST "${{ secrets.SMTP_HOST }}"
+            upsert_if_set SMTP_PORT "${{ secrets.SMTP_PORT }}"
+            upsert_if_set SMTP_USER "${{ secrets.SMTP_USER }}"
+            upsert_if_set SMTP_PASSWORD "${{ secrets.SMTP_PASSWORD }}"
+            upsert_if_set SMTP_FROM "${{ secrets.SMTP_FROM }}"
 
             # Rebuild everything that has its own Dockerfile / depends on the
             # backend source. Previously only `frontend` was rebuilt, which

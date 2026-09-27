@@ -18,6 +18,12 @@ MESSAGES: Dict[str, MessageDef] = {
     # Auth messages
     "auth_login_success": MessageDef("Вы вошли"),
     "auth_registered": MessageDef("Аккаунт создан"),
+    "account_reset_requested": MessageDef(
+        "Если у этого аккаунта подтверждена почта, мы отправили на неё ссылку для нового пароля"
+    ),
+    "account_password_changed": MessageDef("Пароль изменён"),
+    "account_email_verified": MessageDef("Почта подтверждена"),
+    "account_verification_sent": MessageDef("Письмо отправлено ещё раз"),
     "auth_logout_success": MessageDef("Вы вышли"),
     "auth_refresh_success": MessageDef("Токен обновлён"),
     # Pet messages

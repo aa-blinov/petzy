@@ -490,6 +490,9 @@ def main() -> None:
     os.environ.setdefault("JWT_SECRET_KEY", "dev-local-jwt-secret")
     os.environ.setdefault("ADMIN_USERNAME", "admin")
     os.environ.setdefault("RATELIMIT_STORAGE_URI", "memory://")
+    # Letters stay in memory (GET /api/dev/outbox) and link to the dev server.
+    os.environ.setdefault("MAIL_OUTBOX", "memory")
+    os.environ.setdefault("APP_BASE_URL", "http://localhost:5173")
 
     # Fixed dev-only VAPID pair (generated once via
     # `python -m scripts.generate_vapid_keys`) so a browser subscription

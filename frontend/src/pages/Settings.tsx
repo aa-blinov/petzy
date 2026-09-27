@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -22,6 +24,7 @@ export function Settings() {
   const { theme, setTheme, isDark } = useTheme();
   const { logout } = useAuth();
   const { isAdmin } = useAdmin();
+  const { data: account } = useQuery({ queryKey: ACCOUNT_QUERY_KEY, queryFn: () => accountService.get() });
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
 
   // null while the initial serviceWorker.ready + getSubscription() check
@@ -159,6 +162,39 @@ export function Settings() {
                   onChange={handlePushToggle}
                 />
               }
+            />
+          </div>
+
+          {/* Section: Account. The email is what a forgotten password is
+              recovered with, so its state is on the row itself. */}
+          <h2
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            Аккаунт
+          </h2>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<Mail size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Почта"
+              description={
+                !account
+                  ? ' '
+                  : account.pending_email
+                    ? `Ждёт подтверждения: ${account.pending_email}`
+                    : account.email_verified
+                      ? account.email
+                      : 'Не указана. Нужна, чтобы восстановить пароль'
+              }
+              chevron
+              onClick={() => navigate('/settings/email')}
+            />
+            <SettingsRow
+              icon={<KeyRound size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Пароль"
+              description={account ? `Логин: ${account.username}` : ' '}
+              chevron
+              onClick={() => navigate('/settings/password')}
             />
           </div>
 

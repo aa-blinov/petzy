@@ -27,6 +27,11 @@ import { medicationsListQuery } from './services/medications.service';
 // before the app could render anything.
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
+const AccountEmail = lazy(() => import('./pages/AccountEmail').then(m => ({ default: m.AccountEmail })));
+const AccountPassword = lazy(() => import('./pages/AccountPassword').then(m => ({ default: m.AccountPassword })));
 const loadDashboard = () => import('./pages/Dashboard');
 const Dashboard = lazy(() => loadDashboard().then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
@@ -185,6 +190,9 @@ function AppRoutes() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route
                 path="/welcome"
                 element={
@@ -334,6 +342,22 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/email"
+                element={
+                  <ProtectedRoute>
+                    <AccountEmail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/password"
+                element={
+                  <ProtectedRoute>
+                    <AccountPassword />
                   </ProtectedRoute>
                 }
               />
