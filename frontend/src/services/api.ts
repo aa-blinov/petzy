@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
+import { isPublicPage } from '../utils/publicPages';
 
 // Base URL for API requests.
 // Use relative path by default to work with proxy/Nginx.
@@ -136,7 +137,7 @@ function handleSessionExpired(reason: string) {
   // No handler means React hasn't mounted yet, so nothing can navigate
   // on our behalf. A hard redirect is the only option left, and it
   // cannot race the router because the router doesn't exist yet.
-  if (typeof window !== 'undefined' && !['/login', '/register'].includes(window.location.pathname)) {
+  if (typeof window !== 'undefined' && !isPublicPage(window.location.pathname)) {
     window.location.replace('/login');
   }
 }

@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, Pill, FileText, Clock, SlidersHorizontal } from 'lucide-react';
+import { isPublicPage } from '../utils/publicPages';
 
 const tabs = [
   { to: '/', title: 'Лента', Icon: BookOpen },
@@ -19,7 +20,7 @@ export function BottomTabBar() {
   const { pathname } = useLocation();
 
   // Login and onboarding own the whole viewport
-  if (pathname === '/login' || pathname === '/register' || pathname === '/welcome') {
+  if (isPublicPage(pathname) || pathname === '/welcome') {
     return null;
   }
 

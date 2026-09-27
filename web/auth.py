@@ -104,6 +104,19 @@ COMMON_PASSWORDS = {
 }
 
 
+def password_problem(password: str, username: str):
+    """The error code for a password that won't do, or None. The same rules
+    for sign-up, a reset link and a change in Settings."""
+    if len(password) < 8:
+        return "register_password_short"
+    # bcrypt looks at the first 72 bytes only (36 Cyrillic letters).
+    if len(password.encode()) > 72:
+        return "register_password_long"
+    if password.lower() in COMMON_PASSWORDS or password.lower() == username.lower() or len(set(password)) < 3:
+        return "register_password_weak"
+    return None
+
+
 def _set_session_cookies(response, username: str) -> None:
     set_auth_cookie(response, "access_token", create_access_token(username), max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
     set_auth_cookie(
@@ -118,7 +131,9 @@ def _set_session_cookies(response, username: str) -> None:
 @api.validate(resp=Response(HTTP_200=RegistrationStatusResponse), tags=["auth"])
 def registration_status():
     """Whether the sign-up form should be offered."""
-    return jsonify({"open": registration_open()})
+    from web import mail
+
+    return jsonify({"open": registration_open(), "mail_enabled": mail.mail_configured()})
 
 
 @auth_bp.route("/api/auth/register", methods=["POST"])
@@ -153,13 +168,19 @@ def api_register():
     taken = app.db["users"].find_one({"username": {"$regex": f"^{re.escape(username)}$", "$options": "i"}}, {"_id": 1})
     if username in RESERVED_USERNAMES or username == ADMIN_USERNAME.lower() or taken:
         return error_response("register_username_taken")
-    if len(password) < 8:
-        return error_response("register_password_short")
-    # bcrypt looks at the first 72 bytes only (36 Cyrillic letters).
-    if len(password.encode()) > 72:
-        return error_response("register_password_long")
-    if password.lower() in COMMON_PASSWORDS or password.lower() == username or len(set(password)) < 3:
-        return error_response("register_password_weak")
+    problem = password_problem(password, username)
+    if problem:
+        return error_response(problem)
+
+    from web import mail
+    from web.account import EMAIL_RE, _email_taken, send_verification
+
+    email = (data.email or "").strip()
+    if email:
+        if not EMAIL_RE.match(email):
+            return error_response("account_email_invalid")
+        if _email_taken(email, username):
+            return error_response("account_email_taken")
 
     try:
         app.db["users"].insert_one(
@@ -168,6 +189,9 @@ def api_register():
                 "password_hash": bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
                 "full_name": (data.full_name or "").strip(),
                 "email": "",
+                "email_verified": False,
+                # Becomes the recovery email once the letter's link is opened.
+                **({"pending_email": email} if email else {}),
                 "created_at": datetime.now(timezone.utc),
                 "created_by": "self",
                 "is_active": True,
@@ -177,6 +201,12 @@ def api_register():
         # Someone took it between the check and the insert.
         return error_response("register_username_taken")
 
+    if email and mail.mail_configured():
+        try:
+            send_verification(username, email)
+        except Exception as e:
+            # The account is made; the letter can be sent again from Settings.
+            logger.error(f"Verification letter not sent at sign-up: user={username}, error={e}")
     logger.info(f"Account registered: user={username}, ip={request.remote_addr}")
     response, status = get_message("auth_registered", status=201)
     _set_session_cookies(response, username)

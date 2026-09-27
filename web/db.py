@@ -132,6 +132,9 @@ def ensure_indexes() -> None:
         # Scan upload slots, swept by created_at (web/storage.py).
         (db.document_uploads, [("created_at", ASCENDING)], "document_uploads_created"),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
+        # Links from letters (web/account.py): looked up by hash, gone when expired.
+        (db.account_tokens, [("token_hash", ASCENDING)], "account_tokens_hash_unique", {"unique": True}),
+        (db.account_tokens, [("expires_at", ASCENDING)], "account_tokens_ttl", {"expireAfterSeconds": 0}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (
             db.refresh_tokens,

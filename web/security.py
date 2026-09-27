@@ -8,6 +8,7 @@ from `web.app` and imported directly from blueprints.
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 import logging
+import time
 from uuid import uuid4
 
 import bcrypt
@@ -124,7 +125,7 @@ def ensure_default_admin():
 def create_access_token(username):
     """Create JWT access token."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"username": username, "exp": expire, "type": "access"}
+    payload = {"username": username, "exp": expire, "type": "access", "iat": int(time.time())}
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
@@ -139,7 +140,7 @@ def create_refresh_token(username):
     """
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     jti = uuid4().hex
-    payload = {"username": username, "exp": expire, "type": "refresh", "jti": jti}
+    payload = {"username": username, "exp": expire, "type": "refresh", "jti": jti, "iat": int(time.time())}
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
     db["refresh_tokens"].insert_one(
@@ -155,18 +156,26 @@ def create_refresh_token(username):
     return token
 
 
-def is_active_user(username) -> bool:
-    """The account exists and isn't disabled. Checked on every request, so
-    disabling someone takes effect at once rather than when their tokens
-    run out (up to 7 days for the refresh token)."""
+def is_active_user(username, issued_at=None) -> bool:
+    """The account exists, isn't disabled, and the token was issued after
+    its sessions were last ended. Checked on every request, so disabling
+    someone or a new password takes effect at once, not when the access
+    token (15 minutes) or the refresh token (7 days) runs out."""
     if not username:
         return False
-    return db["users"].find_one({"username": username, "is_active": {"$ne": False}}, {"_id": 1}) is not None
+    user = db["users"].find_one({"username": username, "is_active": {"$ne": False}}, {"sessions_valid_after": 1})
+    if user is None:
+        return False
+    valid_after = user.get("sessions_valid_after")
+    return not (valid_after and issued_at is not None and issued_at < valid_after)
 
 
 def revoke_user_sessions(username) -> None:
-    """End every session of a user: after a password reset or disabling."""
+    """End every session of a user: after a password change or disabling.
+    Tokens issued before this second stop working; a session carried on
+    right after (fresh cookies from the same request) is issued after it."""
     db["refresh_tokens"].delete_many({"username": username})
+    db["users"].update_one({"username": username}, {"$set": {"sessions_valid_after": int(time.time())}})
 
 
 def verify_token(token, token_type="access"):
@@ -229,7 +238,7 @@ def validate_refresh_token(refresh_token: str):
             return None
 
     username = payload.get("username") or ""
-    if not is_active_user(username):
+    if not is_active_user(username, payload.get("iat")):
         return None
     return username, token_record
 
@@ -295,7 +304,7 @@ def login_required(f):
                 if not payload:
                     new_token = None
 
-        if not payload or not is_active_user(payload.get("username")):
+        if not payload or not is_active_user(payload.get("username"), payload.get("iat")):
             return error_response("unauthorized")
 
         # Store username in request context

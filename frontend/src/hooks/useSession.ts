@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
+import { isPublicPage } from '../utils/publicPages';
 import { useQuery } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
 import { httpStatus } from '../services/api';
@@ -28,8 +29,8 @@ export const SESSION_QUERY_KEY = ['session'] as const;
 export function useSession() {
   const location = useLocation();
   const isLoginPage = useMemo(
-    // The sign-in and sign-up screens: no session to probe there.
-    () => ['/login', '/register'].some((page) => location.pathname === page || location.pathname.endsWith(page)),
+    // Sign-in, sign-up and the links from letters: no session to probe there.
+    () => isPublicPage(location.pathname),
     [location.pathname],
   );
 

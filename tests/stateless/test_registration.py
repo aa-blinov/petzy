@@ -83,7 +83,7 @@ def test_the_password_cannot_be_the_login(client):
 
 def test_sign_up_can_be_closed(client, monkeypatch):
     monkeypatch.setenv("REGISTRATION_ENABLED", "false")
-    assert client.get("/api/auth/registration").get_json() == {"open": False}
+    assert client.get("/api/auth/registration").get_json()["open"] is False
     response = _register(client)
     assert response.status_code == 403
     assert response.get_json()["code"] == "registration_closed"
@@ -92,7 +92,7 @@ def test_sign_up_can_be_closed(client, monkeypatch):
 def test_sign_up_is_open_by_default(client, monkeypatch):
     monkeypatch.delenv("REGISTRATION_ENABLED", raising=False)
     assert auth.registration_open() is True
-    assert client.get("/api/auth/registration").get_json() == {"open": True}
+    assert client.get("/api/auth/registration").get_json()["open"] is True
 
 
 def test_mistakes_do_not_use_up_the_sign_up_limit(client):

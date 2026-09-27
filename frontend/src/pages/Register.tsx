@@ -21,12 +21,13 @@ export function Register() {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const status = useQuery({ queryKey: ['registration-open'], queryFn: () => authService.registrationOpen() });
+  const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
 
   // Already signed in on this device (see Login for the same check).
   if (storedUsername) return <Navigate to="/" replace />;
@@ -37,15 +38,16 @@ export function Register() {
       : !USERNAME_RE.test(username)
         ? 'От 3 до 30 символов: латинские буквы, цифры, точка, дефис или подчёркивание, начиная с буквы или цифры'
         : null;
+  const emailError = email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim()) ? 'Проверьте адрес почты' : null;
   const passwordError = password.length < 8 ? 'Не короче 8 символов' : null;
   const repeatError = repeat !== password ? 'Пароли не совпадают' : null;
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (usernameError || passwordError || repeatError) return;
+    if (usernameError || emailError || passwordError || repeatError) return;
     setIsLoading(true);
     try {
-      await register({ username, password, full_name: fullName.trim() || undefined });
+      await register({ username, password, full_name: fullName.trim() || undefined, email: email.trim() || undefined });
       // A new account has no pets yet: the feed sends it to an invitation
       // waiting for it, or to onboarding.
       navigate('/', { replace: true });
@@ -56,7 +58,7 @@ export function Register() {
     }
   };
 
-  if (status.data === false) {
+  if (status.data?.open === false) {
     return (
       <AuthShell>
         <p style={{ margin: 0, textAlign: 'center', color: 'var(--app-text-primary)', lineHeight: 1.5 }}>
@@ -132,6 +134,22 @@ export function Register() {
             autoComplete="name"
           />
         </Form.Item>
+        {status.data?.mail_enabled && (
+          <Form.Item
+            label={<span style={labelStyle}>Почта</span>}
+            description={below(emailError, 'Необязательно. Нужна, чтобы восстановить пароль, если забудете. Пришлём письмо для подтверждения')}
+          >
+            <Input
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={setEmail}
+              disabled={isLoading}
+              clearable
+              autoComplete="email"
+            />
+          </Form.Item>
+        )}
         <Form.Item label={<span style={labelStyle}>Пароль</span>} description={below(passwordError, 'Не короче 8 символов')}>
           <Input
             type="password"

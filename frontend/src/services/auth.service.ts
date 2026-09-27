@@ -28,6 +28,14 @@ export interface RegisterRequest {
   username: string;
   password: string;
   full_name?: string;
+  /** For password recovery; confirmed by a letter. */
+  email?: string;
+}
+
+export interface RegistrationStatus {
+  open: boolean;
+  /** Letters can be sent: recovery by email works. */
+  mail_enabled: boolean;
 }
 
 export const authService = {
@@ -36,9 +44,25 @@ export const authService = {
     await api.post('/auth/register', data);
   },
 
-  async registrationOpen(): Promise<boolean> {
-    const response = await api.get<{ open: boolean }>('/auth/registration');
-    return response.data.open;
+  async registrationStatus(): Promise<RegistrationStatus> {
+    const response = await api.get<RegistrationStatus>('/auth/registration');
+    return response.data;
+  },
+
+  /** Always the same answer, whether or not the account exists. */
+  async forgotPassword(login: string): Promise<string> {
+    const response = await api.post<{ message: string }>('/auth/password/forgot', { login });
+    return response.data.message;
+  },
+
+  /** Sets the new password and signs in; returns the account's login. */
+  async resetPassword(token: string, password: string): Promise<string> {
+    const response = await api.post<{ username: string }>('/auth/password/reset', { token, password });
+    return response.data.username;
+  },
+
+  async verifyEmail(token: string): Promise<void> {
+    await api.post('/auth/email/verify', { token });
   },
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {

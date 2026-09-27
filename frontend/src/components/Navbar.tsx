@@ -8,6 +8,7 @@ import { PetImage } from './PetImage';
 import { getSpecies, speciesLabel } from '../utils/species';
 import type { Pet } from '../services/pets.service';
 import { MAIN_TAB_PATHS } from '../utils/navigation';
+import { isPublicPage } from '../utils/publicPages';
 
 export function Navbar() {
   const location = useLocation();
@@ -31,7 +32,7 @@ export function Navbar() {
   };
 
   // Login and onboarding own the whole viewport
-  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/welcome') {
+  if (isPublicPage(location.pathname) || location.pathname === '/welcome') {
     return null;
   }
 

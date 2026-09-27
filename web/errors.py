@@ -77,6 +77,15 @@ ERRORS: Dict[str, ErrorDef] = {
         "validation_error_username_required", "Имя пользователя обязательно", 422
     ),
     "validation_error_self_share": ErrorDef("validation_error_self_share", "Нельзя поделиться с самим собой", 422),
+    "account_wrong_password": ErrorDef("account_wrong_password", "Неверный текущий пароль", 422),
+    "account_email_invalid": ErrorDef("account_email_invalid", "Проверьте адрес почты", 422),
+    "account_email_taken": ErrorDef("account_email_taken", "Эта почта уже подтверждена в другом аккаунте Petzy", 422),
+    "account_no_pending_email": ErrorDef("account_no_pending_email", "Нет почты, которая ждёт подтверждения", 422),
+    "account_link_invalid": ErrorDef(
+        "account_link_invalid", "Ссылка устарела или уже использована. Запросите новую", 422
+    ),
+    "mail_not_configured": ErrorDef("mail_not_configured", "Отправка писем пока не настроена", 503),
+    "mail_send_failed": ErrorDef("mail_send_failed", "Не удалось отправить письмо. Попробуйте позже", 503),
     "registration_closed": ErrorDef("registration_closed", "Регистрация сейчас закрыта", 403),
     "register_username_invalid": ErrorDef(
         "register_username_invalid",

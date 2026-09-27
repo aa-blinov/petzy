@@ -90,6 +90,40 @@ class PaginatedResponse(BaseModel):
 # ============================================================================
 
 
+class PasswordForgotRequest(BaseModel):
+    login: str = Field(..., min_length=1, max_length=254, description="Логин или почта")
+
+
+class PasswordResetRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=200)
+    password: str = Field(..., min_length=1, max_length=256)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=256)
+    new_password: str = Field(..., min_length=1, max_length=256)
+
+
+class EmailChangeRequest(BaseModel):
+    """An empty email removes it."""
+
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., min_length=1, max_length=256, description="Текущий пароль")
+
+
+class EmailVerifyRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=200)
+
+
+class AccountResponse(BaseModel):
+    username: str
+    full_name: str = ""
+    email: str = Field("", description="Подтверждённая почта для восстановления пароля")
+    email_verified: bool = False
+    pending_email: str = Field("", description="Указана, но ещё не подтверждена")
+    mail_enabled: bool = Field(False, description="Настроена ли отправка писем")
+
+
 class RegisterRequest(BaseModel):
     """Self sign-up. The login and password rules are checked in the view,
     so each problem gets its own message."""
@@ -97,10 +131,12 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=1, max_length=64, description="Логин")
     password: str = Field(..., min_length=1, max_length=256, description="Пароль")
     full_name: Optional[str] = Field(None, max_length=100, description="Как к вам обращаться")
+    email: Optional[str] = Field(None, max_length=254, description="Для восстановления пароля")
 
 
 class RegistrationStatusResponse(BaseModel):
     open: bool
+    mail_enabled: bool = False
 
 
 class AuthLoginRequest(BaseModel):

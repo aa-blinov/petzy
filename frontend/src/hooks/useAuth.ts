@@ -133,6 +133,8 @@ export function useAuth() {
     username,
     login,
     register,
+    /** After a reset link set the password and the cookies. */
+    signedIn: startSession,
     logout,
   };
 }
