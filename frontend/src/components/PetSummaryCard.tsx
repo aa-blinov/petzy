@@ -10,7 +10,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createElement } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Scale } from 'lucide-react';
+import { Plus, Scale } from 'lucide-react';
 import { Skeleton } from 'antd-mobile';
 
 import { type Pet } from '../services/pets.service';
@@ -78,7 +78,19 @@ function LastEvent({ label, dateTime, emptyLabel, addPath, onAdd }: LastEventPro
         fontWeight: 600,
         fontFamily: "var(--font-display)",
       }}>
-        {dateTime ? formatRelativeShort(dateTime) : emptyLabel}
+        {dateTime ? (
+          formatRelativeShort(dateTime)
+        ) : (
+          // Nothing yet: say what a tap does. «не записано» read as a
+          // status, and nobody guessed the chip opens the form.
+          <span
+            aria-label={emptyLabel}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--app-accent-deep)" }}
+          >
+            <Plus size={14} strokeWidth={2.6} aria-hidden style={{ display: "block" }} />
+            Записать
+          </span>
+        )}
       </div>
     </button>
   );
@@ -260,14 +272,14 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         <LastEvent
           label="Кормление"
           dateTime={lastFeedingDateTime}
-          emptyLabel="не записано"
+          emptyLabel="Записать кормление"
           addPath="/form/feeding"
           onAdd={() => onQuickAdd("feeding")}
         />
         <LastEvent
           label="Вес"
           dateTime={lastWeightRecord?.date_time}
-          emptyLabel="не записан"
+          emptyLabel="Записать вес"
           addPath="/form/weight"
           onAdd={() => onQuickAdd("weight")}
         />

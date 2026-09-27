@@ -250,23 +250,16 @@ export function History() {
                    switch into instead of the list, they're their own
                    section shown above it (see below). */}
                 <div className="safe-area-padding" style={{
-                    marginBottom: 'var(--spacing-md)',
+                    marginBottom: 0,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     gap: 'var(--spacing-sm)',
                     minHeight: '40px',
                 }}>
-                    <div style={{ minWidth: 0 }}>
-                        <h1 className="display-headline" style={{ fontSize: '24px', margin: 0 }}>
-                            История
-                        </h1>
-                        {/* Лента is today and what's next; this is everything.
-                            Without a word it read as the same list twice. */}
-                        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                            Все записи за всё время, по типам и с графиками
-                        </p>
-                    </div>
+                    <h1 className="display-headline" style={{ fontSize: '24px', margin: 0 }}>
+                        История
+                    </h1>
                     <button
                         type="button"
                         onClick={() => setExportVisible(true)}
@@ -286,6 +279,12 @@ export function History() {
                         <Download size={20} strokeWidth={2} style={{ display: 'block' }} />
                     </button>
                 </div>
+                {/* Лента is today and what's next; this is everything. Without
+                    a word it read as the same list twice. Under the title row,
+                    full width, so it doesn't wrap beside the export icon. */}
+                <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                    Все записи за всё время и графики
+                </p>
 
                 {/* Type filter — a single trigger opening a bottom sheet
                    (HistoryFilterSheet), same grid-of-tiles pattern as the
