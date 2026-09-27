@@ -635,6 +635,12 @@ class PetResponseWrapper(BaseModel):
     pet: PetResponse
 
 
+class PetCreatedResponse(SuccessResponse):
+    """POST /api/pets: the new pet comes back whole."""
+
+    pet: PetResponse
+
+
 class PetListResponse(BaseModel):
     """List of pets response."""
 
