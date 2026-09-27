@@ -77,6 +77,9 @@ ERRORS: Dict[str, ErrorDef] = {
         "validation_error_username_required", "Имя пользователя обязательно", 422
     ),
     "validation_error_self_share": ErrorDef("validation_error_self_share", "Нельзя поделиться с самим собой", 422),
+    "share_already_invited": ErrorDef("share_already_invited", "Приглашение этому пользователю уже отправлено", 422),
+    "share_invite_not_found": ErrorDef("share_invite_not_found", "Приглашение не найдено или уже отменено", 404),
+    "share_not_member": ErrorDef("share_not_member", "У вас нет доступа к этому питомцу по приглашению", 404),
     "validation_error_already_shared": ErrorDef(
         "validation_error_already_shared", "Доступ уже предоставлен этому пользователю", 422
     ),

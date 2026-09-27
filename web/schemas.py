@@ -510,6 +510,8 @@ class PetResponse(BaseModel):
     tiles_settings: Optional[TilesSettings] = None
     owner: str
     shared_with: Optional[List[str]] = None
+    # Invited, not yet accepted. Only the owner sees them.
+    share_invites: Optional[List[str]] = None
     created_at: Optional[str] = None
     created_by: Optional[str] = None
     current_user_is_owner: Optional[bool] = None
@@ -557,6 +559,17 @@ class PetResponse(BaseModel):
             }
         },
     )
+
+
+class PetInviteItem(BaseModel):
+    pet_id: str
+    pet_name: str
+    species: Optional[str] = None
+    owner: str
+
+
+class PetInviteListResponse(BaseModel):
+    invites: List[PetInviteItem]
 
 
 class PetResponseWrapper(BaseModel):

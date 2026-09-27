@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
-import { Pencil, Scale, Trash2, Cat } from 'lucide-react';
+import { Pencil, Scale, Trash2, Cat, LogOut } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
-import { useDeletePet } from '../hooks/useDeletePet';
+import { useDeletePet, useLeavePet } from '../hooks/useDeletePet';
+import { PendingInvites } from '../components/PendingInvites';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computePetAge } from '../utils/relativeTime';
 import { genderLabel } from '../utils/constants';
@@ -39,12 +40,17 @@ export function Pets() {
   const handleDeleteClick = (pet: Pet) => setDeleteDialog({ visible: true, pet });
 
   const deletePet = useDeletePet();
+  const leavePet = useLeavePet();
+  // The same row action and question: the owner deletes the pet, anyone
+  // else only stops seeing it.
   const confirmDelete = async () => {
     const pet = deleteDialog.pet;
     if (!pet) return;
     setDeleteDialog(prev => ({ ...prev, visible: false }));
-    await deletePet(pet).catch(() => undefined);
+    const remove = pet.current_user_is_owner ? deletePet : leavePet;
+    await remove(pet).catch(() => undefined);
   };
+  const leaving = !!deleteDialog.pet && !deleteDialog.pet.current_user_is_owner;
 
   return (
     <div className="page-container">
@@ -79,6 +85,10 @@ export function Pets() {
             <AddOutline style={{ fontSize: 20 }} />
             Добавить
           </button>
+        </div>
+
+        <div className="safe-area-padding">
+          <PendingInvites />
         </div>
 
         {isLoading ? (
@@ -130,14 +140,20 @@ export function Pets() {
 
       <Dialog
         visible={deleteDialog.visible}
-        title="Удаление питомца"
-        content={deleteDialog.pet ? `Удалить «${deleteDialog.pet.name}»? Вместе с ним удалятся все записи, лекарства и документы` : ''}
+        title={leaving ? 'Выйти из доступа' : 'Удаление питомца'}
+        content={
+          !deleteDialog.pet
+            ? ''
+            : leaving
+              ? `Больше не видеть «${deleteDialog.pet.name}»? Его записи останутся у владельца, он сможет пригласить вас снова`
+              : `Удалить «${deleteDialog.pet.name}»? Вместе с ним удалятся все записи, лекарства и документы`
+        }
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, pet: null })}
         actions={[
           {
             key: 'delete',
-            text: 'Удалить',
+            text: leaving ? 'Выйти' : 'Удалить',
             danger: true,
             onClick: confirmDelete,
           },
@@ -194,18 +210,21 @@ function PetCard({
     color: 'var(--app-accent)',
     onTrigger: onEdit,
   };
-  // Only the owner can delete a pet (the backend rejects a shared user's
-  // attempt outright) — offering the swipe action to everyone just let a
-  // shared user discover that the hard way. The legacy app hid the same
-  // button behind this exact check.
-  const rightAction: SwipeAction | undefined = pet.current_user_is_owner
+  // Only the owner can delete a pet (the backend refuses anyone else);
+  // someone it's shared with gets «Выйти» in the same place instead.
+  const rightAction: SwipeAction = pet.current_user_is_owner
     ? {
         icon: <Trash2 size={20} strokeWidth={2.4} />,
         label: 'Удалить',
         color: 'var(--app-danger-color)',
         onTrigger: onDelete,
       }
-    : undefined;
+    : {
+        icon: <LogOut size={20} strokeWidth={2.4} />,
+        label: 'Выйти',
+        color: 'var(--app-danger-color)',
+        onTrigger: onDelete,
+      };
 
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction} itemLabel={pet.name}>

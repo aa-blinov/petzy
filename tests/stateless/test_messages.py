@@ -34,4 +34,4 @@ class TestGetMessageFallbacks:
             body = response.get_json()
 
         assert status == 200
-        assert body["message"] == "Доступ предоставлен пользователю {username}"
+        assert body["message"] == "Приглашение отправлено пользователю {username}"

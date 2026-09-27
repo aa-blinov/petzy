@@ -31,6 +31,7 @@ from web.schemas import (
     PetResponseWrapper,
     PetListResponse,
     PetShareRequest,
+    PetInviteListResponse,
     PhotoQueryParams,
     SuccessResponse,
     ErrorResponse,
@@ -124,6 +125,9 @@ def get_pets():
             pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
 
         pet["current_user_is_owner"] = pet.get("owner") == username
+        # Who's been invited is the owner's business, not the other members'.
+        if not pet["current_user_is_owner"]:
+            pet.pop("share_invites", None)
 
         # Ensure tiles_settings is present (use default if missing)
         tiles_settings = get_tiles_settings(pet)
@@ -263,6 +267,8 @@ def get_pet(pet_id):
         _expose_photo(pet)
 
         pet["current_user_is_owner"] = pet.get("owner") == username
+        if not pet["current_user_is_owner"]:
+            pet.pop("share_invites", None)
 
         # Ensure tiles_settings is present (use default if missing)
         pet["tiles_settings"] = get_tiles_settings(pet)
@@ -416,7 +422,13 @@ def update_pet(pet_id):
     tags=["pets"],
 )
 def share_pet(pet_id):
-    """Share pet with another user (owner only)."""
+    """Invite another user to a pet (owner only).
+
+    An invitation, not access: it takes effect once they accept
+    (``/invite/accept``). Handing out access directly let anyone put a pet
+    on anyone's account, and with it reminders worded by the sender on
+    their devices and the sender inside their «circle».
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username, _ = get_current_user()
@@ -442,10 +454,12 @@ def share_pet(pet_id):
         shared_with = pet.get("shared_with", []) if pet else []
         if share_username in shared_with:
             return error_response("validation_error_already_shared")
+        if share_username in (pet.get("share_invites") or []):
+            return error_response("share_already_invited")
 
-        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$addToSet": {"shared_with": share_username}})
+        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$addToSet": {"share_invites": share_username}})
 
-        logger.info(f"Pet shared: id={pet_id}, owner={username}, shared_with={share_username}")
+        logger.info(f"Pet share invite: id={pet_id}, owner={username}, invited={share_username}")
         return get_message("pet_shared", username=share_username)
 
     except ValueError as e:
@@ -469,7 +483,10 @@ def unshare_pet(pet_id, share_username):
         if access_error:
             return access_error[0], access_error[1]
 
-        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$pull": {"shared_with": share_username}})
+        # Takes back access, or an invitation not yet answered.
+        app.db["pets"].update_one(
+            {"_id": ObjectId(pet_id)}, {"$pull": {"shared_with": share_username, "share_invites": share_username}}
+        )
 
         logger.info(f"Pet unshared: id={pet_id}, owner={username}, unshared_from={share_username}")
         return get_message("pet_unshared", username=share_username)
@@ -477,6 +494,73 @@ def unshare_pet(pet_id, share_username):
     except ValueError as e:
         logger.warning(f"Invalid input data for unsharing pet: id={pet_id}, user={username}, error={e}")
         return error_response("validation_error", str(e))
+
+
+@pets_bp.route("/api/pets/invites", methods=["GET"])
+@login_required
+@api.validate(resp=Response(HTTP_200=PetInviteListResponse), tags=["pets"])
+def list_pet_invites():
+    """Pets someone has invited the signed-in user to."""
+    username = request.current_user
+    invites = [
+        {
+            "pet_id": str(pet["_id"]),
+            "pet_name": pet.get("name", ""),
+            "species": pet.get("species"),
+            "owner": pet["owner"],
+        }
+        for pet in app.db["pets"].find({"share_invites": username}, {"name": 1, "species": 1, "owner": 1})
+    ]
+    return jsonify({"invites": invites})
+
+
+def _answer_invite(pet_id, accept: bool):
+    username = request.current_user
+    try:
+        pet_oid = ObjectId(pet_id)
+    except Exception:
+        return error_response("share_invite_not_found")
+    update = {"$pull": {"share_invites": username}}
+    if accept:
+        update["$addToSet"] = {"shared_with": username}
+    result = app.db["pets"].update_one({"_id": pet_oid, "share_invites": username}, update)
+    if result.matched_count == 0:
+        return error_response("share_invite_not_found")
+    logger.info(f"Pet invite {'accepted' if accept else 'declined'}: id={pet_id}, user={username}")
+    return get_message("pet_invite_accepted" if accept else "pet_invite_declined")
+
+
+@pets_bp.route("/api/pets/<pet_id>/invite/accept", methods=["POST"])
+@login_required
+@api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse), tags=["pets"])
+def accept_pet_invite(pet_id):
+    """Accept an invitation: the pet appears in the user's list."""
+    return _answer_invite(pet_id, accept=True)
+
+
+@pets_bp.route("/api/pets/<pet_id>/invite/decline", methods=["POST"])
+@login_required
+@api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse), tags=["pets"])
+def decline_pet_invite(pet_id):
+    """Decline an invitation."""
+    return _answer_invite(pet_id, accept=False)
+
+
+@pets_bp.route("/api/pets/<pet_id>/leave", methods=["POST"])
+@login_required
+@api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse), tags=["pets"])
+def leave_pet(pet_id):
+    """Stop seeing a pet someone shared: only its owner could end a share before."""
+    username = request.current_user
+    try:
+        pet_oid = ObjectId(pet_id)
+    except Exception:
+        return error_response("share_not_member")
+    result = app.db["pets"].update_one({"_id": pet_oid, "shared_with": username}, {"$pull": {"shared_with": username}})
+    if result.matched_count == 0:
+        return error_response("share_not_member")
+    logger.info(f"Pet left: id={pet_id}, user={username}")
+    return get_message("pet_left")
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["DELETE"])
