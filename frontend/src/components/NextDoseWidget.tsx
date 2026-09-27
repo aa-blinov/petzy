@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
-import { MONTHS_GENITIVE } from '../utils/relativeTime';
+import { refreshAfterIntake } from '../utils/intakeViews';
+import { showUndo } from '../utils/undo';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { RAN_OUT_MESSAGE } from '../utils/stock';
@@ -9,20 +10,17 @@ import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 
-// The backend looks ahead up to a week once today's doses are all given,
-// so "the next dose" can land on a different day — without saying which,
-// a dose due tomorrow read exactly like one due right now, and "Принять
-// сейчас" on it would log an early, wrong-dated intake.
-function describeDoseDay(doseDateStr: string, now: Date): string | null {
-    const [y, m, d] = doseDateStr.split('-').map(Number);
-    const doseDay = new Date(y, m - 1, d).getTime();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const daysAhead = Math.round((doseDay - today) / 86_400_000);
-
-    if (daysAhead <= 0) return null;
-    if (daysAhead === 1) return 'завтра';
-    return `${d} ${MONTHS_GENITIVE[m - 1]}`;
-}
+/**
+ * Today's next dose, on the feed. Only today's: marking a dose for a day
+ * that hasn't come yet («Отметить заранее», offered once today's were all
+ * given) let one tap after another log tomorrow's, then the next day's,
+ * into the diary, which no medication app does. Once today is done the
+ * widget steps aside; the reminder brings the next dose back in time.
+ *
+ * A stray tap is undone from the bar that follows («Отменить»), not
+ * guarded by a question before every dose.
+ */
+const DUE_WINDOW_MINUTES = 30;
 
 export function NextDoseWidget() {
     const { selectedPetId } = usePet();
@@ -52,26 +50,42 @@ export function NextDoseWidget() {
         mutationFn: (dose: UpcomingDose) => {
             // No dose_taken: the backend uses the course's own dose. A
             // hard-coded 1 took a whole tablet off a half-tablet course.
+            // Logged at the moment it's given, not at the scheduled time:
+            // «Дать раньше» at 14:00 for 20:00 is a 14:00 intake.
+            const now = new Date();
             return medicationsService.logIntake(dose.medication_id, {
-                date: dose.date,
-                time: dose.time,
+                date: formatDate(now),
+                time: formatTime(now),
             });
         },
-        onSuccess: ({ ran_out }) => {
-            queryClient.invalidateQueries({ queryKey: ['medications'] });
+        onSuccess: ({ id, ran_out }, dose) => {
+            refreshAfterIntake(queryClient);
+            showUndo({
+                message: ran_out ? `${dose.name}: принято, лекарство закончилось` : `${dose.name}: приём отмечен`,
+                onUndo: async () => {
+                    await medicationsService.deleteIntake(id);
+                    await refreshAfterIntake(queryClient);
+                },
+            });
             if (ran_out) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
-            else showToast.success('Принято!');
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось отметить приём'));
         }
     });
 
-    if (isLoading || upcoming.length === 0) return null;
+    const today = formatDate(new Date());
+    const todays = upcoming.filter((dose) => dose.date === today);
+    if (isLoading || todays.length === 0) return null;
 
-    // For the widget, we only show the VERY next dose (or multiple if they are at the same time)
-    const nextDose = upcoming[0];
-    const doseDay = describeDoseDay(nextDose.date, new Date());
+    // The next of today's doses: an overdue one first (the list is in time order).
+    const nextDose = todays[0];
+    // Due from half an hour before its time: at 07:50 an 08:00 dose is
+    // «Пора дать лекарство», not «Дать раньше».
+    const [h, m] = nextDose.time.split(':').map(Number);
+    const now = new Date();
+    const minutesUntil = h * 60 + m - (now.getHours() * 60 + now.getMinutes());
+    const due = nextDose.is_overdue || minutesUntil <= DUE_WINDOW_MINUTES;
 
     return (
         <div
@@ -103,8 +117,8 @@ export function NextDoseWidget() {
                         <Pill size={20} strokeWidth={2} style={{ display: 'block' }} />
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Приём лекарства
+                        <div style={{ fontSize: 'var(--text-xs)', color: due ? 'var(--app-accent-deep)' : 'var(--app-text-secondary)', fontWeight: due ? 700 : 400, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {due ? 'Пора дать лекарство' : 'Следующий приём'}
                         </div>
                         <h2
                             style={{
@@ -120,7 +134,7 @@ export function NextDoseWidget() {
                             {nextDose.name}
                         </h2>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
-                            {doseDay ? `${doseDay}, ${nextDose.time}` : nextDose.time}
+                            {due ? `по расписанию в ${nextDose.time}` : `сегодня в ${nextDose.time}`}
                         </div>
                     </div>
                 </div>
@@ -147,6 +161,9 @@ export function NextDoseWidget() {
                 <Button
                     block
                     color="primary"
+                    // Due: the main action. Later today: possible, but not
+                    // what the card is asking for, so it doesn't shout.
+                    fill={due ? 'solid' : 'outline'}
                     shape="rounded"
                     style={{ fontWeight: 600 }}
                     onClick={() => intakeMutation.mutate(nextDose)}
@@ -159,7 +176,7 @@ export function NextDoseWidget() {
                     // reason to stop offering it.
                     disabled={isFetching}
                 >
-                    {doseDay ? 'Отметить заранее' : 'Принять сейчас'}
+                    {due ? 'Принять' : 'Дать раньше'}
                 </Button>
             </div>
         </div>

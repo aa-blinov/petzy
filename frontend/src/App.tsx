@@ -12,6 +12,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { HapticListener } from './components/HapticListener';
 import { RouteTransition } from './components/RouteTransition';
 import { RouteFocus } from './components/RouteFocus';
+import { UndoSnackbar } from './components/UndoSnackbar';
 import { usePet } from './hooks/usePet';
 import { documentsListQuery } from './services/documents.service';
 import { medicationsListQuery } from './services/medications.service';
@@ -143,6 +144,7 @@ function AppRoutes() {
     <>
       <SessionExpiryBridge />
       <PrefetchTabs />
+      <UndoSnackbar />
       <Navbar />
       <RouteFocus />
       <main id="main-content">

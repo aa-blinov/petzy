@@ -440,7 +440,7 @@ def log_intake(id):
         }
 
         try:
-            app.db.medication_intakes.insert_one(intake_data)
+            inserted = app.db.medication_intakes.insert_one(intake_data)
         except Exception:
             # The stock was already decremented above. Without this the
             # dose would stay spent on an intake that does not exist —
@@ -456,7 +456,8 @@ def log_intake(id):
                 )
             raise
 
-        return jsonify({"message": "Intake logged", "ran_out": ran_out}), 201
+        # The id lets the client offer «Отменить» for a dose logged by mistake.
+        return jsonify({"message": "Intake logged", "id": str(inserted.inserted_id), "ran_out": ran_out}), 201
     except Exception as e:
         app.logger.error(f"Error logging intake: {e}")
         return error_response("internal_error")

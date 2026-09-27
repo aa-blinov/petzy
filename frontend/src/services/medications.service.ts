@@ -114,10 +114,17 @@ export const medicationsService = {
         await api.delete(`/medications/${id}`);
     },
 
-    /** Always records the dose; ``ran_out`` says the stock is now empty. */
-    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string }): Promise<{ ran_out: boolean }> {
-        const response = await api.post<{ ran_out?: boolean }>(`/medications/${id}/log`, data);
-        return { ran_out: !!response.data.ran_out };
+    /** Always records the dose; ``ran_out`` says the stock is now empty,
+     *  ``id`` is the intake's, for «Отменить». */
+    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string }): Promise<{ id: string; ran_out: boolean }> {
+        const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, data);
+        return { id: response.data.id, ran_out: !!response.data.ran_out };
+    },
+
+    /** Delete a logged dose (its stock comes back). Not /events/: intakes
+     *  live in their own collection. */
+    async deleteIntake(intakeId: string): Promise<void> {
+        await api.delete(`/medications/intakes/${intakeId}`);
     },
 
     /** Add a bought pack to the stock. Returns the new stock. */

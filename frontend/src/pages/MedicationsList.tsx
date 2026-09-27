@@ -15,6 +15,8 @@ import { EmptyState } from '../components/EmptyState';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
 import { RAN_OUT_MESSAGE, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
+import { refreshAfterIntake } from '../utils/intakeViews';
+import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 
@@ -63,12 +65,18 @@ export function MedicationsList() {
                 dose_taken: dose,
             });
         },
-        onSuccess: ({ ran_out }) => {
-            queryClient.invalidateQueries({ queryKey: ['medications'] });
-            queryClient.invalidateQueries({ queryKey: ['pets'] });
-            // The dose is recorded either way; an empty stock is news.
+        onSuccess: ({ id, ran_out }, { id: medId }) => {
+            refreshAfterIntake(queryClient);
+            const name = medications.find((m) => m._id === medId)?.name ?? 'Приём';
+            // A tap by mistake is undone from the bar, as on the feed.
+            showUndo({
+                message: ran_out ? `${name}: принято, лекарство закончилось` : `${name}: приём отмечен`,
+                onUndo: async () => {
+                    await medicationsService.deleteIntake(id);
+                    await refreshAfterIntake(queryClient);
+                },
+            });
             if (ran_out) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
-            else showToast.success('Приём отмечен');
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
