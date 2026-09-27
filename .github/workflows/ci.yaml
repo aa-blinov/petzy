@@ -53,6 +53,9 @@ jobs:
           check /manifest.webmanifest "$(head /manifest.webmanifest)" 'content-type: application/manifest+json'
           check /manifest.webmanifest "$(head /manifest.webmanifest)" 'cache-control: no-cache'
           check /login "$(head /login)" 'cache-control: no-cache'
+          # /api/…json goes to the app, not to the static-file rule (no app
+          # here, so nginx answers 502 rather than a static 404).
+          check /api/openapi.json "$(head /api/openapi.json)" 'HTTP/1.1 502'
           # Every page and file keeps the security headers, including the
           # locations with their own add_header (which drop the server's).
           for path in /login /assets/index-abc123.js /favicon.svg /manifest.webmanifest; do
