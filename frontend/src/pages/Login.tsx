@@ -101,19 +101,27 @@ export function Login() {
               >
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
+              {/* Someone who has never used Petzy lands here first: the way
+                  in for them is a button, not small print under the form. */}
+              {status?.open && (
+                <Button
+                  block
+                  size="large"
+                  fill="outline"
+                  color="primary"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => navigate('/register')}
+                  style={{ marginTop: 'var(--spacing-sm)' }}
+                >
+                  Создать аккаунт
+                </Button>
+              )}
               <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
                 <Link to="/forgot-password" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
                   Забыли пароль?
                 </Link>
               </p>
-              {status?.open && (
-                <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center', color: 'var(--app-text-secondary)' }}>
-                  Нет аккаунта?{' '}
-                  <Link to="/register" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
-                    Создать
-                  </Link>
-                </p>
-              )}
               </>
             }
           >

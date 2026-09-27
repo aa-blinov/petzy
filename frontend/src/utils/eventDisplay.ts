@@ -10,6 +10,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { TileColor } from './constants';
 import type { EventType } from '../services/eventTypes.service';
 import { getEventIcon } from './iconRegistry';
+import { formatAmount } from './stock';
 
 export interface HistoryItem {
   _id: string;
@@ -40,16 +41,29 @@ function commentLine(item: HistoryItem): DetailLine[] {
 }
 
 function medicationDetails(item: HistoryItem): DetailLine[] {
+  const unit = item.dose_unit ? ` ${String(item.dose_unit)}` : '';
+  const dose = typeof item.dose_taken === 'number' ? formatAmount(item.dose_taken) : String(item.dose_taken ?? '');
   return [
-    { label: 'Препарат', value: String(item.medication_name || 'Неизвестно') },
+    { label: 'Лекарство', value: String(item.medication_name || 'Неизвестно') },
     // A dose skipped on purpose: nothing was given.
-    item.skipped ? { label: 'Приём', value: 'пропущен' } : { label: 'Доза', value: String(item.dose_taken) },
+    item.skipped ? { label: 'Приём', value: 'пропущен' } : { label: 'Доза', value: `${dose}${unit}` },
     ...commentLine(item),
   ];
 }
 
+/** «Вес корма (г)» + 60 → «Вес корма» / «60 г»: the unit goes with the
+ *  number, as people say it, instead of sitting in the label. Forms keep
+ *  the unit in the label, where it says what to type. */
+function withUnit(label: string, value: string, isNumber: boolean): DetailLine {
+  // Only a number: «Корм (сухой)» on a text field is not a unit.
+  const match = isNumber ? /^(.*\S)\s*\(([^()]+)\)$/.exec(label) : null;
+  const number = Number(value);
+  if (!match || !Number.isFinite(number)) return { label, value };
+  return { label: match[1], value: `${formatAmount(number)} ${match[2]}` };
+}
+
 export const MEDICATIONS_DISPLAY: EventDisplayConfig = {
-  displayName: 'Препараты',
+  displayName: 'Лекарства',
   color: 'purple',
   icon: getEventIcon('pill'),
   details: medicationDetails,
@@ -69,7 +83,7 @@ export function eventDetails(item: HistoryItem, eventType: EventType): DetailLin
       const option = field.options?.find((opt) => opt.value === String(raw));
       if (option) display = option.text;
     }
-    lines.push({ label: field.label, value: display });
+    lines.push(withUnit(field.label, display, field.type === 'number'));
   }
   return [...lines, ...commentLine(item)];
 }

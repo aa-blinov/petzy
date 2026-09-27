@@ -147,7 +147,7 @@ class TestDataExport:
         # Only types with data are included — asthma etc. have none.
         assert any("вес" in n for n in names)
         assert any("кормление" in n for n in names)
-        assert any("препарат" in n for n in names)
+        assert any("лекарств" in n for n in names)
         assert not any("астма" in n for n in names)
 
     def test_export_custom_type(self, client, mock_db, regular_user_token, test_pet):

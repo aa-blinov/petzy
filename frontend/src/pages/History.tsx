@@ -257,9 +257,16 @@ export function History() {
                     gap: 'var(--spacing-sm)',
                     minHeight: '40px',
                 }}>
-                    <h1 className="display-headline" style={{ fontSize: '24px', margin: 0 }}>
-                        История
-                    </h1>
+                    <div style={{ minWidth: 0 }}>
+                        <h1 className="display-headline" style={{ fontSize: '24px', margin: 0 }}>
+                            История
+                        </h1>
+                        {/* Лента is today and what's next; this is everything.
+                            Without a word it read as the same list twice. */}
+                        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                            Все записи за всё время, по типам и с графиками
+                        </p>
+                    </div>
                     <button
                         type="button"
                         onClick={() => setExportVisible(true)}

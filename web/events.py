@@ -616,10 +616,10 @@ def get_history_timeline():
                     med_object_ids.append(ObjectId(raw_id))
                 except Exception:
                     pass
-        med_names = (
+        meds = (
             {
-                str(med["_id"]): med.get("name", "Unknown")
-                for med in app.db["medications"].find({"_id": {"$in": med_object_ids}}, {"name": 1})
+                str(med["_id"]): med
+                for med in app.db["medications"].find({"_id": {"$in": med_object_ids}}, {"name": 1, "dose_unit": 1})
             }
             if med_object_ids
             else {}
@@ -631,9 +631,11 @@ def get_history_timeline():
             record["record_type"] = "medications"
             if isinstance(record.get("date_time"), datetime):
                 record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
-            med_name = med_names.get(record.get("medication_id"))
-            if med_name:
-                record["medication_name"] = med_name
+            med = meds.get(record.get("medication_id"))
+            if med:
+                record["medication_name"] = med.get("name", "Unknown")
+                # «1 таб», not a bare «1», on the feed.
+                record["dose_unit"] = med.get("dose_unit") or ""
             all_records.append(record)
 
     all_records.sort(key=lambda x: x.get("date_time", ""), reverse=True)
