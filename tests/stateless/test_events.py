@@ -821,25 +821,25 @@ class TestUpdateEventTypeFields:
     """PUT /api/event-types/<key> — only the label-update case was covered
     before this class; icon/color/fields/chart each has its own `if` branch."""
 
-    def test_update_icon_and_color(self, client, mock_db, regular_user_token):
+    def test_update_icon_and_color(self, client, mock_db, auth_headers):
         response = client.put(
             "/api/event-types/feeding",
             json={"icon": "star", "color": "purple"},
-            headers={"Authorization": f"Bearer {regular_user_token}"},
+            headers=auth_headers,  # a builtin type: an admin's to change
         )
         assert response.status_code == 200
         updated = mock_db["event_types"].find_one({"key": "feeding"})
         assert updated["icon"] == "star"
         assert updated["color"] == "purple"
 
-    def test_update_fields_and_chart(self, client, mock_db, regular_user_token):
+    def test_update_fields_and_chart(self, client, mock_db, auth_headers):
         response = client.put(
             "/api/event-types/feeding",
             json={
                 "fields": [{"name": "amount", "label": "Amount", "type": "number", "required": True}],
                 "chart": {"kind": "value", "value_field": "amount", "value_label": "Amount"},
             },
-            headers={"Authorization": f"Bearer {regular_user_token}"},
+            headers=auth_headers,  # a builtin type: an admin's to change
         )
         assert response.status_code == 200
         updated = mock_db["event_types"].find_one({"key": "feeding"})

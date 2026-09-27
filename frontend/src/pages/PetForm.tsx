@@ -35,6 +35,7 @@ import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { useDeletePet } from '../hooks/useDeletePet';
+import { showUndo } from '../utils/undo';
 
 const petSchema = z.object({
   name: z.string().min(1, 'Введите имя питомца'),
@@ -273,6 +274,19 @@ export function PetForm() {
           ...toAdd.map(username => petsService.sharePet(petId!, username)),
           ...toRemove.map(username => petsService.unsharePet(petId!, username))
         ]);
+
+        // Opened to the wrong person: take it back right away.
+        if (toAdd.length > 0) {
+          const sharedPetId = petId;
+          showUndo({
+            message: `Доступ открыт: ${toAdd.join(', ')}`,
+            onUndo: async () => {
+              await Promise.all(toAdd.map(username => petsService.unsharePet(sharedPetId, username)));
+              await queryClient.invalidateQueries({ queryKey: ['pets'] });
+              await queryClient.invalidateQueries({ queryKey: ['pet', sharedPetId] });
+            },
+          });
+        }
       }
 
       // Invalidate cache BEFORE navigating to ensure fresh data
@@ -675,7 +689,7 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Пользователь сможет добавлять и просматривать записи этого питомца так же, как вы. Введите его логин полностью: список пользователей Petzy не показывает
+              Пользователь сможет добавлять и просматривать записи этого питомца так же, как вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

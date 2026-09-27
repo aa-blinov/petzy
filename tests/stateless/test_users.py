@@ -244,6 +244,19 @@ class TestSearchUsers:
         response = client.get("/api/users/search", query_string={"q": pattern}, headers=auth_headers)
         assert response.get_json()["users"] == []
 
+    def test_people_you_share_pets_with_are_suggested_by_prefix(
+        self, client, mock_db, auth_headers, regular_user, admin_pet
+    ):
+        mock_db["pets"].update_one({"_id": admin_pet["_id"]}, {"$set": {"shared_with": ["testuser"]}})
+
+        response = client.get("/api/users/search?q=tes", headers=auth_headers)
+
+        assert response.get_json()["users"] == [{"username": "testuser"}]
+
+    def test_yourself_is_not_suggested(self, client, auth_headers):
+        response = client.get("/api/users/search?q=admin", headers=auth_headers)
+        assert response.get_json()["users"] == []
+
     def test_an_inactive_user_is_not_found(self, client, mock_db, auth_headers):
         mock_db["users"].insert_one({"username": "gone", "password_hash": "x", "is_active": False})
         response = client.get("/api/users/search?q=gone", headers=auth_headers)
