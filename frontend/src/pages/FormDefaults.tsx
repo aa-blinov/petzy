@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { Button, Form, Picker } from 'antd-mobile';
-import { DEFAULT_FORM_SETTINGS, getFormSettings, type FormSettings } from '../utils/formsConfig';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_FORM_SETTINGS, cacheFormSettings, getFormSettings, type FormSettings } from '../utils/formsConfig';
+import { formDefaultsService } from '../services/formDefaults.service';
 
 /** Static option lists for each categorical field. Kept here rather than
     in formsConfig so the picker columns read in the same place the
@@ -111,6 +113,22 @@ export function FormDefaults() {
     const mountedRef = useRef(true);
     const [formSettings, setFormSettings] = useState<FormSettings>(() => getFormSettings());
     const [visiblePicker, setVisiblePicker] = useState<PickerKey | null>(null);
+    const [saving, setSaving] = useState(false);
+    const edited = useRef(false);
+    const queryClient = useQueryClient();
+
+    // The account's copy: set on another device, it replaces this one's
+    // cached copy unless something was already changed here.
+    const { data: serverSettings } = useQuery({
+        queryKey: ['form-defaults'],
+        queryFn: () => formDefaultsService.get(),
+    });
+    useEffect(() => {
+        if (serverSettings && Object.keys(serverSettings).length > 0 && !edited.current) {
+            setFormSettings(serverSettings);
+            cacheFormSettings(serverSettings);
+        }
+    }, [serverSettings]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -119,9 +137,17 @@ export function FormDefaults() {
         };
     }, []);
 
-    const handleSave = useCallback(() => {
+    const persist = useCallback(async (settings: FormSettings) => {
+        await formDefaultsService.save(settings);
+        cacheFormSettings(settings);
+        queryClient.setQueryData(['form-defaults'], settings);
+    }, [queryClient]);
+
+    const handleSave = useCallback(async () => {
+        if (saving) return;
+        setSaving(true);
         try {
-            localStorage.setItem('formDefaults', JSON.stringify(formSettings));
+            await persist(formSettings);
             showToast.success('Настройки сохранены');
             setTimeout(() => {
                 if (mountedRef.current) {
@@ -131,23 +157,27 @@ export function FormDefaults() {
         } catch (err) {
             showToast.failure('Не удалось сохранить настройки');
             console.error('Error saving settings:', err);
+        } finally {
+            if (mountedRef.current) setSaving(false);
         }
-    }, [formSettings, navigate]);
+    }, [formSettings, navigate, persist, saving]);
 
-    const handleReset = useCallback(() => {
+    const handleReset = useCallback(async () => {
         const confirmed = window.confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?');
         if (confirmed) {
             try {
+                await persist(DEFAULT_FORM_SETTINGS);
                 setFormSettings(DEFAULT_FORM_SETTINGS);
-                localStorage.setItem('formDefaults', JSON.stringify(DEFAULT_FORM_SETTINGS));
+                edited.current = false;
                 showToast.success('Настройки сброшены');
             } catch {
                 showToast.failure('Не удалось сбросить настройки');
             }
         }
-    }, []);
+    }, [persist]);
 
     const updateFormSetting = useCallback((formType: keyof FormSettings, field: string, value: string) => {
+        edited.current = true;
         setFormSettings(prev => ({
             ...prev,
             [formType]: {
@@ -349,7 +379,7 @@ export function FormDefaults() {
 
                 {/* Action Buttons */}
                 <div style={{ paddingTop: 'var(--spacing-md)', paddingBottom: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <Button block color="primary" size="large" onClick={handleSave}>
+                    <Button block color="primary" size="large" onClick={handleSave} loading={saving}>
                         Сохранить
                     </Button>
                     <Button block color="default" size="large" onClick={handleReset}>

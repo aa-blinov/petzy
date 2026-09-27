@@ -141,11 +141,33 @@ class TestFindDueReminders:
 
         assert find_due_medication_reminders(mock_db, DUE_NOW_UTC) == []
 
-    def test_owner_without_subscription_skips_pet_entirely(self, mock_db):
+    def test_a_shared_user_is_reminded_when_the_owner_did_not_subscribe(self, mock_db):
         pet_id = _make_pet(mock_db, owner="testuser", shared_with=["frienduser"])
         _make_medication(mock_db, pet_id)
-        # Only the shared user subscribed — owner did not.
+        # Only the shared user subscribed: their timezone reads the schedule.
         _subscribe(mock_db, "frienduser", "https://push.example/friend-device")
+
+        due = find_due_medication_reminders(mock_db, DUE_NOW_UTC)
+        assert [s["endpoint"] for s in due[0]["subscriptions"]] == ["https://push.example/friend-device"]
+
+    def test_the_owners_timezone_reads_the_schedule(self, mock_db):
+        pet_id = _make_pet(mock_db, owner="testuser", shared_with=["frienduser"])
+        _make_medication(mock_db, pet_id)
+        # The friend's own clock says 03:00 UTC, the owner's 08:00: the owner's wins.
+        _subscribe(mock_db, "frienduser", "https://push.example/friend-device", tz="UTC")
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+
+        due = find_due_medication_reminders(mock_db, DUE_NOW_UTC)
+        assert len(due) == 1
+        assert {s["endpoint"] for s in due[0]["subscriptions"]} == {
+            "https://push.example/owner-device",
+            "https://push.example/friend-device",
+        }
+
+    def test_a_pet_nobody_subscribed_for_is_skipped(self, mock_db):
+        pet_id = _make_pet(mock_db, owner="testuser", shared_with=["frienduser"])
+        _make_medication(mock_db, pet_id)
+        _subscribe(mock_db, "otheruser", "https://push.example/other-device")
 
         assert find_due_medication_reminders(mock_db, DUE_NOW_UTC) == []
 
@@ -231,12 +253,13 @@ class TestFindDueDocumentExpiryReminders:
         assert len(due) == 1
         assert due[0]["expires_at"] == "2024-01-16"
 
-    def test_owner_without_subscription_skips_pet_entirely(self, mock_db):
+    def test_a_shared_user_is_reminded_when_the_owner_did_not_subscribe(self, mock_db):
         pet_id = _make_pet(mock_db, owner="testuser", shared_with=["frienduser"])
         _make_document(mock_db, pet_id, expires_at="2024-01-16")
         _subscribe(mock_db, "frienduser", "https://push.example/friend-device")
 
-        assert find_due_document_expiry_reminders(mock_db, DUE_NOW_UTC) == []
+        due = find_due_document_expiry_reminders(mock_db, DUE_NOW_UTC)
+        assert [s["endpoint"] for s in due[0]["subscriptions"]] == ["https://push.example/friend-device"]
 
     def test_malformed_expiry_date_is_skipped_without_affecting_other_documents(self, mock_db):
         """A document with an unparseable expires_at (e.g. from data entered

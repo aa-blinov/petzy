@@ -11,10 +11,9 @@ Timezone: the app has never stored one anywhere (every other "what time is
 it" check takes the client's own wall clock instead), but a background job
 has no client to ask. A push subscription now carries the browser's own
 IANA timezone name, captured once at subscribe time — that's what "the
-scheduled 08:00" (or "N days before expiry") is interpreted in for a pet's
-owner. A pet whose owner hasn't subscribed has no timezone to go on, so its
-reminders simply never fire (documented v1 limitation), even if a
-shared_with user has.
+scheduled 08:00" (or "N days before expiry") is interpreted in: the
+owner's, or, when only someone the pet is shared with subscribed, theirs.
+Every subscribed person with access to the pet gets its reminders.
 
 Usage:
     python -m scripts.send_medication_reminders
@@ -57,15 +56,17 @@ DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE = 14
 
 
 def _iter_subscribed_pets(db, now_utc: datetime):
-    """Yields ``(pet, now_local, recipient_subs)`` for every pet whose
-    owner has an active push subscription — shared groundwork for both
-    medication-dose and document-expiry due-checking below.
+    """Yields ``(pet, now_local, recipient_subs)`` for every pet at least
+    one of whose people (the owner or anyone it's shared with) has an
+    active push subscription — shared groundwork for both medication-dose
+    and document-expiry due-checking below.
 
-    ``now_local`` is naive, in the owner's own IANA timezone (captured at
-    subscribe time), so it compares directly against other naive local
-    values already stored elsewhere (medication_intakes.date_time, a
-    document's plain "YYYY-MM-DD" expires_at). ``recipient_subs`` is the
-    owner's own subscriptions plus any shared_with user's.
+    ``now_local`` is naive, in the pet's timezone (see below), so it
+    compares directly against other naive local values already stored
+    elsewhere (medication_intakes.date_time, a document's plain
+    "YYYY-MM-DD" expires_at). ``recipient_subs`` is every subscription of
+    the owner and of each shared_with user: whoever gives the dose gets
+    the reminder, not only the owner.
     """
     subscriptions_by_username: dict = {}
     for sub in db.push_subscriptions.find({}):
@@ -73,22 +74,23 @@ def _iter_subscribed_pets(db, now_utc: datetime):
     if not subscriptions_by_username:
         return
 
-    for pet in db.pets.find({"owner": {"$in": list(subscriptions_by_username.keys())}}):
-        owner = pet.get("owner")
-        owner_subs = subscriptions_by_username.get(owner)
-        if not owner_subs:
+    subscribed = list(subscriptions_by_username.keys())
+    for pet in db.pets.find({"$or": [{"owner": {"$in": subscribed}}, {"shared_with": {"$in": subscribed}}]}):
+        people = [pet.get("owner"), *pet.get("shared_with", [])]
+        recipient_subs = [sub for username in people for sub in subscriptions_by_username.get(username, [])]
+        if not recipient_subs:
             continue
 
-        # A user with several subscribed devices could in principle have
-        # subscribed each from a different timezone (traveling) — the
-        # first one on record is treated as canonical for this pet's
-        # schedule rather than trying to reconcile several.
+        # The schedule's «08:00» is read in the owner's timezone when the
+        # owner is subscribed, otherwise in the first subscribed person's
+        # (a family lives in one). A user with several devices could have
+        # subscribed each from a different timezone (traveling): the first
+        # one on record is canonical rather than trying to reconcile them.
+        tz_name = recipient_subs[0]["timezone"]
         try:
-            owner_tz = ZoneInfo(owner_subs[0]["timezone"])
+            pet_tz = ZoneInfo(tz_name)
         except Exception:
-            logger.warning(
-                f"Unknown timezone {owner_subs[0]['timezone']!r} for user {owner}; skipping pet {pet['_id']}"
-            )
+            logger.warning(f"Unknown timezone {tz_name!r}; skipping pet {pet['_id']}")
             continue
 
         # Known gap: a moment scheduled inside a spring-forward DST gap
@@ -99,11 +101,7 @@ def _iter_subscribed_pets(db, now_utc: datetime):
         # than tracking each owner's last-checked local time to catch
         # skipped slots after the fact. Document-expiry checks (whole
         # calendar days, not exact times) aren't affected by this.
-        now_local = now_utc.astimezone(owner_tz).replace(tzinfo=None)
-
-        recipient_subs = list(owner_subs)
-        for shared_username in pet.get("shared_with", []):
-            recipient_subs.extend(subscriptions_by_username.get(shared_username, []))
+        now_local = now_utc.astimezone(pet_tz).replace(tzinfo=None)
 
         yield pet, now_local, recipient_subs
 

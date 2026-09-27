@@ -72,9 +72,14 @@ export const DEFAULT_FORM_SETTINGS: FormSettings = {
   }
 };
 
+/** This device's copy of the account's «Настройки форм» (the server holds
+ *  them, see formDefaults.service): a new record's form reads it without
+ *  waiting for the network. */
+const FORM_DEFAULTS_KEY = 'formDefaults';
+
 export function getFormSettings(): FormSettings {
   try {
-    const saved = localStorage.getItem('formDefaults');
+    const saved = localStorage.getItem(FORM_DEFAULTS_KEY);
     if (saved) {
       const settings = JSON.parse(saved) as FormSettings;
       // Ensure backward compatibility
@@ -87,4 +92,29 @@ export function getFormSettings(): FormSettings {
     console.error('Error loading settings:', e);
   }
   return DEFAULT_FORM_SETTINGS;
+}
+
+export function cacheFormSettings(settings: FormSettings): void {
+  try {
+    localStorage.setItem(FORM_DEFAULTS_KEY, JSON.stringify(settings));
+  } catch {
+    /* private mode: the server copy still holds them */
+  }
+}
+
+/** Saved on this device before they moved to the account. */
+export function hasCachedFormSettings(): boolean {
+  try {
+    return localStorage.getItem(FORM_DEFAULTS_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function clearCachedFormSettings(): void {
+  try {
+    localStorage.removeItem(FORM_DEFAULTS_KEY);
+  } catch {
+    /* ignore */
+  }
 }

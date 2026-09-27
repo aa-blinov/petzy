@@ -20,6 +20,7 @@ from web.schemas import (
     UserSearchResponse,
     UserPasswordResetRequest,
     UserPublicProfile,
+    FormDefaults,
     SuccessResponse,
     ErrorResponse,
 )
@@ -83,6 +84,25 @@ def search_users():
         found.add(exact["username"])
     active = {u["username"] for u in app.db["users"].find({"username": {"$in": sorted(found)}, "is_active": True})}
     return jsonify({"users": [{"username": u} for u in sorted(active)][:20]})
+
+
+@users_bp.route("/api/me/form-defaults", methods=["GET"])
+@login_required
+@api.validate(resp=Response(HTTP_200=FormDefaults), tags=["users"])
+def get_form_defaults():
+    """The signed-in user's form defaults («Настройки форм»)."""
+    user = app.db["users"].find_one({"username": request.current_user}, {"form_defaults": 1}) or {}
+    return jsonify({"form_defaults": user.get("form_defaults") or {}})
+
+
+@users_bp.route("/api/me/form-defaults", methods=["PUT"])
+@login_required
+@api.validate(body=Request(FormDefaults), resp=Response(HTTP_200=FormDefaults), tags=["users"])
+def put_form_defaults():
+    """Replace the signed-in user's form defaults, for all of their devices."""
+    form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
+    app.db["users"].update_one({"username": request.current_user}, {"$set": {"form_defaults": form_defaults}})
+    return jsonify({"form_defaults": form_defaults})
 
 
 @users_bp.route("/api/users/<username>/profile", methods=["GET"])
