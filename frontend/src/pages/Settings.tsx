@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, Compass, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -251,6 +251,13 @@ export function Settings() {
               description="Показать вводные экраны ещё раз"
               chevron
               onClick={() => navigate('/welcome?replay=1')}
+            />
+            <SettingsRow
+              icon={<CircleHelp size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Справка"
+              description="Частые вопросы и как устроен каждый экран"
+              chevron
+              onClick={() => navigate('/help')}
             />
           </div>
 
