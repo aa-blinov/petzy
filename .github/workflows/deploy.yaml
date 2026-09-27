@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to server
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5, pinned: this step holds the server's SSH key
         with:
           host: ${{ secrets.SERVER_PETZY_HOST }}
           username: ${{ secrets.SERVER_PETZY_USER }}
@@ -23,12 +23,10 @@ jobs:
             # deployed nothing new.
             set -euo pipefail
 
-            echo "--- Debug Info ---"
-            pwd
-            ls -la ~/services
+            # The repository (and so this log) is public: no listings of
+            # the server's folders or paths here.
             echo "--- Navigating to project ---"
             cd ~/services/cat-health-control-bot || cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
-            pwd
             echo "--- Deployment ---"
             # `git pull` fails outright if the server's checkout has ever
             # diverged from origin/master (a stray local commit, a manual

@@ -26,7 +26,9 @@ jobs:
           openssl dhparam -dsaparam -out "$le/ssl-dhparams.pem" 2048 2>/dev/null
           for conf in nginx/nginx.conf nginx/nginx.conf.server nginx/nginx.conf.external; do
             echo "== $conf"
-            docker run --rm -v "$PWD/$conf:/etc/nginx/conf.d/default.conf:ro" -v "$le:/etc/letsencrypt:ro" nginx:alpine nginx -t
+            docker run --rm -v "$PWD/$conf:/etc/nginx/conf.d/default.conf:ro" \
+              -v "$PWD/nginx/security-headers.conf:/etc/nginx/security-headers.conf:ro" \
+              -v "$le:/etc/letsencrypt:ro" nginx:alpine nginx -t
           done
       - name: Caching headers and manifest type (the deployed config)
         run: |
@@ -41,6 +43,7 @@ jobs:
           chmod -R a+rX "$root"
           docker run -d --name nginx-check -p 8080:80 \
             -v "$PWD/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$PWD/nginx/security-headers.conf:/etc/nginx/security-headers.conf:ro" \
             -v "$root:/usr/share/nginx/html:ro" nginx:alpine
           sleep 2
           head() { curl -sI "http://localhost:8080$1" | tr -d '\r'; }
@@ -50,6 +53,15 @@ jobs:
           check /manifest.webmanifest "$(head /manifest.webmanifest)" 'content-type: application/manifest+json'
           check /manifest.webmanifest "$(head /manifest.webmanifest)" 'cache-control: no-cache'
           check /login "$(head /login)" 'cache-control: no-cache'
+          # Every page and file keeps the security headers, including the
+          # locations with their own add_header (which drop the server's).
+          for path in /login /assets/index-abc123.js /favicon.svg /manifest.webmanifest; do
+            h="$(head $path)"
+            check "$path" "$h" "content-security-policy: default-src 'self'; script-src 'self';"
+            check "$path" "$h" "frame-ancestors 'none'"
+            check "$path" "$h" 'x-content-type-options: nosniff'
+            check "$path" "$h" 'strict-transport-security: max-age='
+          done
           docker rm -f nginx-check >/dev/null
 
   lint:
@@ -78,7 +90,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install mongomock
       - name: Run stateless tests
         run: pytest tests/stateless --tb=short --maxfail=1 -q
@@ -125,7 +137,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install mongomock
       - name: Run stateful tests
         run: pytest tests/stateful --tb=short --maxfail=1 -q
