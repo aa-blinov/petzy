@@ -138,15 +138,22 @@ class TestCreateEventType:
 
 @pytest.mark.health_records
 class TestUpdateEventType:
-    def test_update_builtin_label(self, client, mock_db, regular_user_token):
+    def test_update_builtin_label(self, client, mock_db, auth_headers):
+        """A builtin type is everyone's: an admin may rename it."""
+        response = client.put("/api/event-types/weight", json={"label": "Взвешивание"}, headers=auth_headers)
+        assert response.status_code == 200
+        assert response.get_json()["label"] == "Взвешивание"
+        assert mock_db["event_types"].find_one({"key": "weight"})["label"] == "Взвешивание"
+
+    def test_a_user_cannot_rename_a_builtin_for_everyone(self, client, mock_db, regular_user_token):
+        before = mock_db["event_types"].find_one({"key": "weight"})["label"]
         response = client.put(
             "/api/event-types/weight",
             json={"label": "Взвешивание"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
-        assert response.status_code == 200
-        assert response.get_json()["label"] == "Взвешивание"
-        assert mock_db["event_types"].find_one({"key": "weight"})["label"] == "Взвешивание"
+        assert response.status_code == 403
+        assert mock_db["event_types"].find_one({"key": "weight"})["label"] == before
 
     def test_update_not_found(self, client, regular_user_token):
         response = client.put(

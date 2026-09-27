@@ -42,7 +42,7 @@ from web.schemas import (
     TimelineQuery,
     TimelineResponse,
 )
-from web.security import get_current_user, login_required
+from web.security import get_current_user, is_admin, login_required
 
 
 events_bp = Blueprint("events", __name__)
@@ -63,9 +63,37 @@ def _serialize_event_type(doc: dict) -> dict:
         "icon": doc["icon"],
         "color": doc["color"],
         "is_builtin": doc.get("is_builtin", False),
+        "created_by": doc.get("created_by"),
         "fields": doc.get("fields", []),
         "chart": doc.get("chart") or {"kind": "count"},
     }
+
+
+def _household(username: str) -> set[str]:
+    """The user and everyone they share a pet with, either way round."""
+    people = {username}
+    for pet in app.db.pets.find(
+        {"$or": [{"owner": username}, {"shared_with": username}]}, {"owner": 1, "shared_with": 1}
+    ):
+        people.add(pet.get("owner"))
+        people.update(pet.get("shared_with") or [])
+    people.discard(None)
+    return people
+
+
+def _visible_types_query(username: str) -> dict:
+    """Builtin types, plus custom ones made in the user's household.
+
+    Custom types used to be one list for the whole server: every user saw
+    every other household's type names. A household (the people sharing
+    pets) still sees one another's, or a shared pet's records of the
+    owner's type would have nothing to render them by.
+    """
+    return {"$or": [{"is_builtin": True}, {"created_by": {"$in": sorted(_household(username))}}]}
+
+
+def _find_visible_type(key: str, username: str) -> Optional[dict]:
+    return app.db[EVENT_TYPES_COLLECTION].find_one({"$and": [{"key": key}, _visible_types_query(username)]})
 
 
 def _generate_event_type_key() -> str:
@@ -79,8 +107,9 @@ def _generate_event_type_key() -> str:
 @login_required
 @api.validate(resp=Response(HTTP_200=EventTypeListResponse), tags=["events"])
 def list_event_types():
-    """List every event type (builtin + custom)."""
-    docs = app.db[EVENT_TYPES_COLLECTION].find({}).sort([("is_builtin", -1), ("label", 1)])
+    """List the event types this user can use: builtin, and their household's."""
+    username, _ = get_current_user()
+    docs = app.db[EVENT_TYPES_COLLECTION].find(_visible_types_query(username)).sort([("is_builtin", -1), ("label", 1)])
     return jsonify({"event_types": [_serialize_event_type(d) for d in docs]})
 
 
@@ -123,16 +152,19 @@ def create_event_type():
 def update_event_type(key):
     """Update an event type's label/icon/color/fields/chart.
 
-    Builtin types are editable too (only the ``key`` itself is immutable) —
-    once everything is data-driven there's no reason to special-case them
-    beyond protecting them from deletion below.
+    A custom type by its author only. A builtin type is the same for every
+    user, so renaming it renamed it for everyone: an admin's change only.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
 
-    existing = app.db[EVENT_TYPES_COLLECTION].find_one({"key": key})
+    existing = _find_visible_type(key, username)
     if not existing:
         return error_response("event_type_not_found")
+    if existing.get("is_builtin") and not is_admin(username):
+        return error_response("event_type_builtin_admin_only")
+    if not existing.get("is_builtin") and existing.get("created_by") != username:
+        return error_response("event_type_not_yours")
 
     data = request.context.body  # type: ignore[attr-defined]
     update_data: dict[str, Any] = {}
@@ -171,11 +203,13 @@ def delete_event_type(key):
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
 
-    existing = app.db[EVENT_TYPES_COLLECTION].find_one({"key": key})
+    existing = _find_visible_type(key, username)
     if not existing:
         return error_response("event_type_not_found")
     if existing.get("is_builtin"):
         return error_response("event_type_builtin_immutable")
+    if existing.get("created_by") != username:
+        return error_response("event_type_not_yours")
     if app.db[EVENTS_COLLECTION].count_documents({"type": key}) > 0:
         return error_response("event_type_has_events")
 
@@ -281,7 +315,7 @@ def create_event():
     pet_id = g.pet_id
     username = g.username
 
-    event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": data.type})
+    event_type = _find_visible_type(data.type, username)
     if not event_type:
         return error_response("event_type_not_found")
 

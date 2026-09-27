@@ -21,6 +21,8 @@ import { pastelColorMap } from '../utils/constants';
 import { getEventIcon } from '../utils/iconRegistry';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useAdmin } from '../hooks/useAdmin';
+import { useAuth } from '../hooks/useAuth';
 
 export function EventTypesSettings() {
   const navigate = useNavigate();
@@ -28,6 +30,8 @@ export function EventTypesSettings() {
   const invalidate = useInvalidateEventTypes();
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const { isAdmin } = useAdmin();
+  const { username: currentUsername } = useAuth();
 
   const handleDelete = async (key: string) => {
     setDeletingKey(key);
@@ -52,7 +56,7 @@ export function EventTypesSettings() {
             Типы событий
           </h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Встроенные типы можно переименовать и перекрасить. Свои можно создать с нуля, набор полей вы задаёте сами
+            Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем. Встроенные типы общие для всех, их меняет администратор
           </p>
         </div>
 
@@ -73,6 +77,15 @@ export function EventTypesSettings() {
               {eventTypes.map((eventType, index) => {
                 const Icon = getEventIcon(eventType.icon);
                 const bg = pastelColorMap[eventType.color] ?? 'var(--tile-blue)';
+                // A builtin type is everyone's (an admin's to change); a custom
+                // one is its author's, even when family can use it.
+                const mine = !eventType.is_builtin && eventType.created_by === currentUsername;
+                const editable = eventType.is_builtin ? isAdmin : mine;
+                const subtitle = eventType.is_builtin
+                  ? (isAdmin ? 'Встроенный' : 'Встроенный, меняет администратор')
+                  : mine
+                    ? `Свой, ${eventType.fields.length} ${pluralRu(eventType.fields.length, 'поле', 'поля', 'полей')}`
+                    : `Добавил(а) ${eventType.created_by}`;
                 return (
                   <div
                     key={eventType.key}
@@ -83,10 +96,12 @@ export function EventTypesSettings() {
                   >
                     <button
                       type="button"
+                      disabled={!editable}
                       onClick={() => navigate(`/event-types/${eventType.key}/edit`)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0,
-                        background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer',
+                        background: 'transparent', border: 'none', textAlign: 'left',
+                        cursor: editable ? 'pointer' : 'default', color: 'inherit', opacity: 1,
                         padding: '14px 16px',
                       }}
                     >
@@ -105,13 +120,13 @@ export function EventTypesSettings() {
                           {eventType.label}
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 2 }}>
-                          {eventType.is_builtin ? 'Встроенный' : `Свой, ${eventType.fields.length} ${pluralRu(eventType.fields.length, 'поле', 'поля', 'полей')}`}
+                          {subtitle}
                         </div>
                       </div>
                     </button>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '16px', flexShrink: 0 }}>
-                      {!eventType.is_builtin && (
+                      {mine && (
                         <button
                           type="button"
                           aria-label={`Удалить ${eventType.label}`}
@@ -122,7 +137,7 @@ export function EventTypesSettings() {
                           <Trash2 size={17} strokeWidth={2} />
                         </button>
                       )}
-                      <span aria-hidden style={{ color: 'var(--app-text-tertiary)', fontSize: 20 }}>›</span>
+                      {editable && <span aria-hidden style={{ color: 'var(--app-text-tertiary)', fontSize: 20 }}>›</span>}
                     </div>
                   </div>
                 );

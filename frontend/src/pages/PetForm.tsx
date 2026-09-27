@@ -191,23 +191,31 @@ export function PetForm() {
     return [days, months, years];
   }, [internalPickerDate, birthDateValue]);
 
-  const handleSearch = async (val: string) => {
+  // Looked up once typing pauses: only a whole login matches, so asking
+  // after every letter would only flash «не найден» mid-word.
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchedTerm, setSearchedTerm] = useState('');
+  const handleSearch = (val: string) => {
     setSearchTerm(val);
-    if (val.length < 2) {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (val.trim().length < 2) {
       setSearchResults([]);
+      setSearchedTerm('');
       return;
     }
-    setSearchLoading(true);
-    try {
-      const results = await usersService.searchUsers(val);
-      const currentUsername = localStorage.getItem('username');
-      const filtered = results.filter(u => u.username !== currentUsername && !localSharedWith.includes(u.username));
-      setSearchResults(filtered);
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setSearchLoading(false);
-    }
+    searchTimer.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const results = await usersService.searchUsers(val.trim());
+        const currentUsername = localStorage.getItem('username');
+        setSearchResults(results.filter(u => u.username !== currentUsername && !localSharedWith.includes(u.username)));
+        setSearchedTerm(val);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 500);
   };
 
   const handleAddSharedUser = (username: string) => {
@@ -667,12 +675,12 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Пользователь сможет добавлять и просматривать записи этого питомца так же, как вы
+              Пользователь сможет добавлять и просматривать записи этого питомца так же, как вы. Введите его логин полностью: список пользователей Petzy не показывает
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <SearchBar
-                  placeholder="Введите имя пользователя"
+                  placeholder="Логин пользователя"
                   value={searchTerm}
                   onChange={handleSearch}
                   onClear={() => {
@@ -681,6 +689,12 @@ export function PetForm() {
                   }}
                 />
                 {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
+                {/* Only an exact login matches (web/users.py), so say when none does. */}
+                {!searchLoading && searchedTerm === searchTerm && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
+                  <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                    Пользователь с таким логином не найден
+                  </div>
+                )}
                 {!searchLoading && searchResults.length > 0 && (
                   <div style={{
                     marginTop: '4px',
