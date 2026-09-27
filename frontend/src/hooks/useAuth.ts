@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
 import { clearApiCaches, clearLocalAuthState, resetSessionExpired } from '../services/api';
 import { SESSION_QUERY_KEY, useSession } from './useSession';
-import type { LoginRequest } from '../services/auth.service';
+import type { LoginRequest, RegisterRequest } from '../services/auth.service';
 
 const USERNAME_STORAGE_KEY = 'petzy:auth:username';
 
@@ -41,38 +41,54 @@ export function useAuth() {
   const login = async (credentials: LoginRequest) => {
     try {
       const response = await authService.login(credentials);
-      // Tokens are now in httpOnly cookies.
-      writeStoredUsername(credentials.username);
-      // A previous expiry latched the interceptor's sign-out guard.
-      // Release it now that we hold fresh cookies, otherwise the next
-      // genuine expiry would be swallowed.
-      resetSessionExpired();
-      // Drop everything the previous user cached, including the 401
-      // that the session probe may be holding, so the protected pages
-      // mount against an empty cache instead of a stale error.
-      queryClient.clear();
-      // Resolve the session probe here, while the submit button still
-      // shows its own "Вход..." state, rather than after navigating.
-      // Otherwise the protected page mounts with the session unknown
-      // and ProtectedRoute covers the screen with the fullscreen
-      // loader for one round trip — a flash between the login form and
-      // the dashboard.
-      //
-      // A failure here is deliberately swallowed: the credentials were
-      // accepted, so the user should land on the app and let it report
-      // any connectivity problem, not be told their login failed.
-      try {
-        await queryClient.fetchQuery({
-          queryKey: SESSION_QUERY_KEY,
-          queryFn: () => authService.getSession(),
-        });
-      } catch {
-        /* the protected route will probe again and surface the error */
-      }
+      await startSession(credentials.username);
       return response;
     } catch (error) {
       writeStoredUsername(null);
       throw error;
+    }
+  };
+
+  /** Sign-up signs the new account in, like a login. */
+  const register = async (data: RegisterRequest) => {
+    try {
+      await authService.register(data);
+      // Stored lowercase by the server.
+      await startSession(data.username.trim().toLowerCase());
+    } catch (error) {
+      writeStoredUsername(null);
+      throw error;
+    }
+  };
+
+  const startSession = async (signedInAs: string) => {
+    // Tokens are now in httpOnly cookies.
+    writeStoredUsername(signedInAs);
+    // A previous expiry latched the interceptor's sign-out guard.
+    // Release it now that we hold fresh cookies, otherwise the next
+    // genuine expiry would be swallowed.
+    resetSessionExpired();
+    // Drop everything the previous user cached, including the 401
+    // that the session probe may be holding, so the protected pages
+    // mount against an empty cache instead of a stale error.
+    queryClient.clear();
+    // Resolve the session probe here, while the submit button still
+    // shows its own "Вход..." state, rather than after navigating.
+    // Otherwise the protected page mounts with the session unknown
+    // and ProtectedRoute covers the screen with the fullscreen
+    // loader for one round trip — a flash between the login form and
+    // the dashboard.
+    //
+    // A failure here is deliberately swallowed: the credentials were
+    // accepted, so the user should land on the app and let it report
+    // any connectivity problem, not be told their login failed.
+    try {
+      await queryClient.fetchQuery({
+        queryKey: SESSION_QUERY_KEY,
+        queryFn: () => authService.getSession(),
+      });
+    } catch {
+      /* the protected route will probe again and surface the error */
     }
   };
 
@@ -116,6 +132,7 @@ export function useAuth() {
     isLoading: !isLoginPage && isAuthenticated === undefined,
     username,
     login,
+    register,
     logout,
   };
 }

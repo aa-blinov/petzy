@@ -90,6 +90,19 @@ class PaginatedResponse(BaseModel):
 # ============================================================================
 
 
+class RegisterRequest(BaseModel):
+    """Self sign-up. The login and password rules are checked in the view,
+    so each problem gets its own message."""
+
+    username: str = Field(..., min_length=1, max_length=64, description="Логин")
+    password: str = Field(..., min_length=1, max_length=256, description="Пароль")
+    full_name: Optional[str] = Field(None, max_length=100, description="Как к вам обращаться")
+
+
+class RegistrationStatusResponse(BaseModel):
+    open: bool
+
+
 class AuthLoginRequest(BaseModel):
     """Login request model."""
 

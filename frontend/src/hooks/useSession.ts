@@ -28,7 +28,8 @@ export const SESSION_QUERY_KEY = ['session'] as const;
 export function useSession() {
   const location = useLocation();
   const isLoginPage = useMemo(
-    () => location.pathname === '/login' || location.pathname.endsWith('/login'),
+    // The sign-in and sign-up screens: no session to probe there.
+    () => ['/login', '/register'].some((page) => location.pathname === page || location.pathname.endsWith(page)),
     [location.pathname],
   );
 

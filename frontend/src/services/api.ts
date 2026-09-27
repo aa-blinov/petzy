@@ -136,7 +136,7 @@ function handleSessionExpired(reason: string) {
   // No handler means React hasn't mounted yet, so nothing can navigate
   // on our behalf. A hard redirect is the only option left, and it
   // cannot race the router because the router doesn't exist yet.
-  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+  if (typeof window !== 'undefined' && !['/login', '/register'].includes(window.location.pathname)) {
     window.location.replace('/login');
   }
 }

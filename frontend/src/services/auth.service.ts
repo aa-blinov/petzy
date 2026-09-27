@@ -24,7 +24,23 @@ export interface SessionResponse {
   is_admin: boolean;
 }
 
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  full_name?: string;
+}
+
 export const authService = {
+  /** Creates the account; the session cookies come with the answer. */
+  async register(data: RegisterRequest): Promise<void> {
+    await api.post('/auth/register', data);
+  },
+
+  async registrationOpen(): Promise<boolean> {
+    const response = await api.get<{ open: boolean }>('/auth/registration');
+    return response.data.open;
+  },
+
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/login', credentials);
     return response.data;

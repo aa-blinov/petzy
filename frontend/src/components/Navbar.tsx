@@ -31,7 +31,7 @@ export function Navbar() {
   };
 
   // Login and onboarding own the whole viewport
-  if (location.pathname === '/login' || location.pathname === '/welcome') {
+  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/welcome') {
     return null;
   }
 
