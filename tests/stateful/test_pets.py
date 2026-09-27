@@ -195,9 +195,10 @@ class TestPetManagement:
         data = response.get_json()
         assert data["success"] is True
 
-        # Verify pet is shared
+        # An invitation, not access yet: the other user has to accept it.
         pet = db["pets"].find_one({"_id": test_pet["_id"]})
-        assert "shareuser" in pet.get("shared_with", [])
+        assert "shareuser" in pet.get("share_invites", [])
+        assert "shareuser" not in pet.get("shared_with", [])
 
     def test_share_pet_not_owner(self, client, mock_db, regular_user_token, admin_pet):
         """Test sharing pet when not owner."""

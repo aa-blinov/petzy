@@ -19,6 +19,8 @@ import { NextDoseWidget } from '../components/NextDoseWidget';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { QuickAddSheet } from '../components/QuickAddSheet';
 import { EmptyState } from '../components/EmptyState';
+import { PendingInvites } from '../components/PendingInvites';
+import { usePetInvites } from '../hooks/usePetInvites';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ export function Dashboard() {
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const invites = usePetInvites();
 
 
   const pageSize = 20;
@@ -97,6 +100,22 @@ export function Dashboard() {
   // wait for a shared pet instead gets a plain explanation, not a feed
   // that offers to log events for a pet that doesn't exist.
   if (petsFetched && pets.length === 0) {
+    // Someone invited to a family's pet answers that first, instead of
+    // being walked through adding a pet of their own.
+    if (!invites.isFetched) return <DashboardSkeleton />;
+    if ((invites.data?.length ?? 0) > 0) {
+      return (
+        <div className="page-container">
+          <div className="max-width-container safe-area-padding">
+            <h1 className="sr-only">Лента</h1>
+            <PendingInvites />
+            <Button block fill="none" onClick={() => navigate('/welcome')}>
+              Добавить своего питомца
+            </Button>
+          </div>
+        </div>
+      );
+    }
     if (!isOnboardingDismissed(username)) return <Navigate to="/welcome" replace />;
     return (
       <div className="page-container">
@@ -132,6 +151,7 @@ export function Dashboard() {
 
           {/* Timeline Content */}
           <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <PendingInvites />
             {/* Pet at-a-glance summary */}
             {getSelectedPet && (
               <PetSummaryCard

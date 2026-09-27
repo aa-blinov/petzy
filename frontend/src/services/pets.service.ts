@@ -1,6 +1,13 @@
 import api from './api';
 import type { TilesSettings } from '../utils/tilesConfig';
 
+export interface PetInvite {
+  pet_id: string;
+  pet_name: string;
+  species?: string | null;
+  owner: string;
+}
+
 export interface Pet {
   _id: string;
   name: string;
@@ -14,6 +21,8 @@ export interface Pet {
   tiles_settings?: TilesSettings;
   owner: string;
   shared_with?: string[];
+  /** Invited, not yet accepted. Present for the owner only. */
+  share_invites?: string[];
   created_at?: string;
   current_user_is_owner?: boolean;
 }
@@ -111,8 +120,27 @@ export const petsService = {
     await api.delete(`/pets/${petId}`);
   },
 
+  /** Sends an invitation: access starts once they accept it. */
   async sharePet(petId: string, username: string): Promise<void> {
     await api.post(`/pets/${petId}/share`, { username });
+  },
+
+  async getInvites(): Promise<PetInvite[]> {
+    const response = await api.get<{ invites: PetInvite[] }>('/pets/invites');
+    return response.data.invites;
+  },
+
+  async acceptInvite(petId: string): Promise<void> {
+    await api.post(`/pets/${petId}/invite/accept`);
+  },
+
+  async declineInvite(petId: string): Promise<void> {
+    await api.post(`/pets/${petId}/invite/decline`);
+  },
+
+  /** Stop seeing a pet someone shared. */
+  async leavePet(petId: string): Promise<void> {
+    await api.post(`/pets/${petId}/leave`);
   },
 
   async unsharePet(petId: string, username: string): Promise<void> {

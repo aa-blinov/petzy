@@ -34,7 +34,7 @@ import { PhotoCropModal } from '../components/PhotoCropModal';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
-import { useDeletePet } from '../hooks/useDeletePet';
+import { useDeletePet, useLeavePet } from '../hooks/useDeletePet';
 import { showUndo } from '../utils/undo';
 
 const petSchema = z.object({
@@ -57,6 +57,7 @@ interface PetPhotoItem {
 export function PetForm() {
   const navigate = useNavigate();
   const deletePet = useDeletePet();
+  const leavePet = useLeavePet();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
   const queryClient = useQueryClient();
@@ -137,7 +138,8 @@ export function PetForm() {
         is_neutered: pet.is_neutered ?? undefined,
         health_notes: pet.health_notes || '',
       });
-      setLocalSharedWith(pet.shared_with || []);
+      // Members and people invited but not yet answered, in one list.
+      setLocalSharedWith([...(pet.shared_with || []), ...(pet.share_invites || [])]);
       if (pet.photo_url) {
         setFileList([{ url: pet.photo_url }]);
       } else {
@@ -266,7 +268,7 @@ export function PetForm() {
       }
 
       if (petId) {
-        const initialShared = pet?.shared_with || [];
+        const initialShared = [...(pet?.shared_with || []), ...(pet?.share_invites || [])];
         const toAdd = localSharedWith.filter(u => !initialShared.includes(u));
         const toRemove = initialShared.filter(u => !localSharedWith.includes(u));
 
@@ -279,7 +281,7 @@ export function PetForm() {
         if (toAdd.length > 0) {
           const sharedPetId = petId;
           showUndo({
-            message: `Доступ открыт: ${toAdd.join(', ')}`,
+            message: `Приглашение отправлено: ${toAdd.join(', ')}`,
             onUndo: async () => {
               await Promise.all(toAdd.map(username => petsService.unsharePet(sharedPetId, username)));
               await queryClient.invalidateQueries({ queryKey: ['pets'] });
@@ -689,7 +691,7 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Пользователь сможет добавлять и просматривать записи этого питомца так же, как вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
+              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет добавлять и смотреть записи так же, как вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -756,30 +758,41 @@ export function PetForm() {
                     color="danger"
                     fill="none"
                     onClick={() => handleRemoveSharedUser(username)}
-                    aria-label={`Закрыть доступ для ${username}`}
+                    aria-label={(pet?.shared_with || []).includes(username) ? `Закрыть доступ для ${username}` : `Отменить приглашение для ${username}`}
                   >
                     <DeleteOutline fontSize={20} aria-hidden />
                   </Button>
                 }
               >
-                <button
-                  type="button"
-                  onClick={() => navigate(`/users/${username}`)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'inherit',
-                  }}
-                >
-                  <UserAvatar username={username} size={24} />
-                  <span style={{ fontWeight: 500 }}>{username}</span>
-                </button>
+                {(pet?.shared_with || []).includes(username) ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/users/${username}`)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      color: 'inherit',
+                    }}
+                  >
+                    <UserAvatar username={username} size={24} />
+                    <span style={{ fontWeight: 500 }}>{username}</span>
+                  </button>
+                ) : (
+                  // Invited, not a member yet: no profile to open.
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <UserAvatar username={username} size={24} />
+                    <span style={{ fontWeight: 500 }}>{username}</span>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                      {(pet?.share_invites || []).includes(username) ? 'ждёт ответа' : 'приглашение уйдёт при сохранении'}
+                    </span>
+                  </span>
+                )}
               </Form.Item>
             ))}
           </Form>
@@ -829,6 +842,17 @@ export function PetForm() {
                 confirmContent={`Удалить «${pet.name}»? Вместе с ним удалятся все записи, лекарства и документы`}
                 onConfirm={async () => {
                   await deletePet(pet);
+                  goBack(navigate, '/pets');
+                }}
+              />
+            )}
+            {isEditing && pet && !pet.current_user_is_owner && (
+              <FormDangerButton
+                label="Выйти из доступа"
+                confirmTitle="Выйти из доступа"
+                confirmContent={`Больше не видеть «${pet.name}»? Его записи останутся у владельца, он сможет пригласить вас снова`}
+                onConfirm={async () => {
+                  await leavePet(pet);
                   goBack(navigate, '/pets');
                 }}
               />

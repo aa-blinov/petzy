@@ -23,7 +23,10 @@ MESSAGES: Dict[str, MessageDef] = {
     "pet_created": MessageDef("Питомец создан"),
     "pet_updated": MessageDef("Данные питомца обновлены"),
     "pet_deleted": MessageDef("Питомец удалён"),
-    "pet_shared": MessageDef("Доступ предоставлен пользователю {username}"),
+    "pet_shared": MessageDef("Приглашение отправлено пользователю {username}"),
+    "pet_invite_accepted": MessageDef("Приглашение принято"),
+    "pet_invite_declined": MessageDef("Приглашение отклонено"),
+    "pet_left": MessageDef("Вы больше не видите этого питомца"),
     "pet_unshared": MessageDef("Доступ убран у пользователя {username}"),
     # User messages
     "user_created": MessageDef("Пользователь создан"),
