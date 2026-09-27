@@ -37,6 +37,20 @@ jobs:
                 -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/***@***/g'
             }
 
+            echo "=== security config (presence only, never values) ==="
+            envstate() {
+              v=$(grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2-)
+              if [ -z "$v" ]; then echo "$1: unset"
+              elif [ "$v" = "dev-secret-key-change-in-production" ]; then echo "$1: DEFAULT"
+              else echo "$1: set (length ${#v})"; fi
+            }
+            for k in JWT_SECRET_KEY FLASK_SECRET_KEY ADMIN_PASSWORD_HASH; do envstate "$k"; done
+            for k in COOKIE_SECURE COOKIE_SAMESITE CORS_ALLOWED_ORIGINS RATE_LIMIT_LOGIN FLASK_DEBUG; do
+              v=$(grep -E "^$k=" .env 2>/dev/null | tail -1 | cut -d= -f2-); echo "$k: ${v:-unset}"
+            done
+            admin_js='print("users total: " + db.users.countDocuments({})); print("admin row exists: " + (db.users.countDocuments({username: "admin"}) > 0));'
+            docker compose exec -T db sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin "$MONGO_INITDB_DATABASE" --eval "$0"' "$admin_js" 2>&1 | mask | tail -3
+
             echo "=== containers ==="
             docker compose ps
             echo
