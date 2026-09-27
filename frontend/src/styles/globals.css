@@ -379,9 +379,15 @@
     margin-right: 0 !important;
 }
 .adm-form .adm-list-item {
-    /* Drop the hairlines between rows so the whole form is one flat
-       surface. Section headers are the only visual separator. */
-    --border-inner: none !important;
+    /* The card stays flat (no box, no outer lines), but rows get a
+       hairline between them. Without one, a label and its value, 90px
+       apart in the two-column layout, had nothing tying them together,
+       least of all when the value was an empty grey placeholder, and a
+       tappable row (it opens a picker) had no visible edge. antd-mobile
+       draws --border-inner on the row's content, so the line starts at
+       the label, not the card's edge, and never above a group's first
+       row. */
+    --border-inner: solid 1px var(--app-divider-color) !important;
     --border-top: none !important;
     --border-bottom: none !important;
 }
