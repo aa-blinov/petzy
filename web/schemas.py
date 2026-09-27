@@ -790,6 +790,7 @@ class EventTypeItem(BaseModel):
     icon: str
     color: str
     is_builtin: bool
+    created_by: Optional[str] = None
     fields: List[EventTypeField]
     chart: EventChartConfig
 

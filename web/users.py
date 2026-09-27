@@ -1,5 +1,6 @@
 """Admin-only user management routes."""
 
+import re
 from datetime import datetime, timezone
 
 import bcrypt
@@ -49,20 +50,24 @@ def get_users():
 @login_required
 @api.validate(resp=Response(HTTP_200=UserSearchResponse), tags=["users"])
 def search_users():
-    """Get list of active usernames for autocomplete (any logged-in user)."""
-    # Use a query parameter to filter if provided, or just return some/all active usernames
+    """Find one active user by their exact login, to share a pet with.
+
+    Exact (case-insensitive) match only. This used to be a substring
+    search that any logged-in user could run, with an empty query
+    returning the first twenty accounts: a way to list the people of
+    every other household on the server. Sharing is by login, the way
+    other apps share by email: you ask your family member for theirs.
+    """
     query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify({"users": []})
 
-    find_query = {"is_active": True}
-    if query:
-        find_query["username"] = {"$regex": query, "$options": "i"}
-
-    users = list(app.db["users"].find(find_query, {"username": 1}).limit(20))
-
-    # Format for response
-    results = [{"username": u["username"]} for u in users]
-
-    return jsonify({"users": results})
+    # re.escape: the query is a login, not a pattern to run.
+    user = app.db["users"].find_one(
+        {"is_active": True, "username": {"$regex": f"^{re.escape(query)}$", "$options": "i"}},
+        {"username": 1},
+    )
+    return jsonify({"users": [{"username": user["username"]}] if user else []})
 
 
 @users_bp.route("/api/users/<username>/profile", methods=["GET"])

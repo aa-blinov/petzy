@@ -85,6 +85,10 @@ ERRORS: Dict[str, ErrorDef] = {
     "user_exists": ErrorDef("user_exists", "Пользователь с таким именем уже существует", 422),
     "invalid_type": ErrorDef("invalid_type", "Неподдерживаемый тип записи", 422),
     "event_type_not_found": ErrorDef("event_type_not_found", "Тип события не найден", 404),
+    "event_type_builtin_admin_only": ErrorDef(
+        "event_type_builtin_admin_only", "Встроенный тип общий для всех, его меняет администратор", 403
+    ),
+    "event_type_not_yours": ErrorDef("event_type_not_yours", "Этот тип создал другой пользователь", 403),
     "event_type_builtin_immutable": ErrorDef(
         "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
     ),

@@ -225,28 +225,29 @@ class TestSearchUsers:
         response = client.get("/api/users/search?q=test")
         assert response.status_code == 401
 
-    def test_returns_only_active_users_matching_query(self, client, mock_db, auth_headers, regular_user):
-        mock_db["users"].insert_one(
-            {
-                "username": "inactive_match",
-                "password_hash": "x",
-                "is_active": False,
-            }
-        )
+    def test_finds_a_user_by_exact_login_any_case(self, client, auth_headers, regular_user):
+        for q in ("testuser", "TestUser"):
+            response = client.get(f"/api/users/search?q={q}", headers=auth_headers)
+            assert response.get_json()["users"] == [{"username": "testuser"}]
 
+    def test_a_partial_login_lists_nobody(self, client, auth_headers, regular_user):
+        """No browsing other households: «test» doesn't reveal «testuser»."""
         response = client.get("/api/users/search?q=test", headers=auth_headers)
+        assert response.get_json()["users"] == []
 
-        assert response.status_code == 200
-        usernames = [u["username"] for u in response.get_json()["users"]]
-        assert "testuser" in usernames
-        assert "inactive_match" not in usernames
-
-    def test_empty_query_returns_active_users(self, client, mock_db, auth_headers, regular_user):
+    def test_an_empty_query_lists_nobody(self, client, auth_headers, regular_user):
         response = client.get("/api/users/search", headers=auth_headers)
+        assert response.get_json()["users"] == []
 
-        assert response.status_code == 200
-        usernames = [u["username"] for u in response.get_json()["users"]]
-        assert "testuser" in usernames
+    @pytest.mark.parametrize("pattern", [".*", "t.*", "^test", "testuse.", "(testuser)"])
+    def test_a_pattern_is_not_run(self, client, auth_headers, regular_user, pattern):
+        response = client.get("/api/users/search", query_string={"q": pattern}, headers=auth_headers)
+        assert response.get_json()["users"] == []
+
+    def test_an_inactive_user_is_not_found(self, client, mock_db, auth_headers):
+        mock_db["users"].insert_one({"username": "gone", "password_hash": "x", "is_active": False})
+        response = client.get("/api/users/search?q=gone", headers=auth_headers)
+        assert response.get_json()["users"] == []
 
     def test_delete_user_not_found(self, client, auth_headers):
         response = client.delete("/api/users/nonexistent", headers=auth_headers)

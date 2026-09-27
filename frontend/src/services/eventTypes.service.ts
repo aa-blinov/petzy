@@ -30,6 +30,8 @@ export interface EventType {
   icon: string;
   color: TileColor;
   is_builtin: boolean;
+  /** Who made a custom type; a household sees one another's. */
+  created_by?: string | null;
   fields: EventTypeField[];
   chart: EventTypeChart;
 }
