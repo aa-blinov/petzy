@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { reloadIfUpdated } from './utils/swUpdate';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { setSessionExpiredHandler } from './services/api';
@@ -175,12 +176,22 @@ function FormDefaultsSync() {
   return null;
 }
 
+/** A release that arrived while the app was open loads on the next main tab. */
+function UpdateOnMainTabs() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    reloadIfUpdated(pathname);
+  }, [pathname]);
+  return null;
+}
+
 function AppRoutes() {
   return (
     <>
       <SessionExpiryBridge />
       <PrefetchTabs />
       <FormDefaultsSync />
+      <UpdateOnMainTabs />
       <UndoSnackbar />
       <Navbar />
       <RouteFocus />

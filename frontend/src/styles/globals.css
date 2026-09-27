@@ -1632,3 +1632,18 @@ label:has(~ .file-picker-input:focus-visible),
     white-space: nowrap;
     border: 0;
 }
+
+/* A unit beside a value («таб», «дня») sits on the value's line. antd
+   centres the extra on the whole item, so under a hint («Подставится,
+   когда нажмёте…») it hung halfway down, beside the hint. */
+.adm-form-item.form-item--unit > .adm-list-item-content {
+    align-items: flex-start;
+}
+
+/* antd's own rule (align-self: center) wins on specificity without the
+   doubled class. The value's line starts 12px down and is 24px tall. */
+.adm-form-item.form-item--unit .adm-list-item-content-extra {
+    align-self: flex-start;
+    padding-top: 12px;
+    line-height: 24px;
+}

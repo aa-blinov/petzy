@@ -544,6 +544,7 @@ export function MedicationForm() {
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
                                             label="Остаток"
+                                            className="form-item--unit"
                                             extra={<span style={{ color: 'var(--app-text-secondary)' }}>{doseUnit}</span>}
                                             description={
                                                 error?.message ? <FieldError message={error.message} /> : stockPreview || undefined
@@ -567,6 +568,7 @@ export function MedicationForm() {
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
                                             label="В упаковке"
+                                            className="form-item--unit"
                                             extra={<span style={{ color: 'var(--app-text-secondary)' }}>{doseUnit}</span>}
                                             description={
                                                 error?.message
@@ -592,6 +594,7 @@ export function MedicationForm() {
                                     render={({ field, fieldState: { error } }) => (
                                         <Form.Item
                                             label="Напомнить за"
+                                            className="form-item--unit"
                                             description={error?.message ? <FieldError message={error.message} /> : 'До того, как лекарство закончится'}
                                             extra={<span style={{ color: 'var(--app-text-secondary)' }}>{pluralRu(Number(field.value) || 0, 'день', 'дня', 'дней')}</span>}
                                         >
