@@ -76,7 +76,15 @@ jobs:
             # refresh-token cleanup) never reached production — the `web`
             # container happily served a 3-week-old image.
             docker compose build
-            docker compose up -d --remove-orphans
+            # A recreate cut short leaves this project's containers renamed
+            # «<id>_cat-health-control-bot-…»; the next `up` then fails on the
+            # name, halfway, with web already stopped (a 502 until fixed).
+            # Clear those first, and if `up` still fails, clear and retry once.
+            clear_stale() {
+              docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_cat-health-control-bot-' | xargs -r docker rm -f
+            }
+            clear_stale
+            docker compose up -d --remove-orphans || { sleep 5; clear_stale; docker compose up -d --remove-orphans; }
             docker compose ps
             # Files still in GridFS move to object storage; skips what has
             # moved already and does nothing when storage isn't configured.

@@ -60,6 +60,21 @@ jobs:
             echo "--- host nginx upstream is loopback?"
             grep -hE 'proxy_pass http://127\.0\.0\.1:3000' /etc/nginx/sites-enabled/* >/dev/null 2>&1 && echo "upstream: 127.0.0.1:3000" || echo "upstream: not loopback"
 
+            echo "=== mail (connect and log in, nothing is sent) ==="
+            docker compose exec -T web python -c "
+            import os, smtplib, ssl
+            host, port = os.getenv('SMTP_HOST'), int(os.getenv('SMTP_PORT') or 587)
+            if not host: print('mail: not configured'); raise SystemExit
+            try:
+                ctx = ssl.create_default_context()
+                s = smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) if port == 465 else smtplib.SMTP(host, port, timeout=15)
+                if port != 465: s.starttls(context=ctx)
+                s.login(os.getenv('SMTP_USER') or '', os.getenv('SMTP_PASSWORD') or '')
+                s.quit(); print('mail: login ok')
+            except Exception as e:
+                print('mail: failed,', type(e).__name__, getattr(e, 'smtp_code', ''))
+            " 2>&1 | tail -2
+
             echo "=== containers ==="
             docker compose ps
             echo
