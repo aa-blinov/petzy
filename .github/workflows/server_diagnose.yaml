@@ -69,7 +69,7 @@ jobs:
             echo "--- nginx config files"
             ls -la /etc/nginx /etc/nginx/sites-enabled /etc/nginx/sites-available /etc/nginx/conf.d 2>&1 | grep -v '^total' | awk '{print $1, $NF}'
             echo "--- directives (whole /etc/nginx, certbot/ssl lines skipped)"
-            grep -rnE 'include|server_name|listen|client_max_body_size|proxy_pass|proxy_request_buffering|proxy_read_timeout|location|root ' /etc/nginx 2>&1 \
+            grep -rnE 'include|server_name|listen|client_max_body_size|proxy_pass|proxy_request_buffering|proxy_read_timeout|location|root |proxy_set_header|proxy_cookie_flags|add_header' /etc/nginx 2>&1 \
               | grep -vE 'mime.types|/modules-enabled|fastcgi|scgi|uwsgi|koi-|win-utf|snippets/' | mask | head -80
             echo "--- can this user reload nginx without a password?"
             sudo -n true 2>/dev/null && echo "sudo: yes" || echo "sudo: no"
