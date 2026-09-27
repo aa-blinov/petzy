@@ -88,7 +88,9 @@ jobs:
             # name, halfway, with web already stopped (a 502 until fixed).
             # Clear those first, and if `up` still fails, clear and retry once.
             clear_stale() {
-              docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_cat-health-control-bot-' | xargs -r docker rm -f
+              # `|| true`: finding none is the usual case, and under pipefail
+              # grep's «no match» would end the whole deploy.
+              { docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_cat-health-control-bot-' || true; } | xargs -r docker rm -f
             }
             clear_stale
             docker compose up -d --remove-orphans || { sleep 5; clear_stale; docker compose up -d --remove-orphans; }
