@@ -66,7 +66,9 @@ def api_login():
 
         logger.info(f"Successful login: user={username}, ip={client_ip}")
 
-        response, status = get_message("auth_login_success", access_token=access_token, refresh_token=refresh_token)
+        # The tokens go in httpOnly cookies only: in the body, a script
+        # injected into the page could read the 7-day refresh token.
+        response, status = get_message("auth_login_success")
 
         # Set tokens in httpOnly cookies
         set_auth_cookie(

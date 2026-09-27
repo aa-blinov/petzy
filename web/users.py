@@ -8,7 +8,7 @@ from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 
 from web.app import api, logger  # shared logger and api
-from web.security import login_required, admin_required, is_admin
+from web.security import login_required, admin_required, is_admin, revoke_user_sessions
 import web.app as app  # to access patched app.db in tests
 from web.security import ADMIN_USERNAME
 from web.messages import get_message
@@ -266,6 +266,9 @@ def update_user(username):
 
         if result.matched_count == 0:
             return error_response("user_not_found")
+        # A new password or a disabled account ends the sessions already open.
+        if data.password is not None or data.is_active is False:
+            revoke_user_sessions(username)
 
         logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
         return get_message("user_updated")
@@ -293,6 +296,7 @@ def delete_user(username):
 
         if result.matched_count == 0:
             return error_response("user_not_found")
+        revoke_user_sessions(username)
 
         logger.info(
             f"User deactivated: username={username}, deactivated_by={getattr(request, 'current_user', 'admin')}"
@@ -329,6 +333,7 @@ def reset_user_password(username):
 
         if result.matched_count == 0:
             return error_response("user_not_found")
+        revoke_user_sessions(username)
 
         logger.info(f"Password reset: username={username}, reset_by={getattr(request, 'current_user', 'admin')}")
         return get_message("user_password_reset")

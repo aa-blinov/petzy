@@ -708,18 +708,23 @@ class TestUpdatePetFieldsAndValidation:
         assert pet["health_notes"] == "Allergic to chicken"
         assert pet["tiles_settings"]["order"] == ["feeding"]
 
-    def test_update_pet_json_photo_url_and_remove_photo(self, client, mock_db, regular_user_token, test_pet):
-        # Setting photo_url directly (the JSON-only path — no file upload).
+    def test_update_pet_json_photo_url_is_not_kept_and_remove_photo_works(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        # A client-given URL could point anywhere and load for everyone the
+        # pet is shared with (a tracking pixel): it isn't stored or returned.
         response = client.put(
             f"/api/pets/{test_pet['_id']}",
-            json={"photo_url": "https://example.com/cat.png"},
+            json={"name": test_pet["name"], "photo_url": "https://tracker.example/p.png"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 200
-        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["photo_url"] == "https://example.com/cat.png"
+        assert "tracker" not in str(mock_db["pets"].find_one({"_id": test_pet["_id"]}).get("photo_url"))
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_url": "https://tracker.example/p.png"}})
+        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
+        assert "tracker" not in str(listed)
 
-        # remove_photo via JSON clears both fields, independent of the
-        # multipart-only GridFS cleanup path.
+        # remove_photo via JSON clears the stored photo.
         mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(ObjectId())}})
         response = client.put(
             f"/api/pets/{test_pet['_id']}",
@@ -729,7 +734,6 @@ class TestUpdatePetFieldsAndValidation:
         assert response.status_code == 200
         pet = mock_db["pets"].find_one({"_id": test_pet["_id"]})
         assert pet["photo_file_id"] is None
-        assert pet["photo_url"] is None
 
     def test_update_pet_no_fields_returns_error(self, client, mock_db, regular_user_token, test_pet):
         response = client.put(
@@ -789,7 +793,7 @@ class TestUpdatePetFieldsAndValidation:
         pet = mock_db["pets"].find_one({"_id": test_pet["_id"]})
         assert pet.get("photo_file_id") is None
 
-    def test_update_pet_photo_optimization_failure_falls_back_to_original(
+    def test_update_pet_photo_that_is_not_an_image_is_refused(
         self, client, mock_db, regular_user_token, test_pet, s3_storage
     ):
         import io
@@ -803,12 +807,9 @@ class TestUpdatePetFieldsAndValidation:
                 content_type="multipart/form-data",
             )
 
-        assert response.status_code == 200
-        key = mock_db["pets"].find_one({"_id": test_pet["_id"]})["photo_file_id"]
-        assert key.endswith(".png")  # stored as uploaded, not converted
-        obj = s3_storage.get_object(Bucket="petzy-test", Key=key)
-        assert obj["Body"].read() == b"raw"
-        assert obj["ContentType"] == "image/png"
+        assert response.status_code == 422
+        assert not mock_db["pets"].find_one({"_id": test_pet["_id"]}).get("photo_file_id")
+        assert s3_storage.list_objects_v2(Bucket="petzy-test").get("KeyCount", 0) == 0
 
 
 @pytest.mark.pets

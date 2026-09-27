@@ -6,7 +6,8 @@ Storage mirrors the pet-photo path in ``web/pets.py``: images go through
 else (PDF) is stored byte-for-byte with its original content type.
 """
 
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -46,7 +47,7 @@ from web.schemas import (
     ScanUploadSlot,
     StorageStatus,
 )
-from web.security import login_required
+from web.security import is_admin, login_required
 
 documents_bp = Blueprint("documents", __name__)
 
@@ -63,6 +64,49 @@ ALLOWED_CONTENT_TYPES = {
 # 10 MB: the host proxy in front of the stack caps request bodies there, so
 # anything larger never arrived. Bigger files go in as scans (web/storage.py).
 MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024
+
+# How much a pet owner's documents and scans may take in the bucket, all
+# their pets together: files are stored (and billed) under the owner,
+# whoever uploads them. The admin has no cap. STORAGE_QUOTA_MB overrides.
+STORAGE_QUOTA_BYTES = int(os.getenv("STORAGE_QUOTA_MB", "2048")) * 1024 * 1024
+# Scan uploads a user may have reserved but not confirmed at once.
+MAX_PENDING_UPLOADS = 3
+
+
+def _starts_like(raw: bytes, content_type: str) -> bool:
+    """The file's first bytes match its declared type (the browser's word
+    for it is only a claim: HTML sent as application/pdf got stored as a PDF)."""
+    if content_type == "application/pdf":
+        return raw.startswith(b"%PDF-")
+    if content_type == "image/jpeg":
+        return raw.startswith(b"\xff\xd8\xff")
+    if content_type == "image/png":
+        return raw.startswith(b"\x89PNG\r\n\x1a\n")
+    if content_type == "image/webp":
+        return raw[:4] == b"RIFF" and raw[8:12] == b"WEBP"
+    if content_type in ("image/heic", "image/heif"):
+        return raw[4:8] == b"ftyp"
+    return False
+
+
+def storage_used_bytes(owner: str) -> int:
+    """Documents, scans and unconfirmed scan uploads on the owner's pets."""
+    pet_ids = [str(p["_id"]) for p in app.db.pets.find({"owner": owner}, {"_id": 1})]
+    if not pet_ids:
+        return 0
+    stored = app.db.documents.aggregate(
+        [{"$match": {"pet_id": {"$in": pet_ids}}}, {"$group": {"_id": None, "total": {"$sum": "$file_size"}}}]
+    )
+    pending = app.db.document_uploads.aggregate(
+        [{"$match": {"pet_id": {"$in": pet_ids}}}, {"$group": {"_id": None, "total": {"$sum": "$size"}}}]
+    )
+    return sum(row.get("total") or 0 for row in [*stored, *pending])
+
+
+def _over_quota(owner: str, adding: int) -> bool:
+    if is_admin(owner):
+        return False
+    return storage_used_bytes(owner) + adding > STORAGE_QUOTA_BYTES
 
 
 # Where scan archives go; photos and PDFs of scans can sit there too.
@@ -125,6 +169,10 @@ def create_document():
         raw_bytes = file_storage.read()
         if len(raw_bytes) > MAX_DOCUMENT_SIZE_BYTES:
             return error_response("document_file_too_large")
+        if not _starts_like(raw_bytes[:16], content_type):
+            return error_response("document_content_mismatch")
+        if _over_quota(pet["owner"], len(raw_bytes)):
+            return error_response("storage_quota_exceeded")
         file_storage.seek(0)
 
         original_filename = file_storage.filename
@@ -207,6 +255,14 @@ def create_scan_upload():
         return error_response("scan_unsupported_type")
     if data.size > storage.MAX_SCAN_BYTES:
         return error_response("scan_too_large")
+    # Only slots whose upload link still works: a failed upload stops
+    # counting once its link has expired, not when the sweep removes it.
+    live_since = datetime.now(timezone.utc) - timedelta(seconds=storage.UPLOAD_URL_MAX_TTL_SECONDS)
+    live_slots = {"username": username, "created_at": {"$gte": live_since}}
+    if app.db.document_uploads.count_documents(live_slots) >= MAX_PENDING_UPLOADS:
+        return error_response("too_many_pending_uploads")
+    if _over_quota(pet["owner"], data.size):
+        return error_response("storage_quota_exceeded")
     ext, content_type, family = fmt
 
     try:

@@ -35,7 +35,13 @@ from typing import Optional
 from uuid import uuid4
 
 MAX_SCAN_BYTES = 500 * 1024 * 1024
-UPLOAD_URL_TTL_SECONDS = 2 * 60 * 60  # long enough for 500 MB on a slow link
+# A signed PUT stays usable until it expires, even after the upload was
+# confirmed: every further PUT parks another version in the bucket. So it
+# lives only as long as the declared size needs at a slow ~256 KB/s
+# (500 MB: about 33 minutes), between 15 minutes and an hour.
+UPLOAD_URL_MIN_TTL_SECONDS = 15 * 60
+UPLOAD_URL_MAX_TTL_SECONDS = 60 * 60
+UPLOAD_SLOW_BYTES_PER_SECOND = 256 * 1024
 DOWNLOAD_URL_TTL_SECONDS = 10 * 60
 # Scan upload slots never confirmed (tab closed, upload failed) are removed
 # together with whatever reached the bucket after this long.
@@ -281,8 +287,13 @@ def upload_url(key: str, content_type: str, size: int) -> str:
     return _client().generate_presigned_url(
         "put_object",
         Params={"Bucket": _bucket(), "Key": key, "ContentType": content_type, "ContentLength": size},
-        ExpiresIn=UPLOAD_URL_TTL_SECONDS,
+        ExpiresIn=upload_url_ttl(size),
     )
+
+
+def upload_url_ttl(size: int) -> int:
+    seconds = size // UPLOAD_SLOW_BYTES_PER_SECOND
+    return max(UPLOAD_URL_MIN_TTL_SECONDS, min(UPLOAD_URL_MAX_TTL_SECONDS, seconds))
 
 
 def download_url(key: str, content_disposition: str) -> str:

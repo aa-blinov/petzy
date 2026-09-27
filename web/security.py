@@ -23,6 +23,18 @@ logger = logging.getLogger(__name__)
 
 # JWT configuration
 JWT_SECRET_KEY = JWT_CONFIG["secret_key"]
+
+# Keys anyone can read in this public repository: signing with one of them
+# lets anybody mint a session for any login, the admin's included. The
+# fallback in configs.py only exists so a missing key fails loudly here.
+_PUBLIC_KEYS = {
+    "",
+    "dev-secret-key-change-in-production",
+    "your-secret-key-for-sessions-change-in-production",
+    "your-jwt-secret-key",
+}
+if JWT_SECRET_KEY in _PUBLIC_KEYS:
+    raise RuntimeError("JWT_SECRET_KEY (or FLASK_SECRET_KEY) must be set to a private random value")
 JWT_ALGORITHM = JWT_CONFIG["algorithm"]
 ACCESS_TOKEN_EXPIRE_MINUTES = JWT_CONFIG["access_token_expire_minutes"]
 REFRESH_TOKEN_EXPIRE_DAYS = JWT_CONFIG["refresh_token_expire_days"]
@@ -62,6 +74,12 @@ if not ADMIN_PASSWORD_HASH:
     )
 
 
+# Checked against when the login doesn't exist, so an unknown name takes
+# as long to refuse as a wrong password: the answer's timing shouldn't
+# tell anyone which logins are real.
+_DUMMY_HASH = bcrypt.hashpw(b"not-a-real-password", bcrypt.gensalt()).decode()
+
+
 def verify_user_credentials(username, password):
     """Verify user credentials from database or fallback to admin."""
     # First, try to find user in database
@@ -71,6 +89,9 @@ def verify_user_credentials(username, password):
             return bcrypt.checkpw(password.encode(), user["password_hash"].encode())
         except (ValueError, TypeError, KeyError):
             return False
+    if username != ADMIN_USERNAME:
+        bcrypt.checkpw(password.encode(), _DUMMY_HASH.encode())
+        return False
 
     # Fallback to admin credentials for backward compatibility
     try:
@@ -134,6 +155,20 @@ def create_refresh_token(username):
     return token
 
 
+def is_active_user(username) -> bool:
+    """The account exists and isn't disabled. Checked on every request, so
+    disabling someone takes effect at once rather than when their tokens
+    run out (up to 7 days for the refresh token)."""
+    if not username:
+        return False
+    return db["users"].find_one({"username": username, "is_active": {"$ne": False}}, {"_id": 1}) is not None
+
+
+def revoke_user_sessions(username) -> None:
+    """End every session of a user: after a password reset or disabling."""
+    db["refresh_tokens"].delete_many({"username": username})
+
+
 def verify_token(token, token_type="access"):
     """Verify JWT token and return payload."""
     try:
@@ -194,6 +229,8 @@ def validate_refresh_token(refresh_token: str):
             return None
 
     username = payload.get("username") or ""
+    if not is_active_user(username):
+        return None
     return username, token_record
 
 
@@ -258,7 +295,7 @@ def login_required(f):
                 if not payload:
                     new_token = None
 
-        if not payload:
+        if not payload or not is_active_user(payload.get("username")):
             return error_response("unauthorized")
 
         # Store username in request context
