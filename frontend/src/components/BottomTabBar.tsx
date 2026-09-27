@@ -19,7 +19,7 @@ export function BottomTabBar() {
   const { pathname } = useLocation();
 
   // Login and onboarding own the whole viewport
-  if (pathname === '/login' || pathname === '/welcome') {
+  if (pathname === '/login' || pathname === '/register' || pathname === '/welcome') {
     return null;
   }
 

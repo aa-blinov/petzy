@@ -1,10 +1,16 @@
 """Authentication routes (JSON API only — the UI is the React app)."""
 
+import os
+import re
+from datetime import datetime, timezone
+
+import bcrypt
 from flask import (
     Blueprint,
     jsonify,
     request,
 )
+from pymongo.errors import DuplicateKeyError
 
 
 from flask_pydantic_spec import Request, Response
@@ -22,6 +28,7 @@ from web.security import (
     create_access_token,
     create_refresh_token,
     verify_user_credentials,
+    ADMIN_USERNAME,
 )
 from web.schemas import (
     AuthLoginRequest,
@@ -30,6 +37,8 @@ from web.schemas import (
     AuthRefreshResponse,
     AdminStatusResponse,
     AuthSessionResponse,
+    RegisterRequest,
+    RegistrationStatusResponse,
     SuccessResponse,
     ErrorResponse,
 )
@@ -38,6 +47,140 @@ from web.messages import get_message
 
 
 auth_bp = Blueprint("auth", __name__)
+
+
+def registration_open() -> bool:
+    """Self sign-up, on unless REGISTRATION_ENABLED=false (to close it fast
+    if it's abused; accounts made so far keep working)."""
+    return os.getenv("REGISTRATION_ENABLED", "true").strip().lower() not in ("false", "0", "no", "off")
+
+
+# Lowercase ASCII only: no «Anna» next to «anna», no Cyrillic «а» posing
+# as a Latin one — a login is what people share pets by.
+USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,29}$")
+# Names that would read as the service itself. Refused as «занят», the
+# same as a real account, so the list isn't a thing to probe.
+RESERVED_USERNAMES = {
+    "admin",
+    "administrator",
+    "root",
+    "system",
+    "support",
+    "help",
+    "petzy",
+    "api",
+    "moderator",
+    "owner",
+    "null",
+    "undefined",
+}
+# The most guessed passwords that pass the length rule.
+COMMON_PASSWORDS = {
+    "12345678",
+    "123456789",
+    "1234567890",
+    "123123123",
+    "11111111",
+    "00000000",
+    "87654321",
+    "password",
+    "password1",
+    "qwertyui",
+    "qwerty123",
+    "qwertyuiop",
+    "1q2w3e4r",
+    "1q2w3e4r5t",
+    "iloveyou",
+    "sunshine",
+    "princess",
+    "football",
+    "baseball",
+    "welcome1",
+    "admin123",
+    "zaq12wsx",
+    "abcd1234",
+    "asdfghjk",
+    "йцукенгш",
+}
+
+
+def _set_session_cookies(response, username: str) -> None:
+    set_auth_cookie(response, "access_token", create_access_token(username), max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    set_auth_cookie(
+        response,
+        "refresh_token",
+        create_refresh_token(username),
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+
+@auth_bp.route("/api/auth/registration", methods=["GET"])
+@api.validate(resp=Response(HTTP_200=RegistrationStatusResponse), tags=["auth"])
+def registration_status():
+    """Whether the sign-up form should be offered."""
+    return jsonify({"open": registration_open()})
+
+
+@auth_bp.route("/api/auth/register", methods=["POST"])
+# Accounts made from one address: only a sign-up that went through counts,
+# so someone fumbling the password rules isn't locked out for an hour.
+@limiter.limit(
+    lambda: RATE_LIMIT_CONFIG["register_limit"],
+    deduct_when=lambda response: response.status_code == 201,
+    error_message="Too many sign-ups from this address. Please try again later.",
+)
+# Every attempt, looser: «этот логин занят» mustn't become a way to check
+# thousands of logins.
+@limiter.limit(
+    lambda: RATE_LIMIT_CONFIG["register_attempt_limit"],
+    error_message="Too many sign-up attempts. Please try again later.",
+)
+@api.validate(
+    body=Request(RegisterRequest),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    tags=["auth"],
+)
+def api_register():
+    """Create an account and sign it in."""
+    if not registration_open():
+        return error_response("registration_closed")
+    data = request.context.body  # type: ignore[attr-defined]
+    username = data.username.strip().lower()
+    password = data.password
+
+    if not USERNAME_RE.match(username):
+        return error_response("register_username_invalid")
+    taken = app.db["users"].find_one({"username": {"$regex": f"^{re.escape(username)}$", "$options": "i"}}, {"_id": 1})
+    if username in RESERVED_USERNAMES or username == ADMIN_USERNAME.lower() or taken:
+        return error_response("register_username_taken")
+    if len(password) < 8:
+        return error_response("register_password_short")
+    # bcrypt looks at the first 72 bytes only (36 Cyrillic letters).
+    if len(password.encode()) > 72:
+        return error_response("register_password_long")
+    if password.lower() in COMMON_PASSWORDS or password.lower() == username or len(set(password)) < 3:
+        return error_response("register_password_weak")
+
+    try:
+        app.db["users"].insert_one(
+            {
+                "username": username,
+                "password_hash": bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
+                "full_name": (data.full_name or "").strip(),
+                "email": "",
+                "created_at": datetime.now(timezone.utc),
+                "created_by": "self",
+                "is_active": True,
+            }
+        )
+    except DuplicateKeyError:
+        # Someone took it between the check and the insert.
+        return error_response("register_username_taken")
+
+    logger.info(f"Account registered: user={username}, ip={request.remote_addr}")
+    response, status = get_message("auth_registered", status=201)
+    _set_session_cookies(response, username)
+    return response, status
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
@@ -57,6 +200,10 @@ def api_login():
     username = data.username.strip()
     password = data.password
     client_ip = request.remote_addr
+    # Self-made logins are lowercase; a phone capitalising «Vera» shouldn't
+    # lock her out. Accounts an admin made keep their exact spelling.
+    if username != username.lower() and not app.db["users"].find_one({"username": username}, {"_id": 1}):
+        username = username.lower()
 
     # Verify username and password
     if verify_user_credentials(username, password):

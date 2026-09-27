@@ -62,6 +62,10 @@ def load_config() -> Dict[str, Any]:
             "default_limits": [],
             "strategy": "fixed-window",
             "login_limit": os.getenv("RATE_LIMIT_LOGIN", "5 per minute"),
+            # New accounts from one address: enough for a family signing
+            # up together, not for a script making hundreds.
+            "register_limit": os.getenv("RATE_LIMIT_REGISTER", "5 per hour"),
+            "register_attempt_limit": os.getenv("RATE_LIMIT_REGISTER_ATTEMPTS", "30 per hour"),
         },
         # Logging settings
         "logging": {

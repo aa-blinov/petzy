@@ -26,6 +26,7 @@ import { medicationsListQuery } from './services/medications.service';
 // the recharts it pulls in), AdminPanel, Settings and MedicationsList
 // before the app could render anything.
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
 const loadDashboard = () => import('./pages/Dashboard');
 const Dashboard = lazy(() => loadDashboard().then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
@@ -183,6 +184,7 @@ function AppRoutes() {
           <RouteTransition>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route
                 path="/welcome"
                 element={

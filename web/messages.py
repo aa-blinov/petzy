@@ -17,6 +17,7 @@ class MessageDef:
 MESSAGES: Dict[str, MessageDef] = {
     # Auth messages
     "auth_login_success": MessageDef("Вы вошли"),
+    "auth_registered": MessageDef("Аккаунт создан"),
     "auth_logout_success": MessageDef("Вы вышли"),
     "auth_refresh_success": MessageDef("Токен обновлён"),
     # Pet messages

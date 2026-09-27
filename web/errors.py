@@ -77,6 +77,16 @@ ERRORS: Dict[str, ErrorDef] = {
         "validation_error_username_required", "Имя пользователя обязательно", 422
     ),
     "validation_error_self_share": ErrorDef("validation_error_self_share", "Нельзя поделиться с самим собой", 422),
+    "registration_closed": ErrorDef("registration_closed", "Регистрация сейчас закрыта", 403),
+    "register_username_invalid": ErrorDef(
+        "register_username_invalid",
+        "Логин: от 3 до 30 символов, латинские буквы, цифры, точка, дефис или подчёркивание. Начинается с буквы или цифры",
+        422,
+    ),
+    "register_username_taken": ErrorDef("register_username_taken", "Этот логин занят, выберите другой", 422),
+    "register_password_short": ErrorDef("register_password_short", "Пароль должен быть не короче 8 символов", 422),
+    "register_password_long": ErrorDef("register_password_long", "Пароль слишком длинный", 422),
+    "register_password_weak": ErrorDef("register_password_weak", "Такой пароль легко угадать. Придумайте другой", 422),
     "share_already_invited": ErrorDef("share_already_invited", "Приглашение этому пользователю уже отправлено", 422),
     "share_invite_not_found": ErrorDef("share_invite_not_found", "Приглашение не найдено или уже отменено", 404),
     "share_not_member": ErrorDef("share_not_member", "У вас нет доступа к этому питомцу по приглашению", 404),
