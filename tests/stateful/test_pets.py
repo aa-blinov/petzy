@@ -1180,3 +1180,12 @@ class TestRouteLevelValueErrorHandling:
 
         assert response.status_code == 200
         assert response.get_json()["pet"]["tiles_settings"]["order"] == ["weight"]
+
+
+def test_neutering_left_unanswered_stays_unanswered(client, regular_user_token):
+    """«Не указано» is not «Нет»: a pet created without an answer keeps none."""
+    response = client.post(
+        "/api/pets", json={"name": "Мурзик"}, headers={"Authorization": f"Bearer {regular_user_token}"}
+    )
+    assert response.status_code == 201
+    assert response.get_json()["pet"]["is_neutered"] is None

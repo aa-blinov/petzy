@@ -94,7 +94,7 @@ export function PetForm() {
       birth_date: '',
       gender: '',
       species: '',
-      is_neutered: false,
+      is_neutered: undefined,
       health_notes: '',
     }
   });
@@ -133,7 +133,7 @@ export function PetForm() {
         gender: pet.gender || '',
         // Hand-typed species from before the picker («Кот») map to their key.
         species: pet.species ? (getSpecies(pet.species).key !== 'other' ? getSpecies(pet.species).key : pet.species) : '',
-        is_neutered: pet.is_neutered || false,
+        is_neutered: pet.is_neutered ?? undefined,
         health_notes: pet.health_notes || '',
       });
       setLocalSharedWith(pet.shared_with || []);
@@ -149,7 +149,7 @@ export function PetForm() {
         birth_date: '',
         gender: '',
         species: '',
-        is_neutered: false,
+        is_neutered: undefined,
         health_notes: '',
       });
       setLocalSharedWith([]);
@@ -308,7 +308,8 @@ export function PetForm() {
             layout="horizontal"
             mode="card"
             style={{
-              '--prefix-width': '7em'
+              // Wider than the other forms' 7em: «Дата рождения» fits on one line.
+              '--prefix-width': '8em'
             } as React.CSSProperties}
           >
             <Form.Header>Общие настройки</Form.Header>
