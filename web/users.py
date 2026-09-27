@@ -50,24 +50,39 @@ def get_users():
 @login_required
 @api.validate(resp=Response(HTTP_200=UserSearchResponse), tags=["users"])
 def search_users():
-    """Find one active user by their exact login, to share a pet with.
+    """Who to share a pet with: people you already share pets with, and
+    anyone by their exact login.
 
-    Exact (case-insensitive) match only. This used to be a substring
-    search that any logged-in user could run, with an empty query
-    returning the first twenty accounts: a way to list the people of
-    every other household on the server. Sharing is by login, the way
-    other apps share by email: you ask your family member for theirs.
+    This used to be a substring search over every account, which any
+    logged-in user could run (an empty query listed twenty): a way to see
+    the people of every other household. Suggestions now come only from
+    your own circle, people you share a pet with either way round, whose
+    logins you already see on those pets; anyone else is found by typing
+    the whole login (case-insensitive), the way other apps share by email.
     """
     query = request.args.get("q", "").strip()
     if len(query) < 2:
         return jsonify({"users": []})
+    me = request.current_user
 
+    circle: set[str] = set()
+    for pet in app.db.pets.find({"$or": [{"owner": me}, {"shared_with": me}]}, {"owner": 1, "shared_with": 1}):
+        circle.add(pet.get("owner"))
+        circle.update(pet.get("shared_with") or [])
+    circle.discard(me)
+    circle.discard(None)
+
+    lowered = query.lower()
+    found = {u for u in circle if u.lower().startswith(lowered)}
     # re.escape: the query is a login, not a pattern to run.
-    user = app.db["users"].find_one(
+    exact = app.db["users"].find_one(
         {"is_active": True, "username": {"$regex": f"^{re.escape(query)}$", "$options": "i"}},
         {"username": 1},
     )
-    return jsonify({"users": [{"username": user["username"]}] if user else []})
+    if exact and exact["username"] != me:
+        found.add(exact["username"])
+    active = {u["username"] for u in app.db["users"].find({"username": {"$in": sorted(found)}, "is_active": True})}
+    return jsonify({"users": [{"username": u} for u in sorted(active)][:20]})
 
 
 @users_bp.route("/api/users/<username>/profile", methods=["GET"])
