@@ -104,7 +104,7 @@ export function MedicationsList() {
         mutationFn: (id: string) => medicationsService.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            showToast.success('Курс удалён');
+            showToast.success('Лекарство удалено');
         }
     });
 
@@ -230,7 +230,7 @@ export function MedicationsList() {
                     minHeight: '40px',
                 }}>
                     <h1 className="display-headline" style={{ fontSize: '28px', margin: 0 }}>
-                        Препараты
+                        Лекарства
                     </h1>
                     {medications.length > 0 && (
                         <button
@@ -264,9 +264,9 @@ export function MedicationsList() {
                 ) : medications.length === 0 ? (
                     <EmptyState
                         icon={Pill}
-                        title="Здесь будут курсы препаратов"
+                        title="Здесь будут лекарства питомца"
                         description="Добавьте лекарство, и Petzy напомнит о приёме и покажет остаток"
-                        actionLabel="Добавить препарат"
+                        actionLabel="Добавить лекарство"
                         onAction={() => navigate('/medications/new')}
                     />
                 ) : (
@@ -338,7 +338,7 @@ export function MedicationsList() {
                                             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
                                                 <span style={{ margin: `0 var(--spacing-xs)`, color: 'var(--app-divider-color)' }}>|</span>
-                                                По {formatAmount(med.default_dose || 1)} {med.dose_unit || 'ед.'}
+                                                По {formatAmount(med.default_dose || 1)} {med.dose_unit || 'шт.'}
                                             </p>
                                         </div>
                                     </div>
@@ -489,13 +489,14 @@ export function MedicationsList() {
                                     }}
                                 />
                                 <span style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}>
-                                    {logIntakeDialog.medication.dose_unit || 'ед.'}
+                                    {logIntakeDialog.medication.dose_unit || 'шт.'}
                                 </span>
                             </div>
                             <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, margin: 'var(--spacing-lg) 0 var(--spacing-sm)' }}>
                                 Когда дали?
                             </div>
                             <Selector
+                                className="selector-chips"
                                 columns={logIntakeDialog.slot ? 3 : 2}
                                 showCheckMark={false}
                                 value={[logIntakeDialog.choice]}
@@ -604,10 +605,10 @@ export function MedicationsList() {
 
             <Dialog
                 visible={deleteDialog.visible}
-                title="Удаление курса"
+                title="Удаление лекарства"
                 content={
                     deleteDialog.medication && (
-                        <span>Удалить курс «{deleteDialog.medication.name}» и всю его историю?</span>
+                        <span>Удалить «{deleteDialog.medication.name}» вместе со всеми отмеченными приёмами?</span>
                     )
                 }
                 onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}

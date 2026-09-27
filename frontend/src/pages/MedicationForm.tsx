@@ -70,6 +70,17 @@ const DAYS_OF_WEEK = [
 
 const COMMON_TYPES = ['Таблетка', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Сироп', 'Суспензия'];
 
+/** The unit a form is usually given in, filled in when none is chosen yet
+ *  (an empty unit showed «ед.», which says nothing). */
+const UNIT_FOR_TYPE: Record<string, string> = {
+    'Таблетка': 'таб',
+    'Капсула': 'капс',
+    'Капли': 'кап',
+    'Укол': 'мл',
+    'Сироп': 'мл',
+    'Суспензия': 'мл',
+};
+
 export function MedicationForm() {
     const { id } = useParams<{ id: string }>();
     const isEditing = !!id;
@@ -125,8 +136,8 @@ export function MedicationForm() {
     // returns a live function whose output it can't prove is stable.
     const inventoryEnabled = useWatch({ control, name: 'inventory_enabled' });
     const watchedDoseUnit = useWatch({ control, name: 'dose_unit' });
-    const doseUnit = watchedDoseUnit || 'ед.';
-    const watchedDoseUnitForPicker = watchedDoseUnit || 'ед';
+    const doseUnit = watchedDoseUnit || 'шт.';
+    const watchedDoseUnitForPicker = watchedDoseUnit || 'таб';
     const watchedDefaultDose = useWatch({ control, name: 'default_dose' }) || 1;
     const watchedTimes = useWatch({ control, name: 'schedule.times' });
     const watchedDays = useWatch({ control, name: 'schedule.days' });
@@ -214,7 +225,7 @@ export function MedicationForm() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            showToast.success(isEditing ? 'Курс обновлён' : 'Курс создан', {
+            showToast.success(isEditing ? 'Лекарство сохранено' : 'Лекарство добавлено', {
                 afterClose: () => goBack(navigate, '/medications'),
             });
         },
@@ -240,7 +251,7 @@ export function MedicationForm() {
                     minHeight: '40px',
                 }}>
                     <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
-                        {isEditing ? 'Редактировать курс' : 'Новый курс'}
+                        {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
                     </h1>
                     {!isEditing && (
                         <Button
@@ -262,7 +273,7 @@ export function MedicationForm() {
                         onFinish={handleSubmit(onSubmit, onInvalidSubmit)}
                         style={{ '--prefix-width': '7em' } as React.CSSProperties}
                     >
-                        <Form.Header>Препарат</Form.Header>
+                        <Form.Header>Лекарство</Form.Header>
                         <Controller
                             name="name"
                             control={control}
@@ -312,6 +323,7 @@ export function MedicationForm() {
                                                 setShowCustomType(false);
                                                 field.onChange(selected);
 
+                                                if (!watchedDoseUnit && UNIT_FOR_TYPE[selected]) setValue('dose_unit', UNIT_FOR_TYPE[selected]);
                                                 if (selected === 'Таблетка' || selected === 'Капсула') setValue('form_factor', 'tablet');
                                                 else if (selected === 'Сироп' || selected === 'Суспензия' || selected === 'Капли') setValue('form_factor', 'liquid');
                                                 else if (selected === 'Укол') setValue('form_factor', 'injection');
@@ -381,7 +393,7 @@ export function MedicationForm() {
                                                         <Input
                                                             value={unitField.value}
                                                             readOnly
-                                                            placeholder="ед."
+                                                            placeholder="таб/мл"
                                                             style={{
                                                                 '--text-align': 'center',
                                                                 color: 'var(--app-primary-text)',
@@ -393,7 +405,7 @@ export function MedicationForm() {
                                             />
                                         </div>
                                         <Picker
-                                            columns={[['таб', 'мл', 'мг', 'капс', 'шт', 'ед'].map(u => ({ label: u, value: u }))]}
+                                            columns={[['таб', 'капс', 'мл', 'кап', 'мг', 'шт', 'ед'].map(u => ({ label: u, value: u }))]}
                                             visible={unitPickerVisible}
                                             onClose={() => setUnitPickerVisible(false)}
                                             value={[watchedDoseUnitForPicker]}
@@ -415,6 +427,7 @@ export function MedicationForm() {
                                     control={control}
                                     render={({ field }) => (
                                         <Selector
+                                            className="selector-chips"
                                             columns={7}
                                             options={DAYS_OF_WEEK}
                                             multiple
@@ -619,7 +632,8 @@ export function MedicationForm() {
                             control={control}
                             render={({ field }) => (
                                 <Form.Item
-                                    label="Активный курс"
+                                    label="Принимает сейчас"
+                                    description="Выключите, когда курс закончится"
                                     extra={<Switch checked={field.value} onChange={field.onChange} />}
                                 />
                             )}
@@ -663,18 +677,18 @@ export function MedicationForm() {
                         </Button>
                         {isEditing && id && med && (
                             <FormDangerButton
-                                label="Удалить курс"
-                                confirmTitle="Удаление курса"
-                                confirmContent={`Удалить курс «${med.name}» и всю его историю?`}
+                                label="Удалить лекарство"
+                                confirmTitle="Удаление лекарства"
+                                confirmContent={`Удалить «${med.name}» вместе со всеми отмеченными приёмами?`}
                                 onConfirm={async () => {
                                     try {
                                         await medicationsService.delete(id);
                                     } catch (error) {
-                                        showToast.failure(getApiErrorMessage(error, 'Не удалось удалить курс'));
+                                        showToast.failure(getApiErrorMessage(error, 'Не удалось удалить лекарство'));
                                         throw error;
                                     }
                                     await queryClient.invalidateQueries({ queryKey: ['medications'] });
-                                    showToast.success('Курс удалён');
+                                    showToast.success('Лекарство удалено');
                                     goBack(navigate, '/medications');
                                 }}
                             />
@@ -690,7 +704,7 @@ export function MedicationForm() {
             >
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ padding: 'var(--spacing-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--app-border-color)' }}>
-                        <span style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Популярные препараты</span>
+                        <span style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Частые лекарства</span>
                         <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
                     </div>
                     <div style={{ overflowY: 'auto', flex: 1 }}>

@@ -12,7 +12,7 @@ export interface TileConfig {
  *  their own domain (courses, doses, inventory), not a generic event. */
 export const MEDICATIONS_TILE: TileConfig = {
   id: 'medications',
-  title: 'Препараты',
+  title: 'Лекарства',
   color: 'purple',
   isTile: false,
 };

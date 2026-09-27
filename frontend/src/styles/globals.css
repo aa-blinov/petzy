@@ -1647,3 +1647,22 @@ label:has(~ .file-picker-input:focus-visible),
     padding-top: 12px;
     line-height: 24px;
 }
+
+/* Text chips (weekdays, «Когда дали?», export choices): a chosen chip
+   reads as chosen at a glance. Pale peach on the cream page looked «off»,
+   and on the weekday row (every day on for a new course) it invited
+   taps that switched days off. Chosen: the primary button's fill; not
+   chosen: an outline. Doubled class: antd's own rule loads later. */
+.selector-chips.adm-selector {
+    --color: transparent;
+    --text-color: var(--app-text-secondary);
+    --border: 1px solid var(--app-border-color);
+    --checked-color: var(--app-primary-fill);
+    --checked-text-color: var(--app-on-primary-fill);
+    --checked-border: 1px solid var(--app-primary-fill);
+}
+
+.selector-chips .adm-selector-item-active,
+.selector-chips .adm-selector-item-multiple-active {
+    font-weight: 600;
+}

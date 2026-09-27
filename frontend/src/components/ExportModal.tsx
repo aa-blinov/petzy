@@ -90,6 +90,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
         <Form layout="vertical">
           <Form.Item label="Тип данных">
             <Selector
+              className="selector-chips"
               options={typeOptions}
               value={exportType}
               onChange={v => setExportType(v)}
@@ -99,6 +100,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
 
           <Form.Item label="Формат файла">
             <Selector
+              className="selector-chips"
               options={formatOptions}
               value={format}
               onChange={v => setFormat(v)}
