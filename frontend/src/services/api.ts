@@ -92,6 +92,9 @@ export function clearLocalAuthState() {
     localStorage.removeItem('petzy:auth:username');
     localStorage.removeItem('selectedPetId');
     localStorage.removeItem('selectedPetName');
+    // «Настройки форм» belong to the account now; the next user on this
+    // device mustn't get (or upload as theirs) the previous one's.
+    localStorage.removeItem('formDefaults');
   } catch {
     /* localStorage may be unavailable (private mode) — ignore */
   }

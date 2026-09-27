@@ -6,7 +6,7 @@ Naming Convention:
 """
 
 from datetime import datetime, timedelta
-from typing import Optional, List, Annotated, Any
+from typing import Optional, List, Annotated, Any, Dict
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, StringConstraints
 
 # Custom type for ObjectId strings
@@ -196,6 +196,25 @@ class UserSearchItem(BaseModel):
     """Simple user item for search/autocomplete."""
 
     username: str
+
+
+class FormDefaults(BaseModel):
+    """What a new record's form starts with, per type: {"defecation": {"food": "…"}}.
+
+    Stored on the account so every device of the user shares it (it used
+    to be in each browser's localStorage)."""
+
+    form_defaults: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+
+    @field_validator("form_defaults")
+    @classmethod
+    def _bounded(cls, value: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+        if len(value) > 50 or any(len(fields) > 30 for fields in value.values()):
+            raise ValueError("Слишком много значений по умолчанию")
+        for form, fields in value.items():
+            if len(form) > 50 or any(len(k) > 50 or len(v) > 300 for k, v in fields.items()):
+                raise ValueError("Слишком длинное значение по умолчанию")
+        return value
 
 
 class UserSearchResponse(BaseModel):
