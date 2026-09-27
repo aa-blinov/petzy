@@ -7,6 +7,13 @@ on:
   # By hand, e.g. after adding or changing a secret (SMTP_*, S3_*).
   workflow_dispatch:
 
+# One deploy at a time: two started together (a push and a manual run)
+# ran `docker compose up` side by side, fought over container names, and
+# left the site down until the next deploy. A new run waits its turn.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
