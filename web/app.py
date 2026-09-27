@@ -89,16 +89,16 @@ def _security_headers(response):
     scripts, no origin and no framing. A PDF is left without the CSP:
     the browser's PDF viewer refuses to open inside a sandbox, and its
     type is checked against the file's first bytes on upload.
-    HSTS keeps browsers on HTTPS after the first visit; it's sent only
-    over HTTPS (behind the proxy, per X-Forwarded-Proto).
+    HSTS keeps browsers on HTTPS after the first visit. Sent always:
+    browsers ignore it on a plain-HTTP answer, and the live proxy doesn't
+    reliably tell us the scheme.
     """
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "same-origin")
     # /apidoc (Swagger UI, local only: nginx forwards just /api/) loads its own scripts.
     if response.mimetype != "application/pdf" and not request.path.startswith("/apidoc"):
         response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; sandbox")
-    if request.is_secure:
-        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
     return response
 
 
