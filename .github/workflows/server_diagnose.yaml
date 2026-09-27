@@ -51,6 +51,15 @@ jobs:
             admin_js='print("users total: " + db.users.countDocuments({})); print("admin row exists: " + (db.users.countDocuments({username: "admin"}) > 0));'
             docker compose exec -T db sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin "$MONGO_INITDB_DATABASE" --eval "$0"' "$admin_js" 2>&1 | mask | tail -3
 
+            echo "=== client addresses the app's nginx sees (counts only, last 30 min) ==="
+            # Public = the visitor's real address reached us (per-IP limits
+            # work); private = everything looks like it came from the proxy.
+            docker compose logs --since 30m nginx 2>/dev/null | awk '{print $3}' \
+              | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+              | awk '/^(10\.|127\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/ {p++; next} {q++} END {print "private: " p+0 ", public: " q+0}'
+            echo "--- host nginx upstream is loopback?"
+            grep -hE 'proxy_pass http://127\.0\.0\.1:3000' /etc/nginx/sites-enabled/* >/dev/null 2>&1 && echo "upstream: 127.0.0.1:3000" || echo "upstream: not loopback"
+
             echo "=== containers ==="
             docker compose ps
             echo
