@@ -1,82 +1,43 @@
-# Petzy Frontend
+# Petzy frontend
 
-React + TypeScript frontend for Petzy pet health tracking application.
+The Petzy web app: React 18 + TypeScript, built with Vite, installable as a PWA. How to run the whole project, the API and deployment is in the [root README](../README.md).
 
-## Tech Stack
-
-- **React 19** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **React Router** - Routing
-- **TanStack Query** - Data fetching and caching
-- **Zustand** - State management
-- **Axios** - HTTP client
-- **Vite PWA Plugin** - PWA support
-- **React Hook Form** - Form handling
-- **Zod** - Schema validation
-- **@dnd-kit** - Drag and drop
-
-## Development
+## Commands
 
 ```bash
-# Install dependencies
 npm install
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+npm run dev       # http://localhost:5173, /api proxied to http://localhost:5001
+npm run build     # type check + production build into dist/
+npm run preview   # serve dist/ on http://localhost:4173, same /api proxy
+npm run lint
 ```
 
-## Environment Variables
+Run the API next to it with `.venv/bin/python scripts/dev_local.py` (in-memory database, demo data, `admin` / `test1234`).
 
-Create a `.env` file:
+`VITE_API_URL` overrides the API base (default `/api`, same origin). Production builds need nothing set: nginx serves the app and the API from one origin.
 
+## Stack
+
+antd-mobile (UI), TanStack Query (server state), React Router, React Hook Form + Zod (forms), @dnd-kit (tile reordering), lucide-react (icons), vite-plugin-pwa with a hand-written service worker (`src/sw.ts`, `injectManifest`).
+
+## Layout
+
+```text
+src/
+  pages/        one component per route (App.tsx lists them)
+  components/   shared UI: cards, sheets, dialogs, the undo bar, tab bar
+  services/     API calls, one file per area (pets, medications, documents, …)
+  hooks/        session, selected pet, event types, invites
+  utils/        dates, species, stock maths, public pages, service worker updates
+  content/      help.ts, the in-app help (Настройки → «Справка»)
+  styles/       globals.css: tokens, dark theme, antd overrides
+  sw.ts         offline cache, push notifications, update takeover
+public/         icons, manifest assets, theme-init.js (theme before first paint)
 ```
-VITE_API_URL=http://localhost:5001/api
-```
-
-## Docker
-
-```bash
-# Build Docker image
-docker build -t petzy-frontend .
-
-# Run container
-docker run -p 3000:80 petzy-frontend
-```
-
-## Project Structure
-
-```
-frontend/
-├── public/          # Static assets
-├── src/
-│   ├── components/  # Reusable components
-│   ├── pages/       # Page components
-│   ├── services/     # API services
-│   ├── hooks/       # Custom React hooks
-│   ├── utils/       # Utility functions
-│   └── styles/      # Global styles
-└── nginx.conf       # Nginx configuration for production
-```
-
-## Features
-
-- ✅ Authentication with JWT
-- ✅ Dashboard with customizable tiles
-- ✅ Health record forms
-- ✅ History with pagination
-- ✅ Settings management
-- ✅ PWA support
-- ✅ Responsive design
 
 ## Notes
 
-- The old implementation in `web/` remains untouched
-- Both versions can run in parallel
-- API endpoints are proxied through Nginx in production
+- **UI text** is Russian. Keep labels in «» exactly as on screen: the help refers to them.
+- **Local wall-clock time.** Dates and times go to the API as the user sees them (`YYYY-MM-DD`, `HH:MM`), never via `toISOString()`, which is UTC.
+- **Content-Security-Policy.** Production serves the app with one (`nginx/security-headers.conf`): scripts from this origin only, so no inline `<script>`. Styles may be inline.
+- **Updates.** A new release reaches an open app through `utils/swUpdate.ts`: it checks when the app returns to the screen and hourly, then reloads on a main tab.

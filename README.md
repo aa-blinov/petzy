@@ -1,187 +1,126 @@
 # Petzy
 
-## Overview
+**Petzy** is a pet health diary: a Progressive Web App (installable on a phone) with a Flask + MongoDB API behind it. Feeding, weight, litter, eye drops and any event type a household adds, medication courses with doses, stock and reminders, documents and scans, shared between the people who look after the pet.
 
-**Petzy** is a Progressive Web App (PWA) designed to help pet owners track their pet's health. The application allows users to log and monitor key health metrics, such as defecation events, stool types, asthma symptoms, weight measurements, eye drops, tooth brushing, and ear cleaning, ensuring better care for their pets.
+- Production: https://petzy.duckdns.org
+- API reference: https://petzy.duckdns.org/api/docs
 
 ## Features
 
-### Core Functionality
-- **Health Tracking**: Log various health events:
-  - Asthma attacks (duration, inhalation, reason)
-  - Defecation (stool type, color, food)
-  - Weight measurements (with food tracking)
-  - Eye drops administration
-  - Tooth brushing
-  - Ear cleaning
-- **Pet Management**: Create, edit, and manage multiple pets with photos
-- **Pet Sharing**: Share access to pets with other users
-- **History View**: View and edit all health records with filtering by type
-- **Data Export**: Export health logs in various formats (CSV, TSV, HTML, Markdown)
+- **Records.** Built-in event types (feeding, weight, defecation, litter, eye drops, tooth brushing, ear cleaning, asthma) and custom ones with their own fields, visible to the household that made them. A feed, a history with filters and trend charts, unusual-value alerts, export to CSV, TSV, HTML, Markdown or a ZIP of everything.
+- **Medications.** Courses with a schedule, today's next dose on the feed («Принять», «Уже дали в 08:00», «Пропустить»), intake times that can be corrected, stock that counts down and says when to buy more, undo for a dose marked by mistake.
+- **Documents.** Photos and PDFs up to 10 MB, scans and archives up to 500 MB uploaded straight to object storage, expiry reminders. A 2 GB quota per pet owner.
+- **Pets and sharing.** 12 species (and «другой питомец») with their own tiles and fields, photos, sharing by invitation (the other person accepts, and can leave later).
+- **Accounts.** Open sign-up (can be closed), password recovery by a one-time link to a confirmed email, email and password in Settings, an admin panel for disabling accounts.
+- **Notifications.** Web Push for doses, expiring documents and unusual values, to everyone with access to the pet.
+- **App.** Installable PWA that updates itself, dark theme, per-account form defaults, reorderable «+» tiles, in-app help (Настройки → «Справка»).
 
-### User Experience
-- **Progressive Web App (PWA)**: Installable on mobile devices with offline support
-- **Mobile-First Design**: Optimized for mobile devices with native-feeling UI
-- **Dark Theme**: Toggle between light and dark themes
-- **Customizable Dashboard**: Reorder and hide dashboard tiles
-- **Form Defaults**: Set default values for each health record type
-- **Responsive Design**: Works seamlessly on desktop and mobile
+## Stack
 
-### Technical
-- **Modern Frontend**: React + TypeScript + Vite with code splitting
-- **Backend API**: Flask REST API with MongoDB
-- **Caching**: React Query for efficient data caching
-- **Service Worker**: Offline support and asset caching
-- **Dockerized**: Fully containerized with Docker Compose
-- **Nginx Reverse Proxy**: Production-ready setup with compression
+- **Backend:** Python 3.12, Flask, flask-pydantic-spec (validation and the OpenAPI spec), pymongo, gunicorn, Flask-Limiter, boto3 (Backblaze B2, S3 API), pywebpush, Pillow.
+- **Frontend:** React 18, TypeScript, Vite, antd-mobile, TanStack Query, React Router, React Hook Form + Zod, vite-plugin-pwa (Workbox, `injectManifest`).
+- **Infrastructure:** Docker Compose, nginx, MongoDB, GitHub Actions (CI, deploy on push to `master`).
 
-## Tech Stack
+## API
 
-### Backend
-- **Python 3.12**: Backend runtime
-- **Flask**: Web framework
-- **pymongo**: MongoDB client
-- **gunicorn**: Production WSGI server
-- **flask-cors**: CORS support
+The reference is published at **https://petzy.duckdns.org/api/docs** (ReDoc) with the spec at **/api/openapi.json** (OpenAPI 3.1). It covers signing in from a native app (tokens in the body for requests without an `Origin` header, `Authorization: Bearer`), the error format, date and time conventions, uploads and limits. The spec is generated from the routes' pydantic schemas and completed in `web/openapi_doc.py`; responses are validated against those schemas at runtime.
 
-### Frontend
-- **React 18**: UI framework
-- **TypeScript**: Type safety
-- **Vite**: Build tool and dev server
-- **antd-mobile**: Mobile UI component library
-- **React Query**: Data fetching and caching
-- **React Router**: Client-side routing
-- **React Hook Form**: Form management
-- **Zod**: Schema validation
+## Running locally
 
-### Infrastructure
-- **Docker & Docker Compose**: Containerization
-- **Nginx**: Reverse proxy and static file serving
-- **MongoDB**: Database
-- **Service Worker**: PWA and offline support
-
-## Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose
-
-### Installation & Run
-
-1. Clone the repository:
-
-   ```sh
-   git clone <repo-url>
-   cd petzy
-   ```
-
-2. Create a `.env` file based on `.env.example`:
-
-   ```sh
-   cp .env.example .env
-   ```
-
-   Then edit `.env` and set your values. Required variables:
-   - `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` - MongoDB credentials
-   - `FLASK_SECRET_KEY` - Secret key for Flask sessions (change in production!)
-   - `ADMIN_PASSWORD_HASH` - Bcrypt hash of admin password
-   - `ADMIN_USERNAME` - Admin username (default: `admin`)
-   - `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` - object storage for files and backups
-   - `BACKUP_KEEP` - How many daily backups to keep in the bucket (default: 3)
-   - `BACKUP_HOUR_UTC` - Hour (UTC) of the daily backup (default: 0)
-   - `GUNICORN_WORKERS` - Number of Gunicorn workers (default: 2)
-
-   To generate a password hash, run:
-   ```bash
-   python -c "import bcrypt; print(bcrypt.hashpw('your_password'.encode(), bcrypt.gensalt()).decode())"
-   ```
-
-3. Start all services:
-
-   ```sh
-   docker-compose up -d --build
-   ```
-
-   The application will be available at `http://localhost:3000` (or the port configured in your environment).
-
-   **Services**:
-   - **Nginx** (port 3000): Reverse proxy serving frontend and proxying API requests
-   - **Flask Backend** (port 5000): REST API with Gunicorn (2 workers by default)
-   - **MongoDB** (port 27017): Database
-   - **Backup**: daily database backup to object storage
-
-   You can override the number of Gunicorn workers by setting `GUNICORN_WORKERS` environment variable.
-   
-### Development
-
-#### Frontend Development
+The quickest way needs no MongoDB or Docker: `scripts/dev_local.py` runs the API against an in-memory database (mongomock), seeds demo pets and two months of history, and keeps outgoing mail in memory.
 
 ```sh
-cd frontend
-npm install
-npm run dev  # Starts Vite dev server on http://localhost:5173
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python scripts/dev_local.py        # API on http://localhost:5001
+
+cd frontend && npm install && npm run dev    # app on http://localhost:5173
 ```
 
-The frontend dev server proxies API requests to `http://localhost:5001` (configured in `vite.config.ts`).
+Sign in as `admin` / `test1234` (local runner only). The Vite dev server proxies `/api` to port 5001.
 
-#### Backend Development
+- Files go to the same bucket as production under `dev/` when `S3_*` keys are in `.env`, or to an in-memory S3 with `DEV_STORAGE=memory`.
+- Letters (confirmation, password reset) are listed at http://localhost:5001/api/dev/outbox. The endpoint answers 404 anywhere else.
+- `/apidoc/redoc` and `/api/docs` both show the API reference.
 
-For local development without Docker:
+### Tests and checks
 
 ```sh
-# Development mode (with debug)
-export FLASK_DEBUG=true
-python -m web.app
-
-# Or use Gunicorn directly (2 workers by default)
-gunicorn -c gunicorn.conf.py web.app:app
-
-# Or specify custom number of workers
-gunicorn -c gunicorn.conf.py --workers 4 web.app:app
+.venv/bin/python -m pytest tests          # backend, mongomock and moto, no network
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+cd frontend && npm run lint && npm run build
 ```
 
-**Note**: Make sure MongoDB is running and accessible.
+Git hooks run these for you: enable them once with `git config core.hooksPath .githooks` (see `CLAUDE.md`).
 
-### Usage
+## Running with Docker
 
-#### Web Interface
+```sh
+cp .env.example .env    # then fill it in, see below
+docker compose up -d --build
+```
 
-1. Access the web interface at `http://localhost:3000` (or the port configured in your environment)
-2. Login with credentials (set in `.env` file):
-   - Username: `admin` (or value from `ADMIN_USERNAME`)
-   - Password: Set via `ADMIN_PASSWORD_HASH` environment variable
-3. **Dashboard**: Quick access to create new health records
-4. **History**: View and edit all past health records, filter by type, export data
-5. **Pets Management**: Create, edit, and manage your pets; share access with other users
-6. **Settings**:
-   - **Theme**: Toggle between light and dark themes
-   - **Form Defaults**: Set default values for each health record type
-   - **Tiles Settings**: Customize dashboard tile order and visibility
-7. **Admin Panel**: User management (admin only)
+| Service | What it does |
+|---|---|
+| `db` | MongoDB, on `127.0.0.1:27017` only |
+| `web` | the API (gunicorn), on `127.0.0.1:5001` |
+| `frontend` | builds the app and copies it into a shared volume |
+| `nginx` | serves the app and forwards `/api/` to `web`, on `127.0.0.1:3000` |
+| `reminders` | sends push reminders for doses and expiring documents |
+| `backup` | daily database backup to the bucket |
 
-#### Mobile Installation (PWA)
+In production a host nginx terminates TLS and forwards everything to `127.0.0.1:3000`; security headers, the real client address and the Secure cookie flag are set by `nginx/nginx.conf`.
 
-1. Open the app in a mobile browser (Chrome/Safari)
-2. Use "Add to Home Screen" option
-3. The app will install as a native-like application
-4. Works offline with cached data
+### Environment
 
-### MongoDB Backups
+`.env.example` lists every variable with comments. The ones that matter:
 
-The `backup` service (`backup/Dockerfile`, `scripts/backup_to_s3.py`) backs up the
-database to the object storage bucket once a day:
+| Variable | |
+|---|---|
+| `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` | database |
+| `FLASK_SECRET_KEY`, `JWT_SECRET_KEY` | a long random value; the app refuses to start with an example one |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` | the admin account (bcrypt hash) |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` | object storage for every file and the backups |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | mail for password recovery; without it the app says recovery goes through the admin |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CLAIMS_EMAIL` | Web Push (`python -m scripts.generate_vapid_keys`) |
+| `REGISTRATION_ENABLED` | `false` closes sign-up |
+| `STORAGE_QUOTA_MB` | documents per pet owner, default 2048 |
 
-- dumps the database with `mongodump` into one gzipped archive and checks it reads
-  back (`mongorestore --dryRun`);
-- uploads it to its own folder, `backups/mongo/<db>-YYYYMMDD-HHMMSS.archive.gz`,
-  apart from users' files (`users/`) and local runs (`dev/`), and checks the stored size;
+A bcrypt hash for the admin password:
+
+```sh
+python -c "import bcrypt; print(bcrypt.hashpw(b'your_password', bcrypt.gensalt()).decode())"
+```
+
+## Deploying
+
+A push to `master` runs CI and deploys to the server (`.github/workflows/deploy.yaml`): it pulls, writes the secrets below into the server's `.env`, rebuilds and restarts the stack. One deploy runs at a time. It can also be started by hand, e.g. after changing a secret:
+
+```sh
+gh workflow run "Deploy to Server"
+```
+
+Repository secrets: `SERVER_PETZY_HOST`, `SERVER_PETZY_USER`, `SERVER_PETZY_SSH_KEY`, `S3_KEY_ID`, `S3_SECRET_KEY`, `VAPID_*`, `SMTP_*`. Set one with `gh secret set NAME` (it asks for the value).
+
+Other workflows (all run by hand):
+
+- **Diagnose server:** containers, disk, nginx, which settings are set (never their values), mail login, backups, optionally a restore check.
+- **Storage check:** the bucket and its keys.
+- **Inspect DB:** document counts, never the data.
+- **Migrate events:** one-off data migrations.
+- **Cleanup refresh tokens:** removes expired sessions.
+
+The repository is public, and so are the Actions logs: workflows print counts and presence, never user data or secrets.
+
+## Backups
+
+The `backup` service (`backup/Dockerfile`, `scripts/backup_to_s3.py`) backs up the database to the bucket once a day:
+
+- dumps it with `mongodump` into one gzipped archive and checks it reads back (`mongorestore --dryRun`);
+- uploads it to `backups/mongo/<db>-YYYYMMDD-HHMMSS.archive.gz`, apart from users' files (`users/`) and local runs (`dev/`), and checks the stored size;
 - only then deletes all but the newest `BACKUP_KEEP` (3) backups, every version of them.
 
-A failed attempt keeps the older backups and is retried an hour later. When the
-service starts and the newest backup is more than a day old, it backs up at once.
-The backups live off the server on purpose: a copy on the database's own disk is
-lost with it. Files (photos, documents, scans) are in the bucket already and are
-not part of the dump.
+A failed attempt keeps the older backups and is retried an hour later. When the service starts and the newest backup is more than a day old, it backs up at once. Files (photos, documents, scans) are in the bucket already and are not part of the dump.
 
 A backup right now:
 
@@ -189,10 +128,7 @@ A backup right now:
 docker compose run --rm backup python3 scripts/backup_to_s3.py --once
 ```
 
-Logs: `docker compose logs -f backup`. The "Diagnose server" workflow lists the
-backups in the bucket with their sizes and ages.
-
-**Restoring** (overwrites the collections it restores; pick the file from the list):
+**Restoring** (overwrites the collections it restores; pick the file from the list the Diagnose workflow prints):
 
 ```sh
 # 1. Download it into the current directory (or from the Backblaze web console)
@@ -204,94 +140,37 @@ docker compose exec db mongorestore -u "$MONGO_USER" -p "$MONGO_PASS" --authenti
   --archive=/tmp/b.archive.gz --gzip --drop
 ```
 
-To look at a backup without touching the live data, restore it under another name
-with `--nsFrom '<db>.*' --nsTo 'restored.*'` instead of `--drop`.
+To look at a backup without touching the live data, restore it under another name with `--nsFrom '<db>.*' --nsTo 'restored.*'` instead of `--drop`.
 
-### Useful Commands
-
-- **Stop all services**:
-  ```sh
-  docker-compose down
-  ```
-
-- **View logs**:
-  ```sh
-  docker-compose logs -f web          # Backend logs
-  docker-compose logs -f frontend     # Frontend build logs
-  docker-compose logs -f nginx        # Nginx logs
-  docker-compose logs -f backup # Backup service logs
-  ```
-
-- **Rebuild specific service**:
-  ```sh
-  docker-compose up -d --build frontend  # Rebuild frontend only
-  docker-compose up -d --build web       # Rebuild backend only
-  ```
-
-- **Access services**:
-  - Frontend: `http://localhost:3000`
-  - Backend API: `http://localhost:3000/api/`
-  - MongoDB: `localhost:27017` (if exposed)
-
-- **Run tests**:
-  ```sh
-  # Backend tests
-  cd /path/to/project
-  pytest
-
-  # With coverage
-  pytest --cov=web --cov-report=html
-  ```
-
-## Project Structure
+## Project structure
 
 ```text
-├── frontend/              # React frontend application
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   │   ├── Navbar.tsx
-│   │   │   ├── BottomTabBar.tsx
-│   │   │   └── ...
-│   │   ├── pages/         # Page components
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── History.tsx
-│   │   │   ├── Pets.tsx
-│   │   │   ├── Settings.tsx
-│   │   │   └── ...
-│   │   ├── services/      # API services
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── utils/         # Utility functions
-│   │   └── styles/        # Global styles
-│   ├── public/            # Static assets
-│   ├── package.json       # Frontend dependencies
-│   └── vite.config.ts     # Vite configuration
-├── web/                   # Flask backend API
-│   ├── app.py            # Main Flask application
-│   ├── auth.py          # Authentication logic
-│   ├── pets.py          # Pet management endpoints
-│   ├── health_records.py # Health record endpoints
-│   ├── users.py         # User management
-│   ├── export.py        # Data export functionality
-│   └── db.py            # MongoDB connection
-├── nginx/                # Nginx configuration
-│   └── nginx.conf       # Reverse proxy config
-├── scripts/              # Utility scripts
-│   └── backup_to_s3.py  # Daily database backup to the bucket
-├── backup/Dockerfile     # Backup service image
-├── tests/                # Backend tests
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile           # Backend Docker image
-├── frontend/Dockerfile  # Frontend Docker image
-├── nginx/Dockerfile     # Nginx Docker image
-├── gunicorn.conf.py     # Gunicorn configuration
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
+web/                     Flask API
+  app.py                 app, blueprints, security headers, rate limits
+  auth.py                sign-in, sign-up, refresh, logout
+  account.py             email, password, recovery by email
+  security.py            tokens, sessions, access decorators
+  pets.py                pets, photos, sharing and invitations
+  events.py              records, event types, feed, stats
+  builtin_event_types.py the built-in types and their order
+  medications.py         courses, intakes, stock, upcoming doses
+  documents.py           documents, scans, quota
+  storage.py             object storage (keys, signed URLs)
+  push.py, push_delivery.py  Web Push
+  export.py              exports
+  users.py               users, search, form defaults
+  mail.py                SMTP
+  openapi_doc.py         the published API reference
+  schemas.py             pydantic request and response models
+frontend/src/            React app (pages, components, services, hooks, utils)
+  content/help.ts        the in-app help
+  sw.ts                  the service worker
+nginx/                   the app's nginx (nginx.conf, security-headers.conf)
+scripts/                 dev_local.py, reminders sender, backups, migrations, checks
+tests/                   backend tests (stateless and stateful)
+.github/workflows/       CI, deploy, maintenance
 ```
-
-## Contributing
-
-Pull requests and suggestions are welcome! Please open an issue or submit a PR to help improve the project.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://opensource.org/license/mit) file for details.
+MIT. See the [LICENSE](https://opensource.org/license/mit) text.

@@ -21,7 +21,7 @@ git config core.hooksPath .githooks
 - `pre-push` runs `ruff check` + `ruff format --check` over the whole
   backend, the full backend test suite (`pytest tests/`), and a full
   frontend lint (`npm run lint`, all files, not just staged ones). Slower
-  (~45s), so it only runs before push rather than every commit. Blocks the
+  (a couple of minutes), so it only runs before push rather than every commit. Blocks the
   push on any failure (skip with `git push --no-verify` if truly needed).
 
 Backend code is formatted with `ruff format` (line length 120, see
