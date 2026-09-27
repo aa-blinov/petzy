@@ -1,0 +1,101 @@
+# The whole production stack on this machine, to click through with demo
+# data. On top of docker-compose.yml:
+#
+#   docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#   .venv/bin/python scripts/seed_demo.py
+#
+# App: http://localhost:3000 (the same nginx, headers and build as
+# production). API straight: http://localhost:5002.
+#
+# What differs from production, on purpose:
+# - Files go to a local S3 server (Versity Gateway) in its own volume, never
+#   to the production bucket: a .env with real keys can't leak local data
+#   into it.
+# - No backup service: it keeps the bucket's newest backups and deletes the
+#   rest, so a local run next to real keys could delete production's.
+# - Letters stay in memory, listed at http://localhost:3000/api/dev/outbox.
+# - Large scans can't be uploaded: the browser sends them straight to the
+#   file store, and the production CSP allows only the real bucket.
+#
+# Everything else (database, reminders, nginx) is the production setup.
+# Stop: docker compose -p petzy-local down  (add -v to wipe the data too)
+
+x-local-env: &local-env
+  S3_ENDPOINT: http://s3:7070
+  S3_REGION: us-east-1
+  S3_BUCKET: petzy-local
+  # Credentials of the local file store only (below); not secrets.
+  S3_KEY_ID: petzy-local
+  S3_SECRET_KEY: petzy-local-secret
+  S3_PREFIX: ""
+  MAIL_OUTBOX: memory
+  APP_BASE_URL: http://localhost:3000
+  # One worker: the in-memory outbox lives in one process.
+  GUNICORN_WORKERS: "1"
+  REGISTRATION_ENABLED: "true"
+  # The dev-only push key pair scripts/dev_local.py uses (public in this
+  # repository, never used in production). Without keys the reminders
+  # service exits and Docker restarts it in a loop.
+  VAPID_PUBLIC_KEY: "BEAFT_kVkSueKANpSxD1htnxIIKLln9mYnYUPHqF1LkASgjesy5mQzNdPKdlrd5gdf2KENSuqrpT_2WfqMpLxuY"
+  VAPID_PRIVATE_KEY: "ay_H1xDEhyWhfOJ1rEF67WpPjJdX7z9CpsgQjvyP3zo"
+  VAPID_CLAIMS_EMAIL: "dev@example.com"
+
+services:
+  db:
+    ports: !reset []
+
+  web:
+    ports: !override
+      - "127.0.0.1:5002:5000"
+    environment: *local-env
+    depends_on:
+      s3-init:
+        condition: service_completed_successfully
+
+  reminders:
+    environment: *local-env
+
+  backup:
+    # Never started locally (see the top of this file).
+    profiles: ["production-only"]
+
+  s3:
+    image: versity/versitygw:v1.8.0
+    command: ["posix", "/data"]
+    environment:
+      ROOT_ACCESS_KEY: petzy-local
+      ROOT_SECRET_KEY: petzy-local-secret
+    volumes:
+      - s3data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Creates the bucket once the file store answers, then exits.
+  s3-init:
+    build: .
+    environment: *local-env
+    command:
+      - python
+      - -c
+      - |
+        import os, time, boto3
+        s3 = boto3.client("s3", endpoint_url=os.environ["S3_ENDPOINT"], region_name="us-east-1",
+                          aws_access_key_id=os.environ["S3_KEY_ID"], aws_secret_access_key=os.environ["S3_SECRET_KEY"])
+        for _ in range(30):
+            try:
+                if os.environ["S3_BUCKET"] not in [b["Name"] for b in s3.list_buckets().get("Buckets", [])]:
+                    s3.create_bucket(Bucket=os.environ["S3_BUCKET"])
+                print("bucket ready"); break
+            except Exception as e:
+                print("waiting for the file store:", type(e).__name__); time.sleep(1)
+        else:
+            raise SystemExit("file store did not answer")
+    depends_on:
+      - s3
+    restart: "no"
+    networks:
+      - app-network
+
+volumes:
+  s3data:

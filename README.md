@@ -69,6 +69,19 @@ docker compose up -d --build
 | `reminders` | sends push reminders for doses and expiring documents |
 | `backup` | daily database backup to the bucket |
 
+### The whole stack locally, with demo data
+
+To click through the production setup on your machine (same nginx, headers, build, gunicorn, reminders):
+
+```sh
+docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml up -d --build
+.venv/bin/python scripts/seed_demo.py    # accounts, pets, two months of records
+```
+
+Open http://localhost:3000 and sign in as `demo` (the owner) or `family` (invited to one pet); the password is `DEMO_PASSWORD` in `scripts/seed_demo.py`. The seeder fills two pets with photos, two months of records, a custom event type, medications with stock and doses, documents (one expiring soon), a pending and an accepted invitation, and a confirmed email.
+
+`docker-compose.local.yml` keeps this apart from production: files go to a local S3 server (Versity Gateway) in its own volume, there is no backup service (it would rotate the real bucket's backups), and letters stay in memory at http://localhost:3000/api/dev/outbox. Large scans can't be uploaded here. Stop with `docker compose -p petzy-local down`; add `-v` to wipe the data before seeding again.
+
 In production a host nginx terminates TLS and forwards everything to `127.0.0.1:3000`; security headers, the real client address and the Secure cookie flag are set by `nginx/nginx.conf`.
 
 ### Environment
