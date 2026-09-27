@@ -42,6 +42,7 @@ from web.schemas import (
     TimelineQuery,
     TimelineResponse,
 )
+from web.builtin_event_types import BUILTIN_TYPE_ORDER
 from web.security import get_current_user, is_admin, login_required
 
 
@@ -109,8 +110,18 @@ def _generate_event_type_key() -> str:
 def list_event_types():
     """List the event types this user can use: builtin, and their household's."""
     username, _ = get_current_user()
-    docs = app.db[EVENT_TYPES_COLLECTION].find(_visible_types_query(username)).sort([("is_builtin", -1), ("label", 1)])
+    docs = list(app.db[EVENT_TYPES_COLLECTION].find(_visible_types_query(username)))
+    docs.sort(key=_registry_order)
     return jsonify({"event_types": [_serialize_event_type(d) for d in docs]})
+
+
+def _registry_order(doc: dict) -> tuple:
+    """Builtin types in BUILTIN_TYPE_ORDER, then custom ones by name."""
+    if doc.get("is_builtin"):
+        key = doc.get("key")
+        rank = BUILTIN_TYPE_ORDER.index(key) if key in BUILTIN_TYPE_ORDER else len(BUILTIN_TYPE_ORDER)
+        return (0, rank, doc.get("label", ""))
+    return (1, 0, (doc.get("label") or "").lower())
 
 
 @events_bp.route("/api/event-types", methods=["POST"])

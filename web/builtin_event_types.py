@@ -18,13 +18,13 @@ def _opts(*pairs: str) -> list[dict[str, str]]:
 BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
     {
         "key": "feeding",
-        "label": "Дневная порция",
+        "label": "Кормление",
         "icon": "utensils",
         "color": "brown",
         "fields": [
             {
                 "name": "food_weight",
-                "label": "Вес корма",
+                "label": "Вес корма (г)",
                 "type": "number",
                 "required": True,
                 "options": None,
@@ -184,6 +184,42 @@ LEGACY_COLLECTION_MAP: dict[str, dict[str, Any]] = {
 }
 
 
+# The order a pet's «+» tiles take until someone reorders them: most
+# frequent first. By name put «Астма» first and «Кормление» in the middle.
+BUILTIN_TYPE_ORDER = [
+    "feeding",
+    "weight",
+    "defecation",
+    "litter",
+    "eye_drops",
+    "tooth_brushing",
+    "ear_cleaning",
+    "asthma",
+]
+
+# What every pet got before, alphabetical by the old names. A pet still
+# carrying exactly this was never reordered by hand.
+_OLD_DEFAULT_TILE_ORDER = [
+    "weight",
+    "defecation",
+    "feeding",
+    "eye_drops",
+    "asthma",
+    "litter",
+    "ear_cleaning",
+    "tooth_brushing",
+]
+
+
+def reorder_default_tiles(db) -> int:
+    """Move pets still on the old alphabetical tile order to BUILTIN_TYPE_ORDER."""
+    result = db.pets.update_many(
+        {"tiles_settings.order": _OLD_DEFAULT_TILE_ORDER},
+        {"$set": {"tiles_settings.order": BUILTIN_TYPE_ORDER}},
+    )
+    return result.modified_count
+
+
 def seed_builtin_event_types(db) -> int:
     """Insert any builtin event type missing from ``db.event_types``.
 
@@ -211,7 +247,34 @@ def seed_builtin_event_types(db) -> int:
             inserted += 1
             continue
         _backfill_numeric_bounds(db, existing, spec)
+        _rename_old_defaults(db, existing)
     return inserted
+
+
+# Names a builtin type shipped with and later replaced. A stored type still
+# carrying the old default gets the new one; a name someone chose stays.
+# Feeding was «Дневная порция» on the tile and form while the feed card said
+# «Кормление», and its portion had no unit.
+_OLD_DEFAULT_LABELS = {"feeding": ("Дневная порция", "Кормление")}
+_OLD_DEFAULT_FIELD_LABELS = {("feeding", "food_weight"): ("Вес корма", "Вес корма (г)")}
+
+
+def _rename_old_defaults(db, existing: dict) -> None:
+    updates: dict = {}
+    old_new = _OLD_DEFAULT_LABELS.get(existing["key"])
+    if old_new and existing.get("label") == old_new[0]:
+        updates["label"] = old_new[1]
+    fields = existing.get("fields", [])
+    renamed = False
+    for field in fields:
+        field_old_new = _OLD_DEFAULT_FIELD_LABELS.get((existing["key"], field.get("name")))
+        if field_old_new and field.get("label") == field_old_new[0]:
+            field["label"] = field_old_new[1]
+            renamed = True
+    if renamed:
+        updates["fields"] = fields
+    if updates:
+        db.event_types.update_one({"_id": existing["_id"]}, {"$set": updates})
 
 
 def _backfill_numeric_bounds(db, existing: dict, spec: dict) -> None:

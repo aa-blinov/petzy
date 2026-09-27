@@ -158,7 +158,7 @@ from web.medications import medications_bp  # noqa: E402
 from web.documents import documents_bp  # noqa: E402
 from web.push import push_bp  # noqa: E402
 from web.export import export_bp  # noqa: E402
-from web.builtin_event_types import seed_builtin_event_types  # noqa: E402
+from web.builtin_event_types import reorder_default_tiles, seed_builtin_event_types  # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(pets_bp)
@@ -189,6 +189,8 @@ if _storage.storage_configured():
 # exists, so a user's edits to a builtin type's label/icon/color survive
 # restarts).
 seed_builtin_event_types(db)
+# Pets still on the old alphabetical «+» order get the frequency one.
+reorder_default_tiles(db)
 
 # Register API spec after all blueprints are registered
 api.register(app)
