@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+  # By hand, e.g. after adding or changing a secret (SMTP_*, S3_*).
+  workflow_dispatch:
 
 jobs:
   deploy:
