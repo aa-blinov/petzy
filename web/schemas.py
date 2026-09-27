@@ -1034,6 +1034,13 @@ class MedicationIntakeCreate(BaseModel):
     time: str
     dose_taken: Optional[float] = None  # Uses default_dose if not provided
     comment: Optional[str] = None
+    # «Пропустить»: the slot is handled, nothing is given or taken from the stock.
+    skipped: bool = False
+
+
+class MedicationIntakeUpdate(BaseModel):
+    date: str
+    time: str
 
 
 class MedicationIntakeItem(BaseModel):
@@ -1044,6 +1051,7 @@ class MedicationIntakeItem(BaseModel):
     dose_taken: float
     username: str
     comment: Optional[str] = None
+    skipped: bool = False
 
 
 class MedicationIntakeListResponse(PaginatedResponse):

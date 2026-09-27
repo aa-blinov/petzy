@@ -69,6 +69,8 @@ def _enrich_medication_names(_record: dict, records: list[dict]) -> None:
     }
     for r in records:
         r["medication_name"] = meds.get(r.get("medication_id"), "Unknown")
+        if r.get("skipped"):
+            r["dose_taken"] = "пропущен"
 
 
 def _replace_skip_blank(value, replacement: str = "-") -> str:

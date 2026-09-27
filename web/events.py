@@ -519,6 +519,9 @@ def get_health_stats():
     mongo_query: dict[str, Any] = {"pet_id": pet_id, "date_time": {"$gte": since_date}}
     if collection_name == EVENTS_COLLECTION:
         mongo_query["type"] = record_type
+    else:
+        # A skipped dose isn't a dose given.
+        mongo_query["skipped"] = {"$ne": True}
 
     records = list(app.db[collection_name].find(mongo_query).sort("date_time", 1))
 

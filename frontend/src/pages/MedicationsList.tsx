@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { formatDate, formatTime } from '../utils/dateUtils';
+import { formatTime } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Tag, Dialog, Input, PullToRefresh } from 'antd-mobile';
+import { Button, Card, Tag, Dialog, Input, PullToRefresh, Selector } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
@@ -19,6 +19,20 @@ import { refreshAfterIntake } from '../utils/intakeViews';
 import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
+import { IntakeTimePicker } from '../components/IntakeTimePicker';
+import { nowWhen, whenLabel, whenPhrase, type IntakeWhen } from '../utils/intakeWhen';
+
+/** Today's next unhandled slot of a course, once its time has come: a
+ *  dose marked late was most likely given then. */
+function pastSlotToday(med: Medication): string | null {
+    const now = new Date();
+    if (!med.schedule.days.includes((now.getDay() + 6) % 7)) return null;
+    const slot = [...med.schedule.times].sort()[med.intakes_today || 0];
+    return slot && slot <= formatTime(now) ? slot : null;
+}
+
+/** «Когда дали» in the intake dialog: now, at the slot, or a picked time. */
+type WhenChoice = 'now' | 'slot' | 'other';
 
 export function MedicationsList() {
     const { selectedPetId } = usePet();
@@ -36,11 +50,18 @@ export function MedicationsList() {
         medication: Medication | null;
         // Typed text, not a number: «0,» mid-typing must survive.
         dose: string;
+        choice: WhenChoice;
+        slot: string | null;
+        other: IntakeWhen | null;
     }>({
         visible: false,
         medication: null,
-        dose: '1'
+        dose: '1',
+        choice: 'now',
+        slot: null,
+        other: null,
     });
+    const [whenPickerVisible, setWhenPickerVisible] = useState(false);
 
     const [deleteDialog, setDeleteDialog] = useState<{
         visible: boolean;
@@ -51,32 +72,28 @@ export function MedicationsList() {
     });
 
     const intakeMutation = useMutation({
-        mutationFn: ({ id, dose }: { id: string; dose: number }) => {
-            // Both from the local wall clock, not toISOString(): that
-            // emits the UTC date, which disagrees with the local date for
-            // several hours around midnight (5 at UTC+5) — the intake
-            // landed under yesterday's date paired with today's time,
-            // so it fell outside every "today" query (intakes_today,
-            // the upcoming-dose widget) until the offset window passed.
-            const now = new Date();
-            return medicationsService.logIntake(id, {
-                date: formatDate(now),
-                time: formatTime(now),
-                dose_taken: dose,
-            });
-        },
-        onSuccess: ({ id, ran_out }, { id: medId }) => {
+        mutationFn: ({ id, dose, when, skipped }: { id: string; dose?: number; when: IntakeWhen; skipped?: boolean }) =>
+            medicationsService.logIntake(id, { ...when, dose_taken: dose, skipped }),
+        onSuccess: ({ id, ran_out }, { id: medId, skipped, when }) => {
             refreshAfterIntake(queryClient);
             const name = medications.find((m) => m._id === medId)?.name ?? 'Приём';
+            const now = nowWhen();
+            const atNow = when.date === now.date && when.time === now.time;
             // A tap by mistake is undone from the bar, as on the feed.
             showUndo({
-                message: ran_out ? `${name}: принято, лекарство закончилось` : `${name}: приём отмечен`,
+                message: skipped
+                    ? `${name}: приём пропущен`
+                    : ran_out
+                        ? `${name}: принято, лекарство закончилось`
+                        : atNow
+                            ? `${name}: приём отмечен`
+                            : `${name}: отмечено, дали ${whenPhrase(when)}`,
                 onUndo: async () => {
                     await medicationsService.deleteIntake(id);
                     await refreshAfterIntake(queryClient);
                 },
             });
-            if (ran_out) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
+            if (ran_out && !skipped) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
@@ -101,8 +118,23 @@ export function MedicationsList() {
         setLogIntakeDialog({
             visible: true,
             medication: med,
-            dose: formatAmount(med.default_dose || 1)
+            dose: formatAmount(med.default_dose || 1),
+            choice: 'now',
+            slot: pastSlotToday(med),
+            other: null,
         });
+    };
+
+    // Both from the local wall clock, not toISOString(): that emits the
+    // UTC date, which disagrees with the local date for several hours
+    // around midnight (5 at UTC+5) — the intake landed under yesterday's
+    // date paired with today's time, so it fell outside every "today"
+    // query (intakes_today, the upcoming-dose widget).
+    const chosenWhen = (): IntakeWhen => {
+        const { choice, slot, other } = logIntakeDialog;
+        if (choice === 'slot' && slot) return { date: nowWhen().date, time: slot };
+        if (choice === 'other' && other) return other;
+        return nowWhen();
     };
 
     const confirmLogIntake = () => {
@@ -112,7 +144,20 @@ export function MedicationsList() {
             showToast.failure('Укажите, сколько дали');
             return;
         }
-        intakeMutation.mutate({ id: logIntakeDialog.medication._id, dose });
+        intakeMutation.mutate({ id: logIntakeDialog.medication._id, dose, when: chosenWhen() });
+        setLogIntakeDialog(prev => ({ ...prev, visible: false }));
+    };
+
+    // On purpose, not by accident: nothing leaves the stock, the slot
+    // counts as handled. It sits at the slot when there is one.
+    const skipIntake = () => {
+        if (!logIntakeDialog.medication) return;
+        const { slot } = logIntakeDialog;
+        intakeMutation.mutate({
+            id: logIntakeDialog.medication._id,
+            when: slot ? { date: nowWhen().date, time: slot } : nowWhen(),
+            skipped: true,
+        });
         setLogIntakeDialog(prev => ({ ...prev, visible: false }));
     };
 
@@ -447,11 +492,44 @@ export function MedicationsList() {
                                     {logIntakeDialog.medication.dose_unit || 'ед.'}
                                 </span>
                             </div>
+                            <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, margin: 'var(--spacing-lg) 0 var(--spacing-sm)' }}>
+                                Когда дали?
+                            </div>
+                            <Selector
+                                columns={logIntakeDialog.slot ? 3 : 2}
+                                showCheckMark={false}
+                                value={[logIntakeDialog.choice]}
+                                options={[
+                                    { label: 'Сейчас', value: 'now' },
+                                    ...(logIntakeDialog.slot ? [{ label: `В ${logIntakeDialog.slot}`, value: 'slot' as const }] : []),
+                                    {
+                                        label: logIntakeDialog.choice === 'other' && logIntakeDialog.other
+                                            ? whenLabel(logIntakeDialog.other)
+                                            : 'Другое время',
+                                        value: 'other' as const,
+                                    },
+                                ]}
+                                onChange={(val) => {
+                                    const next = val[0] as WhenChoice | undefined;
+                                    // A tap on the chosen «Другое время» opens the picker again.
+                                    if (next === 'other' || (!next && logIntakeDialog.choice === 'other')) {
+                                        setWhenPickerVisible(true);
+                                        return;
+                                    }
+                                    if (next) setLogIntakeDialog(prev => ({ ...prev, choice: next }));
+                                }}
+                                style={{
+                                    '--border-radius': 'var(--radius-sm)',
+                                    '--padding': '8px 4px',
+                                    '--gap': 'var(--spacing-xs)',
+                                    fontSize: 'var(--text-sm)',
+                                }}
+                            />
                         </div>
                     )
                 }
                 onClose={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}
-                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: '1' })}
+                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: '1', choice: 'now', slot: null, other: null })}
                 actions={[
                     {
                         key: 'confirm',
@@ -460,11 +538,23 @@ export function MedicationsList() {
                         onClick: confirmLogIntake
                     },
                     {
+                        key: 'skip',
+                        text: 'Пропустить приём',
+                        onClick: skipIntake
+                    },
+                    {
                         key: 'cancel',
                         text: 'Отмена',
                         onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
                     },
                 ]}
+            />
+
+            <IntakeTimePicker
+                visible={whenPickerVisible}
+                value={logIntakeDialog.other ?? nowWhen()}
+                onClose={() => setWhenPickerVisible(false)}
+                onConfirm={(when) => setLogIntakeDialog(prev => ({ ...prev, choice: 'other', other: when }))}
             />
 
             <Dialog
