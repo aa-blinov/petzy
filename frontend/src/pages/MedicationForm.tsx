@@ -70,6 +70,9 @@ const DAYS_OF_WEEK = [
 
 const COMMON_TYPES = ['Таблетка', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Сироп', 'Суспензия'];
 
+/** Units counted in pieces, and how «сколько … давать» says them. */
+const PIECES_WORD: Record<string, string> = { 'таб': 'таблеток', 'капс': 'капсул', 'шт': 'штук' };
+
 /** The unit a form is usually given in, filled in when none is chosen yet
  *  (an empty unit showed «ед.», which says nothing). */
 const UNIT_FOR_TYPE: Record<string, string> = {
@@ -139,6 +142,11 @@ export function MedicationForm() {
     const doseUnit = watchedDoseUnit || 'шт.';
     const watchedDoseUnitForPicker = watchedDoseUnit || 'таб';
     const watchedDefaultDose = useWatch({ control, name: 'default_dose' }) || 1;
+    // «50 таб за раз» is almost always the box's «50 мг» typed in the wrong
+    // field; stock and reminders would then count 50 tablets a dose. A
+    // note, not a block: some courses really are several pieces.
+    const typedDose = parseAmount(String(watchedDefaultDose)) ?? 0;
+    const doseLooksLikeStrength = (watchedDoseUnit ?? '') in PIECES_WORD && typedDose > 5;
     const watchedTimes = useWatch({ control, name: 'schedule.times' });
     const watchedDays = useWatch({ control, name: 'schedule.days' });
     const watchedCurrent = useWatch({ control, name: 'inventory_current' });
@@ -341,11 +349,14 @@ export function MedicationForm() {
                             name="strength"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Дозировка">
+                                <Form.Item
+                                    label="На упаковке"
+                                    description="Сколько вещества в одной таблетке или в 1 мл, как написано на коробке"
+                                >
                                     <Input
                                         value={field.value}
                                         onChange={field.onChange}
-                                        placeholder="Напр. 50 мг или 0.5 мг/мл"
+                                        placeholder="Напр. 300 мг или 0,5 мг/мл"
                                     />
                                 </Form.Item>
                             )}
@@ -356,7 +367,21 @@ export function MedicationForm() {
                             name="default_dose"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Разовая" required description={errors.default_dose?.message ? <FieldError message={errors.default_dose.message} /> : undefined}>
+                                <Form.Item
+                                    label="За один приём"
+                                    required
+                                    description={
+                                        errors.default_dose?.message ? (
+                                            <FieldError message={errors.default_dose.message} />
+                                        ) : doseLooksLikeStrength ? (
+                                            <span style={{ color: 'var(--app-warning-text)' }}>
+                                                {formatAmount(typedDose)} {watchedDoseUnit} за раз? Если это миллиграммы с упаковки, впишите их выше, а здесь укажите, сколько {PIECES_WORD[watchedDoseUnit ?? ''] ?? 'штук'} давать
+                                            </span>
+                                        ) : (
+                                            'Сколько давать за раз. Для половины таблетки впишите 0,5'
+                                        )
+                                    }
+                                >
                                     <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
                                         <Input
                                             value={field.value?.toString()}
