@@ -6,8 +6,12 @@ declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: str
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkOnly } from 'workbox-strategies'
+import { clientsClaim } from 'workbox-core'
 
+// A new release takes over open pages at once (see utils/swUpdate.ts,
+// which reloads them into it where that's safe).
 self.skipWaiting()
+clientsClaim()
 
 precacheAndRoute(self.__WB_MANIFEST)
 
