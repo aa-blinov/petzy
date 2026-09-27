@@ -195,6 +195,7 @@ export function FormDefaults() {
                     <Form.Item
                         label="Причина"
                         clickable
+                        arrow={false}
                         onClick={() => setVisiblePicker(null)}
                     >
                         {/* Free-text field — no picker needed. The whole row
@@ -249,6 +250,7 @@ export function FormDefaults() {
                     <Form.Item
                         label="Корм"
                         clickable
+                        arrow={false}
                         onClick={() => setVisiblePicker(null)}
                     >
                         <input
@@ -277,6 +279,7 @@ export function FormDefaults() {
                     <Form.Item
                         label="Корм"
                         clickable
+                        arrow={false}
                         onClick={() => setVisiblePicker(null)}
                     >
                         <input

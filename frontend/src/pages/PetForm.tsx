@@ -322,6 +322,8 @@ export function PetForm() {
                   required
                   description={error?.message ? <FieldError message={error.message} /> : undefined}
                   clickable
+                  // A text field, not a picker: no «›» promising another screen.
+                  arrow={false}
                   onClick={() => nameInputRef.current?.focus()}
                 >
                   <Input
@@ -373,6 +375,7 @@ export function PetForm() {
                 <Form.Item
                   label={species.breedLabel}
                   clickable
+                  arrow={false}
                   onClick={() => breedInputRef.current?.focus()}
                 >
                   <Input
