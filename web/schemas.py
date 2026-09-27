@@ -125,8 +125,6 @@ class AuthTokensResponse(BaseModel):
 
     success: bool = True
     message: str
-    access_token: str
-    refresh_token: str
 
     model_config = ConfigDict(
         json_schema_extra={

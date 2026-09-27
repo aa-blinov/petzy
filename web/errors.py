@@ -111,6 +111,17 @@ ERRORS: Dict[str, ErrorDef] = {
     "scan_unsupported_type": ErrorDef(
         "scan_unsupported_type", "Этот формат не подходит. Нужен ZIP, 7Z, RAR, TAR, GZ, DICOM или ISO", 422
     ),
+    "document_content_mismatch": ErrorDef(
+        "document_content_mismatch", "Файл не похож на свой тип. Загрузите PDF или фотографию", 422
+    ),
+    "storage_quota_exceeded": ErrorDef(
+        "storage_quota_exceeded",
+        "Место для документов закончилось. Удалите ненужные файлы или напишите администратору",
+        422,
+    ),
+    "too_many_pending_uploads": ErrorDef(
+        "too_many_pending_uploads", "Уже идут другие загрузки. Дождитесь их или отмените", 429
+    ),
     "scan_too_large": ErrorDef("scan_too_large", "Файл больше 500 МБ. Разделите архив на части", 422),
     "scan_upload_not_found": ErrorDef(
         "scan_upload_not_found", "Загрузка не найдена или устарела. Выберите файл ещё раз", 404

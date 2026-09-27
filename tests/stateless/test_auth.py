@@ -17,8 +17,9 @@ class TestAuthentication:
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
-        assert "access_token" in data
-        assert "refresh_token" in data
+        # Only in httpOnly cookies, never readable by page scripts.
+        assert "access_token" not in data
+        assert "refresh_token" not in data
 
         # Check cookies are set in response headers
         set_cookie_headers = [h for h in response.headers.getlist("Set-Cookie")]
@@ -49,8 +50,12 @@ class TestAuthentication:
         assert r1.status_code == 200
         assert r2.status_code == 200
 
-        t1 = r1.get_json()["refresh_token"]
-        t2 = r2.get_json()["refresh_token"]
+        def refresh_cookie(response):
+            header = next(h for h in response.headers.getlist("Set-Cookie") if h.startswith("refresh_token="))
+            return header.split(";", 1)[0].split("=", 1)[1]
+
+        t1 = refresh_cookie(r1)
+        t2 = refresh_cookie(r2)
 
         # Different JWT strings (jti is part of the signed payload).
         assert t1 != t2

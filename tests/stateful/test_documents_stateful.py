@@ -190,16 +190,29 @@ class TestCreateDocument:
     def test_create_document_image_optimization_failure_falls_back(
         self, client, mock_db, regular_user_token, test_pet, s3_storage
     ):
-        """A file declared as image/* but not actually decodable (Pillow
-        can't open it) falls back to storing the raw bytes untouched,
-        same tolerance as pets.create_pet's own optimize_image fallback."""
+        """A JPEG (by its first bytes) that Pillow can't decode, a truncated
+        photo say, is stored as it came rather than lost. Text merely
+        labelled image/jpeg is refused."""
+        fake = client.post(
+            "/api/documents",
+            data={
+                "pet_id": str(test_pet["_id"]),
+                "category": "other",
+                "title": "Не изображение",
+                "file": (io.BytesIO(b"not actually a jpeg"), "fake.jpg", "image/jpeg"),
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+            content_type="multipart/form-data",
+        )
+        assert fake.status_code == 422
+
         response = client.post(
             "/api/documents",
             data={
                 "pet_id": str(test_pet["_id"]),
                 "category": "other",
-                "title": "Не настоящее изображение",
-                "file": (io.BytesIO(b"not actually a jpeg"), "fake.jpg", "image/jpeg"),
+                "title": "Обрезанное фото",
+                "file": (io.BytesIO(b"\xff\xd8\xff\xe0 truncated"), "fake.jpg", "image/jpeg"),
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
             content_type="multipart/form-data",

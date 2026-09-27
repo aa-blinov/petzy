@@ -195,7 +195,7 @@ class TestPetPhotoEndpointStateless:
         pet = mock_db["pets"].find_one({"_id": test_pet["_id"]})
         assert not pet.get("photo_file_id")
 
-    def test_optimization_failure_falls_back_to_original_file(self, client, mock_db, regular_user_token, s3_storage):
+    def test_a_photo_that_is_not_an_image_is_refused(self, client, mock_db, regular_user_token, s3_storage):
         from unittest.mock import patch
 
         with patch("web.pets.optimize_image", return_value=None):
@@ -209,8 +209,5 @@ class TestPetPhotoEndpointStateless:
                 content_type="multipart/form-data",
             )
 
-        assert response.status_code == 201
-        pet = mock_db["pets"].find_one({"_id": ObjectId(response.get_json()["pet"]["_id"])})
-        assert pet["photo_file_id"].endswith(".png")
-        obj = s3_storage.get_object(Bucket="petzy-test", Key=pet["photo_file_id"])
-        assert obj["ContentType"] == "image/png"
+        assert response.status_code == 422
+        assert mock_db["pets"].count_documents({"name": "Fallback Cat"}) == 0

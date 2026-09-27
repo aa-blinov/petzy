@@ -12,6 +12,8 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from werkzeug.datastructures import FileStorage
 
+import warnings
+
 from PIL import Image, ImageOps
 
 try:
@@ -27,6 +29,13 @@ except ImportError:  # pragma: no cover - optional dependency
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
 from web import storage
 from web.errors import error_response
+
+# A small file can declare a huge canvas: a 13k x 13k PNG of a few KB
+# decodes to over 500 MB and takes a worker down. Pillow only warns up
+# to twice its default limit; 40 MP covers any phone camera, and past it
+# opening the image fails instead of decoding.
+Image.MAX_IMAGE_PIXELS = 40_000_000
+warnings.simplefilter("error", Image.DecompressionBombWarning)
 
 
 logger = app.logger

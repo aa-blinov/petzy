@@ -54,6 +54,9 @@ def _expose_photo(pet: dict) -> None:
     version token so a new photo is a new URL for the browser cache.
     """
     ref = pet.pop("photo_file_id", None)
+    # Only our own photo address goes out. A photo_url a client once wrote
+    # could point anywhere and load for everyone the pet is shared with.
+    pet.pop("photo_url", None)
     if ref:
         pet["photo_url"] = (
             url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={storage.file_version(ref)}"
@@ -63,16 +66,17 @@ def _expose_photo(pet: dict) -> None:
 def _store_pet_photo(photo_file, owner_username: str, pet_id) -> str:
     """Optimise an uploaded photo and put it in object storage; returns its key."""
     optimized = optimize_image(photo_file)
-    if optimized:
-        data, content_type, ext = optimized[0].getvalue(), optimized[1], ".webp"
-    else:
-        # Not an image Pillow can read: keep the upload as it came.
-        photo_file.seek(0)
-        data = photo_file.read()
-        content_type = photo_file.content_type or "application/octet-stream"
-        name = photo_file.filename or ""
-        ext = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if not optimized:
+        # Not an image Pillow can read. Kept as it came, an HTML or SVG file
+        # "photo" was served from our own origin and ran as the viewer.
+        raise ValueError("Фото должно быть изображением: JPEG, PNG, WebP или HEIC")
+    data, content_type, ext = optimized[0].getvalue(), optimized[1], ".webp"
     return store_file(owner_username, pet_id, "photos", data, content_type, ext)
+
+
+# Photos stored before non-images were refused may be anything; only these
+# are shown inline, the rest is offered as a download.
+_INLINE_PHOTO_TYPES = {"image/webp", "image/jpeg", "image/png", "image/gif"}
 
 
 def get_tiles_settings(pet: dict) -> dict:
@@ -194,11 +198,9 @@ def create_pet():
             "created_by": username,
         }
 
-        # Add photo_file_id for multipart or photo_url for JSON
+        # A photo only comes as an uploaded file; a client-given URL isn't kept.
         if is_multipart:
             pet_data["photo_file_id"] = photo_file_id
-        else:
-            pet_data["photo_url"] = data.photo_url or ""
 
         # Add tiles_settings if provided, otherwise use default
         if data.tiles_settings:
@@ -371,9 +373,8 @@ def update_pet(pet_id):
                 # New photo was uploaded (photo_file_id changed)
                 update_data["photo_file_id"] = photo_file_id
         else:
-            # JSON request - handle photo_url and remove_photo
-            if data.photo_url is not None:
-                update_data["photo_url"] = data.photo_url
+            # JSON request: a photo can only be removed here (a client-given
+            # photo_url isn't kept, see _expose_photo).
             if data.remove_photo:
                 # Used to only clear the reference, orphaning the GridFS file.
                 stale_photo_id = pet.get("photo_file_id") if pet else None
@@ -685,8 +686,12 @@ def get_pet_photo(pet_id):
             photo_data, content_type = load_image_variant(photo_file_id, width, height)
 
             response = make_response(photo_data)
-            response.headers.set("Content-Type", content_type)
-            response.headers.set("Content-Disposition", "inline")
+            if content_type in _INLINE_PHOTO_TYPES:
+                response.headers.set("Content-Type", content_type)
+                response.headers.set("Content-Disposition", "inline")
+            else:
+                response.headers.set("Content-Type", "application/octet-stream")
+                response.headers.set("Content-Disposition", "attachment")
             response.headers.set("Cache-Control", PRIVATE_IMMUTABLE_CACHE)
             response.set_etag(etag)
             logger.info(f"Pet photo retrieved: pet_id={pet_id}, user={username}, size={width}x{height}")

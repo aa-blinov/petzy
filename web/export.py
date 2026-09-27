@@ -15,6 +15,8 @@ still being a single download.
 """
 
 import csv
+import html
+import re
 import io
 import zipfile
 from dataclasses import dataclass, field
@@ -147,25 +149,35 @@ def _build_export_specs() -> dict[str, ExportSpec]:
 # ---------------------------------------------------------------------------
 
 
+def _cell(value) -> str:
+    """A spreadsheet cell that can't be a formula: Excel runs a comment like
+    ``=HYPERLINK(...)`` from a co-owner as one when the file is opened."""
+    text = str(value or "")
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
 def _serialize_csv(records: list[dict], fields: list[FieldSpec]) -> tuple[bytes, str, str]:
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([ru for _, ru in fields])
+    writer.writerow([_cell(ru) for _, ru in fields])
     for r in records:
-        writer.writerow([str(r.get(en, "") or "") for en, _ in fields])
+        writer.writerow([_cell(r.get(en, "")) for en, _ in fields])
     return output.getvalue().encode("utf-8-sig"), "text/csv", "csv"
 
 
 def _serialize_tsv(records: list[dict], fields: list[FieldSpec]) -> tuple[bytes, str, str]:
     output = io.StringIO()
     writer = csv.writer(output, delimiter="\t")
-    writer.writerow([ru for _, ru in fields])
+    writer.writerow([_cell(ru) for _, ru in fields])
     for r in records:
-        writer.writerow([str(r.get(en, "") or "") for en, _ in fields])
+        writer.writerow([_cell(r.get(en, "")) for en, _ in fields])
     return output.getvalue().encode("utf-8"), "text/tab-separated-values", "tsv"
 
 
 def _serialize_html(title: str, records: list[dict], fields: list[FieldSpec]) -> tuple[bytes, str, str]:
+    # Type and field names are user-made (custom event types): escaped like
+    # the values, or a co-owner's «<img onerror=…>» ran in the opened file.
+    title = html.escape(title)
     parts: list[str] = [
         '<!DOCTYPE html><html lang="ru"><head>',
         '<meta charset="UTF-8">',
@@ -183,12 +195,12 @@ def _serialize_html(title: str, records: list[dict], fields: list[FieldSpec]) ->
         f"<h1>{title}</h1><table><thead><tr>",
     ]
     for _, ru in fields:
-        parts.append(f"<th>{ru}</th>")
+        parts.append(f"<th>{html.escape(ru)}</th>")
     parts.append("</tr></thead><tbody>")
     for r in records:
         parts.append("<tr>")
         for en, _ in fields:
-            value = str(r.get(en, "") or "").replace("<", "&lt;").replace(">", "&gt;")
+            value = html.escape(str(r.get(en, "") or ""))
             parts.append(f"<td>{value}</td>")
         parts.append("</tr>")
     parts.append("</tbody></table></body></html>")
@@ -273,7 +285,9 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
                 # Nothing logged for this type — leave it out rather than
                 # shipping an empty file with only a header row.
                 continue
-            entry_name = f"{spec.title.replace(' ', '_').lower()}.{suffix}"
+            # From a user-made label: nothing that could step out of the archive's folder.
+            safe_title = re.sub(r"[^\w.-]+", "_", spec.title).strip("._").lower() or "records"
+            entry_name = f"{safe_title}.{suffix}"
             archive.writestr(entry_name, content)
             included.append(spec.title)
 

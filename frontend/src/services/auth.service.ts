@@ -5,10 +5,9 @@ export interface LoginRequest {
   password: string;
 }
 
+/** The tokens themselves come only as httpOnly cookies. */
 export interface LoginResponse {
   message: string;
-  access_token: string;
-  refresh_token: string;
 }
 
 export interface RefreshRequest {

@@ -4,6 +4,7 @@ import logging
 import sys
 
 from flask import Flask, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.errors import RateLimitExceeded
@@ -46,9 +47,10 @@ fs = GridFS(db)
 # JSON API only — the UI is the React app, served by nginx. No static
 # folder, so Flask doesn't register a /static route of its own.
 app = Flask(__name__, static_folder=None)
-# When CORS_ALLOWED_ORIGINS is set, use it as an explicit whitelist.
-# When empty, flask-cors reflects the request Origin header — safe because the
-# frontend (same host via Nginx) does not need to send an Origin header.
+# The React app is served from the same origin (nginx), so it needs no
+# CORS at all. Only an explicit CORS_ALLOWED_ORIGINS list opens the API to
+# other origins; with none, flask-cors used to echo back any Origin with
+# credentials allowed, so SameSite=Lax was all that kept other sites out.
 cors_origins = CORS_CONFIG["allowed_origins"]
 if cors_origins:  # pragma: no cover
     # Only taken when CORS_ALLOWED_ORIGINS is set in the environment;
@@ -57,8 +59,12 @@ if cors_origins:  # pragma: no cover
     # exercising this branch would require reloading web.app itself —
     # which would re-register every blueprint a second time.
     CORS(app, supports_credentials=True, origins=cors_origins)
-else:
-    CORS(app, supports_credentials=True)
+
+# gunicorn sits behind one proxy (the host nginx, see nginx.conf.server),
+# which appends the client's address to X-Forwarded-For. Without this every
+# request came from 127.0.0.1, so the per-IP login limit was one limit
+# shared by everybody: five bad logins a minute locked out the world.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)  # type: ignore[method-assign]
 app.secret_key = FLASK_CONFIG["secret_key"]
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = FLASK_CONFIG["jsonify_prettyprint_regular"]
 app.config["JSON_AS_ASCII"] = FLASK_CONFIG["json_as_ascii"]
@@ -71,6 +77,30 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 # Setup logging
 logger = setup_logging(app)
+
+
+@app.after_request
+def _security_headers(response):
+    """Headers for everything the API sends.
+
+    A file answered from our own origin (a pet photo, a small document)
+    must never run as a page: nosniff stops the browser guessing a type,
+    and the sandbox CSP gives an HTML file that slipped through no
+    scripts, no origin and no framing. A PDF is left without the CSP:
+    the browser's PDF viewer refuses to open inside a sandbox, and its
+    type is checked against the file's first bytes on upload.
+    HSTS keeps browsers on HTTPS after the first visit; it's sent only
+    over HTTPS (behind the proxy, per X-Forwarded-Proto).
+    """
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    # /apidoc (Swagger UI, local only: nginx forwards just /api/) loads its own scripts.
+    if response.mimetype != "application/pdf" and not request.path.startswith("/apidoc"):
+        response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; sandbox")
+    if request.is_secure:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return response
+
 
 # Initialize Flask-Limiter for rate limiting
 # Use memory storage for tests, MongoDB for production
@@ -189,6 +219,9 @@ if _storage.storage_configured():
 # exists, so a user's edits to a builtin type's label/icon/color survive
 # restarts).
 seed_builtin_event_types(db)
+# The admin's own row: every request checks the account is active, and a
+# sign-up must find the admin's login taken.
+security.ensure_default_admin()
 # Pets still on the old alphabetical «+» order get the frequency one.
 reorder_default_tiles(db)
 

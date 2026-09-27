@@ -381,3 +381,15 @@ class TestDataExport:
         _enrich_medication_names({}, records)
 
         assert "medication_name" not in records[0]
+
+
+def test_user_made_labels_and_values_cannot_run_in_the_exported_file():
+    from web.export import _cell, _serialize_html
+
+    body, _, _ = _serialize_html(
+        "<img src=x onerror=alert(1)>", [{"f": "<script>x</script>"}], [("f", "<b onmouseover=x>")]
+    )
+    text = body.decode()
+    assert "<img" not in text and "<script>" not in text and "<b " not in text
+    assert _cell('=HYPERLINK("http://x")').startswith("'")
+    assert _cell("Royal Canin") == "Royal Canin"
