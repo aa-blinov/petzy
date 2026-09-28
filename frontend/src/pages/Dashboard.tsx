@@ -19,12 +19,13 @@ import { NextDoseWidget } from '../components/NextDoseWidget';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { QuickAddSheet } from '../components/QuickAddSheet';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { PendingInvites } from '../components/PendingInvites';
 import { usePetInvites } from '../hooks/usePetInvites';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { selectedPetId, getSelectedPet, pets, isFetched: petsFetched } = usePet();
+  const { selectedPetId, getSelectedPet, pets, isFetched: petsFetched, isError: petsFailed, refetchPets } = usePet();
   const { username } = useSession();
   const { eventTypes } = useEventTypes();
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
@@ -99,6 +100,19 @@ export function Dashboard() {
   // onboarding (which ends by adding the first pet). Someone who opted to
   // wait for a shared pet instead gets a plain explanation, not a feed
   // that offers to log events for a pet that doesn't exist.
+  // The roster didn't load: that says nothing about whether there are
+  // pets, so no onboarding and no «Питомцев пока нет».
+  if (petsFailed) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <h1 className="sr-only">Лента</h1>
+          <LoadError what="питомцев" onRetry={refetchPets} />
+        </div>
+      </div>
+    );
+  }
+
   if (petsFetched && pets.length === 0) {
     // Someone invited to a family's pet answers that first, instead of
     // being walked through adding a pet of their own.
@@ -171,9 +185,7 @@ export function Dashboard() {
             {isLoading ? (
               <DashboardSkeleton />
             ) : error ? (
-              <p style={{ color: 'var(--app-danger-text)', textAlign: 'center', padding: '32px 0' }}>
-                Не удалось загрузить данные
-              </p>
+              <LoadError what="ленту" onRetry={refetch} />
             ) : allItems.length === 0 ? (
               <div style={{
                 textAlign: 'center',

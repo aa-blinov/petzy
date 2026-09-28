@@ -252,7 +252,7 @@ export function EventTypeForm() {
 
         <div className="safe-area-padding">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
-          <Input value={label} onChange={setLabel} placeholder="Например, Игра" clearable />
+          <Input value={label} onChange={setLabel} placeholder="Например, Игра" clearable maxLength={100} />
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
@@ -335,6 +335,7 @@ export function EventTypeForm() {
                   onChange={(v) => updateField(field.key, { label: v })}
                   placeholder="Например, Длительность"
                   clearable
+                  maxLength={100}
                   style={{ marginBottom: '12px' }}
                 />
 
@@ -413,6 +414,7 @@ export function EventTypeForm() {
                 value={chartValueLabel}
                 onChange={setChartValueLabel}
                 placeholder="Подпись оси (например, Вес (кг))"
+                maxLength={50}
               />
             </>
           )}

@@ -191,8 +191,10 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
                 overflowWrap: 'anywhere',
               }}
             >
+              {/* Three lines at most: a 500-character comment filled the
+                  screen; the whole of it is in the record itself. */}
               {config.details(item).map((line, i) => (
-                <span key={i}>
+                <span key={i} className="clamp-3">
                   <strong>{line.label}:</strong> {line.value}
                 </span>
               ))}

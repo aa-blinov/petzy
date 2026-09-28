@@ -71,15 +71,10 @@ def validate_request_data(
 
             logger.warning(f"Validation error in {context}: {e}")
 
-        # Get first error message
-        errors = e.errors()
-        if errors and len(errors) > 0:
-            msg = errors[0].get("msg", str(e))
-            if msg.startswith("Value error, "):
-                msg = msg[len("Value error, ") :]
-            return None, error_response("validation_error", msg)
+        # The first problem, in Russian (the same wording as JSON requests).
+        from web.validation import message_for
 
-        return None, error_response("validation_error", str(e))
+        return None, error_response("validation_error", message_for(e.errors()))
     except Exception as e:
         # Handle other unexpected errors
         if context:

@@ -23,6 +23,7 @@ import {
 } from '../services/documents.service';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
 
@@ -143,6 +144,7 @@ export function DocumentsList() {
   const {
     data: documents = [],
     isLoading,
+    isError,
     refetch,
   } = useQuery({
     ...documentsListQuery(selectedPetId ?? ''),
@@ -280,6 +282,8 @@ export function DocumentsList() {
 
         {isLoading ? (
           <SkeletonList count={3} render={() => <MedicationCardSkeleton />} />
+        ) : isError && documents.length === 0 ? (
+          <LoadError what="документы" onRetry={refetch} />
         ) : documents.length === 0 ? (
           <EmptyState
             icon={FileText}

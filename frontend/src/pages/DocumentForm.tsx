@@ -542,7 +542,7 @@ export function DocumentForm() {
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <Form.Item label="Название" required description={error?.message ? <FieldError message={error.message} /> : undefined}>
-                  <Input {...field} placeholder="Например, Прививка от бешенства" clearable />
+                  <Input {...field} placeholder="Например, Прививка от бешенства" clearable maxLength={100} />
                 </Form.Item>
               )}
             />
@@ -552,7 +552,7 @@ export function DocumentForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item label="Заметка">
-                  <TextArea {...field} placeholder="Необязательно" rows={3} />
+                  <TextArea {...field} placeholder="Необязательно" rows={3} maxLength={500} />
                 </Form.Item>
               )}
             />

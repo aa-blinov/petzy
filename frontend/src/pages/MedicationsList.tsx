@@ -12,6 +12,7 @@ import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
 import { RAN_OUT_MESSAGE, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
@@ -40,7 +41,7 @@ export function MedicationsList() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    const { data: medications = [], isLoading, refetch } = useQuery({
+    const { data: medications = [], isLoading, isError, refetch } = useQuery({
         ...medicationsListQuery(selectedPetId ?? ''),
         enabled: !!selectedPetId,
     });
@@ -261,6 +262,8 @@ export function MedicationsList() {
                         gap={undefined /* use default token gap */}
                         render={() => <MedicationCardSkeleton />}
                     />
+                ) : isError && medications.length === 0 ? (
+                    <LoadError what="лекарства" onRetry={refetch} />
                 ) : medications.length === 0 ? (
                     <EmptyState
                         icon={Pill}

@@ -354,6 +354,7 @@ export function PetForm() {
                   <Input
                     {...field}
                     ref={nameInputRef}
+                    maxLength={100}
                     id="name"
                     placeholder="Имя питомца"
                   />
@@ -406,6 +407,7 @@ export function PetForm() {
                   <Input
                     {...field}
                     ref={breedInputRef}
+                    maxLength={100}
                     id="breed"
                     placeholder={speciesValue ? species.breedPlaceholder : 'Необязательно'}
                   />
@@ -549,6 +551,7 @@ export function PetForm() {
                   <TextArea
                     {...field}
                     ref={healthNotesInputRef}
+                    maxLength={1000}
                     placeholder="Важная информация о здоровье"
                     autoSize={{ minRows: 2, maxRows: 5 }}
                   />

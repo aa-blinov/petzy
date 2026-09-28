@@ -57,7 +57,7 @@ export function CountUp({ to, duration = 600, decimals = 1, suffix = '', classNa
 
   return (
     <span className={className}>
-      {value.toFixed(decimals)}{suffix}
+      {value.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
     </span>
   );
 }

@@ -208,7 +208,10 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               nouns in Russian, so mid-sentence capitals (from the stored
               breed text and genderLabel()) read as an artifact here.
               Doesn't touch the underlying data or other screens. */}
+          {/* Three lines at most: an ordinary breed still reads whole, a
+              100-character one no longer pushes the card to six lines. */}
           <div
+            className="clamp-3"
             style={{
               fontSize: "var(--text-sm)",
               color: "var(--app-text-secondary)",

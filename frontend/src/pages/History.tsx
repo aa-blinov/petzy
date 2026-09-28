@@ -12,6 +12,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 // once a type filter is picked; fetch it then, not on every visit.
 const HistoryChart = lazy(() => import('../components/HistoryChart').then((m) => ({ default: m.HistoryChart })));
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { HistoryFilterSheet, type HistoryFilterOption } from '../components/HistoryFilterSheet';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
@@ -154,11 +155,7 @@ export function History() {
         }
 
         if (error) {
-            return (
-                <p style={{ color: 'var(--app-danger-text)', textAlign: 'center', padding: '32px 0' }}>
-                    Не удалось загрузить данные
-                </p>
-            );
+            return <LoadError what="историю" onRetry={refetch} />;
         }
 
         if (groupedItems.length === 0) {

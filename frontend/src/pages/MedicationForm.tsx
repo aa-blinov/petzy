@@ -292,6 +292,7 @@ export function MedicationForm() {
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. Синулокс"
+                                        maxLength={100}
                                         clearable
                                     />
                                 </Form.Item>
@@ -353,6 +354,7 @@ export function MedicationForm() {
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. 300 мг или 0,5 мг/мл"
+                                        maxLength={50}
                                     />
                                 </Form.Item>
                             )}
@@ -660,6 +662,7 @@ export function MedicationForm() {
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. от кашля"
+                                        maxLength={500}
                                         style={{ '--text-align': 'left' }}
                                     />
                                 </Form.Item>

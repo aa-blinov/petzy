@@ -119,11 +119,16 @@ limiter = Limiter(
 )
 
 # Initialize FlaskPydanticSpec for OpenAPI documentation and Pydantic validation
+from web.validation import before_request_validation  # noqa: E402
+
 api = FlaskPydanticSpec(
     "flask",
     title="Pet Health Control API",
     version="1.0.0",
     path="apidoc",
+    # A request that fails validation answers in the usual error shape, in
+    # Russian (web/validation.py), not with pydantic's raw English list.
+    before=before_request_validation,
 )
 
 
