@@ -8,8 +8,9 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 
 /**
  * «Политика конфиденциальности» (/privacy) and «Согласие на обработку
- * персональных данных» (/consent), for the RU region (152-ФЗ). The consent
- * is its own page: the law wants it apart from any other document.
+ * персональных данных» (/consent), for users in Russia (152-ФЗ) and Kazakhstan
+ * (Law No. 94-V). The consent is its own page: 152-ФЗ wants it apart from any
+ * other document.
  *
  * Who the operator is, how to reach them and where the database server
  * stands come from the server (PRIVACY_* env, see web/legal.py). A change
@@ -19,12 +20,15 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const NOT_SET = 'пока не указан';
 
-/** Where the data goes outside Russia: the server's country (unless it's
-    Russia itself), the file store, the error reports. */
-function abroadCountries(info?: LegalInfo) {
+/** Where the data goes outside ``home``: the server's country (unless it is
+    ``home`` itself), the file store, the error reports. */
+function abroadFrom(home: string, info?: LegalInfo) {
   const server = info?.server_location?.trim();
-  return [...(server && server.toLowerCase() !== 'россия' ? [server] : []), 'Нидерланды', 'Германия'];
+  return [...(server && server.toLowerCase() !== home.toLowerCase() ? [server] : []), 'Нидерланды', 'Германия'];
 }
+
+const RU_LAW = 'Федеральный закон от 27.07.2006 № 152-ФЗ «О персональных данных»';
+const KZ_LAW = 'Закон Республики Казахстан от 21.05.2013 № 94-V «О персональных данных и их защите»';
 
 /** A version is its date, with «.2» and so on for a second wording that day. */
 function formatVersion(version: string) {
@@ -94,6 +98,10 @@ export function PrivacyPolicy() {
             В Petzy ведут дневник здоровья питомца: кормление, вес, лекарства, документы. Здесь написано, какие данные о
             вас при этом хранятся, зачем, где и как их удалить.
           </p>
+          <p>
+            Политика действует для пользователей из России и Казахстана. Общие правила одни для всех, а там, где законы
+            двух стран различаются, это написано отдельно.
+          </p>
 
           <h2>Кто обрабатывает данные</h2>
           <p>
@@ -131,9 +139,12 @@ export function PrivacyPolicy() {
 
           <h2>Основание</h2>
           <p>
-            Ваше <Link to="/consent">согласие на обработку персональных данных</Link>, которое вы даёте при регистрации
-            (пункт 1 части 1 статьи 6 Федерального закона № 152-ФЗ «О персональных данных»).
+            Ваше <Link to="/consent">согласие на обработку персональных данных</Link>, которое вы даёте при регистрации.
           </p>
+          <ul>
+            <li>В России: пункт 1 части 1 статьи 6 {RU_LAW.replace('Федеральный закон', 'Федерального закона')}.</li>
+            <li>В Казахстане: {KZ_LAW}.</li>
+          </ul>
 
           <h2>Где хранятся данные и кто их видит</h2>
           <ul>
@@ -150,10 +161,12 @@ export function PrivacyPolicy() {
             </li>
             <li>Люди, с которыми вы делитесь питомцем, видят его карточку, записи и ваш логин рядом с вашими записями.</li>
           </ul>
-          <p>
-            Данные хранятся за пределами России: {abroadCountries(info).join(', ')}. Это передача данных за границу.
-            Больше данные никому не передаются, если этого не требует закон.
-          </p>
+          <p>Часть данных хранится за границей, то есть передаётся в другие страны:</p>
+          <ul>
+            <li>для пользователей из России: {abroadFrom('Россия', info).join(', ')};</li>
+            <li>для пользователей из Казахстана: {abroadFrom('Казахстан', info).join(', ')}.</li>
+          </ul>
+          <p>Больше данные никому не передаются, если этого не требует закон.</p>
 
           <h2>Сколько хранятся</h2>
           <ul>
@@ -178,10 +191,16 @@ export function PrivacyPolicy() {
               хранить ваши данные, поэтому отзыв согласия означает удаление аккаунта.
             </li>
             <li>
-              Узнать, как обрабатываются ваши данные: <WriteTo info={info} />. Ответ придёт в течение 10
-              рабочих дней.
+              Узнать, как обрабатываются ваши данные: <WriteTo info={info} />. Ответ придёт в срок, который задаёт закон
+              вашей страны.
             </li>
-            <li>Пожаловаться в Роскомнадзор, если считаете, что ваши права нарушены.</li>
+          </ul>
+          <p>Если считаете, что ваши права нарушены, можно пожаловаться:</p>
+          <ul>
+            <li>
+              в России: в Роскомнадзор или в суд. На запрос о ваших данных оператор отвечает в течение 10 рабочих дней;
+            </li>
+            <li>в Казахстане: в уполномоченный орган в сфере защиты персональных данных или в суд.</li>
           </ul>
 
           <h2>Cookies и хранилище браузера</h2>
@@ -223,6 +242,10 @@ export function PrivacyConsent() {
             ) на обработку моих персональных данных на условиях ниже и{' '}
             <Link to="/privacy">политики конфиденциальности</Link>.
           </p>
+          <p>
+            Согласие даётся в соответствии с законом страны, где я живу: для России это {RU_LAW}, для Казахстана это{' '}
+            {KZ_LAW}.
+          </p>
 
           <h2>Какие данные</h2>
           <p>
@@ -247,7 +270,8 @@ export function PrivacyConsent() {
           <p>
             Хостинг, где работают приложение и база данных: {info?.server_location || NOT_SET}. Backblaze, Inc.: хранение
             файлов и резервных копий, Нидерланды. Functional Software, Inc. (Sentry): отчёты об ошибках, Германия.
-            Почтовый сервис оператора: отправка писем. Даю согласие на передачу данных в эти страны.
+            Почтовый сервис оператора: отправка писем. Даю согласие на передачу данных в эти страны, в том числе на
+            трансграничную передачу.
           </p>
 
           <h2>Срок и отзыв</h2>
