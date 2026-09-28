@@ -64,10 +64,11 @@ jobs:
               echo "all of Docker:   $(size /var/lib/docker)"
               echo "home folders:    $(size /home)"
               echo "root's home:     $(size /root)"
-              echo "  of which caches (.cache, .npm): $(size /root/.cache) / $(size /root/.npm)"
-              echo "  of which this project's folder: $(size /root/services/cat-health-control-bot)"
-              echo "  of which the project's .git:    $(size /root/services/cat-health-control-bot/.git)"
-              echo "  of which the project's node_modules: $(size /root/services/cat-health-control-bot/frontend/node_modules)"
+              # The largest items in the admin's home, named only when the name is
+              # a well-known tool's (an editor's server, a cache); others «other».
+              docker run --rm -v /root:/r:ro alpine:3.24 sh -c 'cd /r && du -sm .[!.]* * 2>/dev/null | sort -rn | head -8' 2>/dev/null \
+                | awk 'BEGIN { split(".cache .npm .vscode-server .cursor-server .windsurf-server .local .docker .nvm .pyenv .rustup .cargo go snap services .git node_modules", k, " "); for (i in k) known[k[i]] = 1 }
+                       { name = ($2 in known) ? $2 : "other"; printf "  %6d MB  %s\n", $1, name }'
               echo "temporary files: $(size /tmp)"
               echo "the system:      $(size /usr)"
             fi
