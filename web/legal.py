@@ -27,9 +27,11 @@ from web.security import login_required
 
 legal_bp = Blueprint("legal", __name__)
 
-# The date of the current wording. Bump it when the policy or the consent
-# text changes in substance: everyone is asked to agree again.
-PRIVACY_POLICY_VERSION = "2026-09-28"
+# The date of the current wording («.2» for a second one that day). Bump it
+# when the policy or the consent text changes in substance: everyone is
+# asked to agree again.
+# 2026-09-28.2: the server's country among the countries data goes to.
+PRIVACY_POLICY_VERSION = "2026-09-28.2"
 
 
 def consent_record() -> dict:

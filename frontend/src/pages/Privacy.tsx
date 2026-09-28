@@ -18,8 +18,16 @@ import { goBack } from '../utils/navigation';
 
 const NOT_SET = 'пока не указан';
 
+/** Where the data goes outside Russia: the server's country (unless it's
+    Russia itself), the file store, the error reports. */
+function abroadCountries(info?: LegalInfo) {
+  const server = info?.server_location?.trim();
+  return [...(server && server.toLowerCase() !== 'россия' ? [server] : []), 'Нидерланды', 'Германия'];
+}
+
+/** A version is its date, with «.2» and so on for a second wording that day. */
 function formatVersion(version: string) {
-  const date = new Date(`${version}T00:00:00`);
+  const date = new Date(`${version.slice(0, 10)}T00:00:00`);
   return Number.isNaN(date.getTime())
     ? version
     : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -137,9 +145,8 @@ export function PrivacyPolicy() {
             <li>Люди, с которыми вы делитесь питомцем, видят его карточку, записи и ваш логин рядом с вашими записями.</li>
           </ul>
           <p>
-            Хранение в Нидерландах и Германии означает передачу данных за границу. Обе страны участвуют в Конвенции
-            Совета Европы о защите физических лиц при автоматизированной обработке персональных данных. Больше данные
-            никому не передаются, если этого не требует закон.
+            Данные хранятся за пределами России: {abroadCountries(info).join(', ')}. Это передача данных за границу.
+            Больше данные никому не передаются, если этого не требует закон.
           </p>
 
           <h2>Сколько хранятся</h2>
@@ -232,8 +239,9 @@ export function PrivacyConsent() {
 
           <h2>Кому передаются</h2>
           <p>
-            Backblaze, Inc.: хранение файлов и резервных копий, Нидерланды. Functional Software, Inc. (Sentry): отчёты об
-            ошибках, Германия. Почтовый сервис оператора: отправка писем. Даю согласие на передачу данных в эти страны.
+            Хостинг, где работают приложение и база данных: {info?.server_location || NOT_SET}. Backblaze, Inc.: хранение
+            файлов и резервных копий, Нидерланды. Functional Software, Inc. (Sentry): отчёты об ошибках, Германия.
+            Почтовый сервис оператора: отправка писем. Даю согласие на передачу данных в эти страны.
           </p>
 
           <h2>Срок и отзыв</h2>
