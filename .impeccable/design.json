@@ -1,0 +1,543 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T12:16:42+00:00",
+  "title": "Design System: Petzy",
+  "extensions": {
+    "colorMeta": {
+      "ginger-cat": {
+        "role": "primary",
+        "displayName": "Ginger Cat (Рыжий кот)",
+        "canonical": "oklch(61.9% 0.128 45.0)",
+        "tonalRamp": [
+          "#190400",
+          "#411500",
+          "#6E2A00",
+          "#9A4415",
+          "#C0663B",
+          "#E7895E",
+          "#FEB695",
+          "#FEEAE0"
+        ]
+      },
+      "ginger-deep": {
+        "role": "primary",
+        "displayName": "Ginger Deep",
+        "canonical": "oklch(55.6% 0.123 44.4)",
+        "tonalRamp": [
+          "#1A0400",
+          "#411601",
+          "#6F2900",
+          "#98461C",
+          "#BE6840",
+          "#E58B62",
+          "#FEB696",
+          "#FEEAE1"
+        ]
+      },
+      "copper-ink": {
+        "role": "primary",
+        "displayName": "Copper Ink",
+        "canonical": "oklch(52.0% 0.118 43.9)",
+        "tonalRamp": [
+          "#190400",
+          "#421501",
+          "#6F2900",
+          "#964721",
+          "#BC6944",
+          "#E28C66",
+          "#FFB596",
+          "#FFE9E1"
+        ]
+      },
+      "peach-fur": {
+        "role": "primary",
+        "displayName": "Peach Fur",
+        "canonical": "oklch(74.3% 0.116 47.0)",
+        "tonalRamp": [
+          "#190500",
+          "#401701",
+          "#6C2C01",
+          "#95491E",
+          "#BA6A41",
+          "#E08D64",
+          "#FFB692",
+          "#FEEAE0"
+        ]
+      },
+      "apricot-wash": {
+        "role": "primary",
+        "displayName": "Apricot Wash",
+        "canonical": "oklch(95.9% 0.019 62.5)",
+        "tonalRamp": [
+          "#110904",
+          "#2C231C",
+          "#4A4038",
+          "#695F56",
+          "#8B8077",
+          "#AEA399",
+          "#D3C7BD",
+          "#F8ECE2"
+        ]
+      },
+      "cream-paper": {
+        "role": "neutral",
+        "displayName": "Cream Paper",
+        "canonical": "oklch(97.4% 0.010 81.8)",
+        "tonalRamp": [
+          "#0D0B07",
+          "#272520",
+          "#45423C",
+          "#64615B",
+          "#85827C",
+          "#A8A49E",
+          "#CCC9C2",
+          "#F2EEE7"
+        ]
+      },
+      "milk-card": {
+        "role": "neutral",
+        "displayName": "Milk Card",
+        "canonical": "oklch(99.1% 0.008 91.5)",
+        "tonalRamp": [
+          "#0C0B08",
+          "#262521",
+          "#43423D",
+          "#63615C",
+          "#84827D",
+          "#A7A59F",
+          "#CBC9C3",
+          "#F0EEE9"
+        ]
+      },
+      "oat-line": {
+        "role": "neutral",
+        "displayName": "Oat Line",
+        "canonical": "oklch(93.5% 0.017 84.6)",
+        "tonalRamp": [
+          "#0E0B04",
+          "#29241C",
+          "#464138",
+          "#666156",
+          "#878277",
+          "#AAA499",
+          "#CEC8BD",
+          "#F4EEE2"
+        ]
+      },
+      "oat-divider": {
+        "role": "neutral",
+        "displayName": "Oat Divider",
+        "canonical": "oklch(90.4% 0.021 88.7)",
+        "tonalRamp": [
+          "#0F0B03",
+          "#292519",
+          "#464235",
+          "#666154",
+          "#878274",
+          "#AAA597",
+          "#CFC9BA",
+          "#F4EEDF"
+        ]
+      },
+      "espresso-ink": {
+        "role": "neutral",
+        "displayName": "Espresso Ink",
+        "canonical": "oklch(22.5% 0.011 73.3)",
+        "tonalRamp": [
+          "#0E0A06",
+          "#28241F",
+          "#46413C",
+          "#65605A",
+          "#86817B",
+          "#A9A49E",
+          "#CEC8C1",
+          "#F3EDE7"
+        ]
+      },
+      "driftwood": {
+        "role": "neutral",
+        "displayName": "Driftwood",
+        "canonical": "oklch(51.8% 0.018 73.5)",
+        "tonalRamp": [
+          "#100A04",
+          "#2A241B",
+          "#484138",
+          "#686056",
+          "#898177",
+          "#ACA499",
+          "#D0C8BD",
+          "#F6EDE2"
+        ]
+      },
+      "pebble": {
+        "role": "neutral",
+        "displayName": "Pebble",
+        "canonical": "oklch(54.4% 0.022 72.4)",
+        "tonalRamp": [
+          "#110A03",
+          "#2C2319",
+          "#494035",
+          "#695F54",
+          "#8B8174",
+          "#AEA396",
+          "#D2C7BA",
+          "#F8EDDF"
+        ]
+      },
+      "on-fill": {
+        "role": "neutral",
+        "displayName": "On Fill",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "alarm-red": {
+        "role": "status",
+        "displayName": "Alarm Red",
+        "canonical": "oklch(50.1% 0.178 28.7)",
+        "tonalRamp": [
+          "#1F0000",
+          "#4D0001",
+          "#800103",
+          "#B0231B",
+          "#D84C3F",
+          "#FE7464",
+          "#FEB3A8",
+          "#FEE9E5"
+        ]
+      },
+      "amber-note": {
+        "role": "status",
+        "displayName": "Amber Note",
+        "canonical": "oklch(52.5% 0.120 62.7)",
+        "tonalRamp": [
+          "#150800",
+          "#391D00",
+          "#613601",
+          "#8D5002",
+          "#B47029",
+          "#DA934F",
+          "#FEB879",
+          "#FFEAD9"
+        ]
+      },
+      "meadow-green": {
+        "role": "status",
+        "displayName": "Meadow Green",
+        "canonical": "oklch(51.2% 0.127 149.7)",
+        "tonalRamp": [
+          "#001003",
+          "#002E10",
+          "#005120",
+          "#167437",
+          "#419757",
+          "#66BB79",
+          "#8AE09C",
+          "#C8FFD1"
+        ]
+      },
+      "sky-note": {
+        "role": "status",
+        "displayName": "Sky Note",
+        "canonical": "oklch(50.7% 0.172 255.8)",
+        "tonalRamp": [
+          "#000A20",
+          "#00244F",
+          "#004084",
+          "#025EBC",
+          "#2F81E6",
+          "#64A7FF",
+          "#A6CCFF",
+          "#E4F0FF"
+        ]
+      },
+      "night-hearth": {
+        "role": "neutral",
+        "displayName": "Night Hearth",
+        "canonical": "oklch(20.7% 0.008 67.4)",
+        "tonalRamp": [
+          "#0D0B08",
+          "#282421",
+          "#45413E",
+          "#64605C",
+          "#86817D",
+          "#A8A4A0",
+          "#CDC8C4",
+          "#F2EEE9"
+        ]
+      },
+      "night-card": {
+        "role": "neutral",
+        "displayName": "Night Card",
+        "canonical": "oklch(25.5% 0.006 56.1)",
+        "tonalRamp": [
+          "#0D0B09",
+          "#272422",
+          "#45413F",
+          "#64605E",
+          "#85817F",
+          "#A8A4A1",
+          "#CCC8C5",
+          "#F2EDEB"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "oklch(95.4% 0.017 84.6)",
+        "tonalRamp": [
+          "#0E0B04",
+          "#29241C",
+          "#464138",
+          "#666156",
+          "#878277",
+          "#AAA499",
+          "#CEC8BD",
+          "#F4EEE2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "«Petzy» only, in the brand gradient."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "The page title, one per screen."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headers inside a page."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Record times, medicine and pet names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Values and inputs (16px: no iOS zoom)."
+      },
+      "secondary": {
+        "displayName": "Secondary",
+        "purpose": "Hints, meta lines, chips."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tile captions on the pet card."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheet",
+        "value": "0 2px 8px rgba(60, 40, 20, 0.06)",
+        "purpose": "Cards and the top bar."
+      },
+      {
+        "name": "hairline",
+        "value": "0 1px 3px rgba(60, 40, 20, 0.04)",
+        "purpose": "Small raised pieces inside a sheet."
+      },
+      {
+        "name": "float",
+        "value": "0 6px 24px rgba(60, 40, 20, 0.10)",
+        "purpose": "Popups, sheets, dialogs."
+      },
+      {
+        "name": "copper-glow",
+        "value": "0 4px 16px rgba(173, 88, 48, 0.45)",
+        "purpose": "The add button only."
+      },
+      {
+        "name": "sheet-dark",
+        "value": "0 4px 12px rgba(0, 0, 0, 0.4)",
+        "purpose": "Cards in the dark theme."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-instant",
+        "value": "80ms",
+        "purpose": "Press feedback."
+      },
+      {
+        "name": "duration-fast",
+        "value": "160ms",
+        "purpose": "Colour changes, taps, going back."
+      },
+      {
+        "name": "duration-base",
+        "value": "240ms",
+        "purpose": "Screen and step entrances."
+      },
+      {
+        "name": "duration-slow",
+        "value": "320ms",
+        "purpose": "Springs after a drag, illustrations."
+      },
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Everyday state changes."
+      },
+      {
+        "name": "ease-decelerate",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "Elements coming in."
+      },
+      {
+        "name": "ease-emphasized",
+        "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Popups and primary taps."
+      },
+      {
+        "name": "ease-spring",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "purpose": "A dragged row springing back; the active tab icon."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow-phone",
+        "value": "max-width: 359px"
+      },
+      {
+        "name": "phone-landscape",
+        "value": "landscape and max-height: 500px"
+      },
+      {
+        "name": "wide",
+        "value": "min-width: 1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of a form or screen: full width, 48px.",
+      "html": "<button class=\"ds-btn-primary\">Создать</button>",
+      "css": ".ds-btn-primary{width:100%;height:48px;border:none;border-radius:12px;background:#AD5830;color:#FFFFFF;font:600 17px/1 Outfit,-apple-system,system-ui,sans-serif;cursor:pointer;transition:transform 80ms cubic-bezier(0.2,0,0,1),opacity 80ms cubic-bezier(0.2,0,0,1)}.ds-btn-primary:hover{opacity:.92}.ds-btn-primary:active{transform:scale(.98);opacity:.85}.ds-btn-primary:focus-visible{outline:2px solid #C46A3F;outline-offset:2px}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "A secondary action inside a card: «Отметить приём», «Пополнить».",
+      "html": "<button class=\"ds-btn-outline\">Отметить приём (1 таб)</button>",
+      "css": ".ds-btn-outline{width:100%;min-height:40px;padding:3px 12px;border:1px solid #AD5830;border-radius:12px;background:transparent;color:#AD5830;font:400 16px/1.3 Outfit,-apple-system,system-ui,sans-serif;cursor:pointer;transition:transform 80ms cubic-bezier(0.2,0,0,1),background-color 160ms cubic-bezier(0.2,0,0,1)}.ds-btn-outline:hover{background:#FBEFE5}.ds-btn-outline:active{transform:scale(.98)}.ds-btn-outline:focus-visible{outline:2px solid #C46A3F;outline-offset:2px}"
+    },
+    {
+      "name": "Sheet (card)",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The container everything sits in: a flat milk-white sheet on cream paper.",
+      "html": "<div class=\"ds-page\"><div class=\"ds-card\"><div class=\"ds-card-title\">Дронтал Плюс</div><div class=\"ds-card-meta\">Таблетка, по 1 таб</div></div></div>",
+      "css": ".ds-page{background:#FAF6EF;padding:16px}.ds-card{background:#FEFCF6;border:1px solid #EFE9DD;border-radius:16px;box-shadow:0 2px 8px rgba(60,40,20,.06);padding:16px;transition:border-color 160ms cubic-bezier(0.2,0,0,1)}.ds-card-title{font:600 17px/1.3 Outfit,-apple-system,system-ui,sans-serif;color:#1F1B16}.ds-card-meta{margin-top:4px;font:400 14px/1.45 Outfit,-apple-system,system-ui,sans-serif;color:#6F675D}"
+    },
+    {
+      "name": "Form row",
+      "kind": "input",
+      "refersTo": "card",
+      "description": "A labelled field in a form sheet: label left, value right, oat divider below.",
+      "html": "<label class=\"ds-row\"><span class=\"ds-row-label\">Название</span><input class=\"ds-row-input\" placeholder=\"Напр. Синулокс\"></label>",
+      "css": ".ds-row{display:flex;align-items:center;gap:16px;padding:14px 16px;background:#FEFCF6;border-bottom:1px solid #E5DFD0}.ds-row-label{flex:0 0 96px;font:400 15px/1.4 Outfit,-apple-system,system-ui,sans-serif;color:#6F675D}.ds-row-input{flex:1;min-width:0;border:none;background:transparent;font:400 16px/1.5 Outfit,-apple-system,system-ui,sans-serif;color:#1F1B16;outline:none}.ds-row-input::placeholder{color:#786E62}.ds-row:focus-within{background:#FBEFE5}"
+    },
+    {
+      "name": "Choice chips",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Weekday and option chips; selected fills with deep copper.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip ds-chip--on\">Пн</button><button class=\"ds-chip ds-chip--on\">Вт</button><button class=\"ds-chip\">Ср</button></div>",
+      "css": ".ds-chips{display:flex;gap:6px}.ds-chip{min-width:44px;min-height:35px;padding:8px 4px;border:1px solid #EFE9DD;border-radius:8px;background:transparent;color:#6F675D;font:400 14px/1.2 Outfit,-apple-system,system-ui,sans-serif;cursor:pointer;transition:background-color 160ms cubic-bezier(0.2,0,0,1)}.ds-chip:hover{border-color:#AD5830}.ds-chip--on{background:#AD5830;border-color:#AD5830;color:#FFFFFF;font-weight:600}.ds-chip:focus-visible{outline:2px solid #C46A3F;outline-offset:2px}"
+    },
+    {
+      "name": "Tab bar",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Five sections at the bottom of a phone (a left rail from 1024px).",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab ds-tab--on\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 7v14\"/><path d=\"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z\"/></svg><span>Лента</span></a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\"/><path d=\"m8.5 8.5 7 7\"/></svg><span>Лекарства</span></a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/></svg><span>История</span></a></nav>",
+      "css": ".ds-tabs{display:flex;height:50px;background:#FEFCF6;border-top:1px solid #EFE9DD}.ds-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#6F675D;text-decoration:none;font:500 11px/15px Outfit,-apple-system,system-ui,sans-serif;border-radius:12px;transition:color 160ms cubic-bezier(0.2,0,0,1)}.ds-tab svg{transition:transform 160ms cubic-bezier(0.34,1.56,0.64,1)}.ds-tab--on{color:#AD5830}.ds-tab--on svg{transform:scale(1.12)}.ds-tab:hover{color:#1F1B16}.ds-tab:focus-visible{outline:2px solid #C46A3F;outline-offset:-2px}"
+    },
+    {
+      "name": "Record pill",
+      "kind": "custom",
+      "refersTo": "record-pill",
+      "description": "The feed's signature: a pastel tile naming the record type, beside its time and values.",
+      "html": "<div class=\"ds-record\"><div class=\"ds-pill\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z\"/><path d=\"m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z\"/><path d=\"M7 21h10\"/><path d=\"M12 3v18\"/><path d=\"M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2\"/></svg></div><div><div class=\"ds-record-time\">сегодня в 10:57</div><div class=\"ds-record-value\"><b>Вес:</b> 29,1 кг</div></div></div>",
+      "css": ".ds-record{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;background:#FEFCF6;border:1px solid #EFE9DD;border-radius:16px;box-shadow:0 2px 8px rgba(60,40,20,.06)}.ds-pill{width:44px;height:44px;flex-shrink:0;border-radius:14px;display:grid;place-items:center;background:#FFE3B8;color:#1F1B16}.ds-record-time{font:600 16px/1.3 Outfit,-apple-system,system-ui,sans-serif;color:#1F1B16}.ds-record-value{margin-top:4px;font:400 14px/1.45 Outfit,-apple-system,system-ui,sans-serif;color:#1F1B16}"
+    },
+    {
+      "name": "Add button",
+      "kind": "button",
+      "refersTo": "add-button",
+      "description": "The feed's round «+»: the only floating control, with the copper glow.",
+      "html": "<button class=\"ds-fab\" aria-label=\"Добавить запись\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg></button>",
+      "css": ".ds-fab{width:56px;height:56px;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#AD5830;color:#FFFFFF;box-shadow:0 4px 16px rgba(173,88,48,.45);cursor:pointer;transition:transform 80ms cubic-bezier(0.2,0,0,1)}.ds-fab:active{transform:scale(.94)}.ds-fab:focus-visible{outline:2px solid #C46A3F;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Warm Notebook",
+    "overview": "**Creative North Star: \"The Warm Notebook\"**\n\nPetzy is a diary someone keeps for the animal they live with: feedings, weight, medicines, the vet's papers. The system reads like that diary kept well. Cream paper (cream-paper) holds milk-white sheets (milk-card). Everything important is written in one ginger copper ink, the colour of a ginger cat (ginger-cat), and nothing on the page competes with it. People open the app on an ordinary morning to tick off a dose, and on a bad night when the pet is ill; the mood holds for both: calm and caring, never loud.\n\nDensity is moderate and scannable. A screen is one column of sheets (at most 800px wide), each answering one question: what the pet is, what is due now, what happened today. Records carry a small pastel pill with an icon so a feed of weights, meals and pills can be read by colour at a glance, while copper stays reserved for action and state.\n\nPersonality lives in two places only: the bubbly DynaPuff wordmark «Petzy» and the per-species photo placeholders. Everything else is quiet, rounded, and precise.",
+    "keyCharacteristics": [
+      "One accent: ginger copper, deepened wherever it carries text or white type.",
+      "Warm neutrals throughout: no pure grey, no pure black text, no pure white page.",
+      "Sheets lie flat on the paper; only floating layers cast a real shadow.",
+      "One ladder of radii and spacing (4/8/12/16/24), used concentrically.",
+      "Russian first: Cyrillic runs in the system face, Outfit sets digits and Latin.",
+      "Light and dark are one system: every colour has a dark counterpart by role."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Copper is the only accent. A new screen gets its emphasis from copper, weight and size, never from a second brand colour. Record pastels identify a record type; they never mark an action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Deep-for-Text Rule",
+        "body": "Wherever copper carries type or sits under white type, use ginger-deep or copper-ink, never ginger-cat.",
+        "section": "colors"
+      },
+      {
+        "name": "The Units-Beside-Values Rule",
+        "body": "Numbers are Russian-formatted («29,1 кг», «4,8»), with the unit next to the value, in charts, tooltips and chips alike.",
+        "section": "typography"
+      },
+      {
+        "name": "The Concentric Rule",
+        "body": "A rounded element inset in a rounded parent takes the radius one rung down the ladder for the spacing between them (a 24px card padded 12px holds 12px children).",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Sheet Rule",
+        "body": "A card never animates its elevation. Feedback on press is a dim or a 0.98 scale, never a lift.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep copper as the only accent; use ginger-deep (#AD5830) for copper text and fills under white type.",
+      "Do build screens as one column of milk-card sheets on cream-paper, 16px radius, 16px padding.",
+      "Do take radii and spacing from the one ladder (4/8/12/16/24) and nest radii concentrically.",
+      "Do give every colour a dark-theme counterpart by role, with dark text on the dark theme's light fills.",
+      "Do write numbers the Russian way with the unit beside them («29,1 кг»).",
+      "Do keep touch targets at 44px, even for small chips, grips and links."
+    ],
+    "donts": [
+      "Don't put ginger-cat (#C46A3F) under white text or use it as text on cream.",
+      "Don't add a second brand colour or use a record pastel to mark an action or state.",
+      "Don't lift, move or re-shadow a card on press.",
+      "Don't use DynaPuff for anything but the «Petzy» wordmark, or gradient text anywhere else.",
+      "Don't join facts with a middle dot («·»); separate them with layout or a comma.",
+      "Don't use pure grey neutrals, pure black text or a pure white page."
+    ]
+  }
+}
