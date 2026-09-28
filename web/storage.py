@@ -134,9 +134,14 @@ def key_prefix() -> str:
     return f"{prefix}/" if prefix else ""
 
 
+def user_prefix(db, username: str) -> str:
+    """Everything stored for one user's pets: users/<id>/."""
+    return f"{key_prefix()}users/{owner_id(db, username)}/"
+
+
 def pet_prefix(db, owner_username: str, pet_id) -> str:
     """Everything stored for one pet: users/<owner id>/pets/<pet id>/."""
-    return f"{key_prefix()}users/{owner_id(db, owner_username)}/pets/{_SAFE.sub('_', str(pet_id))}/"
+    return f"{user_prefix(db, owner_username)}pets/{_SAFE.sub('_', str(pet_id))}/"
 
 
 def new_key(db, owner_username: str, pet_id, kind: str, ext: str) -> str:
@@ -186,6 +191,11 @@ def list_objects(prefix: str) -> list[dict]:
         if not page.get("IsTruncated"):
             return found
         kwargs["ContinuationToken"] = page["NextContinuationToken"]
+
+
+def copy_object(source: str, target: str) -> None:
+    """Copy the current version of ``source`` to ``target`` inside the bucket."""
+    _client().copy_object(Bucket=_bucket(), Key=target, CopySource={"Bucket": _bucket(), "Key": source})
 
 
 def get_bytes(key: str) -> tuple[bytes, str]:

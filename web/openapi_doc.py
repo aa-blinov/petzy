@@ -37,6 +37,12 @@ API дневника здоровья питомцев Petzy: питомцы, з
 
 Аккаунт создаётся через `POST /api/auth/register`. Открыта ли регистрация и работает ли почта, скажет `GET /api/auth/registration`.
 
+## Персональные данные
+
+- Регистрация требует `full_name`, `email` (когда `mail_enabled`) и `"privacy_consent": true`: покажите пользователю галочку со ссылками на согласие (`https://petzy.duckdns.org/consent`) и политику (`https://petzy.duckdns.org/privacy`). Без неё ответ 422 `privacy_consent_required`.
+- `GET /api/me/account` отвечает `privacy_consent_needed: true`, если человек ещё не согласился с текущей редакцией (аккаунт создан администратором или политика изменилась). Спросите согласие и отправьте `POST /api/me/privacy-consent` с `version` из `GET /api/legal`.
+- Удаление аккаунта: `GET /api/me/account/deletion` покажет, какие питомцы удалятся, какие перейдут другим людям и к каким пропадёт доступ. `DELETE /api/me/account` с `{"password": "..."}` удаляет насовсем, все токены перестают работать.
+
 ## Ошибки
 
 Тело ошибки: `{"success": false, "error": "текст для человека", "code": "машинный_код"}`. Показывайте пользователю `error`, а решения принимайте по `code`. Ошибка разбора тела запроса (422 от валидатора) может прийти списком нарушений.
@@ -86,7 +92,7 @@ TAGS = [
     {
         "name": "account",
         "x-displayName": "Аккаунт",
-        "description": "Свой аккаунт: почта, пароль, восстановление по почте",
+        "description": "Свой аккаунт: почта, пароль, восстановление по почте, удаление, согласие на обработку данных",
     },
     {"name": "pets", "x-displayName": "Питомцы", "description": "Питомцы, фото, общий доступ и приглашения"},
     {
@@ -124,6 +130,7 @@ PUBLIC = {
     ("post", "/api/auth/password/forgot"),
     ("post", "/api/auth/password/reset"),
     ("post", "/api/auth/email/verify"),
+    ("get", "/api/legal"),
 }
 
 _BINARY = {"type": "string", "format": "binary"}

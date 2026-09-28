@@ -43,6 +43,8 @@ def test_a_page_never_gets_tokens_in_the_body(client):
 
 def test_a_native_sign_up_returns_tokens(client):
     response = client.post(
-        "/api/auth/register", json={"username": "native1", "password": "kotik-2026"}, headers=_from()
+        "/api/auth/register",
+        json={"username": "native1", "password": "kotik-2026", "full_name": "Вера", "privacy_consent": True},
+        headers=_from(),
     )
     assert response.status_code == 201 and response.get_json()["refresh_token"]

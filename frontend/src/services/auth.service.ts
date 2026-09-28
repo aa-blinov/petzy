@@ -27,9 +27,11 @@ export interface SessionResponse {
 export interface RegisterRequest {
   username: string;
   password: string;
-  full_name?: string;
-  /** For password recovery; confirmed by a letter. */
+  full_name: string;
+  /** For password recovery; confirmed by a letter. Required while mail works. */
   email?: string;
+  /** Consent to personal data processing (/consent); required. */
+  privacy_consent: boolean;
 }
 
 export interface RegistrationStatus {

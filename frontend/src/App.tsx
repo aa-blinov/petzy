@@ -8,6 +8,7 @@ import { setSessionExpiredHandler } from './services/api';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { BottomTabBar } from './components/BottomTabBar';
+import { PrivacyConsentGate } from './components/PrivacyConsentGate';
 import { ThemeProvider } from './components/ThemeProvider';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -35,6 +36,9 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ de
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
 const AccountEmail = lazy(() => import('./pages/AccountEmail').then(m => ({ default: m.AccountEmail })));
 const AccountPassword = lazy(() => import('./pages/AccountPassword').then(m => ({ default: m.AccountPassword })));
+const PrivacyPolicy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.PrivacyPolicy })));
+const PrivacyConsent = lazy(() => import('./pages/Privacy').then(m => ({ default: m.PrivacyConsent })));
+const AccountDelete = lazy(() => import('./pages/AccountDelete').then(m => ({ default: m.AccountDelete })));
 const loadDashboard = () => import('./pages/Dashboard');
 const Dashboard = lazy(() => loadDashboard().then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
@@ -204,6 +208,7 @@ function AppRoutes() {
       <FormDefaultsSync />
       <UpdateOnMainTabs />
       <SentryUser />
+      <PrivacyConsentGate />
       <UndoSnackbar />
       <Navbar />
       <RouteFocus />
@@ -212,6 +217,8 @@ function AppRoutes() {
           <RouteTransition>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/consent" element={<PrivacyConsent />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -381,6 +388,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <AccountPassword />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/delete-account"
+                element={
+                  <ProtectedRoute>
+                    <AccountDelete />
                   </ProtectedRoute>
                 }
               />

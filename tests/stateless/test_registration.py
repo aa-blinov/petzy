@@ -14,7 +14,11 @@ def _register(client, username="vera", password="kotik-2026", **extra):
     # Each call from its own address: the sign-up limit is per address and
     # shared by the whole test run.
     who = {"X-Forwarded-For": f"203.0.113.{next(_addresses) % 250 + 1}"}
-    return client.post("/api/auth/register", json={"username": username, "password": password, **extra}, headers=who)
+    return client.post(
+        "/api/auth/register",
+        json={"username": username, "password": password, "full_name": "Вера", "privacy_consent": True, **extra},
+        headers=who,
+    )
 
 
 def test_sign_up_creates_the_account_and_signs_it_in(client, mock_db):
@@ -98,8 +102,16 @@ def test_sign_up_is_open_by_default(client, monkeypatch):
 def test_mistakes_do_not_use_up_the_sign_up_limit(client):
     who = {"X-Forwarded-For": "198.51.100.40"}
     for _ in range(6):
-        client.post("/api/auth/register", json={"username": "vera", "password": "short"}, headers=who)
-    ok = client.post("/api/auth/register", json={"username": "vera", "password": "kotik-2026"}, headers=who)
+        client.post(
+            "/api/auth/register",
+            json={"username": "vera", "password": "short", "full_name": "Вера", "privacy_consent": True},
+            headers=who,
+        )
+    ok = client.post(
+        "/api/auth/register",
+        json={"username": "vera", "password": "kotik-2026", "full_name": "Вера", "privacy_consent": True},
+        headers=who,
+    )
     assert ok.status_code == 201
 
 
@@ -107,9 +119,29 @@ def test_one_address_cannot_make_many_accounts(client):
     who = {"X-Forwarded-For": "198.51.100.23"}
     codes = [
         client.post(
-            "/api/auth/register", json={"username": f"bot{i:03d}", "password": "kotik-2026"}, headers=who
+            "/api/auth/register",
+            json={"username": f"bot{i:03d}", "password": "kotik-2026", "full_name": "Вера", "privacy_consent": True},
+            headers=who,
         ).status_code
         for i in range(7)
     ]
     assert codes[:5] == [201] * 5
     assert codes[5] == 429
+
+
+def test_a_name_is_required(client, mock_db):
+    response = _register(client, full_name="  ")
+    assert response.status_code == 422 and response.get_json()["code"] == "register_name_required"
+
+
+def test_an_email_is_required_when_mail_works(client, mock_db, monkeypatch):
+    monkeypatch.setenv("MAIL_OUTBOX", "memory")
+    response = _register(client)
+    assert response.status_code == 422 and response.get_json()["code"] == "register_email_required"
+    assert _register(client, email="vera@example.com").status_code == 201
+
+
+def test_without_mail_no_email_is_asked(client, mock_db, monkeypatch):
+    for name in ("MAIL_OUTBOX", "SMTP_HOST", "SMTP_FROM"):
+        monkeypatch.delenv(name, raising=False)
+    assert _register(client).status_code == 201

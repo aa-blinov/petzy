@@ -170,6 +170,8 @@ def api_register():
     if not registration_open():
         return error_response("registration_closed")
     data = request.context.body  # type: ignore[attr-defined]
+    if not data.privacy_consent:
+        return error_response("privacy_consent_required")
     username = data.username.strip().lower()
     password = data.password
 
@@ -184,8 +186,15 @@ def api_register():
 
     from web import mail
     from web.account import EMAIL_RE, _email_taken, send_verification
+    from web.legal import consent_record
 
+    if not (data.full_name or "").strip():
+        return error_response("register_name_required")
     email = (data.email or "").strip()
+    # Without mail there's nothing to recover the password with, and the
+    # form doesn't ask for an address.
+    if not email and mail.mail_configured():
+        return error_response("register_email_required")
     if email:
         if not EMAIL_RE.match(email):
             return error_response("account_email_invalid")
@@ -205,6 +214,7 @@ def api_register():
                 "created_at": datetime.now(timezone.utc),
                 "created_by": "self",
                 "is_active": True,
+                "privacy_consent": consent_record(),
             }
         )
     except DuplicateKeyError:
