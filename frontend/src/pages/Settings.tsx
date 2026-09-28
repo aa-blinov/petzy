@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, Sparkles, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
@@ -196,6 +196,16 @@ export function Settings() {
               chevron
               onClick={() => navigate('/settings/password')}
             />
+            {!isAdmin && (
+              <SettingsRow
+                icon={<Trash2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
+                label="Удалить аккаунт"
+                description="Насовсем, вместе с данными"
+                danger
+                chevron
+                onClick={() => navigate('/settings/delete-account')}
+              />
+            )}
           </div>
 
           {/* Section: Pets
@@ -294,6 +304,13 @@ export function Settings() {
               description="Частые вопросы и как устроен каждый экран"
               chevron
               onClick={() => navigate('/help')}
+            />
+            <SettingsRow
+              icon={<ShieldCheck size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Политика конфиденциальности"
+              description="Какие данные хранятся и где"
+              chevron
+              onClick={() => navigate('/privacy')}
             />
           </div>
 

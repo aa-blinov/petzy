@@ -19,8 +19,12 @@ from web import mail
 from web.app import api, limiter, logger
 from web.auth import password_problem, signed_in_response
 from web.errors import error_response
+from web.legal import consent_needed
 from web.messages import get_message
+from web.account_deletion import delete_account, deletion_plan, plan_summary
 from web.schemas import (
+    AccountDeleteRequest,
+    AccountDeletionPreviewResponse,
     AccountResponse,
     AuthTokensResponse,
     EmailChangeRequest,
@@ -31,7 +35,7 @@ from web.schemas import (
     PasswordResetRequest,
     SuccessResponse,
 )
-from web.security import login_required, revoke_user_sessions, verify_user_credentials
+from web.security import is_admin, login_required, revoke_user_sessions, verify_user_credentials
 
 account_bp = Blueprint("account", __name__)
 
@@ -129,6 +133,7 @@ def _account(user: dict) -> dict:
         "email_verified": bool(user.get("email_verified")),
         "pending_email": user.get("pending_email") or "",
         "mail_enabled": mail.mail_configured(),
+        "privacy_consent_needed": consent_needed(user),
     }
 
 
@@ -366,6 +371,68 @@ def change_password():
     )
     logger.info(f"Password changed: user={username}")
     return signed_in_response("account_password_changed", username)
+
+
+@account_bp.route("/api/me/account/deletion", methods=["GET"])
+@login_required
+@api.validate(resp=Response(HTTP_200=AccountDeletionPreviewResponse), tags=["account"])
+def deletion_preview():
+    """What deleting the account would do: pets deleted, handed over, left."""
+    username = request.current_user
+    return jsonify({"can_delete": not is_admin(username), **plan_summary(deletion_plan(username))})
+
+
+@account_bp.route("/api/me/account", methods=["DELETE"])
+@limiter.limit("10 per hour")
+@login_required
+@api.validate(
+    body=Request(AccountDeleteRequest),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["account"],
+)
+def delete_own_account():
+    """Delete the account for good, confirmed with the password.
+
+    A pet shared with someone goes to the first of them, the rest are
+    deleted with their records and files (see GET /api/me/account/deletion).
+    Every session ends; the web app's cookies are cleared.
+    """
+    username = request.current_user
+    data = request.context.body  # type: ignore[attr-defined]
+    if is_admin(username):
+        return error_response("account_admin_undeletable")
+    if not verify_user_credentials(username, data.password):
+        return error_response("account_wrong_password")
+
+    user = app.db.users.find_one({"username": username}) or {}
+    heirs = {}
+    try:
+        plan = delete_account(username)
+    except Exception as e:
+        logger.error(f"Account deletion failed: user={username}, error={e}")
+        return error_response("account_delete_failed")
+    for pet, heir in plan["transferred"]:
+        heirs.setdefault(heir, []).append(pet.get("name", ""))
+
+    _notify(
+        user,
+        "Petzy: аккаунт удалён",
+        f"Аккаунт {username} в Petzy удалён вместе с его данными.\n\n"
+        f"Если это сделали не вы, напишите администратору Petzy.",
+    )
+    for heir, names in heirs.items():
+        pets = ", ".join(f"«{name}»" for name in names)
+        _notify(
+            app.db.users.find_one({"username": heir}) or {},
+            "Petzy: вам передали питомца",
+            f"Аккаунт {username} в Petzy удалён, и теперь владелец вы: {pets}. "
+            f"Все записи, лекарства и документы остались на месте.",
+        )
+
+    response, status = get_message("account_deleted")
+    response.set_cookie("access_token", "", max_age=0)
+    response.set_cookie("refresh_token", "", max_age=0)
+    return response, status
 
 
 @account_bp.route("/api/dev/outbox", methods=["GET"])

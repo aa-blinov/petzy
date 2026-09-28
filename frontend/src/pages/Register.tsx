@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Form, Input } from 'antd-mobile';
+import { Button, Checkbox, Form, Input } from 'antd-mobile';
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/auth.service';
 import { AuthShell } from '../components/AuthShell';
@@ -14,6 +14,7 @@ import { FieldError } from '../components/FieldError';
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 
 const labelStyle = { color: 'var(--app-text-primary)', fontWeight: 500 } as const;
+const legalLinkStyle = { color: 'var(--app-accent-deep)', fontWeight: 500 } as const;
 const hintStyle = { fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', lineHeight: 1.4 } as const;
 
 export function Register() {
@@ -24,6 +25,7 @@ export function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
+  const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,16 +40,32 @@ export function Register() {
       : !USERNAME_RE.test(username)
         ? 'От 3 до 30 символов: латинские буквы, цифры, точка, дефис или подчёркивание, начиная с буквы или цифры'
         : null;
-  const emailError = email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim()) ? 'Проверьте адрес почты' : null;
+  const nameError = fullName.trim() ? null : 'Напишите имя';
+  // Asked only while mail works: without it there's nothing to recover with.
+  const askEmail = !!status.data?.mail_enabled;
+  const emailError = !askEmail
+    ? null
+    : !email.trim()
+      ? 'Укажите почту'
+      : !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim())
+        ? 'Проверьте адрес почты'
+        : null;
   const passwordError = password.length < 8 ? 'Не короче 8 символов' : null;
   const repeatError = repeat !== password ? 'Пароли не совпадают' : null;
+  const consentError = consent ? null : 'Без согласия аккаунт не создать';
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (usernameError || emailError || passwordError || repeatError) return;
+    if (usernameError || nameError || emailError || passwordError || repeatError || consentError) return;
     setIsLoading(true);
     try {
-      await register({ username, password, full_name: fullName.trim() || undefined, email: email.trim() || undefined });
+      await register({
+        username,
+        password,
+        full_name: fullName.trim(),
+        email: askEmail ? email.trim() : undefined,
+        privacy_consent: consent,
+      });
       // A new account has no pets yet: the feed sends it to an invitation
       // waiting for it, or to onboarding.
       navigate('/', { replace: true });
@@ -109,7 +127,7 @@ export function Register() {
       >
         <Form.Item
           label={<span style={labelStyle}>Логин</span>}
-          description={below(usernameError, 'По нему вас найдут, чтобы поделиться питомцем')}
+          description={below(usernameError, 'По нему вас найдут для общего доступа')}
         >
           <Input
             placeholder="например, vera"
@@ -123,7 +141,7 @@ export function Register() {
         </Form.Item>
         <Form.Item
           label={<span style={labelStyle}>Как к вам обращаться</span>}
-          description={<span style={hintStyle}>Необязательно. Видят те, с кем вы делитесь питомцами</span>}
+          description={below(nameError, 'Видят те, с кем вы делитесь питомцем')}
         >
           <Input
             placeholder="Имя"
@@ -134,10 +152,10 @@ export function Register() {
             autoComplete="name"
           />
         </Form.Item>
-        {status.data?.mail_enabled && (
+        {askEmail && (
           <Form.Item
             label={<span style={labelStyle}>Почта</span>}
-            description={below(emailError, 'Необязательно. Нужна, чтобы восстановить пароль, если забудете. Пришлём письмо для подтверждения')}
+            description={below(emailError, 'Чтобы восстановить пароль')}
           >
             <Input
               type="email"
@@ -171,6 +189,26 @@ export function Register() {
             clearable
             autoComplete="new-password"
           />
+        </Form.Item>
+        <Form.Item description={below(consentError)}>
+          {/* The texts open in a new tab: following them here would lose the form. */}
+          <Checkbox
+            checked={consent}
+            onChange={setConsent}
+            disabled={isLoading}
+            style={{ '--icon-size': '20px', '--gap': '10px', '--font-size': 'var(--text-sm)', alignItems: 'flex-start', lineHeight: 1.45 }}
+          >
+            <span style={{ color: 'var(--app-text-primary)' }}>
+              Даю{' '}
+              <a href="/consent" target="_blank" rel="noopener" onClick={e => e.stopPropagation()} style={legalLinkStyle}>
+                согласие на обработку персональных данных
+              </a>{' '}
+              на условиях{' '}
+              <a href="/privacy" target="_blank" rel="noopener" onClick={e => e.stopPropagation()} style={legalLinkStyle}>
+                политики конфиденциальности
+              </a>
+            </span>
+          </Checkbox>
         </Form.Item>
       </Form>
     </AuthShell>

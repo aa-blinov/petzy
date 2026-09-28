@@ -32,12 +32,26 @@ def _link_token(letter, path):
 
 
 def _sign_up(client, username="vera", email="vera@example.com", password="kotik-2026"):
+    """email="" makes an account with no address (as the admin makes them):
+    sign-up itself asks for one while mail works."""
     response = client.post(
         "/api/auth/register",
-        json={"username": username, "password": password, "email": email},
+        json={
+            "username": username,
+            "password": password,
+            "email": email or f"{username}@example.com",
+            "full_name": "Вера",
+            "privacy_consent": True,
+        },
         headers=_from(client),
     )
     assert response.status_code == 201, response.get_json()
+    if not email:
+        import web.app
+
+        web.app.db.users.update_one({"username": username}, {"$unset": {"pending_email": ""}})
+        web.app.db.account_tokens.delete_many({"username": username})
+        mail.OUTBOX.clear()
     return response
 
 
@@ -171,7 +185,13 @@ def test_one_address_recovers_one_account(client, outbox):
     client.post("/api/auth/logout")
     response = client.post(
         "/api/auth/register",
-        json={"username": "boris", "password": "kotik-2026", "email": "Vera@Example.com"},
+        json={
+            "username": "boris",
+            "password": "kotik-2026",
+            "email": "Vera@Example.com",
+            "full_name": "Борис",
+            "privacy_consent": True,
+        },
         headers=_from(client),
     )
     assert response.get_json()["code"] == "account_email_taken"

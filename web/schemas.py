@@ -105,6 +105,30 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(..., min_length=1, max_length=256)
 
 
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=256, description="Текущий пароль")
+
+
+class DeletionPet(BaseModel):
+    id: str
+    name: str
+    new_owner: Optional[str] = Field(None, description="Кому перейдёт питомец (в transferred)")
+    owner: Optional[str] = Field(None, description="Чей это питомец (в left)")
+
+
+class AccountDeletionPreviewResponse(BaseModel):
+    """What deleting the account would do, for the confirmation screen."""
+
+    can_delete: bool = Field(..., description="False для администратора: его аккаунт удалить нельзя")
+    deleted: List[DeletionPet] = Field(
+        ..., description="Питомцы, которых больше никто не ведёт: удалятся со всеми записями"
+    )
+    transferred: List[DeletionPet] = Field(
+        ..., description="Питомцы, которых ведёт кто-то ещё: перейдут первому, с кем ими поделились"
+    )
+    left: List[DeletionPet] = Field(..., description="Чужие питомцы, к которым пропадёт доступ")
+
+
 class EmailChangeRequest(BaseModel):
     """An empty email removes it."""
 
@@ -123,6 +147,9 @@ class AccountResponse(BaseModel):
     email_verified: bool = False
     pending_email: str = Field("", description="Указана, но ещё не подтверждена")
     mail_enabled: bool = Field(False, description="Настроена ли отправка писем")
+    privacy_consent_needed: bool = Field(
+        False, description="Нужно согласие с текущей редакцией политики (POST /api/me/privacy-consent)"
+    )
 
 
 class RegisterRequest(BaseModel):
@@ -131,8 +158,30 @@ class RegisterRequest(BaseModel):
 
     username: str = Field(..., min_length=1, max_length=64, description="Логин")
     password: str = Field(..., min_length=1, max_length=256, description="Пароль")
-    full_name: Optional[str] = Field(None, max_length=100, description="Как к вам обращаться")
-    email: Optional[str] = Field(None, max_length=254, description="Для восстановления пароля")
+    full_name: Optional[str] = Field(None, max_length=100, description="Как к вам обращаться. Обязательно")
+    email: Optional[str] = Field(
+        None,
+        max_length=254,
+        description="Для восстановления пароля. Обязательна, когда почта настроена (mail_enabled в GET /api/auth/registration)",
+    )
+    privacy_consent: bool = Field(
+        False,
+        description="Согласие на обработку персональных данных (текст: /consent, политика: /privacy). Без него 422",
+    )
+
+
+class PrivacyConsentRequest(BaseModel):
+    version: str = Field(..., max_length=32, description="policy_version из GET /api/legal")
+
+
+class LegalInfoResponse(BaseModel):
+    """Facts the privacy policy page fills in; empty until the operator sets them."""
+
+    policy_version: str
+    operator: str = Field("", description="Кто обрабатывает данные")
+    contact_email: str = Field("", description="Куда писать о персональных данных")
+    server_location: str = Field("", description="Страна, где стоит сервер с базой данных")
+    backups_kept_days: int = Field(..., description="Сколько дней живут резервные копии")
 
 
 class RegistrationStatusResponse(BaseModel):

@@ -11,7 +11,8 @@
 - **Medications.** Courses with a schedule, today's next dose on the feed («Принять», «Уже дали в 08:00», «Пропустить»), intake times that can be corrected, stock that counts down and says when to buy more, undo for a dose marked by mistake.
 - **Documents.** Photos and PDFs up to 10 MB, scans and archives up to 500 MB uploaded straight to object storage, expiry reminders. A 2 GB quota per pet owner.
 - **Pets and sharing.** 12 species (and «другой питомец») with their own tiles and fields, photos, sharing by invitation (the other person accepts, and can leave later).
-- **Accounts.** Open sign-up (can be closed), password recovery by a one-time link to a confirmed email, email and password in Settings, an admin panel for disabling accounts.
+- **Accounts.** Open sign-up (can be closed), password recovery by a one-time link to a confirmed email, email and password in Settings, an admin panel for disabling accounts. Users delete their own account in Settings: a pet shared with someone passes to them with its history and files, the rest is deleted.
+- **Personal data (152-ФЗ).** A privacy policy (`/privacy`) and a separate consent text (`/consent`), consent recorded at sign-up with the policy version, and asked again from everyone when the version changes (`web/legal.py`).
 - **Notifications.** Web Push for doses, expiring documents and unusual values, to everyone with access to the pet.
 - **App.** Installable PWA that updates itself, dark theme, per-account form defaults, reorderable «+» tiles, in-app help (Настройки → «Справка»).
 
@@ -98,6 +99,8 @@ In production a host nginx terminates TLS and forwards everything to `127.0.0.1:
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CLAIMS_EMAIL` | Web Push (`python -m scripts.generate_vapid_keys`) |
 | `REGISTRATION_ENABLED` | `false` closes sign-up |
 | `STORAGE_QUOTA_MB` | documents per pet owner, default 2048 |
+| `SENTRY_DSN` | error reports, traces and profiles to Sentry; off without it |
+| `PRIVACY_OPERATOR`, `PRIVACY_CONTACT_EMAIL`, `PRIVACY_SERVER_LOCATION` | who processes the data, where to write, the database server's country: shown in the privacy policy |
 
 A bcrypt hash for the admin password:
 
@@ -113,7 +116,7 @@ A push to `master` runs CI and deploys to the server (`.github/workflows/deploy.
 gh workflow run "Deploy to Server"
 ```
 
-Repository secrets: `SERVER_PETZY_HOST`, `SERVER_PETZY_USER`, `SERVER_PETZY_SSH_KEY`, `S3_KEY_ID`, `S3_SECRET_KEY`, `VAPID_*`, `SMTP_*`. Set one with `gh secret set NAME` (it asks for the value).
+Repository secrets: `SERVER_PETZY_HOST`, `SERVER_PETZY_USER`, `SERVER_PETZY_SSH_KEY`, `S3_KEY_ID`, `S3_SECRET_KEY`, `VAPID_*`, `SMTP_*`, `SENTRY_DSN`. Set one with `gh secret set NAME` (it asks for the value). Repository variables (public): `PRIVACY_OPERATOR`, `PRIVACY_CONTACT_EMAIL`, `PRIVACY_SERVER_LOCATION`, set with `gh variable set NAME`.
 
 Other workflows (all run by hand):
 

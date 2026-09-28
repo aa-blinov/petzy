@@ -22,6 +22,8 @@ MESSAGES: Dict[str, MessageDef] = {
         "Если у этого аккаунта подтверждена почта, мы отправили на неё ссылку для нового пароля"
     ),
     "account_password_changed": MessageDef("Пароль изменён"),
+    "account_deleted": MessageDef("Аккаунт удалён"),
+    "privacy_consent_saved": MessageDef("Согласие сохранено"),
     "account_email_verified": MessageDef("Почта подтверждена"),
     "account_verification_sent": MessageDef("Письмо отправлено ещё раз"),
     "auth_logout_success": MessageDef("Вы вышли"),

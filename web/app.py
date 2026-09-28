@@ -188,6 +188,7 @@ from web.auth import auth_bp  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
 from web.account import account_bp  # noqa: E402
+from web.legal import legal_bp  # noqa: E402
 from web.openapi_doc import docs_bp, finish_spec  # noqa: E402
 from web.events import events_bp  # noqa: E402
 from web.medications import medications_bp  # noqa: E402
@@ -200,6 +201,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(pets_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(account_bp)
+app.register_blueprint(legal_bp)
 app.register_blueprint(events_bp)
 app.register_blueprint(medications_bp)
 app.register_blueprint(documents_bp)

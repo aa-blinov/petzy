@@ -64,7 +64,7 @@ class Api:
         return payload
 
     def sign_up(self, username: str, full_name: str, email: str = ""):
-        body = {"username": username, "password": DEMO_PASSWORD, "full_name": full_name}
+        body = {"username": username, "password": DEMO_PASSWORD, "full_name": full_name, "privacy_consent": True}
         if email:
             body["email"] = email
         self.token = self.call("POST", "/api/auth/register", body)["access_token"]
@@ -146,7 +146,7 @@ def seed(base: str) -> None:
         raise SystemExit("Sign-up is closed on this server (REGISTRATION_ENABLED)")
     demo.sign_up(DEMO_LOGIN, "Анна", email="demo@example.com")
     family = Api(base)
-    family.sign_up(FAMILY_LOGIN, "Иван")
+    family.sign_up(FAMILY_LOGIN, "Иван", email="family@example.com")
     print(f"accounts: {DEMO_LOGIN}, {FAMILY_LOGIN}")
 
     # Confirm the demo email from the local outbox (MAIL_OUTBOX=memory).

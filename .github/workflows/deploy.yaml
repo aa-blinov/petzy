@@ -80,6 +80,11 @@ jobs:
             # the DSN from the SENTRY_DSN secret; the release is this commit,
             # so an error says which deploy it came from.
             upsert_if_set SENTRY_DSN "${{ secrets.SENTRY_DSN }}"
+            # The privacy policy's operator facts (public, so repository
+            # variables rather than secrets; see web/legal.py).
+            upsert_if_set PRIVACY_OPERATOR "${{ vars.PRIVACY_OPERATOR }}"
+            upsert_if_set PRIVACY_CONTACT_EMAIL "${{ vars.PRIVACY_CONTACT_EMAIL }}"
+            upsert_if_set PRIVACY_SERVER_LOCATION "${{ vars.PRIVACY_SERVER_LOCATION }}"
             upsert_env SENTRY_RELEASE "$(git rev-parse --short HEAD)"
             upsert_env SENTRY_ENVIRONMENT "production"
 

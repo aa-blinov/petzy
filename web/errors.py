@@ -78,6 +78,20 @@ ERRORS: Dict[str, ErrorDef] = {
     ),
     "validation_error_self_share": ErrorDef("validation_error_self_share", "Нельзя поделиться с самим собой", 422),
     "account_wrong_password": ErrorDef("account_wrong_password", "Неверный текущий пароль", 422),
+    "privacy_consent_required": ErrorDef(
+        "privacy_consent_required", "Чтобы создать аккаунт, нужно согласие на обработку персональных данных", 422
+    ),
+    "privacy_version_outdated": ErrorDef(
+        "privacy_version_outdated", "Политика обновилась, пока страница была открыта. Откройте её заново", 422
+    ),
+    "account_admin_undeletable": ErrorDef(
+        "account_admin_undeletable",
+        "Аккаунт администратора удалить нельзя: без него никто не сможет управлять Petzy",
+        422,
+    ),
+    "account_delete_failed": ErrorDef(
+        "account_delete_failed", "Не получилось удалить аккаунт. Попробуйте ещё раз позже", 500
+    ),
     "account_email_invalid": ErrorDef("account_email_invalid", "Проверьте адрес почты", 422),
     "account_email_taken": ErrorDef("account_email_taken", "Эта почта уже подтверждена в другом аккаунте Petzy", 422),
     "account_no_pending_email": ErrorDef("account_no_pending_email", "Нет почты, которая ждёт подтверждения", 422),
@@ -91,6 +105,10 @@ ERRORS: Dict[str, ErrorDef] = {
         "register_username_invalid",
         "Логин: от 3 до 30 символов, латинские буквы, цифры, точка, дефис или подчёркивание. Начинается с буквы или цифры",
         422,
+    ),
+    "register_name_required": ErrorDef("register_name_required", "Напишите, как к вам обращаться", 422),
+    "register_email_required": ErrorDef(
+        "register_email_required", "Укажите почту: на неё придёт ссылка, если забудете пароль", 422
     ),
     "register_username_taken": ErrorDef("register_username_taken", "Этот логин занят, выберите другой", 422),
     "register_password_short": ErrorDef("register_password_short", "Пароль должен быть не короче 8 символов", 422),
