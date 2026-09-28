@@ -1,0 +1,82 @@
+name: Clean server disk
+
+# Frees disk space on the server. Without `apply` it only reports what
+# takes the space and what could go. The repository is public, and so is
+# this log: sizes by category only, no paths, no names.
+#
+# With `apply`, only what can be made again is removed:
+#   - Docker images no container uses, and the build cache (the next
+#     deploy rebuilds what it needs);
+#   - system journal beyond 200 MB, and the package cache (needs sudo).
+# Volumes are never removed here: one of them is the database. Unused
+# volumes are only counted, with how many look like MongoDB data.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Remove unused Docker images, the build cache, old journal and the package cache"
+        type: boolean
+        default: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into petzy server and clean
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5, pinned: this step holds the server's SSH key
+        with:
+          host: ${{ secrets.SERVER_PETZY_HOST }}
+          username: ${{ secrets.SERVER_PETZY_USER }}
+          key: ${{ secrets.SERVER_PETZY_SSH_KEY }}
+          script: |
+            set +e
+            disk() { df -h / | awk 'NR==2 {print $5 " used, " $4 " free of " $2}'; }
+            size() { sudo -n du -sh "$1" 2>/dev/null | cut -f1 || echo "?"; }
+            can_sudo=no; sudo -n true 2>/dev/null && can_sudo=yes
+
+            echo "=== disk: $(disk) ==="
+            echo "sudo without a password: $can_sudo"
+            echo
+            echo "=== Docker ==="
+            docker system df 2>/dev/null
+            unused_images=$(docker images -q --filter dangling=false 2>/dev/null | sort -u | while read id; do
+              docker ps -aq --filter ancestor="$id" | grep -q . || echo "$id"; done | wc -l)
+            echo "images no container uses: $unused_images"
+            dangling_volumes=$(docker volume ls -qf dangling=true 2>/dev/null)
+            n_vol=$(echo "$dangling_volumes" | grep -c . )
+            mongo_like=0
+            for v in $dangling_volumes; do
+              mp=$(docker volume inspect -f '{{.Mountpoint}}' "$v" 2>/dev/null)
+              sudo -n test -e "$mp/WiredTiger" 2>/dev/null && mongo_like=$((mongo_like+1))
+            done
+            echo "volumes no container uses: $n_vol (look like MongoDB data: $mongo_like), not touched"
+            echo
+            echo "=== outside Docker (sizes only) ==="
+            if [ "$can_sudo" = yes ]; then
+              echo "system journal:  $(journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[KMGT]' | tail -1)"
+              echo "other logs:      $(size /var/log)"
+              echo "package cache:   $(size /var/cache/apt)"
+              echo "snap packages:   $(size /var/lib/snapd)"
+              echo "swap file:       $(ls -lh /swapfile 2>/dev/null | awk '{print $5}')"
+              echo "all of Docker:   $(size /var/lib/docker)"
+              echo "home folders:    $(size /home)"
+              echo "root's home:     $(size /root)"
+              echo "temporary files: $(size /tmp)"
+            else
+              echo "(needs sudo to measure)"
+            fi
+
+            if [ "${{ inputs.apply }}" = "true" ]; then
+              echo
+              echo "=== cleaning ==="
+              docker image prune -af >/dev/null 2>&1 && echo "unused Docker images: removed"
+              docker builder prune -af >/dev/null 2>&1 && echo "build cache: removed"
+              if [ "$can_sudo" = yes ]; then
+                sudo -n journalctl --vacuum-size=200M >/dev/null 2>&1 && echo "journal: trimmed to 200 MB"
+                sudo -n apt-get clean >/dev/null 2>&1 && echo "package cache: cleared"
+              fi
+              echo
+              echo "=== disk after: $(disk) ==="
+              docker system df 2>/dev/null
+            fi
