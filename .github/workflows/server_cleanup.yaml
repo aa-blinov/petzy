@@ -19,6 +19,10 @@ on:
         description: "Remove unused Docker images, the build cache, old journal and the package cache"
         type: boolean
         default: false
+      remove_vpn:
+        description: "Remove Amnezia VPN entirely: its containers, images, volumes, networks and /opt/amnezia"
+        type: boolean
+        default: false
 
 jobs:
   cleanup:
@@ -75,6 +79,26 @@ jobs:
                        { name = ($2 in known) ? $2 : "other"; printf "  %6d MB  %s\n", $1, name }'
               echo "temporary files: $(size /tmp)"
               echo "the system:      $(size /usr)"
+            fi
+
+            echo
+            echo "=== Amnezia VPN (no longer used) ==="
+            vpn_containers=$(docker ps -a --format '{{.Names}}' | grep -i '^amnezia' || true)
+            vpn_images=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -i 'amnezia' | awk '{print $2}' | sort -u || true)
+            vpn_volumes=$(docker volume ls -q | grep -i 'amnezia' || true)
+            vpn_networks=$(docker network ls --format '{{.Name}}' | grep -i 'amnezia' || true)
+            echo "containers: $(echo "$vpn_containers" | grep -c .)  images: $(echo "$vpn_images" | grep -c .)  volumes: $(echo "$vpn_volumes" | grep -c .)  networks: $(echo "$vpn_networks" | grep -c .)"
+            echo "/opt/amnezia: $(size /opt/amnezia)"
+            if [ "${{ inputs.remove_vpn }}" = "true" ]; then
+              for c in $vpn_containers; do docker rm -f "$c" >/dev/null 2>&1 && echo "container removed: $c"; done
+              for i in $vpn_images; do docker rmi -f "$i" >/dev/null 2>&1 && echo "image removed"; done
+              for v in $vpn_volumes; do docker volume rm "$v" >/dev/null 2>&1 && echo "volume removed"; done
+              for n in $vpn_networks; do docker network rm "$n" >/dev/null 2>&1 && echo "network removed"; done
+              if [ -d /opt/amnezia ]; then
+                $as_root rm -rf /opt/amnezia 2>/dev/null || docker run --rm -v /opt:/o alpine:3.24 rm -rf /o/amnezia
+                [ -d /opt/amnezia ] && echo "/opt/amnezia: still there" || echo "/opt/amnezia: removed"
+              fi
+              echo "left: containers $(docker ps -a --format '{{.Names}}' | grep -ci '^amnezia'), images $(docker images | grep -ci amnezia)"
             fi
 
             if [ "${{ inputs.apply }}" = "true" ]; then
