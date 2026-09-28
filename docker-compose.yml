@@ -1,6 +1,6 @@
 services:
   db:
-    image: mongo:latest
+    image: mongo:8.2
     ports:
       # Loopback only: the app, backups and reminders reach it over
       # app-network, and nothing outside the host should. For a GUI
