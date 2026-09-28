@@ -299,6 +299,11 @@ if __name__ == "__main__":
 
     vapid_claims = {"sub": f"mailto:{vapid_claims_email}"}
 
+    # Sentry started with the web app's import above; tell this process apart.
+    import sentry_sdk
+
+    sentry_sdk.set_tag("component", "reminders")
+
     from web.storage import cleanup_abandoned_uploads
 
     logger.info("Reminder sender started (60s poll interval).")

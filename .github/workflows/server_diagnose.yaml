@@ -75,6 +75,18 @@ jobs:
                 print('mail: failed,', type(e).__name__, getattr(e, 'smtp_code', ''))
             " 2>&1 | tail -2
 
+            echo "=== sentry (one test event from the web container; the DSN is never printed) ==="
+            docker compose exec -T web python -c "
+            import os, sentry_sdk
+            from web.observability import init_sentry
+            if not init_sentry('diagnose'):
+                print('sentry: SENTRY_DSN not set')
+            else:
+                event_id = sentry_sdk.capture_message('Petzy diagnose: Sentry is connected')
+                sentry_sdk.flush(10)
+                print('sentry: test event sent, id', event_id)
+            " 2>&1 | grep '^sentry:' | tail -1
+
             echo "=== containers ==="
             docker compose ps
             echo

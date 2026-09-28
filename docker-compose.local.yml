@@ -33,6 +33,8 @@ x-local-env: &local-env
   # One worker: the in-memory outbox lives in one process.
   GUNICORN_WORKERS: "1"
   REGISTRATION_ENABLED: "true"
+  # With a SENTRY_DSN in .env, local errors are tagged apart from production's.
+  SENTRY_ENVIRONMENT: local
   # The dev-only push key pair scripts/dev_local.py uses (public in this
   # repository, never used in production). Without keys the reminders
   # service exits and Docker restarts it in a loop.

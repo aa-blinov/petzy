@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { reloadIfUpdated } from './utils/swUpdate';
+import { setSentryUser } from './utils/observability';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { setSessionExpiredHandler } from './services/api';
@@ -16,6 +17,7 @@ import { RouteFocus } from './components/RouteFocus';
 import { UndoSnackbar } from './components/UndoSnackbar';
 import { usePet } from './hooks/usePet';
 import { useAuth } from './hooks/useAuth';
+import { useSession } from './hooks/useSession';
 import { formDefaultsService } from './services/formDefaults.service';
 import { cacheFormSettings, getFormSettings, hasCachedFormSettings } from './utils/formsConfig';
 import { documentsListQuery } from './services/documents.service';
@@ -176,6 +178,15 @@ function FormDefaultsSync() {
   return null;
 }
 
+/** Errors in Sentry carry the signed-in login (none after signing out). */
+function SentryUser() {
+  const { username } = useSession();
+  useEffect(() => {
+    setSentryUser(username);
+  }, [username]);
+  return null;
+}
+
 /** A release that arrived while the app was open loads on the next main tab. */
 function UpdateOnMainTabs() {
   const { pathname } = useLocation();
@@ -192,6 +203,7 @@ function AppRoutes() {
       <PrefetchTabs />
       <FormDefaultsSync />
       <UpdateOnMainTabs />
+      <SentryUser />
       <UndoSnackbar />
       <Navbar />
       <RouteFocus />

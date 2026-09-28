@@ -11,6 +11,13 @@ RUN npm ci --legacy-peer-deps
 # Copy source code
 COPY . .
 
+# Sentry for the browser (src/utils/observability.ts): baked into the
+# build, empty means off. docker-compose passes them from .env.
+ARG VITE_SENTRY_DSN=""
+ARG VITE_SENTRY_RELEASE=""
+ARG VITE_SENTRY_ENVIRONMENT="production"
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN VITE_SENTRY_RELEASE=$VITE_SENTRY_RELEASE VITE_SENTRY_ENVIRONMENT=$VITE_SENTRY_ENVIRONMENT
+
 # Build the application
 RUN npm run build
 

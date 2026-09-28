@@ -13,3 +13,4 @@ pillow-heif>=0.18.0
 flask-cors>=4.0.0
 pywebpush>=2.0.0
 boto3>=1.34.0
+sentry-sdk[flask]==2.70.0
