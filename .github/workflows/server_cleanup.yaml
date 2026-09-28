@@ -77,6 +77,22 @@ jobs:
               docker run --rm -v /root:/r:ro alpine:3.24 sh -c 'cd /r && du -sm .[!.]* * 2>/dev/null | sort -rn | head -8' 2>/dev/null \
                 | awk 'BEGIN { split(".cache .npm .vscode-server .cursor-server .windsurf-server .local .docker .nvm .pyenv .rustup .cargo go snap services .git node_modules", k, " "); for (i in k) known[k[i]] = 1 }
                        { name = ($2 in known) ? $2 : "other"; printf "  %6d MB  %s\n", $1, name }'
+              # What the largest item in the admin's home is, without its name
+              # (this log is public): kind, file count, what the big files are.
+              docker run --rm -v /root:/r:ro alpine:3.24 sh -c '
+                cd /r; top=$(du -s .[!.]* * 2>/dev/null | sort -rn | head -1 | cut -f2-)
+                [ -z "$top" ] && exit 0
+                echo "  the largest item: $(du -sh "$top" | cut -f1), $( [ -d "$top" ] && echo folder || echo file ), $(find "$top" -type f 2>/dev/null | wc -l) files"
+                [ -d "$top/.git" ] && echo "    it is a git repository"
+                find "$top" -maxdepth 4 -name WiredTiger 2>/dev/null | grep -q . && echo "    it holds MongoDB data files"
+                find "$top" -maxdepth 4 -name docker-compose.yml 2>/dev/null | grep -q . && echo "    it holds a docker-compose project"
+                find "$top" -maxdepth 6 -type d -name node_modules 2>/dev/null | grep -q . && echo "    it holds node_modules ($(du -sch $(find "$top" -maxdepth 6 -type d -name node_modules -prune 2>/dev/null) 2>/dev/null | tail -1 | cut -f1))"
+                echo "    by file type (top 6):"
+                find "$top" -type f 2>/dev/null | while read f; do n=${f##*/}; case "$n" in *.*) e=${n##*.};; *) e="(none)";; esac; echo "$e $(stat -c %s "$f" 2>/dev/null || echo 0)"; done \
+                  | awk "{s[\$1]+=\$2; c[\$1]++} END {for (e in s) printf \"%d %s %d\\n\", s[e]/1048576, e, c[e]}" | sort -rn | head -6 \
+                  | awk "{printf \"      %6d MB  .%s  (%d files)\\n\", \$1, \$2, \$3}"
+                echo "    newest change: $(find "$top" -type f -printf "%TY-%Tm-%Td\\n" 2>/dev/null | sort | tail -1)"
+              ' 2>/dev/null
               echo "temporary files: $(size /tmp)"
               echo "the system:      $(size /usr)"
             fi
