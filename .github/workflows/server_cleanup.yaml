@@ -32,7 +32,9 @@ jobs:
           script: |
             set +e
             disk() { df -h / | awk 'NR==2 {print $5 " used, " $4 " free of " $2}'; }
-            size() { sudo -n du -sh "$1" 2>/dev/null | cut -f1 || echo "?"; }
+            # No passwordless sudo on this server: measure through Docker, with
+            # the host's disk mounted read-only in a throwaway container.
+            size() { docker run --rm -v /:/host:ro alpine:3.24 du -sh "/host$1" 2>/dev/null | cut -f1; }
             can_sudo=no; sudo -n true 2>/dev/null && can_sudo=yes
 
             echo "=== disk: $(disk) ==="
@@ -47,14 +49,14 @@ jobs:
             n_vol=$(echo "$dangling_volumes" | grep -c . )
             mongo_like=0
             for v in $dangling_volumes; do
-              mp=$(docker volume inspect -f '{{.Mountpoint}}' "$v" 2>/dev/null)
-              sudo -n test -e "$mp/WiredTiger" 2>/dev/null && mongo_like=$((mongo_like+1))
+              docker run --rm -v "$v":/v:ro alpine:3.24 test -e /v/WiredTiger 2>/dev/null && mongo_like=$((mongo_like+1))
             done
             echo "volumes no container uses: $n_vol (look like MongoDB data: $mongo_like), not touched"
             echo
             echo "=== outside Docker (sizes only) ==="
-            if [ "$can_sudo" = yes ]; then
-              echo "system journal:  $(journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[KMGT]' | tail -1)"
+            echo "unused volumes' total size: $(for v in $dangling_volumes; do docker run --rm -v "$v":/v:ro alpine:3.24 du -sm /v 2>/dev/null | cut -f1; done | awk '{s+=$1} END {print s+0 " MB"}')"
+            if true; then
+              echo "system journal:  $(size /var/log/journal)"
               echo "other logs:      $(size /var/log)"
               echo "package cache:   $(size /var/cache/apt)"
               echo "snap packages:   $(size /var/lib/snapd)"
@@ -63,8 +65,7 @@ jobs:
               echo "home folders:    $(size /home)"
               echo "root's home:     $(size /root)"
               echo "temporary files: $(size /tmp)"
-            else
-              echo "(needs sudo to measure)"
+              echo "the system:      $(size /usr)"
             fi
 
             if [ "${{ inputs.apply }}" = "true" ]; then
