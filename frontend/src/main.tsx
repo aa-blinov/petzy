@@ -3,6 +3,14 @@ import { createRoot } from 'react-dom/client'
 import 'antd-mobile/es/global'
 import { reduceMotion, restoreMotion, setDefaultConfig } from 'antd-mobile'
 import ruRU from 'antd-mobile/es/locales/ru-RU'
+// Latin only: Outfit has no Cyrillic (Russian text uses the system face;
+// Outfit sets the digits and Latin), and DynaPuff sets only the «Petzy»
+// wordmark, at 700.
+import '@fontsource/outfit/latin-400.css'
+import '@fontsource/outfit/latin-500.css'
+import '@fontsource/outfit/latin-600.css'
+import '@fontsource/outfit/latin-700.css'
+import '@fontsource/dynapuff/latin-700.css'
 import './styles/globals.css'
 import App from './App.tsx'
 import { installAntdA11y } from './utils/antdA11y'

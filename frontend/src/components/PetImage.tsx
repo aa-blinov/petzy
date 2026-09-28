@@ -16,9 +16,12 @@ interface PetImageProps {
         face — which sits in the upper third, not the vertical middle —
         and shows fur/torso instead. */
     objectPosition?: string;
+    /** Above the fold on first paint (the feed's pet card): load at once and
+        first, not lazily after scripts and data. It is that screen's LCP. */
+    priority?: boolean;
 }
 
-export function PetImage({ src, alt, size = 48, className, style, species, objectPosition = 'center 20%' }: PetImageProps) {
+export function PetImage({ src, alt, size = 48, className, style, species, objectPosition = 'center 20%', priority = false }: PetImageProps) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(false);
     // getSpecies() picks among a fixed set of module-level lucide icons —
@@ -83,7 +86,10 @@ export function PetImage({ src, alt, size = 48, className, style, species, objec
                     src={`${src}${src.includes('?') ? '&' : '?'}w=${size * 2}`} // Default to 2x for quality
                     srcSet={srcset}
                     alt={alt}
-                    loading="lazy"
+                    loading={priority ? 'eager' : 'lazy'}
+                    // Lowercase: React 18 doesn't know fetchPriority and warns; the
+                    // browser reads the attribute either way.
+                    {...(priority ? ({ fetchpriority: 'high' } as Record<string, string>) : {})}
                     decoding="async"
                     onLoad={() => setIsLoaded(true)}
                     onError={() => setError(true)}
