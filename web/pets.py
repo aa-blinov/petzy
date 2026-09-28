@@ -746,7 +746,7 @@ def get_pet_photo(pet_id):
             return error_response("pet_not_found")
 
         if pet.get("owner") != username and username not in pet.get("shared_with", []):
-            return error_response("pet_forbidden")
+            return error_response("pet_not_found")
 
         photo_file_id = pet.get("photo_file_id")
         if not photo_file_id:

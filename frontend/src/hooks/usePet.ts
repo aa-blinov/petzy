@@ -87,7 +87,7 @@ export function usePet() {
   // Auto-select first pet if none selected and pets are available.
   // Also recover from a stale selectedPetId — e.g. after a backend
   // restart with a fresh in-memory DB, the previous pet ID no longer
-  // exists and the API returns 403 on every dashboard call. Clear it
+  // exists and the API returns 404 on every dashboard call. Clear it
   // so the auto-select path below takes over.
   //
   // Uses `setSelectedPet` (storage-only) instead of `selectPet` (full

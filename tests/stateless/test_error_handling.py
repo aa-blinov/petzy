@@ -92,7 +92,7 @@ class TestErrorHandling:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
 

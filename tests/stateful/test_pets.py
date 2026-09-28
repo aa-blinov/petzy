@@ -106,7 +106,7 @@ class TestPetManagement:
             f"/api/pets/{admin_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
 
@@ -136,7 +136,7 @@ class TestPetManagement:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
 
@@ -162,7 +162,7 @@ class TestPetManagement:
             f"/api/pets/{admin_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
 
@@ -208,7 +208,7 @@ class TestPetManagement:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
 
@@ -266,7 +266,7 @@ class TestPetManagement:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
 
@@ -288,7 +288,7 @@ class TestPetManagement:
             f"/api/pets/{admin_pet['_id']}/photo", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_get_pet_photo_not_found(self, client, mock_db, regular_user_token, test_pet):
         """Test getting photo for pet without photo."""
@@ -1191,3 +1191,18 @@ def test_neutering_left_unanswered_stays_unanswered(client, regular_user_token):
     )
     assert response.status_code == 201
     assert response.get_json()["pet"]["is_neutered"] is None
+
+
+def test_someone_elses_pet_answers_like_a_missing_one(client, mock_db, regular_user_token, admin_pet):
+    """A 403 would confirm the id belongs to a real pet."""
+    headers = {"Authorization": f"Bearer {regular_user_token}"}
+    theirs = client.get(f"/api/pets/{admin_pet['_id']}", headers=headers)
+    missing = client.get("/api/pets/0123456789abcdef01234567", headers=headers)
+    assert theirs.status_code == missing.status_code == 404
+    assert theirs.get_json() == missing.get_json()
+
+
+def test_a_member_still_hears_that_an_action_is_the_owners(client, mock_db, regular_user_token, admin_pet):
+    mock_db["pets"].update_one({"_id": admin_pet["_id"]}, {"$set": {"shared_with": ["testuser"]}})
+    response = client.delete(f"/api/pets/{admin_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"})
+    assert response.status_code == 403 and response.get_json()["code"] == "owner_action_forbidden"

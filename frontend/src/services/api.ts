@@ -85,7 +85,7 @@ export function resetSessionExpired() {
  * Exported so the explicit logout path uses the same list: clearing
  * only the username left `selectedPetId`/`selectedPetName` behind, and
  * the next user to sign in on that device started out pointed at the
- * previous user's pet — a burst of 403s plus their pet's name in the
+ * previous user's pet — a burst of 404s plus their pet's name in the
  * navbar until usePet's recovery effect noticed and switched.
  */
 export function clearLocalAuthState() {
