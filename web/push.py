@@ -67,16 +67,18 @@ def subscribe():
         username = request.current_user
         data = request.context.body  # type: ignore[attr-defined]
 
-        # A browser's own subscription endpoint is inherently per-device,
-        # not per-account — on a shared computer, a second person signing
-        # in and flipping the same toggle will get the *same* endpoint
-        # back from pushManager.subscribe(), silently reassigning this
-        # row (and this device's reminders) from the first user to them.
-        # That's the Push API's own semantics, not a bug to prevent here,
-        # but it should at least be visible in the logs rather than
-        # invisible when it happens.
-        existing = app.db.push_subscriptions.find_one({"endpoint": data.endpoint}, {"username": 1})
+        # An endpoint is per browser, not per account: on a shared computer
+        # a second person turning notifications on gets the same endpoint
+        # back and takes the row over, which is the Push API's own way.
+        # Only the browser holds the subscription's keys, though, so a
+        # takeover needs the same keys. An endpoint alone (seen in a log,
+        # say) doesn't let anyone move another person's device, and with
+        # it their reminders, to their own account.
+        existing = app.db.push_subscriptions.find_one({"endpoint": data.endpoint}, {"username": 1, "keys": 1})
         if existing and existing.get("username") != username:
+            if existing.get("keys") != data.keys.model_dump():
+                app.logger.warning(f"Push subscription takeover refused: user={username}")
+                return error_response("push_subscription_taken")
             app.logger.warning(
                 f"Push subscription endpoint reassigned from user={existing.get('username')} to user={username}"
             )

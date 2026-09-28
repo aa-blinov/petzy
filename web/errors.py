@@ -176,6 +176,11 @@ ERRORS: Dict[str, ErrorDef] = {
         422,
     ),
     # Push notifications
+    "push_subscription_taken": ErrorDef(
+        "push_subscription_taken",
+        "Эта подписка на уведомления принадлежит другому аккаунту",
+        422,
+    ),
     "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
     # Other
     "no_data_for_export": ErrorDef("no_data_for_export", "Нет данных для экспорта", 404),
