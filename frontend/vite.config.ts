@@ -21,7 +21,7 @@ export default defineConfig(() => {
       srcDir: 'src',
       filename: 'sw.ts',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       },
       includeAssets: ['favicon.svg', 'icon.svg', 'apple-touch-icon.png', 'badge-96.png'],
       // The one manifest (a second, hand-written public/manifest.json with

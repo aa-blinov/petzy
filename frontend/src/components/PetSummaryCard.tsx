@@ -169,6 +169,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               src={pet.photo_url}
               alt={pet.name}
               size={112}
+              priority
               style={{
                 width: "100%",
                 height: "100%",
