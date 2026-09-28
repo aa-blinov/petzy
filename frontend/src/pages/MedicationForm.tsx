@@ -18,6 +18,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
 import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
+import { PickerValue } from '../components/PickerValue';
 
 /** A typed amount («0,5» or «0.5») for zod; '' is «not set». */
 const amount = (v: unknown) => (v === '' || v === undefined || v === null ? null : typeof v === 'string' ? v.replace(',', '.') : v);
@@ -310,12 +311,7 @@ export function MedicationForm() {
                                         style={{ cursor: 'pointer' }}
                                         arrow
                                     >
-                                        <Input
-                                            readOnly
-                                            value={field.value}
-                                            placeholder="Выберите форму"
-                                            style={{ pointerEvents: 'none' }}
-                                        />
+                                        <PickerValue value={field.value} placeholder="Выберите форму" />
                                     </Form.Item>
                                     <Picker
                                         columns={[COMMON_TYPES.map(t => ({ label: t, value: t }))]}
@@ -415,15 +411,10 @@ export function MedicationForm() {
                                                         }}
                                                         aria-label="Выбрать единицу измерения"
                                                     >
-                                                        <Input
+                                                        <PickerValue
                                                             value={unitField.value}
-                                                            readOnly
                                                             placeholder="таб/мл"
-                                                            style={{
-                                                                '--text-align': 'center',
-                                                                color: 'var(--app-primary-text)',
-                                                                cursor: 'pointer'
-                                                            }}
+                                                            style={{ textAlign: 'center', color: 'var(--app-primary-text)' }}
                                                         />
                                                     </button>
                                                 )}
@@ -495,19 +486,16 @@ export function MedicationForm() {
                                             name={`schedule.times.${index}` as `schedule.times.${number}`}
                                             control={control}
                                             render={({ field: tField }) => (
-                                                <Input
+                                                <PickerValue
                                                     value={tField.value}
-                                                    readOnly
                                                     placeholder="Выберите время"
                                                     style={{
-                                                        width: '100%',
                                                         padding: '10px 12px', /* Roughly var(--spacing-md) */
                                                         borderRadius: 'var(--radius-sm)',
                                                         backgroundColor: 'var(--app-page-background)',
-                                                        pointerEvents: 'none',
                                                         fontSize: 'var(--text-md)',
                                                         fontWeight: 500,
-                                                        '--text-align': 'center'
+                                                        textAlign: 'center',
                                                     }}
                                                 />
                                             )}

@@ -36,6 +36,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { useDeletePet, useLeavePet } from '../hooks/useDeletePet';
 import { showUndo } from '../utils/undo';
+import { PickerValue } from '../components/PickerValue';
 
 const petSchema = z.object({
   name: z.string().min(1, 'Введите имя питомца'),
@@ -440,12 +441,7 @@ export function PetForm() {
                     }}
                     arrow
                   >
-                    <Input
-                      id="birth_date"
-                      readOnly
-                      value={displayDate}
-                      placeholder="Выберите дату"
-                    />
+                    <PickerValue id="birth_date" value={displayDate} placeholder="Выберите дату" />
                     <Picker
                       columns={dateColumns}
                       visible={datePickerVisible}
