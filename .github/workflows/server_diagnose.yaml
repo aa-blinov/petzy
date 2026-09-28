@@ -58,6 +58,7 @@ jobs:
             docker compose exec -T nginx nginx -v 2>&1 | head -1
             docker compose exec -T web python --version 2>&1 | head -1
             echo "web runs as: $(docker compose exec -T web id -un 2>&1 | head -1)"
+            echo "web signs in to the database as: $(docker compose exec -T web python -c "from web import db; print(db.client.admin.command('connectionStatus')['authInfo']['authenticatedUsers'][0]['user'])" 2>/dev/null | tail -1)"
 
             echo "=== client addresses the app's nginx sees (counts only, last 30 min) ==="
             # Public = the visitor's real address reached us (per-IP limits

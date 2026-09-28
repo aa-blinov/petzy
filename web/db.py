@@ -15,9 +15,15 @@ def get_env(name: str, default: str = None) -> str:
     return value
 
 
-# MongoDB connection settings
-MONGO_USER = get_env("MONGO_USER")
-MONGO_PASS = get_env("MONGO_PASS")
+# MongoDB connection settings. The app signs in with its own account when
+# the deploy has made one (MONGO_APP_USER: read and write on this database
+# and the rate limiter's, nothing else). MONGO_USER is the root account the
+# database was created with: backups and admin work only. Without an app
+# account (local runs, CI), root as before.
+if os.getenv("MONGO_APP_USER") and os.getenv("MONGO_APP_PASS"):
+    MONGO_USER, MONGO_PASS = os.environ["MONGO_APP_USER"], os.environ["MONGO_APP_PASS"]
+else:
+    MONGO_USER, MONGO_PASS = get_env("MONGO_USER"), get_env("MONGO_PASS")
 MONGO_HOST = get_env("MONGO_HOST", "db")
 MONGO_PORT = get_env("MONGO_PORT", "27017")
 MONGO_DB = get_env("MONGO_DB")

@@ -12,8 +12,10 @@ def load_config() -> Dict[str, Any]:
     Returns a dictionary with all configuration settings.
     """
     # MongoDB configuration (matching db.py format)
-    mongo_user = os.getenv("MONGO_USER", "admin")
-    mongo_pass = os.getenv("MONGO_PASS", "password")
+    # The app's own account when there is one (see web/db.py).
+    app_account = os.getenv("MONGO_APP_USER") and os.getenv("MONGO_APP_PASS")
+    mongo_user = os.getenv("MONGO_APP_USER") if app_account else os.getenv("MONGO_USER", "admin")
+    mongo_pass = os.getenv("MONGO_APP_PASS") if app_account else os.getenv("MONGO_PASS", "password")
     mongo_host = os.getenv("MONGO_HOST", "localhost")
     mongo_port = os.getenv("MONGO_PORT", "27017")
     mongo_db = os.getenv("MONGO_DB", "cat_health")
