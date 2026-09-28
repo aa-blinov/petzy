@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Copy package files
@@ -22,7 +22,7 @@ ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN VITE_SENTRY_RELEASE=$VITE_SENTRY_RELEASE VI
 RUN npm run build
 
 # Production stage - copy files to mounted volume
-FROM alpine:latest
+FROM alpine:3.24
 
 # Copy built files from builder
 COPY --from=builder /app/dist /static

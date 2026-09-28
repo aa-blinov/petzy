@@ -186,7 +186,7 @@ jobs:
               # read, never restored into.
               work="$(mktemp -d)"; chmod 777 "$work"
               docker rm -f petzy-restore-check >/dev/null 2>&1
-              docker run -d --name petzy-restore-check --network none mongo:latest >/dev/null
+              docker run -d --name petzy-restore-check --network none mongo:8.2 >/dev/null
               docker compose run --rm -T -v "$work:/out" backup python3 - <<'PY'
             import sys
             sys.path.insert(0, "scripts")

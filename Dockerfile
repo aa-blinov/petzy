@@ -17,3 +17,8 @@ COPY scripts/send_medication_reminders.py ./scripts/send_medication_reminders.py
 # object storage (idempotent, a no-op once everything has moved).
 COPY scripts/migrate_files_to_s3.py ./scripts/migrate_files_to_s3.py
 COPY gunicorn.conf.py ./
+# Not root: a hole in the app or a dependency gets an account that owns
+# nothing (the code is root's and read-only to it). Nothing here writes
+# to disk but temporary files, which go to /tmp.
+RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin petzy
+USER petzy

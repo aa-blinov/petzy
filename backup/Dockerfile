@@ -1,7 +1,9 @@
 # The daily backup (scripts/backup_to_s3.py). The mongo image, so
 # mongodump/mongorestore come from the same release as the database
 # (docker-compose's `db`), plus Python and boto3 to talk to the bucket.
-FROM mongo:latest
+# The same major.minor as docker-compose's `db`: mongodump and mongorestore
+# must match the server's release.
+FROM mongo:8.2
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-boto3 python3-pip \
     && pip3 install --no-cache-dir --break-system-packages sentry-sdk==2.70.0 \
