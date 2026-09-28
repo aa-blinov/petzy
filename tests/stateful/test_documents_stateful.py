@@ -185,7 +185,7 @@ class TestCreateDocument:
             content_type="multipart/form-data",
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_create_document_image_optimization_failure_falls_back(
         self, client, mock_db, regular_user_token, test_pet, s3_storage
@@ -317,7 +317,7 @@ class TestListDocuments:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_list_documents_unexpected_error(self, client, mock_db, regular_user_token, test_pet):
         from web.app import db
@@ -352,7 +352,7 @@ class TestGetUpdateDeleteDocument:
 
         response = client.get(f"/api/documents/{doc['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_get_document_unexpected_error(self, client, mock_db, regular_user_token, test_pet):
         doc = _insert_document(mock_db, str(test_pet["_id"]))
@@ -602,7 +602,7 @@ class TestServeDocumentFile:
             f"/api/documents/{doc['_id']}/file", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_get_document_file_not_found(self, client, mock_db, regular_user_token):
         response = client.get(

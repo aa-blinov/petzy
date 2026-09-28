@@ -947,7 +947,7 @@ class TestGetMedicationIntakes:
             f"/api/medications/intakes?pet_id={admin_pet['_id']}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
 
 
 @pytest.mark.medications

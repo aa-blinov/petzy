@@ -170,8 +170,10 @@ def validate_pet_access_and_get(pet_id, username):
         return None, error_response("invalid_pet_id")
 
     pet = app.db["pets"].find_one({"_id": object_id})
+    # Somebody else's pet answers exactly like a missing one: a 403 would
+    # confirm the id belongs to a real pet.
     if not pet or not (pet.get("owner") == username or username in pet.get("shared_with", [])):
-        return None, error_response("pet_forbidden")
+        return None, error_response("pet_not_found")
 
     return pet, None
 
@@ -229,8 +231,9 @@ def get_record_and_validate_access(record_id, collection_name, username):
     if not pet_id:
         return None, None, error_response("validation_error_invalid_record")
 
+    # Like a missing record: someone else's mustn't be told apart from none.
     if not check_pet_access(pet_id, username):
-        return None, None, error_response("pet_forbidden")
+        return None, None, error_response("record_not_found")
 
     return existing, pet_id, None
 
@@ -248,12 +251,12 @@ def get_pet_and_validate(pet_id, username, require_owner=False):
         if not pet:
             return None, error_response("pet_not_found")
 
-        if require_owner:
-            if pet.get("owner") != username:
-                return None, error_response("owner_action_forbidden")
-        else:
-            if not check_pet_access(pet_id, username):
-                return None, error_response("pet_forbidden")
+        # Somebody else's pet answers like a missing one. Only a member,
+        # who can see the pet anyway, hears that an action is the owner's.
+        if not check_pet_access(pet_id, username):
+            return None, error_response("pet_not_found")
+        if require_owner and pet.get("owner") != username:
+            return None, error_response("owner_action_forbidden")
 
         return pet, None
     except (InvalidId, TypeError, ValueError):

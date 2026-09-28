@@ -281,7 +281,7 @@ class TestTimeline:
             f"/api/history/timeline?pet_id={pet_id}", headers={"Authorization": f"Bearer {regular_user_token}"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_get_timeline_invalid_pet_id(self, client, regular_user_token):
         """Test timeline with invalid pet_id format."""

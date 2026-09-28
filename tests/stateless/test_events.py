@@ -41,7 +41,7 @@ class TestCreateEvent:
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_unknown_type_rejected(self, client, mock_db, regular_user_token, test_pet):
         response = client.post(
@@ -682,7 +682,7 @@ class TestGetUpdateDeleteEvent:
     def test_get_one_no_access(self, client, mock_db, regular_user_token, admin_pet, admin_token):
         event_id = self._create(client, admin_token, str(admin_pet["_id"]))
         response = client.get(f"/api/events/{event_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_update_success(self, client, mock_db, regular_user_token, test_pet):
         pet_id = str(test_pet["_id"])
@@ -857,7 +857,7 @@ class TestGetHealthStats:
             f"/api/stats/health?pet_id={admin_pet['_id']}&type=feeding",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_invalid_type_rejected(self, client, mock_db, regular_user_token, test_pet):
         response = client.get(

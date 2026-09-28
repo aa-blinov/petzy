@@ -56,7 +56,6 @@ ERRORS: Dict[str, ErrorDef] = {
     # Forbidden (403)
     "forbidden": ErrorDef("forbidden", "Нет доступа к этому ресурсу", 403),
     "forbidden_admin_only": ErrorDef("forbidden_admin_only", "Доступ только для администратора", 403),
-    "pet_forbidden": ErrorDef("pet_forbidden", "Нет доступа к этому питомцу", 403),
     "owner_action_forbidden": ErrorDef("owner_action_forbidden", "Это действие доступно только владельцу", 403),
     # Not found (404)
     "not_found": ErrorDef("not_found", "Ресурс не найден", 404),
