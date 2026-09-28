@@ -102,7 +102,19 @@ jobs:
             # meant backend changes (jti migration, ensure_indexes TTL,
             # refresh-token cleanup) never reached production — the `web`
             # container happily served a 3-week-old image.
+            # Every deploy builds fresh images; the old ones and the build
+            # cache stayed behind until the 20 GB disk was full and MongoDB,
+            # unable to write, crashed on start (exit 139). Clear what a
+            # build can make again: the build cache and images no container
+            # uses. Never volumes: the database lives in one.
+            echo "disk before: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
+            docker builder prune -af >/dev/null 2>&1 || true
+            docker image prune -f >/dev/null 2>&1 || true
+            echo "disk after cleanup: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
             docker compose build
+            # The build itself leaves a fresh cache; keep only what the next
+            # build can reuse cheaply.
+            docker image prune -f >/dev/null 2>&1 || true
             # A recreate cut short leaves this project's containers renamed
             # «<id>_cat-health-control-bot-…»; the next `up` then fails on the
             # name, halfway, with web already stopped (a 502 until fixed).
@@ -115,7 +127,11 @@ jobs:
             clear_stale
             # The database first, with the app account in place, then the
             # rest: web and reminders sign in with that account.
-            docker compose up -d --wait db || { sleep 5; clear_stale; docker compose up -d --wait db; }
+            docker compose up -d --wait db || {
+              echo "database did not start; its last log lines:"
+              docker compose logs --no-color --tail 30 db 2>&1 | grep -viE "password|secret" || true
+              sleep 5; clear_stale; docker compose up -d --wait db
+            }
             app_user_js='
               const admin = db.getSiblingDB("admin");
               const user = process.env.MONGO_APP_USER, pwd = process.env.MONGO_APP_PASS;
