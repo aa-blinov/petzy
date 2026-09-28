@@ -1826,3 +1826,137 @@ label:has(~ .file-picker-input:focus-visible),
     -webkit-line-clamp: 3;
     line-clamp: 3;
 }
+
+/* ── Wide screens (1024px and up: a computer, a tablet on its side) ──
+   The phone's bottom bar stretched a strip of five tabs under an 800px
+   column and sent the pointer to the bottom of a tall monitor for every
+   switch. Here the same five sections, in the same order, stand in a
+   rail on the left, the way desktop and tablet apps keep theirs. The
+   content column is untouched: at 1024px its margin (112px) still clears
+   the 96px rail. */
+@media (min-width: 1024px) {
+    :root {
+        --rail-width: 96px;
+        --page-padding-bottom: calc(var(--safe-area-bottom) + var(--spacing-xl));
+    }
+
+    .bottom-tab-bar-container {
+        top: calc(var(--safe-area-top) + 64px) !important;
+        right: auto !important;
+        width: var(--rail-width);
+        height: auto;
+        padding-left: var(--safe-area-left);
+        border-top: none;
+        border-right: 1px solid var(--app-border-color);
+        /* The iOS scroll fix below the fold is for a bar at the bottom. */
+        transform: none;
+        will-change: auto;
+    }
+
+    .app-tab-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-xs);
+        height: auto;
+        max-width: none;
+        padding: var(--spacing-md) var(--spacing-sm);
+    }
+
+    .app-tab-bar > li {
+        flex: 0 0 auto;
+    }
+
+    .app-tab-bar__item {
+        min-height: 64px;
+        padding: var(--spacing-sm) 4px;
+        white-space: normal;
+        text-align: center;
+    }
+
+    .app-tab-bar__item--active {
+        background: var(--app-accent-soft);
+    }
+
+    .app-tab-bar__title {
+        font-size: 12px;
+    }
+
+    /* Nothing sits at the bottom now: the add button and the undo bar
+       come down to the corner. */
+    .app-fab {
+        bottom: calc(var(--spacing-xl) + var(--safe-area-bottom));
+    }
+
+    .undo-snackbar,
+    body:has(.app-fab) .undo-snackbar {
+        bottom: calc(var(--spacing-xl) + var(--safe-area-bottom));
+    }
+}
+
+/* A pointer that hovers: the rail and bar answer before the click. */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+    .app-tab-bar__item:not(.app-tab-bar__item--active):hover {
+        background: var(--app-divider-color);
+        color: var(--app-text-primary);
+    }
+}
+
+/* ── A phone on its side (landscape, 500px tall or less) ──
+   The 64px top bar and the 50px tab bar with the home indicator took
+   close to a third of a 390px screen. Both get thinner, the tab labels
+   sit beside their icons (there's width to spare), and the side insets
+   keep content and tabs clear of the notch. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023px) {
+    :root {
+        --page-padding-top: calc(var(--safe-area-top) + 64px);
+        --page-padding-bottom: calc(var(--safe-area-bottom) + 60px);
+    }
+
+    .app-navbar {
+        height: 48px;
+    }
+
+    .page-container {
+        padding-left: var(--safe-area-left);
+        padding-right: var(--safe-area-right);
+    }
+
+    .bottom-tab-bar-container {
+        height: calc(40px + var(--safe-area-bottom));
+        padding-left: var(--safe-area-left);
+        padding-right: var(--safe-area-right);
+    }
+
+    .app-tab-bar {
+        height: 40px;
+    }
+
+    .app-tab-bar__item {
+        flex-direction: row;
+        gap: 6px;
+    }
+
+    .app-tab-bar__icon {
+        height: 20px;
+        margin-bottom: 0;
+    }
+
+    .app-tab-bar__title {
+        font-size: 12px;
+    }
+
+    .app-fab {
+        width: 48px;
+        height: 48px;
+        bottom: calc(52px + var(--safe-area-bottom));
+        right: max(16px, calc(var(--safe-area-right) + 16px));
+    }
+
+    .undo-snackbar {
+        bottom: calc(var(--safe-area-bottom) + 52px);
+    }
+
+    body:has(.app-fab) .undo-snackbar {
+        bottom: calc(var(--safe-area-bottom) + 108px);
+    }
+}
