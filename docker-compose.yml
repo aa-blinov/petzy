@@ -1,5 +1,14 @@
+# Container logs are capped: Docker keeps them without limit by default,
+# and together with old images they filled the server's 20 GB disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
+    logging: *default-logging
     image: mongo:8.2
     ports:
       # Loopback only: the app, backups and reminders reach it over
@@ -23,6 +32,7 @@ services:
       - app-network
 
   web:
+    logging: *default-logging
     build: .
     env_file:
       - .env
@@ -46,6 +56,7 @@ services:
       - app-network
 
   frontend:
+    logging: *default-logging
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -61,6 +72,7 @@ services:
       - app-network
 
   nginx:
+    logging: *default-logging
     build:
       context: ./nginx
       dockerfile: Dockerfile
@@ -82,6 +94,7 @@ services:
   # BACKUP_KEEP (3). Off the server's disk on purpose: a backup next to
   # the database it copies is lost with it. See scripts/backup_to_s3.py.
   backup:
+    logging: *default-logging
     build:
       context: .
       dockerfile: backup/Dockerfile
@@ -100,6 +113,7 @@ services:
   # processes (see gunicorn.conf.py), and an in-process thread there
   # would send every reminder once per worker.
   reminders:
+    logging: *default-logging
     build: .
     env_file:
       - .env

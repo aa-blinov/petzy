@@ -104,6 +104,11 @@ jobs:
             echo
             echo "=== host ==="
             uptime; free -m | head -2; df -h / | tail -1
+            echo "--- what Docker keeps on disk"
+            docker system df 2>/dev/null
+            echo "--- database container"
+            docker compose ps -a db --format '{{.Name}} {{.Status}}' 2>/dev/null
+            docker compose logs --no-color --tail 8 db 2>&1 | grep -viE "password|secret" | cut -c1-200
 
             echo
             echo "=== nginx -> web: /api/auth/session (expect 401 quickly) ==="
