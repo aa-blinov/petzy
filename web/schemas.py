@@ -249,6 +249,10 @@ class AuthRefreshResponse(BaseModel):
 
     success: bool = True
     access_token: str
+    refresh_token: Optional[str] = Field(
+        None,
+        description="Новый refresh-токен (только нативному клиенту). Старый после этого работает ещё 30 секунд",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
