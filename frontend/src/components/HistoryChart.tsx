@@ -10,6 +10,7 @@ import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { parseRecordDate } from '../utils/relativeTime';
+import { valueScale } from '../utils/chartScale';
 import { useMemo, useState } from 'react';
 import { CapsuleTabs } from 'antd-mobile';
 
@@ -86,6 +87,9 @@ function formatBucketTooltipLabel(start: Date, granularity: Granularity): string
     return start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
+/** «4,8», as on the axis and everywhere else in the app. */
+const formatValue = (value: ValueType | undefined) => (typeof value === 'number' ? value.toLocaleString('ru-RU') : value);
+
 interface ChartPoint {
     key: string;
     label: string;
@@ -151,6 +155,10 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
     }, [data, isValueChart, granularity]);
 
     const isLineChart = isValueChart;
+    const scale = useMemo(
+        () => (isValueChart && chartData.length ? valueScale(chartData.map(point => point.value)) : null),
+        [isValueChart, chartData],
+    );
     const valueLabel = chart?.kind === 'value' ? (chart.value_label || 'Значение') : 'Количество';
 
     const renderContent = () => {
@@ -217,7 +225,17 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 axisLine={false}
                                 tickLine={false}
                                 tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
-                                width={35}
+                                // «28,9» plus the rotated axis name: 35px put one on the other.
+                                width={48}
+                                domain={scale?.domain}
+                                ticks={scale?.ticks}
+                                allowDataOverflow={false}
+                                tickFormatter={(value: number) =>
+                                    value.toLocaleString('ru-RU', {
+                                        minimumFractionDigits: scale?.decimals ?? 0,
+                                        maximumFractionDigits: scale?.decimals ?? 0,
+                                    })
+                                }
                                 label={{
                                     value: valueLabel,
                                     angle: -90,
@@ -228,7 +246,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                             <Tooltip
                                 cursor={false}
                                 labelFormatter={labelFormatter}
-                                formatter={(value: ValueType | undefined) => [value, valueLabel]}
+                                formatter={(value: ValueType | undefined) => [formatValue(value), valueLabel]}
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',
@@ -277,7 +295,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                             <Tooltip
                                 cursor={false}
                                 labelFormatter={labelFormatter}
-                                formatter={(value: ValueType | undefined) => [value, valueLabel]}
+                                formatter={(value: ValueType | undefined) => [formatValue(value), valueLabel]}
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',
