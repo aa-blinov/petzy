@@ -91,7 +91,8 @@ In production a host nginx terminates TLS and forwards everything to `127.0.0.1:
 
 | Variable | |
 |---|---|
-| `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` | database |
+| `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` | database; the root account, used by backups |
+| `MONGO_APP_USER`, `MONGO_APP_PASS` | the app's own account (read and write on its database and `limits` only); the deploy creates it and its password on the server. Without it the app signs in as root |
 | `FLASK_SECRET_KEY`, `JWT_SECRET_KEY` | a long random value; the app refuses to start with an example one |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` | the admin account (bcrypt hash) |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` | object storage for every file and the backups |

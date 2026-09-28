@@ -88,6 +88,15 @@ jobs:
             upsert_env SENTRY_RELEASE "$(git rev-parse --short HEAD)"
             upsert_env SENTRY_ENVIRONMENT "production"
 
+            # The app's own database account: read and write on the app's
+            # database and the rate limiter's (`limits`), nothing else: no
+            # other database, no user or server administration. Root
+            # (MONGO_USER) stays for backups and admin work. The password is
+            # made here once and lives only in the server's .env; it is never
+            # printed, and mongosh reads it from the container's environment.
+            upsert_env MONGO_APP_USER petzy_app
+            grep -qE '^MONGO_APP_PASS=.+' .env || upsert_env MONGO_APP_PASS "$(openssl rand -hex 24)"
+
             # Rebuild everything that has its own Dockerfile / depends on the
             # backend source. Previously only `frontend` was rebuilt, which
             # meant backend changes (jti migration, ensure_indexes TTL,
@@ -104,6 +113,16 @@ jobs:
               { docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_cat-health-control-bot-' || true; } | xargs -r docker rm -f
             }
             clear_stale
+            # The database first, with the app account in place, then the
+            # rest: web and reminders sign in with that account.
+            docker compose up -d --wait db || { sleep 5; clear_stale; docker compose up -d --wait db; }
+            app_user_js='
+              const admin = db.getSiblingDB("admin");
+              const user = process.env.MONGO_APP_USER, pwd = process.env.MONGO_APP_PASS;
+              const roles = [{role: "readWrite", db: process.env.MONGO_INITDB_DATABASE}, {role: "readWrite", db: "limits"}];
+              if (admin.getUser(user)) { admin.updateUser(user, {pwd: pwd, roles: roles}); print("app database account: updated"); }
+              else { admin.createUser({user: user, pwd: pwd, roles: roles}); print("app database account: created"); }'
+            docker compose exec -T db sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "$0"' "$app_user_js"
             docker compose up -d --remove-orphans || { sleep 5; clear_stale; docker compose up -d --remove-orphans; }
             docker compose ps
             # Files still in GridFS move to object storage; skips what has
