@@ -1,4 +1,4 @@
-"""The privacy policy's facts and the user's consent to it (152-ФЗ).
+"""The privacy policy's facts and the user's consent to it (152-ФЗ, and Kazakhstan's Law No. 94-V).
 
 The policy and consent texts live in the app (frontend/src/pages/Privacy.tsx);
 what only the person running this server knows comes from the environment,
@@ -31,7 +31,8 @@ legal_bp = Blueprint("legal", __name__)
 # when the policy or the consent text changes in substance: everyone is
 # asked to agree again.
 # 2026-09-28.2: the server's country among the countries data goes to.
-PRIVACY_POLICY_VERSION = "2026-09-28.2"
+# 2026-09-28.3: users from Kazakhstan too (Law No. 94-V alongside 152-ФЗ).
+PRIVACY_POLICY_VERSION = "2026-09-28.3"
 
 
 def consent_record() -> dict:
