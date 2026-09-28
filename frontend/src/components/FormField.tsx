@@ -254,6 +254,8 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   value={value !== undefined && value !== null ? String(value) : ''}
                   onChange={onChange}
                   placeholder={field.placeholder}
+                  // The server keeps 500 characters of a comment or a text field.
+                  maxLength={500}
                   rows={field.rows || 2}
                   style={{ minHeight: '80px' }}
                 />
@@ -270,6 +272,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   value={displayValue}
                   onChange={onChange}
                   placeholder={field.placeholder}
+                  maxLength={field.type === 'number' ? undefined : 500}
                   step={field.step}
                   min={field.min}
                   max={field.max}

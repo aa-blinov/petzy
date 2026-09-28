@@ -18,11 +18,12 @@ import { PetCardSkeleton } from '../components/Skeletons';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 
 export function Pets() {
   const navigate = useNavigate();
-  const { pets, isLoading } = usePet();
+  const { pets, isLoading, isError, refetchPets } = usePet();
 
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; pet: Pet | null }>({
     visible: false,
@@ -101,6 +102,8 @@ export function Pets() {
             <PetCardSkeleton />
             <PetCardSkeleton />
           </div>
+        ) : isError ? (
+          <LoadError what="питомцев" onRetry={refetchPets} />
         ) : pets.length === 0 ? (
           <EmptyState
             icon={Cat}

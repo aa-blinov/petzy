@@ -118,7 +118,7 @@ def test_strips_value_error_prefix(flask_app):
                         "type": "value_error",
                         "loc": ("name",),
                         "input": "",
-                        "ctx": {"error": ValueError("bad name")},
+                        "ctx": {"error": ValueError("Неверное имя")},
                     }
                 ],
             )
@@ -128,7 +128,7 @@ def test_strips_value_error_prefix(flask_app):
     assert data is None
     body, status = err
     assert status == 422
-    assert "bad name" in body.get_json()["error"]
+    assert body.get_json()["error"] == "Неверное имя"
     assert not body.get_json()["error"].startswith("Value error")
 
 

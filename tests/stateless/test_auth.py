@@ -85,7 +85,8 @@ class TestAuthentication:
 
         assert response.status_code == 422
         data = response.get_json()
-        assert isinstance(data, list) and "missing" in str(data)
+        assert data["code"] == "validation_error" and data["error"] == "Заполните обязательные поля"
+        assert data["details"] == [{"field": "password", "type": "missing"}]
 
     def test_api_login_rate_limiting(self, client, mock_db):
         """Test rate limiting on login attempts."""

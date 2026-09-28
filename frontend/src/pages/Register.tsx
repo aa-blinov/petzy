@@ -145,6 +145,7 @@ export function Register() {
         >
           <Input
             placeholder="Имя"
+            maxLength={100}
             value={fullName}
             onChange={setFullName}
             disabled={isLoading}
@@ -160,6 +161,7 @@ export function Register() {
             <Input
               type="email"
               placeholder="name@example.com"
+              maxLength={254}
               value={email}
               onChange={setEmail}
               disabled={isLoading}

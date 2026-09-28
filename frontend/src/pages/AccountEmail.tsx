@@ -81,7 +81,7 @@ export function AccountEmail() {
             )}
             <Form layout="vertical" mode="card">
               <Form.Item label="Адрес почты">
-                <Input type="email" value={value} onChange={setEmail} placeholder="name@example.com" clearable autoComplete="email" />
+                <Input type="email" value={value} onChange={setEmail} placeholder="name@example.com" clearable maxLength={254} autoComplete="email" />
               </Form.Item>
               <Form.Item label="Текущий пароль" description="Почтой можно вернуть доступ к аккаунту, поэтому менять её можно только с паролем">
                 <Input type="password" value={password} onChange={setPassword} placeholder="Пароль от Petzy" autoComplete="current-password" />

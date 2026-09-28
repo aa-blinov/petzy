@@ -13,7 +13,7 @@ export function usePet() {
   // Use React Query to cache pets data - shared across all components
   // React Query automatically deduplicates requests with the same key
   // Use refetchOnMount: false to prevent refetching if data is already in cache
-  const { data: pets = [], isLoading, isFetched } = useQuery({
+  const { data: pets = [], isLoading, isFetched, isError, refetch } = useQuery({
     queryKey: ['pets'],
     queryFn: () => petsService.getPets(),
     // This hook renders inside the Navbar, which mounts on every route
@@ -118,6 +118,10 @@ export function usePet() {
     // [] while the query is still pending or disabled, which is not the
     // same as "this user has no pets".
     isFetched,
+    // The roster request failed and nothing is cached: «no pets» is not
+    // known, so nothing may treat it as «this user has none».
+    isError: isError && pets.length === 0,
+    refetchPets: refetch,
     selectPet,
     getSelectedPet
   };

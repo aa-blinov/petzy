@@ -1798,3 +1798,31 @@ label:has(~ .file-picker-input:focus-visible),
     padding-block: 11px;
     margin-block: -11px;
 }
+
+/* Text that can be as long as the server allows (a 100-character name, a
+   500-character comment): cut to one line or a few, and break a single
+   long word instead of pushing it past the edge. */
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.clamp-2,
+.clamp-3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.clamp-2 {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.clamp-3 {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}

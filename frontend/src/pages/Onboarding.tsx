@@ -377,7 +377,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             value={name}
             onChange={setName}
             placeholder="Имя"
-            maxLength={50}
+            maxLength={100}
             autoFocus
             enterKeyHint="done"
             onEnterPress={createPet}

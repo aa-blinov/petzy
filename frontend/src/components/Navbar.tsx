@@ -181,19 +181,22 @@ export function Navbar() {
                       width: '100%',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {/* min-width 0 and a fixed avatar: a 100-character name squeezed
+                        the photo into a sliver, and one long word ran past the edge. */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                       {pet.photo_url ? (
                         <PetImage
                           src={pet.photo_url}
                           alt={pet.name}
                           size={40}
                           species={pet.species}
-                          style={{ borderRadius: 'var(--radius-md)' }}
+                          style={{ borderRadius: 'var(--radius-md)', flexShrink: 0 }}
                         />
                       ) : (
                         <div style={{
                           width: '40px',
                           height: '40px',
+                          flexShrink: 0,
                           borderRadius: 'var(--radius-md)',
                           backgroundColor: 'var(--app-accent-soft)',
                           color: 'var(--app-accent-deep)',
@@ -207,13 +210,13 @@ export function Navbar() {
                           })()}
                         </div>
                       )}
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
-                        <span style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || speciesLabel(pet.species) || 'Питомец'}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span className="clamp-2" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
+                        <span className="truncate" style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || speciesLabel(pet.species) || 'Питомец'}</span>
                       </div>
                     </div>
                     {pet._id === selectedPetId && (
-                      <CheckOutline style={{ fontSize: '20px', color: 'var(--adm-color-primary)' }} />
+                      <CheckOutline style={{ fontSize: '20px', color: 'var(--adm-color-primary)', flexShrink: 0, marginLeft: 8 }} />
                     )}
                   </button>
                 ))}

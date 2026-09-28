@@ -1103,36 +1103,38 @@ class MedicationCreate(PetIdQuery):
     dosage: Optional[str] = Field(None, max_length=50, description="Legacy dosage string")
     unit: Optional[str] = Field(None, max_length=20, description="Legacy unit string")
     dose_unit: Optional[str] = Field(None, max_length=20, description="tablet, ml, etc")
-    default_dose: float = Field(1.0, description="Default amount to subtract from inventory")
+    default_dose: float = Field(1.0, ge=0, le=10_000, description="Default amount to subtract from inventory")
     schedule: MedicationSchedule
     inventory_enabled: bool = False
-    inventory_total: Optional[float] = None
-    inventory_current: Optional[float] = None
-    inventory_warning_threshold: Optional[float] = None
+    inventory_total: Optional[float] = Field(None, ge=0, le=1_000_000)
+    inventory_current: Optional[float] = Field(None, ge=0, le=1_000_000)
+    inventory_warning_threshold: Optional[float] = Field(None, ge=0, le=1_000_000)
     inventory_warning_days: Optional[float] = Field(
         None, ge=0, le=60, description="Предупредить, когда запаса останется на столько дней"
     )
     is_active: bool = True
-    comment: Optional[str] = None
+    comment: Optional[str] = Field(None, max_length=500)
 
 
 class MedicationUpdate(BaseModel):
-    name: Optional[str] = None
-    type: Optional[str] = None
-    form_factor: Optional[str] = None
-    strength: Optional[str] = None
-    dosage: Optional[str] = None
-    unit: Optional[str] = None
-    dose_unit: Optional[str] = None
-    default_dose: Optional[float] = None
+    # The same limits as MedicationCreate: an edit could store what a new
+    # medication couldn't.
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    type: Optional[str] = Field(None, max_length=50)
+    form_factor: Optional[str] = Field(None, max_length=20)
+    strength: Optional[str] = Field(None, max_length=50)
+    dosage: Optional[str] = Field(None, max_length=50)
+    unit: Optional[str] = Field(None, max_length=20)
+    dose_unit: Optional[str] = Field(None, max_length=20)
+    default_dose: Optional[float] = Field(None, ge=0, le=10_000)
     schedule: Optional[MedicationSchedule] = None
     inventory_enabled: Optional[bool] = None
-    inventory_total: Optional[float] = None
-    inventory_current: Optional[float] = None
-    inventory_warning_threshold: Optional[float] = None
+    inventory_total: Optional[float] = Field(None, ge=0, le=1_000_000)
+    inventory_current: Optional[float] = Field(None, ge=0, le=1_000_000)
+    inventory_warning_threshold: Optional[float] = Field(None, ge=0, le=1_000_000)
     inventory_warning_days: Optional[float] = Field(None, ge=0, le=60)
     is_active: Optional[bool] = None
-    comment: Optional[str] = None
+    comment: Optional[str] = Field(None, max_length=500)
 
 
 class MedicationItem(BaseModel):
