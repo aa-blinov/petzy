@@ -68,12 +68,19 @@ function SortableTileItem({
             {...attributes}
             {...listeners}
             aria-label={`Переместить ${title}`}
+            // A 44px target around the 20px grip (it was 28x20 to press):
+            // the negative margins keep the grip where it was and the row
+            // no taller.
             style={{
               cursor: 'grab',
               color: 'var(--app-text-tertiary)',
-              paddingRight: 8,
               touchAction: 'none',
               display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 44,
+              height: 44,
+              margin: '-12px -4px -12px -12px',
             }}
           >
             <GripVertical size={20} strokeWidth={2} style={{ display: 'block' }} />

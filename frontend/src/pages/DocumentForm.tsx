@@ -26,6 +26,7 @@ import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
+import { PickerValue } from '../components/PickerValue';
 
 const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -467,12 +468,16 @@ export function DocumentForm() {
                   style={{ height: 6, borderRadius: 3, background: 'var(--app-accent-soft)', overflow: 'hidden' }}
                 >
                   <div
+                    // Scaled, not resized: a width transition re-laid the
+                    // page out on every progress tick.
                     style={{
                       height: '100%',
-                      width: `${Math.round(uploadProgress! * 100)}%`,
+                      width: '100%',
+                      transform: `scaleX(${uploadProgress!})`,
+                      transformOrigin: 'left',
                       background: 'var(--app-accent)',
-                      borderRadius: 3,
-                      transition: 'width 200ms linear',
+                      // No radius of its own: scaled, it would squash; the track clips the ends.
+                      transition: 'transform 200ms linear',
                     }}
                   />
                 </div>
@@ -505,11 +510,9 @@ export function DocumentForm() {
                     style={{ cursor: isEditingScan || isUploading ? 'default' : 'pointer' }}
                     arrow={!isEditingScan && !isUploading}
                   >
-                    <Input
-                      readOnly
-                      value={DOCUMENT_CATEGORY_LABELS[field.value as DocumentCategory] || ''}
+                    <PickerValue
+                      value={DOCUMENT_CATEGORY_LABELS[field.value as DocumentCategory]}
                       placeholder="Выберите категорию"
-                      style={{ pointerEvents: 'none' }}
                     />
                   </Form.Item>
                   <Picker
@@ -604,12 +607,7 @@ export function DocumentForm() {
                       )
                     }
                   >
-                    <Input
-                      readOnly
-                      value={displayDate}
-                      placeholder="Не указано (например, для прививок и страховки)"
-                      style={{ pointerEvents: 'none' }}
-                    />
+                    <PickerValue value={displayDate} placeholder="Не указано (например, для прививок и страховки)" />
                     <Picker
                       columns={expiryDateColumns}
                       visible={expiryPickerVisible}

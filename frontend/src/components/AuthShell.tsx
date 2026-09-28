@@ -62,7 +62,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           {children}
         </div>
         <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: 'var(--text-xs)' }}>
-          <a href="/privacy" style={{ color: 'var(--app-text-secondary)' }}>
+          <a href="/privacy" className="tap-link" style={{ color: 'var(--app-text-secondary)' }}>
             Политика конфиденциальности
           </a>
         </p>

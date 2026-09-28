@@ -7,6 +7,7 @@ import type { InputRef, TextAreaRef } from 'antd-mobile';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime, parseDateTime } from '../utils/dateUtils';
 import { FieldError } from './FieldError';
+import { PickerValue } from './PickerValue';
 
 interface FormFieldProps {
   field: FormFieldType;
@@ -137,13 +138,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
               return (
                 <>
-                  <Input
-                    ref={inputRef as Ref<InputRef>}
-                    id={field.name}
-                    readOnly
-                    value={displayDate}
-                    placeholder="Выберите дату"
-                  />
+                  <PickerValue id={field.name} value={displayDate} placeholder="Выберите дату" />
                   <Picker
                     columns={dateColumns(value)}
                     visible={datePickerVisible}
@@ -184,13 +179,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
 
               return (
                 <>
-                  <Input
-                    ref={inputRef as Ref<InputRef>}
-                    id={field.name}
-                    readOnly
-                    value={displayTime}
-                    placeholder="Выберите время"
-                  />
+                  <PickerValue id={field.name} value={displayTime} placeholder="Выберите время" />
                   <Picker
                     columns={getTimeColumns(currentDateForTime, currentTimeSelection)}
                     visible={pickerVisible}
@@ -235,13 +224,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               const selectedOption = options.find(opt => String(opt.value) === String(value)) || options[0];
               return (
                 <>
-                  <Input
-                    ref={inputRef as Ref<InputRef>}
-                    id={field.name}
-                    readOnly
-                    value={selectedOption?.label || ''}
-                    placeholder="Выберите..."
-                  />
+                  <PickerValue id={field.name} value={selectedOption?.label} placeholder="Выберите..." />
                   {value === defaultVal && (
                     <div style={{ fontSize: '12px', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'left' }}>
                       Значение по умолчанию

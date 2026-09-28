@@ -38,7 +38,7 @@ export function ForgotPassword() {
           Восстановление по почте пока не работает. Напишите администратору Petzy, он задаст новый пароль.
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
-          <Link to="/login" style={linkStyle}>Вернуться ко входу</Link>
+          <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
         </p>
       </AuthShell>
     );
@@ -53,7 +53,7 @@ export function ForgotPassword() {
           Ссылка работает один час. Письма нет? Загляните в «Спам». Если почту к аккаунту не привязывали, напишите администратору Petzy.
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
-          <Link to="/login" style={linkStyle}>Вернуться ко входу</Link>
+          <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
         </p>
       </AuthShell>
     );
@@ -75,7 +75,7 @@ export function ForgotPassword() {
               Отправить ссылку
             </Button>
             <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)' }}>
-              <Link to="/login" style={linkStyle}>Вернуться ко входу</Link>
+              <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
             </p>
           </>
         }

@@ -652,6 +652,19 @@ html[data-prefers-color-scheme='dark'] {
     --text-color: var(--app-on-primary-fill);
 }
 
+/* A solid red button («Удалить аккаунт»). In the dark theme the red is
+   the light #FF7A70, and white on it read at 2.5:1: dark text instead,
+   as the dark theme's other light fills carry (6.7:1). */
+html[data-prefers-color-scheme='dark'] .adm-button-danger:not(.adm-button-fill-outline):not(.adm-button-fill-none) {
+    --text-color: var(--app-on-accent);
+}
+
+/* A chosen Selector chip wrote copper text on the soft copper tint at
+   4.4:1; the deeper copper reads at 5.1:1 (9:1 in the dark theme). */
+.adm-selector {
+    --checked-text-color: var(--app-accent-deep);
+}
+
 /* Placeholders used antd's --adm-color-light, which is mapped to the
    border colour (1.2:1). */
 .adm-input,
@@ -860,6 +873,20 @@ select {
     font-size: 11px;
     line-height: 15px;
     font-weight: 500;
+}
+
+/* 320-359px phones: five tabs of 64px each, and «Документы» at 11px
+   needs about 60px, which the 8px side padding left no room for; the
+   labels ran into each other and «Настройки» was cut at the edge. */
+@media (max-width: 359px) {
+    .app-tab-bar__item {
+        padding-inline: 2px;
+    }
+
+    .app-tab-bar__title {
+        font-size: 10px;
+        letter-spacing: -0.01em;
+    }
 }
 
 /* Inset, so the ring stays inside the fixed bar instead of being
@@ -1740,4 +1767,34 @@ label:has(~ .file-picker-input:focus-visible),
     font: inherit;
     font-size: var(--text-sm);
     cursor: pointer;
+}
+
+/* A picker row's value (components/PickerValue): set like antd's Input,
+   which it replaced, so the rows look as before. */
+.picker-value {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    font-size: var(--adm-font-size-9);
+    line-height: 1.5;
+    color: var(--adm-color-text);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.picker-value--empty {
+    color: var(--app-text-placeholder);
+}
+
+/* A link standing on its own under a form («Забыли пароль?», «Войти»):
+   the text is 15-18px tall, too small a target for a thumb. The padding
+   makes it about 40px to press; the negative margin keeps the line where
+   it was. */
+.tap-link {
+    display: inline-block;
+    padding-block: 11px;
+    margin-block: -11px;
 }

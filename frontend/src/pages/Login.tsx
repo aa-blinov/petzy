@@ -118,7 +118,7 @@ export function Login() {
                 </Button>
               )}
               <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
-                <Link to="/forgot-password" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
+                <Link to="/forgot-password" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
                   Забыли пароль?
                 </Link>
               </p>

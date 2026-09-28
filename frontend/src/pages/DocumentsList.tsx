@@ -92,7 +92,8 @@ function describeExpiry(expiresAt: string): { text: string; color: string; bg: s
   if (daysUntil <= EXPIRY_WARNING_DAYS) {
     return { text: `Истекает ${formatted}`, color: 'var(--app-warning-text)', bg: 'var(--app-warning-soft)' };
   }
-  return { text: `До ${formatted}`, color: 'var(--app-text-tertiary)', bg: 'var(--app-accent-soft)' };
+  // Secondary, not tertiary: tertiary on the soft copper tint was 4.4:1.
+  return { text: `До ${formatted}`, color: 'var(--app-text-secondary)', bg: 'var(--app-accent-soft)' };
 }
 
 export function DocumentsList() {
