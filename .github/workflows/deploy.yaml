@@ -37,6 +37,16 @@ jobs:
             echo "--- Navigating to project ---"
             cd ~/services/cat-health-control-bot || cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
             echo "--- Deployment ---"
+            # First, before even git: every deploy builds fresh images, and
+            # the old ones and the build cache stayed behind until the 20 GB
+            # disk was full: MongoDB, unable to write, crashed on start (exit
+            # 139), and then git itself couldn't fetch. Clear what a build
+            # can make again: the build cache and images no container uses.
+            # Never volumes: the database lives in one.
+            echo "disk before: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
+            docker builder prune -af >/dev/null 2>&1 || true
+            docker image prune -f >/dev/null 2>&1 || true
+            echo "disk after cleanup: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
             # `git pull` fails outright if the server's checkout has ever
             # diverged from origin/master (a stray local commit, a manual
             # edit to a tracked file) — this is a deploy target, not a dev
@@ -102,15 +112,6 @@ jobs:
             # meant backend changes (jti migration, ensure_indexes TTL,
             # refresh-token cleanup) never reached production — the `web`
             # container happily served a 3-week-old image.
-            # Every deploy builds fresh images; the old ones and the build
-            # cache stayed behind until the 20 GB disk was full and MongoDB,
-            # unable to write, crashed on start (exit 139). Clear what a
-            # build can make again: the build cache and images no container
-            # uses. Never volumes: the database lives in one.
-            echo "disk before: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
-            docker builder prune -af >/dev/null 2>&1 || true
-            docker image prune -f >/dev/null 2>&1 || true
-            echo "disk after cleanup: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
             docker compose build
             # The build itself leaves a fresh cache; keep only what the next
             # build can reuse cheaply.
