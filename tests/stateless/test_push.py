@@ -121,6 +121,21 @@ class TestSubscribe:
         assert saved["username"] == "testuser"
         assert any("reassigned" in record.message and "admin" in record.message for record in caplog.records)
 
+    def test_an_endpoint_without_its_keys_cannot_be_taken_over(self, client, mock_db, regular_user_token, admin_token):
+        """Knowing someone's endpoint isn't enough to move their device to
+        another account: only their browser has the subscription's keys."""
+        client.post(
+            "/api/push/subscribe", json=VALID_SUBSCRIBE_BODY, headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        forged = {**VALID_SUBSCRIBE_BODY, "keys": {"p256dh": "attacker-key", "auth": "attacker-auth"}}
+        response = client.post(
+            "/api/push/subscribe", json=forged, headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 422
+        assert response.get_json()["code"] == "push_subscription_taken"
+        saved = mock_db.push_subscriptions.find_one({"endpoint": VALID_SUBSCRIBE_BODY["endpoint"]})
+        assert saved["username"] == "admin" and saved["keys"] == VALID_SUBSCRIBE_BODY["keys"]
+
 
 @pytest.mark.push
 class TestUnsubscribe:
