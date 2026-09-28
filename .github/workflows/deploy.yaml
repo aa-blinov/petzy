@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - master
+    # Nothing the server runs: a docs or ops-workflow change doesn't need a
+    # rebuild of every image (which also costs disk on the small server).
+    paths-ignore:
+      - "**/*.md"
+      - ".impeccable/**"
+      - "screenshots/**"
+      - ".github/workflows/server_cleanup.yaml"
+      - ".github/workflows/server_diagnose.yaml"
+      - ".github/workflows/inspect_db.yaml"
+      - ".github/workflows/storage_check.yaml"
   # By hand, e.g. after adding or changing a secret (SMTP_*, S3_*).
   workflow_dispatch:
 
