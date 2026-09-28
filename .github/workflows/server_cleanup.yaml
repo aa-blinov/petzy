@@ -64,6 +64,10 @@ jobs:
               echo "all of Docker:   $(size /var/lib/docker)"
               echo "home folders:    $(size /home)"
               echo "root's home:     $(size /root)"
+              echo "  of which caches (.cache, .npm): $(size /root/.cache) / $(size /root/.npm)"
+              echo "  of which this project's folder: $(size /root/services/cat-health-control-bot)"
+              echo "  of which the project's .git:    $(size /root/services/cat-health-control-bot/.git)"
+              echo "  of which the project's node_modules: $(size /root/services/cat-health-control-bot/frontend/node_modules)"
               echo "temporary files: $(size /tmp)"
               echo "the system:      $(size /usr)"
             fi
