@@ -51,6 +51,13 @@ jobs:
             admin_js='print("users total: " + db.users.countDocuments({})); print("admin row exists: " + (db.users.countDocuments({username: "admin"}) > 0));'
             docker compose exec -T db sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin "$MONGO_INITDB_DATABASE" --eval "$0"' "$admin_js" 2>&1 | mask | tail -3
 
+            echo "=== image versions (what the stack actually runs) ==="
+            docker compose images --format '{{.Service}} {{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null
+            docker compose exec -T db mongod --version 2>/dev/null | head -1
+            docker compose exec -T db sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "print(\"featureCompatibilityVersion: \" + db.adminCommand({getParameter: 1, featureCompatibilityVersion: 1}).featureCompatibilityVersion.version)"' 2>&1 | tail -1
+            docker compose exec -T nginx nginx -v 2>&1 | head -1
+            docker compose exec -T web python --version 2>&1 | head -1
+
             echo "=== client addresses the app's nginx sees (counts only, last 30 min) ==="
             # Public = the visitor's real address reached us (per-IP limits
             # work); private = everything looks like it came from the proxy.
