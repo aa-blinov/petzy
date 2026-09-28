@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft } from 'lucide-react';
 import { legalService, LEGAL_QUERY_KEY, type LegalInfo } from '../services/legal.service';
 import { goBack } from '../utils/navigation';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 /**
  * «Политика конфиденциальности» (/privacy) and «Согласие на обработку
@@ -56,7 +57,11 @@ function WriteTo({ info, verb = 'напишите' }: { info?: LegalInfo; verb?:
 
 function LegalPage({ title, children }: { title: string; children: (info?: LegalInfo) => ReactNode }) {
   const navigate = useNavigate();
-  const { data: info } = useQuery({ queryKey: LEGAL_QUERY_KEY, queryFn: () => legalService.get(), staleTime: 60 * 60 * 1000 });
+  const { data: info, isPending } = useQuery({
+    queryKey: LEGAL_QUERY_KEY,
+    queryFn: () => legalService.get(),
+    staleTime: 60 * 60 * 1000,
+  });
 
   return (
     <div className="legal-page">
@@ -73,7 +78,8 @@ function LegalPage({ title, children }: { title: string; children: (info?: Legal
             кто пригласил вас в Petzy.
           </p>
         )}
-        {children(info)}
+        {/* Not before the facts arrive: «пока не указан» for a second reads as the truth. */}
+        {isPending ? <LoadingSpinner /> : children(info)}
       </article>
     </div>
   );
