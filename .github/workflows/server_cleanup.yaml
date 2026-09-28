@@ -7,7 +7,8 @@ name: Clean server disk
 # With `apply`, only what can be made again is removed:
 #   - Docker images no container uses, and the build cache (the next
 #     deploy rebuilds what it needs);
-#   - system journal beyond 200 MB, and the package cache (needs sudo).
+#   - system journal beyond 200 MB, and the package cache (as root);
+#   - npm and pip download caches in the admin's home.
 # Volumes are never removed here: one of them is the database. Unused
 # volumes are only counted, with how many look like MongoDB data.
 
@@ -35,10 +36,13 @@ jobs:
             # No passwordless sudo on this server: measure through Docker, with
             # the host's disk mounted read-only in a throwaway container.
             size() { docker run --rm -v /:/host:ro alpine:3.24 du -sh "/host$1" 2>/dev/null | cut -f1; }
-            can_sudo=no; sudo -n true 2>/dev/null && can_sudo=yes
+            # Root needs no sudo; anyone else needs it without a password.
+            if [ "$(id -u)" = 0 ]; then as_root=""; can_sudo=yes
+            elif sudo -n true 2>/dev/null; then as_root="sudo -n"; can_sudo=yes
+            else as_root=""; can_sudo=no; fi
 
             echo "=== disk: $(disk) ==="
-            echo "sudo without a password: $can_sudo"
+            echo "can clean system files: $can_sudo"
             echo
             echo "=== Docker ==="
             docker system df 2>/dev/null
@@ -79,9 +83,12 @@ jobs:
               docker image prune -af >/dev/null 2>&1 && echo "unused Docker images: removed"
               docker builder prune -af >/dev/null 2>&1 && echo "build cache: removed"
               if [ "$can_sudo" = yes ]; then
-                sudo -n journalctl --vacuum-size=200M >/dev/null 2>&1 && echo "journal: trimmed to 200 MB"
-                sudo -n apt-get clean >/dev/null 2>&1 && echo "package cache: cleared"
+                $as_root journalctl --vacuum-size=200M >/dev/null 2>&1 && echo "journal: trimmed to 200 MB"
+                $as_root apt-get clean >/dev/null 2>&1 && echo "package cache: cleared"
               fi
+              # Download caches in the admin's home: rebuilt on demand.
+              rm -rf ~/.npm/_cacache 2>/dev/null && echo "npm cache: cleared"
+              rm -rf ~/.cache/pip 2>/dev/null && echo "pip cache: cleared"
               echo
               echo "=== disk after: $(disk) ==="
               docker system df 2>/dev/null
