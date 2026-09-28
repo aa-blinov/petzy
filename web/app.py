@@ -14,6 +14,7 @@ from gridfs import GridFS
 from werkzeug.exceptions import HTTPException
 
 from web import security
+from web.observability import init_sentry
 from web.configs import CORS_CONFIG, FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
 from web.db import db, ensure_indexes
 from web.errors import error_response
@@ -40,6 +41,9 @@ def setup_logging(app):
 
     return app.logger
 
+
+# Reporting first, so an error while the app is being built reaches it too.
+init_sentry("web")
 
 # Initialize GridFS for file storage
 fs = GridFS(db)

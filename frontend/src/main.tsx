@@ -7,6 +7,7 @@ import './styles/globals.css'
 import App from './App.tsx'
 import { installAntdA11y } from './utils/antdA11y'
 import { watchForUpdates } from './utils/swUpdate'
+import { initSentry } from './utils/observability'
 
 // antd-mobile ships zh-CN as its default locale, and the app never set
 // one — so every string the app didn't pass explicitly rendered in
@@ -29,6 +30,7 @@ reducedMotion.addEventListener('change', syncMotion)
 
 installAntdA11y()
 
+initSentry()
 watchForUpdates()
 
 createRoot(document.getElementById('root')!).render(

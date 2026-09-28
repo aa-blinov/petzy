@@ -164,6 +164,9 @@ def main() -> int:
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from web import storage
+    from web.observability import init_sentry
+
+    sentry_on = init_sentry("backup")
 
     if not storage.storage_configured():
         logger.error("Object storage is not configured (S3_*); nothing to back up to")
@@ -171,8 +174,21 @@ def main() -> int:
     keep = int(_env("BACKUP_KEEP", "3"))
     hour = int(_env("BACKUP_HOUR_UTC", "0"))
 
+    def run_backup() -> None:
+        """One backup; with Sentry on, also a check-in of the daily monitor,
+        so a day without a backup raises an alert, not only a failed one."""
+        if not sentry_on:
+            backup_once(storage, keep)
+            return
+        from sentry_sdk.crons import monitor
+
+        schedule = {"type": "crontab", "value": f"0 {hour} * * *"}
+        config = {"schedule": schedule, "timezone": "UTC", "checkin_margin": 90, "max_runtime": 60}
+        with monitor(monitor_slug="petzy-backup", monitor_config=config):
+            backup_once(storage, keep)
+
     if args.once:
-        backup_once(storage, keep)
+        run_backup()
         return 0
 
     logger.info(f"Daily backups at {hour:02d}:00 UTC to {backups_prefix(storage)}, keeping the newest {keep}")
@@ -180,7 +196,7 @@ def main() -> int:
     while True:
         if pending:
             try:
-                backup_once(storage, keep)
+                run_backup()
                 pending = False
             except Exception:
                 # The older backups stay untouched; try again in an hour

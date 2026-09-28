@@ -49,6 +49,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # Sentry for the browser, from .env (the deploy writes them).
+      args:
+        VITE_SENTRY_DSN: ${SENTRY_DSN:-}
+        VITE_SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+        VITE_SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - static_content:/usr/share/nginx/html
     restart: unless-stopped

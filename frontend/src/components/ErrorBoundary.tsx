@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Result, Button } from 'antd-mobile';
 import { FrownOutline } from 'antd-mobile-icons';
+import { reportError } from '../utils/observability';
 
 interface Props {
     children?: ReactNode;
@@ -22,14 +23,10 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        // Log errors to monitoring service
         console.error('Uncaught error:', error, errorInfo);
-
-        /**
-         * TODO: Log to a real monitoring service like Sentry or LogRocket
-         * Example: 
-         * Sentry.captureException(error, { extra: errorInfo });
-         */
+        // A crash that took the screen down: to Sentry, with the component
+        // stack that shows where (no-op when Sentry is off).
+        reportError(error, errorInfo.componentStack ?? undefined);
     }
 
     private handleReset = () => {

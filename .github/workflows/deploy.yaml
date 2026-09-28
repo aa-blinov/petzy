@@ -76,6 +76,12 @@ jobs:
             upsert_if_set SMTP_USER "${{ secrets.SMTP_USER }}"
             upsert_if_set SMTP_PASSWORD "${{ secrets.SMTP_PASSWORD }}"
             upsert_if_set SMTP_FROM "${{ secrets.SMTP_FROM }}"
+            # Sentry (web/observability.py, frontend/src/utils/observability.ts):
+            # the DSN from the SENTRY_DSN secret; the release is this commit,
+            # so an error says which deploy it came from.
+            upsert_if_set SENTRY_DSN "${{ secrets.SENTRY_DSN }}"
+            upsert_env SENTRY_RELEASE "$(git rev-parse --short HEAD)"
+            upsert_env SENTRY_ENVIRONMENT "production"
 
             # Rebuild everything that has its own Dockerfile / depends on the
             # backend source. Previously only `frontend` was rebuilt, which

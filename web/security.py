@@ -18,6 +18,7 @@ from flask import make_response, request, Response
 from web.configs import FLASK_CONFIG, JWT_CONFIG, ADMIN_CONFIG
 from web.db import db
 from web.errors import error_response
+from web.observability import set_user as set_sentry_user
 
 
 logger = logging.getLogger(__name__)
@@ -309,6 +310,7 @@ def login_required(f):
 
         # Store username in request context
         username = payload.get("username")
+        set_sentry_user(username)
         setattr(request, "current_user", username)
         g.current_user = username  # optional, for Flask context
 
