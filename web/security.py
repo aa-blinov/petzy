@@ -40,6 +40,9 @@ if JWT_SECRET_KEY in _PUBLIC_KEYS:
 JWT_ALGORITHM = JWT_CONFIG["algorithm"]
 ACCESS_TOKEN_EXPIRE_MINUTES = JWT_CONFIG["access_token_expire_minutes"]
 REFRESH_TOKEN_EXPIRE_DAYS = JWT_CONFIG["refresh_token_expire_days"]
+# How long a spent refresh token still answers (with its successor): two
+# tabs refreshing at once, or a retry after the answer was lost.
+REFRESH_REUSE_GRACE_SECONDS = 30
 
 # Cookie defaults (env-driven via FLASK_CONFIG; see web/configs.py)
 COOKIE_SECURE: bool = FLASK_CONFIG["cookie_secure"]
@@ -130,8 +133,11 @@ def create_access_token(username):
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
-def create_refresh_token(username):
+def create_refresh_token(username, family=None):
     """Create JWT refresh token and store it in database.
+
+    ``family`` ties the tokens one sign-in rotates through (see
+    ``rotate_refresh_token``); a new sign-in starts a family of its own.
 
     Each refresh token carries a fresh `jti` (JWT ID, RFC 7519 §4.1.7)
     so that two logins in the same wall-clock second produce distinct
@@ -147,6 +153,7 @@ def create_refresh_token(username):
     db["refresh_tokens"].insert_one(
         {
             "jti": jti,
+            "family": family or jti,
             "token": token,
             "username": username,
             "created_at": datetime.now(timezone.utc),
@@ -244,24 +251,63 @@ def validate_refresh_token(refresh_token: str):
     return username, token_record
 
 
-def try_refresh_access_token():
-    """Try to refresh access token using refresh token. Returns new access token or None."""
-    refresh_token = request.cookies.get("refresh_token")
+def _aware(moment: datetime) -> datetime:
+    """PyMongo hands BSON dates back naive (UTC)."""
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def rotate_refresh_token(refresh_token):
+    """Spend a refresh token: ``(username, next refresh token)``, or None.
+
+    Every use hands out a successor, and the spent token stays on record
+    (until its own expiry) as the evidence of reuse. Presented again:
+
+    - within REFRESH_REUSE_GRACE_SECONDS, it answers with the same
+      successor: two tabs, or a retry after a dropped answer, refresh at
+      the same moment and both carry on;
+    - later, somebody kept a copy: the whole family (every token of that
+      sign-in) is revoked, and the device has to sign in again. A stolen
+      refresh token is good until its owner's next refresh, not 7 days.
+    """
     result = validate_refresh_token(refresh_token)
     if result is None:
         return None
-    username, _token_record = result
+    username, record = result
+    family = record.get("family") or record.get("jti")
+    now = datetime.now(timezone.utc)
 
-    # Create new access token
-    access_token = create_access_token(username)
+    if not record.get("rotated_at"):
+        successor = create_refresh_token(username, family=family)
+        claimed = db["refresh_tokens"].update_one(
+            {"_id": record["_id"], "rotated_at": {"$exists": False}},
+            {"$set": {"rotated_at": now, "replaced_by": successor}},
+        )
+        if claimed.modified_count == 1:
+            return username, successor
+        # A parallel refresh spent it first: drop ours, answer like it did.
+        db["refresh_tokens"].delete_one({"token": successor})
+        record = db["refresh_tokens"].find_one({"_id": record["_id"]})
+        if not record or not record.get("rotated_at"):
+            return None
 
-    # Update token in database (optional, for tracking)
-    db["refresh_tokens"].update_one(
-        {"token": refresh_token},
-        {"$set": {"last_used_at": datetime.now(timezone.utc)}},
-    )
+    successor = record.get("replaced_by")
+    in_grace = now - _aware(record["rotated_at"]) <= timedelta(seconds=REFRESH_REUSE_GRACE_SECONDS)
+    if in_grace and successor and db["refresh_tokens"].find_one({"token": successor}, {"_id": 1}):
+        return username, successor
 
-    return access_token
+    logger.warning(f"Refresh token reused, sign-in revoked: user={username}")
+    db["refresh_tokens"].delete_many({"$or": [{"family": family}, {"jti": family}]})
+    return None
+
+
+def try_refresh_access_token():
+    """The session behind the refresh cookie, renewed: ``(access, refresh)``
+    tokens, or None."""
+    rotated = rotate_refresh_token(request.cookies.get("refresh_token"))
+    if rotated is None:
+        return None
+    username, refresh_token = rotated
+    return create_access_token(username), refresh_token
 
 
 def get_current_user():
@@ -292,14 +338,15 @@ def login_required(f):
 
         token = get_token_from_request()
         payload = None
-        new_token = None
+        new_token = new_refresh_token = None
 
         if token:
             payload = verify_token(token, "access")
 
         if not payload:
             # Token missing or invalid, try to refresh
-            new_token = try_refresh_access_token()
+            renewed = try_refresh_access_token()
+            new_token, new_refresh_token = renewed if renewed else (None, None)
             if new_token:
                 payload = verify_token(new_token, "access")
                 if not payload:
@@ -336,6 +383,12 @@ def login_required(f):
                 "access_token",
                 new_token,
                 max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+            set_auth_cookie(
+                response,
+                "refresh_token",
+                new_refresh_token,
+                max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
 
         return response

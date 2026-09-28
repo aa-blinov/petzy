@@ -95,7 +95,7 @@ class TestVerifyUserCredentialsCorruptedAdminHash:
 @pytest.mark.auth
 class TestLoginRequiredRefreshEdgeCase:
     def test_freshly_refreshed_token_failing_reverification_is_treated_as_unauthenticated(self):
-        """If try_refresh_access_token() hands back a token that then
+        """If try_refresh_access_token() hands back an access token that then
         immediately fails verify_token() (a same-request inconsistency
         that shouldn't normally happen, but the code guards against
         anyway), login_required must fall through to unauthorized
@@ -113,7 +113,9 @@ class TestLoginRequiredRefreshEdgeCase:
             return "ok"
 
         with (
-            patch.object(security_module, "try_refresh_access_token", return_value="freshly.issued.token"),
+            patch.object(
+                security_module, "try_refresh_access_token", return_value=("freshly.issued.token", "next.refresh")
+            ),
             patch.object(security_module, "verify_token", return_value=None),
         ):
             with app.test_client() as c:

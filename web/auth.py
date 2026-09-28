@@ -24,7 +24,7 @@ from web.security import (
     get_current_user,
     login_required,
     set_auth_cookie,
-    validate_refresh_token,
+    rotate_refresh_token,
     create_access_token,
     create_refresh_token,
     verify_user_credentials,
@@ -281,25 +281,21 @@ def api_refresh():
     if not refresh_token:
         return error_response("unauthorized_refresh_token_required")
 
-    # Verify refresh token end-to-end (signature + DB lookup + TTL
-    # defensive cleanup). Returning None means "treat as unauthorised".
-    result = validate_refresh_token(refresh_token)
-    if result is None:
+    # The token is spent and a successor handed out (see
+    # rotate_refresh_token: a spent token presented again ends the sign-in).
+    rotated = rotate_refresh_token(refresh_token)
+    if rotated is None:
         return error_response("unauthorized_refresh_token_invalid")
-    username, _token_record = result
+    username, next_refresh_token = rotated
 
-    # Create new access token
     access_token = create_access_token(username)
+    # A native app keeps the new refresh token itself; the web app gets it
+    # as a cookie only.
+    tokens = {"refresh_token": next_refresh_token} if is_native_client() else {}
+    response, status = get_message("auth_refresh_success", access_token=access_token, **tokens)
 
-    response, status = get_message("auth_refresh_success", access_token=access_token)
-
-    set_auth_cookie(
-        response,
-        "access_token",
-        access_token,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-
+    set_auth_cookie(response, "access_token", access_token, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    set_auth_cookie(response, "refresh_token", next_refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
     return response, status
 
 
