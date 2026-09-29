@@ -25,7 +25,8 @@ export const MAIN_TAB_PATHS = ['/', '/medications', '/documents', '/history', '/
  * `navigate(-1)` pops the form's own entry and lands exactly back on
  * whichever screen (and scroll position, filter, tab, …) opened it,
  * for every entry point at once, with no route to keep in sync by
- * hand. `fallback` only matters when the form was opened with no prior
+ * hand. (The scroll position is put back by components/ScrollManager;
+ * without it the list came back at the top.) `fallback` only matters when the form was opened with no prior
  * history in this session (e.g. a deep link) — `history.length` here
  * mirrors the same check Navbar's own back button already uses.
  */

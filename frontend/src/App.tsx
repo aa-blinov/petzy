@@ -9,6 +9,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { BottomTabBar } from './components/BottomTabBar';
 import { PrivacyConsentGate } from './components/PrivacyConsentGate';
+import { ScrollManager } from './components/ScrollManager';
 import { ThemeProvider } from './components/ThemeProvider';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -212,6 +213,7 @@ function AppRoutes() {
       <UndoSnackbar />
       <Navbar />
       <RouteFocus />
+      <ScrollManager />
       <main id="main-content">
         <Suspense fallback={<LoadingSpinner />}>
           <RouteTransition>

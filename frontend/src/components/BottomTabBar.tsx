@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, Pill, FileText, Clock, SlidersHorizontal } from 'lucide-react';
 import { isPublicPage } from '../utils/publicPages';
+import { scrollToTop } from '../utils/scroll';
 
 const tabs = [
   { to: '/', title: 'Лента', Icon: BookOpen },
@@ -34,6 +35,14 @@ export function BottomTabBar() {
               // Exact match, as before: /pets is reached from Settings but
               // isn't the Settings tab itself.
               end
+              // The tab you are on: nothing to open, so scroll it to the top
+              // (as a native tab bar does) instead of pushing the same page.
+              onClick={(event) => {
+                if (pathname === to) {
+                  event.preventDefault();
+                  scrollToTop();
+                }
+              }}
               className={({ isActive }) => `app-tab-bar__item${isActive ? ' app-tab-bar__item--active' : ''}`}
             >
               <span className="app-tab-bar__icon" aria-hidden>
