@@ -55,7 +55,7 @@ export function AccountPassword() {
           </Form.Item>
         </Form>
         <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
-          <Button block color="primary" size="large" loading={busy} disabled={busy} onClick={save}>
+          <Button block color="primary" size="large" data-enter-submit loading={busy} disabled={busy} onClick={save}>
             Сменить пароль
           </Button>
           <Button block fill="none" onClick={() => goBack(navigate, '/settings')}>

@@ -88,7 +88,7 @@ export function AccountEmail() {
               </Form.Item>
             </Form>
             <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
-              <Button block color="primary" size="large" loading={busy === 'save'} disabled={!!busy || !value.trim()} onClick={() => save(value.trim(), 'save')}>
+              <Button block color="primary" size="large" data-enter-submit loading={busy === 'save'} disabled={!!busy || !value.trim()} onClick={() => save(value.trim(), 'save')}>
                 Сохранить и подтвердить
               </Button>
               {current && (

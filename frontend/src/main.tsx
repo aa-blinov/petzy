@@ -15,6 +15,7 @@ import './styles/globals.css'
 import App from './App.tsx'
 import { installAntdA11y } from './utils/antdA11y'
 import { installKeyboardWatch } from './utils/keyboard'
+import { installEnterKey } from './utils/enterKey'
 import { watchForUpdates } from './utils/swUpdate'
 import { initSentry } from './utils/observability'
 
@@ -39,6 +40,7 @@ reducedMotion.addEventListener('change', syncMotion)
 
 installAntdA11y()
 installKeyboardWatch()
+installEnterKey()
 
 initSentry()
 watchForUpdates()

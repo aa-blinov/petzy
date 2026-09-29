@@ -70,7 +70,7 @@ export function ForgotPassword() {
         onFinish={submit}
         footer={
           <>
-            <Button block color="primary" size="large" type="submit" loading={isLoading} disabled={isLoading}
+            <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading}
               style={{ background: 'var(--app-cta-gradient)', border: 'none' }}>
               Отправить ссылку
             </Button>
