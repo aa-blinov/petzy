@@ -31,11 +31,12 @@ import { SPECIES, defaultTilesFor, getSpecies, neuteringLabel, speciesLabel } fr
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { PhotoCropModal } from '../components/PhotoCropModal';
-import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { useDeletePet, useLeavePet } from '../hooks/useDeletePet';
 import { showUndo } from '../utils/undo';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { fieldNote } from '../components/FieldNote';
 import { PickerValue } from '../components/PickerValue';
 
 const petSchema = z.object({
@@ -86,9 +87,12 @@ export function PetForm() {
   const breedInputRef = useRef<InputRef>(null);
   const healthNotesInputRef = useRef<TextAreaRef>(null);
 
-  const { control, handleSubmit, reset, watch } = useForm<PetFormData>({
+  const { control, handleSubmit, reset, watch, formState: { isDirty } } = useForm<PetFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
+    // Validated when a field is left, and after that as it changes: an error
+    // shows as soon as it is known, not only after «Сохранить».
+    mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(petSchema),
     defaultValues: {
@@ -124,6 +128,14 @@ export function PetForm() {
     },
     enabled: isEditing && !!id,
   });
+
+  // Anything typed, a photo picked or removed, or a change to who has access
+  // is unsaved until «Сохранить».
+  const sharedBefore = [...(pet?.shared_with || []), ...(pet?.share_invites || [])];
+  const sharingChanged =
+    localSharedWith.length !== sharedBefore.length || localSharedWith.some(u => !sharedBefore.includes(u));
+  const photoChanged = fileList[0]?.file instanceof File || (fileList.length === 0 && !!pet?.photo_url);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || sharingChanged || photoChanged);
 
   useEffect(() => {
     if (pet && initializedPetId.current !== pet._id) {
@@ -300,6 +312,7 @@ export function PetForm() {
 
       // Leave at once; the toast lives on over the list.
       showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен');
+      release();
       goBack(navigate, '/pets');
     } catch (error) {
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
@@ -345,7 +358,7 @@ export function PetForm() {
                 <Form.Item
                   label="Имя"
                   required
-                  description={error?.message ? <FieldError message={error.message} /> : undefined}
+                  description={fieldNote({ error: error?.message, value: field.value, max: 100 })}
                   clickable
                   // A text field, not a picker: no «›» promising another screen.
                   arrow={false}
@@ -400,6 +413,7 @@ export function PetForm() {
               render={({ field }) => (
                 <Form.Item
                   label={species.breedLabel}
+                  description={fieldNote({ value: field.value, max: 100 })}
                   clickable
                   arrow={false}
                   onClick={() => breedInputRef.current?.focus()}
@@ -547,6 +561,7 @@ export function PetForm() {
                 <Form.Item
                   label="Здоровье / Аллергии"
                   layout="vertical"
+                  description={fieldNote({ value: field.value, max: 1000, always: true })}
                 >
                   <TextArea
                     {...field}
@@ -841,6 +856,7 @@ export function PetForm() {
                 confirmContent={`Удалить «${pet.name}»? Вместе с ним удалятся все записи, лекарства и документы`}
                 onConfirm={async () => {
                   await deletePet(pet);
+                  release();
                   goBack(navigate, '/pets');
                 }}
               />
@@ -852,6 +868,7 @@ export function PetForm() {
                 confirmContent={`Больше не видеть «${pet.name}»? Его записи останутся у владельца, он сможет пригласить вас снова`}
                 onConfirm={async () => {
                   await leavePet(pet);
+                  release();
                   goBack(navigate, '/pets');
                 }}
               />
@@ -880,6 +897,7 @@ export function PetForm() {
           }}
         />
       )}
+      {leaveDialog}
     </div>
   );
 }

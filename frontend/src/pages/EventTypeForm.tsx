@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { Button, Input, Switch, Selector, TextArea } from 'antd-mobile';
 import { Trash2, Plus } from 'lucide-react';
 
@@ -101,6 +102,15 @@ export function EventTypeForm() {
     setChartValueLabel(existing.chart.value_label ?? '');
     setLoadedExisting(true);
   }, [loadedExisting, eventTypesLoading, existing]);
+
+  // Unsaved = different from how the form looked once it was ready (empty
+  // for a new type, the stored one for an edit).
+  const snapshot = JSON.stringify({ label, icon, color, fields, chartKind, chartValueName, chartValueLabel });
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => {
+    if (loadedExisting && saved === null) setSaved(snapshot);
+  }, [loadedExisting, saved, snapshot]);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(saved !== null && snapshot !== saved);
 
   // One resolved ascii name per field draft, kept stable by draft key so
   // the chart-value picker (which needs a name to select) and the save
@@ -219,6 +229,7 @@ export function EventTypeForm() {
       }
       invalidate();
       showToast.success(isEditing ? 'Тип события обновлён' : 'Тип события создан');
+      release();
       goBack(navigate, '/event-types');
     } catch (error) {
       const message = getApiErrorMessage(error, 'Не удалось сохранить тип события');
@@ -442,6 +453,7 @@ export function EventTypeForm() {
           </Button>
         </div>
       </div>
+      {leaveDialog}
     </div>
   );
 }

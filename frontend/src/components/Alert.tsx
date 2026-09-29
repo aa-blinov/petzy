@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { showToast } from '../utils/toast';
-import type { ToastHandler } from 'antd-mobile/es/components/toast';
+import type { SnackbarHandle } from '../utils/snackbar';
 
 interface AlertProps {
   type: 'success' | 'error' | 'info' | 'warning';
@@ -15,11 +15,10 @@ export function Alert({ type, message, onClose, duration = 3000 }: AlertProps) {
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
-  const handlerRef = useRef<ToastHandler | null>(null);
+  const handlerRef = useRef<SnackbarHandle | null>(null);
 
   useEffect(() => {
-    // Map onto the shared helpers so these inherit the app-wide toast
-    // position instead of antd's centred default.
+    // Map onto the shared helpers so these are the app's one message bar.
     const variant = {
       success: showToast.success,
       error: showToast.failure,

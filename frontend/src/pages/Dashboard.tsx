@@ -14,6 +14,7 @@ import { isOnboardingDismissed } from '../utils/onboarding';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
+import { useHiddenRecords } from '../utils/deferredDelete';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { NextDoseWidget } from '../components/NextDoseWidget';
 import { PetSummaryCard } from '../components/PetSummaryCard';
@@ -67,7 +68,12 @@ export function Dashboard() {
     enabled: !!selectedPetId
   });
 
-  const allItems = useMemo(() => data?.pages.flatMap(page => page.items) ?? [], [data]);
+  // Records deleted a moment ago, «Отменить» still on offer, are left out.
+  const hiddenRecords = useHiddenRecords();
+  const allItems = useMemo(
+    () => (data?.pages.flatMap(page => page.items) ?? []).filter(item => !hiddenRecords.has(item._id)),
+    [data, hiddenRecords],
+  );
 
   const groupedItems = useMemo(() => {
     return allItems.reduce<Record<string, HealthRecord[]>>((acc, item) => {

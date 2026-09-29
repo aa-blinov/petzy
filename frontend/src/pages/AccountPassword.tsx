@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Form, Input } from 'antd-mobile';
 import { accountService } from '../services/account.service';
 import { FieldError } from '../components/FieldError';
+import { useTouched } from '../hooks/useTouched';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { goBack } from '../utils/navigation';
@@ -14,6 +15,7 @@ export function AccountPassword() {
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const { touch, shows } = useTouched(submitted);
   const [busy, setBusy] = useState(false);
 
   const nextError = next.length < 8 ? 'Не короче 8 символов' : null;
@@ -47,11 +49,11 @@ export function AccountPassword() {
           <Form.Item label="Текущий пароль">
             <Input type="password" value={current} onChange={setCurrent} autoComplete="current-password" placeholder="Текущий пароль" />
           </Form.Item>
-          <Form.Item label="Новый пароль" description={submitted && nextError ? <FieldError message={nextError} /> : 'Не короче 8 символов'}>
-            <Input type="password" value={next} onChange={setNext} autoComplete="new-password" placeholder="Новый пароль" />
+          <Form.Item label="Новый пароль" description={shows('next') && nextError ? <FieldError message={nextError} /> : 'Не короче 8 символов'}>
+            <Input type="password" value={next} onChange={setNext} onBlur={touch('next')} autoComplete="new-password" placeholder="Новый пароль" />
           </Form.Item>
-          <Form.Item label="Новый пароль ещё раз" description={submitted && repeatError ? <FieldError message={repeatError} /> : undefined}>
-            <Input type="password" value={repeat} onChange={setRepeat} autoComplete="new-password" placeholder="Повторите новый пароль" />
+          <Form.Item label="Новый пароль ещё раз" description={shows('repeat') && repeatError ? <FieldError message={repeatError} /> : undefined}>
+            <Input type="password" value={repeat} onChange={setRepeat} onBlur={touch('repeat')} autoComplete="new-password" placeholder="Повторите новый пароль" />
           </Form.Item>
         </Form>
         <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>

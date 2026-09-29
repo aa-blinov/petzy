@@ -6,6 +6,7 @@ import { authService } from '../services/auth.service';
 import { useAuth } from '../hooks/useAuth';
 import { AuthShell } from '../components/AuthShell';
 import { FieldError } from '../components/FieldError';
+import { useTouched } from '../hooks/useTouched';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -20,6 +21,7 @@ export function ResetPassword() {
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const { touch, shows } = useTouched(submitted);
   const [isLoading, setIsLoading] = useState(false);
   const [linkDead, setLinkDead] = useState(!token);
 
@@ -74,15 +76,15 @@ export function ResetPassword() {
       >
         <Form.Item
           label={<span style={{ fontWeight: 500 }}>Новый пароль</span>}
-          description={submitted && passwordError ? <FieldError message={passwordError} /> : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов</span>}
+          description={shows('password') && passwordError ? <FieldError message={passwordError} /> : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов</span>}
         >
-          <Input type="password" value={password} onChange={setPassword} placeholder="Новый пароль" clearable autoComplete="new-password" disabled={isLoading} />
+          <Input type="password" value={password} onChange={setPassword} onBlur={touch('password')} placeholder="Новый пароль" clearable autoComplete="new-password" disabled={isLoading} />
         </Form.Item>
         <Form.Item
           label={<span style={{ fontWeight: 500 }}>Ещё раз</span>}
-          description={submitted && repeatError ? <FieldError message={repeatError} /> : undefined}
+          description={shows('repeat') && repeatError ? <FieldError message={repeatError} /> : undefined}
         >
-          <Input type="password" value={repeat} onChange={setRepeat} placeholder="Повторите пароль" clearable autoComplete="new-password" disabled={isLoading} />
+          <Input type="password" value={repeat} onChange={setRepeat} onBlur={touch('repeat')} placeholder="Повторите пароль" clearable autoComplete="new-password" disabled={isLoading} />
         </Form.Item>
       </Form>
     </AuthShell>

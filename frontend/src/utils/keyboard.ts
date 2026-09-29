@@ -40,8 +40,14 @@ export function installKeyboardWatch() {
     tallest = Math.max(tallest, window.innerHeight);
     const covered = Math.round(tallest - (viewport.offsetTop + viewport.height));
     const open = isTextField(document.activeElement) && covered >= MIN_KEYBOARD_PX;
+    // Some browsers shrink the page itself instead: fixed elements are then
+    // already above the keys, and only what is anchored to the page's own
+    // bottom (the padding) needs the room.
+    const pageShrunk = tallest - window.innerHeight >= MIN_KEYBOARD_PX;
     root.classList.toggle('keyboard-open', open);
     root.style.setProperty('--keyboard-inset', open ? `${covered}px` : '0px');
+    // How far up a bar fixed to the bottom must sit to clear the keyboard.
+    root.style.setProperty('--keyboard-fixed-offset', open && !pageShrunk ? `${covered}px` : '0px');
   };
 
   viewport.addEventListener('resize', update);
