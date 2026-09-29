@@ -234,9 +234,10 @@ export function MedicationForm() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
-            showToast.success(isEditing ? 'Лекарство сохранено' : 'Лекарство добавлено', {
-                afterClose: () => goBack(navigate, '/medications'),
-            });
+            // Leave at once; the toast lives on over the list (waiting for
+            // it to close kept a saved form on screen for two seconds).
+            showToast.success(isEditing ? 'Лекарство сохранено' : 'Лекарство добавлено');
+            goBack(navigate, '/medications');
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));

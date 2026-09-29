@@ -83,7 +83,7 @@ export function UserForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success('Пользователь создан');
-      setTimeout(() => goBack(navigate, '/admin'), 500);
+      goBack(navigate, '/admin');
     },
     onError: (err: unknown) => {
       showToast.failure(getApiErrorMessage(err, 'Не удалось создать пользователя'));
@@ -113,7 +113,7 @@ export function UserForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success('Пользователь обновлён');
-      setTimeout(() => goBack(navigate, '/admin'), 500);
+      goBack(navigate, '/admin');
     },
     onError: (err: unknown) => {
       showToast.failure(getApiErrorMessage(err, 'Не удалось обновить пользователя'));
