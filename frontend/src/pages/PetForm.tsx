@@ -298,9 +298,9 @@ export function PetForm() {
         await queryClient.invalidateQueries({ queryKey: ['pet', petId] });
       }
 
-      showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен', {
-        afterClose: () => goBack(navigate, '/pets'),
-      });
+      // Leave at once; the toast lives on over the list.
+      showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен');
+      goBack(navigate, '/pets');
     } catch (error) {
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
       showToast.failure(errorMessage);

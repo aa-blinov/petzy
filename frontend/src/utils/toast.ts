@@ -3,7 +3,7 @@
  *
  * Wraps antd-mobile's Toast so every message in the app:
  *   - is centred on screen (antd's own default)
- *   - auto-dismisses after 1.6s for neutral / 2.4s for failures
+ *   - auto-dismisses after 2s for confirmations and notices, 4s for failures
  *   - uses the same icon vocabulary as the rest of the UI
  *
  * Before this was adopted, 41 call sites invoked Toast.show directly:
@@ -24,6 +24,14 @@
 
 import { Toast } from 'antd-mobile';
 import { announce } from './announce';
+
+// How long a message stays. A short confirmation with nothing to press is
+// read in about two seconds (Android's own Toast: 2 s); a failure has to be
+// read and understood, and Material's floor for anything the user may have
+// to act on is 4 s. A toast never holds anything up: a form that saved
+// leaves at once and the toast stays over the screen it returns to.
+const CONFIRM_MS = 2000;
+const FAILURE_MS = 4000;
 
 const COMMON = {
   maskClassName: 'app-toast-mask',
@@ -56,15 +64,15 @@ function show(
 export const showToast = {
   /** Confirmations: "Запись удалена", "Принято!". */
   success(message: string, options?: ToastOptions) {
-    return show('success', message, 1600, options);
+    return show('success', message, CONFIRM_MS, options);
   },
   /** Failures and validation errors — held longer so they can be read. */
   failure(message: string, options?: ToastOptions) {
-    return show('fail', message, 2400, options);
+    return show('fail', message, FAILURE_MS, options);
   },
   /** Neutral notices with no icon. */
   info(message: string, options?: ToastOptions) {
-    return show(undefined, message, 1600, options);
+    return show(undefined, message, CONFIRM_MS, options);
   },
   /** Indeterminate progress; the caller closes the returned handler. */
   loading(message: string, options?: ToastOptions) {

@@ -224,14 +224,16 @@ export function HealthRecordForm() {
           ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
       });
 
-      showToast.success(response.message, {
-        // Not a fixed destination: this form opens from the Dashboard's
-        // quick-add (create) and from a tap or edit swipe on either the
-        // Dashboard's or History's timeline (edit) — going back lands on
-        // whichever of those actually opened it, tab/scroll position and
-        // all, instead of assuming History every time an id is present.
-        afterClose: () => goBack(navigate, id ? '/history' : '/'),
-      });
+      showToast.success(response.message);
+      // Leave at once; the toast lives on over the screen we return to
+      // (waiting for it to close kept a saved form on screen for two
+      // seconds). Not a fixed destination: this form opens from the
+      // Dashboard's quick-add (create) and from a tap or edit swipe on
+      // either the Dashboard's or History's timeline (edit) — going back
+      // lands on whichever of those actually opened it, tab/scroll
+      // position and all, instead of assuming History every time an id is
+      // present.
+      goBack(navigate, id ? '/history' : '/');
     } catch (error) {
       console.error('Error submitting form:', error);
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
