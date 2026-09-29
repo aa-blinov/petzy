@@ -227,7 +227,7 @@ export function DocumentsList() {
 
   if (!selectedPetId) {
     return (
-      <div style={{ minHeight: '100vh', padding: 'var(--spacing-lg)' }}>
+      <div style={{ minHeight: 'var(--app-vh)', padding: 'var(--spacing-lg)' }}>
         <p>Выберите питомца в меню навигации, чтобы посмотреть документы</p>
       </div>
     );

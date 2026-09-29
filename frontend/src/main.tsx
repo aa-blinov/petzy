@@ -14,6 +14,7 @@ import '@fontsource/dynapuff/latin-700.css'
 import './styles/globals.css'
 import App from './App.tsx'
 import { installAntdA11y } from './utils/antdA11y'
+import { installKeyboardWatch } from './utils/keyboard'
 import { watchForUpdates } from './utils/swUpdate'
 import { initSentry } from './utils/observability'
 
@@ -37,6 +38,7 @@ syncMotion()
 reducedMotion.addEventListener('change', syncMotion)
 
 installAntdA11y()
+installKeyboardWatch()
 
 initSentry()
 watchForUpdates()

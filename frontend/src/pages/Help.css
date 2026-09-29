@@ -13,9 +13,10 @@
     padding: 0;
 }
 
-/* /help#documents scrolls the section's title clear of the top bar. */
+/* /help#documents scrolls the section's title clear of the top bar: the
+   page-wide scroll-padding (globals.css) does it. */
 .help-item {
-    scroll-margin-top: calc(env(safe-area-inset-top) + 80px);
+    scroll-margin-top: 0;
 }
 
 .help-item + .help-item {

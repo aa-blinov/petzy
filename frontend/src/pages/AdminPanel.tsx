@@ -93,7 +93,7 @@ export function AdminPanel() {
   if (!isAdmin) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-vh)',
         margin: '0 auto',
         paddingTop: '60px',
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
