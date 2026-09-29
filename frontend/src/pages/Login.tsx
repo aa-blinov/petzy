@@ -91,6 +91,7 @@ export function Login() {
                 loading={isLoading}
                 disabled={isLoading}
                 type="submit"
+                data-enter-submit
                 style={{
                   marginTop: 8,
                   // The brand gradient, deepened so the white label reads

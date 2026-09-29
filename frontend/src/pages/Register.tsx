@@ -112,6 +112,7 @@ export function Register() {
               loading={isLoading}
               disabled={isLoading}
               type="submit"
+              data-enter-submit
               style={{ marginTop: 8, background: 'var(--app-cta-gradient)', border: 'none' }}
             >
               Создать аккаунт
