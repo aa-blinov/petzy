@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-vh)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

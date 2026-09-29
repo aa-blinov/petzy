@@ -241,7 +241,7 @@ export function HealthRecordForm() {
 
   if (!selectedPetId) {
     return (
-      <div style={{ minHeight: '100vh', padding: '16px', backgroundColor: 'var(--app-page-background)' }}>
+      <div style={{ minHeight: 'var(--app-vh)', padding: '16px', backgroundColor: 'var(--app-page-background)' }}>
         <p style={{ color: 'var(--app-text-color)' }}>Выберите питомца в меню навигации</p>
       </div>
     );

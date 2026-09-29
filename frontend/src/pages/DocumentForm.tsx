@@ -316,7 +316,7 @@ export function DocumentForm() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-vh)',
         paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
         backgroundColor: 'var(--app-page-background)',

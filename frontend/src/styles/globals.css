@@ -1,6 +1,18 @@
 /* Global styles - only minimal custom styles, using Ant Design Mobile for everything else */
 
+@supports (height: 100dvh) {
+    :root {
+        --app-vh: 100dvh;
+    }
+}
+
 :root {
+    /* One screen tall. 100vh on iPhone is the height with the address bar
+       tucked away, so every page was taller than what is visible and
+       scrolled a little even when its content was short; 100dvh follows
+       the bar. (Browsers without dvh keep 100vh.) */
+    --app-vh: 100vh;
+
     /* Brand & Primary Colors (warm copper, Pawza-inspired)
        Override antd-mobile's internal --adm-color-primary too, so its
        components (FAB, SpinLoading, etc.) pick up the warm accent. */
@@ -218,7 +230,7 @@
 
 /* Utility classes for layouts */
 .page-container {
-    min-height: 100vh;
+    min-height: var(--app-vh);
     padding-top: var(--page-padding-top);
     padding-bottom: var(--page-padding-bottom);
     background-color: var(--app-page-background);
@@ -708,8 +720,7 @@ html, body, #root {
 body {
     background-color: var(--app-page-background);
     color: var(--app-text-color);
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
+    min-height: var(--app-vh);
     width: 100%;
     margin: 0;
     padding: 0;
@@ -756,7 +767,7 @@ select {
 
 #root {
     width: 100%;
-    min-height: 100vh;
+    min-height: var(--app-vh);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -1696,7 +1707,7 @@ label:has(~ .file-picker-input:focus-visible),
 
 /* «Политика конфиденциальности» and «Согласие»: a document to read, public. */
 .legal-page {
-    min-height: 100vh;
+    min-height: var(--app-vh);
     background: var(--app-page-background);
     padding: calc(env(safe-area-inset-top) + var(--spacing-lg)) 16px calc(env(safe-area-inset-bottom) + var(--spacing-xl));
 }
@@ -1959,4 +1970,43 @@ label:has(~ .file-picker-input:focus-visible),
     body:has(.app-fab) .undo-snackbar {
         bottom: calc(var(--safe-area-bottom) + 108px);
     }
+}
+
+/* ── Fixed bars and the keyboard ───────────────────────────────────────
+   A browser scrolls a focused field just into view, by the edge of the
+   screen, not knowing about the fixed top bar and tab bar: the last field
+   of a form ended up under the tab bar. These padding values are the
+   bars' heights plus air, so a focused field or an anchor lands clear. */
+html {
+    scroll-padding-top: calc(var(--safe-area-top) + 64px + var(--spacing-md));
+    scroll-padding-bottom: calc(var(--safe-area-bottom) + 50px + var(--spacing-lg));
+}
+
+@media (min-width: 1024px) {
+    /* The tabs are a rail on the left: nothing at the bottom. */
+    html {
+        scroll-padding-bottom: var(--spacing-lg);
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023px) {
+    html {
+        scroll-padding-top: calc(var(--safe-area-top) + 48px + var(--spacing-md));
+        scroll-padding-bottom: calc(var(--safe-area-bottom) + 40px + var(--spacing-lg));
+    }
+}
+
+/* The keyboard is up (utils/keyboard.ts): the page gets the room the keys
+   cover, so the last field can rise above them, and the tab bar and add
+   button, which can't be pressed under the keyboard, step aside. Same
+   element as :root, one class more, so these win over every media query. */
+html.keyboard-open {
+    --page-padding-bottom: calc(var(--keyboard-inset, 0px) + var(--spacing-xl));
+    scroll-padding-bottom: var(--spacing-lg);
+}
+
+html.keyboard-open .bottom-tab-bar-container,
+html.keyboard-open .app-fab,
+html.keyboard-open .undo-snackbar {
+    display: none;
 }
