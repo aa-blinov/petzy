@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { showToast } from '../utils/toast';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
@@ -107,9 +109,12 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
-    const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+    const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
         // onInvalidSubmit scrolls to and focuses the first error in page order;
         // RHF's own focus picked the first registered ref instead.
+        // Validated when a field is left, and after that as it changes: an error
+        // shows as soon as it is known, not only after «Сохранить».
+        mode: 'onTouched',
         shouldFocusError: false,
         resolver: zodResolver(medicationSchema),
         defaultValues: {
@@ -207,15 +212,19 @@ export function MedicationForm() {
     }
 
     const handleCommonMedSelect = (common: typeof COMMON_MEDICATIONS[0]) => {
-        setValue('name', common.name);
-        setValue('type', common.type);
-        setValue('form_factor', common.form_factor);
-        setValue('strength', common.strength);
-        setValue('dose_unit', common.dose_unit);
-        setValue('default_dose', common.default_dose);
+        // shouldDirty: a filled-in template is unsaved data like typed text.
+        const filled = { shouldDirty: true };
+        setValue('name', common.name, filled);
+        setValue('type', common.type, filled);
+        setValue('form_factor', common.form_factor, filled);
+        setValue('strength', common.strength, filled);
+        setValue('dose_unit', common.dose_unit, filled);
+        setValue('default_dose', common.default_dose, filled);
         setShowCommonMeds(false);
         showToast.success('Данные заполнены');
     };
+
+    const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
 
     const mutation = useMutation({
         mutationFn: async (data: MedicationFormData) => {
@@ -237,6 +246,7 @@ export function MedicationForm() {
             // Leave at once; the toast lives on over the list (waiting for
             // it to close kept a saved form on screen for two seconds).
             showToast.success(isEditing ? 'Лекарство сохранено' : 'Лекарство добавлено');
+            release();
             goBack(navigate, '/medications');
         },
         onError: (err: unknown) => {
@@ -288,8 +298,9 @@ export function MedicationForm() {
                             name="name"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Название" required description={errors.name?.message ? <FieldError message={errors.name.message} /> : undefined}>
+                                <Form.Item label="Название" required description={fieldNote({ error: errors.name?.message, value: field.value, max: 100 })}>
                                     <Input
+                                        onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. Синулокс"
@@ -349,9 +360,14 @@ export function MedicationForm() {
                             render={({ field }) => (
                                 <Form.Item
                                     label="На упаковке"
-                                    description="Сколько вещества в одной таблетке или в 1 мл, как написано на коробке"
+                                    description={fieldNote({
+                                        hint: 'Сколько вещества в одной таблетке или в 1 мл, как написано на коробке',
+                                        value: field.value,
+                                        max: 50,
+                                    })}
                                 >
                                     <Input
+                                        onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. 300 мг или 0,5 мг/мл"
@@ -383,6 +399,7 @@ export function MedicationForm() {
                                 >
                                     <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
                                         <Input
+                                            onBlur={field.onBlur}
                                             value={field.value?.toString()}
                                             onChange={val => {
                                                 if (isAmountDraft(val)) field.onChange(val);
@@ -580,6 +597,7 @@ export function MedicationForm() {
                                             }
                                         >
                                             <Input
+                                                onBlur={field.onBlur}
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
                                                     if (isAmountDraft(val)) field.onChange(val === '' ? null : val);
@@ -606,6 +624,7 @@ export function MedicationForm() {
                                             }
                                         >
                                             <Input
+                                                onBlur={field.onBlur}
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
                                                     if (isAmountDraft(val)) field.onChange(val === '' ? null : val);
@@ -628,6 +647,7 @@ export function MedicationForm() {
                                             extra={<span style={{ color: 'var(--app-text-secondary)' }}>{pluralRu(Number(field.value) || 0, 'день', 'дня', 'дней')}</span>}
                                         >
                                             <Input
+                                                onBlur={field.onBlur}
                                                 value={field.value !== null && field.value !== undefined ? String(field.value) : ''}
                                                 onChange={val => {
                                                     if (val === '' || /^\d{0,2}$/.test(val)) field.onChange(val === '' ? null : val);
@@ -658,8 +678,9 @@ export function MedicationForm() {
                             name="comment"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Комментарий">
+                                <Form.Item label="Комментарий" description={fieldNote({ value: field.value, max: 500 })}>
                                     <Input
+                                        onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="Напр. от кашля"
@@ -706,6 +727,7 @@ export function MedicationForm() {
                                     }
                                     await queryClient.invalidateQueries({ queryKey: ['medications'] });
                                     showToast.success('Лекарство удалено');
+                                    release();
                                     goBack(navigate, '/medications');
                                 }}
                             />
@@ -742,6 +764,7 @@ export function MedicationForm() {
                     </div>
                 </div>
             </Popup>
+            {leaveDialog}
         </div>
     );
 }

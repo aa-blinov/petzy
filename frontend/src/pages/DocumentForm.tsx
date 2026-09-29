@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { showToast } from '../utils/toast';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { parseRecordDate } from '../utils/relativeTime';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -77,13 +79,18 @@ export function DocumentForm() {
   // swept on the server.
   useEffect(() => () => uploadAbort.current?.abort(), []);
 
-  const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<DocumentFormData>({
+  const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<DocumentFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
+    // Validated when a field is left, and after that as it changes: an error
+    // shows as soon as it is known, not only after «Сохранить».
+    mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(documentSchema),
     defaultValues: { category: '', title: '', note: '', expires_at: '' },
   });
+  // Typed text or a chosen file is unsaved until «Добавить» / «Сохранить».
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || file !== null);
   // useWatch (a proper subscribing hook) instead of methods.watch(name) —
   // the latter is what the React Compiler flags as an "incompatible
   // library" API and opts the whole component out of memoization for.
@@ -217,6 +224,7 @@ export function DocumentForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
       showToast.success('Документ добавлен');
+      release();
       goBack(navigate, '/documents');
     },
     onError: (err: unknown) => {
@@ -242,6 +250,7 @@ export function DocumentForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
       showToast.success('Снимки загружены');
+      release();
       goBack(navigate, '/documents');
     },
     onError: (err: unknown) => {
@@ -277,6 +286,7 @@ export function DocumentForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
       showToast.success('Документ обновлён');
+      release();
       goBack(navigate, '/documents');
     },
     onError: (err: unknown) => {
@@ -541,7 +551,7 @@ export function DocumentForm() {
               name="title"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label="Название" required description={error?.message ? <FieldError message={error.message} /> : undefined}>
+                <Form.Item label="Название" required description={fieldNote({ error: error?.message, value: field.value, max: 100 })}>
                   <Input {...field} placeholder="Например, Прививка от бешенства" clearable maxLength={100} />
                 </Form.Item>
               )}
@@ -551,7 +561,7 @@ export function DocumentForm() {
               name="note"
               control={control}
               render={({ field }) => (
-                <Form.Item label="Заметка">
+                <Form.Item label="Заметка" description={fieldNote({ value: field.value, max: 500, always: true })}>
                   <TextArea {...field} placeholder="Необязательно" rows={3} maxLength={500} />
                 </Form.Item>
               )}
@@ -658,10 +668,9 @@ export function DocumentForm() {
             <Button
               block
               size="large"
-              onClick={() => {
-                cancelUpload();
-                goBack(navigate, '/documents');
-              }}
+              // The upload is aborted when the form unmounts, so leaving is
+              // enough; aborting here would cancel it even if «Остаться» is chosen.
+              onClick={() => goBack(navigate, '/documents')}
               style={{ borderRadius: '12px', fontWeight: 500 }}
             >
               Отмена
@@ -680,6 +689,7 @@ export function DocumentForm() {
                   }
                   await queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
                   showToast.success('Документ удалён');
+                  release();
                   goBack(navigate, '/documents');
                 }}
               />
@@ -687,6 +697,7 @@ export function DocumentForm() {
           </div>
         </div>
       </div>
+      {leaveDialog}
     </div>
   );
 }

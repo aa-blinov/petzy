@@ -8,6 +8,7 @@ import { AuthShell } from '../components/AuthShell';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { FieldError } from '../components/FieldError';
+import { useTouched } from '../hooks/useTouched';
 
 /** The server's own rule (web/auth.py USERNAME_RE), checked here first so
  *  the mistake shows under the field rather than after a round trip. */
@@ -27,6 +28,7 @@ export function Register() {
   const [repeat, setRepeat] = useState('');
   const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { touch, shows } = useTouched(submitted);
   const [isLoading, setIsLoading] = useState(false);
 
   const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
@@ -92,8 +94,8 @@ export function Register() {
   }
 
   /** Under the field: the rule's error once a submit was tried, else the hint. */
-  const below = (error: string | null, hint?: string) =>
-    submitted && error ? <FieldError message={error} /> : hint ? <span style={hintStyle}>{hint}</span> : undefined;
+  const below = (name: string, error: string | null, hint?: string) =>
+    shows(name) && error ? <FieldError message={error} /> : hint ? <span style={hintStyle}>{hint}</span> : undefined;
 
   return (
     <AuthShell>
@@ -128,10 +130,11 @@ export function Register() {
       >
         <Form.Item
           label={<span style={labelStyle}>Логин</span>}
-          description={below(usernameError, 'По нему вас найдут для общего доступа')}
+          description={below('username', usernameError, 'По нему вас найдут для общего доступа')}
         >
           <Input
             placeholder="например, vera"
+            onBlur={touch('username')}
             value={username}
             // Logins are lowercase: typed capitals simply become small letters.
             onChange={(val) => setUsername(val.trim().toLowerCase())}
@@ -142,10 +145,11 @@ export function Register() {
         </Form.Item>
         <Form.Item
           label={<span style={labelStyle}>Как к вам обращаться</span>}
-          description={below(nameError, 'Видят те, с кем вы делитесь питомцем')}
+          description={below('name', nameError, 'Видят те, с кем вы делитесь питомцем')}
         >
           <Input
             placeholder="Имя"
+            onBlur={touch('name')}
             maxLength={100}
             value={fullName}
             onChange={setFullName}
@@ -157,11 +161,12 @@ export function Register() {
         {askEmail && (
           <Form.Item
             label={<span style={labelStyle}>Почта</span>}
-            description={below(emailError, 'Чтобы восстановить пароль')}
+            description={below('email', emailError, 'Чтобы восстановить пароль')}
           >
             <Input
               type="email"
               placeholder="name@example.com"
+              onBlur={touch('email')}
               maxLength={254}
               value={email}
               onChange={setEmail}
@@ -171,10 +176,11 @@ export function Register() {
             />
           </Form.Item>
         )}
-        <Form.Item label={<span style={labelStyle}>Пароль</span>} description={below(passwordError, 'Не короче 8 символов')}>
+        <Form.Item label={<span style={labelStyle}>Пароль</span>} description={below('password', passwordError, 'Не короче 8 символов')}>
           <Input
             type="password"
             placeholder="Придумайте пароль"
+            onBlur={touch('password')}
             value={password}
             onChange={setPassword}
             disabled={isLoading}
@@ -182,10 +188,11 @@ export function Register() {
             autoComplete="new-password"
           />
         </Form.Item>
-        <Form.Item label={<span style={labelStyle}>Пароль ещё раз</span>} description={below(repeatError)}>
+        <Form.Item label={<span style={labelStyle}>Пароль ещё раз</span>} description={below('repeat', repeatError)}>
           <Input
             type="password"
             placeholder="Повторите пароль"
+            onBlur={touch('repeat')}
             value={repeat}
             onChange={setRepeat}
             disabled={isLoading}
@@ -193,7 +200,7 @@ export function Register() {
             autoComplete="new-password"
           />
         </Form.Item>
-        <Form.Item description={below(consentError)}>
+        <Form.Item description={(submitted && consentError ? <FieldError message={consentError} /> : undefined)}>
           {/* The texts open in a new tab: following them here would lose the form. */}
           <Checkbox
             checked={consent}

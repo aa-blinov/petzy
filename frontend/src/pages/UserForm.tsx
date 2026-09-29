@@ -3,6 +3,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { Button, Form, Input } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -35,9 +36,12 @@ export function UserForm() {
   const queryClient = useQueryClient();
   const { username: currentUsername } = useAuth();
 
-  const { control, handleSubmit, reset, formState: { isSubmitting } } = useForm<UserFormData>({
+  const { control, handleSubmit, reset, formState: { isSubmitting, isDirty } } = useForm<UserFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
+    // Validated when a field is left, and after that as it changes: an error
+    // shows as soon as it is known, not only after «Сохранить».
+    mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(buildUserSchema(isEditing)),
     defaultValues: {
@@ -58,6 +62,8 @@ export function UserForm() {
     },
     enabled: isEditing && !!username,
   });
+
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
 
   // Load user data into form when editing
   useEffect(() => {
@@ -83,6 +89,7 @@ export function UserForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success('Пользователь создан');
+      release();
       goBack(navigate, '/admin');
     },
     onError: (err: unknown) => {
@@ -98,6 +105,7 @@ export function UserForm() {
     onSuccess: (_data, active) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success(active ? 'Пользователь активирован' : 'Пользователь деактивирован');
+      release();
       goBack(navigate, '/admin');
     },
     onError: (err: unknown, active) => {
@@ -113,6 +121,7 @@ export function UserForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast.success('Пользователь обновлён');
+      release();
       goBack(navigate, '/admin');
     },
     onError: (err: unknown) => {
@@ -308,6 +317,7 @@ export function UserForm() {
           </div>
         </div>
       </div>
+      {leaveDialog}
     </div>
   );
 }

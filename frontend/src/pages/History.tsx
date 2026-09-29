@@ -6,6 +6,7 @@ import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { HistoryItem } from '../components/HistoryItem';
+import { useHiddenRecords } from '../utils/deferredDelete';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 // recharts is most of this page's 365 KB chunk, and the chart only shows
@@ -123,7 +124,12 @@ export function History() {
     // (rather than inlining `data?.pages...` everywhere below) since
     // that's still what every consumer below conceptually wants: "the
     // records for the current filter."
-    const filteredRecords = useMemo(() => data?.pages.flatMap(page => page.items) || [], [data]);
+    // Records deleted a moment ago, «Отменить» still on offer, are left out.
+    const hiddenRecords = useHiddenRecords();
+    const filteredRecords = useMemo(
+        () => (data?.pages.flatMap(page => page.items) || []).filter(item => !hiddenRecords.has(item._id)),
+        [data, hiddenRecords],
+    );
 
     // Group by date for the section headers.
     const groupedItems = useMemo(() => {

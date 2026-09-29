@@ -1,6 +1,7 @@
-/* The «Приём отмечен» + «Отменить» bar: above the tab bar, the page's text and
-   ground swapped so it reads as a transient layer, not part of a card. */
-.undo-snackbar {
+/* Every message of the app (utils/snackbar.ts): a bar above the tab bar, the
+   page's text and ground swapped so it reads as a transient layer, not part
+   of a card. No mask: the screen stays usable underneath. */
+.snackbar {
     position: fixed;
     left: var(--layout-padding-left, 16px);
     right: var(--layout-padding-left, 16px);
@@ -13,22 +14,45 @@
     justify-content: space-between;
     gap: var(--spacing-md);
     padding: 10px 10px 10px 16px;
+    min-height: 48px;
+    cursor: pointer;
     border-radius: var(--radius-md);
     background: var(--app-text-color);
     color: var(--app-page-background);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
     font-size: var(--text-sm);
-    animation: undo-snackbar-in var(--motion-duration-base) var(--motion-ease-standard);
+    animation: snackbar-in var(--motion-duration-base) var(--motion-ease-standard);
 }
 
-.undo-snackbar__text {
+.snackbar__text {
+    flex: 1;
     min-width: 0;
+    line-height: 1.4;
+    /* A sentence may take a few lines; one word can't push the bar wider. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
-.undo-snackbar__action {
+.snackbar__icon {
+    flex-shrink: 0;
+    color: var(--app-accent-soft);
+}
+
+/* The light red reads on the dark bar of the light theme; the dark theme's
+   bar is light, so the deeper red. */
+.snackbar--error .snackbar__icon {
+    color: #FF8A80;
+}
+
+html[data-prefers-color-scheme='dark'] .snackbar--error .snackbar__icon {
+    color: #B3261E;
+}
+
+.snackbar__action {
     flex-shrink: 0;
     min-height: 36px;
     padding: 0 12px;
@@ -41,23 +65,23 @@
     cursor: pointer;
 }
 
-.undo-snackbar__action:disabled {
+.snackbar__action:disabled {
     opacity: 0.6;
 }
 
-@keyframes undo-snackbar-in {
+@keyframes snackbar-in {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: none; }
 }
 
 /* Where the feed's «+» button is on screen, sit above it instead of over
    it (it's at 80px, 56px tall). */
-body:has(.app-fab) .undo-snackbar {
+body:has(.app-fab) .snackbar {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 148px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .undo-snackbar {
+    .snackbar {
         animation: none;
     }
 }

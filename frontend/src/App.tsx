@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { reloadIfUpdated } from './utils/swUpdate';
 import { setSentryUser } from './utils/observability';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -16,7 +16,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { HapticListener } from './components/HapticListener';
 import { RouteTransition } from './components/RouteTransition';
 import { RouteFocus } from './components/RouteFocus';
-import { UndoSnackbar } from './components/UndoSnackbar';
+import { Snackbar } from './components/Snackbar';
 import { usePet } from './hooks/usePet';
 import { useAuth } from './hooks/useAuth';
 import { useSession } from './hooks/useSession';
@@ -210,7 +210,7 @@ function AppRoutes() {
       <UpdateOnMainTabs />
       <SentryUser />
       <PrivacyConsentGate />
-      <UndoSnackbar />
+      <Snackbar />
       <Navbar />
       <RouteFocus />
       <ScrollManager />
@@ -459,20 +459,27 @@ function AppRoutes() {
   );
 }
 
-function App() {
-  // Use root path everywhere - no basename needed
-  const basename = '/';
+function Shell() {
+  return (
+    <ThemeProvider>
+      <HapticListener />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
+    </ThemeProvider>
+  );
+}
 
+// A data router, not <BrowserRouter>: only it can hold a navigation back
+// (useBlocker, see hooks/useUnsavedChangesGuard). One catch-all route hands
+// every path to the <Routes> inside AppRoutes, so the route table itself
+// stays where it was. Root path everywhere: no basename needed.
+const router = createBrowserRouter([{ path: '*', element: <Shell /> }]);
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename={basename}>
-        <ThemeProvider>
-          <HapticListener />
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-        </ThemeProvider>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>
   );
 }

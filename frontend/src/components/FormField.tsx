@@ -6,7 +6,7 @@ import { Input, TextArea, Picker, Form } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime, parseDateTime } from '../utils/dateUtils';
-import { FieldError } from './FieldError';
+import { fieldNote } from './FieldNote';
 import { PickerValue } from './PickerValue';
 
 interface FormFieldProps {
@@ -128,7 +128,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
     <Controller
       name={field.name}
       control={control}
-      render={({ field: { value, onChange }, fieldState: { error } }) => {
+      render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
         const renderInput = () => {
           switch (field.type) {
             case 'date': {
@@ -253,6 +253,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   id={field.name}
                   value={value !== undefined && value !== null ? String(value) : ''}
                   onChange={onChange}
+                  onBlur={onBlur}
                   placeholder={field.placeholder}
                   // The server keeps 500 characters of a comment or a text field.
                   maxLength={500}
@@ -271,6 +272,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   id={field.name}
                   value={displayValue}
                   onChange={onChange}
+                  onBlur={onBlur}
                   placeholder={field.placeholder}
                   maxLength={field.type === 'number' ? undefined : 500}
                   step={field.step}
@@ -294,7 +296,13 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
               width: '100%',
               cursor: 'pointer'
             }}
-            description={error ? <FieldError message={error.message as string} /> : undefined}
+            description={fieldNote({
+              error: error ? (error.message as string) : undefined,
+              // The server keeps 500 characters of a comment or a text field.
+              value: field.type === 'textarea' || field.type === 'text' ? String(value ?? '') : undefined,
+              max: field.type === 'textarea' || field.type === 'text' ? 500 : undefined,
+              always: field.type === 'textarea',
+            })}
           >
             {renderInput()}
           </Form.Item>

@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { showToast } from '../utils/toast';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { deleteWithUndo } from '../utils/deferredDelete';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
@@ -18,7 +20,6 @@ import { healthRecordsService, type HealthRecord } from '../services/healthRecor
 import { FormField } from '../components/FormField';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { onInvalidSubmit } from '../utils/formErrors';
-import { FormDangerButton } from '../components/FormDangerButton';
 
 /** Builds the field list + title for a registered event type. Date, time
  *  and comment aren't part of `eventType.fields` — every type gets them
@@ -113,6 +114,9 @@ export function HealthRecordForm() {
   const methods = useForm({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
+    // Validated when a field is left, and after that as it changes: an error
+    // shows as soon as it is known, not only after «Сохранить».
+    mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(schema),
     defaultValues
@@ -120,9 +124,10 @@ export function HealthRecordForm() {
 
   const {
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { isSubmitting, isDirty },
     reset
   } = methods;
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
 
   // Maps an API record (date_time + nested fields) onto the form's flat
   // field names — the mirror image of onSubmit's payload building below.
@@ -233,6 +238,7 @@ export function HealthRecordForm() {
       // lands on whichever of those actually opened it, tab/scroll
       // position and all, instead of assuming History every time an id is
       // present.
+      release();
       goBack(navigate, id ? '/history' : '/');
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -333,29 +339,36 @@ export function HealthRecordForm() {
               Отмена
             </Button>
             {id && (
-              <FormDangerButton
-                label="Удалить запись"
-                confirmTitle="Удаление записи"
-                confirmContent="Удалить эту запись?"
-                onConfirm={async () => {
-                  try {
-                    await healthRecordsService.delete(id);
-                  } catch (error) {
-                    showToast.failure(getApiErrorMessage(error, 'Не удалось удалить'));
-                    throw error;
-                  }
-                  await queryClient.invalidateQueries({
-                    predicate: (query) =>
-                      ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+              // Like the swipe on the timeline: no «Удалить эту запись?», the
+              // record goes and «Отменить» waits at the bottom.
+              <Button
+                block
+                size="large"
+                fill="none"
+                color="danger"
+                onClick={() => {
+                  deleteWithUndo({
+                    id,
+                    path: `/events/${id}`,
+                    message: 'Запись удалена',
+                    onDeleted: () =>
+                      queryClient.invalidateQueries({
+                        predicate: (query) =>
+                          ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+                      }),
                   });
-                  showToast.success('Запись удалена');
+                  release();
                   goBack(navigate, '/history');
                 }}
-              />
+                style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
+              >
+                Удалить запись
+              </Button>
             )}
           </div>
         </div>
       </div>
+      {leaveDialog}
     </div>
   );
 }

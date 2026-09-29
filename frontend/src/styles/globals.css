@@ -1287,6 +1287,7 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
    unmounted mid-air, and the bottom tab bar snapped back into view.
    Leave the motion to the component. */
 
+/* What is left of antd-mobile's Toast is the loading HUD. */
 .adm-toast-main {
     animation: motion-scale-in var(--motion-duration-fast) var(--motion-ease-emphasized) both;
 }
@@ -1898,8 +1899,8 @@ label:has(~ .file-picker-input:focus-visible),
         bottom: calc(var(--spacing-xl) + var(--safe-area-bottom));
     }
 
-    .undo-snackbar,
-    body:has(.app-fab) .undo-snackbar {
+    .snackbar,
+    body:has(.app-fab) .snackbar {
         bottom: calc(var(--spacing-xl) + var(--safe-area-bottom));
     }
 }
@@ -1963,11 +1964,11 @@ label:has(~ .file-picker-input:focus-visible),
         right: max(16px, calc(var(--safe-area-right) + 16px));
     }
 
-    .undo-snackbar {
+    .snackbar {
         bottom: calc(var(--safe-area-bottom) + 52px);
     }
 
-    body:has(.app-fab) .undo-snackbar {
+    body:has(.app-fab) .snackbar {
         bottom: calc(var(--safe-area-bottom) + 108px);
     }
 }
@@ -2006,7 +2007,42 @@ html.keyboard-open {
 }
 
 html.keyboard-open .bottom-tab-bar-container,
-html.keyboard-open .app-fab,
-html.keyboard-open .undo-snackbar {
+html.keyboard-open .app-fab {
     display: none;
+}
+
+/* A message raised while typing (a failed save) sits just above the keys,
+   not behind them. */
+html.keyboard-open .snackbar,
+html.keyboard-open body:has(.app-fab) .snackbar {
+    bottom: calc(var(--keyboard-fixed-offset, 0px) + var(--spacing-lg));
+}
+
+/* Under a field (components/FieldNote): the error or hint on the left, a
+   character counter on the right. */
+.field-note {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.field-note__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.field-counter {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    color: var(--app-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The limit is reached: typing has stopped. */
+.field-counter--limit {
+    color: var(--app-warning-text);
+    font-weight: 600;
 }
