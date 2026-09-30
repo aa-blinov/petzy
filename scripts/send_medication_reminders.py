@@ -38,6 +38,7 @@ from zoneinfo import ZoneInfo
 # has to be explicit.
 import web.app  # noqa: F401
 from web.courses import course_covers
+from web.medical_records import SOON_DAYS, record_states
 from web.medications import UPCOMING_LOOKAHEAD_DAYS, compute_taken_counts
 from web.push_delivery import send_push_to_subscriptions
 
@@ -54,6 +55,50 @@ TICK_SECONDS = 90
 # policy, etc.) — long enough to actually book a vet appointment before
 # it lapses.
 DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE = 14
+
+
+# A vaccination or a treatment whose repeat date passed up to this many days ago
+# still gets one «просрочено» push (if nobody heard about it before). Older
+# than that is not news, and the first tick after a deploy must not shower
+# people with pushes about records from long ago.
+MEDICAL_OVERDUE_GRACE_DAYS = 3
+
+MEDICAL_KIND_TITLES = {
+    "vaccination": ("Скоро прививка", "Прививка просрочена"),
+    "parasite": ("Скоро обработка от паразитов", "Обработка от паразитов просрочена"),
+}
+
+
+def _days_phrase(days: int) -> str:
+    if days == 0:
+        return "сегодня"
+    if days == 1:
+        return "завтра"
+    word = (
+        "день"
+        if days % 10 == 1 and days % 100 != 11
+        else "дня"
+        if 2 <= days % 10 <= 4 and not 12 <= days % 100 <= 14
+        else "дней"
+    )
+    return f"через {days} {word}"
+
+
+def medical_reminder_payload(item: dict) -> dict:
+    """The push for one due record: what it is, for which pet, when, and a link
+    to the pet's medical card (the pet in the URL, so it opens the right one)."""
+    record, pet = item["record"], item["pet"]
+    soon_title, overdue_title = MEDICAL_KIND_TITLES[record["kind"]]
+    if item["stage"] == "soon":
+        title, when = soon_title, _days_phrase(item["days_until"])
+    else:
+        due = datetime.strptime(record["next_due"], "%Y-%m-%d").strftime("%d.%m.%Y")
+        title, when = overdue_title, f"срок был {due}"
+    return {
+        "title": title,
+        "body": f"{pet.get('name', 'Питомец')}: {record.get('title', '')}, {when}",
+        "url": f"/pets/{pet['_id']}/medical-card",
+    }
 
 
 def _iter_subscribed_pets(db, now_utc: datetime):
@@ -219,6 +264,55 @@ def find_due_document_expiry_reminders(
     return due
 
 
+def find_due_medical_reminders(db, now_utc: datetime, subscribed_pets=None) -> list:
+    """Vaccinations and parasite treatments whose repeat date is near (within
+    ``SOON_DAYS`` of its kind) or has just passed (up to
+    ``MEDICAL_OVERDUE_GRACE_DAYS``), not yet notified about for that exact date
+    and stage.
+
+    Like the document-expiry reminder: no time of day, dedupe on
+    (record, next_due, stage), so entering the next shot (a newer record with
+    the same title replaces the old one, see web.medical_records) or moving
+    the date makes a fresh reminder, and the replaced record is never
+    reminded about.
+    """
+    due = []
+    pets_iter = subscribed_pets if subscribed_pets is not None else _iter_subscribed_pets(db, now_utc)
+    for pet, now_local, recipient_subs in pets_iter:
+        today = now_local.date()
+        records = list(db.medical_records.find({"pet_id": str(pet["_id"]), "kind": {"$in": list(SOON_DAYS)}}))
+        if not records:
+            continue
+        states = record_states(records, today)
+        for record in records:
+            if states[str(record["_id"])]["superseded"] or not record.get("next_due"):
+                continue
+            try:
+                days_until = (datetime.strptime(record["next_due"], "%Y-%m-%d").date() - today).days
+            except (ValueError, TypeError):
+                continue
+            if 0 <= days_until <= SOON_DAYS[record["kind"]]:
+                stage = "soon"
+            elif -MEDICAL_OVERDUE_GRACE_DAYS <= days_until < 0:
+                stage = "overdue"
+            else:
+                continue
+            if db.medical_due_reminders_sent.find_one(
+                {"record_id": str(record["_id"]), "next_due": record["next_due"], "stage": stage}
+            ):
+                continue
+            due.append(
+                {
+                    "record": record,
+                    "pet": pet,
+                    "stage": stage,
+                    "days_until": days_until,
+                    "subscriptions": recipient_subs,
+                }
+            )
+    return due
+
+
 def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: dict) -> int:
     """find_due_medication_reminders + find_due_document_expiry_reminders,
     push each one, and record a dedupe row per item. Returns the number
@@ -285,6 +379,25 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             logger.warning(
                 f"Could not record dedupe row for document={document['_id']}, expires_at={expiry['expires_at']}"
             )
+
+    for item in find_due_medical_reminders(db, now_utc, subscribed_pets=subscribed_pets):
+        record = item["record"]
+        sent += send_push_to_subscriptions(
+            db, item["subscriptions"], medical_reminder_payload(item), vapid_private_key, vapid_claims
+        )
+        try:
+            db.medical_due_reminders_sent.insert_one(
+                {
+                    "record_id": str(record["_id"]),
+                    "next_due": record["next_due"],
+                    "stage": item["stage"],
+                    "created_at": now_utc,
+                    # purge_at, not expires_at: next_due is the dedupe key's own date.
+                    "purge_at": now_utc + timedelta(days=90),
+                }
+            )
+        except Exception:
+            logger.warning(f"Could not record dedupe row for medical record={record['_id']}, stage={item['stage']}")
 
     return sent
 

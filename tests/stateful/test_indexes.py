@@ -35,6 +35,10 @@ def test_ensure_indexes_creates_expected_indexes():
             "document_expiry_reminders_sent_unique",
             "document_expiry_reminders_sent_ttl",
         ],
+        "medical_due_reminders_sent": [
+            "medical_due_reminders_sent_unique",
+            "medical_due_reminders_sent_ttl",
+        ],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()
