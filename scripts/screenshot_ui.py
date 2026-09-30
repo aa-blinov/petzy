@@ -5,6 +5,11 @@ for the Chromium download. Runs against a local Docker stack
 (docker-compose.local.yml, nginx on 127.0.0.1:3001) with seeded demo data
 (demo / petzy-demo-2026), on an iPhone Pro Max viewport (430x932).
 
+The color scheme is pinned at the browser context level (dark by default)
+so captures are deterministic — the app reads prefers-color-scheme and sets
+data-prefers-color-scheme on <html>. Override with PETZY_SHOT_THEME=light
+(or system) if a light-theme run is wanted.
+
 Override the target and login with PETZY_SHOT_BASE, PETZY_SHOT_USER,
 PETZY_SHOT_PASS if the stack lives elsewhere.
 
@@ -14,6 +19,7 @@ Saves screenshots into screenshots/ for inspection.
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
 from playwright.sync_api import sync_playwright
 
@@ -21,6 +27,9 @@ FRONTEND = os.environ.get("PETZY_SHOT_BASE", "http://127.0.0.1:3001")
 OUTPUT_DIR = Path(os.environ.get("PETZY_SHOT_OUT", Path(__file__).parent.parent / "screenshots"))
 USERNAME = os.environ.get("PETZY_SHOT_USER", "demo")
 PASSWORD = os.environ.get("PETZY_SHOT_PASS", "petzy-demo-2026")
+
+ColorScheme = Literal["dark", "light", "no-preference", "null"]
+COLOR_SCHEME: ColorScheme = os.environ.get("PETZY_SHOT_THEME", "dark")  # type: ignore[assignment]
 
 # Screens to capture after login. Order matters — Dashboard first.
 SCREENS = [
@@ -55,6 +64,7 @@ def main() -> int:
             device_scale_factor=3,
             is_mobile=True,
             has_touch=True,
+            color_scheme=COLOR_SCHEME,
             user_agent=(
                 "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
                 "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 "
