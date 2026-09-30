@@ -119,6 +119,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
   const { username } = useAuth();
   const navigate = useNavigate();
+  // The pet itself (its photo and name) opens the medical card: everything about the animal in one place.
+  const openMedicalCard = () => navigate(`/pets/${pet._id}/medical-card`);
   // Nothing known yet: the owner (only they can edit the pet) is asked to
   // fill it in; someone it's shared with sees at least what animal it is.
   const canFillIn = !meta && (pet.current_user_is_owner ?? pet.owner === username);
@@ -149,12 +151,18 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         {/* Square avatar — image if available, else species icon on the
             brand-soft tint. object-fit: cover keeps the photo square
             even if the source is rectangular. */}
-        <div
-          aria-hidden={!pet.photo_url}
+        <button
+          type="button"
+          onClick={openMedicalCard}
+          aria-label={`Медкарта: ${pet.name}`}
+          className="tap-feedback"
           style={{
             flexShrink: 0,
             width: "112px",
             height: "112px",
+            padding: 0,
+            border: "none",
+            cursor: "pointer",
             borderRadius: "var(--radius-md)",
             overflow: "hidden",
             backgroundColor: "var(--app-accent-soft)",
@@ -180,14 +188,24 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           ) : (
             createElement(SpeciesIcon, { size: 56, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
           )}
-        </div>
+        </button>
 
         {/* Right column — name, age/gender/breed summary, weight chip.
             minWidth: 0 lets flex children ellipsis correctly. */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
-          <div
-            className="display-headline"
+          <button
+            type="button"
+            onClick={openMedicalCard}
+            className="display-headline tap-feedback"
             style={{
+              alignSelf: "stretch",
+              minWidth: 0,
+              padding: 0,
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              textAlign: "left",
+              fontFamily: "inherit",
               fontSize: "var(--text-xl)",
               fontWeight: 700,
               color: "var(--app-text-primary)",
@@ -198,7 +216,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             }}
           >
             {pet.name}
-          </div>
+          </button>
 
           {/* Meta line — only render the parts we have. Wraps instead of
               truncating: age + breed + gender together routinely overrun
