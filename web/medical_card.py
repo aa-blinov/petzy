@@ -21,7 +21,9 @@ from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
+from web.medical_records import linked_document_ids, pet_records
 from web.schemas import (
+    MEDICAL_KINDS,
     ErrorResponse,
     MedicalCardQuery,
     MedicalCardResponse,
@@ -41,6 +43,7 @@ EXPIRY_SOON_DAYS = 14
 
 WEIGHT_POINTS = 12
 RECENT_DOCUMENTS = 5
+RECORDS_PER_KIND = 10
 PAST_COURSES = 10
 # Documents a vet reads: results and conclusions. Scans are big and
 # insurance is paperwork; both stay in «Документы».
@@ -230,7 +233,11 @@ def _courses(pet_id: str, today: date) -> tuple[list[dict], list[dict]]:
 
 def _vaccinations(pet_id: str, today: date) -> list[dict]:
     result = []
+    # A certificate that has become a record is shown as that record, not twice.
+    linked = linked_document_ids(pet_id)
     for doc in app.db.documents.find({"pet_id": pet_id, "category": "vaccination"}):
+        if str(doc["_id"]) in linked:
+            continue
         expires = _as_date_str(doc.get("expires_at"))
         status, days_left = _vaccination_status(expires, today)
         result.append(
@@ -279,6 +286,7 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
     pet_id = str(pet["_id"])
     birth = _as_date_str(pet.get("birth_date"))
     current_courses, past_courses = _courses(pet_id, today)
+    every_record = pet_records(pet_id, today)
     return {
         "pet": {
             "name": pet.get("name", ""),
@@ -291,6 +299,8 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
             "health_notes": (pet.get("health_notes") or "").strip() or None,
         },
         "profile": _profile(pet),
+        "records": {kind: [r for r in every_record if r["kind"] == kind][:RECORDS_PER_KIND] for kind in MEDICAL_KINDS},
+        "record_counts": {kind: sum(1 for r in every_record if r["kind"] == kind) for kind in MEDICAL_KINDS},
         "weight": _weight(pet_id),
         "medications": current_courses,
         "past_courses": past_courses,

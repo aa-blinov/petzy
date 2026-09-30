@@ -23,6 +23,14 @@ BAND = (250, 246, 239)
 CATEGORY_LABELS = {"lab_result": "Анализ", "conclusion": "Заключение"}
 STATUS_LABELS = {"valid": "Действует", "soon": "Скоро истекает", "expired": "Истекла", "none": "Срок не указан"}
 STATUS_COLORS = {"valid": INK, "soon": AMBER, "expired": ALERT, "none": MUTED}
+TARGET_LABELS = {"fleas_ticks": "от блох и клещей", "worms": "от глистов", "both": "от блох, клещей и глистов"}
+# The kinds of record, in the order a vet reads them: the title of the section, and whether it is shown when empty.
+RECORD_SECTIONS = [
+    ("vaccination", "Прививки", True),
+    ("parasite", "Обработки от паразитов", True),
+    ("visit", "Визиты и диагнозы", False),
+    ("procedure", "Операции и процедуры", False),
+]
 
 
 def _date(iso: str | None) -> str:
@@ -195,15 +203,51 @@ def render_medical_card_pdf(card: dict) -> bytes:
         pdf.set_font("DejaVu", "", 10)
         pdf.multi_cell(0, 6, pet["health_notes"], align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    pdf.section("Прививки")
-    if card["vaccinations"]:
-        for v in card["vaccinations"]:
+    def record_lines(r: dict) -> None:
+        title = r["title"] + (f" (серия {r['batch']})" if r.get("batch") else "")
+        right, color = "", INK
+        if r["status"] == "overdue":
+            right, color = f"Просрочено, {_date(r['next_due'])}", ALERT
+        elif r["status"] == "soon":
+            right, color = f"Скоро, {_date(r['next_due'])}", AMBER
+        elif r["status"] == "ok":
+            right = f"Следующая {_date(r['next_due'])}"
+        pdf.row(title, right, color, bold_left=not r["superseded"])
+        bits = [f"Сделано {_date(r['date'])}" if r["kind"] in ("vaccination", "parasite") else _date(r["date"])]
+        if r.get("target"):
+            bits.append(TARGET_LABELS.get(r["target"], r["target"]))
+        if r["kind"] not in ("vaccination", "parasite") and r.get("next_due"):
+            bits.append(f"повторно {_date(r['next_due'])}")
+        if r.get("clinic"):
+            bits.append(r["clinic"])
+        if r.get("vet"):
+            bits.append(f"врач {r['vet']}")
+        pdf.muted(", ".join(bits))
+        for label, key in (("Диагноз", "diagnosis"), ("Рекомендации", "recommendations"), ("Заметка", "note")):
+            if r.get(key):
+                pdf.muted(f"{label}: {r[key]}")
+        pdf.ln(1)
+
+    records = card.get("records") or {}
+    counts = card.get("record_counts") or {}
+    for kind, title, always in RECORD_SECTIONS:
+        rows = records.get(kind) or []
+        legacy = card["vaccinations"] if kind == "vaccination" else []
+        if not rows and not legacy and not always:
+            continue
+        pdf.section(title)
+        for r in rows:
+            record_lines(r)
+        for v in legacy:  # a certificate kept only as a document
             label = STATUS_LABELS[v["status"]]
             if v["expires_at"]:
                 label = f"{label}, до {_date(v['expires_at'])}"
             pdf.row(v["title"], label, STATUS_COLORS[v["status"]])
-    else:
-        pdf.muted("Не добавлено.")
+        if not rows and not legacy:
+            pdf.muted("Не добавлено.")
+        hidden = counts.get(kind, len(rows)) - len(rows)
+        if hidden > 0:
+            pdf.muted(f"Ещё {hidden} в приложении.")
 
     def course_lines(c: dict, past: bool) -> None:
         name = c["name"] + (f", {c['strength']}" if c.get("strength") else "")

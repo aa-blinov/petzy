@@ -1,4 +1,5 @@
 import api from './api';
+import type { MedicalKind, MedicalRecord } from './medicalRecords.service';
 import { deviceTimeZone } from '../utils/timezone';
 import { filenameFromResponse, saveBlob } from '../utils/download';
 
@@ -69,6 +70,9 @@ export interface MedicalCard {
   };
   profile: MedicalProfile;
   weight: { latest: MedicalCardWeightPoint; series: MedicalCardWeightPoint[] } | null;
+  /** By kind, newest first, at most ten each. */
+  records: Record<MedicalKind, MedicalRecord[]>;
+  record_counts: Record<MedicalKind, number>;
   /** Courses going on or still to begin. */
   medications: MedicalCardCourse[];
   /** Finished courses, the latest first. */

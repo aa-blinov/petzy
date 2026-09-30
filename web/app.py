@@ -201,6 +201,7 @@ from web.documents import documents_bp  # noqa: E402
 from web.push import push_bp  # noqa: E402
 from web.export import export_bp  # noqa: E402
 from web.medical_card import medical_card_bp  # noqa: E402
+from web.medical_records import medical_records_bp  # noqa: E402
 from web.builtin_event_types import reorder_default_tiles, seed_builtin_event_types  # noqa: E402
 
 app.register_blueprint(auth_bp)
@@ -214,6 +215,7 @@ app.register_blueprint(documents_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(export_bp)
 app.register_blueprint(medical_card_bp)
+app.register_blueprint(medical_records_bp)
 
 # Build the indexes the application relies on. MongoDB makes
 # create_index a no-op when an identical index already exists, so

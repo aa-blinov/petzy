@@ -277,3 +277,80 @@
     font-size: var(--text-xs);
     color: var(--app-text-secondary);
 }
+
+/* The title and repeat suggestions of the record form: to tap instead of type. */
+.medrec__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: var(--spacing-sm);
+}
+
+.medrec__chip {
+    padding: 8px 12px;
+    border: 1px solid var(--app-border-color);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--app-text-color);
+    font: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    min-height: 36px;
+}
+
+.medrec__chip[aria-pressed='true'] {
+    background: var(--app-accent-soft);
+    border-color: var(--app-accent);
+    color: var(--app-accent-deep);
+    font-weight: 600;
+}
+
+/* A row of the card that opens its record, and the small action under it. */
+.medcard__row-button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.medcard__row--stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+}
+
+.medcard__row-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.medcard__row-action {
+    align-self: flex-start;
+    padding: 6px 0 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+}
+
+.medcard__row--history .medcard__row-title {
+    font-weight: 500;
+    color: var(--app-text-secondary);
+}
+
+.medcard__more {
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+    font-size: var(--text-xs);
+    color: var(--app-text-secondary);
+}
