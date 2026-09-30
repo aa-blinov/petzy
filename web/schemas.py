@@ -957,6 +957,11 @@ class EventCreate(HealthRecordBase):
 
     type: str = Field(..., min_length=1, max_length=60, description="Ключ типа события")
     fields: dict[str, Any] = Field(default_factory=dict, description="Значения полей, специфичных для типа")
+    tz: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -976,6 +981,11 @@ class EventUpdate(HealthRecordUpdateBase):
     """Update an existing event."""
 
     fields: Optional[dict[str, Any]] = Field(None, description="Значения полей, специфичных для типа")
+    tz: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
+    )
 
 
 class EventItem(BaseModel):
@@ -1198,11 +1208,21 @@ class MedicationIntakeCreate(BaseModel):
     comment: Optional[str] = None
     # «Пропустить»: the slot is handled, nothing is given or taken from the stock.
     skipped: bool = False
+    tz: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
+    )
 
 
 class MedicationIntakeUpdate(BaseModel):
     date: str
     time: str
+    tz: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
+    )
 
 
 class MedicationIntakeItem(BaseModel):

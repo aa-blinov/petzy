@@ -1,4 +1,5 @@
 import api from './api';
+import { deviceTimeZone } from '../utils/timezone';
 
 export type ExportFormat = 'csv' | 'tsv' | 'html' | 'md';
 
@@ -6,9 +7,8 @@ export const exportService = {
   exportData: async (petId: string, exportType: string, format: ExportFormat) => {
     try {
       const response = await api.get(`/export/${exportType}/${format}`, {
-        // The zone names the clock the file name's date stamp reads; the
-        // times inside the file are the ones that were entered.
-        params: { pet_id: petId, tz: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        // The exporter's zone: the times in the file are shown on this clock.
+        params: { pet_id: petId, tz: deviceTimeZone() },
         responseType: 'blob',
         // withCredentials: true is already in api instance
       });

@@ -22,7 +22,7 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import apply_pagination, parse_event_datetime_safe
+from web.helpers import apply_pagination, parse_event_datetime_safe, valid_tz
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -369,6 +369,10 @@ def create_event():
         "comment": data.comment or "",
         "username": username,
     }
+    # The zone the entered clock is in: an export moves the time onto the
+    # exporter's clock. Absent for old records and clients that don't say.
+    if valid_tz(data.tz):
+        doc["tz"] = data.tz
     app.db[EVENTS_COLLECTION].insert_one(doc)
     app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
 
@@ -454,6 +458,11 @@ def update_event(record_id):
     update_data: dict[str, Any] = {}
     if event_dt is not None:
         update_data["date_time"] = event_dt
+        # The form sends the whole time back even when only the comment was
+        # edited: the zone is re-stamped only when the clock really moved,
+        # or an author's time would be read as the editor's.
+        if event_dt != g.record.get("date_time") and valid_tz(data.tz):
+            update_data["tz"] = data.tz
     if data.comment is not None:
         update_data["comment"] = data.comment
     if data.fields is not None:

@@ -12,6 +12,7 @@ from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
     apply_pagination,
+    valid_tz,
 )
 from web.schemas import (
     MedicationCreate,
@@ -447,6 +448,8 @@ def log_intake(id):
             "username": username,
             "created_at": datetime.now(timezone.utc),
         }
+        if valid_tz(data.tz):
+            intake_data["tz"] = data.tz
         if skipped:
             intake_data["skipped"] = True
 
@@ -568,7 +571,10 @@ def update_intake(id):
         )
         if dt_error:
             return dt_error[0], dt_error[1]
-        app.db.medication_intakes.update_one({"_id": intake["_id"]}, {"$set": {"date_time": event_dt}})
+        changes = {"date_time": event_dt}
+        if event_dt != intake.get("date_time") and valid_tz(data.tz):
+            changes["tz"] = data.tz  # the clock moved: it is now in the editor's zone
+        app.db.medication_intakes.update_one({"_id": intake["_id"]}, {"$set": changes})
         return jsonify({"message": "Intake updated"})
     except Exception as e:
         app.logger.error(f"Error updating intake: {e}")
