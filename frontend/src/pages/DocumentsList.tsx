@@ -602,6 +602,30 @@ export function DocumentsList() {
               style={{ flex: 1, width: '100%', border: 'none' }}
             />
           )}
+          {fileViewer.url && (
+            // Not every mobile browser draws a PDF inside a frame (Chrome on
+            // Android shows an empty one): the file itself is one tap away.
+            <a
+              href={fileViewer.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="touch-target"
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + var(--spacing-md))',
+                color: 'var(--app-accent-deep)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Не видно файл? Открыть в браузере
+            </a>
+          )}
         </div>,
         document.body,
       )}
