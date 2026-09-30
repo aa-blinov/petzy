@@ -1,5 +1,6 @@
 import api from './api';
 import { deviceTimeZone } from '../utils/timezone';
+import { saveBlob } from '../utils/download';
 
 export type ExportFormat = 'csv' | 'tsv' | 'html' | 'md';
 
@@ -27,18 +28,8 @@ export const exportService = {
         }
       }
 
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
+      saveBlob(response.data, filename);
+
       return true;
     } catch (error) {
       console.error('Export failed:', error);

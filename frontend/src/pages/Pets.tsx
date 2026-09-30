@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
-import { Pencil, Scale, Trash2, Cat, LogOut } from 'lucide-react';
+import { Pencil, Scale, Trash2, Cat, LogOut, FileHeart } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
@@ -194,6 +194,7 @@ function PetCard({
   onDelete: () => void;
   onImageTap: (url: string) => void;
 }) {
+  const navigate = useNavigate();
   const age = computePetAge(pet.birth_date ?? '');
   const { icon: SpeciesIcon, gradient: speciesGradient } = getSpecies(pet.species);
 
@@ -347,6 +348,29 @@ function PetCard({
                 {lastWeight.fields?.weight as number} кг
               </span>
             )}
+            <button
+              type="button"
+              className="chip touch-target"
+              onClick={(e) => {
+                e.stopPropagation(); // the card itself opens the edit form
+                navigate(`/pets/${pet._id}/medical-card`);
+              }}
+              style={{
+                alignSelf: 'flex-start',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '12px',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              <FileHeart size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
+              Медкарта
+            </button>
             {/* Nothing indicated a pet was shared anywhere outside its own
                 edit form — an owner had no quick way to see at a glance
                 which of their pets someone else already has access to.

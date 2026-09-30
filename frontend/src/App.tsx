@@ -57,6 +57,7 @@ const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.Pet
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
+const MedicalCard = lazy(() => import('./pages/MedicalCard').then(m => ({ default: m.MedicalCard })));
 const EventTypeForm = lazy(() => import('./pages/EventTypeForm').then(m => ({ default: m.EventTypeForm })));
 const loadMedicationsList = () => import('./pages/MedicationsList');
 const MedicationsList = lazy(() => loadMedicationsList().then(m => ({ default: m.MedicationsList })));
@@ -270,6 +271,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <PetForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pets/:id/medical-card"
+                element={
+                  <ProtectedRoute>
+                    <MedicalCard />
                   </ProtectedRoute>
                 }
               />
