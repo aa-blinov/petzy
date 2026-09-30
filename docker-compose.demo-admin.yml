@@ -1,0 +1,16 @@
+# Local screenshot runs only. The admin is whoever ADMIN_USERNAME names, and
+# the account is created on the first start with ADMIN_PASSWORD_HASH. This
+# makes «demo_admin» the admin, signing in with the public demo password
+# (petzy-demo-2026, see scripts/seed_demo.py), so scripts/screenshot_ui.py can
+# capture the admin pages. Your own «admin» in the local database is untouched.
+# Never use this on a server: the hash below is of a password written in this
+# repository.
+#
+#   docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml \
+#       -f docker-compose.demo-admin.yml up -d web
+services:
+  web:
+    environment:
+      ADMIN_USERNAME: demo_admin
+      # $ is doubled: Compose would otherwise read the bcrypt hash as variables.
+      ADMIN_PASSWORD_HASH: "$$2b$$10$$ZmtGepL2Iek5yn8sXNQvaeuEO.thisUyx6llFwFWW9XgNJNaXGNCS"

@@ -10,6 +10,11 @@ so captures are deterministic — the app reads prefers-color-scheme and sets
 data-prefers-color-scheme on <html>. Override with PETZY_SHOT_THEME=light
 (or system) if a light-theme run is wanted.
 
+The admin pages are captured as a second user: the admin is whoever
+ADMIN_USERNAME names, never the demo user. Start the stack with
+docker-compose.demo-admin.yml (see its header) so «demo_admin» signs in with
+the demo password, or pass PETZY_SHOT_ADMIN_USER / PETZY_SHOT_ADMIN_PASS.
+
 Override the target and login with PETZY_SHOT_BASE, PETZY_SHOT_USER,
 PETZY_SHOT_PASS if the stack lives elsewhere.
 
@@ -21,12 +26,15 @@ import sys
 from pathlib import Path
 from typing import Literal
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 FRONTEND = os.environ.get("PETZY_SHOT_BASE", "http://127.0.0.1:3001")
 OUTPUT_DIR = Path(os.environ.get("PETZY_SHOT_OUT", Path(__file__).parent.parent / "screenshots"))
 USERNAME = os.environ.get("PETZY_SHOT_USER", "demo")
 PASSWORD = os.environ.get("PETZY_SHOT_PASS", "petzy-demo-2026")
+ADMIN_USERNAME = os.environ.get("PETZY_SHOT_ADMIN_USER", "demo_admin")
+ADMIN_PASSWORD = os.environ.get("PETZY_SHOT_ADMIN_PASS", PASSWORD)
 
 ColorScheme = Literal["dark", "light", "no-preference", "null"]
 COLOR_SCHEME: ColorScheme = os.environ.get("PETZY_SHOT_THEME", "dark")  # type: ignore[assignment]
@@ -43,12 +51,23 @@ SCREENS = [
     ("pet_form", "/pets/new"),
     ("health_form", "/form/feeding"),
     ("medication_form", "/medications/new"),
-    # Admin / settings sub-pages
-    ("admin_panel", "/admin"),
-    ("user_form", "/admin/users/new"),
+    # Settings sub-pages
     ("tiles_settings", "/tiles-settings"),
     ("form_defaults", "/form-defaults"),
 ]
+
+# Captured signed in as the admin, in a context of their own.
+ADMIN_SCREENS = [
+    ("admin_panel", "/admin"),
+    ("user_form", "/admin/users/new"),
+]
+
+VIEWPORT = {"width": 430, "height": 932}
+USER_AGENT = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 "
+    "Mobile/15E148 Safari/604.1"
+)
 
 
 def main() -> int:
@@ -60,16 +79,12 @@ def main() -> int:
             headless=True,
         )
         context = browser.new_context(
-            viewport={"width": 430, "height": 932},
+            viewport=VIEWPORT,
             device_scale_factor=3,
             is_mobile=True,
             has_touch=True,
             color_scheme=COLOR_SCHEME,
-            user_agent=(
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 "
-                "Mobile/15E148 Safari/604.1"
-            ),
+            user_agent=USER_AGENT,
         )
         page = context.new_page()
 
@@ -153,6 +168,37 @@ def main() -> int:
             swipe(350, -7)
             page.screenshot(path=str(OUTPUT_DIR / "history_swipe_left.png"), full_page=False)
             print("  captured history_swipe_left (delete reveal)")
+
+        # The admin pages, signed in as the admin (a separate context: the
+        # demo user's session must not be replaced for the shots above).
+        admin_context = browser.new_context(
+            viewport=VIEWPORT,
+            device_scale_factor=3,
+            is_mobile=True,
+            has_touch=True,
+            color_scheme=COLOR_SCHEME,
+            user_agent=USER_AGENT,
+        )
+        admin_page = admin_context.new_page()
+        admin_page.goto(f"{FRONTEND}/login", wait_until="networkidle")
+        admin_page.fill('input[placeholder="Введите логин"]', ADMIN_USERNAME)
+        admin_page.fill('input[placeholder="Введите пароль"]', ADMIN_PASSWORD)
+        admin_page.click('button[type="submit"]')
+        admin_page.wait_for_url(lambda url: not url.endswith("/login"), timeout=10_000)
+        # A new account is asked for its consent once, a moment after the
+        # page opens; accept it so the dialog doesn't sit over the admin pages.
+        consent = admin_page.get_by_text("Даю согласие", exact=True)
+        try:
+            consent.wait_for(timeout=4_000)
+            consent.click()
+            admin_page.wait_for_timeout(1000)
+        except PlaywrightTimeoutError:
+            pass  # the account had already given it
+        for name, path in ADMIN_SCREENS:
+            admin_page.goto(f"{FRONTEND}{path}", wait_until="networkidle")
+            admin_page.wait_for_timeout(800)
+            admin_page.screenshot(path=str(OUTPUT_DIR / f"{name}.png"), full_page=False)
+            print(f"  captured {name} ({path}, as {ADMIN_USERNAME})")
 
         browser.close()
 
