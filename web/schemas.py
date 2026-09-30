@@ -1811,7 +1811,10 @@ class MedicalCardData(BaseModel):
     )
     record_counts: Dict[str, int] = Field(description="Сколько записей каждого вида всего")
     medications: List[MedicalCardMedication] = Field(description="Курсы, которые идут сейчас или ещё начнутся")
-    past_courses: List[MedicalCardMedication] = Field(description="Законченные курсы, последние сверху")
+    past_courses: List[MedicalCardMedication] = Field(
+        description="Законченные курсы, последние сверху, не больше десяти"
+    )
+    past_courses_total: int = Field(description="Сколько законченных курсов всего")
     vaccinations: List[MedicalCardVaccination]
     documents: List[MedicalCardDocument]
     generated_at: str = Field(description="Дата формирования, YYYY-MM-DD, по часовому поясу пользователя")

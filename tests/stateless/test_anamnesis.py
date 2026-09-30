@@ -1,0 +1,217 @@
+"""The life history (анамнез жизни): the medical card without its limits."""
+
+import io
+from datetime import datetime
+from urllib.parse import unquote
+
+import pytest
+from pypdf import PdfReader
+
+from web.security import create_access_token
+
+
+def _auth(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _pdf(client, token, pet, query=""):
+    response = client.get(f"/api/pets/{pet['_id']}/anamnesis/pdf{query}", headers=_auth(token))
+    assert response.status_code == 200, response.get_data(as_text=True)[:200]
+    return response, "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(response.data)).pages)
+
+
+def _flat(text: str) -> str:
+    """The text on one line: a table cell wraps «Обработка от паразитов» over two."""
+    return " ".join(text.split())
+
+
+def _record(mock_db, pet, kind="vaccination", title="Рабизин", day="2024-05-01", **extra):
+    mock_db["medical_records"].insert_one(
+        {
+            "pet_id": str(pet["_id"]),
+            "kind": kind,
+            "title": title,
+            "date": day,
+            "next_due": None,
+            "document_ids": [],
+            "created_at": datetime(2024, 1, 1),
+            **extra,
+        }
+    )
+
+
+@pytest.mark.health
+class TestTheWholeRecord:
+    def test_nothing_is_cut_at_ten(self, client, mock_db, regular_user_token, test_pet):
+        for i in range(25):
+            _record(mock_db, test_pet, title=f"Вакцина номер {i:02d}", day=f"20{i % 20 + 5:02d}-03-10")
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert all(f"Вакцина номер {i:02d}" in text for i in range(25))
+        assert "в приложении" not in text  # the card's «Ещё N в приложении» has no place here
+
+    def test_it_reads_oldest_first_by_year(self, client, mock_db, regular_user_token, test_pet):
+        _record(mock_db, test_pet, title="Поздняя", day="2025-06-01")
+        _record(mock_db, test_pet, title="Ранняя", day="2021-06-01")
+        _record(mock_db, test_pet, kind="visit", title="Средняя", day="2023-06-01")
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert text.index("Ранняя") < text.index("Средняя") < text.index("Поздняя")
+        assert text.index("2021") < text.index("2023") < text.index("2025")
+
+    def test_the_birth_opens_the_history(self, client, mock_db, regular_user_token, test_pet):
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"birth_date": "2019-01-15"}})
+        _record(mock_db, test_pet, day="2019-03-10")
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert "15.01.2019" in text and "Рождение" in text
+        assert text.index("Рождение") < text.index("Рабизин")
+
+    def test_every_detail_of_a_record_is_there(self, client, mock_db, regular_user_token, test_pet):
+        _record(
+            mock_db,
+            test_pet,
+            kind="visit",
+            title="Осмотр",
+            day="2024-08-14",
+            diagnosis="Гастрит",
+            recommendations="Диета",
+            clinic="Друг",
+            vet="Иванова",
+            note="Вес стабилен",
+        )
+        _record(
+            mock_db, test_pet, kind="parasite", title="Дронтал", day="2024-09-01", target="worms", next_due="2099-01-01"
+        )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        text = _flat(text)
+        for needle in (
+            "Визит к врачу",
+            "Диагноз: Гастрит",
+            "Рекомендации: Диета",
+            "врач Иванова",
+            "Заметка: Вес стабилен",
+            "Обработка от паразитов",
+            "От глистов",
+            "01.01.2099",
+        ):
+            assert needle in text, needle
+
+    def test_a_certificate_kept_as_a_document_is_in_the_timeline(self, client, mock_db, regular_user_token, test_pet):
+        mock_db["documents"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "category": "vaccination",
+                "title": "Сертификат Эурикан",
+                "expires_at": "2099-02-02",
+                "created_at": datetime(2022, 4, 5, 12, 0),
+                "file_id": "f",
+            }
+        )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        text = _flat(text)
+        assert "Прививка (сертификат)" in text and "05.04.2022" in text and "Действует до 02.02.2099" in text
+
+
+@pytest.mark.health
+class TestCoursesWeightEventsDocuments:
+    def test_every_past_course_is_listed(self, client, mock_db, regular_user_token, test_pet):
+        for i in range(15):
+            mock_db["medications"].insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "name": f"Курс-{i:02d}",
+                    "is_active": False,
+                    "started_on": "2023-01-01",
+                    "ended_on": f"2023-02-{i + 1:02d}",
+                    "schedule": {"days": [0], "times": ["10:00"]},
+                }
+            )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert all(f"Курс-{i:02d}" in text for i in range(15))
+
+    def test_the_card_says_how_many_past_courses_there_are(self, client, mock_db, regular_user_token, test_pet):
+        for i in range(12):
+            mock_db["medications"].insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "name": f"К{i}",
+                    "is_active": False,
+                    "schedule": {"days": [0], "times": ["10:00"]},
+                }
+            )
+        card = client.get(f"/api/pets/{test_pet['_id']}/medical-card", headers=_auth(regular_user_token)).get_json()[
+            "card"
+        ]
+        assert len(card["past_courses"]) == 10 and card["past_courses_total"] == 12
+
+    def test_all_weights_are_there_with_the_change(self, client, mock_db, regular_user_token, test_pet):
+        for i in range(40):
+            mock_db["events"].insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "type": "weight",
+                    "date_time": datetime(2022 + i // 12, i % 12 + 1, 1, 9, 0),
+                    "fields": {"weight": 4.0 + i * 0.1},
+                }
+            )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert "Замеров: 40" in text and "Первый замер: 4 кг (01.01.2022)" in text and "Изменение: +3,9 кг" in text
+        assert "01.01.2022" in text and "01.04.2025" in text  # the oldest and the newest are both in the list
+
+    def test_the_diary_is_summarised_per_kind_and_year(self, client, mock_db, regular_user_token, test_pet):
+        pid = str(test_pet["_id"])
+        for when in (datetime(2024, 2, 1, 8), datetime(2024, 9, 1, 8), datetime(2025, 3, 1, 8)):
+            mock_db["events"].insert_one({"pet_id": pid, "type": "asthma", "date_time": when, "fields": {}})
+        mock_db["events"].insert_one(
+            {"pet_id": pid, "type": "weight", "date_time": datetime(2025, 3, 1, 8), "fields": {"weight": 4.0}}
+        )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert "Приступ астмы" in text and "всего 3" in text
+        assert "С 01.02.2024 по 01.03.2025. По годам: 2024: 2, 2025: 1" in text
+        # the weight has its own section, not a line among the kinds of event
+        assert "Вес\n" in text and "Вес всего" not in text
+
+    def test_all_documents_are_listed(self, client, mock_db, regular_user_token, test_pet):
+        for title, category in [("Анализ крови", "lab_result"), ("Полис", "insurance"), ("МРТ", "imaging")]:
+            mock_db["documents"].insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "category": category,
+                    "title": title,
+                    "created_at": datetime(2025, 1, 2),
+                    "file_id": "f",
+                }
+            )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        for needle in ("Анализ крови", "Полис", "МРТ", "Страховка", "Снимок", "добавлен 02.01.2025"):
+            assert needle in text, needle
+
+    def test_an_empty_pet_gets_an_honest_empty_history(self, client, mock_db, regular_user_token, test_pet):
+        _, text = _pdf(client, regular_user_token, test_pet)
+        for needle in ("АНАМНЕЗ ЖИЗНИ", "Курсов нет.", "Замеров нет.", "Записей нет.", "Документов нет."):
+            assert needle in text, needle
+
+
+@pytest.mark.health
+class TestTheEndpoint:
+    def test_the_file_is_named_and_not_cached(self, client, regular_user_token, test_pet):
+        response, _ = _pdf(client, regular_user_token, test_pet, "?tz=Asia/Almaty")
+        assert response.content_type == "application/pdf" and response.headers["Cache-Control"] == "private, no-store"
+        assert unquote(response.headers["Content-Disposition"].split("''")[1]).startswith("анамнез_")
+
+    def test_a_shared_user_may_download_it_a_stranger_may_not(self, client, mock_db, test_pet):
+        mock_db["users"].insert_one({"username": "friend", "is_active": True, "password_hash": "x"})
+        mock_db["users"].insert_one({"username": "stranger", "is_active": True, "password_hash": "x"})
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["friend"]}})
+        assert _pdf(client, create_access_token("friend"), test_pet)[0].status_code == 200
+        stranger = client.get(
+            f"/api/pets/{test_pet['_id']}/anamnesis/pdf", headers=_auth(create_access_token("stranger"))
+        )
+        assert stranger.status_code in (403, 404)
+
+    def test_no_login_no_history(self, client, test_pet):
+        assert client.get(f"/api/pets/{test_pet['_id']}/anamnesis/pdf").status_code == 401
+
+    def test_a_long_history_runs_onto_more_pages(self, client, mock_db, regular_user_token, test_pet):
+        for i in range(120):
+            _record(mock_db, test_pet, title=f"Запись {i:03d}", day=f"20{i % 25 + 1:02d}-01-01")
+        response, _ = _pdf(client, regular_user_token, test_pet)
+        assert len(PdfReader(io.BytesIO(response.data)).pages) >= 3
