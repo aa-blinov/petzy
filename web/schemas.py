@@ -1103,6 +1103,16 @@ class MedicationSchedule(BaseModel):
     times: List[str] = Field(..., description="Время приема (HH:mm)")
 
 
+def _course_date(v: Optional[str]) -> Optional[str]:
+    """A course date: empty (clears it), or a real YYYY-MM-DD within a year ahead and fifty back."""
+    if v is None or v == "":
+        return v
+    return validate_date_logic(v, allow_future=True, max_future_days=366)
+
+
+COURSE_FIELDS_NOTE = "YYYY-MM-DD; пустая строка убирает дату"
+
+
 class MedicationListQuery(PetIdQuery):
     """Query parameters for listing medications with timezone support."""
 
@@ -1134,6 +1144,21 @@ class MedicationCreate(PetIdQuery):
     )
     is_active: bool = True
     comment: Optional[str] = Field(None, max_length=500)
+    started_on: Optional[str] = Field(None, description="Начало курса, " + COURSE_FIELDS_NOTE)
+    ended_on: Optional[str] = Field(None, description="Окончание курса, " + COURSE_FIELDS_NOTE)
+    purpose: Optional[str] = Field(None, max_length=200, description="От чего или для чего назначен")
+    prescribed_by: Optional[str] = Field(None, max_length=100, description="Кто назначил (врач, клиника)")
+
+    @field_validator("started_on", "ended_on")
+    @classmethod
+    def validate_course_dates(cls, v):
+        return _course_date(v) or None
+
+    @model_validator(mode="after")
+    def validate_course_order(self):
+        if self.started_on and self.ended_on and self.ended_on < self.started_on:
+            raise ValueError("Окончание курса раньше его начала")
+        return self
 
 
 class MedicationUpdate(BaseModel):
@@ -1155,6 +1180,22 @@ class MedicationUpdate(BaseModel):
     inventory_warning_days: Optional[float] = Field(None, ge=0, le=60)
     is_active: Optional[bool] = None
     comment: Optional[str] = Field(None, max_length=500)
+    # A date or text is cleared with an empty string (None means «not sent»).
+    started_on: Optional[str] = Field(None, description="Начало курса, " + COURSE_FIELDS_NOTE)
+    ended_on: Optional[str] = Field(None, description="Окончание курса, " + COURSE_FIELDS_NOTE)
+    purpose: Optional[str] = Field(None, max_length=200)
+    prescribed_by: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("started_on", "ended_on")
+    @classmethod
+    def validate_course_dates(cls, v):
+        return _course_date(v)
+
+    @model_validator(mode="after")
+    def validate_course_order(self):
+        if self.started_on and self.ended_on and self.ended_on < self.started_on:
+            raise ValueError("Окончание курса раньше его начала")
+        return self
 
 
 class MedicationItem(BaseModel):
@@ -1180,6 +1221,13 @@ class MedicationItem(BaseModel):
     inventory_low: bool = False
     is_active: bool
     comment: Optional[str] = None
+    started_on: Optional[str] = None
+    ended_on: Optional[str] = None
+    purpose: Optional[str] = None
+    prescribed_by: Optional[str] = None
+    course_status: Optional[str] = Field(
+        None, description="active (идёт), planned (ещё не началась), ended (закончена)"
+    )
     last_taken_at: Optional[str] = None
     intakes_today: int = 0
     username: Optional[str] = None
@@ -1504,6 +1552,13 @@ class MedicalCardMedication(BaseModel):
     dose_text: Optional[str] = Field(None, description="Разовая доза: «1 таб», «0,5 мл»")
     schedule_text: str = Field(description="«Ежедневно в 08:00, 20:00» или «По пн, ср в 10:00»")
     comment: Optional[str] = None
+    purpose: Optional[str] = Field(None, description="От чего или для чего назначен")
+    prescribed_by: Optional[str] = None
+    status: str = Field("active", description="active (идёт), planned (ещё не началась), ended (закончена)")
+    started_on: Optional[str] = Field(None, description="Начало курса; у старых курсов выводится из приёмов")
+    ended_on: Optional[str] = Field(None, description="Окончание курса; у старых выводится из последнего приёма")
+    given: int = Field(0, description="Дано доз")
+    skipped: int = Field(0, description="Пропущено доз")
 
 
 class MedicalCardVaccination(BaseModel):
@@ -1525,7 +1580,8 @@ class MedicalCardDocument(BaseModel):
 class MedicalCardData(BaseModel):
     pet: MedicalCardPet
     weight: Optional[MedicalCardWeight] = None
-    medications: List[MedicalCardMedication]
+    medications: List[MedicalCardMedication] = Field(description="Курсы, которые идут сейчас или ещё начнутся")
+    past_courses: List[MedicalCardMedication] = Field(description="Законченные курсы, последние сверху")
     vaccinations: List[MedicalCardVaccination]
     documents: List[MedicalCardDocument]
     generated_at: str = Field(description="Дата формирования, YYYY-MM-DD, по часовому поясу пользователя")

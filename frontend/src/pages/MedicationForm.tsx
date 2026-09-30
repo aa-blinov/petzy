@@ -21,6 +21,9 @@ import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
 import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
+import { DatePickerField } from '../components/DatePickerField';
+import { showUndo } from '../utils/undo';
+import { getCurrentDate } from '../utils/dateUtils';
 
 /** A typed amount («0,5» or «0.5») for zod; '' is «not set». */
 const amount = (v: unknown) => (v === '' || v === undefined || v === null ? null : typeof v === 'string' ? v.replace(',', '.') : v);
@@ -44,7 +47,15 @@ const medicationSchema = z.object({
     inventory_warning_days: z.preprocess(amount, z.coerce.number({ error: 'Введите число' }).min(0, 'Не меньше нуля').max(60, 'Не больше 60 дней').nullable().optional()),
     is_active: z.boolean(),
     comment: z.string().optional(),
+    // The course: when it began and ended (YYYY-MM-DD, '' for «not set»), what for, who prescribed it.
+    started_on: z.string().optional(),
+    ended_on: z.string().optional(),
+    purpose: z.string().max(200).optional(),
+    prescribed_by: z.string().max(100).optional(),
 }).superRefine((data, ctx) => {
+    if (data.started_on && data.ended_on && data.ended_on < data.started_on) {
+        ctx.addIssue({ code: 'custom', path: ['ended_on'], message: 'Окончание раньше начала' });
+    }
     // Checked here rather than in onSubmit, where they were toasts with
     // no link to the field they were about.
     if (!data.inventory_enabled) return;
@@ -132,6 +143,10 @@ export function MedicationForm() {
             inventory_warning_days: 3,
             is_active: true,
             comment: '',
+            started_on: '',
+            ended_on: '',
+            purpose: '',
+            prescribed_by: '',
         }
     });
 
@@ -197,6 +212,10 @@ export function MedicationForm() {
                 inventory_warning_days: med.inventory_warning_days ?? 3,
                 is_active: med.is_active,
                 comment: med.comment || '',
+                started_on: med.started_on || '',
+                ended_on: med.ended_on || '',
+                purpose: med.purpose || '',
+                prescribed_by: med.prescribed_by || '',
             });
         }
     }, [med, reset]);
@@ -224,7 +243,32 @@ export function MedicationForm() {
         showToast.success('Данные заполнены');
     };
 
+    const endedOn = useWatch({ control, name: 'ended_on' });
     const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
+
+    // «Завершить курс»: switched off as of today, and undoable from the bar.
+    const finishCourse = useMutation({
+        mutationFn: async () => {
+            await medicationsService.update(id!, { is_active: false, ended_on: getCurrentDate() });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['medications'] });
+            queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+            release();
+            showUndo({
+                message: `Курс «${med?.name ?? 'лекарства'}» завершён`,
+                onUndo: async () => {
+                    await medicationsService.update(id!, { is_active: true });
+                    await queryClient.invalidateQueries({ queryKey: ['medications'] });
+                    await queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+                },
+            });
+            goBack(navigate, '/medications');
+        },
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Не удалось завершить курс'));
+        },
+    });
 
     const mutation = useMutation({
         mutationFn: async (data: MedicationFormData) => {
@@ -662,15 +706,90 @@ export function MedicationForm() {
                             </>
                         )}
 
-                        <Form.Header />
+                        <Form.Header>Курс</Form.Header>
+                        <Controller
+                            name="purpose"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item label="От чего" description={fieldNote({ value: field.value, max: 200 })}>
+                                    <Input
+                                        onBlur={field.onBlur}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Например, цистит"
+                                        maxLength={200}
+                                        style={{ '--text-align': 'left' }}
+                                    />
+                                </Form.Item>
+                            )}
+                        />
+                        <Controller
+                            name="prescribed_by"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Item label="Назначил" description={fieldNote({ value: field.value, max: 100 })}>
+                                    <Input
+                                        onBlur={field.onBlur}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Врач или клиника"
+                                        maxLength={100}
+                                        style={{ '--text-align': 'left' }}
+                                    />
+                                </Form.Item>
+                            )}
+                        />
+                        <Controller
+                            name="started_on"
+                            control={control}
+                            render={({ field }) => (
+                                <DatePickerField
+                                    label="Начало"
+                                    value={field.value ?? ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    yearsBack={5}
+                                    yearsForward={1}
+                                    clearLabel="Убрать дату начала"
+                                    placeholder="Не указано"
+                                />
+                            )}
+                        />
+                        <Controller
+                            name="ended_on"
+                            control={control}
+                            render={({ field, fieldState: { error } }) => (
+                                <DatePickerField
+                                    label="Окончание"
+                                    value={field.value ?? ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    yearsBack={5}
+                                    yearsForward={1}
+                                    clearLabel="Убрать дату окончания"
+                                    placeholder="Не указано"
+                                    description={error?.message ? <FieldError message={error.message} /> : 'С этого дня напоминания и запись приёмов не предлагаются'}
+                                />
+                            )}
+                        />
                         <Controller
                             name="is_active"
                             control={control}
                             render={({ field }) => (
                                 <Form.Item
                                     label="Принимает сейчас"
-                                    description="Выключите, когда курс закончится"
-                                    extra={<Switch checked={field.value} onChange={field.onChange} />}
+                                    description="Выключите, когда курс закончится: он останется в медкарте как прошлый"
+                                    extra={
+                                        <Switch
+                                            checked={field.value}
+                                            onChange={(on) => {
+                                                field.onChange(on);
+                                                // Switched back on with an end date already past: the date goes,
+                                                // or the course would stay ended.
+                                                if (on && endedOn && endedOn < getCurrentDate()) setValue('ended_on', '', { shouldDirty: true });
+                                            }}
+                                        />
+                                    }
                                 />
                             )}
                         />
@@ -713,11 +832,24 @@ export function MedicationForm() {
                         >
                             Отмена
                         </Button>
+                        {isEditing && id && med && med.course_status !== 'ended' && (
+                            <Button
+                                block
+                                size="large"
+                                fill="outline"
+                                loading={finishCourse.isPending}
+                                disabled={finishCourse.isPending}
+                                onClick={() => finishCourse.mutate()}
+                                style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
+                            >
+                                Завершить курс
+                            </Button>
+                        )}
                         {isEditing && id && med && (
                             <FormDangerButton
                                 label="Удалить лекарство"
                                 confirmTitle="Удаление лекарства"
-                                confirmContent={`Удалить «${med.name}» вместе со всеми отмеченными приёмами?`}
+                                confirmContent={`Удалить «${med.name}» вместе со всеми отмеченными приёмами? Курс пропадёт и из медкарты. Чтобы сохранить его в истории, нажмите «Завершить курс».`}
                                 onConfirm={async () => {
                                     try {
                                         await medicationsService.delete(id);

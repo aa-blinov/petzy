@@ -35,6 +35,23 @@ function pastSlotToday(med: Medication): string | null {
 /** «Когда дали» in the intake dialog: now, at the slot, or a picked time. */
 type WhenChoice = 'now' | 'slot' | 'other';
 
+const ruDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
+
+/** The badge by the name: «Архив» for a course that is over, when it starts for one still to come. */
+function courseTag(med: Medication): string | null {
+    if (med.course_status === 'planned' && med.started_on) return `Начнётся ${ruDate(med.started_on)}`;
+    if (med.course_status === 'ended' || (!med.course_status && !med.is_active)) return 'Архив';
+    return null;
+}
+
+/** «С 12.05.2026 по 26.05.2026», from the dates the course has. */
+function coursePeriod(med: Medication): string | null {
+    if (med.started_on && med.ended_on) return `С ${ruDate(med.started_on)} по ${ruDate(med.ended_on)}`;
+    if (med.ended_on) return `До ${ruDate(med.ended_on)}`;
+    if (med.started_on && med.course_status !== 'planned') return `С ${ruDate(med.started_on)}`;
+    return null;
+}
+
 export function MedicationsList() {
     const { selectedPetId } = usePet();
     const { username: currentUsername } = useAuth();
@@ -336,7 +353,7 @@ export function MedicationsList() {
                                                     <FormFactorIcon factor={med.form_factor} />
                                                 </div>
                                                 <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h2>
-                                                {!med.is_active && <Tag color="default">Архив</Tag>}
+                                                {courseTag(med) && <Tag color="default">{courseTag(med)}</Tag>}
                                             </div>
                                             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
@@ -353,6 +370,17 @@ export function MedicationsList() {
                                                 {med.schedule.days.length === 7 ? 'Ежедневно' : 'В выбранные дни'} в {med.schedule.times.join(', ')}
                                             </span>
                                         </div>
+
+                                        {coursePeriod(med) && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
+                                                <span>{coursePeriod(med)}</span>
+                                            </div>
+                                        )}
+                                        {med.purpose && (
+                                            <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                                                <span>От чего: {med.purpose}</span>
+                                            </div>
+                                        )}
 
                                         {med.last_taken_at && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
@@ -436,7 +464,7 @@ export function MedicationsList() {
                                         «Отметить приём» button it would read as the button's. */}
                                     <CardChevron />
                                     </div>
-                                    {med.is_active && (
+                                    {(med.course_status ? med.course_status === 'active' : med.is_active) && (
                                         // Logging a dose is its own action, not a tap on the card
                                         // (a disabled button's click must not open the form either).
                                         <div style={{ marginTop: 'var(--spacing-xl)' }} onClick={(e) => e.stopPropagation()}>

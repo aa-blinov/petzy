@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
-import { medicalCardService, type MedicalCard as Card, type MedicalCardVaccination } from '../services/medicalCard.service';
+import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
 import { usePet } from '../hooks/usePet';
 import { PetImage } from '../components/PetImage';
 import { LoadError } from '../components/LoadError';
@@ -41,6 +41,38 @@ function Sparkline({ points }: { points: number[] }) {
       </svg>
       <span className="medcard__spark-dot" style={{ top: `${(y(points[points.length - 1]) / 40) * 100}%` }} />
     </div>
+  );
+}
+
+/** «С 12.05.2026 по 26.05.2026», «С 12.05.2026», «Начнётся 05.10.2026». */
+function coursePeriod(c: MedicalCardCourse): string | null {
+  if (c.status === 'planned' && c.started_on) return `Начнётся ${formatDate(c.started_on)}`;
+  if (c.started_on && c.ended_on) return `С ${formatDate(c.started_on)} по ${formatDate(c.ended_on)}`;
+  if (c.started_on) return `С ${formatDate(c.started_on)}`;
+  if (c.ended_on) return `Закончен ${formatDate(c.ended_on)}`;
+  return null;
+}
+
+/** One course: what, how much and when, what for, who prescribed it, how it went. */
+function CourseRow({ course }: { course: MedicalCardCourse }) {
+  const lines = [
+    [course.dose_text, course.schedule_text].filter(Boolean).join(', '),
+    course.purpose ? `От чего: ${course.purpose}` : null,
+    course.prescribed_by ? `Назначил: ${course.prescribed_by}` : null,
+    course.comment,
+    coursePeriod(course),
+    course.given || course.skipped ? `Дано доз: ${course.given}${course.skipped ? `, пропущено ${course.skipped}` : ''}` : null,
+  ].filter(Boolean) as string[];
+  return (
+    <li className="medcard__row">
+      <div className="medcard__row-main">
+        <div className="medcard__row-title">{course.name}{course.strength ? `, ${course.strength}` : ''}</div>
+        {lines.map((line) => (
+          <div key={line} className="medcard__row-sub">{line}</div>
+        ))}
+      </div>
+      {course.status === 'planned' && <span className="medcard__status medcard__status--none">Ещё не началась</span>}
+    </li>
   );
 }
 
@@ -202,20 +234,22 @@ export function MedicalCard() {
               <p className="medcard__empty">Сейчас ничего не принимает.</p>
             ) : (
               <ul className="medcard__list">
-                {card.medications.map((m) => (
-                  <li key={m.id} className="medcard__row">
-                    <div className="medcard__row-main">
-                      <div className="medcard__row-title">{m.name}{m.strength ? `, ${m.strength}` : ''}</div>
-                      <div className="medcard__row-sub">
-                        {[m.dose_text, m.schedule_text].filter(Boolean).join(', ')}
-                        {m.comment ? `. ${m.comment}` : ''}
-                      </div>
-                    </div>
-                  </li>
+                {card.medications.map((c) => (
+                  <CourseRow key={c.id} course={c} />
                 ))}
               </ul>
             )}
           </Section>
+
+          {card.past_courses.length > 0 && (
+            <Section id="medcard-past-courses" title="Прошлые курсы">
+              <ul className="medcard__list">
+                {card.past_courses.map((c) => (
+                  <CourseRow key={c.id} course={c} />
+                ))}
+              </ul>
+            </Section>
+          )}
 
           <Section id="medcard-weight" title="Вес" action={{ label: card.weight ? 'История' : 'Записать', onClick: () => navigate(card.weight ? '/history' : '/form/weight') }}>
             {card.weight ? (
