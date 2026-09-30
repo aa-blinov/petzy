@@ -157,15 +157,18 @@ def _vaccination_status(expires_at: Optional[str], today: date) -> tuple[str, Op
     return ("soon" if days_left <= EXPIRY_SOON_DAYS else "valid"), days_left
 
 
-def _weight(pet_id: str) -> Optional[dict]:
-    cursor = app.db.events.find({"pet_id": pet_id, "type": "weight"}).sort("date_time", -1).limit(WEIGHT_POINTS * 3)
+def _weight(pet_id: str, limit: Optional[int] = WEIGHT_POINTS) -> Optional[dict]:
+    """The latest measurement and the last ``limit`` of them, old to new; every one when ``limit`` is None."""
+    cursor = app.db.events.find({"pet_id": pet_id, "type": "weight"}).sort("date_time", -1)
+    if limit is not None:
+        cursor = cursor.limit(limit * 3)
     points = []
     for record in cursor:
         value = (record.get("fields") or {}).get("weight")
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             continue
         points.append({"date": _as_date_str(record.get("date_time")), "value": float(value)})
-        if len(points) == WEIGHT_POINTS:
+        if limit is not None and len(points) == limit:
             break
     if not points:
         return None
@@ -190,7 +193,7 @@ def _intake_stats(med_ids: list[str]) -> dict[str, dict]:
     return stats
 
 
-def _courses(pet_id: str, today: date) -> tuple[list[dict], list[dict]]:
+def _courses(pet_id: str, today: date, past_limit: Optional[int] = PAST_COURSES) -> tuple[list[dict], list[dict]]:
     """``(current, past)``: the courses going on or still to begin, and the finished ones.
 
     A course made before dates existed has none stored: its start is then its
@@ -228,7 +231,7 @@ def _courses(pet_id: str, today: date) -> tuple[list[dict], list[dict]]:
     current.sort(key=lambda c: (c["status"] != ACTIVE, c["name"].casefold()))
     # The latest finished first; one with no known end goes last.
     past.sort(key=lambda c: (c["ended_on"] or "", c["name"]), reverse=True)
-    return current, past[:PAST_COURSES]
+    return current, (past if past_limit is None else past[:past_limit])
 
 
 def _vaccinations(pet_id: str, today: date) -> list[dict]:
@@ -285,7 +288,7 @@ def _profile(pet: dict) -> dict:
 def build_medical_card(pet: dict, username: str, today: date) -> dict:
     pet_id = str(pet["_id"])
     birth = _as_date_str(pet.get("birth_date"))
-    current_courses, past_courses = _courses(pet_id, today)
+    current_courses, every_past_course = _courses(pet_id, today, past_limit=None)
     every_record = pet_records(pet_id, today)
     return {
         "pet": {
@@ -303,7 +306,8 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
         "record_counts": {kind: sum(1 for r in every_record if r["kind"] == kind) for kind in MEDICAL_KINDS},
         "weight": _weight(pet_id),
         "medications": current_courses,
-        "past_courses": past_courses,
+        "past_courses": every_past_course[:PAST_COURSES],
+        "past_courses_total": len(every_past_course),
         "vaccinations": _vaccinations(pet_id, today),
         "documents": _recent_documents(pet_id),
         "generated_at": today.isoformat(),
@@ -395,3 +399,35 @@ def put_medical_profile(pet_id):
     app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"medical_profile": profile}})
     app.logger.info(f"Medical profile updated: pet_id={pet_id}, user={username}")
     return jsonify({"profile": profile})
+
+
+@medical_card_bp.route("/api/pets/<pet_id>/anamnesis/pdf", methods=["GET"])
+@login_required
+@api.validate(
+    query=MedicalCardQuery,
+    resp=Response(HTTP_200=None, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    tags=["pets"],
+)
+def get_anamnesis_pdf(pet_id):
+    """The pet's life history as a PDF: the medical card without its limits, in the order a history is read."""
+    from web.anamnesis import build_anamnesis
+    from web.anamnesis_pdf import render_anamnesis_pdf
+
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+    if access_error:
+        return access_error[0], access_error[1]
+    today = _today(request.context.query.tz)  # type: ignore[attr-defined]
+    try:
+        content = render_anamnesis_pdf(build_anamnesis(pet, username, today))
+    except Exception as e:
+        app.logger.error(f"Anamnesis PDF failed: pet_id={pet_id}, error={e}", exc_info=True)
+        return error_response("internal_error")
+    name = "".join(c for c in pet.get("name", "") if c.isalnum() or c in " -_").strip().replace(" ", "_") or "pet"
+    filename = f"анамнез_{name}_{today.strftime('%Y%m%d')}.pdf"
+    response = make_response(content)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
+    response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+    response.headers["Cache-Control"] = "private, no-store"
+    return response

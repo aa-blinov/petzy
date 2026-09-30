@@ -75,12 +75,18 @@ export interface MedicalCard {
   record_counts: Record<MedicalKind, number>;
   /** Courses going on or still to begin. */
   medications: MedicalCardCourse[];
-  /** Finished courses, the latest first. */
+  /** Finished courses, the latest first, at most ten. */
   past_courses: MedicalCardCourse[];
+  past_courses_total: number;
   vaccinations: MedicalCardVaccination[];
   documents: { id: string; title: string; category: string; added: string }[];
   generated_at: string;
   can_edit: boolean;
+}
+
+async function savePdf(path: string, fallbackName: string): Promise<void> {
+  const response = await api.get(path, { params: { tz: deviceTimeZone() }, responseType: 'blob' });
+  saveBlob(response.data, filenameFromResponse(response.headers['content-disposition']) ?? fallbackName, 'application/pdf');
 }
 
 /** A pet's medical card, built on the server from the pet's own records. */
@@ -99,10 +105,11 @@ export const medicalCardService = {
 
   /** Downloads the same card as a PDF, to hand to a vet. */
   async downloadPdf(petId: string, petName: string): Promise<void> {
-    const response = await api.get(`/pets/${petId}/medical-card/pdf`, {
-      params: { tz: deviceTimeZone() },
-      responseType: 'blob',
-    });
-    saveBlob(response.data, filenameFromResponse(response.headers['content-disposition']) ?? `${petName}.pdf`, 'application/pdf');
+    await savePdf(`/pets/${petId}/medical-card/pdf`, `${petName}.pdf`);
+  },
+
+  /** The whole life history as a PDF: the card without its limits, oldest first. */
+  async downloadAnamnesis(petId: string, petName: string): Promise<void> {
+    await savePdf(`/pets/${petId}/anamnesis/pdf`, `анамнез_${petName}.pdf`);
   },
 };

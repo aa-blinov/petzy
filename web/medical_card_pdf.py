@@ -110,15 +110,12 @@ class _Card(FPDF):
         self.set_xy(self.l_margin, max(end_y, start_y + 6) + (1 if end_y > start_y + 6 else 0))
 
 
-def render_medical_card_pdf(card: dict) -> bytes:
+def draw_header(pdf: "_Card", card: dict, heading: str) -> None:
+    """The top of the first page: name, the facts, identification, clinic, and the box a vet reads first."""
     pet = card["pet"]
-    pdf = _Card(pet["name"], card["generated_at"])
-    pdf.alias_nb_pages()
-    pdf.add_page()
-
     pdf.set_font("DejaVu", "", 9)
     pdf.set_text_color(*MUTED)
-    pdf.cell(0, 5, "МЕДИЦИНСКАЯ КАРТА", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 5, heading, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVu", "B", 22)
     pdf.set_text_color(*INK)
     pdf.cell(0, 12, pet["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -203,30 +200,61 @@ def render_medical_card_pdf(card: dict) -> bytes:
         pdf.set_font("DejaVu", "", 10)
         pdf.multi_cell(0, 6, pet["health_notes"], align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    def record_lines(r: dict) -> None:
-        title = r["title"] + (f" (серия {r['batch']})" if r.get("batch") else "")
-        right, color = "", INK
-        if r["status"] == "overdue":
-            right, color = f"Просрочено, {_date(r['next_due'])}", ALERT
-        elif r["status"] == "soon":
-            right, color = f"Скоро, {_date(r['next_due'])}", AMBER
-        elif r["status"] == "ok":
-            right = f"Следующая {_date(r['next_due'])}"
-        pdf.row(title, right, color, bold_left=not r["superseded"])
-        bits = [f"Сделано {_date(r['date'])}" if r["kind"] in ("vaccination", "parasite") else _date(r["date"])]
-        if r.get("target"):
-            bits.append(TARGET_LABELS.get(r["target"], r["target"]))
-        if r["kind"] not in ("vaccination", "parasite") and r.get("next_due"):
-            bits.append(f"повторно {_date(r['next_due'])}")
-        if r.get("clinic"):
-            bits.append(r["clinic"])
-        if r.get("vet"):
-            bits.append(f"врач {r['vet']}")
-        pdf.muted(", ".join(bits))
-        for label, key in (("Диагноз", "diagnosis"), ("Рекомендации", "recommendations"), ("Заметка", "note")):
-            if r.get(key):
-                pdf.muted(f"{label}: {r[key]}")
-        pdf.ln(1)
+
+def draw_record(pdf: "_Card", r: dict) -> None:
+    """One record of the card: what, when, when it is due again, and the details."""
+    title = r["title"] + (f" (серия {r['batch']})" if r.get("batch") else "")
+    right, color = "", INK
+    if r["status"] == "overdue":
+        right, color = f"Просрочено, {_date(r['next_due'])}", ALERT
+    elif r["status"] == "soon":
+        right, color = f"Скоро, {_date(r['next_due'])}", AMBER
+    elif r["status"] == "ok":
+        right = f"Следующая {_date(r['next_due'])}"
+    pdf.row(title, right, color, bold_left=not r["superseded"])
+    bits = [f"Сделано {_date(r['date'])}" if r["kind"] in ("vaccination", "parasite") else _date(r["date"])]
+    if r.get("target"):
+        bits.append(TARGET_LABELS.get(r["target"], r["target"]))
+    if r["kind"] not in ("vaccination", "parasite") and r.get("next_due"):
+        bits.append(f"повторно {_date(r['next_due'])}")
+    if r.get("clinic"):
+        bits.append(r["clinic"])
+    if r.get("vet"):
+        bits.append(f"врач {r['vet']}")
+    pdf.muted(", ".join(bits))
+    for label, key in (("Диагноз", "diagnosis"), ("Рекомендации", "recommendations"), ("Заметка", "note")):
+        if r.get(key):
+            pdf.muted(f"{label}: {r[key]}")
+    pdf.ln(1)
+
+
+def draw_course(pdf: "_Card", c: dict, past: bool) -> None:
+    """One medication course: what, how much and when, what for, who prescribed it, how it went."""
+    name = c["name"] + (f", {c['strength']}" if c.get("strength") else "")
+    pdf.row(name, bold_left=True)
+    dose = f"{c['dose_text']}, " if c.get("dose_text") else ""
+    pdf.muted(f"{dose}{c['schedule_text']}")
+    if c.get("purpose"):
+        pdf.muted(f"От чего: {c['purpose']}")
+    if c.get("prescribed_by"):
+        pdf.muted(f"Назначил: {c['prescribed_by']}")
+    if c.get("comment"):
+        pdf.muted(c["comment"])
+    period = _period(c, past)
+    if period:
+        pdf.muted(period)
+    if c.get("given") or c.get("skipped"):
+        skipped = f", пропущено {c['skipped']}" if c.get("skipped") else ""
+        pdf.muted(f"Дано доз: {c['given']}{skipped}")
+    pdf.ln(1)
+
+
+def render_medical_card_pdf(card: dict) -> bytes:
+    pet = card["pet"]
+    pdf = _Card(pet["name"], card["generated_at"])
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    draw_header(pdf, card, "МЕДИЦИНСКАЯ КАРТА")
 
     records = card.get("records") or {}
     counts = card.get("record_counts") or {}
@@ -237,7 +265,7 @@ def render_medical_card_pdf(card: dict) -> bytes:
             continue
         pdf.section(title)
         for r in rows:
-            record_lines(r)
+            draw_record(pdf, r)
         for v in legacy:  # a certificate kept only as a document
             label = STATUS_LABELS[v["status"]]
             if v["expires_at"]:
@@ -249,36 +277,17 @@ def render_medical_card_pdf(card: dict) -> bytes:
         if hidden > 0:
             pdf.muted(f"Ещё {hidden} в приложении.")
 
-    def course_lines(c: dict, past: bool) -> None:
-        name = c["name"] + (f", {c['strength']}" if c.get("strength") else "")
-        pdf.row(name, bold_left=True)
-        dose = f"{c['dose_text']}, " if c.get("dose_text") else ""
-        pdf.muted(f"{dose}{c['schedule_text']}")
-        if c.get("purpose"):
-            pdf.muted(f"От чего: {c['purpose']}")
-        if c.get("prescribed_by"):
-            pdf.muted(f"Назначил: {c['prescribed_by']}")
-        if c.get("comment"):
-            pdf.muted(c["comment"])
-        period = _period(c, past)
-        if period:
-            pdf.muted(period)
-        if c.get("given") or c.get("skipped"):
-            skipped = f", пропущено {c['skipped']}" if c.get("skipped") else ""
-            pdf.muted(f"Дано доз: {c['given']}{skipped}")
-        pdf.ln(1)
-
     pdf.section("Лекарства сейчас")
     if card["medications"]:
         for c in card["medications"]:
-            course_lines(c, past=False)
+            draw_course(pdf, c, past=False)
     else:
         pdf.muted("Сейчас не принимает.")
 
     if card.get("past_courses"):
         pdf.section("Прошлые курсы")
         for c in card["past_courses"]:
-            course_lines(c, past=True)
+            draw_course(pdf, c, past=True)
 
     pdf.section("Вес")
     weight = card.get("weight")

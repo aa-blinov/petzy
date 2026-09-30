@@ -354,3 +354,10 @@
     font-size: var(--text-xs);
     color: var(--app-text-secondary);
 }
+
+.medcard__hint {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    color: var(--app-text-secondary);
+}

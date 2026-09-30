@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
-import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
+import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ScrollText, ShieldAlert } from 'lucide-react';
+import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
 import { usePet } from '../hooks/usePet';
@@ -205,6 +205,83 @@ function Section({ id, title, action, children }: { id: string; title: string; a
   );
 }
 
+/** The records of one kind. The card brings the latest ten; «Показать все» asks for the rest. */
+function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKind; card: Card; petId: string; hidden: ReadonlySet<string>; navigate: (to: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const total = card.record_counts[kind];
+  const all = useQuery({
+    queryKey: ['medical-records', petId, kind],
+    queryFn: () => medicalRecordsService.list(petId, kind),
+    enabled: expanded,
+    staleTime: 0,
+  });
+  const source = expanded && all.data ? all.data : card.records[kind];
+  const rows = source.filter((r) => !hidden.has(r._id));
+  const legacy = kind === 'vaccination' ? card.vaccinations : [];
+  const repeating = kind === 'vaccination' || kind === 'parasite';
+  const more = total > source.length;
+  return (
+    <Section
+      id={`medcard-${kind}`}
+      title={MEDICAL_KIND_LABELS[kind].section}
+      action={{ label: 'Добавить', onClick: () => navigate(`/pets/${petId}/medical-records/new?kind=${kind}`) }}
+    >
+      {rows.length === 0 && legacy.length === 0 ? (
+        <p className="medcard__empty">{EMPTY_TEXT[kind]}</p>
+      ) : (
+        <ul className="medcard__list">
+          {rows.map((r) => (
+            <RecordRow
+              key={r._id}
+              record={r}
+              onOpen={() => navigate(`/pets/${petId}/medical-records/${r._id}`)}
+              onRepeat={repeating ? () => navigate(`/pets/${petId}/medical-records/new?kind=${kind}&from=${r._id}`) : undefined}
+            />
+          ))}
+          {legacy.map((v) => {
+            const { label, Icon } = STATUS[v.status];
+            return (
+              <li key={v.id} className="medcard__row medcard__row--stack">
+                <span className="medcard__row-top">
+                  <span className="medcard__row-main">
+                    <span className="medcard__row-title" style={{ display: 'block' }}>{v.title}</span>
+                    <span className="medcard__row-sub" style={{ display: 'block' }}>
+                      Сертификат в документах{v.expires_at ? `, до ${formatDate(v.expires_at)}` : ''}
+                    </span>
+                  </span>
+                  <span className={`medcard__status medcard__status--${v.status}`}>
+                    <Icon size={13} strokeWidth={2.4} aria-hidden />
+                    {label}
+                  </span>
+                </span>
+                <button type="button" className="medcard__row-action touch-target" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=vaccination&doc=${v.id}`)}>
+                  Оформить как запись
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {(more || (expanded && total > card.records[kind].length)) && (
+        <div className="medcard__more">
+          {more ? (
+            <>
+              Показаны последние {source.length} из {total}.{' '}
+              <button type="button" className="medcard__link touch-target" style={{ padding: 0 }} disabled={all.isFetching} onClick={() => setExpanded(true)}>
+                {all.isFetching ? 'Загружаем…' : 'Показать все'}
+              </button>
+            </>
+          ) : (
+            <button type="button" className="medcard__link touch-target" style={{ padding: 0 }} onClick={() => setExpanded(false)}>
+              Свернуть до последних {card.records[kind].length}
+            </button>
+          )}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 /** A pet's medical card: everything a vet asks for, on one page, from the
     pet's own records. Read-only; each section leads to where it is edited. */
 export function MedicalCard() {
@@ -213,7 +290,7 @@ export function MedicalCard() {
   const { pets } = usePet();
   const hidden = useHiddenRecords();
   const pet = pets.find((p) => p._id === id);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<'card' | 'anamnesis' | null>(null);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -225,15 +302,16 @@ export function MedicalCard() {
   });
   const card: Card | undefined = query.data;
 
-  const downloadPdf = async () => {
+  const download = async (which: 'card' | 'anamnesis') => {
     if (!id || !card || saving) return;
-    setSaving(true);
+    setSaving(which);
     try {
-      await medicalCardService.downloadPdf(id, card.pet.name);
+      if (which === 'card') await medicalCardService.downloadPdf(id, card.pet.name);
+      else await medicalCardService.downloadAnamnesis(id, card.pet.name);
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось сформировать PDF'));
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
@@ -287,12 +365,19 @@ export function MedicalCard() {
           </div>
 
           <div className="medcard__actions">
-            <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
+            <Button block color="primary" size="large" loading={saving === 'card'} disabled={!!saving} onClick={() => download('card')}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Download size={18} strokeWidth={2.2} aria-hidden />
                 Скачать PDF для врача
               </span>
             </Button>
+            <Button block fill="outline" color="primary" size="large" loading={saving === 'anamnesis'} disabled={!!saving} onClick={() => download('anamnesis')}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <ScrollText size={18} strokeWidth={2.2} aria-hidden />
+                Полный анамнез жизни (PDF)
+              </span>
+            </Button>
+            <p className="medcard__hint">Выписка на один приём или вся история без сокращений: хронология, все курсы, вес и записи из дневника.</p>
           </div>
 
           <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />
@@ -325,59 +410,9 @@ export function MedicalCard() {
             )}
           </Section>
 
-          {(['vaccination', 'parasite', 'visit', 'procedure'] as MedicalKind[]).map((kind) => {
-            const rows = card.records[kind].filter((r) => !hidden.has(r._id));
-            const legacy = kind === 'vaccination' ? card.vaccinations : [];
-            const shown = card.records[kind].length;
-            const total = card.record_counts[kind];
-            const repeating = kind === 'vaccination' || kind === 'parasite';
-            return (
-              <Section
-                key={kind}
-                id={`medcard-${kind}`}
-                title={MEDICAL_KIND_LABELS[kind].section}
-                action={{ label: 'Добавить', onClick: () => navigate(`/pets/${id}/medical-records/new?kind=${kind}`) }}
-              >
-                {rows.length === 0 && legacy.length === 0 ? (
-                  <p className="medcard__empty">{EMPTY_TEXT[kind]}</p>
-                ) : (
-                  <ul className="medcard__list">
-                    {rows.map((r) => (
-                      <RecordRow
-                        key={r._id}
-                        record={r}
-                        onOpen={() => navigate(`/pets/${id}/medical-records/${r._id}`)}
-                        onRepeat={repeating ? () => navigate(`/pets/${id}/medical-records/new?kind=${kind}&from=${r._id}`) : undefined}
-                      />
-                    ))}
-                    {legacy.map((v) => {
-                      const { label, Icon } = STATUS[v.status];
-                      return (
-                        <li key={v.id} className="medcard__row medcard__row--stack">
-                          <span className="medcard__row-top">
-                            <span className="medcard__row-main">
-                              <span className="medcard__row-title" style={{ display: 'block' }}>{v.title}</span>
-                              <span className="medcard__row-sub" style={{ display: 'block' }}>
-                                Сертификат в документах{v.expires_at ? `, до ${formatDate(v.expires_at)}` : ''}
-                              </span>
-                            </span>
-                            <span className={`medcard__status medcard__status--${v.status}`}>
-                              <Icon size={13} strokeWidth={2.4} aria-hidden />
-                              {label}
-                            </span>
-                          </span>
-                          <button type="button" className="medcard__row-action touch-target" onClick={() => navigate(`/pets/${id}/medical-records/new?kind=vaccination&doc=${v.id}`)}>
-                            Оформить как запись
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                {total > shown && <p className="medcard__more">Показаны последние {shown} из {total}.</p>}
-              </Section>
-            );
-          })}
+          {(['vaccination', 'parasite', 'visit', 'procedure'] as MedicalKind[]).map((kind) => (
+            <KindSection key={kind} kind={kind} card={card} petId={id!} hidden={hidden} navigate={navigate} />
+          ))}
 
           {card.past_courses.length > 0 && (
             <Section id="medcard-past-courses" title="Прошлые курсы">
@@ -386,6 +421,9 @@ export function MedicalCard() {
                   <CourseRow key={c.id} course={c} />
                 ))}
               </ul>
+              {card.past_courses_total > card.past_courses.length && (
+                <p className="medcard__more">Показаны последние {card.past_courses.length} из {card.past_courses_total}. Все курсы есть в полном анамнезе.</p>
+              )}
             </Section>
           )}
 

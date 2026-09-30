@@ -59,6 +59,12 @@ export const medicalRecordsService = {
     return response.data.record;
   },
 
+  /** Every record of a kind (the card shows the latest ten), newest first. */
+  async list(petId: string, kind: MedicalKind): Promise<MedicalRecord[]> {
+    const response = await api.get<{ records: MedicalRecord[] }>('/medical-records', { params: { pet_id: petId, kind, tz: deviceTimeZone() } });
+    return response.data.records;
+  },
+
   async create(petId: string, kind: MedicalKind, data: MedicalRecordInput): Promise<string> {
     const response = await api.post<{ id: string }>('/medical-records', { ...data, pet_id: petId, kind });
     return response.data.id;
