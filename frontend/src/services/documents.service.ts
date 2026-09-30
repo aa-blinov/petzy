@@ -86,6 +86,14 @@ export interface PetDocument {
   /** A scan archive: downloaded, not previewed. */
   scan?: boolean;
   created_at: string;
+  /** The kinds of medical-card record that point at this document (vaccination, visit...). */
+  medical_record_kinds?: string[];
+}
+
+/** Part of a vaccination or treatment record: the card watches its repeat date, so the
+ *  document's own expiry is not shown as a second, possibly stale, verdict. */
+export function isCoveredByMedicalCard(doc: Pick<PetDocument, 'medical_record_kinds'>): boolean {
+  return (doc.medical_record_kinds ?? []).some((k) => k === 'vaccination' || k === 'parasite');
 }
 
 export interface DocumentCreateInput {

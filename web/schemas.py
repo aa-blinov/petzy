@@ -1481,6 +1481,10 @@ class DocumentItem(BaseModel):
     content_type: str
     file_size: int
     created_at: str
+    medical_record_kinds: List[str] = Field(
+        default_factory=list,
+        description="Виды записей медкарты (vaccination, visit...), которые ссылаются на этот документ",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 

@@ -373,3 +373,66 @@ class TestRecordsInThePdf:
         _post(client, regular_user_token, test_pet, title="Рабизин", date=iso(-5), next_due=iso(360))
         text = self._text(client, regular_user_token, test_pet)
         assert "Просрочено" not in text and "Следующая" in text
+
+
+@pytest.mark.health
+class TestDocumentsKnowTheirRecords:
+    """The Documents list must be able to say that a certificate is in the medical card."""
+
+    def _doc(self, mock_db, pet, title="Сертификат"):
+        return str(
+            mock_db["documents"]
+            .insert_one(
+                {
+                    "pet_id": str(pet["_id"]),
+                    "category": "vaccination",
+                    "title": title,
+                    "file_id": "f",
+                    "original_filename": "a.pdf",
+                    "content_type": "application/pdf",
+                    "file_size": 1,
+                    "username": "u",
+                    "created_at": datetime(2025, 1, 1),
+                }
+            )
+            .inserted_id
+        )
+
+    def test_the_list_and_the_single_document_carry_the_kinds_of_the_linking_records(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        linked, free = self._doc(mock_db, test_pet, "Привязанный"), self._doc(mock_db, test_pet, "Свободный")
+        _post(client, regular_user_token, test_pet, document_ids=[linked])
+        _post(client, regular_user_token, test_pet, kind="visit", title="Осмотр", document_ids=[linked])
+        listing = client.get(f"/api/documents?pet_id={test_pet['_id']}", headers=_auth(regular_user_token)).get_json()[
+            "documents"
+        ]
+        kinds = {d["title"]: d["medical_record_kinds"] for d in listing}
+        assert sorted(kinds["Привязанный"]) == ["vaccination", "visit"] and kinds["Свободный"] == []
+        single = client.get(f"/api/documents/{linked}", headers=_auth(regular_user_token)).get_json()["document"]
+        assert sorted(single["medical_record_kinds"]) == ["vaccination", "visit"]
+        assert (
+            client.get(f"/api/documents/{free}", headers=_auth(regular_user_token)).get_json()["document"][
+                "medical_record_kinds"
+            ]
+            == []
+        )
+
+
+@pytest.mark.health
+class TestNotesAndAllergiesDoNotContradict:
+    """«Здоровье / Аллергии» was one free text; allergies are a list now. A card that says
+    «аллергии не указаны» above a note that says «аллергия на курицу» misleads a vet."""
+
+    def test_the_pdf_points_at_the_notes_when_allergies_are_not_filled_in(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        import io as _io
+
+        from pypdf import PdfReader
+
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"health_notes": "Аллергия на курицу"}})
+        response = client.get(f"/api/pets/{test_pet['_id']}/medical-card/pdf", headers=_auth(regular_user_token))
+        text = " ".join("\n".join(p.extract_text() for p in PdfReader(_io.BytesIO(response.data)).pages).split())
+        assert "Аллергии: не заполнены, смотрите заметки ниже" in text and "Аллергия на курицу" in text
+        assert "Аллергии: не указаны" not in text

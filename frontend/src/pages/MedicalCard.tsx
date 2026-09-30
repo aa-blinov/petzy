@@ -102,6 +102,12 @@ function ImportantBlock({ card, onEdit }: { card: Card; onEdit: () => void }) {
           </button>
         </div>
         {!filled && <p className="medcard__important-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми.</p>}
+        {!hasAllergies && !profile.allergies_none_known && pet.health_notes && (
+          <div className="medcard__fact">
+            <span className="medcard__fact-label">Аллергии</span>
+            <span className="medcard__important-text">Не заполнены, смотрите заметки ниже</span>
+          </div>
+        )}
         {(hasAllergies || profile.allergies_none_known) && (
           <div className="medcard__fact">
             <span className="medcard__fact-label">Аллергии</span>
