@@ -6,7 +6,9 @@ export const exportService = {
   exportData: async (petId: string, exportType: string, format: ExportFormat) => {
     try {
       const response = await api.get(`/export/${exportType}/${format}`, {
-        params: { pet_id: petId },
+        // The zone names the clock the file name's date stamp reads; the
+        // times inside the file are the ones that were entered.
+        params: { pet_id: petId, tz: Intl.DateTimeFormat().resolvedOptions().timeZone },
         responseType: 'blob',
         // withCredentials: true is already in api instance
       });
