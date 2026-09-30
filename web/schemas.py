@@ -491,6 +491,87 @@ class TilesSettings(BaseModel):
     )
 
 
+# ---- Medical profile: what a vet asks, kept on the pet -----------------------
+
+
+def _blank_to_none(v):
+    """«  » and «» are «not filled»: stored as None so a card doesn't show an empty line."""
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v
+
+
+class Allergy(BaseModel):
+    substance: str = Field(..., min_length=1, max_length=100, description="На что аллергия")
+    reaction: Optional[str] = Field(None, max_length=200, description="Как проявляется")
+
+    @field_validator("substance", mode="before")
+    @classmethod
+    def strip_substance(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("reaction", mode="before")
+    @classmethod
+    def blank_reaction(cls, v):
+        return _blank_to_none(v)
+
+
+class Condition(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Хроническое состояние или диагноз")
+    since_year: Optional[int] = Field(None, ge=1950, le=2100, description="С какого года")
+    note: Optional[str] = Field(None, max_length=300)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def blank_note(cls, v):
+        return _blank_to_none(v)
+
+
+class Clinic(BaseModel):
+    name: Optional[str] = Field(None, max_length=100, description="Клиника")
+    vet: Optional[str] = Field(None, max_length=100, description="Врач")
+    phone: Optional[str] = Field(None, max_length=30, description="Телефон")
+
+    @field_validator("name", "vet", "phone", mode="before")
+    @classmethod
+    def blank_to_none(cls, v):
+        return _blank_to_none(v)
+
+
+class MedicalProfile(BaseModel):
+    """PUT /api/pets/<id>/medical-profile: the whole profile, replacing the old one."""
+
+    chip_number: Optional[str] = Field(None, max_length=30, description="Номер чипа или клейма")
+    blood_type: Optional[str] = Field(None, max_length=20, description="Группа крови")
+    allergies: List[Allergy] = Field(default_factory=list, max_length=30)
+    allergies_none_known: bool = Field(
+        False, description="Владелец подтверждает: аллергий нет. «Не заполнено» и «нет» для врача разные вещи"
+    )
+    conditions: List[Condition] = Field(default_factory=list, max_length=30)
+    clinic: Clinic = Field(default_factory=Clinic)
+
+    @field_validator("chip_number", "blood_type", mode="before")
+    @classmethod
+    def blank_to_none(cls, v):
+        return _blank_to_none(v)
+
+    @model_validator(mode="after")
+    def allergies_or_none(self):
+        if self.allergies_none_known and self.allergies:
+            raise ValueError("Нельзя одновременно указать аллергии и отметить, что их нет")
+        return self
+
+
+class MedicalProfileOut(MedicalProfile):
+    updated_at: Optional[str] = None
+
+
 class PetCreate(BaseModel):
     """Pet creation request model."""
 
@@ -616,6 +697,7 @@ class PetResponse(BaseModel):
     gender: Optional[str] = None
     is_neutered: Optional[bool] = None
     health_notes: Optional[str] = None
+    medical_profile: Optional[MedicalProfileOut] = None
     photo_url: Optional[str] = None
     tiles_settings: Optional[TilesSettings] = None
     owner: str
@@ -1577,8 +1659,13 @@ class MedicalCardDocument(BaseModel):
     added: str = Field(description="Дата добавления, YYYY-MM-DD")
 
 
+class MedicalProfileResponse(BaseModel):
+    profile: MedicalProfileOut
+
+
 class MedicalCardData(BaseModel):
     pet: MedicalCardPet
+    profile: MedicalProfileOut = Field(description="Аллергии, хронические состояния, чип, группа крови, клиника")
     weight: Optional[MedicalCardWeight] = None
     medications: List[MedicalCardMedication] = Field(description="Курсы, которые идут сейчас или ещё начнутся")
     past_courses: List[MedicalCardMedication] = Field(description="Законченные курсы, последние сверху")

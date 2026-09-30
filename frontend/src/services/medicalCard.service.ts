@@ -16,6 +16,29 @@ export interface MedicalCardVaccination {
   note: string | null;
 }
 
+export interface MedicalAllergy {
+  substance: string;
+  reaction?: string | null;
+}
+
+export interface MedicalCondition {
+  name: string;
+  since_year?: number | null;
+  note?: string | null;
+}
+
+/** What a vet asks first, kept on the pet; anyone with access may edit it. */
+export interface MedicalProfile {
+  chip_number?: string | null;
+  blood_type?: string | null;
+  allergies: MedicalAllergy[];
+  /** «Аллергий нет»: a statement, not the same as nothing filled in. */
+  allergies_none_known: boolean;
+  conditions: MedicalCondition[];
+  clinic: { name?: string | null; vet?: string | null; phone?: string | null };
+  updated_at?: string | null;
+}
+
 export interface MedicalCardCourse {
   id: string;
   name: string;
@@ -44,6 +67,7 @@ export interface MedicalCard {
     neutered_text: string | null;
     health_notes: string | null;
   };
+  profile: MedicalProfile;
   weight: { latest: MedicalCardWeightPoint; series: MedicalCardWeightPoint[] } | null;
   /** Courses going on or still to begin. */
   medications: MedicalCardCourse[];
@@ -62,6 +86,11 @@ export const medicalCardService = {
       params: { tz: deviceTimeZone() },
     });
     return response.data.card;
+  },
+
+  async saveProfile(petId: string, profile: Omit<MedicalProfile, 'updated_at'>): Promise<MedicalProfile> {
+    const response = await api.put<{ profile: MedicalProfile }>(`/pets/${petId}/medical-profile`, profile);
+    return response.data.profile;
   },
 
   /** Downloads the same card as a PDF, to hand to a vet. */
