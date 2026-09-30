@@ -93,6 +93,38 @@
     overflow-wrap: anywhere;
 }
 
+.medcard__fact {
+    margin-top: var(--spacing-sm);
+}
+
+.medcard__fact-label {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--app-danger-text);
+}
+
+.medcard__plain-list {
+    margin: 2px 0 0;
+    padding-left: 18px;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.medcard__ids {
+    margin-top: var(--spacing-sm);
+    color: var(--app-text-secondary);
+}
+
+.medcard__tel {
+    color: var(--app-accent-deep);
+    font-weight: 600;
+    text-decoration: none;
+}
+
 .medcard__section-head {
     display: flex;
     align-items: baseline;

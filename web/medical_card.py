@@ -14,14 +14,21 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, make_response, request
-from flask_pydantic_spec import Response
+from flask_pydantic_spec import Request, Response
 
 import web.app as app  # db, logger
 from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
-from web.schemas import ErrorResponse, MedicalCardQuery, MedicalCardResponse
+from web.schemas import (
+    ErrorResponse,
+    MedicalCardQuery,
+    MedicalCardResponse,
+    MedicalProfile,
+    MedicalProfileOut,
+    MedicalProfileResponse,
+)
 from web.security import get_current_user, login_required
 
 medical_card_bp = Blueprint("medical_card", __name__)
@@ -258,6 +265,16 @@ def _recent_documents(pet_id: str) -> list[dict]:
     ]
 
 
+def _profile(pet: dict) -> dict:
+    """The stored profile as the API shows it; an empty one when nothing is filled in."""
+    stored = pet.get("medical_profile") or {}
+    try:
+        return MedicalProfileOut.model_validate(stored).model_dump()
+    except Exception:  # a hand-edited or half-written document must not take the card down
+        app.logger.warning(f"Unreadable medical_profile on pet {pet.get('_id')}")
+        return MedicalProfileOut().model_dump()
+
+
 def build_medical_card(pet: dict, username: str, today: date) -> dict:
     pet_id = str(pet["_id"])
     birth = _as_date_str(pet.get("birth_date"))
@@ -273,6 +290,7 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
             "neutered_text": neutered_text(pet.get("is_neutered"), pet.get("gender")),
             "health_notes": (pet.get("health_notes") or "").strip() or None,
         },
+        "profile": _profile(pet),
         "weight": _weight(pet_id),
         "medications": current_courses,
         "past_courses": past_courses,
@@ -337,3 +355,33 @@ def get_medical_card_pdf(pet_id):
     response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
     response.headers["Cache-Control"] = "private, no-store"
     return response
+
+
+@medical_card_bp.route("/api/pets/<pet_id>/medical-profile", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(MedicalProfile),
+    resp=Response(
+        HTTP_200=MedicalProfileResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse
+    ),
+    tags=["pets"],
+)
+def put_medical_profile(pet_id):
+    """Replace the pet's medical profile (allergies, conditions, chip, blood type, clinic).
+
+    Anyone with access to the pet may: it is the household's shared knowledge
+    about the animal, like its weight and medicines, not the owner's setting.
+    Unlike the pet card, which only the owner edits.
+    """
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+    if access_error:
+        return access_error[0], access_error[1]
+
+    data = request.context.body  # type: ignore[attr-defined]
+    profile = data.model_dump()
+    # No author is stored: the field would outlive the account it names.
+    profile["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"medical_profile": profile}})
+    app.logger.info(f"Medical profile updated: pet_id={pet_id}, user={username}")
+    return jsonify({"profile": profile})

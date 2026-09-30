@@ -129,15 +129,70 @@ def render_medical_card_pdf(card: dict) -> bytes:
         0, 6, ", ".join(f for f in facts if f) or "Данные о питомце не заполнены", new_x=XPos.LMARGIN, new_y=YPos.NEXT
     )
 
-    if pet.get("health_notes"):
-        pdf.ln(4)
-        pdf.set_fill_color(*BAND)
-        pdf.set_draw_color(*ALERT)
-        pdf.set_font("DejaVu", "B", 10)
-        pdf.set_text_color(*ALERT)
-        pdf.cell(0, 7, "Здоровье и аллергии", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    profile = card.get("profile") or {}
+    ids = []
+    if profile.get("blood_type"):
+        ids.append(f"Группа крови: {profile['blood_type']}")
+    if profile.get("chip_number"):
+        ids.append(f"чип {profile['chip_number']}" if ids else f"Чип: {profile['chip_number']}")
+    if ids:
         pdf.set_font("DejaVu", "", 10)
-        pdf.set_text_color(*INK)
+        pdf.set_text_color(*MUTED)
+        pdf.multi_cell(0, 6, ", ".join(ids), align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    clinic = profile.get("clinic") or {}
+    clinic_bits = [
+        clinic.get("name"),
+        f"врач {clinic['vet']}" if clinic.get("vet") else None,
+        f"тел. {clinic['phone']}" if clinic.get("phone") else None,
+    ]
+    if any(clinic_bits):
+        pdf.set_font("DejaVu", "", 10)
+        pdf.set_text_color(*MUTED)
+        pdf.multi_cell(
+            0, 6, "Клиника: " + ", ".join(b for b in clinic_bits if b), align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT
+        )
+
+    # What a vet asks first, in a box of its own.
+    pdf.ln(4)
+    pdf.set_fill_color(*BAND)
+    pdf.set_font("DejaVu", "B", 10)
+    pdf.set_text_color(*ALERT)
+    pdf.cell(0, 7, "Здоровье и аллергии", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(*INK)
+
+    def box_line(label: str, text: str, bold_label: bool = True) -> None:
+        pdf.set_font("DejaVu", "B" if bold_label else "", 10)
+        pdf.cell(pdf.get_string_width(label) + 2, 6, label, fill=True)
+        pdf.set_font("DejaVu", "", 10)
+        pdf.multi_cell(0, 6, text, align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    if profile.get("allergies"):
+        pdf.set_font("DejaVu", "B", 10)
+        pdf.cell(0, 6, "Аллергии", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVu", "", 10)
+        for a in profile["allergies"]:
+            line = a["substance"] + (f": {a['reaction']}" if a.get("reaction") else "")
+            pdf.multi_cell(0, 6, f"  {line}", align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    elif profile.get("allergies_none_known"):
+        box_line("Аллергии: ", "не выявлено")
+    else:
+        box_line("Аллергии: ", "не указаны")
+    if profile.get("conditions"):
+        pdf.set_font("DejaVu", "B", 10)
+        pdf.cell(0, 6, "Хронические состояния", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVu", "", 10)
+        for c in profile["conditions"]:
+            line = (
+                c["name"]
+                + (f" (с {c['since_year']} года)" if c.get("since_year") else "")
+                + (f": {c['note']}" if c.get("note") else "")
+            )
+            pdf.multi_cell(0, 6, f"  {line}", align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    if pet.get("health_notes"):
+        pdf.set_font("DejaVu", "B", 10)
+        pdf.cell(0, 6, "Заметки", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVu", "", 10)
         pdf.multi_cell(0, 6, pet["health_notes"], align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     pdf.section("Прививки")

@@ -76,6 +76,61 @@ function CourseRow({ course }: { course: MedicalCardCourse }) {
   );
 }
 
+/** Allergies, chronic conditions and the notes: what a vet asks first, in the one block with a colour of its own. */
+function ImportantBlock({ card, onEdit }: { card: Card; onEdit: () => void }) {
+  const { profile, pet } = card;
+  const hasAllergies = profile.allergies.length > 0;
+  const filled = hasAllergies || profile.allergies_none_known || profile.conditions.length > 0 || !!pet.health_notes;
+  const ids = [profile.blood_type ? `Группа крови: ${profile.blood_type}` : null, profile.chip_number ? `Чип: ${profile.chip_number}` : null].filter(Boolean);
+  return (
+    <div className={`medcard__important${filled ? '' : ' medcard__important--empty'}`} role="group" aria-labelledby="medcard-important">
+      <ShieldAlert className="medcard__important-icon" size={22} strokeWidth={2} aria-hidden />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="medcard__section-head" style={{ marginBottom: 4 }}>
+          <h2 id="medcard-important" className="medcard__important-title" style={{ margin: 0 }}>Здоровье и аллергии</h2>
+          <button type="button" className="medcard__link touch-target" onClick={onEdit}>
+            {filled ? 'Изменить' : 'Заполнить'}
+          </button>
+        </div>
+        {!filled && <p className="medcard__important-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми.</p>}
+        {(hasAllergies || profile.allergies_none_known) && (
+          <div className="medcard__fact">
+            <span className="medcard__fact-label">Аллергии</span>
+            {hasAllergies ? (
+              <ul className="medcard__plain-list">
+                {profile.allergies.map((a) => (
+                  <li key={`${a.substance}-${a.reaction ?? ''}`}>{a.substance}{a.reaction ? `: ${a.reaction}` : ''}</li>
+                ))}
+              </ul>
+            ) : (
+              <span className="medcard__important-text">Не выявлено</span>
+            )}
+          </div>
+        )}
+        {profile.conditions.length > 0 && (
+          <div className="medcard__fact">
+            <span className="medcard__fact-label">Хронические состояния</span>
+            <ul className="medcard__plain-list">
+              {profile.conditions.map((c) => (
+                <li key={`${c.name}-${c.since_year ?? ''}`}>
+                  {c.name}{c.since_year ? ` (с ${c.since_year} года)` : ''}{c.note ? `: ${c.note}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {pet.health_notes && (
+          <div className="medcard__fact">
+            <span className="medcard__fact-label">Заметки</span>
+            <p className="medcard__important-text">{pet.health_notes}</p>
+          </div>
+        )}
+        {ids.length > 0 && <p className="medcard__important-text medcard__ids">{ids.join(', ')}</p>}
+      </div>
+    </div>
+  );
+}
+
 function Section({ id, title, action, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id}>
@@ -151,7 +206,6 @@ export function MedicalCard() {
 
   const SpeciesIcon = getSpecies(pet?.species).icon;
   const facts = [card.pet.species, card.pet.breed, card.pet.age_text, card.pet.gender, card.pet.neutered_text].filter(Boolean).join(', ');
-  const editPet = () => navigate(`/pets/${id}/edit`);
 
   return (
     <div className="page-container">
@@ -182,27 +236,22 @@ export function MedicalCard() {
             </Button>
           </div>
 
-          {card.pet.health_notes ? (
-            <div className="medcard__important" role="group" aria-labelledby="medcard-important">
-              <ShieldAlert className="medcard__important-icon" size={22} strokeWidth={2} aria-hidden />
-              <div style={{ minWidth: 0 }}>
-                <h2 id="medcard-important" className="medcard__important-title">Здоровье и аллергии</h2>
-                <p className="medcard__important-text">{card.pet.health_notes}</p>
+          <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />
+
+          {(card.profile.clinic.name || card.profile.clinic.vet || card.profile.clinic.phone) && (
+            <Section id="medcard-clinic" title="Клиника" action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile`) }}>
+              <div className="medcard__row">
+                <div className="medcard__row-main">
+                  {card.profile.clinic.name && <div className="medcard__row-title">{card.profile.clinic.name}</div>}
+                  {card.profile.clinic.vet && <div className="medcard__row-sub">Врач: {card.profile.clinic.vet}</div>}
+                  {card.profile.clinic.phone && (
+                    <div className="medcard__row-sub">
+                      <a className="medcard__tel" href={`tel:${card.profile.clinic.phone.replace(/[^\d+]/g, '')}`}>{card.profile.clinic.phone}</a>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="medcard__important medcard__important--empty" role="group" aria-labelledby="medcard-important">
-              <ShieldAlert className="medcard__important-icon" size={22} strokeWidth={2} aria-hidden />
-              <div style={{ minWidth: 0 }}>
-                <h2 id="medcard-important" className="medcard__important-title">Здоровье и аллергии</h2>
-                <p className="medcard__important-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми.</p>
-                {card.can_edit && (
-                  <button type="button" className="medcard__link touch-target" onClick={editPet} style={{ paddingLeft: 0 }}>
-                    Добавить в карточке питомца
-                  </button>
-                )}
-              </div>
-            </div>
+            </Section>
           )}
 
           <Section id="medcard-vaccinations" title="Прививки" action={{ label: 'Добавить', onClick: () => navigate('/documents/new?category=vaccination') }}>
