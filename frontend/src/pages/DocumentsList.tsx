@@ -17,6 +17,7 @@ import { httpStatus } from '../services/api';
 import {
   documentsListQuery,
   documentsService,
+  isCoveredByMedicalCard,
   DOCUMENT_CATEGORY_LABELS,
   type DocumentCategory,
   type PetDocument,
@@ -320,7 +321,8 @@ export function DocumentsList() {
                       // Preview reflects the file's actual format — the
                       // category already reads from the section header above.
                       const badge = formatBadge(doc);
-                      const expiry = doc.expires_at ? describeExpiry(doc.expires_at) : null;
+                      const inCard = isCoveredByMedicalCard(doc);
+                      const expiry = doc.expires_at && !inCard ? describeExpiry(doc.expires_at) : null;
                       return (
                         <SwipeableRow
                           key={doc._id}
@@ -370,6 +372,30 @@ export function DocumentsList() {
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
                                   <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{doc.title}</h3>
+                                  {inCard && (
+                                    <button
+                                      type="button"
+                                      className="touch-target"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pets/${selectedPetId}/medical-card`);
+                                      }}
+                                      style={{
+                                        fontSize: 'var(--text-xs)',
+                                        fontWeight: 600,
+                                        color: 'var(--app-accent-deep)',
+                                        background: 'var(--app-accent-soft)',
+                                        padding: '2px 8px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    >
+                                      В медкарте
+                                    </button>
+                                  )}
                                   {expiry && (
                                     <span
                                       style={{
@@ -633,7 +659,14 @@ export function DocumentsList() {
       <Dialog
         visible={deleteDialog.visible}
         title="Удаление документа"
-        content={deleteDialog.document && <span>Удалить документ «{deleteDialog.document.title}»?</span>}
+        content={
+          deleteDialog.document && (
+            <span>
+              Удалить документ «{deleteDialog.document.title}»?
+              {(deleteDialog.document.medical_record_kinds?.length ?? 0) > 0 && ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт.'}
+            </span>
+          )
+        }
         onClose={() => setDeleteDialog((prev) => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, document: null })}
         actions={[

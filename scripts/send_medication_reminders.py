@@ -38,7 +38,7 @@ from zoneinfo import ZoneInfo
 # has to be explicit.
 import web.app  # noqa: F401
 from web.courses import course_covers
-from web.medical_records import SOON_DAYS, record_states
+from web.medical_records import SOON_DAYS, record_states, repeating_document_ids
 from web.medications import UPCOMING_LOOKAHEAD_DAYS, compute_taken_counts
 from web.push_delivery import send_push_to_subscriptions
 
@@ -241,7 +241,12 @@ def find_due_document_expiry_reminders(
         pet_id = str(pet["_id"])
         today = now_local.date()
 
+        # A certificate that is part of a vaccination or treatment record has that
+        # record's reminder; the document's own would be the second push for one shot.
+        covered = repeating_document_ids(pet_id, db)
         for document in db.documents.find({"pet_id": pet_id, "expires_at": {"$nin": [None, ""]}}):
+            if str(document["_id"]) in covered:
+                continue
             expires_at_str = document.get("expires_at")
             try:
                 expires_date = datetime.strptime(expires_at_str, "%Y-%m-%d").date()

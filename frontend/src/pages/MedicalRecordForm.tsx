@@ -33,6 +33,16 @@ import { addInterval, daysBetween, REPEAT_CHOICES, suggestionsFor } from '../uti
 import { showToast } from '../utils/toast';
 import './MedicalRecordForm.css';
 
+/** «Когда сделано» in one tap: a record is often entered a day, a week or a year after the fact,
+    and the day, month, year wheels are a long way to turn for that. */
+const QUICK_DATES: { label: string; date: (today: string) => string }[] = [
+  { label: 'Сегодня', date: (today) => today },
+  { label: 'Вчера', date: (today) => shiftByDays(today, -1) },
+  { label: 'Неделю назад', date: (today) => shiftByDays(today, -7) },
+  { label: 'Месяц назад', date: (today) => addInterval(today, { months: -1 }) },
+  { label: 'Год назад', date: (today) => addInterval(today, { years: -1 }) },
+];
+
 const KINDS: MedicalKind[] = ['vaccination', 'parasite', 'visit', 'procedure'];
 const isKind = (v: string | null): v is MedicalKind => !!v && (KINDS as string[]).includes(v);
 
@@ -177,6 +187,8 @@ export function MedicalRecordForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medical-card', petId] });
       queryClient.invalidateQueries({ queryKey: ['medical-record', recordId] });
+      // The Documents list says «В медкарте» for what a record points at.
+      queryClient.invalidateQueries({ queryKey: ['documents', petId] });
       showToast.success(isEditing ? 'Запись сохранена' : 'Запись добавлена');
       release();
       goBack(navigate, cardPath);
@@ -283,6 +295,25 @@ export function MedicalRecordForm() {
               />
             )}
           />
+
+          <Form.Item>
+            <div className="medrec__chips" role="group" aria-label="Когда сделано, быстро">
+              {QUICK_DATES.map((choice) => {
+                const value = choice.date(today);
+                return (
+                  <button
+                    key={choice.label}
+                    type="button"
+                    className="medrec__chip"
+                    aria-pressed={date === value}
+                    onClick={() => setValue('date', value, { shouldDirty: true, shouldValidate: true })}
+                  >
+                    {choice.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Form.Item>
 
           {repeating && (
             <Controller
@@ -416,7 +447,7 @@ export function MedicalRecordForm() {
                   id: recordId!,
                   path: `/medical-records/${recordId}`,
                   message: 'Запись удалена',
-                  onDeleted: () => queryClient.invalidateQueries({ queryKey: ['medical-card', petId] }),
+                  onDeleted: () => Promise.all([queryClient.invalidateQueries({ queryKey: ['medical-card', petId] }), queryClient.invalidateQueries({ queryKey: ['documents', petId] })]),
                 });
                 release();
                 goBack(navigate, cardPath);
@@ -432,7 +463,7 @@ export function MedicalRecordForm() {
         <div style={{ padding: 'var(--spacing-md)' }}>
           <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)' }}>Документы питомца</h2>
           {(documents.data ?? []).length === 0 ? (
-            <p style={{ color: 'var(--app-text-secondary)' }}>Документов пока нет. Добавьте их в разделе «Документы».</p>
+            <p style={{ color: 'var(--app-text-secondary)' }}>Документов пока нет. Добавьте сертификат в разделе «Документы» с категорией «Прививки»: после сохранения приложение предложит оформить его записью медкарты.</p>
           ) : (
             <CheckList
               multiple

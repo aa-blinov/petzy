@@ -232,3 +232,53 @@ class TestSending:
             sent = send_reminders(mock_db, NOW_UTC, "fake-key", {"sub": "mailto:t@example.com"})
         assert sent == 0
         assert mock_db.push_subscriptions.find_one({"endpoint": "https://push.example/gone"}) is None
+
+
+def _document(mock_db, pet_id, title="Сертификат", expires="2024-01-06"):
+    doc_id = ObjectId()
+    mock_db.documents.insert_one(
+        {"_id": doc_id, "pet_id": str(pet_id), "title": title, "category": "vaccination", "expires_at": expires}
+    )
+    return doc_id
+
+
+@pytest.mark.push
+class TestOneReminderPerVaccination:
+    """A certificate linked to a vaccination record is the same vaccination: the record's
+    reminder covers it, and the document's own «скоро истекает» must not come on top."""
+
+    def _titles(self, mock_db):
+        with patch("web.push_delivery.webpush") as mock_webpush:
+            send_reminders(mock_db, NOW_UTC, "fake-key", {"sub": "mailto:t@example.com"})
+        return [json.loads(c.kwargs["data"])["title"] for c in mock_webpush.call_args_list]
+
+    def test_a_linked_certificate_is_not_reminded_twice(self, mock_db):
+        pet_id = _pet(mock_db)
+        doc = _document(mock_db, pet_id, expires=day(4))
+        _record(mock_db, pet_id, next_due=day(4))
+        mock_db.medical_records.update_one({"pet_id": str(pet_id)}, {"$set": {"document_ids": [str(doc)]}})
+        _subscribe(mock_db)
+        assert self._titles(mock_db) == ["Скоро прививка"]
+
+    def test_a_certificate_linked_to_an_older_replaced_record_is_quiet_too(self, mock_db):
+        pet_id = _pet(mock_db)
+        doc = _document(mock_db, pet_id, expires=day(4))
+        old = _record(mock_db, pet_id, title="Рабизин", date_="2023-01-10", next_due=day(4), created=0)
+        mock_db.medical_records.update_one({"_id": old}, {"$set": {"document_ids": [str(doc)]}})
+        _record(mock_db, pet_id, title="Рабизин", date_="2023-12-30", next_due=day(360), created=5)
+        _subscribe(mock_db)
+        assert self._titles(mock_db) == []
+
+    def test_an_unlinked_certificate_is_still_reminded(self, mock_db):
+        pet_id = _pet(mock_db)
+        _document(mock_db, pet_id, expires=day(4))
+        _subscribe(mock_db)
+        assert self._titles(mock_db) == ["Скоро истекает срок документа"]
+
+    def test_a_document_linked_to_a_visit_is_still_reminded(self, mock_db):
+        pet_id = _pet(mock_db)
+        doc = _document(mock_db, pet_id, expires=day(4))
+        visit = _record(mock_db, pet_id, kind="visit", title="Осмотр")
+        mock_db.medical_records.update_one({"_id": visit}, {"$set": {"document_ids": [str(doc)]}})
+        _subscribe(mock_db)
+        assert self._titles(mock_db) == ["Скоро истекает срок документа"]

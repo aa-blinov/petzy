@@ -559,9 +559,14 @@ export function PetForm() {
               control={control}
               render={({ field }) => (
                 <Form.Item
-                  label="Здоровье / Аллергии"
+                  label="Заметки о здоровье"
                   layout="vertical"
-                  description={fieldNote({ value: field.value, max: 1000, always: true })}
+                  description={fieldNote({
+                    value: field.value,
+                    max: 1000,
+                    always: true,
+                    hint: isEditing ? 'Аллергии, хронические состояния и прививки вносятся в медкарте' : undefined,
+                  })}
                 >
                   <TextArea
                     {...field}

@@ -136,13 +136,32 @@ def pet_records(pet_id: str, today: date) -> list[dict]:
     return serialize_records(list(app.db.medical_records.find({"pet_id": pet_id})), today)
 
 
+def document_links(pet_id: str, db=None) -> dict[str, list[str]]:
+    """For each document some record points at: the kinds of those records.
+
+    A certificate that has become a record is shown as that record, not twice;
+    the Documents list says «В медкарте» for it; and when the record repeats
+    (a vaccination, a treatment) its own reminder speaks for it, so the
+    certificate's «скоро истекает» push is kept back. ``db`` is for the
+    reminder sender, which brings its own.
+    """
+    links: dict[str, list[str]] = {}
+    for record in (db or app.db).medical_records.find({"pet_id": pet_id}, {"document_ids": 1, "kind": 1}):
+        for doc_id in record.get("document_ids") or []:
+            kinds = links.setdefault(doc_id, [])
+            if record["kind"] not in kinds:
+                kinds.append(record["kind"])
+    return links
+
+
 def linked_document_ids(pet_id: str) -> set[str]:
     """Documents some record already points at (a certificate that has become a record)."""
-    return {
-        d
-        for r in app.db.medical_records.find({"pet_id": pet_id}, {"document_ids": 1})
-        for d in r.get("document_ids") or []
-    }
+    return set(document_links(pet_id))
+
+
+def repeating_document_ids(pet_id: str, db=None) -> set[str]:
+    """Documents linked to a vaccination or treatment record: that record's reminder covers them."""
+    return {doc_id for doc_id, kinds in document_links(pet_id, db).items() if any(k in REPEATING_KINDS for k in kinds)}
 
 
 def _own_documents(pet_id: str, ids: list[str]) -> bool:

@@ -180,6 +180,10 @@ def draw_header(pdf: "_Card", card: dict, heading: str) -> None:
             pdf.multi_cell(0, 6, f"  {line}", align="L", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     elif profile.get("allergies_none_known"):
         box_line("Аллергии: ", "не выявлено")
+    elif pet.get("health_notes"):
+        # The notes were once the only place for allergies: «не указаны» above a note that
+        # says «аллергия на курицу» would mislead.
+        box_line("Аллергии: ", "не заполнены, смотрите заметки ниже")
     else:
         box_line("Аллергии: ", "не указаны")
     if profile.get("conditions"):

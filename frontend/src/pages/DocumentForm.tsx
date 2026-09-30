@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { showToast } from '../utils/toast';
+import { showSnackbar } from '../utils/snackbar';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -226,11 +227,24 @@ export function DocumentForm() {
         expires_at: data.expires_at || undefined,
         file: file!,
       }),
-    onSuccess: () => {
+    onSuccess: (newId, data) => {
       queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
-      showToast.success('Документ добавлен');
       release();
       goBack(navigate, '/documents');
+      if (data.category === 'vaccination' && selectedPetId) {
+        // A vaccination certificate is also a record of the medical card, with a date to repeat it:
+        // one tap makes it that (the form opens filled from the certificate).
+        showSnackbar({
+          message: 'Документ добавлен',
+          tone: 'success',
+          action: {
+            label: 'В медкарту',
+            run: () => navigate(`/pets/${selectedPetId}/medical-records/new?kind=vaccination&doc=${newId}`),
+          },
+        });
+      } else {
+        showToast.success('Документ добавлен');
+      }
     },
     onError: (err: unknown) => {
       showToast.failure(getApiErrorMessage(err, 'Не удалось добавить документ'));
