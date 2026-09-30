@@ -104,6 +104,11 @@ def ensure_indexes() -> None:
                           document_id + expires_at unique (dedupe: one
                                               reminder per document expiry date)
                           purge_at TTL      (auto-prune after 90 days)
+      medical_due_reminders_sent
+                          record_id + next_due + stage unique (dedupe: one
+                                              «скоро» and one «просрочено»
+                                              push per repeat date)
+                          purge_at TTL      (auto-prune after 90 days)
       image_thumbnails    source_file_id    (drop a file's variants with it)
       document_uploads    created_at        (sweep abandoned scan uploads)
       <each health_*>     pet_id + date_time (per-type timelines)
@@ -218,6 +223,18 @@ def ensure_indexes() -> None:
             db.document_expiry_reminders_sent,
             [("purge_at", ASCENDING)],
             "document_expiry_reminders_sent_ttl",
+            {"expireAfterSeconds": 0},
+        ),
+        (
+            db.medical_due_reminders_sent,
+            [("record_id", ASCENDING), ("next_due", ASCENDING), ("stage", ASCENDING)],
+            "medical_due_reminders_sent_unique",
+            {"unique": True},
+        ),
+        (
+            db.medical_due_reminders_sent,
+            [("purge_at", ASCENDING)],
+            "medical_due_reminders_sent_ttl",
             {"expireAfterSeconds": 0},
         ),
     ]

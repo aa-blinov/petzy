@@ -298,7 +298,7 @@ export function MedicalRecordForm() {
                     yearsForward={10}
                     clearLabel="Убрать дату повтора"
                     placeholder="Повтор не нужен"
-                    description={error?.message ? <FieldError message={error.message} /> : 'Срок повтора будет виден в медкарте'}
+                    description={error?.message ? <FieldError message={error.message} /> : kind === 'parasite' ? 'За неделю до даты придёт напоминание' : 'За две недели до даты придёт напоминание'}
                   />
                   <Form.Item>
                     <div className="medrec__chips" role="group" aria-label="Повторить через">

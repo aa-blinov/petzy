@@ -80,22 +80,42 @@ self.addEventListener('push', (event: PushEvent) => {
   )
 })
 
-// v1: clicking the notification just opens/focuses the app (the
-// Лента tab already surfaces a "Принять сейчас" widget for the exact
-// dose the notification was about). Acting on the dose straight from
-// the notification's own action buttons — no need to open the app at
-// all — is a natural next step: the SPA authenticates via an httpOnly
-// cookie (see api.ts's withCredentials), so a fetch from here would
-// carry it automatically. Left for later rather than blocking v1 on it.
+// Clicking the notification takes you to the page it is about: a reminder
+// for a vaccination opens that pet's medical card, a dose the feed. The app
+// being open already used to be no reason to stay where it was (the click
+// only focused the window and ignored the link), and a link without the pet
+// in it could open another pet's page, so links carry the pet where it
+// matters (/pets/<id>/medical-card).
+//
+// Acting on a dose straight from the notification's own buttons is a natural
+// next step: the SPA authenticates via an httpOnly cookie (see api.ts's
+// withCredentials), so a fetch from here would carry it automatically.
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
-  const url = (event.notification.data?.url as string) ?? '/'
+  const target = new URL((event.notification.data?.url as string) ?? '/', self.location.origin).href
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      const existing = clients.find((c) => c.url.startsWith(self.location.origin))
-      if (existing) return existing.focus()
-      return self.clients.openWindow(url)
-    })
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const existing = windows.find((c) => c.url.startsWith(self.location.origin))
+      if (!existing) return self.clients.openWindow(target)
+      // navigate() only works for a window this worker controls; if it refuses
+      // (an uncontrolled tab), open the link in a window of its own rather than
+      // leave the click without a result.
+      let page: WindowClient = existing
+      try {
+        page = (await existing.navigate(target)) ?? existing
+      } catch {
+        return self.clients.openWindow(target)
+      }
+      // Bringing it forward is allowed inside a real click; if a browser still
+      // refuses, the page is on the right address all the same, and a second
+      // window would only be in the way.
+      try {
+        return await page.focus()
+      } catch {
+        return page
+      }
+    })()
   )
 })
