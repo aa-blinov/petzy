@@ -1,22 +1,26 @@
 """Take mobile-viewport screenshots of every Petzy screen.
 
 Uses Playwright with the system Google Chrome so we don't have to wait
-for the Chromium download. Runs against the dev stack at
-http://localhost:5173 with seeded data (admin / test1234).
+for the Chromium download. Runs against a local Docker stack
+(docker-compose.local.yml, nginx on 127.0.0.1:3001) with seeded demo data
+(demo / petzy-demo-2026), on an iPhone Pro Max viewport (430x932).
+
+Override the target and login with PETZY_SHOT_BASE, PETZY_SHOT_USER,
+PETZY_SHOT_PASS if the stack lives elsewhere.
 
 Saves screenshots into screenshots/ for inspection.
 """
 
+import os
 import sys
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-
-FRONTEND = "http://localhost:5173"
-OUTPUT_DIR = Path(__file__).parent.parent / "screenshots"
-USERNAME = "admin"
-PASSWORD = "test1234"
+FRONTEND = os.environ.get("PETZY_SHOT_BASE", "http://127.0.0.1:3001")
+OUTPUT_DIR = Path(os.environ.get("PETZY_SHOT_OUT", Path(__file__).parent.parent / "screenshots"))
+USERNAME = os.environ.get("PETZY_SHOT_USER", "demo")
+PASSWORD = os.environ.get("PETZY_SHOT_PASS", "petzy-demo-2026")
 
 # Screens to capture after login. Order matters — Dashboard first.
 SCREENS = [
@@ -41,19 +45,19 @@ SCREENS = [
 def main() -> int:
     OUTPUT_DIR.mkdir(exist_ok=True)
     with sync_playwright() as pw:
-        # iPhone 13 viewport: 390x844 logical pixels.
+        # iPhone 14/15/16 Pro Max viewport: 430x932 logical pixels.
         browser = pw.chromium.launch(
             channel="chrome",
             headless=True,
         )
         context = browser.new_context(
-            viewport={"width": 390, "height": 844},
-            device_scale_factor=2,
+            viewport={"width": 430, "height": 932},
+            device_scale_factor=3,
             is_mobile=True,
             has_touch=True,
             user_agent=(
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 "
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 "
                 "Mobile/15E148 Safari/604.1"
             ),
         )
@@ -63,7 +67,7 @@ def main() -> int:
         page.goto(f"{FRONTEND}/login", wait_until="networkidle")
         page.screenshot(path=str(OUTPUT_DIR / "00_login.png"), full_page=False)
 
-        page.fill('input[placeholder="Введите имя пользователя"]', USERNAME)
+        page.fill('input[placeholder="Введите логин"]', USERNAME)
         page.fill('input[placeholder="Введите пароль"]', PASSWORD)
         page.click('button[type="submit"]')
         page.wait_for_url(lambda url: not url.endswith("/login"), timeout=10_000)
@@ -79,23 +83,22 @@ def main() -> int:
         # Bonus: capture the QuickAdd bottom sheet by tapping the FAB.
         page.goto(f"{FRONTEND}/", wait_until="networkidle")
         page.wait_for_timeout(1500)
-        # Use a programmatic click() instead of locator.click() — Playwright's
-        # actionability checks don't always trigger React's synthetic onClick
-        # on the FAB's inner button (it's a styled div, not a native button).
-        page.evaluate("document.querySelector('.adm-floating-bubble-button')?.click()")
-        # QuickAddSheet is rendered as antd-mobile Popup. Wait for the grid
-        # items to appear rather than the popup container — the spring-animated
-        # popup body is sometimes flagged "hidden" by Playwright's checks
-        # even when it's actually rendered and visible to the user.
-        page.wait_for_selector(".adm-grid-item", timeout=5_000)
+        # A plain click works: the FAB is a real button (app-fab) in a portal.
+        # The old antd FloatingBubble div (adm-floating-bubble-button) is gone.
+        page.click(".app-fab")
+        # QuickAddSheet is rendered as antd-mobile Popup. Wait for the sheet's
+        # heading rather than the popup container — the spring-animated popup
+        # body is sometimes flagged "hidden" by Playwright's checks even when
+        # it's actually rendered and visible to the user.
+        page.wait_for_selector("text=Что записать?", timeout=5_000)
         page.wait_for_timeout(1500)
         page.screenshot(path=str(OUTPUT_DIR / "quick_add_sheet.png"), full_page=False)
         print("  captured quick_add_sheet (FAB sheet)")
 
         # Bonus: capture History swipe gestures (left=delete, right=edit).
-        # We dispatch raw TouchEvents because Playwright's locator.drag()
-        # path doesn't reach the row surface's onTouchMove handler in a
-        # way that the React hook recognises.
+        # useSwipeableRow listens to Pointer Events, not touch events, so we
+        # dispatch pointerdown/pointermove and stop before pointerup — the row
+        # stays mid-drag (transform applied) and the action layer is visible.
         page.goto(f"{FRONTEND}/history", wait_until="networkidle")
         page.wait_for_timeout(1500)
 
@@ -107,63 +110,37 @@ def main() -> int:
         }""")
         if row_box:
             mid_y = row_box["midY"]
+
+            def swipe(from_x: int, step: int) -> None:
+                page.evaluate(
+                    """({y, fromX, step}) => {
+                        const el = document.querySelector('.swipeable-row__surface');
+                        if (!el) return;
+                        const opts = (x) => ({
+                            bubbles: true, cancelable: true, pointerId: 1,
+                            pointerType: 'touch', isPrimary: true,
+                            clientX: x, clientY: y, buttons: 1,
+                        });
+                        el.dispatchEvent(new PointerEvent('pointerdown', opts(fromX)));
+                        for (let i = 1; i <= 12; i++) {
+                            el.dispatchEvent(new PointerEvent('pointermove', opts(fromX + i * step)));
+                        }
+                        // No pointerup: pause mid-drag so the action layer
+                        // stays revealed in the screenshot.
+                    }""",
+                    {"y": mid_y, "fromX": from_x, "step": step},
+                )
+                page.wait_for_timeout(400)
+
             # Right-swipe (left→right finger motion) — reveals Edit action.
-            page.evaluate(
-                """({y}) => {
-                    const el = document.querySelector('.swipeable-row__surface');
-                    if (!el) return;
-                    const fire = (type, x) => {
-                        const t = new Touch({
-                            identifier: 1, target: el, clientX: x, clientY: y
-                        });
-                        const ev = new TouchEvent(type, {
-                            bubbles: true, cancelable: true,
-                            touches: type === 'touchend' ? [] : [t],
-                            targetTouches: type === 'touchend' ? [] : [t],
-                            changedTouches: [t],
-                        });
-                        el.dispatchEvent(ev);
-                    };
-                    fire('touchstart', 40);
-                    for (let i = 1; i <= 12; i++) {
-                        fire('touchmove', 40 + i * 7);
-                    }
-                    // Pause mid-drag (don't fire touchend) so the action
-                    // layer stays visible in the screenshot.
-                }""",
-                {"y": mid_y},
-            )
-            page.wait_for_timeout(400)
+            swipe(40, 7)
             page.screenshot(path=str(OUTPUT_DIR / "history_swipe_right.png"), full_page=False)
             print("  captured history_swipe_right (edit reveal)")
 
-            # Reset by clicking elsewhere, then left-swipe (delete reveal).
-            page.evaluate("window.scrollTo(0, 0)")
-            page.wait_for_timeout(400)
-            page.evaluate(
-                """({y}) => {
-                    const el = document.querySelector('.swipeable-row__surface');
-                    if (!el) return;
-                    const fire = (type, x) => {
-                        const t = new Touch({
-                            identifier: 1, target: el, clientX: x, clientY: y
-                        });
-                        const ev = new TouchEvent(type, {
-                            bubbles: true, cancelable: true,
-                            touches: type === 'touchend' ? [] : [t],
-                            targetTouches: type === 'touchend' ? [] : [t],
-                            changedTouches: [t],
-                        });
-                        el.dispatchEvent(ev);
-                    };
-                    fire('touchstart', 350);
-                    for (let i = 1; i <= 12; i++) {
-                        fire('touchmove', 350 - i * 7);
-                    }
-                }""",
-                {"y": mid_y},
-            )
-            page.wait_for_timeout(400)
+            # Reset, then left-swipe (delete reveal).
+            page.goto(f"{FRONTEND}/history", wait_until="networkidle")
+            page.wait_for_timeout(1500)
+            swipe(350, -7)
             page.screenshot(path=str(OUTPUT_DIR / "history_swipe_left.png"), full_page=False)
             print("  captured history_swipe_left (delete reveal)")
 

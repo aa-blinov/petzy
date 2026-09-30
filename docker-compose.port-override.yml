@@ -1,0 +1,9 @@
+# One-off override for a local screenshot run on this machine: host port 3000
+# is taken by another service (bitrix24-mcp, NITRO_PORT=3000), so the app's
+# nginx answers on 127.0.0.1:3001 instead. Only adds the port mapping; the
+# whole stack (build, S3, backups-off, in-memory mail) stays as
+# docker-compose.local.yml defines it.
+services:
+  nginx:
+    ports: !override
+      - "127.0.0.1:3001:80"
