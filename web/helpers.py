@@ -7,6 +7,7 @@ Helpers are imported into `web.app` and used by blueprints via `web.app.*`.
 from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Optional, Tuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -136,6 +137,32 @@ def parse_event_datetime(date_str, time_str, context=""):
         raise ValueError("Дата и время должны быть указаны вместе")
     else:
         return datetime.now()
+
+
+def valid_tz(name) -> Optional[str]:
+    """The IANA zone name if it is a real one, else None.
+
+    A record keeps the wall-clock time as it was entered, plus (when the app
+    sends it) the zone that clock was in, so an export can show the time on
+    the clock of whoever exports. Anything that isn't a known zone is
+    dropped: the record is then read on the exporter's clock, as before.
+    """
+    if not isinstance(name, str) or not name or len(name) > 64:
+        return None
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError, OSError):
+        return None
+    return name
+
+
+def wall_clock_in(dt: datetime, from_tz: Optional[str], to_tz: Optional[str]) -> datetime:
+    """A stored wall-clock time, moved from the zone it was entered in to
+    another zone's clock. Unchanged when either zone is unknown."""
+    source, target = valid_tz(from_tz), valid_tz(to_tz)
+    if not source or not target or source == target:
+        return dt
+    return dt.replace(tzinfo=ZoneInfo(source)).astimezone(ZoneInfo(target)).replace(tzinfo=None)
 
 
 def check_pet_access(pet_id, username):

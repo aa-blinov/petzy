@@ -32,6 +32,7 @@ import web.app as app  # access db, logger
 from web.app import api
 from web.decorators import require_pet_access
 from web.errors import error_response
+from web.helpers import valid_tz, wall_clock_in
 from web.schemas import ErrorResponse, ExportQuery
 
 
@@ -254,7 +255,7 @@ def _user_now(tz_name: Optional[str]) -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
+def _render_export(spec: ExportSpec, pet_id, format_type, serializer, tz_name: Optional[str] = None):
     """Serialise one export type.
 
     Returns ``(content, mimetype, suffix)``, or ``(None, None, None)`` when
@@ -275,9 +276,20 @@ def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
     # Common per-row cleanup shared by every export format.
     for r in records:
         dt = r.get("date_time")
-        r["date_time"] = dt.strftime("%d.%m.%Y %H:%M") if isinstance(dt, datetime) else str(dt or "")
+        if isinstance(dt, datetime):
+            # A record stores the clock it was entered on, and the zone of
+            # that clock when it is known: the file shows the exporter's clock.
+            dt = wall_clock_in(dt, r.get("tz"), tz_name)
+            r["_sort"] = dt
+            r["date_time"] = dt.strftime("%d.%m.%Y %H:%M")
+        else:
+            r["_sort"] = datetime.min
+            r["date_time"] = str(dt or "")
         r["comment"] = _replace_skip_blank(r.get("comment", ""))
         r["food"] = _replace_skip_blank(r.get("food", ""))
+    # Records entered in different zones are newest-first on the exporter's
+    # clock, not on each author's.
+    records.sort(key=lambda r: r["_sort"], reverse=True)
 
     # Some serializers need the title (html/md); csv/tsv ignore it.
     if format_type in ("html", "md"):
@@ -285,7 +297,7 @@ def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
     return serializer(records, spec.fields)
 
 
-def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, ExportSpec]):
+def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, ExportSpec], tz_name: Optional[str] = None):
     """Bundle every type that has records into a single ZIP.
 
     Each entry keeps its own column set, named after the type's title, so
@@ -300,7 +312,7 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         for spec in specs.values():
-            content, _mimetype, suffix = _render_export(spec, pet_id, format_type, serializer)
+            content, _mimetype, suffix = _render_export(spec, pet_id, format_type, serializer, tz_name)
             if content is None:
                 # Nothing logged for this type — leave it out rather than
                 # shipping an empty file with only a header row.
@@ -334,6 +346,7 @@ def export_data(export_type, format_type):
         username = g.username  # Provided by @require_pet_access
 
         specs = _build_export_specs()
+        tz_name = valid_tz(request.context.query.tz)  # type: ignore[attr-defined]
 
         if export_type != ALL_TYPES and export_type not in specs:
             return error_response("export_invalid_type")
@@ -343,19 +356,19 @@ def export_data(export_type, format_type):
             return error_response("export_invalid_format")
 
         if export_type == ALL_TYPES:
-            content, included = _render_all_types_zip(pet_id, format_type, serializer, specs)
+            content, included = _render_all_types_zip(pet_id, format_type, serializer, specs, tz_name)
             if not included:
                 return error_response("no_data_for_export")
             mimetype = "application/zip"
             title, suffix = "все_записи", "zip"
         else:
             spec = specs[export_type]
-            content, mimetype, suffix = _render_export(spec, pet_id, format_type, serializer)
+            content, mimetype, suffix = _render_export(spec, pet_id, format_type, serializer, tz_name)
             if content is None:
                 return error_response("no_data_for_export")
             title, included = spec.title, [spec.title]
 
-        stamp = _user_now(request.context.query.tz).strftime("%Y%m%d_%H%M")  # type: ignore[attr-defined]
+        stamp = _user_now(tz_name).strftime("%Y%m%d_%H%M")
         filename_base = f"{title.replace(' ', '_').lower()}_{stamp}"
         filename = f"{filename_base}.{suffix}"
         encoded_filename = quote(filename)
