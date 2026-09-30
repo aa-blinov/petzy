@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
+import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
+import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
 import { usePet } from '../hooks/usePet';
 import { PetImage } from '../components/PetImage';
@@ -14,6 +16,13 @@ import { showToast } from '../utils/toast';
 import { httpStatus } from '../services/api';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import './MedicalCard.css';
+
+const EMPTY_TEXT: Record<MedicalKind, string> = {
+  vaccination: 'Прививок пока нет. Добавьте прививку или сертификат из документов, и срок повтора появится здесь.',
+  parasite: 'Обработок пока нет. Запишите последнюю, и придёт напоминание, когда пора повторить.',
+  visit: 'Визитов пока нет. Запишите визит, диагноз и рекомендации врача.',
+  procedure: 'Операций и процедур пока нет.',
+};
 
 const formatDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
 
@@ -131,6 +140,55 @@ function ImportantBlock({ card, onEdit }: { card: Card; onEdit: () => void }) {
   );
 }
 
+const RECORD_STATUS: Record<'overdue' | 'soon' | 'ok', { label: string; Icon: typeof CheckCircle2; tone: MedicalCardVaccination['status'] }> = {
+  overdue: { label: 'Просрочено', Icon: AlertTriangle, tone: 'expired' },
+  soon: { label: 'Скоро', Icon: Clock, tone: 'soon' },
+  ok: { label: 'В срок', Icon: CheckCircle2, tone: 'valid' },
+};
+
+/** One record of the card: what, when, and (for a vaccination or a treatment) when it is due again. */
+function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void }) {
+  const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
+  const status = record.status !== 'none' ? RECORD_STATUS[record.status] : null;
+  const lines = [
+    [repeating ? `Сделано ${formatDate(record.date)}` : formatDate(record.date), record.target ? PARASITE_TARGET_LABELS[record.target].toLowerCase() : null, record.batch ? `серия ${record.batch}` : null]
+      .filter(Boolean)
+      .join(', '),
+    record.next_due && repeating && !record.superseded ? `Следующая: ${formatDate(record.next_due)}` : null,
+    [record.clinic, record.vet ? `врач ${record.vet}` : null].filter(Boolean).join(', ') || null,
+    record.diagnosis ? `Диагноз: ${record.diagnosis}` : null,
+    record.recommendations ? `Рекомендации: ${record.recommendations}` : null,
+    record.note ? `Заметка: ${record.note}` : null,
+    record.documents.length ? `Документы: ${record.documents.map((d) => d.title).join(', ')}` : null,
+    record.superseded ? 'Есть более новая запись' : null,
+  ].filter(Boolean) as string[];
+  return (
+    <li className={`medcard__row medcard__row--stack${record.superseded ? ' medcard__row--history' : ''}`}>
+      <button type="button" className="medcard__row-button" onClick={onOpen} aria-label={`${record.title}, открыть запись`}>
+        <span className="medcard__row-top">
+          <span className="medcard__row-main">
+            <span className="medcard__row-title" style={{ display: 'block' }}>{record.title}</span>
+            {lines.map((line) => (
+              <span key={line} className="medcard__row-sub" style={{ display: 'block' }}>{line}</span>
+            ))}
+          </span>
+          {status && (
+            <span className={`medcard__status medcard__status--${status.tone}`}>
+              <status.Icon size={13} strokeWidth={2.4} aria-hidden />
+              {status.label}
+            </span>
+          )}
+        </span>
+      </button>
+      {onRepeat && !record.superseded && (
+        <button type="button" className="medcard__row-action touch-target" onClick={onRepeat}>
+          Записать снова
+        </button>
+      )}
+    </li>
+  );
+}
+
 function Section({ id, title, action, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id}>
@@ -153,6 +211,7 @@ export function MedicalCard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { pets } = usePet();
+  const hidden = useHiddenRecords();
   const pet = pets.find((p) => p._id === id);
   const [saving, setSaving] = useState(false);
 
@@ -254,30 +313,6 @@ export function MedicalCard() {
             </Section>
           )}
 
-          <Section id="medcard-vaccinations" title="Прививки" action={{ label: 'Добавить', onClick: () => navigate('/documents/new?category=vaccination') }}>
-            {card.vaccinations.length === 0 ? (
-              <p className="medcard__empty">Прививок пока нет. Добавьте сертификат, и срок действия появится здесь.</p>
-            ) : (
-              <ul className="medcard__list">
-                {card.vaccinations.map((v) => {
-                  const { label, Icon } = STATUS[v.status];
-                  return (
-                    <li key={v.id} className="medcard__row">
-                      <div className="medcard__row-main">
-                        <div className="medcard__row-title">{v.title}</div>
-                        {v.expires_at && <div className="medcard__row-sub">до {formatDate(v.expires_at)}</div>}
-                      </div>
-                      <span className={`medcard__status medcard__status--${v.status}`}>
-                        <Icon size={13} strokeWidth={2.4} aria-hidden />
-                        {label}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Section>
-
           <Section id="medcard-medications" title="Лекарства сейчас" action={{ label: card.medications.length ? 'Все лекарства' : 'Добавить', onClick: () => navigate(card.medications.length ? '/medications' : '/medications/new') }}>
             {card.medications.length === 0 ? (
               <p className="medcard__empty">Сейчас ничего не принимает.</p>
@@ -289,6 +324,60 @@ export function MedicalCard() {
               </ul>
             )}
           </Section>
+
+          {(['vaccination', 'parasite', 'visit', 'procedure'] as MedicalKind[]).map((kind) => {
+            const rows = card.records[kind].filter((r) => !hidden.has(r._id));
+            const legacy = kind === 'vaccination' ? card.vaccinations : [];
+            const shown = card.records[kind].length;
+            const total = card.record_counts[kind];
+            const repeating = kind === 'vaccination' || kind === 'parasite';
+            return (
+              <Section
+                key={kind}
+                id={`medcard-${kind}`}
+                title={MEDICAL_KIND_LABELS[kind].section}
+                action={{ label: 'Добавить', onClick: () => navigate(`/pets/${id}/medical-records/new?kind=${kind}`) }}
+              >
+                {rows.length === 0 && legacy.length === 0 ? (
+                  <p className="medcard__empty">{EMPTY_TEXT[kind]}</p>
+                ) : (
+                  <ul className="medcard__list">
+                    {rows.map((r) => (
+                      <RecordRow
+                        key={r._id}
+                        record={r}
+                        onOpen={() => navigate(`/pets/${id}/medical-records/${r._id}`)}
+                        onRepeat={repeating ? () => navigate(`/pets/${id}/medical-records/new?kind=${kind}&from=${r._id}`) : undefined}
+                      />
+                    ))}
+                    {legacy.map((v) => {
+                      const { label, Icon } = STATUS[v.status];
+                      return (
+                        <li key={v.id} className="medcard__row medcard__row--stack">
+                          <span className="medcard__row-top">
+                            <span className="medcard__row-main">
+                              <span className="medcard__row-title" style={{ display: 'block' }}>{v.title}</span>
+                              <span className="medcard__row-sub" style={{ display: 'block' }}>
+                                Сертификат в документах{v.expires_at ? `, до ${formatDate(v.expires_at)}` : ''}
+                              </span>
+                            </span>
+                            <span className={`medcard__status medcard__status--${v.status}`}>
+                              <Icon size={13} strokeWidth={2.4} aria-hidden />
+                              {label}
+                            </span>
+                          </span>
+                          <button type="button" className="medcard__row-action touch-target" onClick={() => navigate(`/pets/${id}/medical-records/new?kind=vaccination&doc=${v.id}`)}>
+                            Оформить как запись
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {total > shown && <p className="medcard__more">Показаны последние {shown} из {total}.</p>}
+              </Section>
+            );
+          })}
 
           {card.past_courses.length > 0 && (
             <Section id="medcard-past-courses" title="Прошлые курсы">

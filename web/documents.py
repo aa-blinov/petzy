@@ -452,6 +452,10 @@ def delete_document(id):
     try:
         document = g.record
         app.db.documents.delete_one({"_id": document["_id"]})
+        # A medical record that pointed at this file no longer does.
+        app.db.medical_records.update_many(
+            {"document_ids": str(document["_id"])}, {"$pull": {"document_ids": str(document["_id"])}}
+        )
         try:
             delete_stored_file(document["file_id"])
         except Exception as file_error:

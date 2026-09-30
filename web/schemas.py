@@ -1591,6 +1591,143 @@ class TimelineResponse(PaginatedResponse):
 
 
 # ============================================================================
+# Medical records (vaccinations, treatments, visits, procedures)
+# ============================================================================
+
+MEDICAL_KINDS = ("vaccination", "parasite", "visit", "procedure")
+PARASITE_TARGETS = ("fleas_ticks", "worms", "both")
+
+
+class MedicalRecordBody(BaseModel):
+    """What a record holds. Which of the optional fields matter depends on the kind;
+    the ones that don't belong to it are dropped, not refused."""
+
+    date: str = Field(..., description="Когда сделано, YYYY-MM-DD (без времени)")
+    title: str = Field(
+        ..., min_length=1, max_length=100, description="Вакцина, препарат, повод визита, название процедуры"
+    )
+    next_due: Optional[str] = Field(None, description="Когда повторить, YYYY-MM-DD; пусто, если повтор не нужен")
+    clinic: Optional[str] = Field(None, max_length=100)
+    vet: Optional[str] = Field(None, max_length=100)
+    note: Optional[str] = Field(None, max_length=500)
+    batch: Optional[str] = Field(None, max_length=50, description="Серия или лот (прививка)")
+    target: Optional[str] = Field(None, description="fleas_ticks, worms или both (обработка от паразитов)")
+    diagnosis: Optional[str] = Field(None, max_length=300, description="Диагноз (визит)")
+    recommendations: Optional[str] = Field(None, max_length=500, description="Рекомендации врача (визит)")
+    document_ids: List[ObjectIdString] = Field(
+        default_factory=list, max_length=10, description="Документы этого питомца"
+    )
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator(
+        "clinic", "vet", "note", "batch", "diagnosis", "recommendations", "target", "next_due", mode="before"
+    )
+    @classmethod
+    def blank_to_none(cls, v):
+        return _blank_to_none(v)
+
+    @field_validator("date")
+    @classmethod
+    def validate_record_date(cls, v):
+        return validate_date_logic(v, allow_future=True, max_future_days=1)
+
+    @field_validator("next_due")
+    @classmethod
+    def validate_next_due(cls, v):
+        return validate_date_logic(v, allow_future=True, max_future_days=3650) if v else v
+
+    @field_validator("target")
+    @classmethod
+    def validate_target(cls, v):
+        if v is not None and v not in PARASITE_TARGETS:
+            raise ValueError("Укажите: от блох и клещей, от глистов или от всего")
+        return v
+
+    @model_validator(mode="after")
+    def next_after_date(self):
+        if self.next_due and self.next_due < self.date:
+            raise ValueError("Повтор раньше самой записи")
+        return self
+
+
+class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
+    kind: str = Field(..., description="vaccination, parasite, visit или procedure")
+
+    @field_validator("kind")
+    @classmethod
+    def validate_kind(cls, v):
+        if v not in MEDICAL_KINDS:
+            raise ValueError("Неизвестный вид записи")
+        return v
+
+    @model_validator(mode="after")
+    def kind_fields(self):
+        # What the kind doesn't have is not kept; a treatment needs to say against what.
+        if self.kind != "vaccination":
+            self.batch = None
+        if self.kind != "visit":
+            self.diagnosis = self.recommendations = None
+        if self.kind == "parasite":
+            if not self.target:
+                raise ValueError("Укажите, от чего обработка")
+        else:
+            self.target = None
+        return self
+
+
+class MedicalRecordUpdate(MedicalRecordBody):
+    """The whole record again: its pet and kind stay as they were."""
+
+
+class MedicalRecordDocument(BaseModel):
+    id: str
+    title: str
+
+
+class MedicalRecordItem(BaseModel):
+    id: str = Field(alias="_id")
+    pet_id: str
+    kind: str
+    date: str
+    title: str
+    next_due: Optional[str] = None
+    status: str = Field(
+        "none", description="overdue (просрочено), soon (скоро), ok, none (повтор не нужен или заменена)"
+    )
+    days_left: Optional[int] = Field(None, description="Дней до повтора; отрицательное, если просрочен")
+    superseded: bool = Field(False, description="Есть более новая запись с тем же названием: эта осталась историей")
+    clinic: Optional[str] = None
+    vet: Optional[str] = None
+    note: Optional[str] = None
+    batch: Optional[str] = None
+    target: Optional[str] = None
+    diagnosis: Optional[str] = None
+    recommendations: Optional[str] = None
+    documents: List[MedicalRecordDocument] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class MedicalRecordListQuery(PetIdQuery):
+    kind: Optional[str] = Field(None, description="Только этого вида")
+    tz: Optional[str] = Field(
+        None, max_length=64, description="IANA-имя часового пояса пользователя: по нему считается «сегодня»"
+    )
+
+
+class MedicalRecordResponse(BaseModel):
+    record: MedicalRecordItem
+
+
+class MedicalRecordListResponse(BaseModel):
+    records: List[MedicalRecordItem]
+
+
+# ============================================================================
 # Medical card
 # ============================================================================
 
@@ -1644,6 +1781,8 @@ class MedicalCardMedication(BaseModel):
 
 
 class MedicalCardVaccination(BaseModel):
+    """A vaccination certificate kept only as a document, not yet made a record."""
+
     id: str
     title: str
     expires_at: Optional[str] = None
@@ -1667,6 +1806,10 @@ class MedicalCardData(BaseModel):
     pet: MedicalCardPet
     profile: MedicalProfileOut = Field(description="Аллергии, хронические состояния, чип, группа крови, клиника")
     weight: Optional[MedicalCardWeight] = None
+    records: Dict[str, List[MedicalRecordItem]] = Field(
+        description="По видам (vaccination, parasite, visit, procedure), новые сверху, не больше десяти"
+    )
+    record_counts: Dict[str, int] = Field(description="Сколько записей каждого вида всего")
     medications: List[MedicalCardMedication] = Field(description="Курсы, которые идут сейчас или ещё начнутся")
     past_courses: List[MedicalCardMedication] = Field(description="Законченные курсы, последние сверху")
     vaccinations: List[MedicalCardVaccination]

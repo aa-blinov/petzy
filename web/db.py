@@ -85,6 +85,7 @@ def ensure_indexes() -> None:
                           pet_id + type + date_time (per-type list/chart)
       event_types         key unique         (registry lookup by type)
       documents           pet_id + created_at (document list for a pet)
+      medical_records     pet_id + kind + date (the medical card's records of one kind)
                           pet_id + category + created_at (category filter)
       users               username unique (login lookup)
                           role             (admin queries)
@@ -129,6 +130,11 @@ def ensure_indexes() -> None:
         (db.events, [("pet_id", ASCENDING), ("type", ASCENDING), ("date_time", DESCENDING)], "events_pet_type_date"),
         (db.event_types, [("key", ASCENDING)], "event_types_key_unique", {"unique": True}),
         (db.documents, [("pet_id", ASCENDING), ("created_at", DESCENDING)], "documents_pet_created"),
+        (
+            db.medical_records,
+            [("pet_id", ASCENDING), ("kind", ASCENDING), ("date", DESCENDING)],
+            "medical_records_pet_kind_date",
+        ),
         (
             db.documents,
             [("pet_id", ASCENDING), ("category", ASCENDING), ("created_at", DESCENDING)],
