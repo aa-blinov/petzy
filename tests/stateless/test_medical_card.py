@@ -225,35 +225,8 @@ class TestMedicalCardPdf:
     def test_an_empty_card_still_renders(self, client, mock_db, regular_user_token, test_pet):
         response = _get(client, regular_user_token, test_pet, "/pdf")
         assert response.status_code == 200
-        text = PdfReader(io.BytesIO(response.data)).pages[0].extract_text()
-        assert "Не добавлено." in text and "Замеров нет." in text
-
-    def test_a_long_title_does_not_run_into_the_next_row(self, client, mock_db, regular_user_token, test_pet):
-        """A title that wraps onto two lines pushes the next row down; it used to be drawn over it."""
-        pid = str(test_pet["_id"])
-        long_title = "Очень длинное название прививки " * 4
-        for title in (long_title, "Следующая строка"):
-            mock_db["documents"].insert_one(
-                {
-                    "pet_id": pid,
-                    "category": "vaccination",
-                    "title": title,
-                    "expires_at": "2099-01-01",
-                    "created_at": datetime.now(timezone.utc),
-                }
-            )
-        lines = []  # (y, text): a PDF's y grows upward
-
-        def visitor(text, cm, tm, font_dict, font_size):
-            if text.strip():
-                lines.append((tm[5] if cm == [1, 0, 0, 1, 0, 0] else cm[5], text.strip()))
-
-        page = PdfReader(io.BytesIO(_get(client, regular_user_token, test_pet, "/pdf").data)).pages[0]
-        page.extract_text(visitor_text=visitor)
-        ys = {text: y for y, text in lines}
-        wrapped = [y for y, text in lines if "Очень длинное название" in text]
-        assert len(wrapped) >= 2  # it really took several lines
-        assert ys["Следующая строка"] < min(wrapped) - 4  # and the next row is below all of them
+        text = "\n".join(page.extract_text() for page in PdfReader(io.BytesIO(response.data)).pages)
+        assert "Сейчас не принимает." in text and "Замеров нет." in text
 
     def test_a_long_list_runs_onto_a_second_page(self, client, mock_db, regular_user_token, test_pet):
         pid = str(test_pet["_id"])

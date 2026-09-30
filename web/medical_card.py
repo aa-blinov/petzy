@@ -350,19 +350,22 @@ def get_medical_card(pet_id):
     tags=["pets"],
 )
 def get_medical_card_pdf(pet_id):
-    """The same card as a PDF, to hand to a vet."""
+    """The medical card as a PDF, to hand to a vet: page one is «now», the pages after are the whole history."""
+    from web.medical_card_full import build_full_card
     from web.medical_card_pdf import render_medical_card_pdf
 
-    card, error = _card_for(pet_id)
-    if error:
-        return error[0], error[1]
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+    if access_error:
+        return access_error[0], access_error[1]
+    today = _today(request.context.query.tz)  # type: ignore[attr-defined]
     try:
-        content = render_medical_card_pdf(card)
+        content = render_medical_card_pdf(build_full_card(pet, username, today))
     except Exception as e:  # a font or layout failure must not be a bare 500 page
         app.logger.error(f"Medical card PDF failed: pet_id={pet_id}, error={e}", exc_info=True)
         return error_response("internal_error")
-    name = "".join(c for c in card["pet"]["name"] if c.isalnum() or c in " -_").strip().replace(" ", "_") or "pet"
-    filename = f"медкарта_{name}_{card['generated_at'].replace('-', '')}.pdf"
+    name = "".join(c for c in pet.get("name", "") if c.isalnum() or c in " -_").strip().replace(" ", "_") or "pet"
+    filename = f"медкарта_{name}_{today.strftime('%Y%m%d')}.pdf"
     response = make_response(content)
     response.headers["Content-Type"] = "application/pdf"
     response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
@@ -399,35 +402,3 @@ def put_medical_profile(pet_id):
     app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"medical_profile": profile}})
     app.logger.info(f"Medical profile updated: pet_id={pet_id}, user={username}")
     return jsonify({"profile": profile})
-
-
-@medical_card_bp.route("/api/pets/<pet_id>/anamnesis/pdf", methods=["GET"])
-@login_required
-@api.validate(
-    query=MedicalCardQuery,
-    resp=Response(HTTP_200=None, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
-    tags=["pets"],
-)
-def get_anamnesis_pdf(pet_id):
-    """The pet's life history as a PDF: the medical card without its limits, in the order a history is read."""
-    from web.anamnesis import build_anamnesis
-    from web.anamnesis_pdf import render_anamnesis_pdf
-
-    username, _ = get_current_user()
-    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
-    if access_error:
-        return access_error[0], access_error[1]
-    today = _today(request.context.query.tz)  # type: ignore[attr-defined]
-    try:
-        content = render_anamnesis_pdf(build_anamnesis(pet, username, today))
-    except Exception as e:
-        app.logger.error(f"Anamnesis PDF failed: pet_id={pet_id}, error={e}", exc_info=True)
-        return error_response("internal_error")
-    name = "".join(c for c in pet.get("name", "") if c.isalnum() or c in " -_").strip().replace(" ", "_") or "pet"
-    filename = f"анамнез_{name}_{today.strftime('%Y%m%d')}.pdf"
-    response = make_response(content)
-    response.headers["Content-Type"] = "application/pdf"
-    response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
-    response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
-    response.headers["Cache-Control"] = "private, no-store"
-    return response

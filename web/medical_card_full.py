@@ -1,11 +1,11 @@
-"""The life history (анамнез жизни): everything the medical card knows about a
-pet, without the card's «last ten» limits, and in the order a vet reads a history.
+"""The medical card without its limits: the data of the PDF.
 
-The card is a summary for an appointment; this is the whole record: every
-vaccination, treatment, visit and procedure from the pet's birth on, every
-medication course, the full weight curve, how much the diary holds of each
-kind of event, and the documents. It is a PDF and is built on request from the
-same records; nothing is stored.
+The card on the screen shows the latest ten of each kind, the latest ten past
+courses, twelve weights and five results, and the page stays short. The PDF is
+the whole record: every vaccination, treatment, visit and procedure from the
+pet's birth on, every medication course, the full weight curve, how much the
+diary holds of each kind of event, and all the documents. It is built on
+request from the same records; nothing is stored.
 """
 
 from datetime import date, datetime
@@ -65,7 +65,7 @@ def _event_summary(pet_id: str) -> list[dict]:
     return summary
 
 
-def build_anamnesis(pet: dict, username: str, today: date) -> dict:
+def build_full_card(pet: dict, username: str, today: date) -> dict:
     """The card's data with its limits lifted, plus what only a full history has."""
     pet_id = str(pet["_id"])
     card = build_medical_card(pet, username, today)

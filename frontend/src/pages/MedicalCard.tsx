@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ScrollText, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
@@ -290,7 +290,7 @@ export function MedicalCard() {
   const { pets } = usePet();
   const hidden = useHiddenRecords();
   const pet = pets.find((p) => p._id === id);
-  const [saving, setSaving] = useState<'card' | 'anamnesis' | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -302,16 +302,15 @@ export function MedicalCard() {
   });
   const card: Card | undefined = query.data;
 
-  const download = async (which: 'card' | 'anamnesis') => {
+  const downloadPdf = async () => {
     if (!id || !card || saving) return;
-    setSaving(which);
+    setSaving(true);
     try {
-      if (which === 'card') await medicalCardService.downloadPdf(id, card.pet.name);
-      else await medicalCardService.downloadAnamnesis(id, card.pet.name);
+      await medicalCardService.downloadPdf(id, card.pet.name);
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось сформировать PDF'));
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   };
 
@@ -365,19 +364,13 @@ export function MedicalCard() {
           </div>
 
           <div className="medcard__actions">
-            <Button block color="primary" size="large" loading={saving === 'card'} disabled={!!saving} onClick={() => download('card')}>
+            <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Download size={18} strokeWidth={2.2} aria-hidden />
                 Скачать PDF для врача
               </span>
             </Button>
-            <Button block fill="outline" color="primary" size="large" loading={saving === 'anamnesis'} disabled={!!saving} onClick={() => download('anamnesis')}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <ScrollText size={18} strokeWidth={2.2} aria-hidden />
-                Полный анамнез жизни (PDF)
-              </span>
-            </Button>
-            <p className="medcard__hint">Выписка на один приём или вся история без сокращений: хронология, все курсы, вес и записи из дневника.</p>
+            <p className="medcard__hint">На первой странице то, что нужно на приёме, дальше вся история без сокращений.</p>
           </div>
 
           <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />
@@ -422,7 +415,7 @@ export function MedicalCard() {
                 ))}
               </ul>
               {card.past_courses_total > card.past_courses.length && (
-                <p className="medcard__more">Показаны последние {card.past_courses.length} из {card.past_courses_total}. Все курсы есть в полном анамнезе.</p>
+                <p className="medcard__more">Показаны последние {card.past_courses.length} из {card.past_courses_total}. Все курсы есть в PDF.</p>
               )}
             </Section>
           )}
