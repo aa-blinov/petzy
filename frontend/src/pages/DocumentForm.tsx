@@ -4,7 +4,7 @@ import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { parseRecordDate } from '../utils/relativeTime';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -56,6 +56,11 @@ function scanErrorMessage(err: unknown): string {
 
 export function DocumentForm() {
   const { id } = useParams<{ id: string }>();
+  // A link can open the form already filed under a category (the medical
+  // card's «Добавить» for vaccinations).
+  const [searchParams] = useSearchParams();
+  const presetParam = searchParams.get('category') ?? '';
+  const presetCategory = presetParam in DOCUMENT_CATEGORY_LABELS ? presetParam : '';
   const isEditing = !!id;
   const navigate = useNavigate();
   const { selectedPetId } = usePet();
@@ -87,7 +92,7 @@ export function DocumentForm() {
     mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(documentSchema),
-    defaultValues: { category: '', title: '', note: '', expires_at: '' },
+    defaultValues: { category: presetCategory, title: '', note: '', expires_at: '' },
   });
   // Typed text or a chosen file is unsaved until «Добавить» / «Сохранить».
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || file !== null);

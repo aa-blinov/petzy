@@ -10,7 +10,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createElement } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Scale } from 'lucide-react';
+import { FileHeart, Plus, Scale } from 'lucide-react';
 import { Skeleton } from 'antd-mobile';
 
 import { type Pet } from '../services/pets.service';
@@ -243,7 +243,10 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             </button>
           )}
 
-          {/* Weight chip — the always-relevant health metric */}
+          {/* Weight chip (the always-relevant health metric) and the way into
+              the medical card. A button with a label, not a hidden tap on
+              the card: it is looked for in a hurry, at the vet's. */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
           {lastWeightRecord && (
             <span
               className="chip"
@@ -263,6 +266,26 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               <CountUp to={lastWeightRecord.fields?.weight as number} duration={800} decimals={1} /> кг
             </span>
           )}
+            <button
+              type="button"
+              className="chip touch-target"
+              onClick={() => navigate(`/pets/${pet._id}/medical-card`)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "12px",
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              <FileHeart size={13} strokeWidth={2.2} style={{ display: "block" }} aria-hidden />
+              Медкарта
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1458,3 +1458,79 @@ class TimelineItem(BaseModel):
 
 class TimelineResponse(PaginatedResponse):
     items: List[dict]  # Use dict to allow flexibility of various record types
+
+
+# ============================================================================
+# Medical card
+# ============================================================================
+
+
+class MedicalCardQuery(BaseModel):
+    """Query of the medical card: the user's zone, for «today»."""
+
+    tz: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="IANA-имя часового пояса пользователя: по нему считается «сегодня» (сроки прививок, дата формирования)",
+    )
+
+
+class MedicalCardPet(BaseModel):
+    name: str
+    species: Optional[str] = Field(None, description="Вид словами: «Собака», «Кот»")
+    breed: Optional[str] = None
+    birth_date: Optional[str] = None
+    age_text: Optional[str] = Field(None, description="Возраст словами: «5 лет», «8 месяцев»")
+    gender: Optional[str] = Field(None, description="Пол словами: «Мальчик», «Девочка»")
+    neutered_text: Optional[str] = Field(None, description="«кастрирован», «не стерилизована»; нет, если не указано")
+    health_notes: Optional[str] = Field(None, description="Особенности здоровья и аллергии, текстом")
+
+
+class MedicalCardWeightPoint(BaseModel):
+    date: str
+    value: float
+
+
+class MedicalCardWeight(BaseModel):
+    latest: MedicalCardWeightPoint
+    series: List[MedicalCardWeightPoint] = Field(description="Последние замеры, от старых к новым")
+
+
+class MedicalCardMedication(BaseModel):
+    id: str
+    name: str
+    type: Optional[str] = None
+    strength: Optional[str] = None
+    dose_text: Optional[str] = Field(None, description="Разовая доза: «1 таб», «0,5 мл»")
+    schedule_text: str = Field(description="«Ежедневно в 08:00, 20:00» или «По пн, ср в 10:00»")
+    comment: Optional[str] = None
+
+
+class MedicalCardVaccination(BaseModel):
+    id: str
+    title: str
+    expires_at: Optional[str] = None
+    status: str = Field(description="none (срок не указан), valid, soon (скоро истекает), expired")
+    days_left: Optional[int] = Field(None, description="Дней до окончания; отрицательное, если истёк")
+    note: Optional[str] = None
+
+
+class MedicalCardDocument(BaseModel):
+    id: str
+    title: str
+    category: str
+    added: str = Field(description="Дата добавления, YYYY-MM-DD")
+
+
+class MedicalCardData(BaseModel):
+    pet: MedicalCardPet
+    weight: Optional[MedicalCardWeight] = None
+    medications: List[MedicalCardMedication]
+    vaccinations: List[MedicalCardVaccination]
+    documents: List[MedicalCardDocument]
+    generated_at: str = Field(description="Дата формирования, YYYY-MM-DD, по часовому поясу пользователя")
+    can_edit: bool = Field(description="Владелец ли текущий пользователь: править профиль питомца может только он")
+
+
+class MedicalCardResponse(BaseModel):
+    card: MedicalCardData
