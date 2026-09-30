@@ -8,9 +8,10 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileHeart, Plus, Scale } from 'lucide-react';
+import { PhotoViewer } from './PhotoViewer';
 import { Skeleton } from 'antd-mobile';
 
 import { type Pet } from '../services/pets.service';
@@ -119,8 +120,10 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
   const { username } = useAuth();
   const navigate = useNavigate();
-  // The pet itself (its photo and name) opens the medical card: everything about the animal in one place.
+  // The icon chip opens the medical card; the photo opens at full size (a pet with no
+  // photo has a picture of its species there, nothing to enlarge, so that opens the card).
   const openMedicalCard = () => navigate(`/pets/${pet._id}/medical-card`);
+  const [photoOpen, setPhotoOpen] = useState(false);
   // Nothing known yet: the owner (only they can edit the pet) is asked to
   // fill it in; someone it's shared with sees at least what animal it is.
   const canFillIn = !meta && (pet.current_user_is_owner ?? pet.owner === username);
@@ -153,8 +156,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             even if the source is rectangular. */}
         <button
           type="button"
-          onClick={openMedicalCard}
-          aria-label={`Медкарта: ${pet.name}`}
+          onClick={pet.photo_url ? () => setPhotoOpen(true) : openMedicalCard}
+          aria-label={pet.photo_url ? `Открыть фото: ${pet.name}` : `Медкарта: ${pet.name}`}
           className="tap-feedback"
           style={{
             flexShrink: 0,
@@ -193,19 +196,9 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         {/* Right column — name, age/gender/breed summary, weight chip.
             minWidth: 0 lets flex children ellipsis correctly. */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
-          <button
-            type="button"
-            onClick={openMedicalCard}
-            className="display-headline tap-feedback"
+          <div
+            className="display-headline"
             style={{
-              alignSelf: "stretch",
-              minWidth: 0,
-              padding: 0,
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              textAlign: "left",
-              fontFamily: "inherit",
               fontSize: "var(--text-xl)",
               fontWeight: 700,
               color: "var(--app-text-primary)",
@@ -216,7 +209,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             }}
           >
             {pet.name}
-          </button>
+          </div>
 
           {/* Meta line — only render the parts we have. Wraps instead of
               truncating: age + breed + gender together routinely overrun
@@ -262,8 +255,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           )}
 
           {/* Weight chip (the always-relevant health metric) and the way into
-              the medical card. A button with a label, not a hidden tap on
-              the card: it is looked for in a hurry, at the vet's. */}
+              the medical card: an icon chip, named for screen readers. */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
           {lastWeightRecord && (
             <span
@@ -287,21 +279,21 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             <button
               type="button"
               className="chip touch-target"
-              onClick={() => navigate(`/pets/${pet._id}/medical-card`)}
+              onClick={openMedicalCard}
+              aria-label={`Медкарта: ${pet.name}`}
+              title="Медкарта"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
-                fontSize: "12px",
-                fontWeight: 600,
+                justifyContent: "center",
+                padding: "4px 9px",
                 border: "none",
                 cursor: "pointer",
                 fontFamily: "inherit",
                 borderRadius: "var(--radius-sm)",
               }}
             >
-              <FileHeart size={13} strokeWidth={2.2} style={{ display: "block" }} aria-hidden />
-              Медкарта
+              <FileHeart size={16} strokeWidth={2.2} style={{ display: "block" }} aria-hidden />
             </button>
           </div>
         </div>
@@ -333,6 +325,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
       {feedings.isLoading || weights.isLoading ? (
         <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px" }} />
       ) : null}
+
+      {pet.photo_url && <PhotoViewer image={pet.photo_url} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </div>
   );
 }
