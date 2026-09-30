@@ -1033,6 +1033,16 @@ class PetIdQuery(BaseModel):
     )
 
 
+class ExportQuery(PetIdQuery):
+    """Query of a data export: the pet, and the user's time zone."""
+
+    tz: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="IANA-имя часового пояса пользователя (Asia/Almaty): по нему считается время в имени файла",
+    )
+
+
 class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
     """Query parameters for pet_id with pagination."""
 

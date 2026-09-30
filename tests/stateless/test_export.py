@@ -7,6 +7,7 @@ hand-rolled collection per type.
 """
 
 import csv
+from urllib.parse import unquote
 import io
 import zipfile
 from datetime import datetime
@@ -62,7 +63,7 @@ class TestDataExport:
         rows = list(reader)
         assert len(rows) == 2  # header + 1 row
         assert "Дата и время" in rows[0]
-        assert "Пользователь" in rows[0]
+        assert "Пользователь" not in rows[0]  # who entered a record means nothing to a doctor
         assert expected_header in rows[0]
 
     @pytest.mark.parametrize(
@@ -91,7 +92,7 @@ class TestDataExport:
         assert response.status_code == 200
         assert response.content_type == content_type
         content = response.data.decode("utf-8")
-        assert "Пользователь" in content
+        assert "Пользователь" not in content
         assert "Дефекация" in content or format_type == "tsv"  # tsv has no title line
 
     def test_export_medications_csv(self, client, mock_db, regular_user_token, test_pet):
@@ -269,16 +270,17 @@ class TestDataExport:
         content = response.data.decode("utf-8-sig")
         assert "-" in content
 
-    def test_export_handles_missing_username(self, client, mock_db, regular_user_token, test_pet):
-        """Test export handles records without username (old records)."""
+    def test_export_never_carries_usernames(self, client, mock_db, regular_user_token, test_pet):
+        """Who entered a record is not in the file, with or without a username on it."""
+        _insert_event(mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30), username="testuser")
         mock_db["events"].insert_one(
             {
                 "pet_id": str(test_pet["_id"]),
                 "type": "asthma",
-                "date_time": datetime(2024, 1, 15, 14, 30),
+                "date_time": datetime(2024, 1, 16, 9, 0),
                 "fields": {"duration": "5 minutes", "reason": "Stress"},
                 "comment": "Test",
-                # No username field
+                # No username field (an old record)
             }
         )
 
@@ -289,7 +291,55 @@ class TestDataExport:
 
         assert response.status_code == 200
         content = response.data.decode("utf-8-sig")
-        assert "-" in content
+        assert "testuser" not in content
+        assert len(list(csv.reader(io.StringIO(content)))) == 3
+
+    def test_empty_comment_is_a_plain_dash_not_a_quoted_one(self, client, mock_db, regular_user_token, test_pet):
+        """A blank comment shows as «-»; the formula guard must not turn it into «'-»."""
+        _insert_event(mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30), comment="")
+
+        response = client.get(
+            f"/api/export/asthma/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        rows = list(csv.reader(io.StringIO(response.data.decode("utf-8-sig"))))
+        assert rows[1][-1] == "-"
+
+    def test_formula_in_a_comment_is_still_defused(self, client, mock_db, regular_user_token, test_pet):
+        _insert_event(mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30), comment="=1+1")
+
+        response = client.get(
+            f"/api/export/asthma/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        rows = list(csv.reader(io.StringIO(response.data.decode("utf-8-sig"))))
+        assert rows[1][-1] == "'=1+1"
+
+    def test_file_name_stamp_reads_the_users_clock(self, client, mock_db, regular_user_token, test_pet):
+        """The stamp in the file name follows ?tz=, not the server's UTC; an unknown zone falls back to UTC."""
+        from datetime import timezone
+        from zoneinfo import ZoneInfo
+
+        _insert_event(mock_db, str(test_pet["_id"]), "asthma", datetime(2024, 1, 15, 14, 30))
+
+        def stamp(query):
+            response = client.get(
+                f"/api/export/asthma/csv?pet_id={test_pet['_id']}{query}",
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+            assert response.status_code == 200
+            name = unquote(response.headers["Content-Disposition"].split("''")[1])
+            return datetime.strptime(name.rsplit(".", 1)[0].split("_", 1)[1][-13:], "%Y%m%d_%H%M")
+
+        before = datetime.now(ZoneInfo("Pacific/Kiritimati")).replace(tzinfo=None)  # UTC+14
+        kiritimati = stamp("&tz=Pacific/Kiritimati")
+        after = datetime.now(ZoneInfo("Pacific/Kiritimati")).replace(tzinfo=None)
+        assert before.replace(second=0, microsecond=0) <= kiritimati <= after
+        utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        for query in ("", "&tz=Not/AZone"):
+            assert abs((stamp(query) - utc).total_seconds()) < 180
 
     def test_export_humanizes_select_values(self, client, mock_db, regular_user_token, test_pet):
         """A select field's stored value (e.g. inhalation='true') is shown by

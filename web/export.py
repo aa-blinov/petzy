@@ -23,15 +23,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Optional
 from urllib.parse import quote
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from flask import Blueprint, g, make_response
+from flask import Blueprint, g, make_response, request
 from flask_pydantic_spec import Response
 
 import web.app as app  # access db, logger
 from web.app import api
 from web.decorators import require_pet_access
 from web.errors import error_response
-from web.schemas import ErrorResponse, PetIdQuery
+from web.schemas import ErrorResponse, ExportQuery
 
 
 export_bp = Blueprint("export", __name__)
@@ -87,7 +88,6 @@ MEDICATIONS_EXPORT_SPEC = ExportSpec(
     title="Приём лекарств",
     fields=[
         ("date_time", "Дата и время"),
-        ("username", "Пользователь"),
         ("medication_name", "Лекарство"),
         ("dose_taken", "Доза"),
         ("comment", "Комментарий"),
@@ -118,7 +118,7 @@ def _humanize_select_values(event_fields: dict, field_defs: list) -> dict:
 def _build_event_export_spec(event_type: dict) -> ExportSpec:
     """Build an ``ExportSpec`` for one event-type-registry entry."""
     field_defs = event_type.get("fields", [])
-    columns: list[FieldSpec] = [("date_time", "Дата и время"), ("username", "Пользователь")]
+    columns: list[FieldSpec] = [("date_time", "Дата и время")]
     columns += [(f["name"], f["label"]) for f in field_defs]
     columns += [("comment", "Комментарий")]
 
@@ -149,10 +149,17 @@ def _build_export_specs() -> dict[str, ExportSpec]:
 # ---------------------------------------------------------------------------
 
 
+# «-» stands for an empty cell and a signed number is a value: neither is a
+# formula, and an apostrophe in front of them would show up in the sheet.
+_PLAIN_NUMBER = re.compile(r"^[+-]?\d+([.,]\d+)?$")
+
+
 def _cell(value) -> str:
     """A spreadsheet cell that can't be a formula: Excel runs a comment like
     ``=HYPERLINK(...)`` from a co-owner as one when the file is opened."""
     text = str(value or "")
+    if text == "-" or _PLAIN_NUMBER.match(text):
+        return text
     return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
 
 
@@ -232,6 +239,21 @@ SERIALIZERS = {
 ALL_TYPES = "all"
 
 
+def _user_now(tz_name: Optional[str]) -> datetime:
+    """The current time where the user is, for the file name's stamp.
+
+    The times inside a file are the wall-clock ones the user entered; the
+    stamp must read the same clock, not the server's UTC. A missing or
+    unknown zone name falls back to UTC.
+    """
+    if tz_name:
+        try:
+            return datetime.now(ZoneInfo(tz_name))
+        except (ZoneInfoNotFoundError, ValueError):
+            pass
+    return datetime.now(timezone.utc)
+
+
 def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
     """Serialise one export type.
 
@@ -254,8 +276,6 @@ def _render_export(spec: ExportSpec, pet_id, format_type, serializer):
     for r in records:
         dt = r.get("date_time")
         r["date_time"] = dt.strftime("%d.%m.%Y %H:%M") if isinstance(dt, datetime) else str(dt or "")
-        if not r.get("username"):
-            r["username"] = "-"
         r["comment"] = _replace_skip_blank(r.get("comment", ""))
         r["food"] = _replace_skip_blank(r.get("food", ""))
 
@@ -296,7 +316,7 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 
 @export_bp.route("/api/export/<export_type>/<format_type>", methods=["GET"])
 @api.validate(
-    query=PetIdQuery,
+    query=ExportQuery,
     resp=Response(
         HTTP_200=None,
         HTTP_422=ErrorResponse,
@@ -335,7 +355,8 @@ def export_data(export_type, format_type):
                 return error_response("no_data_for_export")
             title, included = spec.title, [spec.title]
 
-        filename_base = f"{title.replace(' ', '_').lower()}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
+        stamp = _user_now(request.context.query.tz).strftime("%Y%m%d_%H%M")  # type: ignore[attr-defined]
+        filename_base = f"{title.replace(' ', '_').lower()}_{stamp}"
         filename = f"{filename_base}.{suffix}"
         encoded_filename = quote(filename)
 
