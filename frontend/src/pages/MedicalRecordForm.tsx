@@ -31,6 +31,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { addInterval, daysBetween, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
+import './MedicalRecordForm.css';
 
 const KINDS: MedicalKind[] = ['vaccination', 'parasite', 'visit', 'procedure'];
 const isKind = (v: string | null): v is MedicalKind => !!v && (KINDS as string[]).includes(v);
