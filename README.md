@@ -1,193 +1,212 @@
 # Petzy
 
-**Petzy** is a pet health diary: a Progressive Web App (installable on a phone) with a Flask + MongoDB API behind it. Feeding, weight, litter, eye drops and any event type a household adds, medication courses with doses, stock and reminders, documents and scans, shared between the people who look after the pet.
+**Petzy** это дневник здоровья питомца: Progressive Web App (ставится на телефон), за ним Flask + MongoDB. Кормление, вес, лоток, капли для глаз и любой тип события, который добавит семья, курсы лекарств с приёмами, остатком и напоминаниями, документы и сканы, всё это общее для того, кто ухаживает за питомцем.
 
-- Production: https://petzy.duckdns.org
-- API reference: https://petzy.duckdns.org/api/docs
+- Работающий сервис: https://petzy.duckdns.org
+- Справочник API: https://petzy.duckdns.org/api/docs
 
-## Features
+## Возможности
 
-- **Records.** Built-in event types (feeding, weight, defecation, litter, eye drops, tooth brushing, ear cleaning, asthma) and custom ones with their own fields, visible to the household that made them. A feed, a history with filters and trend charts, unusual-value alerts, export to CSV, TSV, HTML, Markdown or a ZIP of everything.
-- **Medications.** Courses with a schedule, today's next dose on the feed («Принять», «Уже дали в 08:00», «Пропустить»), intake times that can be corrected, stock that counts down and says when to buy more, undo for a dose marked by mistake.
-- **Documents.** Photos and PDFs up to 10 MB, scans and archives up to 500 MB uploaded straight to object storage, expiry reminders. A 2 GB quota per pet owner.
-- **Pets and sharing.** 12 species (and «другой питомец») with their own tiles and fields, photos, sharing by invitation (the other person accepts, and can leave later).
-- **Accounts.** Open sign-up (can be closed), password recovery by a one-time link to a confirmed email, email and password in Settings, an admin panel for disabling accounts. Users delete their own account in Settings: a pet shared with someone passes to them with its history and files, the rest is deleted.
-- **Personal data (152-ФЗ).** A privacy policy (`/privacy`) and a separate consent text (`/consent`), consent recorded at sign-up with the policy version, and asked again from everyone when the version changes (`web/legal.py`).
-- **Notifications.** Web Push for doses, expiring documents and unusual values, to everyone with access to the pet.
-- **App.** Installable PWA that updates itself, dark theme, per-account form defaults, reorderable «+» tiles, in-app help (Настройки → «Справка»).
+- **Записи.** Встроенные типы событий (кормление, вес, дефекация, смена лотка, закапывание глаз, чистка зубов, чистка ушей, приступ астмы) и свои с набором полей, видны семье, которая их создала. Лента, история с фильтрами и графиками трендов, уведомления о необычных значениях, экспорт в CSV, TSV, HTML, Markdown или ZIP со всем сразу. Запись, убранная свайпом, исчезает сразу и остаётся отменяемой шесть секунд.
+- **Лекарства.** Курсы с расписанием, ближайший приём сегодня на ленте («Принять», «Уже дали в 08:00», «Пропустить»), время приёма можно поправить, остаток считается вниз и говорит, когда докупить, отмена приёма, отмеченного по ошибке.
+- **Документы.** Фото и PDF до 10 МБ, сканы и архивы до 500 МБ уходят сразу в объектное хранилище, с напоминанием об окончании срока. Квота 2 ГБ на владельца питомца.
+- **Питомцы и общий доступ.** 13 видов (включая «Другой питомец») со своими плитками и полями, фото, шаринг по приглашению (другой человек принимает и позже может выйти).
+- **Аккаунты.** Открытая регистрация (можно закрыть), восстановление пароля разовой ссылкой на подтверждённую почту, почта и пароль в настройках, админ-панель для блокировки аккаунтов. Пользователь удаляет свой аккаунт в настройках: питомец, с кем-то расшаренный, переходит ему с историей и файлами, остальное удаляется.
+- **Персональные данные (152-ФЗ и Закон РК № 94-V).** Политика конфиденциальности (`/privacy`) и отдельный текст согласия (`/consent`), согласие фиксируется при регистрации с версией политики и запрашивается у всех заново, когда версия меняется (`web/legal.py`).
+- **Уведомления.** Web Push на приёмы, документы с истекающим сроком и необычные значения, всем, у кого есть доступ к питомцу.
+- **Приложение.** Устанавливаемое PWA, которое обновляет себя, тёмная тема, значения форм по аккаунту, переставляемые плитки «+», справка внутри (Настройки → «Справка»), боковая панель на широких экранах и защита от закрытия формы с несохранёнными данными.
 
-## Stack
+## Стек
 
-- **Backend:** Python 3.12, Flask, flask-pydantic-spec (validation and the OpenAPI spec), pymongo, gunicorn, Flask-Limiter, boto3 (Backblaze B2, S3 API), pywebpush, Pillow.
-- **Frontend:** React 18, TypeScript, Vite, antd-mobile, TanStack Query, React Router, React Hook Form + Zod, vite-plugin-pwa (Workbox, `injectManifest`).
-- **Infrastructure:** Docker Compose, nginx, MongoDB, GitHub Actions (CI, deploy on push to `master`).
+- **Бэкенд:** Python 3.12, Flask, flask-pydantic-spec (валидация и OpenAPI-спецификация), pymongo, gunicorn, Flask-Limiter, boto3 (Backblaze B2, S3 API), pywebpush, Pillow, Sentry.
+- **Фронтенд:** React 18, TypeScript, Vite, antd-mobile, TanStack Query, React Router, React Hook Form + Zod, vite-plugin-pwa (Workbox, `injectManifest`).
+- **Инфраструктура:** Docker Compose, nginx, MongoDB, GitHub Actions (CI, деплой по пушу в `master`).
+
+## Скриншоты
+
+| | | |
+|---|---|---|
+| ![Вход](screenshots/00_login.png) | ![Лента](screenshots/dashboard.png) | ![Мои питомцы](screenshots/pets.png) |
+| **Вход** | **Лента** | **Мои питомцы** |
+| ![История](screenshots/history.png) | ![Лекарства](screenshots/medications.png) | ![Настройки](screenshots/settings.png) |
+| **История** | **Лекарства** | **Настройки** |
+| ![Что записать?](screenshots/quick_add_sheet.png) | ![Записать: Кормление](screenshots/health_form.png) | ![Добавить питомца](screenshots/pet_form.png) |
+| **Что записать?** | **Записать: Кормление** | **Добавить питомца** |
+| ![Порядок плиток](screenshots/tiles_settings.png) | ![Значения по умолчанию](screenshots/form_defaults.png) | ![Админ-панель](screenshots/admin_panel.png) |
+| **Порядок плиток** | **Значения по умолчанию** | **Админ-панель** |
 
 ## API
 
-The reference is published at **https://petzy.duckdns.org/api/docs** (ReDoc) with the spec at **/api/openapi.json** (OpenAPI 3.1). It covers signing in from a native app (tokens in the body for requests without an `Origin` header, `Authorization: Bearer`), the error format, date and time conventions, uploads and limits. The spec is generated from the routes' pydantic schemas and completed in `web/openapi_doc.py`; responses are validated against those schemas at runtime.
+Справочник опубликован по **https://petzy.duckdns.org/api/docs** (ReDoc), спецификация по **/api/openapi.json** (OpenAPI 3.1). В ней описан вход из нативного приложения (токены в теле запроса без заголовка `Origin`, `Authorization: Bearer`), формат ошибок, соглашения про дату и время, загрузки и лимиты. Спецификация собирается из pydantic-схем роутов и дописывается в `web/openapi_doc.py`; ответы на runtime сверяются с этими схемами.
 
-## Running locally
+## Запуск локально
 
-The quickest way needs no MongoDB or Docker: `scripts/dev_local.py` runs the API against an in-memory database (mongomock), seeds demo pets and two months of history, and keeps outgoing mail in memory.
+Самый быстрый способ обходится без MongoDB и Docker: `scripts/dev_local.py` поднимает API на базе в памяти (mongomock), засевает демо-питомцев и два месяца истории, а исходящую почту держит в памяти.
 
 ```sh
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python scripts/dev_local.py        # API on http://localhost:5001
+.venv/bin/python scripts/dev_local.py        # API на http://localhost:5001
 
-cd frontend && npm install && npm run dev    # app on http://localhost:5173
+cd frontend && npm install && npm run dev    # приложение на http://localhost:5173
 ```
 
-Sign in as `admin` / `test1234` (local runner only). The Vite dev server proxies `/api` to port 5001.
+Заходите под `admin` / `test1234` (только для локального раннера). Vite dev server проксирует `/api` на порт 5001.
 
-- Files go to the same bucket as production under `dev/` when `S3_*` keys are in `.env`, or to an in-memory S3 with `DEV_STORAGE=memory`.
-- Letters (confirmation, password reset) are listed at http://localhost:5001/api/dev/outbox. The endpoint answers 404 anywhere else.
-- `/apidoc/redoc` and `/api/docs` both show the API reference.
+- Файлы уходят в тот же бакет, что и в проде, под `dev/`, если в `.env` прописаны ключи `S3_*`, или в S3 в памяти при `DEV_STORAGE=memory`.
+- Письма (подтверждение, сброс пароля) лежат на http://localhost:5001/api/dev/outbox. На любом другом адресе эндпоинт отвечает 404.
+- `/apidoc/redoc` и `/api/docs` показывают справочник API.
 
-### Tests and checks
+### Тесты и проверки
 
 ```sh
-.venv/bin/python -m pytest tests          # backend, mongomock and moto, no network
+.venv/bin/python -m pytest tests          # бэкенд, mongomock и moto, без сети
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 cd frontend && npm run lint && npm run build
 ```
 
-Git hooks run these for you: enable them once with `git config core.hooksPath .githooks` (see `CLAUDE.md`).
+Git-хуки запускают всё это за вас: включите один раз `git config core.hooksPath .githooks` (см. `CLAUDE.md`).
 
-## Running with Docker
+## Запуск в Docker
 
 ```sh
-cp .env.example .env    # then fill it in, see below
+cp .env.example .env    # и заполните его, см. ниже
 docker compose up -d --build
 ```
 
-| Service | What it does |
+| Сервис | Что делает |
 |---|---|
-| `db` | MongoDB, on `127.0.0.1:27017` only |
-| `web` | the API (gunicorn), on `127.0.0.1:5001` |
-| `frontend` | builds the app and copies it into a shared volume |
-| `nginx` | serves the app and forwards `/api/` to `web`, on `127.0.0.1:3000` |
-| `reminders` | sends push reminders for doses and expiring documents |
-| `backup` | daily database backup to the bucket |
+| `db` | MongoDB, только на `127.0.0.1:27017` |
+| `web` | API (gunicorn), на `127.0.0.1:5001` |
+| `frontend` | собирает приложение и кладёт в общий volume |
+| `nginx` | отдаёт приложение и проксирует `/api/` в `web`, на `127.0.0.1:3000` |
+| `reminders` | шлёт push-напоминания про приёмы и документы с истекающим сроком |
+| `backup` | ежедневный бэкап базы в бакет |
 
-### The whole stack locally, with demo data
+### Весь стек локально, с демо-данными
 
-To click through the production setup on your machine (same nginx, headers, build, gunicorn, reminders):
+Чтобы прокликать продовый сетап у себя на машине (тот же nginx, заголовки, сборка, gunicorn, напоминания):
 
 ```sh
 docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml up -d --build
-.venv/bin/python scripts/seed_demo.py    # accounts, pets, two months of records
+.venv/bin/python scripts/seed_demo.py    # аккаунты, питомцы, два месяца записей
 ```
 
-Open http://localhost:3000 and sign in as `demo` (the owner) or `family` (invited to one pet); the password is `DEMO_PASSWORD` in `scripts/seed_demo.py`. The seeder fills two pets with photos, two months of records, a custom event type, medications with stock and doses, documents (one expiring soon), a pending and an accepted invitation, and a confirmed email.
+Открывайте http://localhost:3000 и заходите как `demo` (владелец) или `family` (приглашён на одного питомца); пароль лежит в `DEMO_PASSWORD` в `scripts/seed_demo.py`. Сидер наполняет двух питомцев с фото, двумя месяцами записей, одним своим типом события, лекарствами с остатком и приёмами, документами (один скоро истекает), одним ожидающим и одним принятым приглашением и подтверждённой почтой.
 
-`docker-compose.local.yml` keeps this apart from production: files go to a local S3 server (Versity Gateway) in its own volume, there is no backup service (it would rotate the real bucket's backups), and letters stay in memory at http://localhost:3000/api/dev/outbox. Large scans can't be uploaded here. Stop with `docker compose -p petzy-local down`; add `-v` to wipe the data before seeding again.
+`docker-compose.local.yml` отделяет это от продакшена: файлы идут в локальный S3-сервер (Versity Gateway) в собственном volume, сервиса бэкапа нет (он бы крутил бэкапы настоящего бакета), письма лежат в памяти на http://localhost:3000/api/dev/outbox. Большие сканы сюда не загрузить. Остановить: `docker compose -p petzy-local down`, с `-v` очистит данные перед повторным сидом.
 
-In production a host nginx terminates TLS and forwards everything to `127.0.0.1:3000`; security headers, the real client address and the Secure cookie flag are set by `nginx/nginx.conf`.
+В проде на хосте стоит nginx, который terminated TLS и проксирует всё на `127.0.0.1:3000`; security-заголовки, настоящий адрес клиента и Secure-флаг cookie ставит `nginx/nginx.conf`.
 
-### Environment
+### Переменные окружения
 
-`.env.example` lists every variable with comments. The ones that matter:
+`.env.example` перечисляет каждую с комментариями. Главные:
 
-| Variable | |
+| Переменная | |
 |---|---|
-| `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` | database; the root account, used by backups |
-| `MONGO_APP_USER`, `MONGO_APP_PASS` | the app's own account (read and write on its database and `limits` only); the deploy creates it and its password on the server. Without it the app signs in as root |
-| `FLASK_SECRET_KEY`, `JWT_SECRET_KEY` | a long random value; the app refuses to start with an example one |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` | the admin account (bcrypt hash) |
-| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` | object storage for every file and the backups |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | mail for password recovery; without it the app says recovery goes through the admin |
+| `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` | база; root-аккаунт, его используют бэкапы |
+| `MONGO_APP_USER`, `MONGO_APP_PASS` | собственный аккаунт приложения (чтение и запись только в свою базу и `limits`); деплой создаёт его и пароль на сервере. Без него приложение логинится как root |
+| `FLASK_SECRET_KEY`, `JWT_SECRET_KEY` | длинное случайное значение; приложение не стартует с примерным |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` | аккаунт админа (bcrypt-хэш) |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` | объектное хранилище для всех файлов и бэкапов |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | почта для восстановления пароля; без неё приложение говорит, что восстановление через админа |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CLAIMS_EMAIL` | Web Push (`python -m scripts.generate_vapid_keys`) |
-| `REGISTRATION_ENABLED` | `false` closes sign-up |
-| `STORAGE_QUOTA_MB` | documents per pet owner, default 2048 |
-| `SENTRY_DSN` | error reports, traces and profiles to Sentry; off without it |
-| `PRIVACY_OPERATOR`, `PRIVACY_CONTACT_EMAIL`, `PRIVACY_SERVER_LOCATION` | who processes the data, where to write, the database server's country: shown in the privacy policy |
+| `REGISTRATION_ENABLED` | `false` закрывает регистрацию |
+| `STORAGE_QUOTA_MB` | документы на владельца питомца, по умолчанию 2048 |
+| `SENTRY_DSN` | ошибки, трейсы и профили в Sentry; без него выключено |
+| `PRIVACY_OPERATOR`, `PRIVACY_CONTACT_EMAIL`, `PRIVACY_SERVER_LOCATION` | кто обрабатывает данные, куда писать, страна сервера базы: показывается в политике конфиденциальности |
 
-A bcrypt hash for the admin password:
+bcrypt-хэш для пароля админа:
 
 ```sh
 python -c "import bcrypt; print(bcrypt.hashpw(b'your_password', bcrypt.gensalt()).decode())"
 ```
 
-## Deploying
+## Деплой
 
-A push to `master` runs CI and deploys to the server (`.github/workflows/deploy.yaml`): it pulls, writes the secrets below into the server's `.env`, rebuilds and restarts the stack. One deploy runs at a time. It can also be started by hand, e.g. after changing a secret:
+Пуш в `master` запускает CI и деплой на сервер (`.github/workflows/deploy.yaml`). Документация, скриншоты и четыре сервисных workflow его не триггерят. Сам деплой: сначала освобождает диск (свежие сборки оставляли старые образы и кэш сборки, пока MongoDB не перестала писать), потом делает pull, прописывает секреты ниже в серверный `.env`, пересобирает и перезапускает стек. Деплой идёт по одному. Запустить можно и руками, например после смены секрета:
 
 ```sh
 gh workflow run "Deploy to Server"
 ```
 
-Repository secrets: `SERVER_PETZY_HOST`, `SERVER_PETZY_USER`, `SERVER_PETZY_SSH_KEY`, `S3_KEY_ID`, `S3_SECRET_KEY`, `VAPID_*`, `SMTP_*`, `SENTRY_DSN`. Set one with `gh secret set NAME` (it asks for the value). Repository variables (public): `PRIVACY_OPERATOR`, `PRIVACY_CONTACT_EMAIL`, `PRIVACY_SERVER_LOCATION`, set with `gh variable set NAME`.
+Секреты репозитория: `SERVER_PETZY_HOST`, `SERVER_PETZY_USER`, `SERVER_PETZY_SSH_KEY`, `S3_KEY_ID`, `S3_SECRET_KEY`, `VAPID_*`, `SMTP_*`, `SENTRY_DSN`. Поставить: `gh secret set NAME` (спросит значение). Переменные репозитория (публичные): `PRIVACY_OPERATOR`, `PRIVACY_CONTACT_EMAIL`, `PRIVACY_SERVER_LOCATION`, ставятся через `gh variable set NAME`.
 
-Other workflows (all run by hand):
+Остальные workflow (все запускаются руками):
 
-- **Diagnose server:** containers, disk, nginx, which settings are set (never their values), mail login, backups, optionally a restore check.
-- **Storage check:** the bucket and its keys.
-- **Inspect DB:** document counts, never the data.
-- **Migrate events:** one-off data migrations.
-- **Cleanup refresh tokens:** removes expired sessions.
+- **Diagnose server:** контейнеры, диск, nginx, какие настройки заданы (никаких их значений), почтовый логин, бэкапы, по желанию проверка восстановления.
+- **Storage check:** бакет и его ключи.
+- **Inspect DB:** количество документов, никаких данных.
+- **Migrate events:** разовые миграции данных.
+- **Cleanup refresh tokens:** удаляет истёкшие сессии.
+- **Clean server disk:** показывает, что забивает диск сервера (размеры по категориям, никаких путей) и, с `apply`, освобождает то, что сборка может воспроизвести: неиспользуемые образы, кэш сборки, старый журнал, кэш пакетов. Volume не трогаются.
 
-The repository is public, and so are the Actions logs: workflows print counts and presence, never user data or secrets.
+Репозиторий публичный, как и логи Actions: workflow печатают только количества и факт наличия, никогда пользовательские данные или секреты.
 
-## Backups
+## Бэкапы
 
-The `backup` service (`backup/Dockerfile`, `scripts/backup_to_s3.py`) backs up the database to the bucket once a day:
+Сервис `backup` (`backup/Dockerfile`, `scripts/backup_to_s3.py`) раз в день бэкапит базу в бакет:
 
-- dumps it with `mongodump` into one gzipped archive and checks it reads back (`mongorestore --dryRun`);
-- uploads it to `backups/mongo/<db>-YYYYMMDD-HHMMSS.archive.gz`, apart from users' files (`users/`) and local runs (`dev/`), and checks the stored size;
-- only then deletes all but the newest `BACKUP_KEEP` (3) backups, every version of them.
+- дампит её `mongodump` в один gz-архив и проверяет, что он читается обратно (`mongorestore --dryRun`);
+- загружает в `backups/mongo/<db>-YYYYMMDD-HHMMSS.archive.gz`, мимо пользовательских файлов (`users/`) и локальных запусков (`dev/`), и сверяет сохранённый размер;
+- и только потом удаляет всё, кроме новейших `BACKUP_KEEP` (3) бэкапов, каждую их версию.
 
-A failed attempt keeps the older backups and is retried an hour later. When the service starts and the newest backup is more than a day old, it backs up at once. Files (photos, documents, scans) are in the bucket already and are not part of the dump.
+Неудачная попытка сохраняет старые бэкапы и повторяется через час. Когда сервис стартует и новейшему бэкапу больше суток, он бэкапит сразу. Файлы (фото, документы, сканы) уже в бакете и в дамп не входят.
 
-A backup right now:
+Бэкап прямо сейчас:
 
 ```sh
 docker compose run --rm backup python3 scripts/backup_to_s3.py --once
 ```
 
-**Restoring** (overwrites the collections it restores; pick the file from the list the Diagnose workflow prints):
+**Восстановление** (перезаписывает коллекции, которые восстанавливает; файл берите из списка, который печатает workflow Diagnose):
 
 ```sh
-# 1. Download it into the current directory (or from the Backblaze web console)
+# 1. Скачать его в текущую директорию (или из веб-консоли Backblaze)
 docker compose run --rm -v "$PWD:/out" backup python3 -c "from web import storage; \
   storage._client().download_file(storage._bucket(), 'backups/mongo/<file>.archive.gz', '/out/b.archive.gz')"
-# 2. Restore it into the running database
+# 2. Восстановить в работающую базу
 docker compose cp b.archive.gz db:/tmp/b.archive.gz
 docker compose exec db mongorestore -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin \
   --archive=/tmp/b.archive.gz --gzip --drop
 ```
 
-To look at a backup without touching the live data, restore it under another name with `--nsFrom '<db>.*' --nsTo 'restored.*'` instead of `--drop`.
+Чтобы посмотреть бэкап, не трогая живые данные, восстановите его под другим именем через `--nsFrom '<db>.*' --nsTo 'restored.*'` вместо `--drop`.
 
-## Project structure
+## Структура проекта
 
 ```text
 web/                     Flask API
-  app.py                 app, blueprints, security headers, rate limits
-  auth.py                sign-in, sign-up, refresh, logout
-  account.py             email, password, recovery by email
-  security.py            tokens, sessions, access decorators
-  pets.py                pets, photos, sharing and invitations
-  events.py              records, event types, feed, stats
-  builtin_event_types.py the built-in types and their order
-  medications.py         courses, intakes, stock, upcoming doses
-  documents.py           documents, scans, quota
-  storage.py             object storage (keys, signed URLs)
+  app.py                 приложение, блюпринты, security-заголовки, rate limits
+  auth.py                вход, регистрация, refresh, logout
+  account.py             почта, пароль, восстановление по почте
+  account_deletion.py    передача питомцев удаляемого владельца тому, с кем они расшарены
+  security.py            токены, сессии, декораторы доступа
+  pets.py                питомцы, фото, шаринг и приглашения
+  events.py              записи, типы событий, лента, статистика
+  builtin_event_types.py встроенные типы и их порядок
+  medications.py         курсы, приёмы, остаток, ближайшие дозы
+  documents.py            документы, сканы, квота
+  storage.py             объектное хранилище (ключи, подписанные URL)
   push.py, push_delivery.py  Web Push
-  export.py              exports
-  users.py               users, search, form defaults
+  export.py              экспорт
+  users.py               пользователи, поиск, значения форм
   mail.py                SMTP
-  openapi_doc.py         the published API reference
-  schemas.py             pydantic request and response models
-frontend/src/            React app (pages, components, services, hooks, utils)
-  content/help.ts        the in-app help
-  sw.ts                  the service worker
-nginx/                   the app's nginx (nginx.conf, security-headers.conf)
-scripts/                 dev_local.py, reminders sender, backups, migrations, checks
-tests/                   backend tests (stateless and stateful)
-.github/workflows/       CI, deploy, maintenance
+  validation.py          русские ошибки валидации
+  trend_alerts.py        уведомления о необычных значениях
+  legal.py               политика конфиденциальности и согласие
+  observability.py       настройка Sentry
+  openapi_doc.py         опубликованный справочник API
+  schemas.py             pydantic-схемы запросов и ответов
+frontend/src/            React-приложение (страницы, компоненты, сервисы, хуки, утилиты)
+  content/help.ts        справка внутри приложения
+  sw.ts                  service worker
+nginx/                   nginx приложения (nginx.conf, nginx.conf.server, nginx.conf.external, security-headers.conf)
+scripts/                 dev_local.py, отправка напоминаний, бэкапы, миграции, проверки
+tests/                   тесты бэкенда (stateless и stateful)
+.github/workflows/       CI, деплой, обслуживание
 ```
 
-## License
+## Лицензия
 
-MIT. See the [LICENSE](https://opensource.org/license/mit) text.
+MIT. Текст: [LICENSE](https://opensource.org/license/mit).
