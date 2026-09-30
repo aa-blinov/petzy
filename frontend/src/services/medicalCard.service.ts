@@ -103,13 +103,8 @@ export const medicalCardService = {
     return response.data.profile;
   },
 
-  /** Downloads the same card as a PDF, to hand to a vet. */
+  /** Downloads the card as a PDF, to hand to a vet: page one is «now», the rest is the whole history. */
   async downloadPdf(petId: string, petName: string): Promise<void> {
     await savePdf(`/pets/${petId}/medical-card/pdf`, `${petName}.pdf`);
-  },
-
-  /** The whole life history as a PDF: the card without its limits, oldest first. */
-  async downloadAnamnesis(petId: string, petName: string): Promise<void> {
-    await savePdf(`/pets/${petId}/anamnesis/pdf`, `анамнез_${petName}.pdf`);
   },
 };

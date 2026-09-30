@@ -328,7 +328,7 @@ class TestRecordsInThePdf:
         assert response.status_code == 200
         return "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(response.data)).pages)
 
-    def test_every_kind_has_its_section_and_details(self, client, mock_db, regular_user_token, test_pet):
+    def test_every_kind_is_in_the_pdf_with_its_details(self, client, mock_db, regular_user_token, test_pet):
         _post(
             client,
             regular_user_token,
@@ -351,35 +351,22 @@ class TestRecordsInThePdf:
             recommendations="Диета",
         )
         _post(client, regular_user_token, test_pet, kind="procedure", title="Чистка зубов", note="без осложнений")
-        text = self._text(client, regular_user_token, test_pet)
+        text = " ".join(self._text(client, regular_user_token, test_pet).split())
         for needle in (
-            "Прививки",
             "Рабизин (серия B-77)",
-            "Просрочено",
-            "Обработки от паразитов",
-            "от глистов",
-            "Скоро",
-            "Визиты и диагнозы",
+            "Дронтал",
+            "От глистов",
+            "Визит к врачу",
             "Диагноз: Гастрит",
             "Рекомендации: Диета",
-            "Операции и процедуры",
+            "Операция или процедура",
             "Чистка зубов",
             "Заметка: без осложнений",
             "врач Иванова",
+            "Просрочено",
+            "Скоро",
         ):
             assert needle in text, needle
-
-    def test_visits_and_procedures_are_left_out_when_there_are_none(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
-        text = self._text(client, regular_user_token, test_pet)
-        assert "Прививки" in text and "Обработки от паразитов" in text  # always asked about
-        assert "Визиты и диагнозы" not in text and "Операции и процедуры" not in text
-
-    def test_a_long_list_says_how_many_more(self, client, mock_db, regular_user_token, test_pet):
-        for i in range(13):
-            _post(client, regular_user_token, test_pet, title=f"Вакцина {i:02d}", date=iso(-i - 1))
-        assert "Ещё 3 в приложении." in self._text(client, regular_user_token, test_pet)
 
     def test_a_replaced_record_carries_no_status(self, client, mock_db, regular_user_token, test_pet):
         _post(client, regular_user_token, test_pet, title="Рабизин", date=iso(-400), next_due=iso(-35))
