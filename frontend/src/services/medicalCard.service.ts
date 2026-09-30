@@ -16,6 +16,23 @@ export interface MedicalCardVaccination {
   note: string | null;
 }
 
+export interface MedicalCardCourse {
+  id: string;
+  name: string;
+  type: string | null;
+  strength: string | null;
+  dose_text: string | null;
+  schedule_text: string;
+  comment: string | null;
+  purpose: string | null;
+  prescribed_by: string | null;
+  status: 'active' | 'planned' | 'ended';
+  started_on: string | null;
+  ended_on: string | null;
+  given: number;
+  skipped: number;
+}
+
 export interface MedicalCard {
   pet: {
     name: string;
@@ -28,15 +45,10 @@ export interface MedicalCard {
     health_notes: string | null;
   };
   weight: { latest: MedicalCardWeightPoint; series: MedicalCardWeightPoint[] } | null;
-  medications: {
-    id: string;
-    name: string;
-    type: string | null;
-    strength: string | null;
-    dose_text: string | null;
-    schedule_text: string;
-    comment: string | null;
-  }[];
+  /** Courses going on or still to begin. */
+  medications: MedicalCardCourse[];
+  /** Finished courses, the latest first. */
+  past_courses: MedicalCardCourse[];
   vaccinations: MedicalCardVaccination[];
   documents: { id: string; title: string; category: string; added: string }[];
   generated_at: string;

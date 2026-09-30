@@ -37,6 +37,7 @@ from zoneinfo import ZoneInfo
 # unrelated reasons; this script has no such reason of its own, so it
 # has to be explicit.
 import web.app  # noqa: F401
+from web.courses import course_covers
 from web.medications import UPCOMING_LOOKAHEAD_DAYS, compute_taken_counts
 from web.push_delivery import send_push_to_subscriptions
 
@@ -143,6 +144,9 @@ def find_due_medication_reminders(
         for med in medications:
             schedule = med.get("schedule", {})
             if weekday not in schedule.get("days", []):
+                continue
+            # Not before the course begins, not after it ends.
+            if not course_covers(med, date_key):
                 continue
             sched_times = sorted(schedule.get("times", []))
             if not sched_times:

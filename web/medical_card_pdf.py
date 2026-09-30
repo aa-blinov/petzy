@@ -34,6 +34,18 @@ def _date(iso: str | None) -> str:
         return iso
 
 
+def _period(course: dict, past: bool) -> str:
+    """«С 12.05.2026 по 26.05.2026», «С 12.05.2026», «Начнётся 05.10.2026»."""
+    started, ended = _date(course.get("started_on")), _date(course.get("ended_on"))
+    if course.get("status") == "planned" and started:
+        return f"Начнётся {started}"
+    if started and ended:
+        return f"С {started} по {ended}"
+    if started:
+        return f"С {started}" if not past else f"С {started}, дата окончания не указана"
+    return f"Закончен {ended}" if ended else ""
+
+
 def _number(value: float) -> str:
     return f"{value:g}".replace(".", ",")
 
@@ -138,16 +150,36 @@ def render_medical_card_pdf(card: dict) -> bytes:
     else:
         pdf.muted("Не добавлено.")
 
+    def course_lines(c: dict, past: bool) -> None:
+        name = c["name"] + (f", {c['strength']}" if c.get("strength") else "")
+        pdf.row(name, bold_left=True)
+        dose = f"{c['dose_text']}, " if c.get("dose_text") else ""
+        pdf.muted(f"{dose}{c['schedule_text']}")
+        if c.get("purpose"):
+            pdf.muted(f"От чего: {c['purpose']}")
+        if c.get("prescribed_by"):
+            pdf.muted(f"Назначил: {c['prescribed_by']}")
+        if c.get("comment"):
+            pdf.muted(c["comment"])
+        period = _period(c, past)
+        if period:
+            pdf.muted(period)
+        if c.get("given") or c.get("skipped"):
+            skipped = f", пропущено {c['skipped']}" if c.get("skipped") else ""
+            pdf.muted(f"Дано доз: {c['given']}{skipped}")
+        pdf.ln(1)
+
     pdf.section("Лекарства сейчас")
     if card["medications"]:
-        for m in card["medications"]:
-            name = m["name"] + (f", {m['strength']}" if m.get("strength") else "")
-            dose = f"{m['dose_text']}, " if m.get("dose_text") else ""
-            pdf.row(name, bold_left=True)
-            pdf.muted(f"{dose}{m['schedule_text']}" + (f". {m['comment']}" if m.get("comment") else ""))
-            pdf.ln(1)
+        for c in card["medications"]:
+            course_lines(c, past=False)
     else:
         pdf.muted("Сейчас не принимает.")
+
+    if card.get("past_courses"):
+        pdf.section("Прошлые курсы")
+        for c in card["past_courses"]:
+            course_lines(c, past=True)
 
     pdf.section("Вес")
     weight = card.get("weight")

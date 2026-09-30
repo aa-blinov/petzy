@@ -17,6 +17,7 @@ from flask import Blueprint, jsonify, make_response, request
 from flask_pydantic_spec import Response
 
 import web.app as app  # db, logger
+from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
@@ -33,6 +34,7 @@ EXPIRY_SOON_DAYS = 14
 
 WEIGHT_POINTS = 12
 RECENT_DOCUMENTS = 5
+PAST_COURSES = 10
 # Documents a vet reads: results and conclusions. Scans are big and
 # insurance is paperwork; both stay in «Документы».
 RECENT_DOCUMENT_CATEGORIES = ("lab_result", "conclusion")
@@ -160,23 +162,63 @@ def _weight(pet_id: str) -> Optional[dict]:
     return {"latest": points[0], "series": list(reversed(points))}
 
 
-def _medications(pet_id: str) -> list[dict]:
-    result = []
-    for med in app.db.medications.find({"pet_id": pet_id, "is_active": {"$ne": False}}).sort("name", 1):
+def _intake_stats(med_ids: list[str]) -> dict[str, dict]:
+    """Per course: doses given and skipped, and the days of the first and last given dose."""
+    stats: dict[str, dict] = {}
+    if not med_ids:
+        return stats
+    for intake in app.db.medication_intakes.find({"medication_id": {"$in": med_ids}}):
+        row = stats.setdefault(intake["medication_id"], {"given": 0, "skipped": 0, "first": None, "last": None})
+        if intake.get("skipped"):
+            row["skipped"] += 1
+            continue
+        row["given"] += 1
+        day = _as_date_str(intake.get("date_time"))
+        if day:
+            row["first"] = day if row["first"] is None or day < row["first"] else row["first"]
+            row["last"] = day if row["last"] is None or day > row["last"] else row["last"]
+    return stats
+
+
+def _courses(pet_id: str, today: date) -> tuple[list[dict], list[dict]]:
+    """``(current, past)``: the courses going on or still to begin, and the finished ones.
+
+    A course made before dates existed has none stored: its start is then its
+    first given dose (or the day it was added), and, once it is switched off,
+    its end is the last given dose.
+    """
+    today_key = today.isoformat()
+    meds = list(app.db.medications.find({"pet_id": pet_id}))
+    stats = _intake_stats([str(m["_id"]) for m in meds])
+    current, past = [], []
+    for med in meds:
+        status = course_status(med, today_key)
+        stat = stats.get(str(med["_id"]), {"given": 0, "skipped": 0, "first": None, "last": None})
+        started = _as_date_str(med.get("started_on")) or stat["first"] or _as_date_str(med.get("created_at"))
+        ended = _as_date_str(med.get("ended_on")) or (stat["last"] if status == ENDED else None)
         unit = med.get("dose_unit") or ""
         dose = med.get("default_dose")
-        result.append(
-            {
-                "id": str(med["_id"]),
-                "name": med.get("name", ""),
-                "type": med.get("type") or None,
-                "strength": med.get("strength") or None,
-                "dose_text": f"{_number(dose)} {unit}".strip() if dose else None,
-                "schedule_text": schedule_text(med.get("schedule") or {}),
-                "comment": med.get("comment") or None,
-            }
-        )
-    return result
+        item = {
+            "id": str(med["_id"]),
+            "name": med.get("name", ""),
+            "type": med.get("type") or None,
+            "strength": med.get("strength") or None,
+            "dose_text": f"{_number(dose)} {unit}".strip() if dose else None,
+            "schedule_text": schedule_text(med.get("schedule") or {}),
+            "comment": med.get("comment") or None,
+            "purpose": med.get("purpose") or None,
+            "prescribed_by": med.get("prescribed_by") or None,
+            "status": status,
+            "started_on": started,
+            "ended_on": ended,
+            "given": stat["given"],
+            "skipped": stat["skipped"],
+        }
+        (past if status == ENDED else current).append(item)
+    current.sort(key=lambda c: (c["status"] != ACTIVE, c["name"].casefold()))
+    # The latest finished first; one with no known end goes last.
+    past.sort(key=lambda c: (c["ended_on"] or "", c["name"]), reverse=True)
+    return current, past[:PAST_COURSES]
 
 
 def _vaccinations(pet_id: str, today: date) -> list[dict]:
@@ -219,6 +261,7 @@ def _recent_documents(pet_id: str) -> list[dict]:
 def build_medical_card(pet: dict, username: str, today: date) -> dict:
     pet_id = str(pet["_id"])
     birth = _as_date_str(pet.get("birth_date"))
+    current_courses, past_courses = _courses(pet_id, today)
     return {
         "pet": {
             "name": pet.get("name", ""),
@@ -231,7 +274,8 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
             "health_notes": (pet.get("health_notes") or "").strip() or None,
         },
         "weight": _weight(pet_id),
-        "medications": _medications(pet_id),
+        "medications": current_courses,
+        "past_courses": past_courses,
         "vaccinations": _vaccinations(pet_id, today),
         "documents": _recent_documents(pet_id),
         "generated_at": today.isoformat(),

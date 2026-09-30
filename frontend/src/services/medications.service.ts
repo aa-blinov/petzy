@@ -31,6 +31,14 @@ export interface Medication {
     inventory_low?: boolean;
     is_active: boolean;
     comment?: string;
+    /** YYYY-MM-DD; absent for courses made before dates existed. */
+    started_on?: string | null;
+    ended_on?: string | null;
+    /** От чего или для чего назначен. */
+    purpose?: string;
+    prescribed_by?: string;
+    /** active (идёт), planned (ещё не началась), ended (закончена). */
+    course_status?: 'active' | 'planned' | 'ended';
     last_taken_at?: string;
     intakes_today?: number;
     username?: string;
@@ -54,6 +62,11 @@ export interface MedicationCreate {
     inventory_warning_days?: number;
     is_active?: boolean;
     comment?: string;
+    /** A date or text is cleared with an empty string. */
+    started_on?: string;
+    ended_on?: string;
+    purpose?: string;
+    prescribed_by?: string;
 }
 
 export const COMMON_MEDICATIONS = [

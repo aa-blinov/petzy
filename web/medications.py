@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import web.app as app
 from web.app import api
 from web.errors import error_response, MedicationNotFoundDuringDeletion
+from web.courses import course_covers, course_status
 from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
@@ -207,6 +208,7 @@ def get_medications():
                 doc["last_taken_at"] = None
 
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
+            doc["course_status"] = course_status(doc, today_start.strftime("%Y-%m-%d"))
             _add_stock_status(doc)
 
         return jsonify({"medications": meds})
@@ -272,8 +274,24 @@ def update_medication(id):
         data = request.context.body  # type: ignore[attr-defined]
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
 
+        # A date is cleared with "" (None is «not sent»); it is stored as None.
+        for date_field in ("started_on", "ended_on"):
+            if update_data.get(date_field) == "":
+                update_data[date_field] = None
+        # Switching a course back on while leaving its end date in the past
+        # would leave it ended: turning it on takes the end away, unless the
+        # same request sets a new one.
+        if data.is_active is True and "ended_on" not in update_data:
+            update_data["ended_on"] = None
+
         if not update_data:
             return error_response("validation_error_no_update_data")
+
+        # The order of the two dates is checked against what is stored too.
+        started = update_data["started_on"] if "started_on" in update_data else medication.get("started_on")
+        ended = update_data["ended_on"] if "ended_on" in update_data else medication.get("ended_on")
+        if started and ended and ended < started:
+            return error_response("validation_error", "Окончание курса раньше его начала")
 
         app.db.medications.update_one({"_id": medication_id}, {"$set": update_data})
 
@@ -687,6 +705,9 @@ def get_upcoming_doses():
                 sched_times = sorted(schedule.get("times", []))
 
                 if weekday not in sched_days or not sched_times:
+                    continue
+                # A course that hasn't begun or has ended isn't offered that day.
+                if not course_covers(med, day_key):
                     continue
 
                 med_id_str = str(med["_id"])
