@@ -9,39 +9,16 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Who the card is of: a line, the same size in both modes. The card is not about the pet's portrait. */
-.medcard__head {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    min-width: 0;
-}
-
-.medcard__avatar {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--app-accent-soft);
-    color: var(--app-accent-deep);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.medcard__name {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: 700;
-    overflow-wrap: anywhere;
-}
-
 .medcard__facts {
-    margin: 2px 0 0;
+    margin: 0;
     font-size: var(--text-sm);
     color: var(--app-text-secondary);
     line-height: 1.4;
+}
+
+.medcard__facts--lead {
+    /* Sits under the title as its subtitle: the page gap is too wide between the two. */
+    margin-top: calc(var(--spacing-sm) - var(--spacing-lg));
 }
 
 .medcard__actions {
@@ -423,15 +400,16 @@
     color: var(--app-success-text);
 }
 
-/* The two modes: reading at the vet's counter, and filling in. */
+/* The two modes: filling in, and reading at the vet's counter. The chosen one is the lit segment
+   (the accent tint with accent text and a ring); the other sits on a plain track in secondary text.
+   The lit one must not be the darker of the two: in the dark theme that reads as a pressed-in, switched-off segment. */
 .medcard__modes {
-    /* Two choices are not a bar across a tablet or a desktop column. */
-    max-width: 24rem;
     display: flex;
     gap: 2px;
     padding: 3px;
     border-radius: var(--radius-md);
-    background: var(--app-accent-soft);
+    background: var(--app-card-background);
+    box-shadow: 0 0 0 1px var(--app-border-color);
 }
 
 .medcard__mode {
@@ -442,15 +420,16 @@
     background: transparent;
     font: inherit;
     font-size: var(--text-md);
-    font-weight: 600;
-    color: var(--app-accent-deep);
+    font-weight: 500;
+    color: var(--app-text-secondary);
     cursor: pointer;
 }
 
 .medcard__mode[aria-pressed="true"] {
-    background: var(--app-card-background);
-    box-shadow: var(--app-shadow-light), 0 0 0 1px var(--app-border-color);
-    color: var(--app-text-primary);
+    background: var(--app-accent-soft);
+    box-shadow: 0 0 0 1px var(--app-accent-deep);
+    color: var(--app-accent-deep);
+    font-weight: 700;
 }
 
 /* «Не выявлено» is a safe statement: a neutral ground, not the alarm tint. */
