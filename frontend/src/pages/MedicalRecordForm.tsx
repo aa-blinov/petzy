@@ -37,6 +37,7 @@ import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileText, X } from 'lucide-react';
 import { DownOutline, UpOutline } from 'antd-mobile-icons';
 import './MedicalRecordForm.css';
+import '../components/Chips.css';
 
 /** «Когда сделано» in one tap: a record is often entered a day, a week or a year after the fact,
     and the day, month, year wheels are a long way to turn for that. */

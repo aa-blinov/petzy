@@ -369,7 +369,7 @@ function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; p
           {others.length > 0 ? `. И ещё ${others.length}` : ''}
         </p>
         {canAct && (
-          <Button size="middle" color="danger" fill="outline" onClick={() => navigate(to)}>
+          <Button size="large" color="danger" fill="outline" onClick={() => navigate(to)}>
             {label}
           </Button>
         )}

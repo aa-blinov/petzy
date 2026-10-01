@@ -1419,6 +1419,13 @@ button:focus-visible,
     outline-offset: 3px;
 }
 
+/* antd-mobile gives .adm-button `outline: none`, which beat the ring above (same specificity, loaded later): a button
+   reached by the keyboard showed no focus at all. One more class wins it back. */
+.adm-button:focus-visible {
+    outline: 2px solid var(--app-primary-color);
+    outline-offset: 3px;
+}
+
 /* Skeleton placeholders for list/card loading states. Pulsing
    gradient on a rounded card shape — mimics the eventual card
    silhouette so the swap is invisible. */

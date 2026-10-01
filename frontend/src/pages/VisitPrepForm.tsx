@@ -12,6 +12,7 @@ import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import './MedicalRecordForm.css';
+import '../components/Chips.css';
 
 type Checks = VisitPrep['checks'];
 
