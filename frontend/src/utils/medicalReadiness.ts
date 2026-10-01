@@ -6,6 +6,8 @@ export interface ReadinessCheck {
   key: string;
   label: string;
   hint: string;
+  /** What the button says when this is the next step. */
+  action: string;
   done: boolean;
   /** Where the missing thing is filled in. */
   to: string;
@@ -19,6 +21,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
   return [
     {
       key: 'allergies',
+      action: 'Указать аллергии',
       label: 'Аллергии',
       hint: 'Укажите или отметьте, что аллергий нет',
       done: profile.allergies.length > 0 || profile.allergies_none_known,
@@ -26,6 +29,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
     },
     {
       key: 'vaccination',
+      action: 'Записать прививку',
       label: 'Прививки',
       hint: 'Запишите последнюю, придёт напоминание о повторе',
       done: card.record_counts.vaccination > 0 || card.vaccinations.length > 0,
@@ -33,6 +37,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
     },
     {
       key: 'parasite',
+      action: 'Записать обработку',
       label: 'Обработки от паразитов',
       hint: 'Запишите последнюю, придёт напоминание о повторе',
       done: card.record_counts.parasite > 0,
@@ -40,6 +45,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
     },
     {
       key: 'clinic',
+      action: 'Указать клинику',
       label: 'Клиника и врач',
       hint: 'Название и телефон, чтобы не искать в чатах',
       done: !!(clinic.name || clinic.vet || clinic.phone),
@@ -47,6 +53,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
     },
     {
       key: 'weight',
+      action: 'Записать вес',
       label: 'Вес',
       hint: 'Врач считает по нему дозы',
       done: !!card.weight,
