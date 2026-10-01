@@ -513,3 +513,7 @@
 .medcard__row-sub--meta {
     color: var(--app-text-tertiary);
 }
+
+.medcard__ready--warn {
+    color: var(--app-warning-text);
+}

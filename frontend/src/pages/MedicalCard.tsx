@@ -266,7 +266,15 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
   const checks = readinessChecks(card, petId);
   const missing = checks.filter((c) => !c.done);
   if (missing.length === 0) {
-    return (
+    // «Filled in» does not mean «in order»: an overdue repeat is said next to it, not under a green tick.
+    const overdue =
+      Object.values(card.records).some((rows) => rows.some((r) => r.status === 'overdue' && !r.superseded)) || card.vaccinations.some((v) => v.status === 'expired');
+    return overdue ? (
+      <p className="medcard__ready medcard__ready--warn" role="status">
+        <AlertTriangle size={18} strokeWidth={2.2} aria-hidden />
+        Всё заполнено, но есть просроченное
+      </p>
+    ) : (
       <p className="medcard__ready" role="status">
         <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
         Главное для врача заполнено
@@ -364,7 +372,7 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
         <div className="medcard__more">
           {more ? (
             <>
-              Показаны последние {source.length} из {total}.{' '}
+              {source.length === 1 ? `Показана последняя запись из ${total}.` : `Показаны последние ${source.length} из ${total}.`}{' '}
               <button type="button" className="medcard__link touch-target" style={{ padding: 0 }} disabled={all.isFetching} onClick={() => setExpanded(true)}>
                 {all.isFetching ? 'Загружаем…' : 'Показать все'}
               </button>
@@ -604,7 +612,9 @@ export function MedicalCard() {
     setChosen(next);
     saveMode(next);
   };
-  const facts = [card.pet.species, card.pet.breed, card.pet.age_text, card.pet.gender, card.pet.neutered_text].filter(Boolean).join(', ');
+  // Lowercase, as on the feed: «Лабрадор, Мальчик» in the middle of a line reads as an artifact.
+  const rawFacts = [card.pet.species, card.pet.breed, card.pet.age_text, card.pet.gender, card.pet.neutered_text].filter(Boolean).join(', ').toLowerCase();
+  const facts = rawFacts.charAt(0).toUpperCase() + rawFacts.slice(1);
 
   return (
     <div className="page-container">
@@ -704,7 +714,7 @@ export function MedicalCard() {
                 ))}
               </ul>
               {card.past_courses_total > card.past_courses.length && (
-                <p className="medcard__more">Показаны последние {card.past_courses.length} из {card.past_courses_total}. Все курсы есть в PDF.</p>
+                <p className="medcard__more">{card.past_courses.length === 1 ? `Показан последний курс из ${card.past_courses_total}.` : `Показаны последние ${card.past_courses.length} из ${card.past_courses_total}.`} Остальные есть в PDF.</p>
               )}
             </Section>
           )}

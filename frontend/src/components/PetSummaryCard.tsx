@@ -346,7 +346,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
           <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Медкарта</span>
           <span style={{ fontSize: "var(--text-xs)", color: "var(--app-text-secondary)" }}>
-            Прививки, лекарства, PDF для врача
+            Прививки, лекарства, PDF
           </span>
         </span>
         <ChevronRight size={18} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "var(--app-text-tertiary)" }} />
