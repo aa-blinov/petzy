@@ -922,6 +922,9 @@ select {
     /* 50px bar + 34px safe area fallback */
     height: calc(50px + env(safe-area-inset-bottom, 34px));
 
+    /* Follows the visual viewport when it is panned inside the page (utils/keyboard.ts): 0 almost always. */
+    translate: 0 var(--vv-shift, 0px);
+
     /* GPU acceleration to prevent detachment during scroll on iOS Safari */
     -webkit-transform: translate3d(0, 0, 0);
     transform: translate3d(0, 0, 0);
@@ -1567,6 +1570,7 @@ button:focus-visible,
     right: max(24px, calc((100vw - var(--content-max-width)) / 2 + var(--spacing-lg)));
     bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     z-index: 200;
+    translate: 0 var(--vv-shift, 0px);
     width: 56px;
     height: 56px;
     display: flex;
