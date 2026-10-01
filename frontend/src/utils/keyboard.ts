@@ -44,6 +44,15 @@ export function installKeyboardWatch() {
     // already above the keys, and only what is anchored to the page's own
     // bottom (the padding) needs the room.
     const pageShrunk = tallest - window.innerHeight >= MIN_KEYBOARD_PX;
+    // iPhone, a standalone app: after the keyboard is gone (or the app was left and returned to) the visual viewport
+    // can stay panned down inside the page, and everything fixed to the bottom floats that far above the screen's
+    // edge. While there is no keyboard and no pinch-zoom, the fixed bars are moved down by that offset; the
+    // page is also nudged once, which makes the browser put the viewport back where it belongs.
+    const panned = !open && viewport.scale <= 1.01 ? Math.max(0, Math.round(viewport.offsetTop)) : 0;
+    root.style.setProperty('--vv-shift', `${panned}px`);
+    if (panned > 0 && !isTextField(document.activeElement)) {
+      window.requestAnimationFrame(() => window.scrollTo(window.scrollX, window.scrollY));
+    }
     root.classList.toggle('keyboard-open', open);
     root.style.setProperty('--keyboard-inset', open ? `${covered}px` : '0px');
     // How far up a bar fixed to the bottom must sit to clear the keyboard.
