@@ -789,19 +789,12 @@ export function MedicalCard() {
     setChosen(next);
     if (complete) saveMode(id, next);
   };
-  // Lowercase, as on the feed: «Лабрадор, Мальчик» in the middle of a line reads as an artifact.
-  const rawFacts = [card.pet.species, card.pet.breed, card.pet.age_text, card.pet.gender, card.pet.neutered_text].filter(Boolean).join(', ').toLowerCase();
-  const facts = rawFacts.charAt(0).toUpperCase() + rawFacts.slice(1);
-
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
         <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ''}`}>
           {/* The title stays in both modes: switching the mode changes what is below, not where the person is. */}
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
-
-          {/* The pet is named in the bar above (the switcher there); here only what a vet asks first. */}
-          {facts && <p className="medcard__facts medcard__facts--lead">{facts}</p>}
 
           <ModeSwitch mode={mode} onChange={chooseMode} />
 
