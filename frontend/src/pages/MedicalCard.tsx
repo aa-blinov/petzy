@@ -193,6 +193,35 @@ function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit
   );
 }
 
+/** «1 день», «2 дня», «5 дней». */
+function daysWord(n: number): string {
+  const last = n % 10;
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 14) return 'дней';
+  if (last === 1) return 'день';
+  if (last >= 2 && last <= 4) return 'дня';
+  return 'дней';
+}
+
+/** The pill of a repeating record: how late, or how soon, in days, not just «просрочено». */
+function recordStatusText(status: 'overdue' | 'soon' | 'ok', daysLeft: number | null): string {
+  if (status === 'ok' || daysLeft === null) return RECORD_STATUS[status].label;
+  const n = Math.abs(daysLeft);
+  if (status === 'overdue') return `Просрочено на ${n} ${daysWord(n)}`;
+  if (n === 0) return 'Сегодня';
+  if (n === 1) return 'Завтра';
+  return `Через ${n} ${daysWord(n)}`;
+}
+
+/** The pill of a certificate kept as a document. */
+function certStatusText(v: MedicalCardVaccination): string {
+  if (v.status === 'expired' && v.days_left !== null) {
+    const n = Math.abs(v.days_left);
+    return `Истекла ${n} ${daysWord(n)} назад`;
+  }
+  return STATUS[v.status].label;
+}
+
 const RECORD_STATUS: Record<'overdue' | 'soon' | 'ok', { label: string; Icon: typeof CheckCircle2; tone: MedicalCardVaccination['status'] }> = {
   overdue: { label: 'Просрочено', Icon: AlertTriangle, tone: 'expired' },
   soon: { label: 'Скоро', Icon: Clock, tone: 'soon' },
@@ -229,7 +258,7 @@ function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen
           {status && (
             <span className={`medcard__status medcard__status--${status.tone}`}>
               <status.Icon size={13} strokeWidth={2.4} aria-hidden />
-              {status.label}
+              {recordStatusText(record.status as 'overdue' | 'soon' | 'ok', record.days_left)}
             </span>
           )}
         </span>
@@ -269,11 +298,21 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
     // «Filled in» does not mean «in order»: an overdue repeat is said next to it, not under a green tick.
     const overdue =
       Object.values(card.records).some((rows) => rows.some((r) => r.status === 'overdue' && !r.superseded)) || card.vaccinations.some((v) => v.status === 'expired');
+    // The first overdue repeat: the button records it again (the same title, today, the same interval).
+    const overdueRecord = (['vaccination', 'parasite'] as const).flatMap((kind) => card.records[kind]).find((r) => r.status === 'overdue' && !r.superseded);
+    const again = overdueRecord
+      ? { label: overdueRecord.kind === 'parasite' ? 'Записать обработку заново' : 'Записать прививку заново', to: `/pets/${petId}/medical-records/new?kind=${overdueRecord.kind}&from=${overdueRecord._id}` }
+      : { label: 'Записать прививку', to: `/pets/${petId}/medical-records/new?kind=vaccination` };
     return overdue ? (
-      <p className="medcard__ready medcard__ready--warn" role="status">
-        <AlertTriangle size={18} strokeWidth={2.2} aria-hidden />
-        Всё заполнено, но есть просроченное
-      </p>
+      <div className="medcard__ready-wrap">
+        <p className="medcard__ready medcard__ready--warn" role="status">
+          <AlertTriangle size={18} strokeWidth={2.2} aria-hidden />
+          Всё заполнено, но есть просроченное
+        </p>
+        <Button block fill="outline" color="primary" size="large" onClick={() => navigate(again.to)}>
+          {again.label}
+        </Button>
+      </div>
     ) : (
       <p className="medcard__ready" role="status">
         <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
@@ -345,7 +384,7 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
             />
           ))}
           {legacy.map((v) => {
-            const { label, Icon } = STATUS[v.status];
+            const { Icon } = STATUS[v.status];
             return (
               <li key={v.id} className="medcard__row medcard__row--stack">
                 <span className="medcard__row-top">
@@ -357,7 +396,7 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
                   </span>
                   <span className={`medcard__status medcard__status--${v.status}`}>
                     <Icon size={13} strokeWidth={2.4} aria-hidden />
-                    {label}
+                    {certStatusText(v)}
                   </span>
                 </span>
                 <button type="button" className="medcard__row-action touch-target" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=vaccination&doc=${v.id}`)}>
@@ -389,21 +428,23 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
 }
 
 type Mode = 'vet' | 'fill';
-const MODE_KEY = 'medcard-mode';
+const modeKey = (petId: string) => `medcard-mode:${petId}`;
 
 /** The mode the person chose on this device, if any: the default depends on how much is filled in. */
-function readMode(): Mode | null {
+function readMode(petId: string | undefined): Mode | null {
+  if (!petId) return null;
   try {
-    const v = localStorage.getItem(MODE_KEY);
+    const v = localStorage.getItem(modeKey(petId));
     return v === 'vet' || v === 'fill' ? v : null;
   } catch {
     return null;
   }
 }
 
-function saveMode(mode: Mode) {
+function saveMode(petId: string | undefined, mode: Mode) {
+  if (!petId) return;
   try {
-    localStorage.setItem(MODE_KEY, mode);
+    localStorage.setItem(modeKey(petId), mode);
   } catch {
     /* a private window keeps no choice: the default applies next time */
   }
@@ -412,7 +453,7 @@ function saveMode(mode: Mode) {
 function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
     <div className="medcard__modes" role="group" aria-label="Режим медкарты">
-      {([['vet', 'Врачу'], ['fill', 'Заполнить']] as const).map(([value, label]) => (
+      {([['vet', 'Врачу'], ['fill', 'Вся карта']] as const).map(([value, label]) => (
         <button key={value} type="button" className="medcard__mode" aria-pressed={mode === value} onClick={() => onChange(value)}>
           {label}
         </button>
@@ -450,14 +491,14 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
                   {status && (
                     <span className={`medcard__status medcard__status--${status.tone}`}>
                       <status.Icon size={13} strokeWidth={2.4} aria-hidden />
-                      {status.label}
+                      {recordStatusText(r.status as 'overdue' | 'soon' | 'ok', r.days_left)}
                     </span>
                   )}
                 </li>
               );
             })}
             {card.vaccinations.map((v) => {
-              const { label, Icon } = STATUS[v.status];
+              const { Icon } = STATUS[v.status];
               return (
                 <li key={v.id} className="medcard__row">
                   <div className="medcard__row-main">
@@ -466,7 +507,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
                   </div>
                   <span className={`medcard__status medcard__status--${v.status}`}>
                     <Icon size={13} strokeWidth={2.4} aria-hidden />
-                    {label}
+                    {certStatusText(v)}
                   </span>
                 </li>
               );
@@ -533,7 +574,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
           </span>
         </Button>
         <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
-          Вся история и правка
+          Вся карта
         </button>
       </div>
     </>
@@ -549,7 +590,9 @@ export function MedicalCard() {
   const hidden = useHiddenRecords();
   const pet = pets.find((p) => p._id === id);
   const [saving, setSaving] = useState(false);
-  const [chosen, setChosen] = useState<Mode | null>(readMode);
+  // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
+  const [stored] = useState<Mode | null>(() => readMode(id));
+  const [chosen, setChosen] = useState<Mode | null>(null);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -606,11 +649,12 @@ export function MedicalCard() {
   const importantFilled = card.profile.allergies.length > 0 || card.profile.allergies_none_known || card.profile.conditions.length > 0 || !!card.pet.health_notes;
   // The kinds of record that are only optional: a visit or an operation is not owed, so they wait in one group.
   const optionalEmpty = (['visit', 'procedure'] as MedicalKind[]).filter((kind) => card.record_counts[kind] === 0);
-  // Everyone with access to the pet may fill the card in (the profile and the records are the family's): the choice on this device, else by how much is filled in.
-  const mode: Mode = chosen ?? (complete ? 'vet' : 'fill');
+  // Everyone with access to the pet may fill the card in (the profile and the records are the family's). A card that is not
+  // filled in opens as the whole card, whatever was chosen last; a complete one opens as the person left it, else for the vet.
+  const mode: Mode = chosen ?? (complete ? stored ?? 'vet' : 'fill');
   const chooseMode = (next: Mode) => {
     setChosen(next);
-    saveMode(next);
+    if (complete) saveMode(id, next);
   };
   // Lowercase, as on the feed: «Лабрадор, Мальчик» in the middle of a line reads as an artifact.
   const rawFacts = [card.pet.species, card.pet.breed, card.pet.age_text, card.pet.gender, card.pet.neutered_text].filter(Boolean).join(', ').toLowerCase();
