@@ -6,12 +6,9 @@ import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileH
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
-import { usePet } from '../hooks/usePet';
 import { readinessChecks } from '../utils/medicalReadiness';
-import { PetImage } from '../components/PetImage';
 import { LoadError } from '../components/LoadError';
 import { EmptyState } from '../components/EmptyState';
-import { getSpecies } from '../utils/species';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
 import { httpStatus } from '../services/api';
@@ -525,7 +522,7 @@ function saveMode(petId: string | undefined, mode: Mode) {
 function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
     <div className="medcard__modes" role="group" aria-label="Режим медкарты">
-      {([['vet', 'Врачу'], ['fill', 'Вся карта']] as const).map(([value, label]) => (
+      {([['fill', 'Вся карта'], ['vet', 'Врачу']] as const).map(([value, label]) => (
         <button key={value} type="button" className="medcard__mode" aria-pressed={mode === value} onClick={() => onChange(value)}>
           {label}
         </button>
@@ -723,9 +720,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
 export function MedicalCard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { pets } = usePet();
   const hidden = useHiddenRecords();
-  const pet = pets.find((p) => p._id === id);
   const [saving, setSaving] = useState(false);
   // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
   const [stored] = useState<Mode | null>(() => readMode(id));
@@ -781,7 +776,6 @@ export function MedicalCard() {
     );
   }
 
-  const SpeciesIcon = getSpecies(pet?.species).icon;
   const checks = readinessChecks(card, id!);
   const doneCount = checks.filter((c) => c.done).length;
   const complete = doneCount === checks.length;
@@ -806,19 +800,8 @@ export function MedicalCard() {
           {/* The title stays in both modes: switching the mode changes what is below, not where the person is. */}
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
 
-          <div className="medcard__head">
-            <div className="medcard__avatar" aria-hidden={!pet?.photo_url}>
-              {pet?.photo_url ? (
-                <PetImage src={pet.photo_url} alt={card.pet.name} size={44} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0 }} />
-              ) : (
-                <SpeciesIcon size={22} strokeWidth={1.6} aria-hidden />
-              )}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p className="medcard__name">{card.pet.name}</p>
-              <p className="medcard__facts">{facts || 'Данные о питомце не заполнены'}</p>
-            </div>
-          </div>
+          {/* The pet is named in the bar above (the switcher there); here only what a vet asks first. */}
+          {facts && <p className="medcard__facts medcard__facts--lead">{facts}</p>}
 
           <ModeSwitch mode={mode} onChange={chooseMode} />
 
