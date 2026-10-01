@@ -5,6 +5,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+    /* Dates, weights, days and phones stand in columns of digits of one width. */
+    font-variant-numeric: tabular-nums;
 }
 
 /* Who the card is of: a line, the same size in both modes. The card is not about the pet's portrait. */
@@ -139,13 +141,19 @@
     font-weight: 700;
 }
 
+/* The action of a section («Добавить», «Изменить»): body size, so that it reads as an action and not as a footnote, and
+   a pressable height of its own; the negative margin keeps the heading row as tall as it was. */
 .medcard__link {
     flex-shrink: 0;
-    padding: 6px 0;
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    margin: -10px 0;
     border: none;
     background: none;
     font: inherit;
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     font-weight: 600;
     color: var(--app-accent-deep);
     cursor: pointer;
@@ -172,6 +180,8 @@
 
 .medcard__row-main {
     min-width: 0;
+    /* A line of a complaint or a recommendation on a wide screen stays readable: about 70 characters. */
+    max-width: 68ch;
 }
 
 .medcard__row-title {
@@ -597,4 +607,23 @@
         clip-path: inset(50%);
         white-space: nowrap;
     }
+}
+
+/* Short lines break evenly, long ones do not leave a word alone on the last line. */
+.medcard__todos-next,
+.medcard__alert-text,
+.medcard__empty {
+    text-wrap: pretty;
+}
+
+.medcard__section-title,
+.medcard__important-title {
+    text-wrap: balance;
+}
+
+/* Light text on a dark ground looks tighter than the same text on a light one: a little more air between lines. */
+html[data-prefers-color-scheme='dark'] .medcard__row-sub,
+html[data-prefers-color-scheme='dark'] .medcard__important-text,
+html[data-prefers-color-scheme='dark'] .medcard__alert-text {
+    line-height: 1.5;
 }
