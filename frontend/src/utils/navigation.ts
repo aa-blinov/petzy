@@ -1,7 +1,20 @@
 import type { NavigateFunction } from 'react-router-dom';
 
 /** The bottom tab bar's sections: peers, not steps in a hierarchy. */
-export const MAIN_TAB_PATHS = ['/', '/medications', '/documents', '/history', '/settings'];
+export const MAIN_TAB_PATHS = ['/', '/medications', '/documents', '/settings'];
+
+/** The medical card is a tab of one pet: its own page is a tab, the screens it opens (the profile, a record) are not. */
+const MEDICAL_CARD_PATH = /^\/pets\/([^/]+)\/medical-card\/?$/;
+
+/** The id of the pet whose medical card this path is, or null. */
+export function medicalCardPetId(pathname: string): string | null {
+  return MEDICAL_CARD_PATH.exec(pathname)?.[1] ?? null;
+}
+
+/** Is this page one of the bottom bar's tabs (as opposed to a screen pushed onto one)? */
+export function isMainTabPath(pathname: string): boolean {
+  return MAIN_TAB_PATHS.includes(pathname) || medicalCardPetId(pathname) !== null;
+}
 
 /**
  * Leave a form the same way the user arrived at it — by going back,
