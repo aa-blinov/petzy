@@ -30,6 +30,9 @@ from web.schemas import (
     MedicalProfile,
     MedicalProfileOut,
     MedicalProfileResponse,
+    VisitPrep,
+    VisitPrepOut,
+    VisitPrepResponse,
 )
 from web.security import get_current_user, login_required
 
@@ -285,6 +288,18 @@ def _profile(pet: dict) -> dict:
         return MedicalProfileOut().model_dump()
 
 
+def _visit_prep(pet: dict):
+    """What the household wants to tell the vet next time, or nothing."""
+    stored = pet.get("visit_prep")
+    if not stored:
+        return None
+    try:
+        return VisitPrepOut.model_validate(stored).model_dump()
+    except Exception:
+        app.logger.warning(f"Unreadable visit_prep on pet {pet.get('_id')}")
+        return None
+
+
 def build_medical_card(pet: dict, username: str, today: date) -> dict:
     pet_id = str(pet["_id"])
     birth = _as_date_str(pet.get("birth_date"))
@@ -301,6 +316,7 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
             "neutered_text": neutered_text(pet.get("is_neutered"), pet.get("gender")),
             "health_notes": (pet.get("health_notes") or "").strip() or None,
         },
+        "visit_prep": _visit_prep(pet),
         "profile": _profile(pet),
         "records": {kind: [r for r in every_record if r["kind"] == kind][:RECORDS_PER_KIND] for kind in MEDICAL_KINDS},
         "record_counts": {kind: sum(1 for r in every_record if r["kind"] == kind) for kind in MEDICAL_KINDS},
@@ -402,3 +418,31 @@ def put_medical_profile(pet_id):
     app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"medical_profile": profile}})
     app.logger.info(f"Medical profile updated: pet_id={pet_id}, user={username}")
     return jsonify({"profile": profile})
+
+
+@medical_card_bp.route("/api/pets/<pet_id>/visit-prep", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(VisitPrep),
+    resp=Response(HTTP_200=VisitPrepResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    tags=["pets"],
+)
+def put_visit_prep(pet_id):
+    """What to tell the vet at the next appointment: the complaint and what has changed.
+
+    Anyone with access to the pet may write it, like the profile. Empty clears it, and
+    the visit form does that once the visit is recorded.
+    """
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+    if access_error:
+        return access_error[0], access_error[1]
+
+    data = request.context.body  # type: ignore[attr-defined]
+    if not data.complaint and not data.checks:
+        app.db.pets.update_one({"_id": pet["_id"]}, {"$unset": {"visit_prep": ""}})
+        return jsonify({"visit_prep": None})
+    prep = data.model_dump()
+    prep["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"visit_prep": prep}})
+    return jsonify({"visit_prep": prep})

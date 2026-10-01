@@ -47,6 +47,12 @@ export interface MedicalProfile {
   allergies: MedicalAllergy[];
   /** «Аллергий нет»: a statement, not the same as nothing filled in. */
   allergies_none_known: boolean;
+  /** Чем и как часто кормят. */
+  diet?: string | null;
+  /** Квартира или улица, другие животные. */
+  living?: string | null;
+  /** Беременности, роды, течка, если важно. */
+  reproduction?: string | null;
   conditions: MedicalCondition[];
   /** The clinics the pet is taken to, the first is the main one; each with its doctors. */
   clinics: MedicalClinic[];
@@ -72,7 +78,29 @@ export interface MedicalCardCourse {
   skipped: number;
 }
 
+export const VISIT_CHECKS = ['appetite', 'thirst', 'stool', 'urine', 'vomiting', 'cough', 'activity'] as const;
+export type VisitCheck = (typeof VISIT_CHECKS)[number];
+export const VISIT_CHECK_LABELS: Record<VisitCheck, string> = {
+  appetite: 'Аппетит',
+  thirst: 'Жажда',
+  stool: 'Стул',
+  urine: 'Моча',
+  vomiting: 'Рвота',
+  cough: 'Кашель',
+  activity: 'Активность',
+};
+
+/** What to tell the vet at the next appointment: the complaint and what has changed. */
+export interface VisitPrep {
+  complaint: string | null;
+  /** «normal»: as usual, «changed»: not as usual; a check that is not there was not answered. */
+  checks: Partial<Record<VisitCheck, 'normal' | 'changed'>>;
+  updated_at?: string | null;
+}
+
 export interface MedicalCard {
+  /** Nothing when it is not filled in. */
+  visit_prep: VisitPrep | null;
   pet: {
     name: string;
     species: string | null;
@@ -111,6 +139,16 @@ export const medicalCardService = {
       params: { tz: deviceTimeZone() },
     });
     return response.data.card;
+  },
+
+  async saveVisitPrep(petId: string, prep: { complaint: string | null; checks: VisitPrep['checks'] }): Promise<VisitPrep | null> {
+    const response = await api.put<{ visit_prep: VisitPrep | null }>(`/pets/${petId}/visit-prep`, prep);
+    return response.data.visit_prep;
+  },
+
+  /** An empty one clears it: what was said at the visit is not carried to the next. */
+  async clearVisitPrep(petId: string): Promise<void> {
+    await api.put(`/pets/${petId}/visit-prep`, { complaint: null, checks: {} });
   },
 
   async saveProfile(petId: string, profile: Omit<MedicalProfile, 'updated_at'>): Promise<MedicalProfile> {

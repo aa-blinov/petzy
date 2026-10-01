@@ -95,6 +95,7 @@ const schema = z
     next_due: z.string().optional(),
     target: z.string().optional(),
     batch: z.string().max(50).optional(),
+    complaint: z.string().max(500).optional(),
     diagnosis: z.string().max(300).optional(),
     recommendations: z.string().max(500).optional(),
     weight: z
@@ -163,7 +164,7 @@ export function MedicalRecordForm() {
     mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(schema),
-    defaultValues: { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', weight: '', clinic: '', vet: '', note: '', document_ids: [] },
+    defaultValues: { title: '', date: today, next_due: '', target: '', batch: '', complaint: '', diagnosis: '', recommendations: '', weight: '', clinic: '', vet: '', note: '', document_ids: [] },
   });
   // Files added here are uploaded when the record is saved (so a form that is closed leaves nothing behind in
   // «Документы»); the ids of those already uploaded are kept, so a retry after a failure doesn't send them twice.
@@ -206,7 +207,7 @@ export function MedicalRecordForm() {
       if (!r) return;
       filled.current = true;
       reset({
-        title: r.title, date: r.date, next_due: r.next_due ?? '', target: r.target ?? '', batch: r.batch ?? '', diagnosis: r.diagnosis ?? '',
+        title: r.title, date: r.date, next_due: r.next_due ?? '', target: r.target ?? '', batch: r.batch ?? '', complaint: r.complaint ?? '', diagnosis: r.diagnosis ?? '',
         recommendations: r.recommendations ?? '', weight: '', clinic: r.clinic ?? '', vet: r.vet ?? '', note: r.note ?? '', document_ids: r.documents.map((d) => d.id),
       });
       return;
@@ -221,7 +222,7 @@ export function MedicalRecordForm() {
     // switch the reminder off. It follows the date until it is touched, and is one tap from gone.
     const firstDue = kind === 'vaccination' && !source && !sourceDoc ? addInterval(today, { years: 1 }) : '';
     autoDue.current = firstDue;
-    const blank: FormData = { title: '', date: today, next_due: firstDue, target: '', batch: '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
+    const blank: FormData = { title: '', date: today, next_due: firstDue, target: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
       reset(blank);
       return;
@@ -292,6 +293,7 @@ export function MedicalRecordForm() {
         note: data.note?.trim() || null,
         batch: kind === 'vaccination' ? data.batch?.trim() || null : null,
         target: kind === 'parasite' ? ((data.target || null) as ParasiteTarget | null) : null,
+        complaint: kind === 'visit' ? data.complaint?.trim() || null : null,
         diagnosis: kind === 'visit' ? data.diagnosis?.trim() || null : null,
         recommendations: kind === 'visit' ? data.recommendations?.trim() || null : null,
         document_ids: [...data.document_ids],
@@ -309,6 +311,14 @@ export function MedicalRecordForm() {
       }
       if (isEditing) await medicalRecordsService.update(recordId!, input);
       else await medicalRecordsService.create(petId!, kind!, input);
+      // The visit is recorded, with what was said before it: «К приёму» starts empty for the next one.
+      if (kind === 'visit' && !isEditing && card.data?.visit_prep) {
+        try {
+          await medicalCardService.clearVisitPrep(petId!);
+        } catch {
+          /* the visit is saved; an old note staying is not worth failing it */
+        }
+      }
       // A weight said at the visit goes to the diary too, dated the visit: the graph and the PDF read it
       // from there. The visit is already saved, so a failure here must not make the owner save it twice.
       const weight = kind === 'visit' && !isEditing ? Number((data.weight ?? '').replace(',', '.')) : 0;
@@ -542,6 +552,15 @@ export function MedicalRecordForm() {
 
           {kind === 'visit' && (
             <>
+              <Controller
+                name="complaint"
+                control={control}
+                render={({ field }) => (
+                  <Form.Item label="С чем пришли" layout="vertical" description={fieldNote({ value: field.value, max: 500 })}>
+                    <TextArea value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={500} rows={2} autoSize={{ minRows: 2, maxRows: 6 }} />
+                  </Form.Item>
+                )}
+              />
               <Controller
                 name="diagnosis"
                 control={control}

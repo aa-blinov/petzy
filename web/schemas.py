@@ -582,6 +582,11 @@ class MedicalProfile(BaseModel):
         False, description="Владелец подтверждает: аллергий нет. «Не заполнено» и «нет» для врача разные вещи"
     )
     conditions: List[Condition] = Field(default_factory=list, max_length=30)
+    diet: Optional[str] = Field(None, max_length=200, description="Чем и как часто кормят")
+    living: Optional[str] = Field(
+        None, max_length=200, description="Условия жизни: квартира или улица, другие животные"
+    )
+    reproduction: Optional[str] = Field(None, max_length=200, description="Беременности, роды, течка, если важно")
     clinics: List[ClinicEntry] = Field(
         default_factory=list,
         max_length=5,
@@ -592,7 +597,7 @@ class MedicalProfile(BaseModel):
         description="Основная клиника и её первый врач: то же, что первая запись в clinics (для старых клиентов)",
     )
 
-    @field_validator("chip_number", "blood_type", mode="before")
+    @field_validator("chip_number", "blood_type", "diet", "living", "reproduction", mode="before")
     @classmethod
     def blank_to_none(cls, v):
         return _blank_to_none(v)
@@ -1669,6 +1674,7 @@ class MedicalRecordBody(BaseModel):
     note: Optional[str] = Field(None, max_length=500)
     batch: Optional[str] = Field(None, max_length=50, description="Серия или лот (прививка)")
     target: Optional[str] = Field(None, description="fleas_ticks, worms или both (обработка от паразитов)")
+    complaint: Optional[str] = Field(None, max_length=500, description="С чем пришли на приём (визит)")
     diagnosis: Optional[str] = Field(None, max_length=300, description="Диагноз (визит)")
     recommendations: Optional[str] = Field(None, max_length=500, description="Рекомендации врача (визит)")
     document_ids: List[ObjectIdString] = Field(
@@ -1681,7 +1687,16 @@ class MedicalRecordBody(BaseModel):
         return v.strip() if isinstance(v, str) else v
 
     @field_validator(
-        "clinic", "vet", "note", "batch", "diagnosis", "recommendations", "target", "next_due", mode="before"
+        "clinic",
+        "vet",
+        "note",
+        "batch",
+        "complaint",
+        "diagnosis",
+        "recommendations",
+        "target",
+        "next_due",
+        mode="before",
     )
     @classmethod
     def blank_to_none(cls, v):
@@ -1727,7 +1742,7 @@ class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
         if self.kind != "vaccination":
             self.batch = None
         if self.kind != "visit":
-            self.diagnosis = self.recommendations = None
+            self.complaint = self.diagnosis = self.recommendations = None
         if self.kind == "parasite":
             if not self.target:
                 raise ValueError("Укажите, от чего обработка")
@@ -1762,6 +1777,7 @@ class MedicalRecordItem(BaseModel):
     note: Optional[str] = None
     batch: Optional[str] = None
     target: Optional[str] = None
+    complaint: Optional[str] = None
     diagnosis: Optional[str] = None
     recommendations: Optional[str] = None
     documents: List[MedicalRecordDocument] = Field(default_factory=list)
@@ -1797,6 +1813,42 @@ class MedicalCardQuery(BaseModel):
         max_length=64,
         description="IANA-имя часового пояса пользователя: по нему считается «сегодня» (сроки прививок, дата формирования)",
     )
+
+
+VISIT_CHECKS = ("appetite", "thirst", "stool", "urine", "vomiting", "cough", "activity")
+
+
+class VisitPrep(BaseModel):
+    """PUT /api/pets/<id>/visit-prep: what to tell the vet at the next appointment. Empty clears it."""
+
+    complaint: Optional[str] = Field(None, max_length=500, description="Что беспокоит")
+    checks: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Аппетит, жажда, стул, моча, рвота, кашель, активность: normal (как обычно) или changed (изменилось)",
+    )
+
+    @field_validator("complaint", mode="before")
+    @classmethod
+    def blank_to_none(cls, v):
+        return _blank_to_none(v)
+
+    @field_validator("checks")
+    @classmethod
+    def known_checks(cls, v):
+        for key, value in v.items():
+            if key not in VISIT_CHECKS:
+                raise ValueError(f"Неизвестная отметка: {key}")
+            if value not in ("normal", "changed"):
+                raise ValueError("Отметка: normal или changed")
+        return v
+
+
+class VisitPrepOut(VisitPrep):
+    updated_at: Optional[str] = None
+
+
+class VisitPrepResponse(BaseModel):
+    visit_prep: Optional[VisitPrepOut] = None
 
 
 class MedicalCardPet(BaseModel):
@@ -1861,6 +1913,9 @@ class MedicalProfileResponse(BaseModel):
 
 class MedicalCardData(BaseModel):
     pet: MedicalCardPet
+    visit_prep: Optional[VisitPrepOut] = Field(
+        None, description="Что сказать врачу на ближайшем приёме; нет, если не заполнено"
+    )
     profile: MedicalProfileOut = Field(description="Аллергии, хронические состояния, чип, группа крови, клиника")
     weight: Optional[MedicalCardWeight] = None
     records: Dict[str, List[MedicalRecordItem]] = Field(

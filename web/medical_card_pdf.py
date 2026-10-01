@@ -36,6 +36,15 @@ BAND = (247, 243, 235)  # the one tint: the box a vet reads first, and a year in
 
 STATUS_LABELS = {"valid": "Действует", "soon": "Скоро истекает", "expired": "Истекла", "none": "Срок не указан"}
 STATUS_COLORS = {"valid": INK, "soon": AMBER, "expired": ALERT, "none": MUTED}
+CHECK_LABELS = {
+    "appetite": "аппетит",
+    "thirst": "жажда",
+    "stool": "стул",
+    "urine": "моча",
+    "vomiting": "рвота",
+    "cough": "кашель",
+    "activity": "активность",
+}
 TARGET_LABELS = {"fleas_ticks": "от блох и клещей", "worms": "от глистов", "both": "от блох, клещей и глистов"}
 # One word each: the timeline's second column is narrow and a long label made every row two lines.
 KIND_LABELS = {"vaccination": "Прививка", "parasite": "Обработка", "visit": "Визит", "procedure": "Операция"}
@@ -186,6 +195,9 @@ def draw_header(pdf: _Card, card: dict) -> None:
         pdf.text(line[0].upper() + line[1:], color=MUTED)
     for clinic in _clinics(profile):
         pdf.text(_clinic_line(clinic), color=MUTED)
+    for label, key in (("Питание", "diet"), ("Условия жизни", "living"), ("Репродуктивный статус", "reproduction")):
+        if profile.get(key):
+            pdf.text(f"{label}: {profile[key]}", color=MUTED)
 
     # What a vet asks first: allergies and conditions, in a box of their own.
     pdf.ln(4)
@@ -255,7 +267,12 @@ def _record_details(r: dict, home: dict) -> str:
     where = ", ".join(x for x in (clinic, f"врач {vet}" if vet else None) if x)
     if where:
         lines.append(where)
-    for label, key in (("Диагноз", "diagnosis"), ("Рекомендации", "recommendations"), ("Заметка", "note")):
+    for label, key in (
+        ("Жалоба", "complaint"),
+        ("Диагноз", "diagnosis"),
+        ("Рекомендации", "recommendations"),
+        ("Заметка", "note"),
+    ):
         if r.get(key):
             lines.append(f"{label}: {r[key]}")
     if r.get("documents"):
@@ -467,6 +484,22 @@ def _due_section(pdf: _Card, card: dict) -> None:
         pdf.ln(1.5)
 
 
+def _visit_prep_section(pdf: _Card, prep: dict | None) -> None:
+    """What the household wants to tell the vet at this appointment: the first thing a vet asks about."""
+    if not prep:
+        return
+    pdf.section("На приём")
+    if prep.get("complaint"):
+        pdf.text(prep["complaint"])
+    checks = prep.get("checks") or {}
+    changed = [CHECK_LABELS[k] for k in CHECK_LABELS if checks.get(k) == "changed"]
+    normal = [CHECK_LABELS[k] for k in CHECK_LABELS if checks.get(k) == "normal"]
+    if changed:
+        pdf.text("Изменилось: " + ", ".join(changed) + ".", color=ALERT)
+    if normal:
+        pdf.muted("Как обычно: " + ", ".join(normal) + ".")
+
+
 def render_medical_card_pdf(card: dict) -> bytes:
     pet = card["pet"]
     pdf = _Card(pet["name"], card["generated_at"])
@@ -475,6 +508,7 @@ def render_medical_card_pdf(card: dict) -> bytes:
     # Page one: now. Readable alone, at an appointment.
     pdf.add_page()
     draw_header(pdf, card)
+    _visit_prep_section(pdf, card.get("visit_prep"))
     weight = card.get("weight")
     if weight:
         pdf.ln(4)
