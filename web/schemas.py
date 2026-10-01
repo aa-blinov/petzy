@@ -544,6 +544,34 @@ class Clinic(BaseModel):
         return _blank_to_none(v)
 
 
+class Doctor(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Врач")
+    specialty: Optional[str] = Field(None, max_length=60, description="Специальность: терапевт, кардиолог, стоматолог")
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("specialty", mode="before")
+    @classmethod
+    def blank_to_none(cls, v):
+        return _blank_to_none(v)
+
+
+class ClinicEntry(BaseModel):
+    """One clinic the pet is taken to, with the doctors seen there."""
+
+    name: Optional[str] = Field(None, max_length=100, description="Название клиники")
+    phone: Optional[str] = Field(None, max_length=30, description="Телефон")
+    doctors: List[Doctor] = Field(default_factory=list, max_length=10)
+
+    @field_validator("name", "phone", mode="before")
+    @classmethod
+    def blank_to_none(cls, v):
+        return _blank_to_none(v)
+
+
 class MedicalProfile(BaseModel):
     """PUT /api/pets/<id>/medical-profile: the whole profile, replacing the old one."""
 
@@ -554,7 +582,15 @@ class MedicalProfile(BaseModel):
         False, description="Владелец подтверждает: аллергий нет. «Не заполнено» и «нет» для врача разные вещи"
     )
     conditions: List[Condition] = Field(default_factory=list, max_length=30)
-    clinic: Clinic = Field(default_factory=Clinic)
+    clinics: List[ClinicEntry] = Field(
+        default_factory=list,
+        max_length=5,
+        description="Клиники и врачи с их специальностями; первая клиника основная",
+    )
+    clinic: Clinic = Field(
+        default_factory=Clinic,
+        description="Основная клиника и её первый врач: то же, что первая запись в clinics (для старых клиентов)",
+    )
 
     @field_validator("chip_number", "blood_type", mode="before")
     @classmethod
@@ -565,6 +601,23 @@ class MedicalProfile(BaseModel):
     def allergies_or_none(self):
         if self.allergies_none_known and self.allergies:
             raise ValueError("Нельзя одновременно указать аллергии и отметить, что их нет")
+        return self
+
+    @model_validator(mode="after")
+    def clinics_and_the_main_clinic(self):
+        """One list is the truth: ``clinics``. The single ``clinic`` of the earlier profile, stored or sent by an
+        older client, becomes the first entry when there is no list, and is always written back as the first entry,
+        so whatever still reads ``clinic`` (the PDF header, a cached app) keeps seeing the main clinic."""
+        legacy = self.clinic
+        if not self.clinics and (legacy.name or legacy.vet or legacy.phone):
+            doctors = [Doctor(name=legacy.vet)] if legacy.vet else []
+            self.clinics = [ClinicEntry(name=legacy.name, phone=legacy.phone, doctors=doctors)]
+        main = self.clinics[0] if self.clinics else None
+        self.clinic = (
+            Clinic(name=main.name, phone=main.phone, vet=main.doctors[0].name if main.doctors else None)
+            if main
+            else Clinic()
+        )
         return self
 
 

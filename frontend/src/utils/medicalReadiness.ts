@@ -17,7 +17,6 @@ export interface ReadinessCheck {
     and for the line after a save, so the two never count differently. */
 export function readinessChecks(card: MedicalCard, petId: string): ReadinessCheck[] {
   const { profile } = card;
-  const clinic = profile.clinic;
   return [
     {
       key: 'allergies',
@@ -48,7 +47,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
       action: 'Указать клинику',
       label: 'Клиника и врач',
       hint: 'Название и телефон, чтобы не искать в чатах',
-      done: !!(clinic.name || clinic.vet || clinic.phone),
+      done: profile.clinics.some((c) => !!(c.name || c.phone || c.doctors.length)),
       to: `/pets/${petId}/medical-profile?section=clinic`,
     },
     {
