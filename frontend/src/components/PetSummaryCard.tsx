@@ -2,23 +2,23 @@
  * Pet summary card shown at the top of the dashboard.
  *
  * Side-by-side layout: a square avatar (or species icon when no photo)
- * on the left, the pet's name and quick meta on the right. Below the
- * header row sit the last-event chips (кормление / вес) so the user
- * can jump into the timeline in one tap.
+ * on the left, the pet's name, quick meta and the last weight on the right.
+ * Below, one row into the medical card. The last feeding and weight used to
+ * be two tiles here: the feed under the card already shows them, so the card
+ * stays a card of the pet.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { createElement, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, FileHeart, Plus, Scale } from 'lucide-react';
+import { ChevronRight, FileHeart, Scale } from 'lucide-react';
 import { PhotoViewer } from './PhotoViewer';
-import { Skeleton } from 'antd-mobile';
 
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { medicalCardService } from '../services/medicalCard.service';
 import { cardStatusLine } from '../utils/medicalReadiness';
-import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
+import { computePetAge } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
 import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
@@ -29,85 +29,8 @@ import { CountUp } from './CountUp';
 
 
 
-interface LastEventProps {
-  label: string;
-  dateTime: string | undefined;
-  emptyLabel: string;
-  addPath: string;
-  onAdd: () => void;
-}
-
-
-function LastEvent({ label, dateTime, emptyLabel, addPath, onAdd }: LastEventProps) {
-  const navigate = useNavigate();
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        hapticFeedback("light");
-        if (dateTime) {
-          navigate("/history");
-        } else {
-          onAdd();
-          navigate(addPath);
-        }
-      }}
-      style={{
-        flex: 1,
-        minWidth: 0,
-        textAlign: "left",
-        background: "var(--app-accent-soft)",
-        border: "none",
-        padding: "10px 12px",
-        borderRadius: "12px",
-        cursor: "pointer",
-        display: "flex",
-        flexDirection: "column",
-        gap: "2px",
-      }}
-    >
-      <div style={{
-        fontSize: "10px",
-        color: "var(--app-accent-deep)",
-        textTransform: "uppercase",
-        letterSpacing: "0.4px",
-        fontWeight: 600,
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: "13px",
-        color: "var(--app-text-primary)",
-        fontWeight: 600,
-        fontFamily: "var(--font-display)",
-      }}>
-        {dateTime ? (
-          formatRelativeShort(dateTime)
-        ) : (
-          // Nothing yet: say what a tap does. «не записано» read as a
-          // status, and nobody guessed the chip opens the form.
-          <span
-            aria-label={emptyLabel}
-            style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--app-accent-deep)" }}
-          >
-            <Plus size={14} strokeWidth={2.6} aria-hidden style={{ display: "block" }} />
-            Записать
-          </span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-
-export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (tileId: string) => void }) {
+export function PetSummaryCard({ pet }: { pet: Pet }) {
   // Fetch the most-recent feeding and weight to render "last X" lines.
-  const feedings = useQuery({
-    queryKey: ["pet-summary", "feeding", pet._id],
-    queryFn: () => healthRecordsService.getList("feeding", pet._id, 1, 1),
-    enabled: !!pet._id,
-    staleTime: 30_000,
-  });
   const weights = useQuery({
     queryKey: ["pet-summary", "weight", pet._id],
     queryFn: () => healthRecordsService.getList("weight", pet._id, 1, 1),
@@ -124,7 +47,6 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   });
   const medStatus = medCard.data ? cardStatusLine(medCard.data, pet._id) : null;
 
-  const lastFeedingDateTime = feedings.data?.items?.[0]?.date_time;
   const lastWeightRecord = weights.data?.items?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
@@ -290,31 +212,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         </div>
       </div>
 
-      {/* Last-event row — Кормление + Вес */}
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-        }}
-      >
-        <LastEvent
-          label="Кормление"
-          dateTime={lastFeedingDateTime}
-          emptyLabel="Записать кормление"
-          addPath="/form/feeding"
-          onAdd={() => onQuickAdd("feeding")}
-        />
-        <LastEvent
-          label="Вес"
-          dateTime={lastWeightRecord?.date_time}
-          emptyLabel="Записать вес"
-          addPath="/form/weight"
-          onAdd={() => onQuickAdd("weight")}
-        />
-      </div>
-
       {/* The way into the medical card: a row of its own, named in words, with a chevron.
-          A different surface from the two tiles above (those record something; this one opens). */}
+          A bordered surface, so that it reads as a button and not as one more fact about the pet. */}
       <button
         type="button"
         className="tap-feedback"
@@ -324,7 +223,7 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         }}
         aria-label={`Медкарта: ${pet.name}`}
         style={{
-          marginTop: "8px",
+          marginTop: 0,
           width: "100%",
           display: "flex",
           alignItems: "center",
@@ -363,10 +262,6 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         </span>
         <ChevronRight size={18} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "var(--app-text-tertiary)" }} />
       </button>
-
-      {feedings.isLoading || weights.isLoading ? (
-        <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px" }} />
-      ) : null}
 
       {pet.photo_url && <PhotoViewer image={pet.photo_url} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </div>
