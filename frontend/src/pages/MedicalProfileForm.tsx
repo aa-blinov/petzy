@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useFieldArray, useForm, Controller, useWatch } from 'react-hook-form';
+import { useFieldArray, useForm, Controller, useWatch, type Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Form, Input, Switch } from 'antd-mobile';
@@ -42,11 +42,20 @@ const profileSchema = z.object({
       note: z.string().max(300).optional(),
     }),
   ),
-  clinic: z.object({
-    name: z.string().max(100).optional(),
-    vet: z.string().max(100).optional(),
-    phone: z.string().max(30).optional(),
-  }),
+  clinics: z
+    .array(
+      z.object({
+        name: z.string().max(100).optional(),
+        phone: z.string().max(30).optional(),
+        doctors: z.array(
+          z.object({
+            name: z.string().trim().min(1, 'Укажите врача').max(100),
+            specialty: z.string().max(60).optional(),
+          }),
+        ),
+      }),
+    )
+    .max(5),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -57,12 +66,84 @@ const EMPTY: ProfileForm = {
   allergies_none_known: false,
   allergies: [],
   conditions: [],
-  clinic: { name: '', vet: '', phone: '' },
+  clinics: [{ name: '', phone: '', doctors: [] }],
 };
+
+const MAX_CLINICS = 5;
+const MAX_DOCTORS = 10;
 
 const textProps = { style: { '--text-align': 'left' } as React.CSSProperties };
 
-/** What a vet asks first: allergies, chronic conditions, chip, blood type and the clinic.
+/** One clinic: its name and phone, and the doctors seen there with what they do. */
+function ClinicBlock({ control, index, only, onRemove }: { control: Control<ProfileForm>; index: number; only: boolean; onRemove: () => void }) {
+  const doctors = useFieldArray({ control, name: `clinics.${index}.doctors` });
+  return (
+    <div role="group" aria-label={`Клиника ${index + 1}`}>
+      {!only && <p style={{ margin: 'var(--spacing-lg) 0 0', padding: '0 var(--spacing-lg)', fontSize: 'var(--text-md)', fontWeight: 700 }}>Клиника {index + 1}</p>}
+      <Controller
+        name={`clinics.${index}.name`}
+        control={control}
+        render={({ field }) => (
+          <Form.Item label="Название">
+            <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder={index === 0 ? 'Где наблюдается' : 'Название клиники'} maxLength={100} />
+          </Form.Item>
+        )}
+      />
+      <Controller
+        name={`clinics.${index}.phone`}
+        control={control}
+        render={({ field }) => (
+          <Form.Item label="Телефон">
+            <Input {...textProps} type="tel" inputMode="tel" autoComplete="off" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={30} />
+          </Form.Item>
+        )}
+      />
+      {doctors.fields.map((row, j) => (
+        <div key={row.id}>
+          <Controller
+            name={`clinics.${index}.doctors.${j}.name`}
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Form.Item label="Врач" description={error?.message ? <FieldError message={error.message} /> : undefined}>
+                <Input {...textProps} value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="Например, Иванова А. П." maxLength={100} />
+              </Form.Item>
+            )}
+          />
+          <Controller
+            name={`clinics.${index}.doctors.${j}.specialty`}
+            control={control}
+            render={({ field }) => (
+              <Form.Item label="Специальность">
+                <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Терапевт, кардиолог, стоматолог" maxLength={60} />
+              </Form.Item>
+            )}
+          />
+          <Form.Item>
+            <Button size="small" color="danger" fill="none" onClick={() => doctors.remove(j)} aria-label={`Убрать врача ${j + 1} клиники ${index + 1}`}>
+              <DeleteOutline aria-hidden /> Убрать врача
+            </Button>
+          </Form.Item>
+        </div>
+      ))}
+      {doctors.fields.length < MAX_DOCTORS && (
+        <Form.Item>
+          <Button block fill="outline" size="small" onClick={() => doctors.append({ name: '', specialty: '' })}>
+            + Добавить врача
+          </Button>
+        </Form.Item>
+      )}
+      {!only && (
+        <Form.Item>
+          <Button size="small" color="danger" fill="none" onClick={onRemove} aria-label={`Убрать клинику ${index + 1}`}>
+            <DeleteOutline aria-hidden /> Убрать клинику
+          </Button>
+        </Form.Item>
+      )}
+    </div>
+  );
+}
+
+/** What a vet asks first: allergies, chronic conditions, chip, blood type and the clinics.
     Kept on the pet and open to everyone who has access to it, like the weight. */
 export function MedicalProfileForm() {
   const { id } = useParams<{ id: string }>();
@@ -86,6 +167,7 @@ export function MedicalProfileForm() {
   });
   const allergies = useFieldArray({ control, name: 'allergies' });
   const conditions = useFieldArray({ control, name: 'conditions' });
+  const clinics = useFieldArray({ control, name: 'clinics' });
   const noneKnown = useWatch({ control, name: 'allergies_none_known' });
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
 
@@ -110,7 +192,9 @@ export function MedicalProfileForm() {
       allergies_none_known: profile.allergies_none_known,
       allergies: profile.allergies.map((a) => ({ substance: a.substance, reaction: a.reaction ?? '' })),
       conditions: profile.conditions.map((c) => ({ name: c.name, since_year: c.since_year ? String(c.since_year) : '', note: c.note ?? '' })),
-      clinic: { name: profile.clinic.name ?? '', vet: profile.clinic.vet ?? '', phone: profile.clinic.phone ?? '' },
+      clinics: profile.clinics.length
+        ? profile.clinics.map((c) => ({ name: c.name ?? '', phone: c.phone ?? '', doctors: c.doctors.map((d) => ({ name: d.name, specialty: d.specialty ?? '' })) }))
+        : EMPTY.clinics,
     });
   }, [query.data, reset, section]);
 
@@ -125,7 +209,14 @@ export function MedicalProfileForm() {
           ? []
           : data.allergies.filter((a) => a.substance.trim() || a.reaction?.trim()).map((a) => ({ substance: a.substance.trim(), reaction: a.reaction?.trim() || null })),
         conditions: data.conditions.map((c) => ({ name: c.name.trim(), since_year: c.since_year ? Number(c.since_year) : null, note: c.note?.trim() || null })),
-        clinic: { name: data.clinic.name?.trim() || null, vet: data.clinic.vet?.trim() || null, phone: data.clinic.phone?.trim() || null },
+        clinics: data.clinics
+          .map((c) => ({
+            name: c.name?.trim() || null,
+            phone: c.phone?.trim() || null,
+            doctors: c.doctors.map((d) => ({ name: d.name.trim(), specialty: d.specialty?.trim() || null })),
+          }))
+          .filter((c) => c.name || c.phone || c.doctors.length),
+        clinic: { name: null, vet: null, phone: null },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
@@ -148,6 +239,12 @@ export function MedicalProfileForm() {
     if (emptyAllergies.length) allergies.remove(emptyAllergies);
     const emptyConditions = empty(values.conditions, (c) => !!(c.name?.trim() || c.since_year?.trim() || c.note?.trim()));
     if (emptyConditions.length) conditions.remove(emptyConditions);
+    // A clinic with nothing in it, a doctor with nothing in the row: not entries either.
+    const kept = values.clinics
+      .map((c) => ({ ...c, doctors: c.doctors.filter((d) => d.name?.trim() || d.specialty?.trim()) }))
+      .filter((c) => c.name?.trim() || c.phone?.trim() || c.doctors.length);
+    const changed = kept.length !== values.clinics.length || kept.some((c, i) => c.doctors.length !== values.clinics[i]?.doctors.length);
+    if (changed) clinics.replace(kept.length ? kept : EMPTY.clinics);
   };
 
   if (query.isError) {
@@ -302,34 +399,17 @@ export function MedicalProfileForm() {
           />
 
           <span id="medprofile-clinic" />
-          <Form.Header>Клиника</Form.Header>
-          <Controller
-            name="clinic.name"
-            control={control}
-            render={({ field }) => (
-              <Form.Item label="Название">
-                <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Где наблюдается" maxLength={100} />
-              </Form.Item>
-            )}
-          />
-          <Controller
-            name="clinic.vet"
-            control={control}
-            render={({ field }) => (
-              <Form.Item label="Врач">
-                <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
-              </Form.Item>
-            )}
-          />
-          <Controller
-            name="clinic.phone"
-            control={control}
-            render={({ field }) => (
-              <Form.Item label="Телефон">
-                <Input {...textProps} type="tel" inputMode="tel" autoComplete="off" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={30} />
-              </Form.Item>
-            )}
-          />
+          <Form.Header>Клиники и врачи</Form.Header>
+          {clinics.fields.map((row, index) => (
+            <ClinicBlock key={row.id} control={control} index={index} only={clinics.fields.length === 1} onRemove={() => clinics.remove(index)} />
+          ))}
+          {clinics.fields.length < MAX_CLINICS && (
+            <Form.Item>
+              <Button block fill="outline" color="primary" onClick={() => clinics.append({ name: '', phone: '', doctors: [] })}>
+                + Добавить клинику
+              </Button>
+            </Form.Item>
+          )}
         </Form>
 
         {/* A long form: the save button stays in reach above the tab bar, not three screens down. */}

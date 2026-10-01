@@ -246,6 +246,31 @@ export function MedicalRecordForm() {
 
   const own = useMemo(() => (kind && card.data ? card.data.records[kind].map((r) => r.title) : []), [kind, card.data]);
   const chips = kind ? suggestionsFor(kind, pet?.species, own) : [];
+  // The clinics and doctors of the profile, one tap away: a pet may be seen by a general vet, a cardiologist and a
+  // dental clinic, each with its own doctors. Offered when there is a choice (two or more).
+  const clinicValue = useWatch({ control, name: 'clinic' });
+  const vetValue = useWatch({ control, name: 'vet' });
+  const profileClinics = card.data?.profile.clinics ?? [];
+  const sameText = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+  const clinicChips = profileClinics.map((c) => c.name).filter((n): n is string => !!n);
+  const chosenClinic = profileClinics.find((c) => sameText(c.name, clinicValue));
+  const doctorChips = (chosenClinic ? [chosenClinic] : profileClinics).flatMap((c) =>
+    c.doctors.map((d) => ({
+      name: d.name,
+      clinic: c.name ?? '',
+      label: [d.name, d.specialty ? d.specialty.toLowerCase() : null].filter(Boolean).join(', ') + (!chosenClinic && profileClinics.length > 1 && c.name ? ` (${c.name})` : ''),
+    })),
+  );
+  const pickClinic = (name: string) => {
+    setValue('clinic', name, { shouldDirty: true });
+    // A doctor of another clinic does not stay next to this one.
+    const other = profileClinics.find((c) => !sameText(c.name, name) && c.doctors.some((d) => sameText(d.name, vetValue)));
+    if (other && !profileClinics.find((c) => sameText(c.name, name))?.doctors.some((d) => sameText(d.name, vetValue))) setValue('vet', '', { shouldDirty: true });
+  };
+  const pickDoctor = (name: string, clinic: string) => {
+    setValue('vet', name, { shouldDirty: true });
+    if (clinic && !sameText(clinic, clinicValue)) setValue('clinic', clinic, { shouldDirty: true });
+  };
   const repeatChoices = kind ? REPEAT_CHOICES[kind] ?? [] : [];
 
   const weightSaved = useRef(false);
@@ -561,6 +586,15 @@ export function MedicalRecordForm() {
             render={({ field }) => (
               <Form.Item label="Клиника">
                 <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                {clinicChips.length > 1 && (
+                  <div className="medrec__chips" role="group" aria-label="Клиники из профиля">
+                    {clinicChips.map((name) => (
+                      <button key={name} type="button" className="medrec__chip" aria-pressed={sameText(name, clinicValue)} onClick={() => pickClinic(name)}>
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Form.Item>
             )}
           />
@@ -570,6 +604,15 @@ export function MedicalRecordForm() {
             render={({ field }) => (
               <Form.Item label="Врач">
                 <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                {doctorChips.length > 1 && (
+                  <div className="medrec__chips" role="group" aria-label="Врачи из профиля">
+                    {doctorChips.map((d) => (
+                      <button key={`${d.clinic}-${d.name}`} type="button" className="medrec__chip" aria-pressed={sameText(d.name, vetValue)} onClick={() => pickDoctor(d.name, d.clinic)}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Form.Item>
             )}
           />

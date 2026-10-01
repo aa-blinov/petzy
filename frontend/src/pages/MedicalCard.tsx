@@ -5,7 +5,7 @@ import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
-import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
+import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic } from '../services/medicalCard.service';
 import { usePet } from '../hooks/usePet';
 import { readinessChecks } from '../utils/medicalReadiness';
 import { PetImage } from '../components/PetImage';
@@ -491,13 +491,34 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
   );
 }
 
+/** A clinic: its name, the doctors seen there with what they do, and the phone as a button that calls. */
+function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
+  const doctors = clinic.doctors.map((d) => (d.specialty ? `${d.name}, ${lowerFirst(d.specialty)}` : d.name));
+  return (
+    <li className="medcard__row medcard__row--stack">
+      <div className="medcard__row-main">
+        <div className="medcard__row-title">{clinic.name || 'Клиника'}</div>
+        {doctors.map((line) => (
+          <div key={line} className="medcard__row-sub">
+            {doctors.length === 1 ? 'Врач: ' : ''}
+            {line}
+          </div>
+        ))}
+      </div>
+      {clinic.phone && (
+        <a className="medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
+          Позвонить {clinic.phone}
+        </a>
+      )}
+    </li>
+  );
+}
+
 /** What a vet reads at the counter, in the order they ask: allergies, what is due, what is taken now and the
     weight, the clinic, the last visits. Nothing here edits; the history and the forms are in the other mode. */
 function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; onPdf: () => void; onAll: () => void }) {
-  const clinic = card.profile.clinic;
   const due = (['vaccination', 'parasite'] as const).flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)));
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
-  const hasClinic = !!(clinic.name || clinic.vet || clinic.phone);
   return (
     <>
       <ImportantBlock card={card} onEdit={() => undefined} readOnly />
@@ -558,20 +579,16 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
         </ul>
       </Section>
 
-      <Section id="medcard-vet-clinic" title="Клиника">
-        <ul className="medcard__list">
-          <li className="medcard__row medcard__row--stack">
-            <div className="medcard__row-main">
-              <div className="medcard__row-title">{hasClinic ? clinic.name || 'Клиника' : 'Не указана'}</div>
-              {clinic.vet && <div className="medcard__row-sub">Врач: {clinic.vet}</div>}
-            </div>
-            {clinic.phone && (
-              <a className="medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
-                Позвонить {clinic.phone}
-              </a>
-            )}
-          </li>
-        </ul>
+      <Section id="medcard-vet-clinic" title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}>
+        {card.profile.clinics.length === 0 ? (
+          <p className="medcard__empty">Не указана.</p>
+        ) : (
+          <ul className="medcard__list">
+            {card.profile.clinics.map((c, i) => (
+              <ClinicRow key={`${c.name ?? ''}-${i}`} clinic={c} />
+            ))}
+          </ul>
+        )}
       </Section>
 
       {visits.length > 0 && (
@@ -725,19 +742,13 @@ export function MedicalCard() {
 
           {importantFilled && <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />}
 
-          {(card.profile.clinic.name || card.profile.clinic.vet || card.profile.clinic.phone) && (
-            <Section id="medcard-clinic" title="Клиника" action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile`) }}>
-              <div className="medcard__row">
-                <div className="medcard__row-main">
-                  {card.profile.clinic.name && <div className="medcard__row-title">{card.profile.clinic.name}</div>}
-                  {card.profile.clinic.vet && <div className="medcard__row-sub">Врач: {card.profile.clinic.vet}</div>}
-                  {card.profile.clinic.phone && (
-                    <div className="medcard__row-sub">
-                      <a className="medcard__tel" href={`tel:${card.profile.clinic.phone.replace(/[^\d+]/g, '')}`}>{card.profile.clinic.phone}</a>
-                    </div>
-                  )}
-                </div>
-              </div>
+          {card.profile.clinics.length > 0 && (
+            <Section id="medcard-clinic" title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'} action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile?section=clinic`) }}>
+              <ul className="medcard__list">
+                {card.profile.clinics.map((c, i) => (
+                  <ClinicRow key={`${c.name ?? ''}-${i}`} clinic={c} />
+                ))}
+              </ul>
             </Section>
           )}
 

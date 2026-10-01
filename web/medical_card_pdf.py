@@ -135,6 +135,29 @@ class _Card(FPDF):
         self.set_xy(self.l_margin, max(end_y, start_y + 5.5))
 
 
+def _clinics(profile: dict) -> list[dict]:
+    """The clinics of the profile, the main one first; the single clinic of an older profile is one of them."""
+    clinics = profile.get("clinics") or []
+    if clinics:
+        return clinics
+    legacy = profile.get("clinic") or {}
+    if legacy.get("name") or legacy.get("vet") or legacy.get("phone"):
+        doctors = [{"name": legacy["vet"]}] if legacy.get("vet") else []
+        return [{"name": legacy.get("name"), "phone": legacy.get("phone"), "doctors": doctors}]
+    return []
+
+
+def _clinic_line(clinic: dict) -> str:
+    """«Вет-клиника Друг, +7 701 000 00 00. Врачи: Иванова, терапевт; Петров, кардиолог.»"""
+    head = ", ".join(x for x in (clinic.get("name") or "Клиника", clinic.get("phone")) if x)
+    doctors = "; ".join(
+        d["name"] + (f", {d['specialty']}" if d.get("specialty") else "") for d in clinic.get("doctors") or []
+    )
+    if not doctors:
+        return head
+    return f"{head}. {'Врач' if len(clinic['doctors']) == 1 else 'Врачи'}: {doctors}"
+
+
 def draw_header(pdf: _Card, card: dict) -> None:
     """The top of page one: the name, who the animal is, and the box a vet reads first."""
     pet = card["pet"]
@@ -158,11 +181,11 @@ def draw_header(pdf: _Card, card: dict) -> None:
         ids.append(f"группа крови {profile['blood_type']}")
     if profile.get("chip_number"):
         ids.append(f"чип {profile['chip_number']}")
-    clinic = profile.get("clinic") or {}
-    where = [clinic.get("name"), f"врач {clinic['vet']}" if clinic.get("vet") else None, clinic.get("phone")]
-    line = ", ".join(x for x in ids + [", ".join(w for w in where if w)] if x)
-    if line:
+    if ids:
+        line = ", ".join(ids)
         pdf.text(line[0].upper() + line[1:], color=MUTED)
+    for clinic in _clinics(profile):
+        pdf.text(_clinic_line(clinic), color=MUTED)
 
     # What a vet asks first: allergies and conditions, in a box of their own.
     pdf.ln(4)
@@ -242,7 +265,14 @@ def _record_details(r: dict, home: dict) -> str:
 
 def _timeline(card: dict) -> list[dict]:
     """Everything dated, oldest first: the birth, the records, the certificates kept only as documents."""
-    home = (card.get("profile") or {}).get("clinic") or {}
+    # With one clinic the header already names it and its doctor: said on every row it is noise. With several, each
+    # record says which one it was.
+    clinics = _clinics(card.get("profile") or {})
+    home = (
+        {"name": clinics[0].get("name"), "vet": (clinics[0].get("doctors") or [{}])[0].get("name")}
+        if len(clinics) == 1
+        else {}
+    )
     rows = []
     if card["pet"].get("birth_date"):
         rows.append({"date": card["pet"]["birth_date"], "what": "Рождение", "details": ""})

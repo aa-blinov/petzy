@@ -28,6 +28,18 @@ export interface MedicalCondition {
   note?: string | null;
 }
 
+export interface MedicalDoctor {
+  name: string;
+  /** «Терапевт», «кардиолог», «стоматолог». */
+  specialty?: string | null;
+}
+
+export interface MedicalClinic {
+  name?: string | null;
+  phone?: string | null;
+  doctors: MedicalDoctor[];
+}
+
 /** What a vet asks first, kept on the pet; anyone with access may edit it. */
 export interface MedicalProfile {
   chip_number?: string | null;
@@ -36,6 +48,9 @@ export interface MedicalProfile {
   /** «Аллергий нет»: a statement, not the same as nothing filled in. */
   allergies_none_known: boolean;
   conditions: MedicalCondition[];
+  /** The clinics the pet is taken to, the first is the main one; each with its doctors. */
+  clinics: MedicalClinic[];
+  /** The main clinic and its first doctor: the same as the first of `clinics`. */
   clinic: { name?: string | null; vet?: string | null; phone?: string | null };
   updated_at?: string | null;
 }
