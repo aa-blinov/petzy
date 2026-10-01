@@ -437,7 +437,7 @@
 
 .medcard__mode[aria-pressed="true"] {
     background: var(--app-card-background);
-    box-shadow: var(--app-shadow-light);
+    box-shadow: var(--app-shadow-light), 0 0 0 1px var(--app-border-color);
     color: var(--app-text-primary);
 }
 
@@ -552,4 +552,10 @@
 .medcard--reading .medcard__avatar {
     width: 56px;
     height: 56px;
+}
+
+/* A status pill under the lines of a stacked row: on its own line, at the left, the same place in every row. */
+.medcard__row--stack > .medcard__status {
+    align-self: flex-start;
+    margin-top: 6px;
 }

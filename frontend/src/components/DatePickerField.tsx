@@ -96,7 +96,7 @@ export function DatePickerField({
               padding: '8px 0 8px 8px',
               border: 'none',
               background: 'none',
-              color: 'var(--app-danger-text)',
+              color: 'var(--app-accent-deep)',
               fontFamily: 'inherit',
               fontSize: 'var(--text-sm)',
               cursor: 'pointer',

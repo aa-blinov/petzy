@@ -508,18 +508,16 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
         ) : (
           <ul className="medcard__list">
             {due.map((r) => (
-              <li key={r._id} className="medcard__row medcard__row--wrap">
-                <div className="medcard__row-main">
-                  <div className="medcard__row-title">{r.title}</div>
-                  <RowLines lines={recordLines(r).filter((l) => l.tier === 'body' || l.tier === 'key')} />
-                </div>
+              <li key={r._id} className="medcard__row medcard__row--stack">
+                <div className="medcard__row-title">{r.title}</div>
+                <RowLines lines={recordLines(r).filter((l) => l.tier === 'body' || l.tier === 'key')} />
                 <RecordPill record={r} />
               </li>
             ))}
             {card.vaccinations.map((v) => {
               const { Icon } = STATUS[v.status];
               return (
-                <li key={v.id} className="medcard__row medcard__row--wrap">
+                <li key={v.id} className="medcard__row medcard__row--stack">
                   <div className="medcard__row-main">
                     <div className="medcard__row-title">{v.title}</div>
                     <div className="medcard__row-sub">Сертификат{v.expires_at ? `, до ${formatDate(v.expires_at)}` : ''}</div>
