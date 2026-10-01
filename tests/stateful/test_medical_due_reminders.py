@@ -68,14 +68,22 @@ class TestWhoIsDue:
     @pytest.mark.parametrize(
         "kind,offset,expected",
         [
-            ("vaccination", 0, "soon"),
+            ("vaccination", 0, "today"),
+            ("vaccination", 1, "soon3"),
+            ("vaccination", 3, "soon3"),
+            ("vaccination", 4, "soon"),
             ("vaccination", 14, "soon"),
             ("vaccination", 15, None),
+            ("parasite", 4, "soon"),
             ("parasite", 7, "soon"),
             ("parasite", 8, None),
             ("vaccination", -1, "overdue"),
             ("vaccination", -MEDICAL_OVERDUE_GRACE_DAYS, "overdue"),
             ("vaccination", -MEDICAL_OVERDUE_GRACE_DAYS - 1, None),
+            ("vaccination", -6, None),
+            ("vaccination", -7, "late"),
+            ("vaccination", -9, "late"),
+            ("vaccination", -10, None),
         ],
     )
     def test_the_windows_by_kind(self, mock_db, kind, offset, expected):
@@ -202,6 +210,36 @@ class TestSending:
         _subscribe(mock_db)
         self._send(mock_db)
         mock_db.medical_records.update_one({"_id": rid}, {"$set": {"next_due": day(9)}})
+        sent, _ = self._send(mock_db)
+        assert sent == 1
+
+    def test_every_step_is_its_own_push_and_a_step_is_pushed_once(self, mock_db):
+        """A repeat date 14 days away: «скоро», «скоро» with three days left, the day itself, just after, a week after."""
+        pet_id = _pet(mock_db)
+        rid = _record(mock_db, pet_id, title="Рабизин", next_due=day(14))
+        _subscribe(mock_db)
+        seen = []
+        for offset in (0, 1, 10, 11, 12, 14, 15, 17, 20, 21, 22):
+            when = NOW_UTC + timedelta(days=offset)
+            with patch("web.push_delivery.webpush") as mock_webpush:
+                sent = send_reminders(mock_db, when, "fake-key", {"sub": "mailto:t@example.com"})
+            if sent:
+                seen.append((offset, json.loads(mock_webpush.call_args.kwargs["data"])["title"]))
+        assert seen == [
+            (0, "Скоро прививка"),
+            (11, "Скоро прививка"),
+            (14, "Сегодня прививка"),
+            (15, "Прививка просрочена"),
+            (21, "Прививка всё ещё просрочена"),
+        ]
+        assert sorted(r["stage"] for r in mock_db.medical_due_reminders_sent.find({"record_id": str(rid)})) == sorted(
+            ["soon", "soon3", "today", "overdue", "late"]
+        )
+
+    def test_a_record_found_late_gets_one_push_for_where_it_is_not_for_the_missed_steps(self, mock_db):
+        pet_id = _pet(mock_db)
+        _record(mock_db, pet_id, next_due=day(2))
+        _subscribe(mock_db)
         sent, _ = self._send(mock_db)
         assert sent == 1
 

@@ -470,7 +470,7 @@ export function MedicalRecordForm() {
                     yearsForward={10}
                     clearLabel="Убрать дату повтора"
                     placeholder="Повтор не нужен"
-                    description={error?.message ? <FieldError message={error.message} /> : autoDue.current && nextDue === autoDue.current ? 'Поставили через год, как у большинства прививок. Измените или уберите. За две недели до даты придёт напоминание' : kind === 'parasite' ? 'За неделю до даты придёт напоминание' : 'За две недели до даты придёт напоминание'}
+                    description={error?.message ? <FieldError message={error.message} /> : autoDue.current && nextDue === autoDue.current ? 'Поставили через год, как у большинства прививок. Измените или уберите. Напомним за две недели, за три дня, в день даты и после неё' : kind === 'parasite' ? 'Напомним за неделю, за три дня, в день даты и после неё' : 'Напомним за две недели, за три дня, в день даты и после неё'}
                   />
                   <Form.Item>
                     <div className="medrec__chips" role="group" aria-label="Повторить через">

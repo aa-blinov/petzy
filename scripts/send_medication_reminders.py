@@ -63,10 +63,41 @@ DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE = 14
 # people with pushes about records from long ago.
 MEDICAL_OVERDUE_GRACE_DAYS = 3
 
+# One push is easy to miss, so a repeat date is reminded about in steps: «скоро» (the first day it is inside the
+# window of its kind), «скоро» again with three days left, on the day itself, just after it, and once more a week
+# after, when it is still not done. The same grace as above bounds each late step, so nothing old is brought up.
+MEDICAL_CLOSE_DAYS = 3
+MEDICAL_LATE_DAYS = 7
+
+# kind: (soon, today, overdue, still overdue)
 MEDICAL_KIND_TITLES = {
-    "vaccination": ("Скоро прививка", "Прививка просрочена"),
-    "parasite": ("Скоро обработка от паразитов", "Обработка от паразитов просрочена"),
+    "vaccination": ("Скоро прививка", "Сегодня прививка", "Прививка просрочена", "Прививка всё ещё просрочена"),
+    "parasite": (
+        "Скоро обработка от паразитов",
+        "Сегодня обработка от паразитов",
+        "Обработка от паразитов просрочена",
+        "Обработка от паразитов всё ещё просрочена",
+    ),
 }
+
+
+def medical_stage(kind: str, days_until: int):
+    """Which step of the reminders a repeat date is at, or None when it is between steps (or out of range).
+
+    Exactly one stage at a time, so a record that is found late (a new subscriber, a restart, a record entered
+    when its date is close) gets one push for where it is now, not a pile for the steps it has missed.
+    """
+    if days_until == 0:
+        return "today"
+    if 1 <= days_until <= MEDICAL_CLOSE_DAYS:
+        return "soon3"
+    if MEDICAL_CLOSE_DAYS < days_until <= SOON_DAYS[kind]:
+        return "soon"
+    if -MEDICAL_OVERDUE_GRACE_DAYS <= days_until < 0:
+        return "overdue"
+    if -(MEDICAL_LATE_DAYS + MEDICAL_OVERDUE_GRACE_DAYS - 1) <= days_until <= -MEDICAL_LATE_DAYS:
+        return "late"
+    return None
 
 
 def _days_phrase(days: int) -> str:
@@ -88,12 +119,15 @@ def medical_reminder_payload(item: dict) -> dict:
     """The push for one due record: what it is, for which pet, when, and a link
     to the pet's medical card (the pet in the URL, so it opens the right one)."""
     record, pet = item["record"], item["pet"]
-    soon_title, overdue_title = MEDICAL_KIND_TITLES[record["kind"]]
-    if item["stage"] == "soon":
+    soon_title, today_title, overdue_title, late_title = MEDICAL_KIND_TITLES[record["kind"]]
+    stage = item["stage"]
+    if stage in ("soon", "soon3"):
         title, when = soon_title, _days_phrase(item["days_until"])
+    elif stage == "today":
+        title, when = today_title, "сегодня"
     else:
         due = datetime.strptime(record["next_due"], "%Y-%m-%d").strftime("%d.%m.%Y")
-        title, when = overdue_title, f"срок был {due}"
+        title, when = (late_title if stage == "late" else overdue_title), f"срок был {due}"
     return {
         "title": title,
         "body": f"{pet.get('name', 'Питомец')}: {record.get('title', '')}, {when}",
@@ -296,11 +330,8 @@ def find_due_medical_reminders(db, now_utc: datetime, subscribed_pets=None) -> l
                 days_until = (datetime.strptime(record["next_due"], "%Y-%m-%d").date() - today).days
             except (ValueError, TypeError):
                 continue
-            if 0 <= days_until <= SOON_DAYS[record["kind"]]:
-                stage = "soon"
-            elif -MEDICAL_OVERDUE_GRACE_DAYS <= days_until < 0:
-                stage = "overdue"
-            else:
+            stage = medical_stage(record["kind"], days_until)
+            if stage is None:
                 continue
             if db.medical_due_reminders_sent.find_one(
                 {"record_id": str(record["_id"]), "next_due": record["next_due"], "stage": stage}
