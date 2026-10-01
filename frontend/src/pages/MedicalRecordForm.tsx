@@ -25,7 +25,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PickerValue } from '../components/PickerValue';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { getApiErrorMessage } from '../utils/apiError';
-import { getCurrentDate } from '../utils/dateUtils';
+import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
+import { healthRecordsService } from '../services/healthRecords.service';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
@@ -95,6 +96,10 @@ const schema = z
     batch: z.string().max(50).optional(),
     diagnosis: z.string().max(300).optional(),
     recommendations: z.string().max(500).optional(),
+    weight: z
+      .string()
+      .optional()
+      .refine((v) => !v?.trim() || (Number(v.replace(',', '.')) > 0 && Number(v.replace(',', '.')) <= 100), 'Вес от 0 до 100 кг'),
     clinic: z.string().max(100).optional(),
     vet: z.string().max(100).optional(),
     note: z.string().max(500).optional(),
@@ -139,7 +144,7 @@ export function MedicalRecordForm() {
     mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(schema),
-    defaultValues: { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', clinic: '', vet: '', note: '', document_ids: [] },
+    defaultValues: { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', weight: '', clinic: '', vet: '', note: '', document_ids: [] },
   });
   // Files added here are uploaded when the record is saved (so a form that is closed leaves nothing behind in
   // «Документы»); the ids of those already uploaded are kept, so a retry after a failure doesn't send them twice.
@@ -172,7 +177,7 @@ export function MedicalRecordForm() {
       filled.current = true;
       reset({
         title: r.title, date: r.date, next_due: r.next_due ?? '', target: r.target ?? '', batch: r.batch ?? '', diagnosis: r.diagnosis ?? '',
-        recommendations: r.recommendations ?? '', clinic: r.clinic ?? '', vet: r.vet ?? '', note: r.note ?? '', document_ids: r.documents.map((d) => d.id),
+        recommendations: r.recommendations ?? '', weight: '', clinic: r.clinic ?? '', vet: r.vet ?? '', note: r.note ?? '', document_ids: r.documents.map((d) => d.id),
       });
       return;
     }
@@ -182,7 +187,7 @@ export function MedicalRecordForm() {
     const last = Object.values(card.data.records).flat().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.clinic || r.vet);
     const clinic = last?.clinic ?? card.data.profile.clinic.name ?? '';
     const vet = last?.vet ?? card.data.profile.clinic.vet ?? '';
-    const blank: FormData = { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', clinic, vet, note: '', document_ids: [] };
+    const blank: FormData = { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
       reset(blank);
       return;
@@ -212,8 +217,10 @@ export function MedicalRecordForm() {
   const chips = kind ? suggestionsFor(kind, pet?.species, own) : [];
   const repeatChoices = kind ? REPEAT_CHOICES[kind] ?? [] : [];
 
+  const weightSaved = useRef(false);
   const save = useMutation({
     mutationFn: async (data: FormData) => {
+      weightSaved.current = false;
       const input = {
         date: data.date,
         title: data.title.trim(),
@@ -240,8 +247,29 @@ export function MedicalRecordForm() {
       }
       if (isEditing) await medicalRecordsService.update(recordId!, input);
       else await medicalRecordsService.create(petId!, kind!, input);
+      // A weight said at the visit goes to the diary too, dated the visit: the graph and the PDF read it
+      // from there. The visit is already saved, so a failure here must not make the owner save it twice.
+      const weight = kind === 'visit' && !isEditing ? Number((data.weight ?? '').replace(',', '.')) : 0;
+      if (weight > 0) {
+        try {
+          await healthRecordsService.create('weight', {
+            pet_id: petId!,
+            date: data.date,
+            time: data.date === today ? getCurrentTime() : '12:00',
+            fields: { weight },
+          });
+          weightSaved.current = true;
+        } catch {
+          showToast.failure('Визит сохранён, а вес не записался. Добавьте его в ленте.');
+        }
+      }
     },
     onSuccess: () => {
+      if (weightSaved.current) {
+        queryClient.invalidateQueries({
+          predicate: (query) => ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['medical-card', petId] });
       queryClient.invalidateQueries({ queryKey: ['medical-record', recordId] });
       // The Documents list says «В медкарте» for what a record points at.
@@ -464,6 +492,17 @@ export function MedicalRecordForm() {
                   </Form.Item>
                 )}
               />
+              {!isEditing && (
+                <Controller
+                  name="weight"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Form.Item label="Вес, кг" description={fieldState.error ? <FieldError message={fieldState.error.message} /> : 'Если взвешивали, запишется и в вес питомца'}>
+                      <Input {...left} type="text" inputMode="decimal" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={6} />
+                    </Form.Item>
+                  )}
+                />
+              )}
             </>
           )}
 
