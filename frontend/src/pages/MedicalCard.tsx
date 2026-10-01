@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, Plus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Copy, Download, FileHeart, Minus, Plus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
@@ -87,20 +87,32 @@ function CourseRow({ course }: { course: MedicalCardCourse }) {
 }
 
 /** Allergies, chronic conditions and the notes: what a vet asks first, in the one block with a colour of its own. */
-function ImportantBlock({ card, onEdit }: { card: Card; onEdit: () => void }) {
+function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit: () => void; readOnly?: boolean }) {
   const { profile, pet } = card;
   const hasAllergies = profile.allergies.length > 0;
   const filled = hasAllergies || profile.allergies_none_known || profile.conditions.length > 0 || !!pet.health_notes;
   const ids = [profile.blood_type ? `Группа крови: ${profile.blood_type}` : null, profile.chip_number ? `Чип: ${profile.chip_number}` : null].filter(Boolean);
+  // «Не выявлено» is a safe statement: it does not wear the alarm tint.
+  const calm = !hasAllergies && profile.allergies_none_known && profile.conditions.length === 0 && !pet.health_notes;
+  const copyChip = async () => {
+    try {
+      await navigator.clipboard.writeText(profile.chip_number ?? '');
+      showToast.success('Номер чипа скопирован');
+    } catch {
+      showToast.failure('Не удалось скопировать, выделите номер вручную');
+    }
+  };
   return (
-    <div className={`medcard__important${filled ? '' : ' medcard__important--empty'}`} role="group" aria-labelledby="medcard-important">
+    <div className={`medcard__important${filled ? '' : ' medcard__important--empty'}${calm ? ' medcard__important--calm' : ''}`} role="group" aria-labelledby="medcard-important">
       <ShieldAlert className="medcard__important-icon" size={22} strokeWidth={2} aria-hidden />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div className="medcard__section-head" style={{ marginBottom: 4 }}>
           <h2 id="medcard-important" className="medcard__important-title" style={{ margin: 0 }}>Здоровье и аллергии</h2>
-          <button type="button" className="medcard__link touch-target" onClick={onEdit}>
-            {filled ? 'Изменить' : 'Заполнить'}
-          </button>
+          {!readOnly && (
+            <button type="button" className="medcard__link touch-target" onClick={onEdit}>
+              {filled ? 'Изменить' : 'Заполнить'}
+            </button>
+          )}
         </div>
         {!filled && <p className="medcard__important-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми.</p>}
         {!hasAllergies && !profile.allergies_none_known && pet.health_notes && (
@@ -141,7 +153,19 @@ function ImportantBlock({ card, onEdit }: { card: Card; onEdit: () => void }) {
             <p className="medcard__important-text">{pet.health_notes}</p>
           </div>
         )}
-        {ids.length > 0 && <p className="medcard__important-text medcard__ids">{ids.join(', ')}</p>}
+        {readOnly ? (
+          <>
+            {profile.blood_type && <p className="medcard__important-text medcard__ids">Группа крови: {profile.blood_type}</p>}
+            {profile.chip_number && (
+              <button type="button" className="medcard__copy touch-target" onClick={copyChip} aria-label={`Скопировать номер чипа ${profile.chip_number}`}>
+                Чип: {profile.chip_number}
+                <Copy size={16} strokeWidth={2.2} aria-hidden />
+              </button>
+            )}
+          </>
+        ) : (
+          ids.length > 0 && <p className="medcard__important-text medcard__ids">{ids.join(', ')}</p>
+        )}
       </div>
     </div>
   );
@@ -214,11 +238,10 @@ function Section({ id, title, action, children }: { id: string; title: string; a
 
 /** What a vet looks for first, and whether the card has it. Each gap is a row that opens the
     place to fill it; when nothing is missing the block says so in one line, so the owner knows
-    the card is good enough to show. Only for someone who can edit: a gap they cannot fill is noise. */
+    the card is good enough to show. */
 function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; navigate: (to: string) => void }) {
   const checks = readinessChecks(card, petId);
   const missing = checks.filter((c) => !c.done);
-  if (!card.can_edit) return null;
   if (missing.length === 0) {
     return (
       <p className="medcard__ready" role="status">
@@ -322,6 +345,158 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
   );
 }
 
+type Mode = 'vet' | 'fill';
+const MODE_KEY = 'medcard-mode';
+
+/** The mode the person chose on this device, if any: the default depends on how much is filled in. */
+function readMode(): Mode | null {
+  try {
+    const v = localStorage.getItem(MODE_KEY);
+    return v === 'vet' || v === 'fill' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMode(mode: Mode) {
+  try {
+    localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    /* a private window keeps no choice: the default applies next time */
+  }
+}
+
+function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
+  return (
+    <div className="medcard__modes" role="group" aria-label="Режим медкарты">
+      {([['vet', 'Врачу'], ['fill', 'Заполнить']] as const).map(([value, label]) => (
+        <button key={value} type="button" className="medcard__mode" aria-pressed={mode === value} onClick={() => onChange(value)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** What a vet reads at the counter, in the order they ask: allergies, what is due, what is taken now and the
+    weight, the clinic, the last visits. Nothing here edits; the history and the forms are in the other mode. */
+function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; onPdf: () => void; onAll: () => void }) {
+  const clinic = card.profile.clinic;
+  const due = (['vaccination', 'parasite'] as const).flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)));
+  const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
+  const hasClinic = !!(clinic.name || clinic.vet || clinic.phone);
+  return (
+    <>
+      <ImportantBlock card={card} onEdit={() => undefined} readOnly />
+
+      <Section id="medcard-vet-due" title="Прививки и обработки">
+        {due.length === 0 && card.vaccinations.length === 0 ? (
+          <p className="medcard__empty">Не указаны.</p>
+        ) : (
+          <ul className="medcard__list">
+            {due.map((r) => {
+              const status = r.status !== 'none' ? RECORD_STATUS[r.status] : null;
+              return (
+                <li key={r._id} className="medcard__row">
+                  <div className="medcard__row-main">
+                    <div className="medcard__row-title">{r.title}</div>
+                    <div className="medcard__row-sub">
+                      Сделано {formatDate(r.date)}{r.next_due ? `, следующая ${formatDate(r.next_due)}` : ''}
+                    </div>
+                  </div>
+                  {status && (
+                    <span className={`medcard__status medcard__status--${status.tone}`}>
+                      <status.Icon size={13} strokeWidth={2.4} aria-hidden />
+                      {status.label}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+            {card.vaccinations.map((v) => {
+              const { label, Icon } = STATUS[v.status];
+              return (
+                <li key={v.id} className="medcard__row">
+                  <div className="medcard__row-main">
+                    <div className="medcard__row-title">{v.title}</div>
+                    <div className="medcard__row-sub">Сертификат{v.expires_at ? `, до ${formatDate(v.expires_at)}` : ''}</div>
+                  </div>
+                  <span className={`medcard__status medcard__status--${v.status}`}>
+                    <Icon size={13} strokeWidth={2.4} aria-hidden />
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Section>
+
+      <Section id="medcard-vet-now" title="Сейчас">
+        <ul className="medcard__list">
+          {card.medications.map((c) => (
+            <CourseRow key={c.id} course={c} />
+          ))}
+          {card.medications.length === 0 && (
+            <li className="medcard__row">
+              <div className="medcard__row-main">
+                <div className="medcard__row-title">Лекарства</div>
+                <div className="medcard__row-sub">Сейчас ничего не принимает</div>
+              </div>
+            </li>
+          )}
+          <li className="medcard__row">
+            <div className="medcard__row-main">
+              <div className="medcard__row-title">Вес</div>
+              <div className="medcard__row-sub">
+                {card.weight ? `${card.weight.latest.value.toLocaleString('ru-RU')} кг, ${formatDate(card.weight.latest.date)}` : 'Не указан'}
+              </div>
+            </div>
+          </li>
+          <li className="medcard__row">
+            <div className="medcard__row-main">
+              <div className="medcard__row-title">{hasClinic ? clinic.name || 'Клиника' : 'Клиника'}</div>
+              {!hasClinic && <div className="medcard__row-sub">Не указана</div>}
+              {clinic.vet && <div className="medcard__row-sub">Врач: {clinic.vet}</div>}
+            </div>
+            {clinic.phone && (
+              <a className="medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
+                {clinic.phone}
+              </a>
+            )}
+          </li>
+        </ul>
+      </Section>
+
+      {visits.length > 0 && (
+        <Section id="medcard-vet-visits" title="Последние визиты">
+          <ul className="medcard__list">
+            {visits.map((r) => (
+              <li key={r._id} className="medcard__row medcard__row--stack">
+                <div className="medcard__row-title">{r.title}, {formatDate(r.date)}</div>
+                {r.diagnosis && <div className="medcard__row-sub">Диагноз: {r.diagnosis}</div>}
+                {r.recommendations && <div className="medcard__row-sub">Рекомендации: {r.recommendations}</div>}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      <div className="medcard__actions">
+        <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Download size={18} strokeWidth={2.2} aria-hidden />
+            Скачать PDF для врача
+          </span>
+        </Button>
+        <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
+          Вся история и правка
+        </button>
+      </div>
+    </>
+  );
+}
+
 /** A pet's medical card: everything a vet asks for, on one page, from the
     pet's own records. Read-only; each section leads to where it is edited. */
 export function MedicalCard() {
@@ -331,6 +506,7 @@ export function MedicalCard() {
   const hidden = useHiddenRecords();
   const pet = pets.find((p) => p._id === id);
   const [saving, setSaving] = useState(false);
+  const [chosen, setChosen] = useState<Mode | null>(readMode);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -381,12 +557,19 @@ export function MedicalCard() {
   }
 
   const SpeciesIcon = getSpecies(pet?.species).icon;
+  const complete = readinessChecks(card, id!).every((c) => c.done);
+  // Everyone with access to the pet may fill the card in (the profile and the records are the family's): the choice on this device, else by how much is filled in.
+  const mode: Mode = chosen ?? (complete ? 'vet' : 'fill');
+  const chooseMode = (next: Mode) => {
+    setChosen(next);
+    saveMode(next);
+  };
   const facts = [card.pet.species, card.pet.breed, card.pet.age_text, card.pet.gender, card.pet.neutered_text].filter(Boolean).join(', ');
 
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
-        <div className="medcard">
+        <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ''}`}>
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
 
           <div className="card-soft medcard__head">
@@ -403,17 +586,23 @@ export function MedicalCard() {
             </div>
           </div>
 
+          <ModeSwitch mode={mode} onChange={chooseMode} />
+
+          {mode === 'vet' ? (
+            <VetView card={card} hidden={hidden} saving={saving} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
+          ) : (
+            <>
+          <ReadinessBlock card={card} petId={id!} navigate={navigate} />
+
           <div className="medcard__actions">
-            <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
+            <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Download size={18} strokeWidth={2.2} aria-hidden />
                 Скачать PDF для врача
               </span>
             </Button>
-            <p className="medcard__hint">На первой странице то, что нужно на приёме, дальше история: все прививки, обработки, визиты и операции по годам.</p>
+            <p className="medcard__hint">Первая страница для приёма, дальше история.</p>
           </div>
-
-          <ReadinessBlock card={card} petId={id!} navigate={navigate} />
 
           <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />
 
@@ -489,6 +678,9 @@ export function MedicalCard() {
                 ))}
               </ul>
             </Section>
+          )}
+
+            </>
           )}
 
           <p className="medcard__stamp">Собрано из записей питомца на {formatDate(card.generated_at)}</p>

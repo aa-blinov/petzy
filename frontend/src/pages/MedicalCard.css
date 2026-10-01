@@ -387,3 +387,84 @@
     font-weight: 600;
     color: var(--app-success-text);
 }
+
+/* The two modes: reading at the vet's counter, and filling in. */
+.medcard__modes {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius-md);
+    background: var(--app-accent-soft);
+}
+
+.medcard__mode {
+    flex: 1;
+    min-height: 44px;
+    border: none;
+    border-radius: calc(var(--radius-md) - 3px);
+    background: transparent;
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+}
+
+.medcard__mode[aria-pressed="true"] {
+    background: var(--app-card-background);
+    box-shadow: var(--app-shadow-light);
+    color: var(--app-text-primary);
+}
+
+/* «Не выявлено» is a safe statement: a neutral ground, not the alarm tint. */
+.medcard__important--calm {
+    background: var(--app-accent-soft);
+}
+
+.medcard__important--calm .medcard__important-icon,
+.medcard__important--calm .medcard__important-title,
+.medcard__important--calm .medcard__fact-label {
+    color: var(--app-text-secondary);
+}
+
+/* The chip number: copied with one tap, a 44px target. */
+.medcard__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+/* The clinic's phone in the reading mode: a call button, not a small link. */
+.medcard__call {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Reading mode: a size up from the filling-in mode, the vet reads at arm's length. */
+.medcard--reading .medcard__row-title {
+    font-size: var(--text-lg);
+}
+
+.medcard--reading .medcard__row-sub,
+.medcard--reading .medcard__important-text {
+    font-size: var(--text-md);
+}
