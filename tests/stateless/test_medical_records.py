@@ -356,10 +356,10 @@ class TestRecordsInThePdf:
             "Рабизин (серия B-77)",
             "Дронтал",
             "От глистов",
-            "Визит к врачу",
+            "Визит",
             "Диагноз: Гастрит",
             "Рекомендации: Диета",
-            "Операция или процедура",
+            "Операция",
             "Чистка зубов",
             "Заметка: без осложнений",
             "врач Иванова",
@@ -434,5 +434,5 @@ class TestNotesAndAllergiesDoNotContradict:
         mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"health_notes": "Аллергия на курицу"}})
         response = client.get(f"/api/pets/{test_pet['_id']}/medical-card/pdf", headers=_auth(regular_user_token))
         text = " ".join("\n".join(p.extract_text() for p in PdfReader(_io.BytesIO(response.data)).pages).split())
-        assert "Аллергии: не заполнены, смотрите заметки ниже" in text and "Аллергия на курицу" in text
-        assert "Аллергии: не указаны" not in text
+        assert "Аллергии не заполнены, смотрите заметки ниже" in text and "Аллергия на курицу" in text
+        assert "Аллергии не указаны" not in text

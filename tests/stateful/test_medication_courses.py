@@ -307,12 +307,12 @@ class TestCoursesOnTheCard:
             }
         )
         response = client.get(f"/api/pets/{test_pet['_id']}/medical-card/pdf", headers=_auth(regular_user_token))
-        text = "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(response.data)).pages)
+        text = " ".join("\n".join(p.extract_text() for p in PdfReader(io.BytesIO(response.data)).pages).split())
         for needle in (
             "Прошлые курсы",
             "Синулокс",
             "От чего: Цистит",
-            "Назначил: Др. Иванова",
-            "С 01.01.2024 по 14.01.2024",
+            "Назначил Др. Иванова",
+            "с 01.01.2024 по 14.01.2024",
         ):
             assert needle in text, needle

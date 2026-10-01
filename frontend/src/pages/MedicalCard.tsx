@@ -376,7 +376,7 @@ export function MedicalCard() {
                 Скачать PDF для врача
               </span>
             </Button>
-            <p className="medcard__hint">На первой странице то, что нужно на приёме, дальше вся история без сокращений.</p>
+            <p className="medcard__hint">На первой странице то, что нужно на приёме, дальше история: все прививки, обработки, визиты и операции по годам.</p>
           </div>
 
           <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />

@@ -88,12 +88,12 @@ class TestTheWholeRecord:
         _, text = _pdf(client, regular_user_token, test_pet)
         text = _flat(text)
         for needle in (
-            "Визит к врачу",
+            "Визит",
             "Диагноз: Гастрит",
             "Рекомендации: Диета",
             "врач Иванова",
             "Заметка: Вес стабилен",
-            "Обработка от паразитов",
+            "Обработка",
             "От глистов",
             "01.01.2099",
         ):
@@ -112,7 +112,7 @@ class TestTheWholeRecord:
         )
         _, text = _pdf(client, regular_user_token, test_pet)
         text = _flat(text)
-        assert "Прививка (сертификат)" in text and "05.04.2022" in text and "Действует до 02.02.2099" in text
+        assert "Сертификат Эурикан (сертификат)" in text and "05.04.2022" in text and "Действует до 02.02.2099" in text
 
 
 @pytest.mark.health
@@ -158,8 +158,12 @@ class TestCoursesWeightEventsDocuments:
                 }
             )
         _, text = _pdf(client, regular_user_token, test_pet)
-        assert "Замеров: 40" in text and "Первый замер: 4 кг (01.01.2022)" in text and "Изменение: +3,9 кг" in text
-        assert "01.01.2022" in text and "01.04.2025" in text  # the oldest and the newest are both in the list
+        text = _flat(text)
+        assert "Замеров: 40" in text and "Первый: 4 кг (01.01.2022)" in text and "За всё время +3,9 кг" in text
+        # not every measurement: the range of each year, and the latest few
+        assert "По годам: 2022 4–5,1 кг; 2023 5,2–6,3 кг" in text
+        assert "Последние: " in text and "7,9 (01.04.2025)" in text
+        assert "5,7 (01.06.2023)" not in text  # one from the middle is summed up in its year, not listed
 
     def test_the_diary_is_summarised_per_kind_and_year(self, client, mock_db, regular_user_token, test_pet):
         pid = str(test_pet["_id"])
@@ -186,14 +190,13 @@ class TestCoursesWeightEventsDocuments:
                 }
             )
         _, text = _pdf(client, regular_user_token, test_pet)
-        for needle in ("Анализ крови", "Полис", "МРТ", "Страховка", "Снимок", "добавлен 02.01.2025"):
+        for needle in ("Анализ крови", "Полис", "МРТ", "Страховка", "Снимок", "Анализ, 02.01.2025"):
             assert needle in text, needle
 
     def test_an_empty_pet_gets_an_honest_empty_history(self, client, mock_db, regular_user_token, test_pet):
         _, text = _pdf(client, regular_user_token, test_pet)
         for needle in (
-            "МЕДИЦИНСКАЯ КАРТА",
-            "История",
+            "Медицинская карта: ",
             "Сейчас не принимает.",
             "Замеров нет.",
             "Записей нет.",
