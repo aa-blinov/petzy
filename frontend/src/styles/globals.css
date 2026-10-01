@@ -1723,6 +1723,22 @@ label:has(~ .file-picker-input:focus-visible),
     --checked-border: 1px solid var(--app-primary-fill);
 }
 
+/* Rounded like every other chip in the app, not antd's 2px corners. */
+.selector-chips .adm-selector-item {
+    border-radius: var(--radius-md);
+}
+
+/* The export sheet: a long list of kinds wraps as roomy chips. */
+.export-chips.adm-selector {
+    --gap: var(--spacing-sm);
+}
+
+.export-chips .adm-selector-item {
+    max-width: 100%;
+    min-height: var(--touch-min);
+    padding-inline: var(--spacing-md) !important;
+}
+
 .selector-chips .adm-selector-item-active,
 .selector-chips .adm-selector-item-multiple-active {
     font-weight: 600;

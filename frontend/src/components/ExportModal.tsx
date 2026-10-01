@@ -74,7 +74,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
       visible={visible}
       onMaskClick={onClose}
       onClose={onClose}
-      bodyStyle={{ borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}
+      bodyStyle={{ borderTopLeftRadius: 'var(--radius-xl)', borderTopRightRadius: 'var(--radius-xl)' }}
     >
       <div style={{ padding: '16px' }}>
         <div style={{ 
@@ -90,21 +90,19 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
         <Form layout="vertical">
           <Form.Item label="Тип данных">
             <Selector
-              className="selector-chips"
+              className="selector-chips export-chips"
               options={typeOptions}
               value={exportType}
-              onChange={v => setExportType(v)}
-              columns={1}
+              onChange={v => v.length && setExportType(v)}
             />
           </Form.Item>
 
           <Form.Item label="Формат файла">
             <Selector
-              className="selector-chips"
+              className="selector-chips export-chips"
               options={formatOptions}
               value={format}
-              onChange={v => setFormat(v)}
-              columns={2}
+              onChange={v => v.length && setFormat(v)}
             />
           </Form.Item>
 
