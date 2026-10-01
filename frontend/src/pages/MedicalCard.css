@@ -9,18 +9,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-.medcard__facts {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--app-text-secondary);
-    line-height: 1.4;
-}
-
-.medcard__facts--lead {
-    /* Sits under the title as its subtitle: the page gap is too wide between the two. */
-    margin-top: calc(var(--spacing-sm) - var(--spacing-lg));
-}
-
 .medcard__actions {
     display: flex;
     flex-direction: column;
