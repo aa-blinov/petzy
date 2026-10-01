@@ -235,7 +235,7 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
       <p className="medcard__todos-hint">Врач ждёт это в первую очередь. Нажмите, чтобы добавить:</p>
       <div className="medcard__todos-list">
         {missing.map((c) => (
-          <button key={c.key} type="button" className="medcard__todo" title={c.hint} onClick={() => navigate(c.to)}>
+          <button key={c.key} type="button" className="medcard__todo tap-feedback" title={c.hint} onClick={() => navigate(c.to)}>
             <Plus size={15} strokeWidth={2.4} aria-hidden />
             {c.label}
           </button>
