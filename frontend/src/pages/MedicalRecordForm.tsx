@@ -14,7 +14,7 @@ import {
   type MedicalRecord,
   type ParasiteTarget,
 } from '../services/medicalRecords.service';
-import { documentsListQuery, DOCUMENT_CATEGORY_LABELS } from '../services/documents.service';
+import { documentsListQuery, documentsService, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { DatePickerField } from '../components/DatePickerField';
@@ -31,6 +31,8 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { addInterval, daysBetween, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
+import { formatFileSize } from '../utils/fileSize';
+import { Camera, FileUp, FileText, X } from 'lucide-react';
 import './MedicalRecordForm.css';
 
 /** «Когда сделано» in one tap: a record is often entered a day, a week or a year after the fact,
@@ -42,6 +44,43 @@ const QUICK_DATES: { label: string; date: (today: string) => string }[] = [
   { label: 'Месяц назад', date: (today) => addInterval(today, { months: -1 }) },
   { label: 'Год назад', date: (today) => addInterval(today, { years: -1 }) },
 ];
+
+/** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_DOCUMENTS = 10; // the most one record points at
+/** The Documents category a file made here is filed under, by the kind of record. */
+const UPLOAD_CATEGORY: Record<MedicalKind, DocumentCategory> = {
+  vaccination: 'vaccination',
+  parasite: 'other',
+  visit: 'conclusion',
+  procedure: 'other',
+};
+
+interface StagedFile {
+  key: string;
+  file: File;
+}
+
+/** A file waiting to be saved with the record: a small picture for a photo, an icon for a PDF. */
+function StagedRow({ item, onRemove }: { item: StagedFile; onRemove: () => void }) {
+  const isImage = item.file.type.startsWith('image/');
+  const preview = useMemo(() => (isImage ? URL.createObjectURL(item.file) : null), [isImage, item.file]);
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+  return (
+    <li className="medrec__file">
+      {preview ? <img src={preview} alt="" className="medrec__file-thumb" /> : <FileText size={28} strokeWidth={1.6} aria-hidden className="medrec__file-icon" />}
+      <span className="medrec__file-name">
+        {item.file.name}
+        <span className="medrec__file-size">{formatFileSize(item.file.size)}</span>
+      </span>
+      <button type="button" className="touch-target medrec__file-remove" aria-label={`Убрать файл ${item.file.name}`} onClick={onRemove}>
+        <X size={18} strokeWidth={2.2} aria-hidden />
+      </button>
+    </li>
+  );
+}
 
 const KINDS: MedicalKind[] = ['vaccination', 'parasite', 'visit', 'procedure'];
 const isKind = (v: string | null): v is MedicalKind => !!v && (KINDS as string[]).includes(v);
@@ -101,7 +140,13 @@ export function MedicalRecordForm() {
     resolver: zodResolver(schema),
     defaultValues: { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', clinic: '', vet: '', note: '', document_ids: [] },
   });
-  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
+  // Files added here are uploaded when the record is saved (so a form that is closed leaves nothing behind in
+  // «Документы»); the ids of those already uploaded are kept, so a retry after a failure doesn't send them twice.
+  const [staged, setStaged] = useState<StagedFile[]>([]);
+  const uploaded = useRef(new Map<string, string>());
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0);
   const date = useWatch({ control, name: 'date' });
   const nextDue = useWatch({ control, name: 'next_due' });
   const title = useWatch({ control, name: 'title' });
@@ -179,8 +224,19 @@ export function MedicalRecordForm() {
         target: kind === 'parasite' ? ((data.target || null) as ParasiteTarget | null) : null,
         diagnosis: kind === 'visit' ? data.diagnosis?.trim() || null : null,
         recommendations: kind === 'visit' ? data.recommendations?.trim() || null : null,
-        document_ids: data.document_ids,
+        document_ids: [...data.document_ids],
       };
+      // The new files first, each one a document of the pet filed by the kind of record; the record then
+      // points at them with the ones chosen from the uploaded.
+      for (const [index, item] of staged.entries()) {
+        let id = uploaded.current.get(item.key);
+        if (!id) {
+          const name = staged.length > 1 ? `${input.title.slice(0, 85)}, файл ${index + 1}` : input.title;
+          id = await documentsService.create({ pet_id: petId!, category: UPLOAD_CATEGORY[kind!], title: name.slice(0, 100), file: item.file });
+          uploaded.current.set(item.key, id);
+        }
+        input.document_ids.push(id);
+      }
       if (isEditing) await medicalRecordsService.update(recordId!, input);
       else await medicalRecordsService.create(petId!, kind!, input);
     },
@@ -197,6 +253,25 @@ export function MedicalRecordForm() {
       showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
     },
   });
+
+  const pickFiles = (list: FileList | null) => {
+    const picked = Array.from(list ?? []);
+    const room = MAX_DOCUMENTS - documentIds.length - staged.length;
+    const accepted: StagedFile[] = [];
+    for (const file of picked) {
+      if (!(file.type.startsWith('image/') || file.type === 'application/pdf')) {
+        showToast.failure(`«${file.name}»: подходят фото и PDF`);
+      } else if (file.size > MAX_FILE_BYTES) {
+        showToast.failure(`«${file.name}» больше ${formatFileSize(MAX_FILE_BYTES)}`);
+      } else if (accepted.length >= room) {
+        showToast.failure(`К записи можно прикрепить не больше ${MAX_DOCUMENTS} документов`);
+        break;
+      } else {
+        accepted.push({ key: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`, file });
+      }
+    }
+    if (accepted.length) setStaged((current) => [...current, ...accepted]);
+  };
 
   const onSubmit = (data: FormData) => {
     if (kind === 'parasite' && !data.target) {
@@ -423,9 +498,12 @@ export function MedicalRecordForm() {
             clickable
             arrow
             onClick={() => setDocsOpen(true)}
-            description="Сертификат, выписка, фото наклейки. Добавляются в разделе «Документы»"
+            description="Сертификат, выписка, фото наклейки: выберите из загруженных или добавьте новые"
           >
-            <PickerValue value={chosenDocs.length ? chosenDocs.map((d) => d.title).join(', ') : ''} placeholder="Не прикреплены" />
+            <PickerValue
+              value={[...chosenDocs.map((d) => d.title), ...staged.map((f) => f.file.name)].join(', ')}
+              placeholder="Не прикреплены"
+            />
           </Form.Item>
         </Form>
 
@@ -459,23 +537,51 @@ export function MedicalRecordForm() {
         </div>
       </div>
 
-      <Popup visible={docsOpen} onMaskClick={() => setDocsOpen(false)} onClose={() => setDocsOpen(false)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh', overflow: 'auto' }}>
+      <Popup visible={docsOpen} onMaskClick={() => setDocsOpen(false)} onClose={() => setDocsOpen(false)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75vh', overflow: 'auto' }}>
         <div style={{ padding: 'var(--spacing-md)' }}>
-          <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)' }}>Документы питомца</h2>
-          {(documents.data ?? []).length === 0 ? (
-            <p style={{ color: 'var(--app-text-secondary)' }}>Документов пока нет. Добавьте сертификат в разделе «Документы» с категорией «Прививки»: после сохранения приложение предложит оформить его записью медкарты.</p>
-          ) : (
-            <CheckList
-              multiple
-              value={documentIds}
-              onChange={(v) => setValue('document_ids', v as string[], { shouldDirty: true })}
-            >
-              {(documents.data ?? []).map((d) => (
-                <CheckList.Item key={d._id} value={d._id} description={DOCUMENT_CATEGORY_LABELS[d.category]}>
-                  {d.title}
-                </CheckList.Item>
-              ))}
-            </CheckList>
+          <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)' }}>Документы к записи</h2>
+
+          <div className="medrec__add-files">
+            <Button fill="outline" color="primary" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => cameraInput.current?.click()}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Camera size={18} strokeWidth={2.2} aria-hidden />
+                Сфотографировать
+              </span>
+            </Button>
+            <Button fill="outline" color="primary" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => fileInput.current?.click()}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <FileUp size={18} strokeWidth={2.2} aria-hidden />
+                Выбрать файл
+              </span>
+            </Button>
+          </div>
+          <p className="medrec__add-hint">Фото или PDF до {formatFileSize(MAX_FILE_BYTES)}. Файл появится и в разделе «Документы», когда вы сохраните запись.</p>
+          {/* Two inputs: one opens the camera, the other the gallery and files. */}
+          <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden aria-label="Сфотографировать" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
+          <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden aria-label="Выбрать файл" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
+
+          {staged.length > 0 && (
+            <>
+              <h3 className="medrec__subhead">Будет добавлено</h3>
+              <ul className="medrec__files">
+                {staged.map((item) => (
+                  <StagedRow key={item.key} item={item} onRemove={() => setStaged((current) => current.filter((f) => f.key !== item.key))} />
+                ))}
+              </ul>
+            </>
+          )}
+
+          {(documents.data ?? []).length > 0 && (
+            <>
+              <h3 className="medrec__subhead">Уже загруженные</h3>
+              <CheckList multiple value={documentIds} onChange={(v) => setValue('document_ids', v as string[], { shouldDirty: true })}>
+                {(documents.data ?? []).map((d) => (
+                  <CheckList.Item key={d._id} value={d._id} description={DOCUMENT_CATEGORY_LABELS[d.category]}>
+                    {d.title}
+                  </CheckList.Item>
+                ))}
+              </CheckList>
+            </>
           )}
           <Button block color="primary" size="large" style={{ marginTop: 'var(--spacing-md)' }} onClick={() => setDocsOpen(false)}>
             Готово
