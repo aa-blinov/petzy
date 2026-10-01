@@ -91,6 +91,7 @@ docker compose up -d --build
 ```sh
 docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml up -d --build
 .venv/bin/python scripts/seed_demo.py    # аккаунты, питомцы, два месяца записей
+.venv/bin/python scripts/seed_medical.py  # медкарта: полная у Рекса, неполная у Мурзика, пустая у Пустика (повторяемо)
 ```
 
 Открывайте http://localhost:3000 и заходите как `demo` (владелец) или `family` (приглашён на одного питомца); пароль лежит в `DEMO_PASSWORD` в `scripts/seed_demo.py`. Сидер наполняет двух питомцев с фото, двумя месяцами записей, одним своим типом события, лекарствами с остатком и приёмами, документами (один скоро истекает), одним ожидающим и одним принятым приглашением и подтверждённой почтой.
