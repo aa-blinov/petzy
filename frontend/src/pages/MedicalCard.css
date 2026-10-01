@@ -334,3 +334,56 @@
     line-height: 1.4;
     color: var(--app-text-secondary);
 }
+
+/* The gaps in the card: one tap on the missing thing opens where it is filled. */
+.medcard__todos {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    background: var(--app-card-background);
+    border: 1px solid var(--app-divider-color);
+}
+
+.medcard__todos-title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 700;
+}
+
+.medcard__todos-hint {
+    margin: 2px 0 var(--spacing-sm);
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}
+
+.medcard__todos-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.medcard__todo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--app-accent-deep);
+    border-radius: 999px;
+    background: transparent;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+}
+
+.medcard__ready {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-success-text);
+}

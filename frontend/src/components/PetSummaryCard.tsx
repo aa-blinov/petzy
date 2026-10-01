@@ -10,7 +10,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createElement, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileHeart, Plus, Scale } from 'lucide-react';
+import { ChevronRight, FileHeart, Plus, Scale } from 'lucide-react';
 import { PhotoViewer } from './PhotoViewer';
 import { Skeleton } from 'antd-mobile';
 
@@ -254,9 +254,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
             </button>
           )}
 
-          {/* Weight chip (the always-relevant health metric) and the way into
-              the medical card: an icon chip, named for screen readers. */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          {/* The weight, the always-relevant health metric. The medical card is its own row
+              below: next to this chip it looked like one more figure, not a way in. */}
           {lastWeightRecord && (
             <span
               className="chip"
@@ -276,26 +275,6 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
               <CountUp to={lastWeightRecord.fields?.weight as number} duration={800} decimals={1} /> кг
             </span>
           )}
-            <button
-              type="button"
-              className="chip touch-target"
-              onClick={openMedicalCard}
-              aria-label={`Медкарта: ${pet.name}`}
-              title="Медкарта"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "4px 9px",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              <FileHeart size={16} strokeWidth={2.2} style={{ display: "block" }} aria-hidden />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -321,6 +300,57 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
           onAdd={() => onQuickAdd("weight")}
         />
       </div>
+
+      {/* The way into the medical card: a row of its own, named in words, with a chevron.
+          A different surface from the two tiles above (those record something; this one opens). */}
+      <button
+        type="button"
+        className="tap-feedback"
+        onClick={() => {
+          hapticFeedback("light");
+          openMedicalCard();
+        }}
+        aria-label={`Медкарта: ${pet.name}`}
+        style={{
+          marginTop: "8px",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "10px 12px",
+          textAlign: "left",
+          font: "inherit",
+          cursor: "pointer",
+          color: "var(--app-text-primary)",
+          background: "var(--app-card-background)",
+          border: "1px solid var(--app-divider-color)",
+          borderRadius: "12px",
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            flexShrink: 0,
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--app-accent-soft)",
+            color: "var(--app-accent-deep)",
+          }}
+        >
+          <FileHeart size={20} strokeWidth={2} style={{ display: "block" }} />
+        </span>
+        <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+          <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Медкарта</span>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--app-text-secondary)" }}>
+            Прививки, лекарства, PDF для врача
+          </span>
+        </span>
+        <ChevronRight size={18} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "var(--app-text-tertiary)" }} />
+      </button>
 
       {feedings.isLoading || weights.isLoading ? (
         <Skeleton.Paragraph lineCount={1} style={{ marginTop: "12px" }} />
