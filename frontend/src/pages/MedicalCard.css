@@ -126,9 +126,10 @@
 
 .medcard__section-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--spacing-md);
+    gap: 0 var(--spacing-md);
     margin-bottom: var(--spacing-sm);
 }
 

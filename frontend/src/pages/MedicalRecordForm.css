@@ -1,31 +1,5 @@
 /* Loaded with the form itself: the form can be opened on its own (a reload, a link), without the card's stylesheet. */
 /* The title and repeat suggestions of the record form: to tap instead of type. */
-.medrec__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: var(--spacing-sm);
-}
-
-.medrec__chip {
-    padding: 8px 12px;
-    border: 1px solid var(--app-border-color);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--app-text-color);
-    font: inherit;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    min-height: 44px;
-}
-
-.medrec__chip[aria-pressed='true'] {
-    background: var(--app-accent-soft);
-    border-color: var(--app-accent);
-    color: var(--app-accent-deep);
-    font-weight: 600;
-}
-
 /* Adding files to a record: two buttons, then what is waiting to be saved. */
 .medrec__add-files {
     display: grid;

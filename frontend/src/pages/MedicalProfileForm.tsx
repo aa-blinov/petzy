@@ -19,6 +19,7 @@ import { showToast } from '../utils/toast';
 import { showSnackbar } from '../utils/snackbar';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { getApiErrorMessage } from '../utils/apiError';
+import '../components/Chips.css';
 
 const currentYear = new Date().getFullYear();
 
@@ -85,27 +86,16 @@ const LIVING_CHIPS = ['Квартира', 'Частный дом, выгул', '
     are already in the field takes nothing away: the text is the person's. */
 function SuggestionChips({ ariaLabel, options, value, onPick }: { ariaLabel: string; options: string[]; value: string; onPick: (next: string) => void }) {
   return (
-    <div role="group" aria-label={ariaLabel} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 'var(--spacing-sm)' }}>
+    <div role="group" aria-label={ariaLabel} className="medrec__chips">
       {options.map((option) => {
         const used = value.toLowerCase().includes(option.toLowerCase());
         return (
           <button
             key={option}
             type="button"
+            className="medrec__chip"
             aria-pressed={used}
             onClick={() => !used && onPick(value.trim() ? `${value.trim().replace(/[,.]$/, '')}, ${option.toLowerCase()}` : option)}
-            style={{
-              minHeight: 44,
-              padding: '0 12px',
-              border: `1px solid ${used ? 'var(--app-accent)' : 'var(--app-border-color)'}`,
-              borderRadius: 999,
-              background: used ? 'var(--app-accent-soft)' : 'transparent',
-              color: used ? 'var(--app-accent-deep)' : 'var(--app-text-color)',
-              fontFamily: 'inherit',
-              fontSize: 'var(--text-sm)',
-              fontWeight: used ? 600 : 400,
-              cursor: 'pointer',
-            }}
           >
             {option}
           </button>
@@ -180,7 +170,7 @@ function ClinicBlock({ control, index, only, onRemove, getValues }: { control: C
       ))}
       {doctors.fields.length < MAX_DOCTORS && (
         <Form.Item>
-          <Button block fill="outline" size="small" onClick={() => doctors.append({ name: '', specialty: '' })}>
+          <Button block fill="outline" style={{ minHeight: 44 }} onClick={() => doctors.append({ name: '', specialty: '' })}>
             + Добавить врача
           </Button>
         </Form.Item>
@@ -388,7 +378,7 @@ export function MedicalProfileForm() {
             ))}
           {!noneKnown && (
             <Form.Item>
-              <Button block fill="outline" color="primary" onClick={() => allergies.append({ substance: '', reaction: '' })}>
+              <Button block fill="outline" color="primary" style={{ minHeight: 44 }} onClick={() => allergies.append({ substance: '', reaction: '' })}>
                 + Добавить аллерген
               </Button>
             </Form.Item>
@@ -439,7 +429,7 @@ export function MedicalProfileForm() {
             </div>
           ))}
           <Form.Item>
-            <Button block fill="outline" color="primary" onClick={() => conditions.append({ name: '', since_year: '', note: '' })}>
+            <Button block fill="outline" color="primary" style={{ minHeight: 44 }} onClick={() => conditions.append({ name: '', since_year: '', note: '' })}>
               + Добавить состояние
             </Button>
           </Form.Item>
@@ -502,7 +492,7 @@ export function MedicalProfileForm() {
           ))}
           {clinics.fields.length < MAX_CLINICS && (
             <Form.Item>
-              <Button block fill="outline" color="primary" onClick={() => clinics.append({ name: '', phone: '', doctors: [] })}>
+              <Button block fill="outline" color="primary" style={{ minHeight: 44 }} onClick={() => clinics.append({ name: '', phone: '', doctors: [] })}>
                 + Добавить клинику
               </Button>
             </Form.Item>
