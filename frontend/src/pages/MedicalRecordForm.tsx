@@ -31,6 +31,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { addInterval, daysBetween, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
+import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileText, X } from 'lucide-react';
 import './MedicalRecordForm.css';
@@ -245,7 +246,8 @@ export function MedicalRecordForm() {
       queryClient.invalidateQueries({ queryKey: ['medical-record', recordId] });
       // The Documents list says «В медкарте» for what a record points at.
       queryClient.invalidateQueries({ queryKey: ['documents', petId] });
-      showToast.success(isEditing ? 'Запись сохранена' : 'Запись добавлена');
+      if (isEditing) showToast.success('Запись сохранена');
+      else void confirmWithProgress(queryClient, petId!, 'Запись добавлена');
       release();
       goBack(navigate, cardPath);
     },
