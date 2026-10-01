@@ -25,3 +25,86 @@
     color: var(--app-accent-deep);
     font-weight: 600;
 }
+
+/* Adding files to a record: two buttons, then what is waiting to be saved. */
+.medrec__add-files {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+}
+
+.medrec__add-hint {
+    margin: var(--spacing-sm) 0 var(--spacing-md);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    color: var(--app-text-secondary);
+}
+
+.medrec__subhead {
+    margin: var(--spacing-md) 0 var(--spacing-xs);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--app-text-secondary);
+}
+
+.medrec__files {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.medrec__file {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    border-top: 1px solid var(--app-divider-color);
+}
+
+.medrec__file:first-child {
+    border-top: none;
+}
+
+.medrec__file-thumb,
+.medrec__file-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+    padding: 0;
+}
+
+.medrec__file-icon {
+    padding: 8px;
+}
+
+.medrec__file-name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-wrap: anywhere;
+    font-size: var(--text-sm);
+}
+
+.medrec__file-size {
+    color: var(--app-text-secondary);
+    font-size: var(--text-xs);
+}
+
+.medrec__file-remove {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--app-text-secondary);
+    cursor: pointer;
+}
