@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, Download, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
@@ -10,6 +10,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { SettingsRow } from '../components/SettingsRow';
+import { ExportModal, ALL_TYPES } from '../components/ExportModal';
+import { usePet } from '../hooks/usePet';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
@@ -21,6 +23,8 @@ import {
 
 export function Settings() {
   const navigate = useNavigate();
+  const { selectedPetId } = usePet();
+  const [exportVisible, setExportVisible] = useState(false);
   const { theme, setTheme, isDark } = useTheme();
   const { logout } = useAuth();
   const { isAdmin } = useAdmin();
@@ -231,6 +235,23 @@ export function Settings() {
             />
           </div>
 
+          {/* Section: Export. The history screen, where this used to live, is no longer a tab. */}
+          <h2
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            Записи
+          </h2>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Экспорт записей"
+              description="Скачать записи питомца таблицей"
+              chevron
+              onClick={() => (selectedPetId ? setExportVisible(true) : showToast.info('Сначала выберите питомца'))}
+            />
+          </div>
+
           {/* Section: Defaults */}
           <h2
             className="section-header"
@@ -381,6 +402,8 @@ export function Settings() {
           ],
         ]}
       />
+
+      {selectedPetId && <ExportModal visible={exportVisible} onClose={() => setExportVisible(false)} petId={selectedPetId} defaultType={ALL_TYPES} />}
     </div>
   );
 }
