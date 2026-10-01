@@ -159,7 +159,7 @@ export function MedicalProfileForm() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Данные для врача</h1>
           <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Это видят все, у кого есть доступ к {query.data.pet.name}, и врач в PDF
+            Это видят все, у кого есть доступ к питомцу {query.data.pet.name}, и врач в PDF
           </p>
         </div>
 

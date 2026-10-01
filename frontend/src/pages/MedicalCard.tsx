@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Download, FileHeart, Minus, Plus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
@@ -211,6 +211,77 @@ function Section({ id, title, action, children }: { id: string; title: string; a
   );
 }
 
+/** What a vet looks for first, and whether the card has it. Each gap is a row that opens the
+    place to fill it; when nothing is missing the block says so in one line, so the owner knows
+    the card is good enough to show. Only for someone who can edit: a gap they cannot fill is noise. */
+function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; navigate: (to: string) => void }) {
+  const { profile } = card;
+  const clinic = profile.clinic;
+  const checks: { key: string; label: string; hint: string; done: boolean; to: string }[] = [
+    {
+      key: 'allergies',
+      label: 'Аллергии',
+      hint: 'Укажите или отметьте, что аллергий нет',
+      done: profile.allergies.length > 0 || profile.allergies_none_known,
+      to: `/pets/${petId}/medical-profile`,
+    },
+    {
+      key: 'vaccination',
+      label: 'Прививки',
+      hint: 'Запишите последнюю, придёт напоминание о повторе',
+      done: card.record_counts.vaccination > 0 || card.vaccinations.length > 0,
+      to: `/pets/${petId}/medical-records/new?kind=vaccination`,
+    },
+    {
+      key: 'parasite',
+      label: 'Обработки от паразитов',
+      hint: 'Запишите последнюю, придёт напоминание о повторе',
+      done: card.record_counts.parasite > 0,
+      to: `/pets/${petId}/medical-records/new?kind=parasite`,
+    },
+    {
+      key: 'clinic',
+      label: 'Клиника и врач',
+      hint: 'Название и телефон, чтобы не искать в чатах',
+      done: !!(clinic.name || clinic.vet || clinic.phone),
+      to: `/pets/${petId}/medical-profile`,
+    },
+    {
+      key: 'weight',
+      label: 'Вес',
+      hint: 'Врач считает по нему дозы',
+      done: !!card.weight,
+      to: '/form/weight',
+    },
+  ];
+  const missing = checks.filter((c) => !c.done);
+  if (!card.can_edit) return null;
+  if (missing.length === 0) {
+    return (
+      <p className="medcard__ready" role="status">
+        <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
+        Главное для врача заполнено
+      </p>
+    );
+  }
+  return (
+    <section className="medcard__todos" aria-labelledby="medcard-readiness">
+      <h2 id="medcard-readiness" className="medcard__todos-title">
+        Заполнено {checks.length - missing.length} из {checks.length}
+      </h2>
+      <p className="medcard__todos-hint">Врач ждёт это в первую очередь. Нажмите, чтобы добавить:</p>
+      <div className="medcard__todos-list">
+        {missing.map((c) => (
+          <button key={c.key} type="button" className="medcard__todo" title={c.hint} onClick={() => navigate(c.to)}>
+            <Plus size={15} strokeWidth={2.4} aria-hidden />
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /** The records of one kind. The card brings the latest ten; «Показать все» asks for the rest. */
 function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKind; card: Card; petId: string; hidden: ReadonlySet<string>; navigate: (to: string) => void }) {
   const [expanded, setExpanded] = useState(false);
@@ -378,6 +449,8 @@ export function MedicalCard() {
             </Button>
             <p className="medcard__hint">На первой странице то, что нужно на приёме, дальше история: все прививки, обработки, визиты и операции по годам.</p>
           </div>
+
+          <ReadinessBlock card={card} petId={id!} navigate={navigate} />
 
           <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />
 
