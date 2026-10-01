@@ -193,6 +193,9 @@
     --text-xxl: 1.5rem;
     /* 24px */
 
+    /* The smallest target for a finger: a control may be drawn smaller, it may not be pressed smaller. */
+    --touch-min: 44px;
+
     --line-height-tight: 1.2;
     --line-height-normal: 1.5;
     --line-height-relaxed: 1.625;

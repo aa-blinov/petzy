@@ -12,7 +12,7 @@ import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import './MedicalRecordForm.css';
-import '../components/Chips.css';
+import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 
 type Checks = VisitPrep['checks'];
 
@@ -99,14 +99,14 @@ export function VisitPrepForm() {
           <Form.Header>Что изменилось</Form.Header>
           {VISIT_CHECKS.map((key) => (
             <Form.Item key={key} label={VISIT_CHECK_LABELS[key]}>
-              <div role="group" aria-label={VISIT_CHECK_LABELS[key]} className="medrec__chips" style={{ marginTop: 0 }}>
-                <button type="button" className="medrec__chip" aria-pressed={checks[key] === 'normal'} onClick={() => setCheck(key, 'normal')}>
+              <ChoiceChips label={VISIT_CHECK_LABELS[key]} flush>
+                <ChoiceChip pressed={checks[key] === 'normal'} onClick={() => setCheck(key, 'normal')}>
                   Как обычно
-                </button>
-                <button type="button" className="medrec__chip" aria-pressed={checks[key] === 'changed'} onClick={() => setCheck(key, 'changed')}>
+                </ChoiceChip>
+                <ChoiceChip pressed={checks[key] === 'changed'} onClick={() => setCheck(key, 'changed')}>
                   Изменилось
-                </button>
-              </div>
+                </ChoiceChip>
+              </ChoiceChips>
             </Form.Item>
           ))}
         </Form>

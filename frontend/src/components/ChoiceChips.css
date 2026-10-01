@@ -1,13 +1,17 @@
-/* Chips to tap instead of type: the suggestions of the record form, the profile and «К приёму». One file, loaded by every
-   form that has them, so that a form opened on its own (a reload, a link) looks the same. */
-.medrec__chips {
+/* ChoiceChips / ChoiceChip (components/ChoiceChips.tsx). The stylesheet comes with the component, so a form opened on its
+   own (a reload, a link) looks the same. */
+.choice-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-top: var(--spacing-sm);
 }
 
-.medrec__chip {
+.choice-chips--flush {
+    margin-top: 0;
+}
+
+.choice-chip {
     padding: 8px 12px;
     border: 1px solid var(--app-border-color);
     border-radius: 999px;
@@ -16,10 +20,10 @@
     font: inherit;
     font-size: var(--text-sm);
     cursor: pointer;
-    min-height: 44px;
+    min-height: var(--touch-min);
 }
 
-.medrec__chip[aria-pressed='true'] {
+.choice-chip[aria-pressed='true'] {
     background: var(--app-accent-soft);
     border-color: var(--app-accent);
     color: var(--app-accent-deep);

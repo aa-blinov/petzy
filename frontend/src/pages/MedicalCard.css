@@ -308,7 +308,7 @@
     align-self: flex-start;
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: var(--touch-min);
     padding: 0;
     border: none;
     background: none;
@@ -426,7 +426,7 @@
 
 .medcard__mode {
     flex: 1;
-    min-height: 44px;
+    min-height: var(--touch-min);
     border: none;
     border-radius: calc(var(--radius-md) - 3px);
     background: transparent;
@@ -459,7 +459,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: var(--touch-min);
     padding: 0;
     border: none;
     background: none;
