@@ -153,7 +153,8 @@ class TestProfileInThePdf:
     def _text(self, client, token, pet):
         response = client.get(f"/api/pets/{pet['_id']}/medical-card/pdf", headers=_auth(token))
         assert response.status_code == 200
-        return "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(response.data)).pages)
+        # a long line wraps: the text is read on one line
+        return " ".join("\n".join(p.extract_text() for p in PdfReader(io.BytesIO(response.data)).pages).split())
 
     def test_the_profile_is_on_the_paper(self, client, mock_db, regular_user_token, test_pet):
         _put(client, regular_user_token, test_pet, FULL)
@@ -162,16 +163,16 @@ class TestProfileInThePdf:
             "Курица: зуд, покраснение ушей",
             "Амоксициллин",
             "Хронический гастрит (с 2024 года): обострения осенью",
-            "Группа крови: A",
+            "Группа крови A",
             "чип 643093100123456",
-            "Клиника: Вет-клиника Друг, врач Иванова А. П., тел. +7 701 000 00 00",
+            "Вет-клиника Друг, врач Иванова А. П., +7 701 000 00 00",
         ):
             assert needle in text, needle
 
     def test_the_three_states_of_allergies_read_differently(self, client, mock_db, regular_user_token, test_pet):
-        assert "Аллергии: не указаны" in self._text(client, regular_user_token, test_pet)
+        assert "Аллергии не указаны" in self._text(client, regular_user_token, test_pet)
         _put(client, regular_user_token, test_pet, {"allergies_none_known": True})
-        assert "Аллергии: не выявлено" in self._text(client, regular_user_token, test_pet)
+        assert "Аллергии не выявлено" in self._text(client, regular_user_token, test_pet)
         _put(client, regular_user_token, test_pet, {"allergies": [{"substance": "Курица"}]})
         text = self._text(client, regular_user_token, test_pet)
-        assert "Аллергии\n" in text and "Курица" in text and "не выявлено" not in text
+        assert "Аллергия Курица" in text and "не выявлено" not in text

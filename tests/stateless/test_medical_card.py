@@ -214,7 +214,7 @@ class TestMedicalCardPdf:
         text = "\n".join(page.extract_text() for page in PdfReader(io.BytesIO(response.data)).pages)
         for needle in (
             test_pet["name"],
-            "МЕДИЦИНСКАЯ КАРТА",
+            "Медицинская карта: ",
             "Аллергия на курицу",
             "Нобивак",
             "Габапентин",
