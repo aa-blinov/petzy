@@ -124,6 +124,7 @@ def serialize_records(records: list[dict], today: date) -> list[dict]:
                 "note": r.get("note"),
                 "batch": r.get("batch"),
                 "target": r.get("target"),
+                "complaint": r.get("complaint"),
                 "diagnosis": r.get("diagnosis"),
                 "recommendations": r.get("recommendations"),
                 "documents": [docs[d] for d in r.get("document_ids") or [] if d in docs],
@@ -185,6 +186,7 @@ def _stored(data: dict, kind: str) -> dict:
         "document_ids": list(dict.fromkeys(data.get("document_ids") or [])),
         "batch": data.get("batch") if kind == "vaccination" else None,
         "target": data.get("target") if kind == "parasite" else None,
+        "complaint": data.get("complaint") if kind == "visit" else None,
         "diagnosis": data.get("diagnosis") if kind == "visit" else None,
         "recommendations": data.get("recommendations") if kind == "visit" else None,
     }

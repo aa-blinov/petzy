@@ -34,6 +34,7 @@ export interface MedicalRecord {
   note: string | null;
   batch: string | null;
   target: ParasiteTarget | null;
+  complaint: string | null;
   diagnosis: string | null;
   recommendations: string | null;
   documents: { id: string; title: string }[];
@@ -48,6 +49,7 @@ export interface MedicalRecordInput {
   note: string | null;
   batch: string | null;
   target: ParasiteTarget | null;
+  complaint: string | null;
   diagnosis: string | null;
   recommendations: string | null;
   document_ids: string[];

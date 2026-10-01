@@ -25,6 +25,9 @@ const currentYear = new Date().getFullYear();
 const profileSchema = z.object({
   chip_number: z.string().max(30).optional(),
   blood_type: z.string().max(20).optional(),
+  diet: z.string().max(200).optional(),
+  living: z.string().max(200).optional(),
+  reproduction: z.string().max(200).optional(),
   allergies_none_known: z.boolean(),
   allergies: z.array(
     z.object({
@@ -64,6 +67,9 @@ type ProfileForm = z.infer<typeof profileSchema>;
 const EMPTY: ProfileForm = {
   chip_number: '',
   blood_type: '',
+  diet: '',
+  living: '',
+  reproduction: '',
   allergies_none_known: false,
   allergies: [],
   conditions: [],
@@ -71,6 +77,43 @@ const EMPTY: ProfileForm = {
 };
 
 const MAX_CLINICS = 5;
+
+const DIET_CHIPS = ['Сухой корм', 'Влажный корм', 'Натуральное', 'Смешанное'];
+const LIVING_CHIPS = ['Квартира', 'Частный дом, выгул', 'Живёт на улице', 'Есть другие животные'];
+
+/** Taps instead of typing: a chip puts its words in the field, or adds them after what is there. A chip whose words
+    are already in the field takes nothing away: the text is the person's. */
+function SuggestionChips({ ariaLabel, options, value, onPick }: { ariaLabel: string; options: string[]; value: string; onPick: (next: string) => void }) {
+  return (
+    <div role="group" aria-label={ariaLabel} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 'var(--spacing-sm)' }}>
+      {options.map((option) => {
+        const used = value.toLowerCase().includes(option.toLowerCase());
+        return (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={used}
+            onClick={() => !used && onPick(value.trim() ? `${value.trim().replace(/[,.]$/, '')}, ${option.toLowerCase()}` : option)}
+            style={{
+              minHeight: 44,
+              padding: '0 12px',
+              border: `1px solid ${used ? 'var(--app-accent)' : 'var(--app-border-color)'}`,
+              borderRadius: 999,
+              background: used ? 'var(--app-accent-soft)' : 'transparent',
+              color: used ? 'var(--app-accent-deep)' : 'var(--app-text-color)',
+              fontFamily: 'inherit',
+              fontSize: 'var(--text-sm)',
+              fontWeight: used ? 600 : 400,
+              cursor: 'pointer',
+            }}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /** A button that takes a row away is a real target, not a 27px word next to the field. */
 const REMOVE_STYLE = { minHeight: 44, padding: '0 12px' } as React.CSSProperties;
@@ -199,6 +242,9 @@ export function MedicalProfileForm() {
     reset({
       chip_number: profile.chip_number ?? '',
       blood_type: profile.blood_type ?? '',
+      diet: profile.diet ?? '',
+      living: profile.living ?? '',
+      reproduction: profile.reproduction ?? '',
       allergies_none_known: profile.allergies_none_known,
       allergies: profile.allergies.map((a) => ({ substance: a.substance, reaction: a.reaction ?? '' })),
       conditions: profile.conditions.map((c) => ({ name: c.name, since_year: c.since_year ? String(c.since_year) : '', note: c.note ?? '' })),
@@ -213,6 +259,9 @@ export function MedicalProfileForm() {
       medicalCardService.saveProfile(id!, {
         chip_number: data.chip_number?.trim() || null,
         blood_type: data.blood_type?.trim() || null,
+        diet: data.diet?.trim() || null,
+        living: data.living?.trim() || null,
+        reproduction: data.reproduction?.trim() || null,
         allergies_none_known: data.allergies_none_known,
         // A row left completely empty is not an entry.
         allergies: data.allergies_none_known
@@ -411,6 +460,37 @@ export function MedicalProfileForm() {
             render={({ field }) => (
               <Form.Item label="Номер чипа или клейма" description={fieldNote({ value: field.value, max: 30 })}>
                 <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={30} />
+              </Form.Item>
+            )}
+          />
+
+          <Form.Header>Питание и условия жизни</Form.Header>
+          <Controller
+            name="diet"
+            control={control}
+            render={({ field }) => (
+              <Form.Item label="Чем кормят" description={fieldNote({ value: field.value, max: 200 })}>
+                <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Например, сухой корм, два раза в день" maxLength={200} />
+                <SuggestionChips ariaLabel="Чем кормят, подсказки" options={DIET_CHIPS} value={field.value ?? ''} onPick={field.onChange} />
+              </Form.Item>
+            )}
+          />
+          <Controller
+            name="living"
+            control={control}
+            render={({ field }) => (
+              <Form.Item label="Условия жизни" description={fieldNote({ value: field.value, max: 200 })}>
+                <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Например, квартира, живёт с собакой" maxLength={200} />
+                <SuggestionChips ariaLabel="Условия жизни, подсказки" options={LIVING_CHIPS} value={field.value ?? ''} onPick={field.onChange} />
+              </Form.Item>
+            )}
+          />
+          <Controller
+            name="reproduction"
+            control={control}
+            render={({ field }) => (
+              <Form.Item label="Репродуктивный статус" description={fieldNote({ value: field.value, max: 200 })}>
+                <Input {...textProps} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно: беременности, роды, течка" maxLength={200} />
               </Form.Item>
             )}
           />

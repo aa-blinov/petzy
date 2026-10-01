@@ -5,7 +5,7 @@ import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
-import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic } from '../services/medicalCard.service';
+import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { usePet } from '../hooks/usePet';
 import { readinessChecks } from '../utils/medicalReadiness';
 import { PetImage } from '../components/PetImage';
@@ -264,6 +264,7 @@ function recordLines(record: MedicalRecord): RowLine[] {
       tier: 'body',
     },
     record.next_due && repeating && !record.superseded ? { label: 'Следующая', text: formatDate(record.next_due), tier: 'key' } : null,
+    record.complaint ? { label: 'Жалоба', text: record.complaint, tier: 'fact' } : null,
     record.diagnosis ? { label: 'Диагноз', text: record.diagnosis, tier: 'fact' } : null,
     record.recommendations ? { label: 'Рекомендации', text: record.recommendations, tier: 'fact' } : null,
     { text: [record.clinic, record.vet ? `врач ${record.vet}` : null].filter(Boolean).join(', '), tier: 'meta' },
@@ -533,6 +534,44 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
   );
 }
 
+/** What the household wants to tell the vet this time: the complaint, and what is not as usual. */
+function PrepRows({ prep }: { prep: VisitPrep }) {
+  const changed = VISIT_CHECKS.filter((k) => prep.checks[k] === 'changed').map((k) => VISIT_CHECK_LABELS[k].toLowerCase());
+  const normal = VISIT_CHECKS.filter((k) => prep.checks[k] === 'normal').map((k) => VISIT_CHECK_LABELS[k].toLowerCase());
+  return (
+    <li className="medcard__row medcard__row--stack">
+      {prep.complaint && <div className="medcard__row-title">{prep.complaint}</div>}
+      {changed.length > 0 && (
+        <div className="medcard__row-sub medcard__row-sub--key" style={{ color: 'var(--app-danger-text)' }}>
+          Изменилось: {changed.join(', ')}
+        </div>
+      )}
+      {normal.length > 0 && <div className="medcard__row-sub medcard__row-sub--meta">Как обычно: {normal.join(', ')}</div>}
+    </li>
+  );
+}
+
+/** What is kept about the way of life: the food, the home, and when it matters the reproductive state. */
+function LifeRows({ profile }: { profile: Card['profile'] }) {
+  const rows = [
+    ['Питание', profile.diet],
+    ['Условия жизни', profile.living],
+    ['Репродуктивный статус', profile.reproduction],
+  ].filter((row): row is [string, string] => !!row[1]);
+  return (
+    <>
+      {rows.map(([label, value]) => (
+        <li key={label} className="medcard__row medcard__row--stack">
+          <div className="medcard__row-title">{label}</div>
+          <div className="medcard__row-sub">{value}</div>
+        </li>
+      ))}
+    </>
+  );
+}
+
+const hasLife = (profile: Card['profile']) => !!(profile.diet || profile.living || profile.reproduction);
+
 /** A clinic: its name, the doctors seen there with what they do, and the phone as a button that calls. */
 function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
   const doctors = clinic.doctors.map((d) => (d.specialty ? `${d.name}, ${lowerFirst(d.specialty)}` : d.name));
@@ -565,6 +604,14 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
   return (
     <>
+      {card.visit_prep && (
+        <Section id="medcard-vet-prep" title="На приём">
+          <ul className="medcard__list">
+            <PrepRows prep={card.visit_prep} />
+          </ul>
+        </Section>
+      )}
+
       <ImportantBlock card={card} onEdit={() => undefined} readOnly />
 
       <Section id="medcard-vet-due" title="Прививки и обработки">
@@ -622,6 +669,14 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
           </li>
         </ul>
       </Section>
+
+      {hasLife(card.profile) && (
+        <Section id="medcard-vet-life" title="Питание и условия">
+          <ul className="medcard__list">
+            <LifeRows profile={card.profile} />
+          </ul>
+        </Section>
+      )}
 
       <Section id="medcard-vet-clinic" title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}>
         {card.profile.clinics.length === 0 ? (
@@ -788,6 +843,20 @@ export function MedicalCard() {
             </div>
           )}
 
+          <Section
+            id="medcard-prep"
+            title="К приёму"
+            action={{ label: card.visit_prep ? 'Изменить' : 'Добавить', onClick: () => navigate(`/pets/${id}/visit-prep`) }}
+          >
+            {card.visit_prep ? (
+              <ul className="medcard__list">
+                <PrepRows prep={card.visit_prep} />
+              </ul>
+            ) : (
+              <p className="medcard__empty">Что беспокоит и что изменилось: врач увидит это первой строкой.</p>
+            )}
+          </Section>
+
           {importantFilled && <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />}
 
           {card.profile.clinics.length > 0 && (
@@ -796,6 +865,14 @@ export function MedicalCard() {
                 {card.profile.clinics.map((c, i) => (
                   <ClinicRow key={`${c.name ?? ''}-${i}`} clinic={c} />
                 ))}
+              </ul>
+            </Section>
+          )}
+
+          {hasLife(card.profile) && (
+            <Section id="medcard-life" title="Питание и условия" action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile`) }}>
+              <ul className="medcard__list">
+                <LifeRows profile={card.profile} />
               </ul>
             </Section>
           )}
