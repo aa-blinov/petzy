@@ -38,7 +38,7 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
     staleTime: 30_000,
   });
 
-  // The state of the medical card, said under its row: what is overdue, else how far it is filled in.
+  // Under the row only what is overdue: how far the card is filled in is a matter for the card, not for the feed.
   const medCard = useQuery({
     queryKey: ['medical-card', pet._id],
     queryFn: () => medicalCardService.get(pet._id),
@@ -257,7 +257,7 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
         <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
           <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Медкарта</span>
           <span style={{ fontSize: "var(--text-xs)", color: medStatus?.alert ? "var(--app-danger-text)" : "var(--app-text-secondary)", fontWeight: medStatus?.alert ? 600 : 400 }}>
-            {medStatus ? medStatus.text : "Прививки, лекарства, PDF"}
+            {medStatus?.alert ? medStatus.text : "Прививки, лекарства, PDF"}
           </span>
         </span>
         <ChevronRight size={18} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "var(--app-text-tertiary)" }} />
