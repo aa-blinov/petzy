@@ -530,3 +530,9 @@
 .medcard--reading .medcard__row-title {
     overflow-wrap: break-word;
 }
+
+.medcard__ready-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
