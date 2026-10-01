@@ -496,7 +496,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
               </div>
             </div>
           </li>
-          <li className="medcard__row">
+          <li className="medcard__row medcard__row--wrap">
             <div className="medcard__row-main">
               <div className="medcard__row-title">{hasClinic ? clinic.name || 'Клиника' : 'Клиника'}</div>
               {!hasClinic && <div className="medcard__row-sub">Не указана</div>}

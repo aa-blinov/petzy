@@ -517,3 +517,16 @@
 .medcard__ready--warn {
     color: var(--app-warning-text);
 }
+
+/* A row with a button that may not fit beside the text on a narrow screen: the button goes under it. */
+.medcard__row--wrap {
+    flex-wrap: wrap;
+}
+
+.medcard__row--wrap .medcard__row-main {
+    flex: 1 1 11rem;
+}
+
+.medcard--reading .medcard__row-title {
+    overflow-wrap: break-word;
+}
