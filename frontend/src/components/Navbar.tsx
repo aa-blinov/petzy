@@ -7,7 +7,7 @@ import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
 import { getSpecies, speciesLabel } from '../utils/species';
 import type { Pet } from '../services/pets.service';
-import { MAIN_TAB_PATHS } from '../utils/navigation';
+import { isMainTabPath, medicalCardPetId } from '../utils/navigation';
 import { isPublicPage } from '../utils/publicPages';
 
 export function Navbar() {
@@ -21,6 +21,8 @@ export function Navbar() {
     hapticFeedback('light');
     selectPet(pet);
     setPickerVisible(false);
+    // On a pet's medical card the switcher changes the card to the other pet's, not only the pet chosen.
+    if (medicalCardPetId(location.pathname)) navigate(`/pets/${pet._id}/medical-card`, { replace: true });
   };
 
   const handleBack = () => {
@@ -37,7 +39,7 @@ export function Navbar() {
   }
 
   // Show back button only on pages that are not main tabs
-  const isMainTab = MAIN_TAB_PATHS.includes(location.pathname) || location.pathname === '';
+  const isMainTab = isMainTabPath(location.pathname) || location.pathname === '';
 
   // The pet switcher only belongs on screens whose content is scoped to
   // one pet, or on the other main tabs for a consistent topbar — not on

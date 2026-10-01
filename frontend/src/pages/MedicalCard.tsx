@@ -803,8 +803,8 @@ export function MedicalCard() {
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
         <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ''}`}>
-          {/* In the reading mode the pet's name is the title: the page keeps its heading for screen readers only. */}
-          <h1 className={mode === 'vet' ? 'sr-only' : 'display-headline'} style={mode === 'vet' ? undefined : { fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
+          {/* The title stays in both modes: switching the mode changes what is below, not where the person is. */}
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
 
           <div className="card-soft medcard__head">
             <div className="medcard__avatar" aria-hidden={!pet?.photo_url}>

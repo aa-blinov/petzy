@@ -1,4 +1,4 @@
-import { MAIN_TAB_PATHS } from './navigation';
+import { isMainTabPath } from './navigation';
 
 /**
  * Brings a new release to an app that stays open. The browser only looks
@@ -12,7 +12,7 @@ import { MAIN_TAB_PATHS } from './navigation';
 let updateReady = false;
 
 function onMainTab(pathname: string): boolean {
-  return MAIN_TAB_PATHS.includes(pathname);
+  return isMainTabPath(pathname);
 }
 
 /** Reload into the new release if one is waiting and nothing can be lost here. */
