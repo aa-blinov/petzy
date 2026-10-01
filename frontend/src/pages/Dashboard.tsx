@@ -174,13 +174,7 @@ export function Dashboard() {
             <PendingInvites />
             {/* Pet at-a-glance summary */}
             {getSelectedPet && (
-              <PetSummaryCard
-                pet={getSelectedPet}
-                onQuickAdd={(tileId) => {
-                  hapticFeedback('light');
-                  navigate(`/form/${tileId}`);
-                }}
-              />
+              <PetSummaryCard pet={getSelectedPet} />
             )}
 
             {/* Widget for upcoming medication block */}
