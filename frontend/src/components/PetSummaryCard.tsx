@@ -3,23 +3,20 @@
  *
  * Side-by-side layout: a square avatar (or species icon when no photo)
  * on the left, the pet's name, quick meta and the last weight on the right.
- * Below, one row into the medical card. The last feeding and weight used to
+ * The medical card has its own tab, so no way into it here. The last feeding and weight used to
  * be two tiles here: the feed under the card already shows them, so the card
  * stays a card of the pet.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { createElement, useState } from 'react';
+import { createElement, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, FileHeart, Scale } from 'lucide-react';
+import { Scale } from 'lucide-react';
 import { PhotoViewer } from './PhotoViewer';
 
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
-import { medicalCardService } from '../services/medicalCard.service';
-import { cardStatusLine } from '../utils/medicalReadiness';
 import { computePetAge } from '../utils/relativeTime';
-import { hapticFeedback } from '../utils/haptic';
 import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
@@ -38,25 +35,13 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
     staleTime: 30_000,
   });
 
-  // Under the row only what is overdue: how far the card is filled in is a matter for the card, not for the feed.
-  const medCard = useQuery({
-    queryKey: ['medical-card', pet._id],
-    queryFn: () => medicalCardService.get(pet._id),
-    enabled: !!pet._id,
-    staleTime: 30_000,
-  });
-  const medStatus = medCard.data ? cardStatusLine(medCard.data, pet._id) : null;
-
   const lastWeightRecord = weights.data?.items?.[0];
 
   const age = computePetAge(pet.birth_date ?? "");
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
   const { username } = useAuth();
   const navigate = useNavigate();
-  // The icon chip opens the medical card; the photo opens at full size (a pet with no
-  // photo has a picture of its species there, nothing to enlarge, so that opens the card).
-  // Something overdue: the whole card, where it can be put right; otherwise the card opens as it was left.
-  const openMedicalCard = () => navigate(`/pets/${pet._id}/medical-card${medStatus?.alert ? '?mode=fill' : ''}`);
+  // The photo opens at full size; a pet with no photo has a picture of its species there, nothing to enlarge.
   const [photoOpen, setPhotoOpen] = useState(false);
   // Nothing known yet: the owner (only they can edit the pet) is asked to
   // fill it in; someone it's shared with sees at least what animal it is.
@@ -88,18 +73,27 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
         {/* Square avatar — image if available, else species icon on the
             brand-soft tint. object-fit: cover keeps the photo square
             even if the source is rectangular. */}
-        <button
-          type="button"
-          onClick={pet.photo_url ? () => setPhotoOpen(true) : openMedicalCard}
-          aria-label={pet.photo_url ? `Открыть фото: ${pet.name}` : `Медкарта: ${pet.name}`}
-          className="tap-feedback"
+        <div
+          {...(pet.photo_url
+            ? {
+                role: "button",
+                tabIndex: 0,
+                "aria-label": `Открыть фото: ${pet.name}`,
+                className: "tap-feedback",
+                onClick: () => setPhotoOpen(true),
+                onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setPhotoOpen(true);
+                  }
+                },
+              }
+            : {})}
           style={{
             flexShrink: 0,
             width: "112px",
             height: "112px",
-            padding: 0,
-            border: "none",
-            cursor: "pointer",
+            cursor: pet.photo_url ? "pointer" : "default",
             borderRadius: "var(--radius-md)",
             overflow: "hidden",
             backgroundColor: "var(--app-accent-soft)",
@@ -125,7 +119,7 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
           ) : (
             createElement(SpeciesIcon, { size: 56, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
           )}
-        </button>
+        </div>
 
         {/* Right column — name, age/gender/breed summary, weight chip.
             minWidth: 0 lets flex children ellipsis correctly. */}
@@ -211,57 +205,6 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
           )}
         </div>
       </div>
-
-      {/* The way into the medical card: a row of its own, named in words, with a chevron.
-          A bordered surface, so that it reads as a button and not as one more fact about the pet. */}
-      <button
-        type="button"
-        className="tap-feedback"
-        onClick={() => {
-          hapticFeedback("light");
-          openMedicalCard();
-        }}
-        aria-label={`Медкарта: ${pet.name}`}
-        style={{
-          marginTop: 0,
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "10px 12px",
-          textAlign: "left",
-          font: "inherit",
-          cursor: "pointer",
-          color: "var(--app-text-primary)",
-          background: "var(--app-card-background)",
-          border: "1px solid var(--app-divider-color)",
-          borderRadius: "12px",
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            flexShrink: 0,
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "var(--radius-sm)",
-            background: "var(--app-accent-soft)",
-            color: "var(--app-accent-deep)",
-          }}
-        >
-          <FileHeart size={20} strokeWidth={2} style={{ display: "block" }} />
-        </span>
-        <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-          <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Медкарта</span>
-          <span style={{ fontSize: "var(--text-xs)", color: medStatus?.alert ? "var(--app-danger-text)" : "var(--app-text-secondary)", fontWeight: medStatus?.alert ? 600 : 400 }}>
-            {medStatus?.alert ? medStatus.text : "Прививки, лекарства, PDF"}
-          </span>
-        </span>
-        <ChevronRight size={18} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "var(--app-text-tertiary)" }} />
-      </button>
 
       {pet.photo_url && <PhotoViewer image={pet.photo_url} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </div>
