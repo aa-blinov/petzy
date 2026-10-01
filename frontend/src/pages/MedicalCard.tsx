@@ -806,12 +806,12 @@ export function MedicalCard() {
           {/* The title stays in both modes: switching the mode changes what is below, not where the person is. */}
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
 
-          <div className="card-soft medcard__head">
+          <div className="medcard__head">
             <div className="medcard__avatar" aria-hidden={!pet?.photo_url}>
               {pet?.photo_url ? (
-                <PetImage src={pet.photo_url} alt={card.pet.name} size={72} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0 }} />
+                <PetImage src={pet.photo_url} alt={card.pet.name} size={44} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0 }} />
               ) : (
-                <SpeciesIcon size={36} strokeWidth={1.6} aria-hidden />
+                <SpeciesIcon size={22} strokeWidth={1.6} aria-hidden />
               )}
             </div>
             <div style={{ minWidth: 0 }}>
