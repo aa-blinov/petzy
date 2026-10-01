@@ -335,8 +335,11 @@
     color: var(--app-text-secondary);
 }
 
-/* The gaps in the card: one tap on the missing thing opens where it is filled. */
+/* The next step, one thing at a time; the rest wait below it as a short list. */
 .medcard__todos {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
     padding: var(--spacing-md);
     border-radius: var(--radius-lg);
     background: var(--app-card-background);
@@ -345,36 +348,55 @@
 
 .medcard__todos-title {
     margin: 0;
-    font-size: var(--text-md);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-text-secondary);
+}
+
+.medcard__todos-next {
+    margin: var(--spacing-xs, 4px) 0 0;
+    font-size: var(--text-xl);
     font-weight: 700;
 }
 
 .medcard__todos-hint {
-    margin: 2px 0 var(--spacing-sm);
-    font-size: var(--text-sm);
+    margin: 0 0 var(--spacing-sm);
+    font-size: var(--text-md);
     color: var(--app-text-secondary);
 }
 
-.medcard__todos-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-sm);
+.medcard__todos-rest {
+    list-style: none;
+    margin: var(--spacing-xs, 4px) 0 0;
+    padding: 0;
+    border-top: 1px solid var(--app-divider-color);
 }
 
-.medcard__todo {
-    display: inline-flex;
+.medcard__todos-row,
+.medcard__todo-row {
+    display: flex;
     align-items: center;
-    gap: 6px;
-    min-height: 44px;
-    padding: 0 14px;
-    border: 1px solid var(--app-accent-deep);
-    border-radius: 999px;
-    background: transparent;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    width: 100%;
+    min-height: 48px;
+    padding: 0;
+    border: none;
+    background: none;
     font: inherit;
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     font-weight: 600;
     color: var(--app-accent-deep);
+    text-align: left;
     cursor: pointer;
+}
+
+.medcard__todos-rest li + li {
+    border-top: 1px solid var(--app-divider-color);
+}
+
+.medcard__todo-row {
+    padding: 0 var(--spacing-md);
 }
 
 .medcard__ready {

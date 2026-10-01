@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Copy, Download, FileHeart, Minus, Plus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
@@ -250,20 +250,30 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
       </p>
     );
   }
+  // The order is the order a vet asks in. One step is the next one; the others wait below it as a short list.
+  const [next, ...rest] = missing;
   return (
     <section className="medcard__todos" aria-labelledby="medcard-readiness">
       <h2 id="medcard-readiness" className="medcard__todos-title">
         Заполнено {checks.length - missing.length} из {checks.length}
       </h2>
-      <p className="medcard__todos-hint">Врач ждёт это в первую очередь. Нажмите, чтобы добавить:</p>
-      <div className="medcard__todos-list">
-        {missing.map((c) => (
-          <button key={c.key} type="button" className="medcard__todo tap-feedback" title={c.hint} onClick={() => navigate(c.to)}>
-            <Plus size={15} strokeWidth={2.4} aria-hidden />
-            {c.label}
-          </button>
-        ))}
-      </div>
+      <p className="medcard__todos-next">{next.label}</p>
+      <p className="medcard__todos-hint">{next.hint}</p>
+      <Button block color="primary" size="large" onClick={() => navigate(next.to)}>
+        {next.action}
+      </Button>
+      {rest.length > 0 && (
+        <ul className="medcard__todos-rest" aria-label="Потом">
+          {rest.map((c) => (
+            <li key={c.key}>
+              <button type="button" className="medcard__todos-row tap-feedback" onClick={() => navigate(c.to)}>
+                {c.label}
+                <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -283,6 +293,8 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
   const legacy = kind === 'vaccination' ? card.vaccinations : [];
   const repeating = kind === 'vaccination' || kind === 'parasite';
   const more = total > source.length;
+  // An empty kind says nothing here: the block of missing items, or the group of what can be added, already does.
+  if (rows.length === 0 && legacy.length === 0 && !expanded) return null;
   return (
     <Section
       id={`medcard-${kind}`}
@@ -557,7 +569,12 @@ export function MedicalCard() {
   }
 
   const SpeciesIcon = getSpecies(pet?.species).icon;
-  const complete = readinessChecks(card, id!).every((c) => c.done);
+  const checks = readinessChecks(card, id!);
+  const doneCount = checks.filter((c) => c.done).length;
+  const complete = doneCount === checks.length;
+  const importantFilled = card.profile.allergies.length > 0 || card.profile.allergies_none_known || card.profile.conditions.length > 0 || !!card.pet.health_notes;
+  // The kinds of record that are only optional: a visit or an operation is not owed, so they wait in one group.
+  const optionalEmpty = (['visit', 'procedure'] as MedicalKind[]).filter((kind) => card.record_counts[kind] === 0);
   // Everyone with access to the pet may fill the card in (the profile and the records are the family's): the choice on this device, else by how much is filled in.
   const mode: Mode = chosen ?? (complete ? 'vet' : 'fill');
   const chooseMode = (next: Mode) => {
@@ -594,17 +611,20 @@ export function MedicalCard() {
             <>
           <ReadinessBlock card={card} petId={id!} navigate={navigate} />
 
-          <div className="medcard__actions">
-            <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <Download size={18} strokeWidth={2.2} aria-hidden />
-                Скачать PDF для врача
-              </span>
-            </Button>
-            <p className="medcard__hint">Первая страница для приёма, дальше история.</p>
-          </div>
+          {/* A PDF of an empty card helps nobody: it is offered once two of the five are there. */}
+          {doneCount >= 2 && (
+            <div className="medcard__actions">
+              <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Download size={18} strokeWidth={2.2} aria-hidden />
+                  Скачать PDF для врача
+                </span>
+              </Button>
+              <p className="medcard__hint">Первая страница для приёма, дальше история.</p>
+            </div>
+          )}
 
-          <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />
+          {importantFilled && <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />}
 
           {(card.profile.clinic.name || card.profile.clinic.vet || card.profile.clinic.phone) && (
             <Section id="medcard-clinic" title="Клиника" action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile`) }}>
@@ -638,6 +658,21 @@ export function MedicalCard() {
             <KindSection key={kind} kind={kind} card={card} petId={id!} hidden={hidden} navigate={navigate} />
           ))}
 
+          {optionalEmpty.length > 0 && (
+            <Section id="medcard-optional" title="Ещё можно добавить">
+              <ul className="medcard__list">
+                {optionalEmpty.map((kind) => (
+                  <li key={kind} className="medcard__row" style={{ padding: 0 }}>
+                    <button type="button" className="medcard__row-button medcard__todo-row" onClick={() => navigate(`/pets/${id}/medical-records/new?kind=${kind}`)}>
+                      <span className="medcard__row-title">{MEDICAL_KIND_LABELS[kind].section}</span>
+                      <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
           {card.past_courses.length > 0 && (
             <Section id="medcard-past-courses" title="Прошлые курсы">
               <ul className="medcard__list">
@@ -651,8 +686,8 @@ export function MedicalCard() {
             </Section>
           )}
 
-          <Section id="medcard-weight" title="Вес" action={{ label: card.weight ? 'История' : 'Записать', onClick: () => navigate(card.weight ? '/history' : '/form/weight') }}>
-            {card.weight ? (
+          {card.weight && (
+            <Section id="medcard-weight" title="Вес" action={{ label: 'История', onClick: () => navigate('/history') }}>
               <div className="medcard__weight">
                 <div className="medcard__weight-now">
                   <span className="medcard__weight-value">{card.weight.latest.value.toLocaleString('ru-RU')} кг</span>
@@ -660,10 +695,8 @@ export function MedicalCard() {
                 </div>
                 <Sparkline points={card.weight.series.map((p) => p.value)} />
               </div>
-            ) : (
-              <p className="medcard__empty">Замеров нет.</p>
-            )}
-          </Section>
+            </Section>
+          )}
 
           {card.documents.length > 0 && (
             <Section id="medcard-documents" title="Последние результаты" action={{ label: 'Все документы', onClick: () => navigate('/documents') }}>
