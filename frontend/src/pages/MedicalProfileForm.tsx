@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useFieldArray, useForm, Controller, useWatch, type Control } from 'react-hook-form';
+import { useFieldArray, useForm, Controller, useWatch, type Control, type UseFormGetValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Form, Input, Switch } from 'antd-mobile';
@@ -16,6 +16,7 @@ import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
+import { showSnackbar } from '../utils/snackbar';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -70,12 +71,21 @@ const EMPTY: ProfileForm = {
 };
 
 const MAX_CLINICS = 5;
+
+/** A button that takes a row away is a real target, not a 27px word next to the field. */
+const REMOVE_STYLE = { minHeight: 44, padding: '0 12px' } as React.CSSProperties;
+
+/** Takes a row out of a list and offers to put it back: a filled-in allergy is not lost by one wrong tap. */
+function removeWithUndo<T>(list: { remove: (i: number) => void; insert: (i: number, v: T) => void }, index: number, row: T, message: string) {
+  list.remove(index);
+  showSnackbar({ message, action: { label: 'Отменить', run: () => list.insert(index, row) } });
+}
 const MAX_DOCTORS = 10;
 
 const textProps = { style: { '--text-align': 'left' } as React.CSSProperties };
 
 /** One clinic: its name and phone, and the doctors seen there with what they do. */
-function ClinicBlock({ control, index, only, onRemove }: { control: Control<ProfileForm>; index: number; only: boolean; onRemove: () => void }) {
+function ClinicBlock({ control, index, only, onRemove, getValues }: { control: Control<ProfileForm>; index: number; only: boolean; onRemove: () => void; getValues: UseFormGetValues<ProfileForm> }) {
   const doctors = useFieldArray({ control, name: `clinics.${index}.doctors` });
   return (
     <div role="group" aria-label={`Клиника ${index + 1}`}>
@@ -119,7 +129,7 @@ function ClinicBlock({ control, index, only, onRemove }: { control: Control<Prof
             )}
           />
           <Form.Item>
-            <Button size="small" color="danger" fill="none" onClick={() => doctors.remove(j)} aria-label={`Убрать врача ${j + 1} клиники ${index + 1}`}>
+            <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={() => removeWithUndo(doctors, j, getValues().clinics[index].doctors[j], 'Врач убран')} aria-label={`Убрать врача ${j + 1} клиники ${index + 1}`}>
               <DeleteOutline aria-hidden /> Убрать врача
             </Button>
           </Form.Item>
@@ -134,7 +144,7 @@ function ClinicBlock({ control, index, only, onRemove }: { control: Control<Prof
       )}
       {!only && (
         <Form.Item>
-          <Button size="small" color="danger" fill="none" onClick={onRemove} aria-label={`Убрать клинику ${index + 1}`}>
+          <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={onRemove} aria-label={`Убрать клинику ${index + 1}`}>
             <DeleteOutline aria-hidden /> Убрать клинику
           </Button>
         </Form.Item>
@@ -159,7 +169,7 @@ export function MedicalProfileForm() {
     refetchOnMount: 'always',
   });
 
-  const { control, handleSubmit, reset, setValue, getValues, formState: { isDirty, isSubmitting } } = useForm<ProfileForm>({
+  const { control, handleSubmit, reset, getValues, formState: { isDirty, isSubmitting } } = useForm<ProfileForm>({
     mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(profileSchema),
@@ -285,7 +295,14 @@ export function MedicalProfileForm() {
                     checked={field.value}
                     onChange={(on) => {
                       field.onChange(on);
-                      if (on) setValue('allergies', [], { shouldDirty: true });
+                      // The list is put away, not wiped: «no allergies» and a list of them contradict each other, so it is
+                      // not saved, and the way back is one tap.
+                      if (on && getValues().allergies.some((a) => a.substance?.trim() || a.reaction?.trim())) {
+                        showSnackbar({
+                          message: 'Список аллергенов не сохранится',
+                          action: { label: 'Вернуть', run: () => field.onChange(false) },
+                        });
+                      }
                     }}
                   />
                 }
@@ -314,7 +331,7 @@ export function MedicalProfileForm() {
                   )}
                 />
                 <Form.Item>
-                  <Button size="small" color="danger" fill="none" onClick={() => allergies.remove(index)} aria-label={`Убрать аллергию ${index + 1}`}>
+                  <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={() => removeWithUndo(allergies, index, getValues().allergies[index], 'Аллерген убран')} aria-label={`Убрать аллергию ${index + 1}`}>
                     <DeleteOutline aria-hidden /> Убрать
                   </Button>
                 </Form.Item>
@@ -366,7 +383,7 @@ export function MedicalProfileForm() {
                 )}
               />
               <Form.Item>
-                <Button size="small" color="danger" fill="none" onClick={() => conditions.remove(index)} aria-label={`Убрать состояние ${index + 1}`}>
+                <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={() => removeWithUndo(conditions, index, getValues().conditions[index], 'Состояние убрано')} aria-label={`Убрать состояние ${index + 1}`}>
                   <DeleteOutline aria-hidden /> Убрать
                 </Button>
               </Form.Item>
@@ -378,7 +395,7 @@ export function MedicalProfileForm() {
             </Button>
           </Form.Item>
 
-          <Form.Header>Идентификация</Form.Header>
+          <Form.Header>Чип и группа крови</Form.Header>
           <Controller
             name="blood_type"
             control={control}
@@ -401,7 +418,7 @@ export function MedicalProfileForm() {
           <span id="medprofile-clinic" />
           <Form.Header>Клиники и врачи</Form.Header>
           {clinics.fields.map((row, index) => (
-            <ClinicBlock key={row.id} control={control} index={index} only={clinics.fields.length === 1} onRemove={() => clinics.remove(index)} />
+            <ClinicBlock key={row.id} control={control} index={index} only={clinics.fields.length === 1} getValues={getValues} onRemove={() => removeWithUndo(clinics, index, getValues().clinics[index], 'Клиника убрана')} />
           ))}
           {clinics.fields.length < MAX_CLINICS && (
             <Form.Item>

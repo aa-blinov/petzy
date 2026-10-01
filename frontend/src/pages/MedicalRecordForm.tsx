@@ -35,16 +35,17 @@ import { showToast } from '../utils/toast';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileText, X } from 'lucide-react';
+import { DownOutline, UpOutline } from 'antd-mobile-icons';
 import './MedicalRecordForm.css';
 
 /** «Когда сделано» in one tap: a record is often entered a day, a week or a year after the fact,
     and the day, month, year wheels are a long way to turn for that. */
-const QUICK_DATES: { label: string; date: (today: string) => string }[] = [
+const QUICK_DATES: { label: string; date: (today: string) => string; kinds?: MedicalKind[] }[] = [
   { label: 'Сегодня', date: (today) => today },
   { label: 'Вчера', date: (today) => shiftByDays(today, -1) },
   { label: 'Неделю назад', date: (today) => shiftByDays(today, -7) },
-  { label: 'Месяц назад', date: (today) => addInterval(today, { months: -1 }) },
-  { label: 'Год назад', date: (today) => addInterval(today, { years: -1 }) },
+  // A yearly shot is the one that is often entered a year after: the other kinds do not need the fourth chip.
+  { label: 'Год назад', date: (today) => addInterval(today, { years: -1 }), kinds: ['vaccination'] },
 ];
 
 /** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
@@ -177,6 +178,8 @@ export function MedicalRecordForm() {
   const documentIds = useWatch({ control, name: 'document_ids' });
   const [docsOpen, setDocsOpen] = useState(false);
   const [targetError, setTargetError] = useState<string | null>(null);
+  // The optional fields are closed, except for a record being edited that has something in them.
+  const [moreChosen, setMoreChosen] = useState<boolean | null>(null);
   // The repeat date put in by the form itself (not typed): it moves with the date until the person changes it.
   const autoDue = useRef('');
   useEffect(() => {
@@ -244,7 +247,10 @@ export function MedicalRecordForm() {
     (Object.keys(copy) as (keyof FormData)[]).forEach((key) => setValue(key, copy[key] as never, { shouldDirty: true }));
   }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, reset, setValue, today]);
 
-  const own = useMemo(() => (kind && card.data ? card.data.records[kind].map((r) => r.title) : []), [kind, card.data]);
+  const recorded = record.data;
+  const moreOpen = moreChosen ?? (isEditing && !!(recorded?.clinic || recorded?.vet || recorded?.note || recorded?.batch));
+  // The titles of a vaccination or a treatment come back (the next shot is the same vaccine); a visit's title does not.
+  const own = useMemo(() => (kind && repeating && card.data ? card.data.records[kind].map((r) => r.title) : []), [kind, repeating, card.data]);
   const chips = kind ? suggestionsFor(kind, pet?.species, own) : [];
   // The clinics and doctors of the profile, one tap away: a pet may be seen by a general vet, a cardiologist and a
   // dental clinic, each with its own doctors. Offered when there is a choice (two or more).
@@ -463,7 +469,7 @@ export function MedicalRecordForm() {
 
           <Form.Item>
             <div className="medrec__chips" role="group" aria-label={`${DATE_LABELS[kind!] ?? 'Когда сделано'}, быстро`}>
-              {QUICK_DATES.map((choice) => {
+              {QUICK_DATES.filter((choice) => !choice.kinds || (kind && choice.kinds.includes(kind))).map((choice) => {
                 const value = choice.date(today);
                 return (
                   <button
@@ -493,7 +499,6 @@ export function MedicalRecordForm() {
                     onBlur={field.onBlur}
                     yearsBack={0}
                     yearsForward={10}
-                    clearLabel="Убрать дату повтора"
                     placeholder="Повтор не нужен"
                     description={error?.message ? <FieldError message={error.message} /> : autoDue.current && nextDue === autoDue.current ? 'Поставили через год, как у большинства прививок. Измените или уберите. Напомним за две недели, за три дня, в день даты и после неё' : kind === 'parasite' ? 'Напомним за неделю, за три дня, в день даты и после неё' : 'Напомним за две недели, за три дня, в день даты и после неё'}
                   />
@@ -534,17 +539,6 @@ export function MedicalRecordForm() {
             />
           )}
 
-          {kind === 'vaccination' && (
-            <Controller
-              name="batch"
-              control={control}
-              render={({ field }) => (
-                <Form.Item label="Серия или лот" description={fieldNote({ value: field.value, max: 50 })}>
-                  <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={50} />
-                </Form.Item>
-              )}
-            />
-          )}
 
           {kind === 'visit' && (
             <>
@@ -580,51 +574,76 @@ export function MedicalRecordForm() {
             </>
           )}
 
-          <Controller
-            name="clinic"
-            control={control}
-            render={({ field }) => (
-              <Form.Item label="Клиника">
-                <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
-                {clinicChips.length > 1 && (
-                  <div className="medrec__chips" role="group" aria-label="Клиники из профиля">
-                    {clinicChips.map((name) => (
-                      <button key={name} type="button" className="medrec__chip" aria-pressed={sameText(name, clinicValue)} onClick={() => pickClinic(name)}>
-                        {name}
-                      </button>
-                    ))}
-                  </div>
+          {/* Series, clinic, doctor and a note are optional and mostly filled in already (the clinic and the doctor from the
+              last record): one row says what is there, and opens them. */}
+          <Form.Item
+            label={kind === 'vaccination' ? 'Серия, клиника, врач и заметка' : 'Клиника, врач и заметка'}
+            clickable
+            arrow={moreOpen ? <UpOutline /> : <DownOutline />}
+            onClick={() => setMoreChosen(!moreOpen)}
+            description={moreOpen ? undefined : [clinicValue, vetValue].filter((x) => x && x.trim()).join(', ') || 'Необязательно'}
+          />
+          {moreOpen && (
+            <>
+              {kind === 'vaccination' && (
+                <Controller
+                  name="batch"
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Item label="Серия или лот" description={fieldNote({ value: field.value, max: 50 })}>
+                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={50} />
+                    </Form.Item>
+                  )}
+                />
+              )}
+              <Controller
+                name="clinic"
+                control={control}
+                render={({ field }) => (
+                  <Form.Item label="Клиника">
+                    <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                    {clinicChips.length > 1 && (
+                      <div className="medrec__chips" role="group" aria-label="Клиники из профиля">
+                        {clinicChips.map((name) => (
+                          <button key={name} type="button" className="medrec__chip" aria-pressed={sameText(name, clinicValue)} onClick={() => pickClinic(name)}>
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Form.Item>
                 )}
-              </Form.Item>
-            )}
-          />
-          <Controller
-            name="vet"
-            control={control}
-            render={({ field }) => (
-              <Form.Item label="Врач">
-                <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
-                {doctorChips.length > 1 && (
-                  <div className="medrec__chips" role="group" aria-label="Врачи из профиля">
-                    {doctorChips.map((d) => (
-                      <button key={`${d.clinic}-${d.name}`} type="button" className="medrec__chip" aria-pressed={sameText(d.name, vetValue)} onClick={() => pickDoctor(d.name, d.clinic)}>
-                        {d.label}
-                      </button>
-                    ))}
-                  </div>
+              />
+              <Controller
+                name="vet"
+                control={control}
+                render={({ field }) => (
+                  <Form.Item label="Врач">
+                    <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                    {doctorChips.length > 1 && (
+                      <div className="medrec__chips" role="group" aria-label="Врачи из профиля">
+                        {doctorChips.map((d) => (
+                          <button key={`${d.clinic}-${d.name}`} type="button" className="medrec__chip" aria-pressed={sameText(d.name, vetValue)} onClick={() => pickDoctor(d.name, d.clinic)}>
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Form.Item>
                 )}
-              </Form.Item>
-            )}
-          />
-          <Controller
-            name="note"
-            control={control}
-            render={({ field }) => (
-              <Form.Item label="Заметка" layout="vertical" description={fieldNote({ value: field.value, max: 500, always: true })}>
-                <TextArea value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={500} rows={2} autoSize={{ minRows: 2, maxRows: 6 }} />
-              </Form.Item>
-            )}
-          />
+              />
+              <Controller
+                name="note"
+                control={control}
+                render={({ field }) => (
+                  <Form.Item label="Заметка" layout="vertical" description={fieldNote({ value: field.value, max: 500, always: false })}>
+                    <TextArea value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={500} rows={2} autoSize={{ minRows: 2, maxRows: 6 }} />
+                  </Form.Item>
+                )}
+              />
+
+            </>
+          )}
 
           <Form.Item
             label="Документы"

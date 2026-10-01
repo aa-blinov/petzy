@@ -133,7 +133,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
   const navigate = useNavigate();
   // The icon chip opens the medical card; the photo opens at full size (a pet with no
   // photo has a picture of its species there, nothing to enlarge, so that opens the card).
-  const openMedicalCard = () => navigate(`/pets/${pet._id}/medical-card`);
+  // Something overdue: the whole card, where it can be put right; otherwise the card opens as it was left.
+  const openMedicalCard = () => navigate(`/pets/${pet._id}/medical-card${medStatus?.alert ? '?mode=fill' : ''}`);
   const [photoOpen, setPhotoOpen] = useState(false);
   // Nothing known yet: the owner (only they can edit the pet) is asked to
   // fill it in; someone it's shared with sees at least what animal it is.
