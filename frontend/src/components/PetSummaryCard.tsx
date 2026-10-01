@@ -16,6 +16,8 @@ import { Skeleton } from 'antd-mobile';
 
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
+import { medicalCardService } from '../services/medicalCard.service';
+import { cardStatusLine } from '../utils/medicalReadiness';
 import { computePetAge, formatRelativeShort } from '../utils/relativeTime';
 import { hapticFeedback } from '../utils/haptic';
 import { genderLabel } from '../utils/constants';
@@ -112,6 +114,15 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
     enabled: !!pet._id,
     staleTime: 30_000,
   });
+
+  // The state of the medical card, said under its row: what is overdue, else how far it is filled in.
+  const medCard = useQuery({
+    queryKey: ['medical-card', pet._id],
+    queryFn: () => medicalCardService.get(pet._id),
+    enabled: !!pet._id,
+    staleTime: 30_000,
+  });
+  const medStatus = medCard.data ? cardStatusLine(medCard.data, pet._id) : null;
 
   const lastFeedingDateTime = feedings.data?.items?.[0]?.date_time;
   const lastWeightRecord = weights.data?.items?.[0];
@@ -345,8 +356,8 @@ export function PetSummaryCard({ pet, onQuickAdd }: { pet: Pet; onQuickAdd: (til
         </span>
         <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
           <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Медкарта</span>
-          <span style={{ fontSize: "var(--text-xs)", color: "var(--app-text-secondary)" }}>
-            Прививки, лекарства, PDF
+          <span style={{ fontSize: "var(--text-xs)", color: medStatus?.alert ? "var(--app-danger-text)" : "var(--app-text-secondary)", fontWeight: medStatus?.alert ? 600 : 400 }}>
+            {medStatus ? medStatus.text : "Прививки, лекарства, PDF"}
           </span>
         </span>
         <ChevronRight size={18} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, color: "var(--app-text-tertiary)" }} />

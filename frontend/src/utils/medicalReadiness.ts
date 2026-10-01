@@ -74,3 +74,19 @@ export async function confirmWithProgress(queryClient: QueryClient, petId: strin
     showToast.success(saved);
   }
 }
+
+/** The one line the feed shows under «Медкарта»: what is overdue first, else how far the card is filled in. */
+export function cardStatusLine(card: MedicalCard, petId: string): { text: string; alert: boolean } {
+  const records = (['vaccination', 'parasite'] as const).map((kind) => ({
+    kind,
+    overdue: card.records[kind].some((r) => r.status === 'overdue' && !r.superseded) || (kind === 'vaccination' && card.vaccinations.some((v) => v.status === 'expired')),
+  }));
+  const vaccine = records[0].overdue;
+  const parasite = records[1].overdue;
+  if (vaccine && parasite) return { text: 'Прививка и обработка просрочены', alert: true };
+  if (vaccine) return { text: 'Прививка просрочена', alert: true };
+  if (parasite) return { text: 'Обработка просрочена', alert: true };
+  const checks = readinessChecks(card, petId);
+  const done = checks.filter((c) => c.done).length;
+  return { text: done === checks.length ? 'Всё заполнено' : `Заполнено ${done} из ${checks.length}`, alert: false };
+}

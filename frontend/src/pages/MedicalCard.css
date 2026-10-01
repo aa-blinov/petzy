@@ -472,11 +472,14 @@
 
 /* The clinic's phone in the reading mode: a call button, not a small link. */
 .medcard__call {
-    flex-shrink: 0;
-    display: inline-flex;
+    align-self: stretch;
+    display: flex;
     align-items: center;
-    min-height: 44px;
+    justify-content: center;
+    min-height: 48px;
+    margin-top: var(--spacing-sm);
     padding: 0 14px;
+    font-size: var(--text-md);
     border-radius: var(--radius-sm);
     background: var(--app-accent-soft);
     color: var(--app-accent-deep);
@@ -535,4 +538,18 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
+}
+
+/* The reading mode is tighter at the top: the name is the title, the switch is not a hero. */
+.medcard--reading {
+    gap: var(--spacing-md);
+}
+
+.medcard--reading .medcard__head {
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.medcard--reading .medcard__avatar {
+    width: 56px;
+    height: 56px;
 }
