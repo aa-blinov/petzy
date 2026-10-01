@@ -306,7 +306,10 @@
 
 .medcard__row-action {
     align-self: flex-start;
-    padding: 6px 0 0;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0;
     border: none;
     background: none;
     font: inherit;
@@ -489,4 +492,24 @@
 .medcard--reading .medcard__row-sub,
 .medcard--reading .medcard__important-text {
     font-size: var(--text-md);
+}
+
+/* The weight of a line in a row: what is acted on is ink and heavier, the facts keep their label bold,
+   the context stays grey, the rest is quiet. */
+.medcard__row-sub--key {
+    margin-top: 4px;
+    font-weight: 600;
+    color: var(--app-text-primary);
+}
+
+.medcard__row-sub--fact {
+    color: var(--app-text-primary);
+}
+
+.medcard__row-label {
+    font-weight: 600;
+}
+
+.medcard__row-sub--meta {
+    color: var(--app-text-tertiary);
 }

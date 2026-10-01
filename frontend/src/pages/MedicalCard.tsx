@@ -63,23 +63,45 @@ function coursePeriod(c: MedicalCardCourse): string | null {
   return null;
 }
 
+/** A line of a row and how much it weighs: `key` is what is acted on, `fact` is read for its label,
+    `body` is context, `meta` is the rest. One scale for every row of the card. */
+type Tier = 'key' | 'fact' | 'body' | 'meta';
+interface RowLine {
+  text: string;
+  tier: Tier;
+  label?: string;
+}
+
+const lineClass = (tier: Tier) => `medcard__row-sub medcard__row-sub--${tier}`;
+
+function RowLines({ lines }: { lines: RowLine[] }) {
+  return (
+    <>
+      {lines.map((line) => (
+        <span key={`${line.label ?? ''}${line.text}`} className={lineClass(line.tier)} style={{ display: 'block' }}>
+          {line.label && <b className="medcard__row-label">{line.label}: </b>}
+          {line.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
 /** One course: what, how much and when, what for, who prescribed it, how it went. */
 function CourseRow({ course }: { course: MedicalCardCourse }) {
-  const lines = [
-    [course.dose_text, course.schedule_text].filter(Boolean).join(', '),
-    course.purpose ? `От чего: ${course.purpose}` : null,
-    course.prescribed_by ? `Назначил: ${course.prescribed_by}` : null,
-    course.comment,
-    coursePeriod(course),
-    course.given || course.skipped ? `Дано доз: ${course.given}${course.skipped ? `, пропущено ${course.skipped}` : ''}` : null,
-  ].filter(Boolean) as string[];
+  const lines: (RowLine | null)[] = [
+    { text: [course.dose_text, course.schedule_text].filter(Boolean).join(', '), tier: 'key' },
+    course.purpose ? { label: 'От чего', text: course.purpose, tier: 'fact' } : null,
+    course.prescribed_by ? { label: 'Назначил', text: course.prescribed_by, tier: 'body' } : null,
+    course.comment ? { text: course.comment, tier: 'body' } : null,
+    coursePeriod(course) ? { text: coursePeriod(course)!, tier: 'meta' } : null,
+    course.given || course.skipped ? { text: `Дано доз: ${course.given}${course.skipped ? `, пропущено ${course.skipped}` : ''}`, tier: 'meta' } : null,
+  ];
   return (
     <li className="medcard__row">
       <div className="medcard__row-main">
         <div className="medcard__row-title">{course.name}{course.strength ? `, ${course.strength}` : ''}</div>
-        {lines.map((line) => (
-          <div key={line} className="medcard__row-sub">{line}</div>
-        ))}
+        <RowLines lines={lines.filter((l): l is RowLine => !!l && !!l.text)} />
       </div>
       {course.status === 'planned' && <span className="medcard__status medcard__status--none">Ещё не началась</span>}
     </li>
@@ -181,27 +203,28 @@ const RECORD_STATUS: Record<'overdue' | 'soon' | 'ok', { label: string; Icon: ty
 function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void }) {
   const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
   const status = record.status !== 'none' ? RECORD_STATUS[record.status] : null;
-  const lines = [
-    [repeating ? `Сделано ${formatDate(record.date)}` : formatDate(record.date), record.target ? PARASITE_TARGET_LABELS[record.target].toLowerCase() : null, record.batch ? `серия ${record.batch}` : null]
-      .filter(Boolean)
-      .join(', '),
-    record.next_due && repeating && !record.superseded ? `Следующая: ${formatDate(record.next_due)}` : null,
-    [record.clinic, record.vet ? `врач ${record.vet}` : null].filter(Boolean).join(', ') || null,
-    record.diagnosis ? `Диагноз: ${record.diagnosis}` : null,
-    record.recommendations ? `Рекомендации: ${record.recommendations}` : null,
-    record.note ? `Заметка: ${record.note}` : null,
-    record.documents.length ? `Документы: ${record.documents.map((d) => d.title).join(', ')}` : null,
-    record.superseded ? 'Есть более новая запись' : null,
-  ].filter(Boolean) as string[];
+  const lines: (RowLine | null)[] = [
+    {
+      text: [repeating ? `Сделано ${formatDate(record.date)}` : formatDate(record.date), record.target ? PARASITE_TARGET_LABELS[record.target].toLowerCase() : null, record.batch ? `серия ${record.batch}` : null]
+        .filter(Boolean)
+        .join(', '),
+      tier: 'body',
+    },
+    record.next_due && repeating && !record.superseded ? { label: 'Следующая', text: formatDate(record.next_due), tier: 'key' } : null,
+    record.diagnosis ? { label: 'Диагноз', text: record.diagnosis, tier: 'fact' } : null,
+    record.recommendations ? { label: 'Рекомендации', text: record.recommendations, tier: 'fact' } : null,
+    { text: [record.clinic, record.vet ? `врач ${record.vet}` : null].filter(Boolean).join(', '), tier: 'meta' },
+    record.note ? { label: 'Заметка', text: record.note, tier: 'meta' } : null,
+    record.documents.length ? { label: 'Документы', text: record.documents.map((d) => d.title).join(', '), tier: 'meta' } : null,
+    record.superseded ? { text: 'Есть более новая запись', tier: 'meta' } : null,
+  ];
   return (
     <li className={`medcard__row medcard__row--stack${record.superseded ? ' medcard__row--history' : ''}`}>
       <button type="button" className="medcard__row-button" onClick={onOpen} aria-label={`${record.title}, открыть запись`}>
         <span className="medcard__row-top">
           <span className="medcard__row-main">
             <span className="medcard__row-title" style={{ display: 'block' }}>{record.title}</span>
-            {lines.map((line) => (
-              <span key={line} className="medcard__row-sub" style={{ display: 'block' }}>{line}</span>
-            ))}
+            <RowLines lines={lines.filter((l): l is RowLine => !!l && !!l.text)} />
           </span>
           {status && (
             <span className={`medcard__status medcard__status--${status.tone}`}>
@@ -212,7 +235,7 @@ function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen
         </span>
       </button>
       {onRepeat && !record.superseded && (
-        <button type="button" className="medcard__row-action touch-target" onClick={onRepeat}>
+        <button type="button" className="medcard__row-action" onClick={onRepeat}>
           Записать снова
         </button>
       )}
