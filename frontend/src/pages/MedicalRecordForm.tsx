@@ -39,16 +39,6 @@ import { DownOutline, UpOutline } from 'antd-mobile-icons';
 import './MedicalRecordForm.css';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 
-/** «Когда сделано» in one tap: a record is often entered a day, a week or a year after the fact,
-    and the day, month, year wheels are a long way to turn for that. */
-const QUICK_DATES: { label: string; date: (today: string) => string; kinds?: MedicalKind[] }[] = [
-  { label: 'Сегодня', date: (today) => today },
-  { label: 'Вчера', date: (today) => shiftByDays(today, -1) },
-  { label: 'Неделю назад', date: (today) => shiftByDays(today, -7) },
-  // A yearly shot is the one that is often entered a year after: the other kinds do not need the fourth chip.
-  { label: 'Год назад', date: (today) => addInterval(today, { years: -1 }), kinds: ['vaccination'] },
-];
-
 /** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_DOCUMENTS = 10; // the most one record points at
@@ -475,23 +465,6 @@ export function MedicalRecordForm() {
               />
             )}
           />
-
-          <Form.Item>
-            <ChoiceChips label={`${DATE_LABELS[kind!] ?? 'Когда сделано'}, быстро`}>
-              {QUICK_DATES.filter((choice) => !choice.kinds || (kind && choice.kinds.includes(kind))).map((choice) => {
-                const value = choice.date(today);
-                return (
-                  <ChoiceChip
-                    key={choice.label}
-                    pressed={date === value}
-                    onClick={() => setValue('date', value, { shouldDirty: true, shouldValidate: true })}
-                  >
-                    {choice.label}
-                  </ChoiceChip>
-                );
-              })}
-            </ChoiceChips>
-          </Form.Item>
 
           {repeating && (
             <Controller
