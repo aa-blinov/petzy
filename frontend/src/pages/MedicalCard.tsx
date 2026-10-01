@@ -90,7 +90,7 @@ function RowLines({ lines }: { lines: RowLine[] }) {
 /** One course: what, how much and when, what for, who prescribed it, how it went. */
 function CourseRow({ course }: { course: MedicalCardCourse }) {
   const lines: (RowLine | null)[] = [
-    { text: [course.dose_text, course.schedule_text].filter(Boolean).join(', '), tier: 'key' },
+    { text: [course.dose_text, course.schedule_text ? lowerFirst(course.schedule_text) : null].filter(Boolean).join(', '), tier: 'key' },
     course.purpose ? { label: 'От чего', text: course.purpose, tier: 'fact' } : null,
     course.prescribed_by ? { label: 'Назначил', text: course.prescribed_by, tier: 'body' } : null,
     course.comment ? { text: course.comment, tier: 'body' } : null,
@@ -149,7 +149,7 @@ function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit
             {hasAllergies ? (
               <ul className="medcard__plain-list">
                 {profile.allergies.map((a) => (
-                  <li key={`${a.substance}-${a.reaction ?? ''}`}>{a.substance}{a.reaction ? `: ${a.reaction}` : ''}</li>
+                  <li key={`${a.substance}-${a.reaction ?? ''}`}>{a.substance}{a.reaction ? `: ${lowerFirst(a.reaction)}` : ''}</li>
                 ))}
               </ul>
             ) : (
@@ -191,6 +191,13 @@ function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit
       </div>
     </div>
   );
+}
+
+/** After a comma or a colon a line goes on in lowercase: «1 таб, ежедневно в 08:00». An acronym («DEA»), a name
+    in capitals, keeps its first letter. */
+function lowerFirst(text: string): string {
+  if (text.length > 1 && text[0] !== text[0].toLowerCase() && text[1] === text[1].toLowerCase()) return text[0].toLowerCase() + text.slice(1);
+  return text;
 }
 
 /** «1 день», «2 дня», «5 дней». */
@@ -238,10 +245,9 @@ const RECORD_STATUS: Record<'overdue' | 'soon' | 'ok', { label: string; Icon: ty
   ok: { label: 'В срок', Icon: CheckCircle2, tone: 'valid' },
 };
 
-/** One record of the card: what, when, and (for a vaccination or a treatment) when it is due again. */
-function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void }) {
+/** What a record says, in tiers: the same lines in the whole card and in the reading mode (which only reads them bigger). */
+function recordLines(record: MedicalRecord): RowLine[] {
   const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
-  const status = record.status !== 'none' ? RECORD_STATUS[record.status] : null;
   const lines: (RowLine | null)[] = [
     {
       text: [repeating ? `Сделано ${formatDate(record.date)}` : formatDate(record.date), record.target ? PARASITE_TARGET_LABELS[record.target].toLowerCase() : null, record.batch ? `серия ${record.batch}` : null]
@@ -257,23 +263,36 @@ function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen
     record.documents.length ? { label: 'Документы', text: record.documents.map((d) => d.title).join(', '), tier: 'meta' } : null,
     record.superseded ? { text: 'Есть более новая запись', tier: 'meta' } : null,
   ];
+  return lines.filter((l): l is RowLine => !!l && !!l.text);
+}
+
+/** The pill of a repeating record: a word and an icon, and how many days. */
+function RecordPill({ record }: { record: MedicalRecord }) {
+  if (record.status === 'none') return null;
+  const status = RECORD_STATUS[record.status];
+  return (
+    <span className={`medcard__status medcard__status--${status.tone}`}>
+      <status.Icon size={13} strokeWidth={2.4} aria-hidden />
+      {recordStatusText(record.status, record.days_left)}
+    </span>
+  );
+}
+
+/** One record of the card: what, when, and (for a vaccination or a treatment) when it is due again. */
+function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void }) {
+  const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
   return (
     <li className={`medcard__row medcard__row--stack${record.superseded ? ' medcard__row--history' : ''}`}>
       <button type="button" className="medcard__row-button" onClick={onOpen} aria-label={`${record.title}, открыть запись`}>
         <span className="medcard__row-top">
           <span className="medcard__row-main">
             <span className="medcard__row-title" style={{ display: 'block' }}>{record.title}</span>
-            <RowLines lines={lines.filter((l): l is RowLine => !!l && !!l.text)} />
+            <RowLines lines={recordLines(record)} />
           </span>
-          {status && (
-            <span className={`medcard__status medcard__status--${status.tone}`}>
-              <status.Icon size={13} strokeWidth={2.4} aria-hidden />
-              {recordStatusText(record.status as 'overdue' | 'soon' | 'ok', record.days_left)}
-            </span>
-          )}
+          <RecordPill record={record} />
         </span>
       </button>
-      {onRepeat && !record.superseded && (
+      {repeating && onRepeat && !record.superseded && (
         <button type="button" className="medcard__row-action" onClick={onRepeat}>
           Записать снова
         </button>
@@ -488,25 +507,15 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
           <p className="medcard__empty">Не указаны.</p>
         ) : (
           <ul className="medcard__list">
-            {due.map((r) => {
-              const status = r.status !== 'none' ? RECORD_STATUS[r.status] : null;
-              return (
-                <li key={r._id} className="medcard__row medcard__row--wrap">
-                  <div className="medcard__row-main">
-                    <div className="medcard__row-title">{r.title}</div>
-                    <div className="medcard__row-sub">
-                      Сделано {formatDate(r.date)}{r.next_due ? `, следующая ${formatDate(r.next_due)}` : ''}
-                    </div>
-                  </div>
-                  {status && (
-                    <span className={`medcard__status medcard__status--${status.tone}`}>
-                      <status.Icon size={13} strokeWidth={2.4} aria-hidden />
-                      {recordStatusText(r.status as 'overdue' | 'soon' | 'ok', r.days_left)}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
+            {due.map((r) => (
+              <li key={r._id} className="medcard__row medcard__row--wrap">
+                <div className="medcard__row-main">
+                  <div className="medcard__row-title">{r.title}</div>
+                  <RowLines lines={recordLines(r).filter((l) => l.tier === 'body' || l.tier === 'key')} />
+                </div>
+                <RecordPill record={r} />
+              </li>
+            ))}
             {card.vaccinations.map((v) => {
               const { Icon } = STATUS[v.status];
               return (
@@ -572,9 +581,8 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
           <ul className="medcard__list">
             {visits.map((r) => (
               <li key={r._id} className="medcard__row medcard__row--stack">
-                <div className="medcard__row-title">{r.title}, {formatDate(r.date)}</div>
-                {r.diagnosis && <div className="medcard__row-sub">Диагноз: {r.diagnosis}</div>}
-                {r.recommendations && <div className="medcard__row-sub">Рекомендации: {r.recommendations}</div>}
+                <div className="medcard__row-title">{r.title}</div>
+                <RowLines lines={recordLines(r).filter((l) => l.tier === 'body' || l.tier === 'fact')} />
               </li>
             ))}
           </ul>
