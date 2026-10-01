@@ -7,6 +7,7 @@ import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, typ
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination } from '../services/medicalCard.service';
 import { usePet } from '../hooks/usePet';
+import { readinessChecks } from '../utils/medicalReadiness';
 import { PetImage } from '../components/PetImage';
 import { LoadError } from '../components/LoadError';
 import { EmptyState } from '../components/EmptyState';
@@ -215,45 +216,7 @@ function Section({ id, title, action, children }: { id: string; title: string; a
     place to fill it; when nothing is missing the block says so in one line, so the owner knows
     the card is good enough to show. Only for someone who can edit: a gap they cannot fill is noise. */
 function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; navigate: (to: string) => void }) {
-  const { profile } = card;
-  const clinic = profile.clinic;
-  const checks: { key: string; label: string; hint: string; done: boolean; to: string }[] = [
-    {
-      key: 'allergies',
-      label: 'Аллергии',
-      hint: 'Укажите или отметьте, что аллергий нет',
-      done: profile.allergies.length > 0 || profile.allergies_none_known,
-      to: `/pets/${petId}/medical-profile`,
-    },
-    {
-      key: 'vaccination',
-      label: 'Прививки',
-      hint: 'Запишите последнюю, придёт напоминание о повторе',
-      done: card.record_counts.vaccination > 0 || card.vaccinations.length > 0,
-      to: `/pets/${petId}/medical-records/new?kind=vaccination`,
-    },
-    {
-      key: 'parasite',
-      label: 'Обработки от паразитов',
-      hint: 'Запишите последнюю, придёт напоминание о повторе',
-      done: card.record_counts.parasite > 0,
-      to: `/pets/${petId}/medical-records/new?kind=parasite`,
-    },
-    {
-      key: 'clinic',
-      label: 'Клиника и врач',
-      hint: 'Название и телефон, чтобы не искать в чатах',
-      done: !!(clinic.name || clinic.vet || clinic.phone),
-      to: `/pets/${petId}/medical-profile`,
-    },
-    {
-      key: 'weight',
-      label: 'Вес',
-      hint: 'Врач считает по нему дозы',
-      done: !!card.weight,
-      to: '/form/weight',
-    },
-  ];
+  const checks = readinessChecks(card, petId);
   const missing = checks.filter((c) => !c.done);
   if (!card.can_edit) return null;
   if (missing.length === 0) {

@@ -16,6 +16,7 @@ import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
+import { confirmWithProgress } from '../utils/medicalReadiness';
 import { getApiErrorMessage } from '../utils/apiError';
 
 const currentYear = new Date().getFullYear();
@@ -120,7 +121,7 @@ export function MedicalProfileForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
       queryClient.invalidateQueries({ queryKey: ['pets'] });
-      showToast.success('Данные для врача сохранены');
+      void confirmWithProgress(queryClient, id!, 'Данные для врача сохранены');
       release();
       goBack(navigate, cardPath);
     },
