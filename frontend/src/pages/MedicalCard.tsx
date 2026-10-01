@@ -213,6 +213,16 @@ function recordStatusText(status: 'overdue' | 'soon' | 'ok', daysLeft: number | 
   return `Через ${n} ${daysWord(n)}`;
 }
 
+/** «+0,3 кг с 05.09.2026»: how the latest weight differs from the one before it. */
+function weightDelta(series: { date: string; value: number }[]): string | null {
+  if (series.length < 2) return null;
+  const last = series[series.length - 1];
+  const before = series[series.length - 2];
+  const diff = Math.round((last.value - before.value) * 100) / 100;
+  const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
+  return `${sign}${Math.abs(diff).toLocaleString('ru-RU')} кг с ${formatDate(before.date)}`;
+}
+
 /** The pill of a certificate kept as a document. */
 function certStatusText(v: MedicalCardVaccination): string {
   if (v.status === 'expired' && v.days_left !== null) {
@@ -481,7 +491,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
             {due.map((r) => {
               const status = r.status !== 'none' ? RECORD_STATUS[r.status] : null;
               return (
-                <li key={r._id} className="medcard__row">
+                <li key={r._id} className="medcard__row medcard__row--wrap">
                   <div className="medcard__row-main">
                     <div className="medcard__row-title">{r.title}</div>
                     <div className="medcard__row-sub">
@@ -500,7 +510,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
             {card.vaccinations.map((v) => {
               const { Icon } = STATUS[v.status];
               return (
-                <li key={v.id} className="medcard__row">
+                <li key={v.id} className="medcard__row medcard__row--wrap">
                   <div className="medcard__row-main">
                     <div className="medcard__row-title">{v.title}</div>
                     <div className="medcard__row-sub">Сертификат{v.expires_at ? `, до ${formatDate(v.expires_at)}` : ''}</div>
@@ -516,7 +526,7 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
         )}
       </Section>
 
-      <Section id="medcard-vet-now" title="Сейчас">
+      <Section id="medcard-vet-meds" title="Лекарства и вес">
         <ul className="medcard__list">
           {card.medications.map((c) => (
             <CourseRow key={c.id} course={c} />
@@ -535,17 +545,22 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
               <div className="medcard__row-sub">
                 {card.weight ? `${card.weight.latest.value.toLocaleString('ru-RU')} кг, ${formatDate(card.weight.latest.date)}` : 'Не указан'}
               </div>
+              {card.weight && weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
             </div>
           </li>
-          <li className="medcard__row medcard__row--wrap">
+        </ul>
+      </Section>
+
+      <Section id="medcard-vet-clinic" title="Клиника">
+        <ul className="medcard__list">
+          <li className="medcard__row medcard__row--stack">
             <div className="medcard__row-main">
-              <div className="medcard__row-title">{hasClinic ? clinic.name || 'Клиника' : 'Клиника'}</div>
-              {!hasClinic && <div className="medcard__row-sub">Не указана</div>}
+              <div className="medcard__row-title">{hasClinic ? clinic.name || 'Клиника' : 'Не указана'}</div>
               {clinic.vet && <div className="medcard__row-sub">Врач: {clinic.vet}</div>}
             </div>
             {clinic.phone && (
               <a className="medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
-                {clinic.phone}
+                Позвонить {clinic.phone}
               </a>
             )}
           </li>
@@ -664,7 +679,8 @@ export function MedicalCard() {
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
         <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ''}`}>
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
+          {/* In the reading mode the pet's name is the title: the page keeps its heading for screen readers only. */}
+          <h1 className={mode === 'vet' ? 'sr-only' : 'display-headline'} style={mode === 'vet' ? undefined : { fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
 
           <div className="card-soft medcard__head">
             <div className="medcard__avatar" aria-hidden={!pet?.photo_url}>
