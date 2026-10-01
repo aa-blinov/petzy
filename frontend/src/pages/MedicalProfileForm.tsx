@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFieldArray, useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -91,10 +91,19 @@ export function MedicalProfileForm() {
 
   // The saved profile goes into the form once, when it arrives.
   const loaded = useRef(false);
+  const section = useSearchParams()[0].get('section');
   useEffect(() => {
     const profile = query.data?.profile;
     if (!profile || loaded.current) return;
     loaded.current = true;
+    // Opened from «Указать клинику»: the form starts at the clinic, with the cursor in its first field.
+    if (section === 'clinic') {
+      window.setTimeout(() => {
+        const anchor = document.getElementById('medprofile-clinic');
+        anchor?.scrollIntoView({ block: 'start' });
+        document.querySelector<HTMLInputElement>('input[placeholder="Где наблюдается"]')?.focus({ preventScroll: true });
+      }, 80);
+    }
     reset({
       chip_number: profile.chip_number ?? '',
       blood_type: profile.blood_type ?? '',
@@ -103,7 +112,7 @@ export function MedicalProfileForm() {
       conditions: profile.conditions.map((c) => ({ name: c.name, since_year: c.since_year ? String(c.since_year) : '', note: c.note ?? '' })),
       clinic: { name: profile.clinic.name ?? '', vet: profile.clinic.vet ?? '', phone: profile.clinic.phone ?? '' },
     });
-  }, [query.data, reset]);
+  }, [query.data, reset, section]);
 
   const save = useMutation({
     mutationFn: (data: ProfileForm) =>
@@ -292,6 +301,7 @@ export function MedicalProfileForm() {
             )}
           />
 
+          <span id="medprofile-clinic" />
           <Form.Header>Клиника</Form.Header>
           <Controller
             name="clinic.name"
@@ -322,13 +332,16 @@ export function MedicalProfileForm() {
           />
         </Form>
 
-        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-xl) 0' }}>
+        {/* A long form: the save button stays in reach above the tab bar, not three screens down. */}
+        <div className="form-sticky-action safe-area-padding">
           <SpinnerButton loading={save.isPending || isSubmitting} onClick={() => {
               pruneEmptyRows();
               handleSubmit(onSubmit, onInvalidSubmit)();
             }}>
             Сохранить
           </SpinnerButton>
+        </div>
+        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
           <Button block size="large" onClick={() => goBack(navigate, cardPath)}>
             Отмена
           </Button>

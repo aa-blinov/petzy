@@ -49,7 +49,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
       label: 'Клиника и врач',
       hint: 'Название и телефон, чтобы не искать в чатах',
       done: !!(clinic.name || clinic.vet || clinic.phone),
-      to: `/pets/${petId}/medical-profile`,
+      to: `/pets/${petId}/medical-profile?section=clinic`,
     },
     {
       key: 'weight',
