@@ -760,7 +760,7 @@ export function MedicalCard() {
           ))}
 
           {optionalEmpty.length > 0 && (
-            <Section id="medcard-optional" title="Ещё можно добавить">
+            <Section id="medcard-optional" title={optionalEmpty.length > 1 ? 'Ещё можно добавить' : MEDICAL_KIND_LABELS[optionalEmpty[0]].section}>
               <ul className="medcard__list">
                 {optionalEmpty.map((kind) => (
                   <li key={kind} className="medcard__row" style={{ padding: 0 }}>

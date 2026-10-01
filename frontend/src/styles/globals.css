@@ -772,6 +772,14 @@ select {
     -webkit-overflow-scrolling: touch;
 }
 
+/* #root never scrolls by itself (it is as tall as its content), but `auto` made it the scroll container a sticky
+   element looks to, so nothing could stick to the screen. `clip` clips the same and is not a scroll container. */
+@supports (overflow: clip) {
+    #root {
+        overflow-y: clip;
+    }
+}
+
 /* Fix Dropdown title styling in dark mode and mobile */
 .adm-dropdown-item-title {
     padding: 0 !important;
@@ -2049,4 +2057,24 @@ html.keyboard-open body:has(.app-fab) .snackbar {
 .field-counter--limit {
     color: var(--app-warning-text);
     font-weight: 600;
+}
+
+/* The main button of a long form: it stays above the tab bar while the form is scrolled, and sits in its place at the end. */
+.form-sticky-action {
+    position: sticky;
+    bottom: calc(var(--safe-area-bottom) + 50px + var(--spacing-sm));
+    z-index: 5;
+    margin-top: var(--spacing-xl);
+    padding-block: var(--spacing-sm);
+    background: linear-gradient(to bottom, transparent, var(--app-page-background) 24%);
+}
+
+html.keyboard-open .form-sticky-action {
+    bottom: var(--spacing-sm);
+}
+
+@media (min-width: 1024px) {
+    .form-sticky-action {
+        bottom: var(--spacing-sm);
+    }
 }

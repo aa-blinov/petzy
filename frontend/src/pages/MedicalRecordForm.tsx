@@ -113,6 +113,14 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
+/** The date field is named for what it dates: a visit is not «сделано». */
+const DATE_LABELS: Partial<Record<MedicalKind, string>> = {
+  vaccination: 'Когда сделана прививка',
+  parasite: 'Когда обработали',
+  visit: 'Дата визита',
+  procedure: 'Дата операции',
+};
+
 /** A label of a field that must be filled in: a red star the screen readers skip (the field itself says it is required). */
 function RequiredLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -417,7 +425,7 @@ export function MedicalRecordForm() {
             control={control}
             render={({ field, fieldState: { error } }) => (
               <DatePickerField
-                label="Когда сделано"
+                label={DATE_LABELS[kind!] ?? 'Когда сделано'}
                 value={field.value}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
@@ -429,7 +437,7 @@ export function MedicalRecordForm() {
           />
 
           <Form.Item>
-            <div className="medrec__chips" role="group" aria-label="Когда сделано, быстро">
+            <div className="medrec__chips" role="group" aria-label={`${DATE_LABELS[kind!] ?? 'Когда сделано'}, быстро`}>
               {QUICK_DATES.map((choice) => {
                 const value = choice.date(today);
                 return (
@@ -589,10 +597,13 @@ export function MedicalRecordForm() {
           </Form.Item>
         </Form>
 
-        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-xl) 0' }}>
+        {/* A long form: the button stays in reach above the tab bar, not three screens down. */}
+        <div className="form-sticky-action safe-area-padding">
           <SpinnerButton loading={save.isPending || isSubmitting} onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}>
             {isEditing ? 'Сохранить' : 'Добавить'}
           </SpinnerButton>
+        </div>
+        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
           <Button block size="large" onClick={() => goBack(navigate, cardPath)}>
             Отмена
           </Button>
