@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
@@ -230,6 +230,14 @@ function weightDelta(series: { date: string; value: number }[]): string | null {
   return `${sign}${Math.abs(diff).toLocaleString('ru-RU')} кг с ${formatDate(before.date)}`;
 }
 
+/** Overdue first, then soon, then the rest; a record replaced by a newer one last. The order inside a rank stays as it came. */
+function urgencyRank(r: MedicalRecord): number {
+  if (r.superseded) return 3;
+  if (r.status === 'overdue') return 0;
+  if (r.status === 'soon') return 1;
+  return 2;
+}
+
 /** The pill of a certificate kept as a document. */
 function certStatusText(v: MedicalCardVaccination): string {
   if (v.status === 'expired' && v.days_left !== null) {
@@ -288,8 +296,8 @@ function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen
           <span className="medcard__row-main">
             <span className="medcard__row-title" style={{ display: 'block' }}>{record.title}</span>
             <RowLines lines={recordLines(record)} />
+            <RecordPill record={record} />
           </span>
-          <RecordPill record={record} />
         </span>
       </button>
       {repeating && onRepeat && !record.superseded && (
@@ -317,6 +325,58 @@ function Section({ id, title, action, children }: { id: string; title: string; a
   );
 }
 
+interface OverdueItem {
+  id: string;
+  title: string;
+  text: string;
+  kind: 'vaccination' | 'parasite';
+  /** The record to record again, none for a certificate kept as a document. */
+  recordId: string | null;
+  days: number;
+}
+
+/** What is overdue, the most overdue first: repeating records, and certificates in the documents that have expired. */
+function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
+  const items: OverdueItem[] = [];
+  for (const kind of ['vaccination', 'parasite'] as const) {
+    for (const r of card.records[kind]) {
+      if (r.status === 'overdue' && !r.superseded && !hidden.has(r._id)) {
+        items.push({ id: r._id, title: r.title, text: recordStatusText('overdue', r.days_left).toLowerCase(), kind, recordId: r._id, days: r.days_left ?? 0 });
+      }
+    }
+  }
+  for (const v of card.vaccinations) {
+    if (v.status === 'expired') items.push({ id: v.id, title: v.title, text: certStatusText(v).toLowerCase(), kind: 'vaccination', recordId: null, days: v.days_left ?? 0 });
+  }
+  return items.sort((a, b) => a.days - b.days);
+}
+
+/** The one line that matters most, under the mode switch in both modes: what is overdue and, where the card can be
+    edited, the way to put it right. */
+function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; petId: string; navigate: (to: string) => void; canAct: boolean; hidden: ReadonlySet<string> }) {
+  const items = overdueItems(card, hidden);
+  if (items.length === 0) return null;
+  const [first, ...others] = items;
+  const to = first.recordId ? `/pets/${petId}/medical-records/new?kind=${first.kind}&from=${first.recordId}` : `/pets/${petId}/medical-records/new?kind=vaccination`;
+  const label = first.kind === 'parasite' ? 'Записать повторную обработку' : first.recordId ? 'Записать повторную прививку' : 'Записать прививку';
+  return (
+    <div className="medcard__alert" role="status">
+      <AlertTriangle size={20} strokeWidth={2.2} aria-hidden className="medcard__alert-icon" />
+      <div className="medcard__alert-body">
+        <p className="medcard__alert-text">
+          <b>{first.title}</b>: {first.text}
+          {others.length > 0 ? `. И ещё ${others.length}` : ''}
+        </p>
+        {canAct && (
+          <Button size="middle" color="danger" fill="outline" onClick={() => navigate(to)}>
+            {label}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** What a vet looks for first, and whether the card has it. Each gap is a row that opens the
     place to fill it; when nothing is missing the block says so in one line, so the owner knows
     the card is good enough to show. */
@@ -324,25 +384,7 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
   const checks = readinessChecks(card, petId);
   const missing = checks.filter((c) => !c.done);
   if (missing.length === 0) {
-    // «Filled in» does not mean «in order»: an overdue repeat is said next to it, not under a green tick.
-    const overdue =
-      Object.values(card.records).some((rows) => rows.some((r) => r.status === 'overdue' && !r.superseded)) || card.vaccinations.some((v) => v.status === 'expired');
-    // The first overdue repeat: the button records it again (the same title, today, the same interval).
-    const overdueRecord = (['vaccination', 'parasite'] as const).flatMap((kind) => card.records[kind]).find((r) => r.status === 'overdue' && !r.superseded);
-    const again = overdueRecord
-      ? { label: overdueRecord.kind === 'parasite' ? 'Записать обработку заново' : 'Записать прививку заново', to: `/pets/${petId}/medical-records/new?kind=${overdueRecord.kind}&from=${overdueRecord._id}` }
-      : { label: 'Записать прививку', to: `/pets/${petId}/medical-records/new?kind=vaccination` };
-    return overdue ? (
-      <div className="medcard__ready-wrap">
-        <p className="medcard__ready medcard__ready--warn" role="status">
-          <AlertTriangle size={18} strokeWidth={2.2} aria-hidden />
-          Всё заполнено, но есть просроченное
-        </p>
-        <Button block fill="outline" color="primary" size="large" onClick={() => navigate(again.to)}>
-          {again.label}
-        </Button>
-      </div>
-    ) : (
+    return (
       <p className="medcard__ready" role="status">
         <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
         Главное для врача заполнено
@@ -388,7 +430,7 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
     staleTime: 0,
   });
   const source = expanded && all.data ? all.data : card.records[kind];
-  const rows = source.filter((r) => !hidden.has(r._id));
+  const rows = source.filter((r) => !hidden.has(r._id)).sort((a, b) => urgencyRank(a) - urgencyRank(b));
   const legacy = kind === 'vaccination' ? card.vaccinations : [];
   const repeating = kind === 'vaccination' || kind === 'parasite';
   const more = total > source.length;
@@ -517,7 +559,9 @@ function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
 /** What a vet reads at the counter, in the order they ask: allergies, what is due, what is taken now and the
     weight, the clinic, the last visits. Nothing here edits; the history and the forms are in the other mode. */
 function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; onPdf: () => void; onAll: () => void }) {
-  const due = (['vaccination', 'parasite'] as const).flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)));
+  const due = (['vaccination', 'parasite'] as const)
+    .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
+    .sort((a, b) => urgencyRank(a) - urgencyRank(b));
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
   return (
     <>
@@ -630,7 +674,9 @@ export function MedicalCard() {
   const [saving, setSaving] = useState(false);
   // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
   const [stored] = useState<Mode | null>(() => readMode(id));
-  const [chosen, setChosen] = useState<Mode | null>(null);
+  // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
+  const linkMode = useSearchParams()[0].get('mode');
+  const [chosen, setChosen] = useState<Mode | null>(linkMode === 'fill' || linkMode === 'vet' ? linkMode : null);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -721,6 +767,8 @@ export function MedicalCard() {
 
           <ModeSwitch mode={mode} onChange={chooseMode} />
 
+          <OverdueStrip card={card} petId={id!} navigate={navigate} canAct={mode === 'fill'} hidden={hidden} />
+
           {mode === 'vet' ? (
             <VetView card={card} hidden={hidden} saving={saving} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
           ) : (
@@ -803,6 +851,7 @@ export function MedicalCard() {
                   <span className="medcard__weight-value">{card.weight.latest.value.toLocaleString('ru-RU')} кг</span>
                   <span className="medcard__weight-date">{formatDate(card.weight.latest.date)}</span>
                 </div>
+                {weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
                 <Sparkline points={card.weight.series.map((p) => p.value)} />
               </div>
             </Section>
