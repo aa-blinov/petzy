@@ -113,6 +113,16 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
+/** A label of a field that must be filled in: a red star the screen readers skip (the field itself says it is required). */
+function RequiredLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {children}
+      <span className="medrec__required" aria-hidden="true"> *</span>
+    </>
+  );
+}
+
 const left = { style: { '--text-align': 'left' } as React.CSSProperties };
 
 /** One medical record: a vaccination, a treatment, a visit or a procedure.
@@ -158,6 +168,15 @@ export function MedicalRecordForm() {
   const title = useWatch({ control, name: 'title' });
   const documentIds = useWatch({ control, name: 'document_ids' });
   const [docsOpen, setDocsOpen] = useState(false);
+  const [targetError, setTargetError] = useState<string | null>(null);
+  // The repeat date put in by the form itself (not typed): it moves with the date until the person changes it.
+  const autoDue = useRef('');
+  useEffect(() => {
+    if (!autoDue.current || !date || nextDue !== autoDue.current) return;
+    const moved = addInterval(date, { years: 1 });
+    autoDue.current = moved;
+    setValue('next_due', moved);
+  }, [date, nextDue, setValue]);
 
   // Filled once, when what it needs has arrived: a record being edited, or the
   // defaults (and, when asked, a record or a certificate to copy from) of a new one.
@@ -187,7 +206,11 @@ export function MedicalRecordForm() {
     const last = Object.values(card.data.records).flat().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.clinic || r.vet);
     const clinic = last?.clinic ?? card.data.profile.clinic.name ?? '';
     const vet = last?.vet ?? card.data.profile.clinic.vet ?? '';
-    const blank: FormData = { title: '', date: today, next_due: '', target: '', batch: '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
+    // A vaccination is nearly always repeated: a year on is put in, so that skipping the field does not
+    // switch the reminder off. It follows the date until it is touched, and is one tap from gone.
+    const firstDue = kind === 'vaccination' && !source && !sourceDoc ? addInterval(today, { years: 1 }) : '';
+    autoDue.current = firstDue;
+    const blank: FormData = { title: '', date: today, next_due: firstDue, target: '', batch: '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
       reset(blank);
       return;
@@ -305,7 +328,7 @@ export function MedicalRecordForm() {
 
   const onSubmit = (data: FormData) => {
     if (kind === 'parasite' && !data.target) {
-      showToast.failure('Укажите, от чего обработка');
+      setTargetError('Укажите, от чего обработка');
       return;
     }
     save.mutate(data);
@@ -340,6 +363,7 @@ export function MedicalRecordForm() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {isEditing ? labels!.one : fromId ? 'Записать снова' : `Новая запись: ${labels!.one.toLowerCase()}`}
           </h1>
+          {pet && <p className="medrec__pet">{pet.name}</p>}
         </div>
 
         <Form layout="vertical" mode="card">
@@ -347,7 +371,7 @@ export function MedicalRecordForm() {
             name="title"
             control={control}
             render={({ field, fieldState: { error } }) => (
-              <Form.Item label={labels!.titleLabel} required description={error?.message ? <FieldError message={error.message} /> : fieldNote({ value: field.value, max: 100 })}>
+              <Form.Item label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>} description={error?.message ? <FieldError message={error.message} /> : fieldNote({ value: field.value, max: 100 })}>
                 <Input {...left} value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder={labels!.titlePlaceholder} maxLength={100} />
                 {chips.length > 0 && (
                   <div className="medrec__chips" role="group" aria-label="Подсказки">
@@ -373,12 +397,15 @@ export function MedicalRecordForm() {
               name="target"
               control={control}
               render={({ field }) => (
-                <Form.Item label="От чего" required>
+                <Form.Item label={<RequiredLabel>От чего</RequiredLabel>} description={targetError ? <FieldError message={targetError} /> : undefined}>
                   <Selector
                     columns={3}
                     options={(Object.keys(PARASITE_TARGET_LABELS) as ParasiteTarget[]).map((value) => ({ label: PARASITE_TARGET_LABELS[value], value }))}
                     value={field.value ? [field.value] : []}
-                    onChange={(v) => field.onChange(v[0] ?? '')}
+                    onChange={(v) => {
+                      setTargetError(null);
+                      field.onChange(v[0] ?? '');
+                    }}
                   />
                 </Form.Item>
               )}
@@ -435,10 +462,21 @@ export function MedicalRecordForm() {
                     yearsForward={10}
                     clearLabel="Убрать дату повтора"
                     placeholder="Повтор не нужен"
-                    description={error?.message ? <FieldError message={error.message} /> : kind === 'parasite' ? 'За неделю до даты придёт напоминание' : 'За две недели до даты придёт напоминание'}
+                    description={error?.message ? <FieldError message={error.message} /> : autoDue.current && nextDue === autoDue.current ? 'Поставили через год, как у большинства прививок. Измените или уберите. За две недели до даты придёт напоминание' : kind === 'parasite' ? 'За неделю до даты придёт напоминание' : 'За две недели до даты придёт напоминание'}
                   />
                   <Form.Item>
                     <div className="medrec__chips" role="group" aria-label="Повторить через">
+                      <button
+                        type="button"
+                        className="medrec__chip"
+                        aria-pressed={!nextDue}
+                        onClick={() => {
+                          autoDue.current = '';
+                          setValue('next_due', '', { shouldDirty: true, shouldValidate: true });
+                        }}
+                      >
+                        Без повтора
+                      </button>
                       {repeatChoices.map((choice) => {
                         const target = addInterval(date || today, choice);
                         return (
@@ -447,7 +485,10 @@ export function MedicalRecordForm() {
                             type="button"
                             className="medrec__chip"
                             aria-pressed={nextDue === target}
-                            onClick={() => setValue('next_due', target, { shouldDirty: true, shouldValidate: true })}
+                            onClick={() => {
+                              autoDue.current = '';
+                              setValue('next_due', target, { shouldDirty: true, shouldValidate: true });
+                            }}
                           >
                             {choice.label}
                           </button>
