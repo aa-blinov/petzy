@@ -294,7 +294,7 @@ function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen
       </button>
       {repeating && onRepeat && !record.superseded && (
         <button type="button" className="medcard__row-action" onClick={onRepeat}>
-          Записать снова
+          {record.kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
         </button>
       )}
     </li>
