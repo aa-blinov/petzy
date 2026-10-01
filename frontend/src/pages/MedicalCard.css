@@ -415,6 +415,8 @@
 
 /* The two modes: reading at the vet's counter, and filling in. */
 .medcard__modes {
+    /* Two choices are not a bar across a tablet or a desktop column. */
+    max-width: 24rem;
     display: flex;
     gap: 2px;
     padding: 3px;
@@ -577,4 +579,22 @@
     line-height: 1.4;
     color: var(--app-danger-text);
     overflow-wrap: break-word;
+}
+
+/* A phone on its side: the screen is 400px tall and the bars take a third of it. The title and the gaps give way, so the
+   first thing of the card is on the screen, not the chrome above it. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023px) {
+    .medcard {
+        gap: var(--spacing-sm);
+    }
+
+    .medcard > h1 {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
 }
