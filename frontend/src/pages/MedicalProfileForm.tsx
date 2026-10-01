@@ -19,7 +19,7 @@ import { showToast } from '../utils/toast';
 import { showSnackbar } from '../utils/snackbar';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { getApiErrorMessage } from '../utils/apiError';
-import '../components/Chips.css';
+import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 
 const currentYear = new Date().getFullYear();
 
@@ -86,27 +86,21 @@ const LIVING_CHIPS = ['Квартира', 'Частный дом, выгул', '
     are already in the field takes nothing away: the text is the person's. */
 function SuggestionChips({ ariaLabel, options, value, onPick }: { ariaLabel: string; options: string[]; value: string; onPick: (next: string) => void }) {
   return (
-    <div role="group" aria-label={ariaLabel} className="medrec__chips">
+    <ChoiceChips label={ariaLabel}>
       {options.map((option) => {
         const used = value.toLowerCase().includes(option.toLowerCase());
         return (
-          <button
-            key={option}
-            type="button"
-            className="medrec__chip"
-            aria-pressed={used}
-            onClick={() => !used && onPick(value.trim() ? `${value.trim().replace(/[,.]$/, '')}, ${option.toLowerCase()}` : option)}
-          >
+          <ChoiceChip key={option} pressed={used} onClick={() => !used && onPick(value.trim() ? `${value.trim().replace(/[,.]$/, '')}, ${option.toLowerCase()}` : option)}>
             {option}
-          </button>
+          </ChoiceChip>
         );
       })}
-    </div>
+    </ChoiceChips>
   );
 }
 
 /** A button that takes a row away is a real target, not a 27px word next to the field. */
-const REMOVE_STYLE = { minHeight: 44, padding: '0 12px' } as React.CSSProperties;
+const REMOVE_STYLE = { minHeight: 'var(--touch-min)', padding: '0 12px' } as React.CSSProperties;
 
 /** Takes a row out of a list and offers to put it back: a filled-in allergy is not lost by one wrong tap. */
 function removeWithUndo<T>(list: { remove: (i: number) => void; insert: (i: number, v: T) => void }, index: number, row: T, message: string) {
@@ -170,7 +164,7 @@ function ClinicBlock({ control, index, only, onRemove, getValues }: { control: C
       ))}
       {doctors.fields.length < MAX_DOCTORS && (
         <Form.Item>
-          <Button block fill="outline" style={{ minHeight: 44 }} onClick={() => doctors.append({ name: '', specialty: '' })}>
+          <Button block fill="outline" style={{ minHeight: 'var(--touch-min)' }} onClick={() => doctors.append({ name: '', specialty: '' })}>
             + Добавить врача
           </Button>
         </Form.Item>
@@ -378,7 +372,7 @@ export function MedicalProfileForm() {
             ))}
           {!noneKnown && (
             <Form.Item>
-              <Button block fill="outline" color="primary" style={{ minHeight: 44 }} onClick={() => allergies.append({ substance: '', reaction: '' })}>
+              <Button block fill="outline" color="primary" style={{ minHeight: 'var(--touch-min)' }} onClick={() => allergies.append({ substance: '', reaction: '' })}>
                 + Добавить аллерген
               </Button>
             </Form.Item>
@@ -429,7 +423,7 @@ export function MedicalProfileForm() {
             </div>
           ))}
           <Form.Item>
-            <Button block fill="outline" color="primary" style={{ minHeight: 44 }} onClick={() => conditions.append({ name: '', since_year: '', note: '' })}>
+            <Button block fill="outline" color="primary" style={{ minHeight: 'var(--touch-min)' }} onClick={() => conditions.append({ name: '', since_year: '', note: '' })}>
               + Добавить состояние
             </Button>
           </Form.Item>
@@ -492,7 +486,7 @@ export function MedicalProfileForm() {
           ))}
           {clinics.fields.length < MAX_CLINICS && (
             <Form.Item>
-              <Button block fill="outline" color="primary" style={{ minHeight: 44 }} onClick={() => clinics.append({ name: '', phone: '', doctors: [] })}>
+              <Button block fill="outline" color="primary" style={{ minHeight: 'var(--touch-min)' }} onClick={() => clinics.append({ name: '', phone: '', doctors: [] })}>
                 + Добавить клинику
               </Button>
             </Form.Item>

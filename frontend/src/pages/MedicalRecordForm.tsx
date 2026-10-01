@@ -37,7 +37,7 @@ import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileText, X } from 'lucide-react';
 import { DownOutline, UpOutline } from 'antd-mobile-icons';
 import './MedicalRecordForm.css';
-import '../components/Chips.css';
+import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 
 /** «Когда сделано» in one tap: a record is often entered a day, a week or a year after the fact,
     and the day, month, year wheels are a long way to turn for that. */
@@ -424,19 +424,17 @@ export function MedicalRecordForm() {
               <Form.Item label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>} description={error?.message ? <FieldError message={error.message} /> : fieldNote({ value: field.value, max: 100 })}>
                 <Input {...left} value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder={labels!.titlePlaceholder} maxLength={100} />
                 {chips.length > 0 && (
-                  <div className="medrec__chips" role="group" aria-label="Подсказки">
+                  <ChoiceChips label="Подсказки">
                     {chips.map((chip) => (
-                      <button
+                      <ChoiceChip
                         key={chip}
-                        type="button"
-                        className="medrec__chip"
-                        aria-pressed={title.trim().toLowerCase() === chip.toLowerCase()}
+                        pressed={title.trim().toLowerCase() === chip.toLowerCase()}
                         onClick={() => setValue('title', chip, { shouldDirty: true, shouldValidate: true })}
                       >
                         {chip}
-                      </button>
+                      </ChoiceChip>
                     ))}
-                  </div>
+                  </ChoiceChips>
                 )}
               </Form.Item>
             )}
@@ -479,22 +477,20 @@ export function MedicalRecordForm() {
           />
 
           <Form.Item>
-            <div className="medrec__chips" role="group" aria-label={`${DATE_LABELS[kind!] ?? 'Когда сделано'}, быстро`}>
+            <ChoiceChips label={`${DATE_LABELS[kind!] ?? 'Когда сделано'}, быстро`}>
               {QUICK_DATES.filter((choice) => !choice.kinds || (kind && choice.kinds.includes(kind))).map((choice) => {
                 const value = choice.date(today);
                 return (
-                  <button
+                  <ChoiceChip
                     key={choice.label}
-                    type="button"
-                    className="medrec__chip"
-                    aria-pressed={date === value}
+                    pressed={date === value}
                     onClick={() => setValue('date', value, { shouldDirty: true, shouldValidate: true })}
                   >
                     {choice.label}
-                  </button>
+                  </ChoiceChip>
                 );
               })}
-            </div>
+            </ChoiceChips>
           </Form.Item>
 
           {repeating && (
@@ -514,36 +510,32 @@ export function MedicalRecordForm() {
                     description={error?.message ? <FieldError message={error.message} /> : autoDue.current && nextDue === autoDue.current ? 'Поставили через год, как у большинства прививок. Измените или уберите. Напомним за две недели, за три дня, в день даты и после неё' : kind === 'parasite' ? 'Напомним за неделю, за три дня, в день даты и после неё' : 'Напомним за две недели, за три дня, в день даты и после неё'}
                   />
                   <Form.Item>
-                    <div className="medrec__chips" role="group" aria-label="Повторить через">
-                      <button
-                        type="button"
-                        className="medrec__chip"
-                        aria-pressed={!nextDue}
+                    <ChoiceChips label="Повторить через">
+                      <ChoiceChip
+                        pressed={!nextDue}
                         onClick={() => {
                           autoDue.current = '';
                           setValue('next_due', '', { shouldDirty: true, shouldValidate: true });
                         }}
                       >
                         Без повтора
-                      </button>
+                      </ChoiceChip>
                       {repeatChoices.map((choice) => {
                         const target = addInterval(date || today, choice);
                         return (
-                          <button
+                          <ChoiceChip
                             key={choice.label}
-                            type="button"
-                            className="medrec__chip"
-                            aria-pressed={nextDue === target}
+                            pressed={nextDue === target}
                             onClick={() => {
                               autoDue.current = '';
                               setValue('next_due', target, { shouldDirty: true, shouldValidate: true });
                             }}
                           >
                             {choice.label}
-                          </button>
+                          </ChoiceChip>
                         );
                       })}
-                    </div>
+                    </ChoiceChips>
                   </Form.Item>
                 </>
               )}
@@ -623,13 +615,13 @@ export function MedicalRecordForm() {
                   <Form.Item label="Клиника">
                     <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
                     {clinicChips.length > 1 && (
-                      <div className="medrec__chips" role="group" aria-label="Клиники из профиля">
+                      <ChoiceChips label="Клиники из профиля">
                         {clinicChips.map((name) => (
-                          <button key={name} type="button" className="medrec__chip" aria-pressed={sameText(name, clinicValue)} onClick={() => pickClinic(name)}>
+                          <ChoiceChip key={name} pressed={sameText(name, clinicValue)} onClick={() => pickClinic(name)}>
                             {name}
-                          </button>
+                          </ChoiceChip>
                         ))}
-                      </div>
+                      </ChoiceChips>
                     )}
                   </Form.Item>
                 )}
@@ -641,13 +633,13 @@ export function MedicalRecordForm() {
                   <Form.Item label="Врач">
                     <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
                     {doctorChips.length > 1 && (
-                      <div className="medrec__chips" role="group" aria-label="Врачи из профиля">
+                      <ChoiceChips label="Врачи из профиля">
                         {doctorChips.map((d) => (
-                          <button key={`${d.clinic}-${d.name}`} type="button" className="medrec__chip" aria-pressed={sameText(d.name, vetValue)} onClick={() => pickDoctor(d.name, d.clinic)}>
+                          <ChoiceChip key={`${d.clinic}-${d.name}`} pressed={sameText(d.name, vetValue)} onClick={() => pickDoctor(d.name, d.clinic)}>
                             {d.label}
-                          </button>
+                          </ChoiceChip>
                         ))}
-                      </div>
+                      </ChoiceChips>
                     )}
                   </Form.Item>
                 )}

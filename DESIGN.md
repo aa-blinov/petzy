@@ -237,7 +237,8 @@ Soft and composed: one primary per screen.
 
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.
-- **Target:** at least 44px to press even when the chip is drawn smaller.
+- **Target:** at least 44px (the `--touch-min` token) to press even when the chip is drawn smaller.
+- **In code:** `ChoiceChips` (a labelled group) and `ChoiceChip` (a choice with `pressed`) in `components/ChoiceChips.tsx`; the stylesheet comes with the component. The record form, the profile and «К приёму» use them: a choice row is not drawn by hand again. They are pills (a choice is a shape-is-the-meaning case), selected on the apricot wash.
 
 ### Cards / Containers
 - **Corner Style:** 16px.
@@ -252,13 +253,16 @@ Soft and composed: one primary per screen.
 
 ### Navigation
 - **Top bar:** milk-card, 64px: the wordmark or a back arrow on the left, the pet picker on the right.
-- **Tab bar:** five sections (Лента, Лекарства, Документы, История, Настройки), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
+- **Tab bar:** five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card is the tab of the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
 
 ### Record pill
 The signature of the feed: a 44px tile with a 14px radius in the record type's pastel (tile-orange for weight, tile-brown for feeding, tile-purple for medicines…) with the type's icon in espresso-ink, left of the record's time and values. The pastel names the type; it never signals state.
 
 ### Pet card
-The top of the feed: the pet's photo (or a species gradient with its outline icon), the name as a title, age, breed and sex as one wrapped meta line, a copper weight chip, and two apricot tiles for the last feeding and weight with uppercase labels.
+The top of the feed: the pet's photo (or a species gradient with its outline icon), the name as a title, age, breed and sex as one wrapped meta line, a copper weight chip, and one bordered row into the medical card (the title «Медкарта» and a line under it that turns red when something is overdue). The last feeding and weight are not on the card: the feed under it says them.
+
+### Medical card
+One page of one pet, in two modes under a slim pet line: «Врачу» (reading at the counter: the red overdue strip first, then «На приём», allergies, what is due, medicines and weight, life, clinics, the last visits; no editing) and «Вся карта» (progress and the one next step, then every section with its forms). The red is for overdue only; the allergy block is a neutral apricot with a red icon. A row says its lines in tiers: what is acted on (ink, 600), the facts (ink, bold label), the context (grey), the rest (quiet). A status is always a word and an icon; days are counted («Просрочено на 35 дней»).
 
 ## Do's and Don'ts
 
