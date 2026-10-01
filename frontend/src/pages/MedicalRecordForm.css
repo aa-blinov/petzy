@@ -16,7 +16,7 @@
     font: inherit;
     font-size: var(--text-sm);
     cursor: pointer;
-    min-height: 36px;
+    min-height: 44px;
 }
 
 .medrec__chip[aria-pressed='true'] {
@@ -107,4 +107,15 @@
     background: transparent;
     color: var(--app-text-secondary);
     cursor: pointer;
+}
+
+.medrec__required {
+    color: var(--app-danger-text);
+    font-weight: 700;
+}
+
+.medrec__pet {
+    margin: 2px 0 0;
+    font-size: var(--text-md);
+    color: var(--app-text-secondary);
 }
