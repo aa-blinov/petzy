@@ -7,17 +7,18 @@
     gap: var(--spacing-lg);
 }
 
+/* Who the card is of: a line, the same size in both modes. The card is not about the pet's portrait. */
 .medcard__head {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+    min-width: 0;
 }
 
 .medcard__avatar {
     flex-shrink: 0;
-    width: 72px;
-    height: 72px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-md);
     overflow: hidden;
     background: var(--app-accent-soft);
@@ -29,7 +30,7 @@
 
 .medcard__name {
     margin: 0;
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     font-weight: 700;
     overflow-wrap: anywhere;
 }
@@ -538,19 +539,6 @@
     gap: var(--spacing-sm);
 }
 
-/* The reading mode is tighter at the top: the name is the title, the switch is not a hero. */
-.medcard--reading {
-    gap: var(--spacing-md);
-}
-
-.medcard--reading .medcard__head {
-    padding: var(--spacing-sm) var(--spacing-md);
-}
-
-.medcard--reading .medcard__avatar {
-    width: 56px;
-    height: 56px;
-}
 
 /* A status pill under the lines of a stacked row: on its own line, at the left, the same place in every row. */
 .medcard__row--stack > .medcard__status {
