@@ -15,7 +15,7 @@ import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
-import { RAN_OUT_MESSAGE, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
+import { INTAKE_UNDO_MS, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
 import { refreshAfterIntake } from '../utils/intakeViews';
 import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
@@ -99,10 +99,11 @@ export function MedicationsList() {
             const atNow = when.date === now.date && when.time === now.time;
             // A tap by mistake is undone from the bar, as on the feed.
             showUndo({
+                duration: INTAKE_UNDO_MS,
                 message: skipped
                     ? `${name}: приём пропущен`
                     : ran_out
-                        ? `${name}: принято, лекарство закончилось`
+                        ? `${name}: принято, лекарство закончилось. Пополните остаток`
                         : atNow
                             ? `${name}: приём отмечен`
                             : `${name}: отмечено, дали ${whenPhrase(when)}`,
@@ -111,7 +112,6 @@ export function MedicationsList() {
                     await refreshAfterIntake(queryClient);
                 },
             });
-            if (ran_out && !skipped) showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));

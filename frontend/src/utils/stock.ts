@@ -55,4 +55,5 @@ export function stockSummary(med: Medication): StockSummary | null {
   };
 }
 
-export const RAN_OUT_MESSAGE = 'Лекарство закончилось. Пополните остаток, когда купите новое';
+/** How long «Отменить» stays after a dose is marked, ms. */
+export const INTAKE_UNDO_MS = 10000;

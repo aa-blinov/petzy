@@ -2,9 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { refreshAfterIntake } from '../utils/intakeViews';
 import { showUndo } from '../utils/undo';
+import { INTAKE_UNDO_MS } from '../utils/stock';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
-import { RAN_OUT_MESSAGE } from '../utils/stock';
 import { Button } from 'antd-mobile';
 import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
@@ -73,18 +73,20 @@ export function NextDoseWidget() {
                 kind === 'skip'
                     ? `${dose.name}: приём пропущен`
                     : ran_out
-                        ? `${dose.name}: принято, лекарство закончилось`
+                        ? `${dose.name}: принято, лекарство закончилось. Пополните остаток`
                         : kind === 'scheduled'
                             ? `${dose.name}: отмечено, дали в ${dose.time}`
                             : `${dose.name}: приём отмечен`;
+            // Ten seconds: a dose is marked with a thumb, and read back a moment later. The «лекарство закончилось» is in the
+            // same message: a second one on top of it took the «Отменить» away.
             showUndo({
+                duration: INTAKE_UNDO_MS,
                 message,
                 onUndo: async () => {
                     await medicationsService.deleteIntake(id);
                     await refreshAfterIntake(queryClient);
                 },
             });
-            if (ran_out && kind !== 'skip') showToast.info(RAN_OUT_MESSAGE, { duration: 3500 });
         },
         onError: (err: unknown, { kind }) => {
             showToast.failure(getApiErrorMessage(err, kind === 'skip' ? 'Не удалось пропустить приём' : 'Не удалось отметить приём'));

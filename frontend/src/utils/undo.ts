@@ -15,12 +15,15 @@ export interface UndoRequest {
   message: string;
   /** Reverts the action; rejects to show «Не удалось отменить». */
   onUndo: () => Promise<void>;
+  /** How long «Отменить» stays, ms; the bar's own time when not given. A dose is worth a longer one than a tap. */
+  duration?: number;
 }
 
 export function showUndo(request: UndoRequest): void {
   showSnackbar({
     message: request.message,
     tone: 'success',
+    duration: request.duration,
     action: {
       label: 'Отменить',
       run: async () => {
