@@ -38,3 +38,14 @@ export function announce(message: string, politeness: Politeness = 'polite') {
     el.textContent = message;
   });
 }
+
+// Both regions are put on the page at start, not when the first message comes: VoiceOver reliably reads a change in a
+// live region that was there before the change, and often stays silent for one created together with its text.
+if (typeof document !== 'undefined') {
+  const prepare = () => {
+    region('polite');
+    region('assertive');
+  };
+  if (document.body) prepare();
+  else document.addEventListener('DOMContentLoaded', prepare, { once: true });
+}

@@ -43,9 +43,11 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
 
     setLoading(true);
     try {
-      await exportService.exportData(petId, exportType[0], format[0] as ExportFormat);
-      showToast.success('Файл скачан');
-      onClose();
+      const saved = await exportService.exportData(petId, exportType[0], format[0] as ExportFormat);
+      if (saved) {
+        showToast.success('Файл сохранён');
+        onClose();
+      }
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось экспортировать'));
     } finally {

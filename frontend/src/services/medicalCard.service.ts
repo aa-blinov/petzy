@@ -131,9 +131,9 @@ export interface MedicalCard {
   can_edit: boolean;
 }
 
-async function savePdf(path: string, fallbackName: string): Promise<void> {
+async function savePdf(path: string, fallbackName: string): Promise<boolean> {
   const response = await api.get(path, { params: { tz: deviceTimeZone() }, responseType: 'blob' });
-  saveBlob(response.data, filenameFromResponse(response.headers['content-disposition']) ?? fallbackName, 'application/pdf');
+  return saveBlob(response.data, filenameFromResponse(response.headers['content-disposition']) ?? fallbackName, 'application/pdf');
 }
 
 /** A pet's medical card, built on the server from the pet's own records. */
@@ -176,7 +176,7 @@ export const medicalCardService = {
   },
 
   /** Downloads the card as a PDF, to hand to a vet: page one is «now», the rest is the whole history. */
-  async downloadPdf(petId: string, petName: string): Promise<void> {
-    await savePdf(`/pets/${petId}/medical-card/pdf`, `${petName}.pdf`);
+  async downloadPdf(petId: string, petName: string): Promise<boolean> {
+    return savePdf(`/pets/${petId}/medical-card/pdf`, `${petName}.pdf`);
   },
 };

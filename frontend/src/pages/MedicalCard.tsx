@@ -891,8 +891,7 @@ export function MedicalCard() {
     if (!id || !card || saving) return;
     setSaving(true);
     try {
-      await medicalCardService.downloadPdf(id, card.pet.name);
-      showToast.success('PDF сохранён');
+      if (await medicalCardService.downloadPdf(id, card.pet.name)) showToast.success('PDF сохранён');
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось сформировать PDF'));
     } finally {
