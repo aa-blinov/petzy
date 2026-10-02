@@ -133,7 +133,20 @@ async function savePdf(path: string, fallbackName: string): Promise<void> {
 }
 
 /** A pet's medical card, built on the server from the pet's own records. */
+export interface MedicalAlerts {
+  vaccination: boolean;
+  parasite: boolean;
+}
+
 export const medicalCardService = {
+  /** What is overdue, without the card: the dot on the «Медкарта» tab. */
+  async alerts(petId: string): Promise<MedicalAlerts> {
+    const response = await api.get<{ alerts: MedicalAlerts }>(`/pets/${petId}/medical-card/alerts`, {
+      params: { tz: deviceTimeZone() },
+    });
+    return response.data.alerts;
+  },
+
   async get(petId: string): Promise<MedicalCard> {
     const response = await api.get<{ card: MedicalCard }>(`/pets/${petId}/medical-card`, {
       params: { tz: deviceTimeZone() },

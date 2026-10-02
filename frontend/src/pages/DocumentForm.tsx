@@ -535,7 +535,13 @@ export function DocumentForm() {
                     label="Категория"
                     required
                     onClick={isEditingScan || isUploading ? undefined : () => setCategoryPickerVisible(true)}
-                    description={errors.category?.message ? <FieldError message={errors.category.message} /> : undefined}
+                    description={
+                      errors.category?.message ? (
+                        <FieldError message={errors.category.message} />
+                      ) : field.value === 'vaccination' && !isEditing ? (
+                        'Срок следующей прививки и напоминание появятся, когда оформите её записью в медкарте. Предложим это после сохранения'
+                      ) : undefined
+                    }
                     style={{ cursor: isEditingScan || isUploading ? 'default' : 'pointer' }}
                     arrow={!isEditingScan && !isUploading}
                   >

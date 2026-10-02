@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, FileHeart, FileText, Pill, SlidersHorizontal } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
+import { medicalCardService } from '../services/medicalCard.service';
 import { isPublicPage } from '../utils/publicPages';
 import { scrollToTop } from '../utils/scroll';
 
@@ -25,9 +27,19 @@ const tabs = [
 export function BottomTabBar() {
   const { pathname } = useLocation();
   const { selectedPetId } = usePet();
+  const hidden = isPublicPage(pathname) || pathname === '/welcome';
+  // Something overdue on the chosen pet's card: a dot on the tab, so that it is seen without opening the card. Under the
+  // card's key, so that everything that changes the card (a record, the profile, a document) refreshes it too.
+  const alerts = useQuery({
+    queryKey: ['medical-card', selectedPetId, 'alerts'],
+    queryFn: () => medicalCardService.alerts(selectedPetId!),
+    enabled: !!selectedPetId && !hidden,
+    staleTime: 60_000,
+  });
+  const overdue = !!alerts.data && (alerts.data.vaccination || alerts.data.parasite);
 
   // Login and onboarding own the whole viewport
-  if (isPublicPage(pathname) || pathname === '/welcome') {
+  if (hidden) {
     return null;
   }
 
@@ -57,8 +69,10 @@ export function BottomTabBar() {
               >
                 <span className="app-tab-bar__icon" aria-hidden>
                   <Icon size={22} strokeWidth={1.8} />
+                  {key === 'medical' && overdue && <span className="app-tab-bar__dot" />}
                 </span>
                 <span className="app-tab-bar__title">{title}</span>
+                {key === 'medical' && overdue && <span className="sr-only">, есть просроченное</span>}
               </Link>
             </li>
           );

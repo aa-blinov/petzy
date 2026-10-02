@@ -594,6 +594,18 @@ function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
 
 /** What a vet reads at the counter, in the order they ask: allergies, what is due, what is taken now and the
     weight, the clinic, the last visits. Nothing here edits; the history and the forms are in the other mode. */
+/** Who this is about, in the first line a vet reads: a record read at the counter, or shown from a screenshot, names its patient. */
+function PatientLine({ pet }: { pet: Card['pet'] }) {
+  // Lowercase after the name: «Лабрадор, Мальчик» in the middle of a line reads as an artifact.
+  const facts = [pet.species, pet.breed, pet.age_text, pet.gender, pet.neutered_text].filter(Boolean).join(', ').toLowerCase();
+  return (
+    <p className="medcard__patient">
+      <strong>{pet.name}</strong>
+      {facts ? `, ${facts}` : ''}
+    </p>
+  );
+}
+
 function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; onPdf: () => void; onAll: () => void }) {
   const due = (['vaccination', 'parasite'] as const)
     .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
@@ -601,6 +613,8 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
   return (
     <>
+      <PatientLine pet={card.pet} />
+
       {card.visit_prep && (
         <Section id="medcard-vet-prep" title="На приём">
           <ul className="medcard__list">

@@ -241,3 +241,92 @@ class TestMedicalCardPdf:
             )
         reader = PdfReader(io.BytesIO(_get(client, regular_user_token, test_pet, "/pdf").data))
         assert len(reader.pages) >= 2
+
+
+def _alerts(client, token, pet):
+    response = client.get(f"/api/pets/{pet['_id']}/medical-card/alerts", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    return response.get_json()["alerts"]
+
+
+@pytest.mark.health
+class TestMedicalAlerts:
+    """The dot on the «Медкарта» tab: the card's own overdue rule, without building the card."""
+
+    @staticmethod
+    def _record(mock_db, pet, kind, title, days_ago, due_in):
+        today = date.today()
+        mock_db["medical_records"].insert_one(
+            {
+                "pet_id": str(pet["_id"]),
+                "kind": kind,
+                "title": title,
+                "date": (today - timedelta(days=days_ago)).isoformat(),
+                "next_due": (today + timedelta(days=due_in)).isoformat(),
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
+
+    def test_nothing_overdue_on_an_empty_card(self, client, mock_db, regular_user_token, test_pet):
+        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": False, "parasite": False}
+
+    def test_an_overdue_vaccination_and_an_overdue_treatment_are_told_apart(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        self._record(mock_db, test_pet, "vaccination", "Нобивак", 400, -5)
+        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": True, "parasite": False}
+        self._record(mock_db, test_pet, "parasite", "Бравекто", 100, -2)
+        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": True, "parasite": True}
+
+    def test_soon_is_not_overdue(self, client, mock_db, regular_user_token, test_pet):
+        self._record(mock_db, test_pet, "vaccination", "Нобивак", 350, 10)
+        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": False, "parasite": False}
+
+    def test_a_newer_record_of_the_same_name_ends_the_alarm(self, client, mock_db, regular_user_token, test_pet):
+        self._record(mock_db, test_pet, "vaccination", "Нобивак", 400, -5)
+        self._record(mock_db, test_pet, "vaccination", "нобивак ", 1, 364)
+        assert _alerts(client, regular_user_token, test_pet)["vaccination"] is False
+
+    def test_an_expired_certificate_counts_but_one_that_became_a_record_counts_once(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        pid = str(test_pet["_id"])
+        doc = mock_db["documents"].insert_one(
+            {"pet_id": pid, "category": "vaccination", "title": "Сертификат", "expires_at": "2020-01-01"}
+        )
+        assert _alerts(client, regular_user_token, test_pet)["vaccination"] is True
+        # The certificate is now attached to a record that is not due: the card shows the record, and so does the dot.
+        today = date.today()
+        mock_db["medical_records"].insert_one(
+            {
+                "pet_id": pid,
+                "kind": "vaccination",
+                "title": "Нобивак",
+                "date": today.isoformat(),
+                "next_due": (today + timedelta(days=300)).isoformat(),
+                "document_ids": [str(doc.inserted_id)],
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
+        assert _alerts(client, regular_user_token, test_pet)["vaccination"] is False
+
+    def test_it_agrees_with_the_card(self, client, mock_db, regular_user_token, test_pet):
+        self._record(mock_db, test_pet, "vaccination", "Нобивак", 400, -5)
+        self._record(mock_db, test_pet, "parasite", "Бравекто", 30, 60)
+        card = _get(client, regular_user_token, test_pet).get_json()["card"]
+        from_card = {
+            kind: any(r["status"] == "overdue" and not r["superseded"] for r in card["records"][kind])
+            for kind in ("vaccination", "parasite")
+        }
+        assert _alerts(client, regular_user_token, test_pet) == from_card
+
+    def test_a_stranger_and_a_visitor_are_refused(self, client, mock_db, test_pet):
+        from web.security import create_access_token
+
+        mock_db["users"].insert_one({"username": "stranger", "is_active": True, "password_hash": "x"})
+        response = client.get(
+            f"/api/pets/{test_pet['_id']}/medical-card/alerts",
+            headers={"Authorization": f"Bearer {create_access_token('stranger')}"},
+        )
+        assert response.status_code in (403, 404)
+        assert client.get(f"/api/pets/{test_pet['_id']}/medical-card/alerts").status_code == 401

@@ -1935,3 +1935,14 @@ class MedicalCardData(BaseModel):
 
 class MedicalCardResponse(BaseModel):
     card: MedicalCardData
+
+
+class MedicalAlerts(BaseModel):
+    """What is overdue on the card, without the card: one cheap read for the dot on the «Медкарта» tab."""
+
+    vaccination: bool = Field(description="Есть просроченная прививка: запись со сроком или справка с истёкшим сроком")
+    parasite: bool = Field(description="Есть просроченная обработка от паразитов")
+
+
+class MedicalAlertsResponse(BaseModel):
+    alerts: MedicalAlerts

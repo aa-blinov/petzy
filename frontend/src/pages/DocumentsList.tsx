@@ -396,6 +396,30 @@ export function DocumentsList() {
                                       В медкарте
                                     </button>
                                   )}
+                                  {doc.category === 'vaccination' && !inCard && selectedPetId && (
+                                    <button
+                                      type="button"
+                                      className="touch-target"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pets/${selectedPetId}/medical-records/new?kind=vaccination&doc=${doc._id}`);
+                                      }}
+                                      style={{
+                                        fontSize: 'var(--text-xs)',
+                                        fontWeight: 600,
+                                        color: 'var(--app-accent-deep)',
+                                        background: 'var(--app-accent-soft)',
+                                        padding: '2px 8px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    >
+                                      Оформить в медкарте
+                                    </button>
+                                  )}
                                   {expiry && (
                                     <span
                                       style={{
