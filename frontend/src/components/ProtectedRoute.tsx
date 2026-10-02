@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { returnState } from '../utils/returnTo';
 import { Button } from 'antd-mobile';
 import { useSession } from '../hooks/useSession';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isFetching, probeError, retryProbe } = useSession();
+  const location = useLocation();
 
   // Known signed in — render, even if a background refetch is running.
   if (isAuthenticated === true) {
@@ -20,7 +22,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // single sign-out path; api.ts no longer competes with a hard
   // window.location redirect.
   if (isAuthenticated === false) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={returnState(location.pathname + location.search)} />;
   }
 
   // Not known yet. If the probe failed for a reason other than 401 the

@@ -3,7 +3,7 @@
 import logging
 import sys
 
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -255,8 +255,26 @@ app.register_blueprint(docs_bp)
 # Error handler for rate limit exceeded
 @app.errorhandler(RateLimitExceeded)
 def handle_rate_limit_exceeded(e):
-    """Handle rate limit exceeded errors."""
-    return error_response("rate_limit_exceeded")
+    """Handle rate limit exceeded errors: say how long to wait, in a header and in words."""
+    try:
+        window = int(e.limit.limit.get_expiry())
+    except Exception:  # an unusual limit object: the generic answer is still an answer
+        window = 0
+    response, status = error_response("rate_limit_exceeded")
+    if window:
+        minutes = max(1, round(window / 60))
+        if minutes == 1:
+            wait = "через минуту"
+        elif minutes < 60:
+            wait = f"через {minutes} мин"
+        else:
+            wait = "через час" if minutes == 60 else f"через {round(minutes / 60)} ч"
+        body = response.get_json()
+        body["error"] = f"Слишком много попыток с этого адреса. Попробуйте {wait}"
+        body["retry_after"] = window
+        response = jsonify(body)
+        response.headers["Retry-After"] = str(window)
+    return response, status
 
 
 if __name__ == "__main__":  # pragma: no cover

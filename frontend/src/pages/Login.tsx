@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { showToast } from '../utils/toast';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { returnPath } from '../utils/returnTo';
+import { getApiErrorMessage } from '../utils/apiError';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
 import { useAuth } from '../hooks/useAuth';
@@ -26,6 +28,8 @@ export function Login() {
   // redirect, not a claim that the session is confirmed valid.
   const { login, username: storedUsername } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const target = returnPath(location.state);
   // Offered only while sign-up is open (REGISTRATION_ENABLED).
   const { data: status } = useQuery({
     queryKey: ['registration-status'],
@@ -34,7 +38,7 @@ export function Login() {
   });
 
   if (storedUsername) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={target} replace />;
   }
 
   const handleSubmit = async () => {
@@ -55,7 +59,7 @@ export function Login() {
       // sleep waited for cookies that the browser had already applied
       // when the response headers arrived.
       await login({ username: username.trim(), password });
-      navigate('/', { replace: true });
+      navigate(target, { replace: true });
     } catch (err) {
       let errorMessage = 'Не удалось войти. Проверьте соединение или логин и пароль';
       if (isAxiosError<{ error?: string; message?: string }>(err)) {
@@ -64,7 +68,8 @@ export function Login() {
         if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные';
         else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль';
         else if (status === 429) errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже';
-        else if (err.message === 'Network Error') errorMessage = 'Ошибка сети. Проверьте, работает ли сервер';
+        // The same words for the same trouble as everywhere in the app (utils/apiError.ts).
+        else if (!err.response) errorMessage = getApiErrorMessage(err, errorMessage);
         else errorMessage = data?.error || data?.message || err.message || errorMessage;
       } else if (err instanceof Error && err.message) {
         errorMessage = err.message;

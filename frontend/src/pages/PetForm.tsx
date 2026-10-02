@@ -30,6 +30,8 @@ import { GENDER_OPTIONS } from '../utils/constants';
 import { SPECIES, defaultTilesFor, getSpecies, neuteringLabel, speciesLabel } from '../utils/species';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { EmptyState } from '../components/EmptyState';
+import { PawPrint } from 'lucide-react';
 import { PhotoCropModal } from '../components/PhotoCropModal';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
@@ -339,6 +341,22 @@ export function PetForm() {
 
   if (isEditing && isLoadingPet) {
     return <LoadingSpinner />;
+  }
+  // An address of a pet that is not there, or not the person's: said so, not an empty form to fill in.
+  if (isEditing && !pet) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={PawPrint}
+            title="Питомец не найден"
+            description="Возможно, его удалили или закрыли вам доступ"
+            actionLabel="К питомцам"
+            onAction={() => navigate('/pets', { replace: true })}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -885,7 +903,9 @@ export function PetForm() {
               <FormDangerButton
                 label="Удалить питомца"
                 confirmTitle="Удаление питомца"
-                confirmContent={`Удалить «${pet.name}»? Вместе с ним удалятся все записи, лекарства и документы`}
+                confirmContent={`Удалить «${pet.name}»? Вместе с ним удалятся все записи, лекарства и документы${
+                  (pet.shared_with?.length ?? 0) > 0 ? `, а ${pet.shared_with!.length === 1 ? 'один человек потеряет' : `${pet.shared_with!.length} человек потеряют`} доступ` : ''
+                }. Вернуть их нельзя: если нужна история, сначала скачайте PDF медкарты или выгрузите записи в Настройках`}
                 onConfirm={async () => {
                   await deletePet(pet);
                   release();

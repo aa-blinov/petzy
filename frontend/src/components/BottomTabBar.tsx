@@ -56,10 +56,10 @@ export function BottomTabBar() {
       <ul className="app-tab-bar">
         {tabs.map(({ key, to: fixed, title, Icon }) => {
           // No pet chosen yet: the card has nobody to open, the list of pets is where one is added.
-          const to = key === 'medical' ? (selectedPetId ? `/pets/${selectedPetId}/medical-card` : '/pets') : fixed;
+          const to = key === 'medical' ? (selectedPetId ? `/pets/${selectedPetId}/medical-card` : '/medical-card') : fixed;
           // The current tab: the exact page for the first ones; Settings stays lit on the screens it opens; the
           // medical card is the tab for all of its own screens.
-          const current = key === 'medical' ? MEDICAL_PATH.test(pathname) : key === 'settings' ? SETTINGS_PATH.test(pathname) : pathname === fixed;
+          const current = key === 'medical' ? MEDICAL_PATH.test(pathname) || pathname === '/medical-card' : key === 'settings' ? SETTINGS_PATH.test(pathname) : pathname === fixed;
           return (
             <li key={key}>
               <Link
