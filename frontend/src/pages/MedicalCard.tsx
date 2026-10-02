@@ -339,21 +339,23 @@ interface OverdueItem {
   kind: 'vaccination' | 'parasite';
   /** The record to record again, none for a certificate kept as a document. */
   recordId: string | null;
+  /** The expired certificate this is about, when there is no record. */
+  certId?: string;
   days: number;
 }
 
 /** What is overdue, the most overdue first: repeating records, and certificates in the documents that have expired. */
 function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
   const items: OverdueItem[] = [];
-  for (const kind of ['vaccination', 'parasite'] as const) {
-    for (const r of card.records[kind]) {
-      if (r.status === 'overdue' && !r.superseded && !hidden.has(r._id)) {
-        items.push({ id: r._id, title: r.title, text: recordStatusText('overdue', r.days_left).toLowerCase(), kind, recordId: r._id, days: r.days_left ?? 0 });
-      }
+  // From every record (the server's own list), not only the latest ten of a kind that the card shows.
+  const overdue = card.overdue_records ?? (['vaccination', 'parasite'] as const).flatMap((kind) => card.records[kind]);
+  for (const r of overdue) {
+    if ((r.kind === 'vaccination' || r.kind === 'parasite') && r.status === 'overdue' && !r.superseded && !hidden.has(r._id)) {
+      items.push({ id: r._id, title: r.title, text: recordStatusText('overdue', r.days_left).toLowerCase(), kind: r.kind, recordId: r._id, days: r.days_left ?? 0 });
     }
   }
   for (const v of card.vaccinations) {
-    if (v.status === 'expired') items.push({ id: v.id, title: v.title, text: certStatusText(v).toLowerCase(), kind: 'vaccination', recordId: null, days: v.days_left ?? 0 });
+    if (v.status === 'expired') items.push({ id: v.id, title: v.title, text: certStatusText(v).toLowerCase(), kind: 'vaccination', recordId: null, certId: v.id, days: v.days_left ?? 0 });
   }
   return items.sort((a, b) => a.days - b.days);
 }
@@ -364,7 +366,11 @@ function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; p
   const items = overdueItems(card, hidden);
   if (items.length === 0) return null;
   const [first, ...others] = items;
-  const to = first.recordId ? `/pets/${petId}/medical-records/new?kind=${first.kind}&from=${first.recordId}` : `/pets/${petId}/medical-records/new?kind=vaccination`;
+  const to = first.recordId
+    ? `/pets/${petId}/medical-records/new?kind=${first.kind}&from=${first.recordId}`
+    : first.certId
+      ? `/pets/${petId}/medical-records/new?kind=vaccination&renew=${first.certId}`
+      : `/pets/${petId}/medical-records/new?kind=vaccination`;
   const label = first.kind === 'parasite' ? 'Записать повторную обработку' : first.recordId ? 'Записать повторную прививку' : 'Записать прививку';
   return (
     <div className="medcard__alert" role="status">

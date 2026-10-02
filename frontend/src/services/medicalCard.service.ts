@@ -118,6 +118,8 @@ export interface MedicalCard {
   /** By kind, newest first, at most ten each. */
   records: Record<MedicalKind, MedicalRecord[]>;
   record_counts: Record<MedicalKind, number>;
+  /** Every overdue vaccination and treatment, not only the latest ten of each kind. */
+  overdue_records?: MedicalRecord[];
   /** Courses going on or still to begin. */
   medications: MedicalCardCourse[];
   /** Finished courses, the latest first, at most ten. */
