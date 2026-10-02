@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Popup } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
+import { alertText, usePetAlerts } from '../hooks/usePetAlerts';
 import { CheckOutline, DownOutline, LeftOutline } from 'antd-mobile-icons';
 import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
@@ -16,6 +17,11 @@ export function Navbar() {
   const { selectedPetName, selectPet, pets, selectedPetId } = usePet();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingNavigate, setPendingNavigate] = useState<string | null>(null);
+  const hiddenPage = isPublicPage(location.pathname) || location.pathname === '/welcome';
+  // With one pet there is no switcher to mark; with several, something overdue on a pet that is not chosen is
+  // shown on the switcher (a dot) and, once it is open, on that pet (in words).
+  const alerts = usePetAlerts(pets, pets.length >= 2 && !hiddenPage);
+  const elsewhere = pets.some((pet) => pet._id !== selectedPetId && alertText(alerts.get(pet._id)));
 
   const handlePetSelect = (pet: Pet) => {
     hapticFeedback('light');
@@ -94,8 +100,9 @@ export function Navbar() {
               hapticFeedback('light');
               setPickerVisible(true);
             }}
-            aria-label={`${selectedPetName}, сменить питомца`}
+            aria-label={`${selectedPetName}, сменить питомца${elsewhere ? ', у другого питомца есть просроченное' : ''}`}
             style={{
+              position: 'relative',
               height: '36px',
               // A long name ("Сэр Бартоломью Пушистый Третий…") pushed the
               // logo off-screen and clipped from the left; cap the chip.
@@ -129,6 +136,7 @@ export function Navbar() {
               {selectedPetName}
             </span>
             <DownOutline aria-hidden style={{ fontSize: '10px', color: 'var(--app-text-secondary)', flexShrink: 0 }} />
+            {elsewhere && <span className="app-switcher-dot" aria-hidden />}
           </button>
 
           <Popup
@@ -215,6 +223,9 @@ export function Navbar() {
                       <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                         <span className="clamp-2" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
                         <span className="truncate" style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || speciesLabel(pet.species) || 'Питомец'}</span>
+                        {alertText(alerts.get(pet._id)) && (
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--app-danger-text)' }}>{alertText(alerts.get(pet._id))}</span>
+                        )}
                       </div>
                     </div>
                     {pet._id === selectedPetId && (

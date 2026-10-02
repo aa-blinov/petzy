@@ -887,6 +887,18 @@ select {
     transition: transform var(--motion-duration-fast) var(--motion-ease-spring);
 }
 
+/* On the pet switcher: another pet has something overdue. The picker says which, in words. */
+.app-switcher-dot {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--app-danger-color);
+    box-shadow: 0 0 0 2px var(--app-card-background);
+}
+
 /* Something overdue on this tab: a dot on the icon, ringed in the bar's own ground so it reads on the icon. */
 .app-tab-bar__icon {
     position: relative;
