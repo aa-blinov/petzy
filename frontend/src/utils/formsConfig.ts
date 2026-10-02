@@ -47,30 +47,9 @@ export interface FormSettings {
   };
 }
 
-export const DEFAULT_FORM_SETTINGS: FormSettings = {
-  asthma: {
-    duration: 'Короткий',
-    inhalation: 'false',
-    reason: 'Пил'
-  },
-  defecation: {
-    stool_type: 'Обычный',
-    color: 'Коричневый',
-    food: 'Royal Canin Fibre Response'
-  },
-  weight: {
-    food: 'Royal Canin Fibre Response'
-  },
-  eye_drops: {
-    drops_type: 'Обычные'
-  },
-  tooth_brushing: {
-    brushing_type: 'Щетка'
-  },
-  ear_cleaning: {
-    cleaning_type: 'Салфетка/Марля'
-  }
-};
+/** Nothing is filled in until the person sets it themselves on «Значения по умолчанию»: a built-in value (a food
+ *  brand, a stool colour, a reason) would be recorded as if the family had typed it, and the diary is shown to a vet. */
+export const DEFAULT_FORM_SETTINGS: FormSettings = {};
 
 /** This device's copy of the account's «Настройки форм» (the server holds
  *  them, see formDefaults.service): a new record's form reads it without

@@ -12,8 +12,7 @@ import { formDefaultsService } from '../services/formDefaults.service';
 const OPTIONS = {
     asthma_duration: [
         { label: 'Короткий', value: 'Короткий' },
-        { label: 'Средний', value: 'Средний' },
-        { label: 'Длинный', value: 'Длинный' },
+        { label: 'Длительный', value: 'Длительный' },
     ],
     asthma_inhalation: [
         { label: 'Нет', value: 'false' },
@@ -163,13 +162,13 @@ export function FormDefaults() {
     }, [formSettings, navigate, persist, saving]);
 
     const handleReset = useCallback(async () => {
-        const confirmed = window.confirm('Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?');
+        const confirmed = window.confirm('Очистить все значения по умолчанию? Формы будут открываться пустыми.');
         if (confirmed) {
             try {
                 await persist(DEFAULT_FORM_SETTINGS);
                 setFormSettings(DEFAULT_FORM_SETTINGS);
                 edited.current = false;
-                showToast.success('Настройки сброшены');
+                showToast.success('Значения очищены');
             } catch {
                 showToast.failure('Не удалось сбросить настройки');
             }
@@ -201,10 +200,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Длительность"
                         pickerKey="asthma_duration"
-                        value={formSettings.asthma?.duration || 'Короткий'}
+                        value={formSettings.asthma?.duration ?? ''}
                         formType="asthma"
                         field="duration"
-                        placeholder="Короткий"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}
@@ -213,10 +211,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Ингаляция"
                         pickerKey="asthma_inhalation"
-                        value={formSettings.asthma?.inhalation || 'false'}
+                        value={formSettings.asthma?.inhalation ?? ''}
                         formType="asthma"
                         field="inhalation"
-                        placeholder="Нет"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}
@@ -232,9 +229,9 @@ export function FormDefaults() {
                             is clickable so the keyboard pops up immediately. */}
                         <input
                             aria-label="Причина"
-                            value={formSettings.asthma?.reason || ''}
+                            value={formSettings.asthma?.reason ?? ''}
                             onChange={(e) => updateFormSetting('asthma', 'reason', e.target.value)}
-                            placeholder="Пил"
+                            placeholder="Не указано"
                             style={{
                                 border: 'none',
                                 background: 'transparent',
@@ -256,10 +253,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Тип стула"
                         pickerKey="defecation_stool_type"
-                        value={formSettings.defecation?.stool_type || 'Обычный'}
+                        value={formSettings.defecation?.stool_type ?? ''}
                         formType="defecation"
                         field="stool_type"
-                        placeholder="Обычный"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}
@@ -268,10 +264,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Цвет стула"
                         pickerKey="defecation_color"
-                        value={formSettings.defecation?.color || 'Коричневый'}
+                        value={formSettings.defecation?.color ?? ''}
                         formType="defecation"
                         field="color"
-                        placeholder="Коричневый"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}
@@ -285,9 +280,9 @@ export function FormDefaults() {
                     >
                         <input
                             aria-label="Корм"
-                            value={formSettings.defecation?.food || ''}
+                            value={formSettings.defecation?.food ?? ''}
                             onChange={(e) => updateFormSetting('defecation', 'food', e.target.value)}
-                            placeholder="Royal Canin Fibre Response"
+                            placeholder="Название корма"
                             style={{
                                 border: 'none',
                                 background: 'transparent',
@@ -314,9 +309,9 @@ export function FormDefaults() {
                     >
                         <input
                             aria-label="Корм"
-                            value={formSettings.weight?.food || ''}
+                            value={formSettings.weight?.food ?? ''}
                             onChange={(e) => updateFormSetting('weight', 'food', e.target.value)}
-                            placeholder="Royal Canin Fibre Response"
+                            placeholder="Название корма"
                             style={{
                                 border: 'none',
                                 background: 'transparent',
@@ -338,10 +333,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Тип капель"
                         pickerKey="eye_drops_type"
-                        value={formSettings.eye_drops?.drops_type || 'Обычные'}
+                        value={formSettings.eye_drops?.drops_type ?? ''}
                         formType="eye_drops"
                         field="drops_type"
-                        placeholder="Обычные"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}
@@ -352,10 +346,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Способ чистки"
                         pickerKey="tooth_brushing_type"
-                        value={formSettings.tooth_brushing?.brushing_type || 'Щетка'}
+                        value={formSettings.tooth_brushing?.brushing_type ?? ''}
                         formType="tooth_brushing"
                         field="brushing_type"
-                        placeholder="Щетка"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}
@@ -366,10 +359,9 @@ export function FormDefaults() {
                     <PickerRow
                         label="Способ чистки"
                         pickerKey="ear_cleaning_type"
-                        value={formSettings.ear_cleaning?.cleaning_type || 'Салфетка/Марля'}
+                        value={formSettings.ear_cleaning?.cleaning_type ?? ''}
                         formType="ear_cleaning"
                         field="cleaning_type"
-                        placeholder="Салфетка/Марля"
                         visiblePicker={visiblePicker}
                         onOpenPicker={setVisiblePicker}
                         onClosePicker={() => setVisiblePicker(null)}

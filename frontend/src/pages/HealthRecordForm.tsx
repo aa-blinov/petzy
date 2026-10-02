@@ -66,7 +66,7 @@ export function HealthRecordForm() {
           // Only enforce a bound the field actually declares — `field.min
           // || 0` used to apply an implicit "can't be negative" to every
           // numeric field, including ones with no declared min at all.
-          let numberSchema = z.coerce.number({ error: 'Введите число' });
+          let numberSchema = z.coerce.number({ error: 'Введите число, например 4,5' });
           if (field.min !== undefined) {
             numberSchema = numberSchema.min(field.min, `Не меньше ${field.min}`);
           }
@@ -75,6 +75,8 @@ export function HealthRecordForm() {
           }
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
+            // A Russian number pad types «4,5»: a comma is a decimal point, and a thin or plain space between thousands is not part of the number.
+            if (typeof val === 'string') return val.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
             return val;
           }, numberSchema);
 
@@ -106,7 +108,14 @@ export function HealthRecordForm() {
     }
 
     if (!isEditing && type && type in settings) {
-      Object.assign(values, settings[type as keyof typeof settings]);
+      // Only what the field still offers: a value saved before an option was renamed or dropped would be refused on save.
+      const saved = (settings[type as keyof typeof settings] ?? {}) as Record<string, string | undefined>;
+      for (const field of fields) {
+        const value = saved[field.name];
+        if (!value) continue;
+        if (field.type === 'select' && field.options && !field.options.some((o) => o.value === value)) continue;
+        values[field.name] = value;
+      }
     }
     return values;
   }, [isEditing, type, selectedPetId, fields]);
