@@ -23,7 +23,9 @@ import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { IntakeTimePicker } from '../components/IntakeTimePicker';
-import { nowWhen, whenLabel, whenPhrase, type IntakeWhen } from '../utils/intakeWhen';
+import { minutesAgo, nowWhen, whenLabel, whenPhrase, type IntakeWhen } from '../utils/intakeWhen';
+import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
+import { getCurrentDate } from '../utils/dateUtils';
 
 /** Today's next unhandled slot of a course, once its time has come: a
  *  dose marked late was most likely given then. */
@@ -158,6 +160,32 @@ export function MedicationsList() {
             showToast.failure(getApiErrorMessage(err, 'Не удалось удалить лекарство'));
         },
     });
+
+    // «Завершить курс» and «Возобновить» from the list: the course is switched off as of today, or on again, and the bar takes it back.
+    const toggleCourse = async (med: Medication) => {
+        const ended = med.course_status ? med.course_status === 'ended' : !med.is_active;
+        const refresh = async () => {
+            await queryClient.invalidateQueries({ queryKey: ['medications'] });
+            await queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+        };
+        try {
+            if (ended) {
+                await medicationsService.update(med._id, { is_active: true, ended_on: '' });
+            } else {
+                await medicationsService.update(med._id, { is_active: false, ended_on: getCurrentDate() });
+            }
+            await refresh();
+            showUndo({
+                message: ended ? `Курс «${med.name}» возобновлён` : `Курс «${med.name}» завершён`,
+                onUndo: async () => {
+                    await medicationsService.update(med._id, ended ? { is_active: false, ended_on: med.ended_on ?? getCurrentDate() } : { is_active: true, ended_on: med.ended_on ?? '' });
+                    await refresh();
+                },
+            });
+        } catch (err) {
+            showToast.failure(getApiErrorMessage(err, ended ? 'Не удалось возобновить курс' : 'Не удалось завершить курс'));
+        }
+    };
 
     const handleDelete = (med: Medication) => {
         hapticFeedback('light');
@@ -540,6 +568,21 @@ export function MedicationsList() {
                                             )}
                                         </div>
                                     )}
+                                    {(med.course_status ? med.course_status !== 'planned' : true) && (
+                                        // Ended or going: the course is finished or taken up again from the list, not only from the bottom of its form.
+                                        <div style={{ marginTop: 'var(--spacing-xs)' }} onClick={(e) => e.stopPropagation()}>
+                                            <Button
+                                                block
+                                                fill="none"
+                                                size="small"
+                                                onClick={() => void toggleCourse(med)}
+                                                aria-label={`${(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить' : 'Завершить'} курс: ${med.name}`}
+                                                style={{ color: 'var(--app-text-secondary)' }}
+                                            >
+                                                {(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить курс' : 'Завершить курс'}
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </Card>
                             </SwipeableRow>
@@ -616,6 +659,18 @@ export function MedicationsList() {
                                     fontSize: 'var(--text-sm)',
                                 }}
                             />
+                            {/* A dose given a little while ago is one tap, not a wheel of sixty minutes. */}
+                            <ChoiceChips label="Недавно">
+                                {[{ label: '15 минут назад', minutes: 15 }, { label: 'Час назад', minutes: 60 }].map((ago) => (
+                                    <ChoiceChip
+                                        key={ago.minutes}
+                                        pressed={false}
+                                        onClick={() => setLogIntakeDialog((prev) => ({ ...prev, choice: 'other', other: minutesAgo(ago.minutes) }))}
+                                    >
+                                        {ago.label}
+                                    </ChoiceChip>
+                                ))}
+                            </ChoiceChips>
                         </div>
                     )
                 }

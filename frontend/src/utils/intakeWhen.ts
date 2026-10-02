@@ -46,6 +46,12 @@ export function whenPhrase(when: IntakeWhen): string {
   return whenLabel(when).replace(/, (\d\d:\d\d)$/, ' в $1').toLowerCase();
 }
 
+/** A moment some minutes ago, from the local wall clock: «15 минут назад», «час назад». */
+export function minutesAgo(minutes: number): IntakeWhen {
+  const at = new Date(Date.now() - minutes * 60_000);
+  return { date: formatDate(at), time: `${pad(at.getHours())}:${pad(at.getMinutes())}` };
+}
+
 /** Now, as an IntakeWhen, from the local wall clock. */
 export function nowWhen(): IntakeWhen {
   const now = new Date();

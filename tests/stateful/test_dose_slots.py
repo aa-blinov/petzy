@@ -209,6 +209,13 @@ class TestTheCourseList:
         ).get_json()["medications"][0]
         assert med["scheduled_today"] is False and med["open_slots_today"] == []
 
+    def test_a_finished_course_has_nothing_scheduled_today(self, client, mock_db, regular_user_token, test_pet, course):
+        mock_db["medications"].update_one({"_id": course}, {"$set": {"is_active": False, "ended_on": "2026-10-02"}})
+        med = client.get(
+            f"/api/medications?pet_id={test_pet['_id']}&client_date=2026-10-02", headers=_auth(regular_user_token)
+        ).get_json()["medications"][0]
+        assert med["scheduled_today"] is False and med["open_slots_today"] == []
+
     def test_every_slot_closed_leaves_none_open(self, client, regular_user_token, test_pet, course):
         _log(client, regular_user_token, course, at(8, 5))
         _log(client, regular_user_token, course, at(20, 5))

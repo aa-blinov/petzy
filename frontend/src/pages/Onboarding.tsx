@@ -104,7 +104,24 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         'done',
       ];
 
-  const [index, setIndex] = useState(0);
+  // A reload in the middle of the introduction goes back to the slide the person was on, not to the first one.
+  const [index, setIndex] = useState(() => {
+    if (replay) return 0;
+    try {
+      const saved = Number(sessionStorage.getItem('petzy:onboardingStep'));
+      return Number.isInteger(saved) && saved > 0 && saved < INTRO_STEPS.length ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (index > 0 && index < INTRO_STEPS.length) sessionStorage.setItem('petzy:onboardingStep', String(index));
+      else sessionStorage.removeItem('petzy:onboardingStep');
+    } catch {
+      /* the step is not remembered: back to the first slide on a reload */
+    }
+  }, [index]);
   const step = steps[Math.min(index, steps.length - 1)];
 
   const [species, setSpecies] = useState<SpeciesKey | null>(null);
