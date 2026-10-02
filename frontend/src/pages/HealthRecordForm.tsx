@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState, useMemo, useCallback } from 'react';
 import { showToast } from '../utils/toast';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -140,6 +141,8 @@ export function HealthRecordForm() {
 
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(isEditing);
+  // Who wrote the record down: a household of several people looks at this line to know whom to ask.
+  const [recordedBy, setRecordedBy] = useState<string | null>(null);
 
   const defaultValues = useMemo(() => {
     const settings = getFormSettings();
@@ -184,6 +187,7 @@ export function HealthRecordForm() {
     reset
   } = methods;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
+  useSessionDraft({ dirty: isDirty, getValues: methods.getValues, reset: methods.reset, ready: !!eventType && !isLoading, release });
 
   // Maps an API record (date_time + nested fields) onto the form's flat
   // field names — the mirror image of onSubmit's payload building below.
@@ -238,6 +242,7 @@ export function HealthRecordForm() {
             data = await healthRecordsService.get(id!);
           }
           reset(normalizeData(data));
+          setRecordedBy(data.username ?? null);
         } catch (err) {
           console.error('Error loading record:', err);
           showToast.failure('Не удалось загрузить запись');
@@ -357,6 +362,7 @@ export function HealthRecordForm() {
         {selectedPetName && (
           <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
             Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
+            {isEditing && recordedBy && <><br />Записал(а): <strong style={{ color: 'var(--app-text-primary)' }}>{recordedBy}</strong></>}
           </p>
         )}
 

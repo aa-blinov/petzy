@@ -271,8 +271,8 @@ export function Settings() {
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Порядок плиток"
-              description="Какие записи видны и в каком порядке"
+              label="Кнопки быстрого добавления"
+              description="Какие записи видны в окне «+» и в каком порядке"
               chevron
               onClick={() => navigate('/tiles-settings')}
             />

@@ -127,6 +127,30 @@ class TestFindDueReminders:
 
         assert find_due_medication_reminders(mock_db, DUE_NOW_UTC) == []
 
+    def test_an_unmarked_dose_gets_one_followup_after_forty_five_minutes(self, mock_db):
+        pet_id = _make_pet(mock_db)
+        med_id = _make_medication(mock_db, pet_id)
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+        mock_db.medication_reminders_sent.insert_one(
+            {"medication_id": str(med_id), "date": LOCAL_DATE_KEY, "time": "08:00"}
+        )
+        later = datetime(2024, 1, 2, 3, 50, 0, tzinfo=timezone.utc)  # 08:50 local
+
+        due = find_due_medication_reminders(mock_db, later)
+        assert len(due) == 1 and due[0]["followup"] is True
+
+        mock_db.medication_reminders_sent.update_one({"medication_id": str(med_id)}, {"$set": {"followed_up": True}})
+        assert find_due_medication_reminders(mock_db, later) == []
+
+    def test_no_followup_before_forty_five_minutes(self, mock_db):
+        pet_id = _make_pet(mock_db)
+        med_id = _make_medication(mock_db, pet_id)
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+        mock_db.medication_reminders_sent.insert_one(
+            {"medication_id": str(med_id), "date": LOCAL_DATE_KEY, "time": "08:00"}
+        )
+        assert find_due_medication_reminders(mock_db, datetime(2024, 1, 2, 3, 30, 0, tzinfo=timezone.utc)) == []
+
     def test_wrong_weekday_is_excluded(self, mock_db):
         pet_id = _make_pet(mock_db)
         _make_medication(mock_db, pet_id, days=[2])  # Wednesday, not Tuesday
@@ -305,6 +329,27 @@ class TestSendReminders:
             {"medication_id": str(med_id), "date": LOCAL_DATE_KEY, "time": "08:00"}
         )
         assert dedupe_row is not None
+
+    def test_the_followup_says_who_marked_last_and_goes_once(self, mock_db):
+        pet_id = _make_pet(mock_db)
+        med_id = _make_medication(mock_db, pet_id)
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+        mock_db.medication_reminders_sent.insert_one(
+            {"medication_id": str(med_id), "date": LOCAL_DATE_KEY, "time": "08:00"}
+        )
+        mock_db.medication_intakes.insert_one(
+            {"medication_id": str(med_id), "date_time": datetime(2024, 1, 1, 20, 5), "username": "anna"}
+        )
+        later = datetime(2024, 1, 2, 3, 50, 0, tzinfo=timezone.utc)
+
+        with patch("web.push_delivery.webpush") as mock_webpush:
+            first = send_reminders(mock_db, later, "fake-private-key", {"sub": "mailto:test@example.com"})
+            second = send_reminders(mock_db, later, "fake-private-key", {"sub": "mailto:test@example.com"})
+
+        assert first == 1 and second == 0
+        payload = json.loads(mock_webpush.call_args.kwargs["data"])
+        assert payload["title"] == "Ещё не отмечено"
+        assert "Последняя отметка: anna, 20:05" in payload["body"]
 
     def test_sends_document_expiry_push_and_records_dedupe_row(self, mock_db):
         pet_id = _make_pet(mock_db)

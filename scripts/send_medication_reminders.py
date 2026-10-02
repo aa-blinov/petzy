@@ -51,6 +51,10 @@ logger = logging.getLogger("send_medication_reminders")
 # gap between two polls; a dose is never sent twice for it, the sent-table says so.
 TICK_SECONDS = 150
 
+# A dose still unmarked this long after the first push gets one more: «ещё не отмечено». Once, never a third.
+FOLLOWUP_AFTER_SECONDS = 45 * 60
+FOLLOWUP_WINDOW_SECONDS = 60 * 60
+
 # How many days ahead of a document's own expires_at to send the one-time
 # "this is expiring soon" heads up (a vaccination certificate, insurance
 # policy, etc.) — long enough to actually book a vet appointment before
@@ -247,11 +251,30 @@ def find_due_medication_reminders(
                     continue
                 slot_time = today_start.replace(hour=dose_hour, minute=dose_min, second=0, microsecond=0)
                 seconds_since_due = (now_local - slot_time).total_seconds()
+                sent_row = db.medication_reminders_sent.find_one(
+                    {"medication_id": med_id_str, "date": date_key, "time": t}
+                )
+                if sent_row:
+                    # Notified already: once more, a while later, if it is still not marked.
+                    if (
+                        not sent_row.get("followed_up")
+                        and FOLLOWUP_AFTER_SECONDS
+                        <= seconds_since_due
+                        < FOLLOWUP_AFTER_SECONDS + FOLLOWUP_WINDOW_SECONDS
+                    ):
+                        due.append(
+                            {
+                                "medication": med,
+                                "pet": pet,
+                                "date": date_key,
+                                "time": t,
+                                "subscriptions": recipient_subs,
+                                "followup": True,
+                            }
+                        )
+                    continue
                 if not (0 <= seconds_since_due < tick_seconds):
                     continue  # not due yet, or due too long ago to still be "just now"
-
-                if db.medication_reminders_sent.find_one({"medication_id": med_id_str, "date": date_key, "time": t}):
-                    continue  # already notified for this exact slot
 
                 due.append(
                     {"medication": med, "pet": pet, "date": date_key, "time": t, "subscriptions": recipient_subs}
@@ -374,9 +397,11 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
     # was one dose to give, not two things to do.
     groups: dict = {}
     for slot in find_due_medication_reminders(db, now_utc, subscribed_pets=subscribed_pets):
-        groups.setdefault((str(slot["pet"]["_id"]), slot["date"], slot["time"]), []).append(slot)
+        groups.setdefault((str(slot["pet"]["_id"]), slot["date"], slot["time"], bool(slot.get("followup"))), []).append(
+            slot
+        )
 
-    for (pet_id, date_key, time_key), slots in groups.items():
+    for (pet_id, date_key, time_key, followup), slots in groups.items():
         pet = slots[0]["pet"]
         names = ", ".join(s["medication"]["name"] for s in slots)
         # The pet in the text and in the link: with two pets «Синулокс, 08:00» does not say whose dose it is, and the
@@ -387,7 +412,27 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             "url": f"/?pet={pet_id}",
             "tag": f"dose-{pet_id}-{date_key}-{time_key}",
         }
+        if followup:
+            # Same tag: it replaces the first push instead of piling up beside it. Who marked the last dose is said,
+            # so a household sees at once whether this one is forgotten or only not entered.
+            payload["title"] = "Ещё не отмечено"
+            last = db.medication_intakes.find_one(
+                {"medication_id": {"$in": [str(s["medication"]["_id"]) for s in slots]}, "skipped": {"$ne": True}},
+                sort=[("date_time", -1)],
+            )
+            if last and last.get("username") and last.get("date_time"):
+                payload["body"] += f". Последняя отметка: {last['username']}, {last['date_time']:%H:%M}"
         sent += send_push_to_subscriptions(db, slots[0]["subscriptions"], payload, vapid_private_key, vapid_claims)
+
+        if followup:
+            # Marked after the send, like the first push's row below: a crash in between means one more «ещё не
+            # отмечено», not a missing one.
+            for slot in slots:
+                db.medication_reminders_sent.update_one(
+                    {"medication_id": str(slot["medication"]["_id"]), "date": slot["date"], "time": slot["time"]},
+                    {"$set": {"followed_up": True}},
+                )
+            continue
 
         # Written after the sends above, not before: if the process is
         # killed between a successful webpush() call and this insert, a

@@ -1215,6 +1215,21 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 
 .adm-dialog-title {
     font-size: var(--text-lg) !important;
+    /* Large text: a title of three lines must not sit on itself. */
+    line-height: 1.3 !important;
+    overflow-wrap: anywhere;
+}
+
+/* Large text: a dialog taller than the screen scrolls inside itself, its buttons stay in reach. */
+.adm-dialog-body {
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.adm-dialog-content {
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* Error Boundary Styles */

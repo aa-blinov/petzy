@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Dialog, ImageViewer, PullToRefresh, SearchBar } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
@@ -204,6 +204,9 @@ export function DocumentsList() {
   // A double tap shouldn't start the same 500 MB download twice.
   const fetchingDownload = useRef(false);
 
+  // A record of the medical card points at its file with ?open=<id>: it opens here once the list is in.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openId = searchParams.get('open');
   const handleOpen = (doc: PetDocument) => {
     hapticFeedback('light');
     if (doc.scan) {
@@ -238,6 +241,18 @@ export function DocumentsList() {
       setFileViewer({ visible: true, url, title: doc.title, id: doc._id });
     }
   };
+
+  useEffect(() => {
+    if (!openId) return;
+    const doc = documents.find((d) => d._id === openId);
+    if (!doc) return;
+    setSearchParams((params) => {
+      params.delete('open');
+      return params;
+    }, { replace: true });
+    handleOpen(doc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, documents]);
 
   if (!selectedPetId) {
     return <NoPetState what="Документы" />;

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { petsService, type Pet } from '../services/pets.service';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
+import { deleteWithUndo } from '../utils/deferredDelete';
 import { expectPetGone, usePet } from './usePet';
 
 /**
@@ -34,9 +35,28 @@ function useRemoveFromList(remove: (petId: string) => Promise<void>, done: strin
   };
 }
 
-/** The owner deletes a pet. Shared by the pets list's swipe and the edit form's button. */
+/** The owner deletes a pet. Shared by the pets list's swipe and the edit form's button.
+ *  The pet leaves the lists at once and «Отменить» is on offer; the server is asked when that time is up. */
 export function useDeletePet() {
-  return useRemoveFromList((id) => petsService.deletePet(id), 'Питомец удалён', 'Не удалось удалить');
+  const queryClient = useQueryClient();
+  const { selectPet, getSelectedPet } = usePet();
+
+  return async (pet: Pet) => {
+    const wasSelected = getSelectedPet?._id === pet._id;
+    expectPetGone(pet._id);
+    deleteWithUndo({
+      id: pet._id,
+      path: `/pets/${pet._id}`,
+      message: `«${pet.name}» удалён`,
+      failure: `Не удалось удалить «${pet.name}», питомец на месте`,
+      onUndo: () => {
+        if (wasSelected) selectPet(pet);
+      },
+      onDeleted: async () => {
+        queryClient.setQueryData(['pets'], await petsService.getPets());
+      },
+    });
+  };
 }
 
 /** Someone a pet was shared with stops seeing it; the owner keeps everything. */

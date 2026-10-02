@@ -20,6 +20,7 @@ import { Snackbar } from './components/Snackbar';
 import { usePet } from './hooks/usePet';
 import { useAuth } from './hooks/useAuth';
 import { useSession } from './hooks/useSession';
+import { flushPendingIntakes, usePendingIntakes } from './utils/offlineIntakes';
 import { formDefaultsService } from './services/formDefaults.service';
 import { cacheFormSettings, getFormSettings, hasCachedFormSettings } from './utils/formsConfig';
 import { documentsListQuery } from './services/documents.service';
@@ -145,6 +146,32 @@ function SessionExpiryBridge() {
  * blank page and a one-frame skeleton before the cards; later visits,
  * with everything cached, just faded in.
  */
+/** Doses marked with no connection are sent by themselves: at start, when the connection returns, when the app comes
+ *  back to the front, and every half minute while any wait. */
+function SendPendingIntakes() {
+  const queryClient = useQueryClient();
+  const pending = usePendingIntakes();
+  const { isAuthenticated } = useSession();
+  const waiting = pending.length > 0 && isAuthenticated !== false;
+
+  useEffect(() => {
+    if (!waiting) return;
+    const send = () => void flushPendingIntakes(queryClient);
+    send();
+    const onVisible = () => document.visibilityState === 'visible' && send();
+    window.addEventListener('online', send);
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = setInterval(send, 30_000);
+    return () => {
+      window.removeEventListener('online', send);
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(timer);
+    };
+  }, [waiting, queryClient]);
+
+  return null;
+}
+
 function PrefetchTabs() {
   const { selectedPetId } = usePet();
   const queryClient = useQueryClient();
@@ -218,6 +245,7 @@ function AppRoutes() {
     <>
       <SessionExpiryBridge />
       <PrefetchTabs />
+      <SendPendingIntakes />
       <FormDefaultsSync />
       <UpdateOnMainTabs />
       <SentryUser />

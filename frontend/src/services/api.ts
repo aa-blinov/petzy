@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import { isPublicPage } from '../utils/publicPages';
+import { stashDraftsBeforeSignOut } from '../utils/sessionDraft';
 
 // Base URL for API requests.
 // Use relative path by default to work with proxy/Nginx.
@@ -128,6 +129,7 @@ export function clearApiCaches(): void {
 function handleSessionExpired(reason: string) {
   if (sessionExpired) return;
   sessionExpired = true;
+  stashDraftsBeforeSignOut();
   clearLocalAuthState();
   clearApiCaches();
   console.info(`[auth] ${reason} — signing out`);

@@ -17,6 +17,7 @@ import {
 import { documentsListQuery, documentsService, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { DatePickerField } from '../components/DatePickerField';
 import { FieldError } from '../components/FieldError';
 import { fieldNote } from '../components/FieldNote';
@@ -197,7 +198,7 @@ export function MedicalRecordForm() {
   const repeating = kind === 'vaccination' || kind === 'parasite';
 
   const today = getCurrentDate();
-  const { control, handleSubmit, reset, setValue, formState: { isDirty, isSubmitting } } = useForm<FormData>({
+  const { control, handleSubmit, reset, setValue, getValues, formState: { isDirty, isSubmitting } } = useForm<FormData>({
     mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(schema),
@@ -210,6 +211,7 @@ export function MedicalRecordForm() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0);
+  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!kind && (isEditing ? !!record.data : !!card.data), release });
   const date = useWatch({ control, name: 'date' });
   const nextDue = useWatch({ control, name: 'next_due' });
   const title = useWatch({ control, name: 'title' });

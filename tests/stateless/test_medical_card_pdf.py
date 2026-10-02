@@ -59,6 +59,7 @@ class TestTheWholeRecord:
         _record(mock_db, test_pet, title="Ранняя", day="2021-06-01")
         _record(mock_db, test_pet, kind="visit", title="Средняя", day="2023-06-01")
         _, text = _pdf(client, regular_user_token, test_pet)
+        text = text[text.index("Хронология") :]
         assert text.index("Ранняя") < text.index("Средняя") < text.index("Поздняя")
         assert text.index("2021") < text.index("2023") < text.index("2025")
 
@@ -67,6 +68,7 @@ class TestTheWholeRecord:
         _record(mock_db, test_pet, day="2019-03-10")
         _, text = _pdf(client, regular_user_token, test_pet)
         assert "15.01.2019" in text and "Рождение" in text
+        text = text[text.index("Хронология") :]
         assert text.index("Рождение") < text.index("Рабизин")
 
     def test_every_detail_of_a_record_is_there(self, client, mock_db, regular_user_token, test_pet):
@@ -362,3 +364,36 @@ class TestPageOne:
         schedule = [y for y, text in lines if text.startswith("По пн в 10:00")]
         assert len(wrapped) >= 2 and schedule  # the name really took several lines
         assert schedule[0] < min(wrapped) - 3  # and the schedule is under all of them
+
+
+class TestWhatIsInForceOnPageOne:
+    def test_a_current_vaccination_is_on_the_first_page_with_its_date_and_its_next(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        _record(mock_db, test_pet, title="Бешенство", day="2026-05-01", next_due="2027-05-01")
+        _, text = _pdf(client, regular_user_token, test_pet)
+        first_page = text[: text.index("Хронология")]
+        assert "Прививки и обработки в силе" in first_page
+        assert "Бешенство" in first_page and "сделано 01.05.2026" in first_page and "Следующая 01.05.2027" in first_page
+
+    def test_an_overdue_one_is_said_once_in_what_is_due_not_again_in_force(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        _record(mock_db, test_pet, title="Просроченная", day="2024-01-01", next_due="2025-01-01")
+        _, text = _pdf(client, regular_user_token, test_pet)
+        first_page = text[: text.index("Хронология")]
+        assert first_page.count("Просроченная") == 1
+
+    def test_a_replaced_record_is_not_in_force(self, client, mock_db, regular_user_token, test_pet):
+        _record(mock_db, test_pet, title="Бешенство", day="2025-05-01", next_due="2026-11-01")
+        _record(mock_db, test_pet, title="Бешенство", day="2026-05-01", next_due="2027-05-01")
+        _, text = _pdf(client, regular_user_token, test_pet)
+        first_page = text[: text.index("Хронология")]
+        assert first_page.count("Бешенство") == 1 and "Следующая 01.05.2027" in first_page
+
+    def test_a_specialty_reads_in_lower_case_as_on_the_screen(self):
+        from web.medical_card_pdf import _clinic_line
+
+        line = _clinic_line({"name": "Друг", "doctors": [{"name": "Иванова А. П.", "specialty": "Терапевт"}]})
+        assert line.endswith("Иванова А. П., терапевт")
+        assert "УЗИ-врач" in _clinic_line({"name": "Друг", "doctors": [{"name": "П", "specialty": "УЗИ-врач"}]})

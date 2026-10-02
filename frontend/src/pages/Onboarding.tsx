@@ -425,7 +425,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
           <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={onPhotoChosen} />
         </>
       );
-      cta = ctaButton('Дальше', createPet, { loading: saving, disabled: !name.trim() });
+      cta = ctaButton('Добавить питомца', createPet, { loading: saving, disabled: !name.trim() });
       break;
     }
     case 'notify':

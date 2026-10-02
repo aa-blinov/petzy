@@ -20,6 +20,8 @@ import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
+import { formatAmount } from '../utils/stock';
+import { PetDeleteSummary } from '../components/PetDeleteSummary';
 
 export function Pets() {
   const navigate = useNavigate();
@@ -149,7 +151,7 @@ export function Pets() {
             ? ''
             : leaving
               ? `Больше не видеть «${deleteDialog.pet.name}»? Его записи останутся у владельца, он сможет пригласить вас снова`
-              : `Удалить «${deleteDialog.pet.name}»? Вместе с ним удалятся все записи, лекарства и документы`
+              : <PetDeleteSummary pet={deleteDialog.pet} />
         }
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, pet: null })}
@@ -309,9 +311,12 @@ function PetCard({
               style={{
                 fontSize: 'var(--text-xl)',
                 fontWeight: 700,
-                whiteSpace: 'nowrap',
+                // Two lines before a cut: «Александр Македонский…» is still a name.
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                overflowWrap: 'anywhere',
               }}
             >
               {pet.name}
@@ -345,7 +350,7 @@ function PetCard({
                 }}
               >
                 <Scale size={13} strokeWidth={2.2} style={{ display: 'block' }} />
-                {lastWeight.fields?.weight as number} кг
+                {formatAmount(Number(lastWeight.fields?.weight))} кг
               </span>
             )}
             <button

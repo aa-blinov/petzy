@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -13,6 +14,7 @@ import { z } from 'zod';
 import { DeleteOutline, SearchOutline } from 'antd-mobile-icons';
 import { medicationsService, type MedicationCreate, COMMON_MEDICATIONS } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
+import { Segmented } from '../components/Segmented';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
@@ -23,6 +25,7 @@ import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
 import { DatePickerField } from '../components/DatePickerField';
 import { showUndo } from '../utils/undo';
+import { deleteMedicationWithUndo, medicationDeleteText } from '../utils/medicationDelete';
 import { getCurrentDate } from '../utils/dateUtils';
 
 /** A typed amount («0,5» or «0.5») for zod; '' is «not set». */
@@ -36,9 +39,11 @@ const medicationSchema = z.object({
     dose_unit: z.string().optional(),
     default_dose: z.preprocess(amount, z.coerce.number({ error: 'Введите число' }).min(0.0001, 'Доза должна быть больше нуля')),
     schedule: z.object({
-        days: z.array(z.number()).min(1, 'Выберите хотя бы один день'),
-        times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Выберите время')).min(1, 'Добавьте хотя бы одно время'),
+        days: z.array(z.number()),
+        times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Выберите время')),
     }),
+    // «По необходимости»: no days and no times, a dose is marked when it is given.
+    as_needed: z.boolean().optional(),
     inventory_enabled: z.boolean(),
     // Pack size: what «Пополнить» offers to add. Not a cap on the stock,
     // which can hold more than one pack.
@@ -60,6 +65,12 @@ const medicationSchema = z.object({
     // no link to the field they were about.
     // Two doses at one time are one dose: a second slot would ask to be marked twice.
     const times = data.schedule.times;
+    if (!data.as_needed && data.schedule.days.length < 1) {
+        ctx.addIssue({ code: 'custom', path: ['schedule', 'days'], message: 'Выберите хотя бы один день' });
+    }
+    if (!data.as_needed && times.length < 1) {
+        ctx.addIssue({ code: 'custom', path: ['schedule', 'times'], message: 'Добавьте хотя бы одно время' });
+    }
     const dup = times.findIndex((t, i) => times.indexOf(t) !== i);
     if (dup >= 0) {
         ctx.addIssue({ code: 'custom', path: ['schedule', 'times'], message: `Время ${times[dup]} указано дважды` });
@@ -142,7 +153,7 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
-    const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+    const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
         // onInvalidSubmit scrolls to and focuses the first error in page order;
         // RHF's own focus picked the first registered ref instead.
         // Validated when a field is left, and after that as it changes: an error
@@ -154,6 +165,7 @@ export function MedicationForm() {
             name: '',
             type: '',
             form_factor: 'other',
+            as_needed: false,
             strength: '',
             dose_unit: '',
             default_dose: 1,
@@ -190,6 +202,7 @@ export function MedicationForm() {
     // note, not a block: some courses really are several pieces.
     const typedDose = parseAmount(String(watchedDefaultDose)) ?? 0;
     const doseLooksLikeStrength = (watchedDoseUnit ?? '') in PIECES_WORD && typedDose > 5;
+    const asNeeded = useWatch({ control, name: 'as_needed' });
     const watchedTimes = useWatch({ control, name: 'schedule.times' });
     const watchedDays = useWatch({ control, name: 'schedule.days' });
     const watchedCurrent = useWatch({ control, name: 'inventory_current' });
@@ -219,6 +232,7 @@ export function MedicationForm() {
                 name: med.name,
                 type: med.type,
                 form_factor: med.form_factor || 'other',
+                as_needed: med.schedule.times.length === 0,
                 strength: med.strength || '',
                 dose_unit: med.dose_unit || med.unit || '',
                 // Shown the Russian way («0,5»); the schema reads either.
@@ -260,14 +274,13 @@ export function MedicationForm() {
         setValue('form_factor', common.form_factor, filled);
         setValue('strength', common.strength, filled);
         setValue('dose_unit', common.dose_unit, filled);
-        // In the form's own writing (0,5), as in an edited course.
-        setValue('default_dose', formatAmount(common.default_dose) as never, filled);
         setShowCommonMeds(false);
         showToast.success('Данные заполнены');
     };
 
     const endedOn = useWatch({ control, name: 'ended_on' });
     const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
+    useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!med, release });
 
     // «Завершить курс»: switched off as of today, and undoable from the bar.
     const finishCourse = useMutation({
@@ -295,8 +308,10 @@ export function MedicationForm() {
 
     const mutation = useMutation({
         mutationFn: async (data: MedicationFormData) => {
+            const { as_needed: asNeeded, ...fields } = data;
             const payload: MedicationCreate = {
-                ...data,
+                ...fields,
+                schedule: asNeeded ? { days: [], times: [] } : data.schedule,
                 pet_id: selectedPetId!,
                 inventory_total: data.inventory_total ?? undefined,
                 inventory_current: data.inventory_current ?? undefined,
@@ -340,18 +355,15 @@ export function MedicationForm() {
                     <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
                         {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
                     </h1>
-                    {!isEditing && (
-                        <Button
-                            size="small"
-                            color="primary"
-                            fill="outline"
-                            onClick={() => setShowCommonMeds(true)}
-                            style={{ borderRadius: 'var(--app-border-radius)', fontSize: 'var(--text-xs)' }}
-                        >
-                            <SearchOutline /> Шаблоны
-                        </Button>
-                    )}
                 </div>
+                {!isEditing && (
+                    // Its own row, a full-size target: in the corner of the title it was a 30 px button.
+                    <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
+                        <Button block fill="outline" color="primary" onClick={() => setShowCommonMeds(true)}>
+                            <SearchOutline /> Выбрать из частых лекарств
+                        </Button>
+                    </div>
+                )}
                 {selectedPetName && (
                     <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
                         Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
@@ -537,6 +549,27 @@ export function MedicationForm() {
 
                         <Form.Item label="Частота" required layout="vertical">
                             <div style={{ marginBottom: 'var(--spacing-lg)' }}>
+                                <Segmented
+                                    label="Как давать"
+                                    value={asNeeded ? 'as_needed' : 'schedule'}
+                                    options={[{ value: 'schedule', label: 'По расписанию' }, { value: 'as_needed', label: 'По необходимости' }]}
+                                    onChange={(mode) => {
+                                        const needed = mode === 'as_needed';
+                                        setValue('as_needed', needed, { shouldDirty: true });
+                                        if (!needed && (getValues('schedule.times') ?? []).length === 0) {
+                                            setValue('schedule.days', [0, 1, 2, 3, 4, 5, 6], { shouldDirty: true });
+                                            setValue('schedule.times', ['08:00'], { shouldDirty: true });
+                                        }
+                                    }}
+                                />
+                            </div>
+                            {asNeeded ? (
+                                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', lineHeight: 1.5 }}>
+                                    Без расписания и напоминаний. Приём отмечается кнопкой «Дали сейчас» на карточке, когда лекарство дали.
+                                </div>
+                            ) : (
+                            <>
+                            <div style={{ marginBottom: 'var(--spacing-lg)' }}>
                                 <Controller
                                     name="schedule.days"
                                     control={control}
@@ -646,6 +679,8 @@ export function MedicationForm() {
                                 confirmText="Готово"
                                 title="Выберите время"
                             />
+                            </>
+                            )}
                         </Form.Item>
 
                         <Form.Header>Учёт остатков</Form.Header>
@@ -884,16 +919,9 @@ export function MedicationForm() {
                             <FormDangerButton
                                 label="Удалить лекарство"
                                 confirmTitle="Удаление лекарства"
-                                confirmContent={`Удалить «${med.name}» вместе со всеми отмеченными приёмами? Курс пропадёт и из медкарты. Чтобы сохранить его в истории, нажмите «Завершить курс».`}
+                                confirmContent={medicationDeleteText(med.name)}
                                 onConfirm={async () => {
-                                    try {
-                                        await medicationsService.delete(id);
-                                    } catch (error) {
-                                        showToast.failure(getApiErrorMessage(error, 'Не удалось удалить лекарство'));
-                                        throw error;
-                                    }
-                                    await queryClient.invalidateQueries({ queryKey: ['medications'] });
-                                    showToast.success('Лекарство удалено');
+                                    deleteMedicationWithUndo(med, queryClient);
                                     release();
                                     goBack(navigate, '/medications');
                                 }}
@@ -914,7 +942,7 @@ export function MedicationForm() {
                         <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
                     </div>
                     <p style={{ margin: 0, padding: 'var(--spacing-sm) var(--spacing-lg)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', borderBottom: '1px solid var(--app-border-color)' }}>
-                        Это заготовки для примера, не назначение. Дозу и расписание назначает ветеринар: проверьте их по его словам
+                        Это заготовки для примера: название, форма и дозировка упаковки. Дозу и расписание назначает ветеринар, их вы вводите сами
                     </p>
                     <div style={{ overflowY: 'auto', flex: 1 }}>
                         <List>
@@ -926,7 +954,7 @@ export function MedicationForm() {
                                 >
                                     <div style={{ fontWeight: 500 }}>{med.name}</div>
                                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
-                                        {med.type}, {med.strength} ({formatAmount(med.default_dose)} {med.dose_unit})
+                                        {med.type}, {med.strength}
                                     </div>
                                 </List.Item>
                             ))}
