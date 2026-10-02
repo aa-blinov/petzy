@@ -200,7 +200,7 @@ The same roles on a warm night: night-hearth page, night-card sheets, night-ink 
 One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (4, 8, 12, 16, 24, 32px); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. The page reserves room for the fixed top bar (64px) and the bottom bar.
 
 Responsive behaviour is contextual rather than stretched:
-- **Phone, portrait** (the design's home): top bar, one column, bottom tab bar of five sections; below 360px the tab labels tighten to 10px.
+- **Phone, portrait** (the design's home): top bar, one column, bottom tab bar of five sections; below 360px the tab labels tighten to 10px. The «Медкарта» tab carries a red dot, ringed in the bar's ground and read aloud as «есть просроченное», while a vaccination or a treatment of the chosen pet is overdue: the one signal that reaches every screen. Red stays for overdue only.
 - **Phone, landscape** (height 500px or less): a 48px top bar and a 40px tab bar with labels beside their icons; content and tabs keep clear of the notch.
 - **1024px and wider** (a computer, a tablet held sideways): the same five sections move to a 96px rail on the left; the column stays 800px; the add button drops to the corner.
 
@@ -262,7 +262,7 @@ The signature of the feed: a 44px tile with a 14px radius in the record type's p
 The top of the feed: the pet's photo (or a species gradient with its outline icon), the name as a title, age, breed and sex as one wrapped meta line, a copper weight chip, and one bordered row into the medical card (the title «Медкарта» and a line under it that turns red when something is overdue). The last feeding and weight are not on the card: the feed under it says them.
 
 ### Medical card
-One page of one pet, in two modes under the title (the pet is named in the bar above, so no pet line), a segmented switch with «Вся карта» first (progress and the one next step, then every section with its forms) and «Врачу» second (reading at the counter: the red overdue strip first, then «На приём», allergies, what is due, medicines and weight, life, clinics, the last visits; no editing). The chosen segment is lit: accent tint, accent text and ring, never the darker of the two. The red is for overdue only; the allergy block is a neutral apricot with a red icon. A row says its lines in tiers: what is acted on (ink, 600), the facts (ink, bold label), the context (grey), the rest (quiet). A status is always a word and an icon; days are counted («Просрочено на 35 дней»).
+One page of one pet, in two modes under the title (the pet is named in the bar above, so no pet line), a segmented switch with «Вся карта» first (progress and the one next step, then every section with its forms) and «Врачу» second (reading at the counter: the red overdue strip first, then «На приём», allergies, what is due, medicines and weight, life, clinics, the last visits; no editing; it opens with one line naming the patient: name, species, breed, age). The chosen segment is lit: accent tint, accent text and ring, never the darker of the two. The red is for overdue only; the allergy block is a neutral apricot with a red icon. A row says its lines in tiers: what is acted on (ink, 600), the facts (ink, bold label), the context (grey), the rest (quiet). A status is always a word and an icon; days are counted («Просрочено на 35 дней»).
 
 ## Do's and Don'ts
 

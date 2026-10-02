@@ -21,10 +21,11 @@ from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
-from web.medical_records import linked_document_ids, pet_records
+from web.medical_records import linked_document_ids, pet_records, record_states
 from web.schemas import (
     MEDICAL_KINDS,
     ErrorResponse,
+    MedicalAlertsResponse,
     MedicalCardQuery,
     MedicalCardResponse,
     MedicalProfile,
@@ -331,6 +332,21 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
     }
 
 
+def build_medical_alerts(pet_id: str, today: date) -> dict:
+    """Whether a vaccination or a parasite treatment is overdue: the card's own rule (a newer record of the same
+    name replaces the older, a certificate that became a record counts once), read without building the card."""
+    records = list(app.db.medical_records.find({"pet_id": pet_id, "kind": {"$in": ["vaccination", "parasite"]}}))
+    states = record_states(records, today)
+
+    def overdue(kind: str) -> bool:
+        return any(states[str(r["_id"])]["status"] == "overdue" for r in records if r["kind"] == kind)
+
+    return {
+        "vaccination": overdue("vaccination") or any(v["status"] == "expired" for v in _vaccinations(pet_id, today)),
+        "parasite": overdue("parasite"),
+    }
+
+
 def _card_for(pet_id: str):
     """``(card, None)`` for a pet the user may see, else ``(None, error)``."""
     username, _ = get_current_user()
@@ -354,6 +370,27 @@ def get_medical_card(pet_id):
     if error:
         return error[0], error[1]
     response = jsonify({"card": card})
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
+@medical_card_bp.route("/api/pets/<pet_id>/medical-card/alerts", methods=["GET"])
+@login_required
+@api.validate(
+    query=MedicalCardQuery,
+    resp=Response(
+        HTTP_200=MedicalAlertsResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse
+    ),
+    tags=["pets"],
+)
+def get_medical_alerts(pet_id):
+    """What is overdue on the pet's card: the dot on the «Медкарта» tab, without the whole card."""
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+    if access_error:
+        return access_error[0], access_error[1]
+    today = _today(request.context.query.tz)  # type: ignore[attr-defined]
+    response = jsonify({"alerts": build_medical_alerts(pet_id, today)})
     response.headers["Cache-Control"] = "private, no-store"
     return response
 

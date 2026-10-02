@@ -9,6 +9,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+.medcard__patient {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: 1.4;
+    color: var(--app-text-primary);
+    overflow-wrap: anywhere;
+}
+
 .medcard__actions {
     display: flex;
     flex-direction: column;

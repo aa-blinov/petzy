@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, Download, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, Download, History as HistoryIcon, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
@@ -235,7 +235,7 @@ export function Settings() {
             />
           </div>
 
-          {/* Section: Export. The history screen, where this used to live, is no longer a tab. */}
+          {/* Section: Records. The history screen is not a tab: this row and the card's «Вес» lead to it. */}
           <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
@@ -243,6 +243,13 @@ export function Settings() {
             Записи
           </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<HistoryIcon size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="История записей"
+              description="Всё за всё время, фильтр по типу и графики"
+              chevron
+              onClick={() => navigate('/history')}
+            />
             <SettingsRow
               icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Экспорт записей"
