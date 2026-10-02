@@ -94,3 +94,21 @@
     color: var(--app-text-secondary);
 }
 
+
+/* The line about push under the repeat date: a note, with one way to put it right. */
+.record-push-note {
+    display: block;
+    margin-top: var(--spacing-xs);
+    color: var(--app-text-secondary);
+}
+
+.record-push-note__button {
+    border: none;
+    background: none;
+    padding: 0;
+    min-height: var(--touch-min);
+    font: inherit;
+    font-weight: 600;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+}

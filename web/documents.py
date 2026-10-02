@@ -20,7 +20,7 @@ from web import storage
 from web.app import api
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
-from web.medical_records import document_links
+from web.medical_records import document_links, repeating_document_ids
 from web.helpers import (
     PRIVATE_IMMUTABLE_CACHE,
     apply_pagination,
@@ -115,14 +115,17 @@ def _over_quota(owner: str, adding: int) -> bool:
 SCAN_CATEGORY = "imaging"
 
 
-def _serialize_document(doc: dict, links: Optional[dict] = None) -> dict:
+def _serialize_document(doc: dict, links: Optional[dict] = None, reminded: Optional[set] = None) -> dict:
     """Convert an internal Mongo document doc into the JSON-friendly shape.
 
     ``links``: which kinds of medical record point at each document (see
     ``medical_records.document_links``), so the lists can say «В медкарте».
+    ``reminded``: the documents whose record has a repeat date, so the record's reminder speaks for them
+    (and the document's own expiry is not shown as a second verdict).
     """
     doc["_id"] = str(doc["_id"])
     doc["medical_record_kinds"] = (links or {}).get(doc["_id"], [])
+    doc["record_reminds"] = doc["_id"] in (reminded or set())
     doc["pet_id"] = str(doc.get("pet_id", ""))
     # Where a file sits in the bucket is ours to know, not the client's.
     doc.pop("file_id", None)
@@ -395,7 +398,8 @@ def get_documents():
         base_query = app.db.documents.find(mongo_query).sort("created_at", -1)
         paginated_query, _ = apply_pagination(base_query, page, page_size)
         links = document_links(pet_id)
-        documents = [_serialize_document(d, links) for d in paginated_query]
+        reminded = repeating_document_ids(pet_id)
+        documents = [_serialize_document(d, links, reminded) for d in paginated_query]
 
         return jsonify({"documents": documents, "page": page, "page_size": page_size, "total": total})
     except Exception as e:
@@ -412,7 +416,9 @@ def get_documents():
 def get_document(id):
     """Fetch a single document's metadata by id."""
     try:
-        return jsonify({"document": _serialize_document(g.record, document_links(g.pet_id))})
+        return jsonify(
+            {"document": _serialize_document(g.record, document_links(g.pet_id), repeating_document_ids(g.pet_id))}
+        )
     except Exception as e:
         app.logger.error(f"Error fetching document: {e}")
         return error_response("internal_error")

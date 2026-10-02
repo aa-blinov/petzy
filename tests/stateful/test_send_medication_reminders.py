@@ -34,6 +34,13 @@ LOCAL_DATE_KEY = "2024-01-02"
 TUESDAY = 1  # datetime.weekday(): Monday=0
 
 
+@pytest.fixture(autouse=True)
+def _any_hour_of_the_day(monkeypatch):
+    """The scenario's «now» is 08:00 local, before the hour calendar-day reminders go out;
+    these tests are about who is due, TestSendHour is about when."""
+    monkeypatch.setattr("scripts.send_medication_reminders.DATE_REMINDER_HOUR", 0)
+
+
 def _make_pet(mock_db, owner="testuser", shared_with=None):
     pet_id = ObjectId()
     mock_db.pets.insert_one(
@@ -312,7 +319,8 @@ class TestSendReminders:
         payload = json.loads(call_kwargs["data"])
         assert "Прививка от бешенства" in payload["body"]
         assert "2024-01-16" in payload["body"]
-        assert payload["url"] == "/documents"
+        assert payload["url"] == f"/documents?pet={pet_id}"
+        assert payload["body"].startswith("Rex: ")
 
         dedupe_row = mock_db.document_expiry_reminders_sent.find_one(
             {"document_id": str(doc_id), "expires_at": "2024-01-16"}

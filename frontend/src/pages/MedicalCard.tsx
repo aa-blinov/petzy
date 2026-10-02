@@ -274,7 +274,16 @@ function recordLines(record: MedicalRecord): RowLine[] {
 
 /** The pill of a repeating record: a word and an icon, and how many days. */
 function RecordPill({ record }: { record: MedicalRecord }) {
-  if (record.status === 'none') return null;
+  if (record.status === 'none') {
+    // A vaccination or a treatment with no repeat date is not watched: say so, so that nobody counts on a reminder.
+    if (record.superseded || (record.kind !== 'vaccination' && record.kind !== 'parasite')) return null;
+    return (
+      <span className="medcard__status medcard__status--none">
+        <Minus size={13} strokeWidth={2.4} aria-hidden />
+        Без напоминания
+      </span>
+    );
+  }
   const status = RECORD_STATUS[record.status];
   return (
     <span className={`medcard__status medcard__status--${status.tone}`}>

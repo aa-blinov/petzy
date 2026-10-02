@@ -57,6 +57,11 @@ TICK_SECONDS = 90
 DOCUMENT_EXPIRY_REMINDER_DAYS_BEFORE = 14
 
 
+# Reminders that go by the calendar day (a document's end, a repeat date) have no time of their own, and sent on the
+# day's first tick they arrived at 00:01 local time. They go out from this hour on, when someone can act on them.
+DATE_REMINDER_HOUR = 9
+
+
 # A vaccination or a treatment whose repeat date passed up to this many days ago
 # still gets one «просрочено» push (if nobody heard about it before). Older
 # than that is not news, and the first tick after a deploy must not shower
@@ -131,7 +136,8 @@ def medical_reminder_payload(item: dict) -> dict:
     return {
         "title": title,
         "body": f"{pet.get('name', 'Питомец')}: {record.get('title', '')}, {when}",
-        "url": f"/pets/{pet['_id']}/medical-card",
+        # «Вся карта»: an overdue or due record is put right there, and a card that is complete would open for the vet.
+        "url": f"/pets/{pet['_id']}/medical-card?mode=fill",
     }
 
 
@@ -250,7 +256,9 @@ def find_due_medication_reminders(
                 if db.medication_reminders_sent.find_one({"medication_id": med_id_str, "date": date_key, "time": t}):
                     continue  # already notified for this exact slot
 
-                due.append({"medication": med, "date": date_key, "time": t, "subscriptions": recipient_subs})
+                due.append(
+                    {"medication": med, "pet": pet, "date": date_key, "time": t, "subscriptions": recipient_subs}
+                )
 
     return due
 
@@ -272,6 +280,8 @@ def find_due_document_expiry_reminders(
     due = []
     pets_iter = subscribed_pets if subscribed_pets is not None else _iter_subscribed_pets(db, now_utc)
     for pet, now_local, recipient_subs in pets_iter:
+        if now_local.hour < DATE_REMINDER_HOUR:
+            continue
         pet_id = str(pet["_id"])
         today = now_local.date()
 
@@ -298,7 +308,9 @@ def find_due_document_expiry_reminders(
             if already_sent:
                 continue
 
-            due.append({"document": document, "expires_at": expires_at_str, "subscriptions": recipient_subs})
+            due.append(
+                {"document": document, "pet": pet, "expires_at": expires_at_str, "subscriptions": recipient_subs}
+            )
 
     return due
 
@@ -318,6 +330,8 @@ def find_due_medical_reminders(db, now_utc: datetime, subscribed_pets=None) -> l
     due = []
     pets_iter = subscribed_pets if subscribed_pets is not None else _iter_subscribed_pets(db, now_utc)
     for pet, now_local, recipient_subs in pets_iter:
+        if now_local.hour < DATE_REMINDER_HOUR:
+            continue
         today = now_local.date()
         records = list(db.medical_records.find({"pet_id": str(pet["_id"]), "kind": {"$in": list(SOON_DAYS)}}))
         if not records:
@@ -361,7 +375,14 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
 
     for slot in find_due_medication_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         medication = slot["medication"]
-        payload = {"title": "Пора дать лекарство", "body": f"{medication['name']}, {slot['time']}", "url": "/"}
+        pet = slot["pet"]
+        # The pet in the text and in the link: with two pets «Синулокс, 08:00» does not say whose dose it is, and the
+        # feed opens on the pet last chosen on that phone.
+        payload = {
+            "title": "Пора дать лекарство",
+            "body": f"{pet.get('name', 'Питомец')}: {medication['name']}, {slot['time']}",
+            "url": f"/?pet={pet['_id']}",
+        }
         sent += send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
 
         # Written after the sends above, not before: if the process is
@@ -390,10 +411,11 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
 
     for expiry in find_due_document_expiry_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         document = expiry["document"]
+        pet = expiry["pet"]
         payload = {
             "title": "Скоро истекает срок документа",
-            "body": f"{document.get('title', 'Документ')}: до {expiry['expires_at']}",
-            "url": "/documents",
+            "body": f"{pet.get('name', 'Питомец')}: {document.get('title', 'Документ')}, до {expiry['expires_at']}",
+            "url": f"/documents?pet={pet['_id']}",
         }
         sent += send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)
 

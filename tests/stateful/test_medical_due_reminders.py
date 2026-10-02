@@ -24,6 +24,13 @@ NOW_UTC = datetime(2024, 1, 2, 3, 0, 30, tzinfo=timezone.utc)
 LOCAL_TODAY = datetime(2024, 1, 2).date()
 
 
+@pytest.fixture(autouse=True)
+def _any_hour_of_the_day(monkeypatch):
+    """The scenario's «now» is 08:00 local, before the hour calendar-day reminders go out;
+    these tests are about who is due, TestSendHour is about when."""
+    monkeypatch.setattr("scripts.send_medication_reminders.DATE_REMINDER_HOUR", 0)
+
+
 def day(offset: int) -> str:
     return (LOCAL_TODAY + timedelta(days=offset)).isoformat()
 
@@ -161,7 +168,7 @@ class TestSending:
         assert payload == {
             "title": "Скоро прививка",
             "body": "Рекс: Рабизин, через 5 дней",
-            "url": f"/pets/{pet_id}/medical-card",
+            "url": f"/pets/{pet_id}/medical-card?mode=fill",
         }
 
     @pytest.mark.parametrize(
@@ -190,7 +197,7 @@ class TestSending:
         assert medical_reminder_payload(item) == {
             "title": "Обработка от паразитов просрочена",
             "body": "Рекс: Дронтал, срок был 31.12.2023",
-            "url": f"/pets/{pet_id}/medical-card",
+            "url": f"/pets/{pet_id}/medical-card?mode=fill",
         }
 
     def test_once_per_date_and_stage(self, mock_db):
@@ -320,3 +327,105 @@ class TestOneReminderPerVaccination:
         mock_db.medical_records.update_one({"_id": visit}, {"$set": {"document_ids": [str(doc)]}})
         _subscribe(mock_db)
         assert self._titles(mock_db) == ["Скоро истекает срок документа"]
+
+
+@pytest.mark.push
+class TestSendHour:
+    """Calendar-day reminders arrive in the day, not at 00:01: they wait for DATE_REMINDER_HOUR local time."""
+
+    def test_nothing_goes_out_before_the_hour_and_it_does_after(self, mock_db, monkeypatch):
+        monkeypatch.setattr("scripts.send_medication_reminders.DATE_REMINDER_HOUR", 9)
+        pet_id = _pet(mock_db)
+        _record(mock_db, pet_id, next_due=day(10))
+        _subscribe(mock_db)
+        # 03:00 UTC is 08:00 at UTC+5: not yet.
+        assert find_due_medical_reminders(mock_db, NOW_UTC) == []
+        # 04:00 UTC is 09:00 local.
+        assert len(find_due_medical_reminders(mock_db, datetime(2024, 1, 2, 4, 0, 30, tzinfo=timezone.utc))) == 1
+
+    def test_the_document_expiry_waits_too(self, mock_db, monkeypatch):
+        from scripts.send_medication_reminders import find_due_document_expiry_reminders
+
+        monkeypatch.setattr("scripts.send_medication_reminders.DATE_REMINDER_HOUR", 9)
+        pet_id = _pet(mock_db)
+        mock_db.documents.insert_one(
+            {"_id": ObjectId(), "pet_id": str(pet_id), "title": "Справка", "category": "other", "expires_at": day(5)}
+        )
+        _subscribe(mock_db)
+        assert find_due_document_expiry_reminders(mock_db, NOW_UTC) == []
+        assert (
+            len(find_due_document_expiry_reminders(mock_db, datetime(2024, 1, 2, 4, 0, 30, tzinfo=timezone.utc))) == 1
+        )
+
+
+@pytest.mark.push
+class TestWhoseDoseAndWhereItLeads:
+    def _sent(self, mock_db, now=NOW_UTC):
+        with patch("scripts.send_medication_reminders.send_push_to_subscriptions", return_value=1) as send:
+            send_reminders(mock_db, now, "fake-key", {"sub": "mailto:t@example.com"})
+        return [call.args[2] for call in send.call_args_list]
+
+    def test_a_dose_names_the_pet_and_opens_it(self, mock_db):
+        pet_id = _pet(mock_db)
+        _subscribe(mock_db)
+        mock_db.medications.insert_one(
+            {
+                "_id": ObjectId(),
+                "pet_id": str(pet_id),
+                "name": "Синулокс",
+                "is_active": True,
+                "schedule": {"days": [1], "times": ["08:00"]},
+            }
+        )
+        (payload,) = self._sent(mock_db)
+        assert payload["body"] == "Рекс: Синулокс, 08:00"
+        assert payload["url"] == f"/?pet={pet_id}"
+
+    def test_a_document_names_the_pet_and_opens_its_list(self, mock_db):
+        pet_id = _pet(mock_db)
+        _subscribe(mock_db)
+        mock_db.documents.insert_one(
+            {
+                "_id": ObjectId(),
+                "pet_id": str(pet_id),
+                "title": "Страховка",
+                "category": "insurance",
+                "expires_at": day(5),
+            }
+        )
+        (payload,) = self._sent(mock_db)
+        assert payload["body"].startswith("Рекс: Страховка, до ")
+        assert payload["url"] == f"/documents?pet={pet_id}"
+
+    def test_a_medical_reminder_opens_the_whole_card(self, mock_db):
+        pet_id = _pet(mock_db)
+        _subscribe(mock_db)
+        _record(mock_db, pet_id, next_due=day(-1))
+        (payload,) = self._sent(mock_db)
+        assert payload["url"] == f"/pets/{pet_id}/medical-card?mode=fill"
+
+
+@pytest.mark.push
+class TestCertificateOfARecordWithoutARepeat:
+    def test_the_certificates_own_date_keeps_speaking_when_the_record_repeats_nothing(self, mock_db):
+        from scripts.send_medication_reminders import find_due_document_expiry_reminders
+
+        pet_id = _pet(mock_db)
+        _subscribe(mock_db)
+        doc_id = ObjectId()
+        mock_db.documents.insert_one(
+            {
+                "_id": doc_id,
+                "pet_id": str(pet_id),
+                "title": "Сертификат",
+                "category": "vaccination",
+                "expires_at": day(5),
+            }
+        )
+        record_id = _record(mock_db, pet_id, next_due=None)
+        mock_db.medical_records.update_one({"_id": record_id}, {"$set": {"document_ids": [str(doc_id)]}})
+        # The record has no repeat date, so it reminds about nothing: the certificate's date still counts.
+        assert len(find_due_document_expiry_reminders(mock_db, NOW_UTC)) == 1
+        # Give the record a repeat date and the record speaks for the certificate.
+        mock_db.medical_records.update_one({"_id": record_id}, {"$set": {"next_due": day(300)}})
+        assert find_due_document_expiry_reminders(mock_db, NOW_UTC) == []

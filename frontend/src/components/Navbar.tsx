@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Popup } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { alertText, usePetAlerts } from '../hooks/usePetAlerts';
@@ -14,9 +14,20 @@ import { isPublicPage } from '../utils/publicPages';
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedPetName, selectPet, pets, selectedPetId } = usePet();
+  const { selectedPetName, selectPet, pets, selectedPetId, isFetched } = usePet();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingNavigate, setPendingNavigate] = useState<string | null>(null);
+  // A link from a notification names its pet (/?pet=<id>): that pet is chosen, then the address is cleaned.
+  useEffect(() => {
+    const wanted = searchParams.get('pet');
+    if (!wanted || !isFetched) return;
+    const pet = pets.find((p) => p._id === wanted);
+    if (pet && pet._id !== selectedPetId) selectPet(pet);
+    const rest = new URLSearchParams(searchParams);
+    rest.delete('pet');
+    setSearchParams(rest, { replace: true });
+  }, [searchParams, setSearchParams, isFetched, pets, selectedPetId, selectPet]);
   const hiddenPage = isPublicPage(location.pathname) || location.pathname === '/welcome';
   // With one pet there is no switcher to mark; with several, something overdue on a pet that is not chosen is
   // shown on the switcher (a dot) and, once it is open, on that pet (in words).

@@ -161,8 +161,17 @@ def linked_document_ids(pet_id: str) -> set[str]:
 
 
 def repeating_document_ids(pet_id: str, db=None) -> set[str]:
-    """Documents linked to a vaccination or treatment record: that record's reminder covers them."""
-    return {doc_id for doc_id, kinds in document_links(pet_id, db).items() if any(k in REPEATING_KINDS for k in kinds)}
+    """Documents linked to a vaccination or treatment record that has a repeat date: that record's reminder
+    covers them. A record with no repeat date reminds about nothing, so a certificate attached to it keeps
+    its own «скоро истекает»: the date the person typed must not go quiet because of a record."""
+    covered: set[str] = set()
+    cursor = (db or app.db).medical_records.find(
+        {"pet_id": pet_id, "kind": {"$in": list(REPEATING_KINDS)}, "next_due": {"$nin": [None, ""]}},
+        {"document_ids": 1},
+    )
+    for record in cursor:
+        covered.update(record.get("document_ids") or [])
+    return covered
 
 
 def _own_documents(pet_id: str, ids: list[str]) -> bool:

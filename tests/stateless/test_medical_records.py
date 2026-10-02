@@ -418,6 +418,20 @@ class TestDocumentsKnowTheirRecords:
             == []
         )
 
+    def test_a_record_speaks_for_a_certificate_only_when_it_repeats(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        quiet, loud = self._doc(mock_db, test_pet, "Без повтора"), self._doc(mock_db, test_pet, "С повтором")
+        _post(client, regular_user_token, test_pet, title="Тихая", document_ids=[quiet])
+        _post(client, regular_user_token, test_pet, title="Громкая", next_due=iso(300), document_ids=[loud])
+        listing = client.get(f"/api/documents?pet_id={test_pet['_id']}", headers=_auth(regular_user_token)).get_json()[
+            "documents"
+        ]
+        reminds = {d["title"]: d["record_reminds"] for d in listing}
+        assert reminds == {"Без повтора": False, "С повтором": True}
+        single = client.get(f"/api/documents/{loud}", headers=_auth(regular_user_token)).get_json()["document"]
+        assert single["record_reminds"] is True
+
 
 @pytest.mark.health
 class TestNotesAndAllergiesDoNotContradict:
