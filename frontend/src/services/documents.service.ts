@@ -148,7 +148,8 @@ export const documentsService = {
     if (data.expires_at) formData.append('expires_at', data.expires_at);
     formData.append('file', data.file);
 
-    const response = await api.post<{ message: string; id: string }>('/documents', formData);
+    // A file of up to 10 MB on a phone connection: given longer than an ordinary request.
+    const response = await api.post<{ message: string; id: string }>('/documents', formData, { timeout: 120_000 });
     return response.data.id;
   },
 

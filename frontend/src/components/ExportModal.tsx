@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
 import { Popup, Button, Selector, Form } from 'antd-mobile';
 import { exportService, type ExportFormat } from '../services/export.service';
@@ -43,8 +44,8 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
       await exportService.exportData(petId, exportType[0], format[0] as ExportFormat);
       showToast.success('Файл скачан');
       onClose();
-    } catch {
-      showToast.failure('Не удалось экспортировать');
+    } catch (err) {
+      showToast.failure(getApiErrorMessage(err, 'Не удалось экспортировать'));
     } finally {
       setLoading(false);
     }

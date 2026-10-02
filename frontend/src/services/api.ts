@@ -16,6 +16,9 @@ if (API_URL.includes('localhost:3000') && !window.location.href.includes('localh
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
+  // A request that gets no answer ends, and says so, instead of a button that spins for ever. Uploads of a file say
+  // their own, longer time (see documents.service and pets.service).
+  timeout: 30_000,
 });
 
 // Request interceptor — tokens are in httpOnly cookies so we don't

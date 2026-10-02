@@ -25,6 +25,7 @@ import {
 } from '../services/documents.service';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { utcStampToLocal } from '../utils/dateUtils';
 import { NoPetState } from '../components/NoPetState';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
@@ -458,7 +459,7 @@ export function DocumentsList() {
                                     fontVariantNumeric: 'tabular-nums',
                                   }}
                                 >
-                                  <span>{formatRelativeDateTime(doc.created_at)}</span>
+                                  <span>{formatRelativeDateTime(utcStampToLocal(doc.created_at))}</span>
                                   {doc.file_size > 0 && <span>{formatFileSize(doc.file_size)}</span>}
                                 </p>
                                 {doc.username && doc.username !== currentUsername && (

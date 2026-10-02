@@ -91,6 +91,12 @@ const queryClient = new QueryClient({
       staleTime: 30 * 1000, // Consider data fresh for 30 seconds to prevent duplicate requests
       gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     },
+    mutations: {
+      // The default («online») holds a save while the phone has no connection and sends it when the connection comes
+      // back: the button spins, the person assumes it failed and enters the same thing again, and both arrive. Sent
+      // at once instead: with no connection it fails at once, and says so (getApiErrorMessage).
+      networkMode: 'always',
+    },
   },
 });
 

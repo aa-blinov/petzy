@@ -81,8 +81,9 @@ export function formatRelativeDateTime(dateStr: string, now: Date = new Date()):
 
   if (days === 0) return `сегодня в ${time}`;
   if (days === 1) return `вчера в ${time}`;
-  if (days > 1 && days < 5) return `${days} дня назад`;
-  if (days >= 5 && days < 365) return `${days} дней назад`;
+  // Within a week the time of day is still wanted (a dose, a feeding); beyond it the day is enough.
+  if (days > 1 && days < 7) return `${days} ${pluralRu(days, "день", "дня", "дней")} назад, ${time}`;
+  if (days >= 7 && days < 365) return `${days} ${pluralRu(days, "день", "дня", "дней")} назад`;
 
   const monthName = MONTHS_GENITIVE[parsed.m - 1];
   if (parsed.y === today.y) return `${parsed.d} ${monthName}`;
@@ -100,8 +101,7 @@ export function formatRelativeDate(dateStr: string, now: Date = new Date()): str
 
   if (days === 0) return "сегодня";
   if (days === 1) return "вчера";
-  if (days > 1 && days < 5) return `${days} дня назад`;
-  if (days >= 5 && days < 365) return `${days} дней назад`;
+  if (days > 1 && days < 365) return `${days} ${pluralRu(days, "день", "дня", "дней")} назад`;
 
   const monthName = MONTHS_GENITIVE[parsed.m - 1];
   if (parsed.y === today.y) return `${parsed.d} ${monthName}`;

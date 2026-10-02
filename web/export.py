@@ -81,7 +81,8 @@ def _replace_skip_blank(value, replacement: str = "-") -> str:
     """Treat empty / 'Пропустить' as the replacement placeholder."""
     if isinstance(value, str) and value.strip() in ("", "Пропустить"):
         return replacement
-    return value or ""
+    # 0 is a value (a dose, a weight), not an empty cell.
+    return "" if value is None else value
 
 
 MEDICATIONS_EXPORT_SPEC = ExportSpec(
@@ -158,7 +159,7 @@ _PLAIN_NUMBER = re.compile(r"^[+-]?\d+([.,]\d+)?$")
 def _cell(value) -> str:
     """A spreadsheet cell that can't be a formula: Excel runs a comment like
     ``=HYPERLINK(...)`` from a co-owner as one when the file is opened."""
-    text = str(value or "")
+    text = str("" if value is None else value)
     if text == "-" or _PLAIN_NUMBER.match(text):
         return text
     return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
@@ -208,7 +209,7 @@ def _serialize_html(title: str, records: list[dict], fields: list[FieldSpec]) ->
     for r in records:
         parts.append("<tr>")
         for en, _ in fields:
-            value = html.escape(str(r.get(en, "") or ""))
+            value = html.escape(str("" if r.get(en) is None else r.get(en)))
             parts.append(f"<td>{value}</td>")
         parts.append("</tr>")
     parts.append("</tbody></table></body></html>")
@@ -220,7 +221,11 @@ def _serialize_md(title: str, records: list[dict], fields: list[FieldSpec]) -> t
     lines.append("| " + " | ".join(ru for _, ru in fields) + " |")
     lines.append("|" + "---|" * len(fields))
     for r in records:
-        lines.append("| " + " | ".join(str(r.get(en, "") or "").replace("|", "\\|") for en, _ in fields) + " |")
+        lines.append(
+            "| "
+            + " | ".join(str("" if r.get(en) is None else r.get(en)).replace("|", "\\|") for en, _ in fields)
+            + " |"
+        )
     return ("\n".join(lines) + "\n").encode("utf-8"), "text/markdown", "md"
 
 

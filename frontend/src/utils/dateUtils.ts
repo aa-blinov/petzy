@@ -9,6 +9,17 @@ export function formatDate(date: Date): string {
 }
 
 /**
+ * A moment the server stamps in UTC («2026-10-02 07:29», no zone written), as the wall clock of this device
+ * («2026-10-02 12:29» in Almaty): what a document list shows, not a time five hours off.
+ */
+export function utcStampToLocal(stamp: string): string {
+  const iso = stamp.replace(' ', 'T');
+  const moment = new Date(iso.length === 16 ? `${iso}:00Z` : `${iso}Z`);
+  if (Number.isNaN(moment.getTime())) return stamp;
+  return `${formatDate(moment)} ${formatTime(moment)}`;
+}
+
+/**
  * Format time to HH:MM format
  */
 export function formatTime(date: Date): string {

@@ -92,7 +92,7 @@ export const petsService = {
       formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
     }
 
-    const response = await api.post<{ message: string; pet: Pet }>('/pets', formData);
+    const response = await api.post<{ message: string; pet: Pet }>('/pets', formData, { timeout: 120_000 });
     return response.data.pet;
   },
 
@@ -112,7 +112,7 @@ export const petsService = {
       formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
     }
 
-    const response = await api.put<{ message: string; pet: Pet }>(`/pets/${petId}`, formData);
+    const response = await api.put<{ message: string; pet: Pet }>(`/pets/${petId}`, formData, { timeout: 120_000 });
     return response.data.pet;
   },
 
