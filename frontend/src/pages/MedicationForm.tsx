@@ -260,7 +260,8 @@ export function MedicationForm() {
         setValue('form_factor', common.form_factor, filled);
         setValue('strength', common.strength, filled);
         setValue('dose_unit', common.dose_unit, filled);
-        setValue('default_dose', common.default_dose, filled);
+        // In the form's own writing (0,5), as in an edited course.
+        setValue('default_dose', formatAmount(common.default_dose) as never, filled);
         setShowCommonMeds(false);
         showToast.success('Данные заполнены');
     };
@@ -426,7 +427,7 @@ export function MedicationForm() {
                                             setTypePickerVisible(false);
                                         }}
                                         cancelText="Отмена"
-                                        confirmText="Выбрать"
+                                        confirmText="Готово"
                                     />
                                 </>
                             )}
@@ -527,7 +528,7 @@ export function MedicationForm() {
                                                 if (v[0]) setValue('dose_unit', v[0] as string);
                                             }}
                                             cancelText="Отмена"
-                                            confirmText="Выбрать"
+                                            confirmText="Готово"
                                         />
                                     </div>
                                 </Form.Item>
@@ -642,7 +643,7 @@ export function MedicationForm() {
                                     setActiveTimeIndex(null);
                                 }}
                                 cancelText="Отмена"
-                                confirmText="Выбрать"
+                                confirmText="Готово"
                                 title="Выберите время"
                             />
                         </Form.Item>
@@ -912,6 +913,9 @@ export function MedicationForm() {
                         <span style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Частые лекарства</span>
                         <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
                     </div>
+                    <p style={{ margin: 0, padding: 'var(--spacing-sm) var(--spacing-lg)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', borderBottom: '1px solid var(--app-border-color)' }}>
+                        Это заготовки для примера, не назначение. Дозу и расписание назначает ветеринар: проверьте их по его словам
+                    </p>
                     <div style={{ overflowY: 'auto', flex: 1 }}>
                         <List>
                             {COMMON_MEDICATIONS.map((med, idx) => (
@@ -922,7 +926,7 @@ export function MedicationForm() {
                                 >
                                     <div style={{ fontWeight: 500 }}>{med.name}</div>
                                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
-                                        {med.type}, {med.strength} ({med.default_dose} {med.dose_unit})
+                                        {med.type}, {med.strength} ({formatAmount(med.default_dose)} {med.dose_unit})
                                     </div>
                                 </List.Item>
                             ))}

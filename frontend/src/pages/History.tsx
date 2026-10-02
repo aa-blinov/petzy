@@ -165,8 +165,8 @@ export function History() {
             return (
                 <EmptyState
                     icon={Notebook}
-                    title="Записей пока нет"
-                    description="Кормления, вес, лекарства и прививки появятся здесь, как только вы их добавите"
+                    title={filterType === FILTER_ALL ? 'Записей пока нет' : `${activeFilterOption.label}: записей пока нет`}
+                    description={filterType === FILTER_ALL ? 'Кормления, вес, лекарства и прививки появятся здесь, как только вы их добавите' : 'Они появятся здесь, как только вы их добавите. Другие записи видны, если выбрать «Все»'}
                 />
             );
         }

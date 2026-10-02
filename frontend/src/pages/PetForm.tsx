@@ -267,14 +267,6 @@ export function PetForm() {
       const hasNewFile = fileList[0]?.file instanceof File;
       const photoWasRemoved = fileList.length === 0 && !!pet?.photo_url;
 
-      // Debug logging
-      console.log('=== Photo Debug ===');
-      console.log('fileList:', fileList);
-      console.log('fileList.length:', fileList.length);
-      console.log('pet?.photo_url:', pet?.photo_url);
-      console.log('hasNewFile:', hasNewFile);
-      console.log('photoWasRemoved:', photoWasRemoved);
-
       const petData = {
         ...values,
         photo_file: hasNewFile ? fileList[0].file : undefined,
@@ -439,7 +431,7 @@ export function PetForm() {
                         setSpeciesPickerVisible(false);
                       }}
                       cancelText="Отмена"
-                      confirmText="Выбрать"
+                      confirmText="Готово"
                     />
                   </Form.Item>
                 );
@@ -509,12 +501,21 @@ export function PetForm() {
                         const year = val[2];
                         const monthStr = String(month + 1).padStart(2, '0');
                         const dayStr = String(day).padStart(2, '0');
-                        onChange(`${year}-${monthStr}-${dayStr}`);
+                        const picked = `${year}-${monthStr}-${dayStr}`;
+                        // The wheel offers the months still to come this year; a pet is not born in the future.
+                        const today = new Date();
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        if (picked > todayStr) {
+                          showToast.info('Дата рождения не может быть позже сегодняшней');
+                          onChange(todayStr);
+                        } else {
+                          onChange(picked);
+                        }
                         setDatePickerVisible(false);
                         setInternalPickerDate([]);
                       }}
                       cancelText="Отмена"
-                      confirmText="Сохранить"
+                      confirmText="Готово"
                     />
                   </Form.Item>
                 );
@@ -546,7 +547,7 @@ export function PetForm() {
                         setGenderPickerVisible(false);
                       }}
                       cancelText="Отмена"
-                      confirmText="Выбрать"
+                      confirmText="Готово"
                     />
                   </Form.Item>
                 );
@@ -585,7 +586,7 @@ export function PetForm() {
                         setNeuteredPickerVisible(false);
                       }}
                       cancelText="Отмена"
-                      confirmText="Выбрать"
+                      confirmText="Готово"
                     />
                   </Form.Item>
                 );

@@ -68,6 +68,24 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
           Что записать?
         </h2>
 
+        {tiles.length === 0 && (
+          // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
+          <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
+            <p style={{ margin: '0 0 var(--spacing-md)' }}>Все кнопки быстрого добавления скрыты в настройках.</p>
+            <button
+              type="button"
+              className="touch-target"
+              style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+              onClick={() => {
+                onClose();
+                navigate('/tiles-settings');
+              }}
+            >
+              Настроить
+            </button>
+          </div>
+        )}
+
         <Grid columns={2} gap={10}>
           {tiles.map(tile => {
             const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';

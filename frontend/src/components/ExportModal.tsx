@@ -4,6 +4,7 @@ import { showToast } from '../utils/toast';
 import { Popup, Button, Selector, Form } from 'antd-mobile';
 import { exportService, type ExportFormat } from '../services/export.service';
 import { useEventTypes } from '../hooks/useEventTypes';
+import { usePet } from '../hooks/usePet';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 
 /** Matches ALL_TYPES on the backend: one ZIP with a file per record type. */
@@ -18,6 +19,7 @@ interface ExportModalProps {
 
 export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }: ExportModalProps) {
   const { eventTypes } = useEventTypes();
+  const { pets } = usePet();
   const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
   const [exportType, setExportType] = useState<string[]>([defaultType]);
   const [format, setFormat] = useState<string[]>(['csv']);
@@ -84,7 +86,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
           alignItems: 'center', 
           marginBottom: '16px' 
         }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Экспорт данных</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Экспорт: {pets.find((p) => p._id === petId)?.name ?? 'данные питомца'}</h3>
           <Button fill="none" size="small" onClick={onClose}>Закрыть</Button>
         </div>
 

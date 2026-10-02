@@ -101,7 +101,7 @@ const schema = z
   })
   .superRefine((data, ctx) => {
     if (data.next_due && data.next_due < data.date) {
-      ctx.addIssue({ code: 'custom', path: ['next_due'], message: 'Повтор раньше самой записи' });
+      ctx.addIssue({ code: 'custom', path: ['next_due'], message: 'Дата повтора раньше даты записи' });
     }
   });
 

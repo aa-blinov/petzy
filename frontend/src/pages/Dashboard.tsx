@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -24,6 +24,28 @@ import { LoadError } from '../components/LoadError';
 import { PendingInvites } from '../components/PendingInvites';
 import { usePetInvites } from '../hooks/usePetInvites';
 
+/** The next page comes when the end of the list comes near (the button stays, for whoever uses it). */
+function AutoLoadMore({ onVisible, disabled, children }: { onVisible: () => void; disabled: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const latest = useRef(onVisible);
+  useEffect(() => {
+    latest.current = onVisible;
+  });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || disabled || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) latest.current();
+    }, { rootMargin: '300px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [disabled]);
+  return <div ref={ref}>{children}</div>;
+}
+
+/** Said once, on the first record: how a record is changed or deleted without opening it. */
+const SWIPE_HINT_KEY = 'petzy:swipeHintSeen';
+
 export function Dashboard() {
   const navigate = useNavigate();
   const { selectedPetId, getSelectedPet, pets, isFetched: petsFetched, isError: petsFailed, refetchPets } = usePet();
@@ -32,6 +54,13 @@ export function Dashboard() {
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const [swipeHintSeen, setSwipeHintSeen] = useState(() => {
+    try {
+      return localStorage.getItem(SWIPE_HINT_KEY) === '1';
+    } catch {
+      return true;
+    }
+  });
   const invites = usePetInvites();
   useEffect(() => {
     if (pets.length > 0) rememberHavingPets(username);
@@ -202,19 +231,33 @@ export function Dashboard() {
                 padding: '32px 16px',
                 color: 'var(--app-text-secondary)',
               }}>
-                <p style={{ marginBottom: '16px', fontSize: '15px' }}>
-                  Лента пока пуста. Запишите первое событие
+                {/* One way to add, the round «+», not two buttons for one action on one screen. */}
+                <p style={{ margin: 0, fontSize: '15px' }}>
+                  Лента пока пуста. Нажмите «+», чтобы записать первое событие
                 </p>
-                <Button
-                  color="primary"
-                  size="middle"
-                  onClick={() => setActionSheetVisible(true)}
-                >
-                  <AddOutline /> &nbsp;Добавить запись
-                </Button>
               </div>
             ) : (
               <>
+                {!swipeHintSeen && (
+                  <p role="note" style={{ margin: '0 0 12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--app-accent-soft)', color: 'var(--app-accent-deep)', fontSize: 'var(--text-sm)' }}>
+                    Смахните запись влево, чтобы удалить, вправо, чтобы изменить.{' '}
+                    <button
+                      type="button"
+                      className="touch-target"
+                      style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', cursor: 'pointer' }}
+                      onClick={() => {
+                        setSwipeHintSeen(true);
+                        try {
+                          localStorage.setItem(SWIPE_HINT_KEY, '1');
+                        } catch {
+                          /* seen for this visit only */
+                        }
+                      }}
+                    >
+                      Понятно
+                    </button>
+                  </p>
+                )}
                 {Object.entries(groupedItems).map(([dateStr, itemsForDate]) => (
                   <div key={dateStr} style={{ marginBottom: '16px' }}>
                     {/* Date separator */}
@@ -250,16 +293,18 @@ export function Dashboard() {
                 ))}
 
                 {hasNextPage && (
-                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', paddingBottom: '24px' }}>
-                    <Button
-                      fill="outline"
-                      onClick={() => { fetchNextPage(); }}
-                      disabled={isFetchingNextPage}
-                      loading={isFetchingNextPage}
-                    >
-                      {isFetchingNextPage ? 'Загрузка...' : 'Загрузить ещё'}
-                    </Button>
-                  </div>
+                  <AutoLoadMore onVisible={() => { void fetchNextPage(); }} disabled={isFetchingNextPage}>
+                    <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', paddingBottom: '24px' }}>
+                      <Button
+                        fill="outline"
+                        onClick={() => { fetchNextPage(); }}
+                        disabled={isFetchingNextPage}
+                        loading={isFetchingNextPage}
+                      >
+                        {isFetchingNextPage ? 'Загрузка...' : 'Загрузить ещё'}
+                      </Button>
+                    </div>
+                  </AutoLoadMore>
                 )}
               </>
             )}

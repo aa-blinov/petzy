@@ -466,3 +466,21 @@ class TestZeroIsAValueInTheFile:
         )
         assert response.status_code == 404
         assert "нет записей" in response.get_json()["error"]
+
+
+@pytest.mark.health
+class TestTheFileNamesThePet:
+    def test_the_pet_is_in_the_file_name_and_the_html_is_for_paper(self, client, mock_db, regular_user_token, test_pet):
+        import re as _re
+
+        _insert_event(mock_db, str(test_pet["_id"]), "weight", datetime(2026, 9, 1, 9, 0), {"weight": 4.2})
+        response = client.get(
+            f"/api/export/weight/html?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 200
+        name = unquote(response.headers["Content-Disposition"].split("''")[1])
+        slug = _re.sub(r"[^\w-]+", "_", test_pet["name"]).strip("_").lower()
+        assert name.startswith(slug + "_")
+        page = response.data.decode("utf-8")
+        assert "background:#fff" in page and "background:#000" not in page
