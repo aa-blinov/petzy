@@ -58,9 +58,18 @@ const medicationSchema = z.object({
     }
     // Checked here rather than in onSubmit, where they were toasts with
     // no link to the field they were about.
+    // Two doses at one time are one dose: a second slot would ask to be marked twice.
+    const times = data.schedule.times;
+    const dup = times.findIndex((t, i) => times.indexOf(t) !== i);
+    if (dup >= 0) {
+        ctx.addIssue({ code: 'custom', path: ['schedule', 'times'], message: `Время ${times[dup]} указано дважды` });
+    }
     if (!data.inventory_enabled) return;
     const total = data.inventory_total as number | null | undefined;
     const current = data.inventory_current as number | null | undefined;
+    if (current === null || current === undefined || (current as unknown) === '') {
+        ctx.addIssue({ code: 'custom', path: ['inventory_current'], message: 'Укажите остаток: без него учёт не работает' });
+    }
     if (total !== null && total !== undefined && total <= 0) {
         ctx.addIssue({ code: 'custom', path: ['inventory_total'], message: 'В упаковке должно быть больше нуля' });
     }
@@ -71,6 +80,17 @@ const medicationSchema = z.object({
 
 type MedicationFormInput = z.input<typeof medicationSchema>;
 type MedicationFormData = z.infer<typeof medicationSchema>;
+
+/** The time a new dose row starts at: an hour after the latest one, and not one that is already there. */
+function nextFreeTime(times: string[] | undefined): string {
+    const taken = new Set(times ?? []);
+    const latest = (times ?? []).filter((t) => /^\d{2}:\d{2}$/.test(t)).sort().pop();
+    let minutes = latest ? (Number(latest.slice(0, 2)) * 60 + Number(latest.slice(3)) + 60) % 1440 : 8 * 60;
+    for (let i = 0; i < 24 * 60 && taken.has(`${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`); i += 1) {
+        minutes = (minutes + 60) % 1440;
+    }
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
 
 const DAYS_OF_WEEK = [
     { label: 'Пн', value: 0 },
@@ -582,7 +602,7 @@ export function MedicationForm() {
                                 size="mini"
                                 fill="outline"
                                 color="primary"
-                                onClick={() => appendTime('08:00')}
+                                onClick={() => appendTime(nextFreeTime(watchedTimes))}
                                 style={{ borderRadius: 'var(--radius-md)', marginTop: 'var(--spacing-xs)' }}
                             >
                                 + Время

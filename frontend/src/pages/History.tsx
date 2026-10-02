@@ -13,6 +13,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 // once a type filter is picked; fetch it then, not on every visit.
 const HistoryChart = lazy(() => import('../components/HistoryChart').then((m) => ({ default: m.HistoryChart })));
 import { EmptyState } from '../components/EmptyState';
+import { NoPetState } from '../components/NoPetState';
 import { LoadError } from '../components/LoadError';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { HistoryFilterSheet, type HistoryFilterOption } from '../components/HistoryFilterSheet';
@@ -148,11 +149,7 @@ export function History() {
     };
 
     if (!selectedPetId) {
-        return (
-            <div style={{ minHeight: 'var(--app-vh)', padding: 'var(--spacing-lg)' }}>
-                <p>Выберите питомца в меню навигации, чтобы посмотреть историю</p>
-            </div>
-        );
+        return <NoPetState what="История" />;
     }
 
     const content = (() => {

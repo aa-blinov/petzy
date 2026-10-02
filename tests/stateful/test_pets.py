@@ -1206,3 +1206,37 @@ def test_a_member_still_hears_that_an_action_is_the_owners(client, mock_db, regu
     mock_db["pets"].update_one({"_id": admin_pet["_id"]}, {"$set": {"shared_with": ["testuser"]}})
     response = client.delete(f"/api/pets/{admin_pet['_id']}", headers={"Authorization": f"Bearer {regular_user_token}"})
     assert response.status_code == 403 and response.get_json()["code"] == "owner_action_forbidden"
+
+
+@pytest.mark.pets
+class TestAPetNeedsAName:
+    """A name of nothing but spaces was accepted (201) and made a pet with no title in every list."""
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def test_a_name_of_spaces_is_refused(self, client, mock_db, regular_user_token):
+        response = client.post("/api/pets", json={"name": "    "}, headers=self._auth(regular_user_token))
+        assert response.status_code == 422
+        assert mock_db["pets"].count_documents({}) == 0
+
+    def test_the_same_through_a_form_post(self, client, mock_db, regular_user_token):
+        response = client.post(
+            "/api/pets",
+            data={"name": "   "},
+            headers=self._auth(regular_user_token),
+            content_type="multipart/form-data",
+        )
+        assert response.status_code == 422
+
+    def test_the_spaces_around_a_name_are_not_kept(self, client, mock_db, regular_user_token):
+        response = client.post("/api/pets", json={"name": "  Мурка  "}, headers=self._auth(regular_user_token))
+        assert response.status_code == 201
+        assert response.get_json()["pet"]["name"] == "Мурка"
+
+    def test_a_pet_cannot_be_renamed_to_nothing(self, client, mock_db, regular_user_token, test_pet):
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}", json={"name": "  "}, headers=self._auth(regular_user_token)
+        )
+        assert response.status_code == 422
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["name"] == test_pet["name"]
