@@ -40,7 +40,7 @@ import { fieldNote } from '../components/FieldNote';
 import { PickerValue } from '../components/PickerValue';
 
 const petSchema = z.object({
-  name: z.string().min(1, 'Введите имя питомца'),
+  name: z.string().trim().min(1, 'Введите имя питомца'),
   breed: z.string().optional(),
   species: z.string().optional(),
   birth_date: z.string().optional(),

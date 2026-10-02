@@ -25,6 +25,7 @@ import {
 } from '../services/documents.service';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { NoPetState } from '../components/NoPetState';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
@@ -228,11 +229,7 @@ export function DocumentsList() {
   };
 
   if (!selectedPetId) {
-    return (
-      <div style={{ minHeight: 'var(--app-vh)', padding: 'var(--spacing-lg)' }}>
-        <p>Выберите питомца в меню навигации, чтобы посмотреть документы</p>
-      </div>
-    );
+    return <NoPetState what="Документы" />;
   }
 
   return (

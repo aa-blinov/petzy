@@ -6,6 +6,7 @@ Naming Convention:
 """
 
 from datetime import datetime, timedelta
+import re
 from typing import Optional, List, Annotated, Any, Dict
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, StringConstraints
 
@@ -636,6 +637,16 @@ class MedicalProfileOut(MedicalProfile):
     version: Optional[str] = Field(None, description="Версия профиля: меняется при каждом сохранении")
 
 
+def _trimmed_name(value: Optional[str]) -> Optional[str]:
+    """A name is what is left without the spaces around it, and it cannot be nothing: «   » is not a pet."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        raise ValueError("Имя не может быть пустым")
+    return value
+
+
 class PetCreate(BaseModel):
     """Pet creation request model."""
 
@@ -647,6 +658,11 @@ class PetCreate(BaseModel):
     is_neutered: Optional[bool] = Field(None, description="Кастрирован/Стерилизована")
     health_notes: Optional[str] = Field(None, max_length=1000, description="Особенности здоровья, аллергии")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v):
+        return _trimmed_name(v)
 
     @field_validator("birth_date")
     @classmethod
@@ -703,6 +719,11 @@ class PetUpdate(BaseModel):
     health_notes: Optional[str] = Field(None, max_length=1000)
     remove_photo: Optional[bool] = Field(None, description="True, если нужно удалить текущую фотографию")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v):
+        return _trimmed_name(v)
 
     @field_validator("birth_date")
     @classmethod
@@ -1247,6 +1268,16 @@ class HealthStatsResponse(BaseModel):
 class MedicationSchedule(BaseModel):
     days: List[int] = Field(..., description="Дни недели (0-6, где 0 - Пн, 6 - Вс)")
     times: List[str] = Field(..., description="Время приема (HH:mm)")
+
+    @field_validator("times")
+    @classmethod
+    def times_are_clock_times_without_repeats(cls, v):
+        """Each is a real HH:MM, and a time given twice is one dose: kept once, in order. Two slots at one time would
+        ask to be marked twice."""
+        for t in v:
+            if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", t):
+                raise ValueError(f"Время «{t}» должно быть в виде ЧЧ:ММ")
+        return sorted(set(v))
 
 
 def _course_date(v: Optional[str]) -> Optional[str]:

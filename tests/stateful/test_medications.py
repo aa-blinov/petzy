@@ -1474,3 +1474,33 @@ class TestGenericExceptionHandling:
             )
 
         assert response.status_code == 500
+
+
+@pytest.mark.medications
+class TestTheTimesOfASchedule:
+    """Three times of 08:00 are three slots for one dose: the dose would have to be marked three times."""
+
+    def _post(self, client, token, pet, times):
+        return client.post(
+            "/api/medications",
+            json={
+                "pet_id": str(pet["_id"]),
+                "name": "Габапентин",
+                "type": "Таблетка",
+                "default_dose": 1,
+                "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": times},
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def test_a_time_given_twice_is_kept_once_and_the_times_are_in_order(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        response = self._post(client, regular_user_token, test_pet, ["20:00", "08:00", "08:00", "08:00"])
+        assert response.status_code == 201
+        stored = mock_db["medications"].find_one({"name": "Габапентин"})
+        assert stored["schedule"]["times"] == ["08:00", "20:00"]
+
+    @pytest.mark.parametrize("bad", ["8:00", "24:00", "08:60", "утро", "08:00:00"])
+    def test_a_time_that_is_not_a_clock_time_is_refused(self, client, regular_user_token, test_pet, bad):
+        assert self._post(client, regular_user_token, test_pet, [bad]).status_code == 422
