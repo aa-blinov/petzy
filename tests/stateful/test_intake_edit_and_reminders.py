@@ -1,9 +1,9 @@
 """What the dose reminders do when an intake is moved in time or taken back.
 
-The rule behind all of it (web.medications.compute_taken_counts): a day's schedule is consumed by a plain COUNT of the
-intakes of that day, in order, whatever their clock times. So moving an intake inside its day changes nothing for the
-reminders, moving it to another day takes a slot from one day and gives it to the other, and deleting it gives the slot
-back (and the stock it took).
+The rule behind all of it (web/dose_slots.py): an intake closes a slot of its own day, the one its time is nearest to
+(or, from the dose widget, the one it was marked for). So moving an intake inside its day to a time nearest the same
+slot changes nothing for the reminders, moving it to another day takes a slot from one day and gives it to the other,
+and deleting it gives the slot back (and the stock it took).
 
 A fixed scenario as in test_send_medication_reminders: Tuesday 2024-01-02, slots 08:00 and 20:00, an owner subscribed
 from UTC+5 (03:00 UTC is 08:00 there).
@@ -89,15 +89,26 @@ class TestMovingAnIntake:
         assert _move(client, regular_user_token, intake, datetime(2024, 1, 2, 7, 40)).status_code == 200
         assert _due(mock_db, MORNING_UTC) == []
 
-    def test_moving_it_late_in_the_day_does_not_hide_the_evening_dose(
+    def test_moving_it_to_the_evening_makes_it_the_evening_dose(
         self, client, mock_db, regular_user_token, test_pet, course
     ):
-        """One dose is given. When it is said to have been given at 21:00 it is still the day's first: the 20:00 dose is
-        still owed, and the reminder for it comes."""
+        """A dose said to have been given at 21:00 is the 20:00 one: the 08:00 dose is owed again, and its reminder comes."""
         intake = _intake(mock_db, course, test_pet, datetime(2024, 1, 2, 7, 55))
         _move(client, regular_user_token, intake, datetime(2024, 1, 2, 21, 0))
+        assert _due(mock_db, MORNING_UTC) == [("2024-01-02", "08:00")]
+        assert _due(mock_db, EVENING_UTC) == []
+
+    def test_moving_a_dose_marked_for_a_slot_forgets_the_slot(
+        self, client, mock_db, regular_user_token, test_pet, course
+    ):
+        intake = _intake(
+            mock_db, course, test_pet, datetime(2024, 1, 2, 7, 55), slot_date="2024-01-02", slot_time="08:00"
+        )
         assert _due(mock_db, MORNING_UTC) == []
-        assert _due(mock_db, EVENING_UTC) == [("2024-01-02", "20:00")]
+        _move(client, regular_user_token, intake, datetime(2024, 1, 1, 20, 5))
+        stored = mock_db["medication_intakes"].find_one({"_id": ObjectId(intake)})
+        assert "slot_time" not in stored and "slot_date" not in stored
+        assert _due(mock_db, MORNING_UTC) == [("2024-01-02", "08:00")]
 
     def test_moving_it_to_another_day_gives_the_slot_back_to_the_day_it_left(
         self, client, mock_db, regular_user_token, test_pet, course

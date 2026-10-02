@@ -9,6 +9,7 @@ import web.app as app
 from web.app import api
 from web.errors import error_response, MedicationNotFoundDuringDeletion
 from web.courses import course_covers, course_status
+from web.dose_slots import CARRY_OVER_HOURS, DUPLICATE_WINDOW_MINUTES, group_by_day, minutes_of_day, open_slots
 from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
@@ -47,7 +48,7 @@ UPCOMING_LOOKAHEAD_DAYS = 7
 DEFAULT_WARNING_DAYS = 3
 
 # A skipped dose is an intake too, so the slot counts as handled
-# (compute_taken_counts, intakes_today) and the reminder stops; it just
+# (web/dose_slots.py, intakes_today) and the reminder stops; it just
 # isn't a dose given: no stock taken, not «последний приём», not in stats.
 GIVEN_ONLY = {"skipped": {"$ne": True}}
 
@@ -83,34 +84,16 @@ def _add_stock_status(doc: dict) -> None:
     doc["inventory_days_left"], doc["inventory_low"] = stock_status(doc)
 
 
-def compute_taken_counts(db, med_ids: list, window_start: datetime, window_end: datetime) -> dict:
-    """(medication_id, 'YYYY-MM-DD') -> how many intakes already exist that day.
+def load_day_intakes(db, med_ids: list, window_start: datetime, window_end: datetime) -> dict:
+    """(medication_id, 'YYYY-MM-DD') -> the intakes that count for that day, with the slot each carries.
 
-    Deliberately a plain count, not a match against the schedule's own
-    HH:MM — an intake's date_time is whenever it was actually logged
-    (e.g. MedicationsList's "Отметить приём" stamps the real tap time,
-    not the schedule's "08:00"), so comparing HH:MM strings against the
-    schedule almost never matched. Same convention get_medications
-    already uses for intakes_today: consume the day's scheduled slots in
-    chronological order against this count, regardless of which screen
-    (or, for the reminder sender, which cron tick) logged them.
-
-    Shared by get_upcoming_doses below and
-    scripts/send_medication_reminders.py, so "is this dose already
-    given today" can't quietly drift between the two.
+    Shared by the dose widget (get_upcoming_doses), the medication list and the reminder sender, so «is this dose
+    already given» cannot drift between them. See web/dose_slots.py for how an intake closes a slot.
     """
-    window_intakes = db.medication_intakes.find(
+    found = db.medication_intakes.find(
         {"medication_id": {"$in": med_ids}, "date_time": {"$gte": window_start, "$lt": window_end}}
     )
-    taken_count_by_med_day: dict = {}
-    for intake in window_intakes:
-        med_id = intake.get("medication_id")
-        dt = intake.get("date_time")
-        if not dt:
-            continue
-        key = (med_id, dt.strftime("%Y-%m-%d"))
-        taken_count_by_med_day[key] = taken_count_by_med_day.get(key, 0) + 1
-    return taken_count_by_med_day
+    return group_by_day(found)
 
 
 @medications_bp.route("/api/medications", methods=["POST"])
@@ -195,6 +178,11 @@ def get_medications():
             item["_id"]: item["count"] for item in app.db.medication_intakes.aggregate(today_intakes_pipeline)
         }
 
+        # Today's intakes themselves (not only the count): which slot each one closes.
+        today_intakes = load_day_intakes(
+            app.db, med_ids, today_start - timedelta(days=1), today_start + timedelta(days=1)
+        )
+
         # Process results
         for doc in meds:
             doc["_id"] = str(doc["_id"])
@@ -208,7 +196,16 @@ def get_medications():
                 doc["last_taken_at"] = None
 
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
-            doc["course_status"] = course_status(doc, today_start.strftime("%Y-%m-%d"))
+            today_key = today_start.strftime("%Y-%m-%d")
+            schedule = doc.get("schedule") or {}
+            due_today = today_start.weekday() in schedule.get("days", []) and course_covers(doc, today_key)
+            doc["scheduled_today"] = bool(due_today and schedule.get("times"))
+            doc["open_slots_today"] = (
+                open_slots(schedule.get("times", []), today_intakes.get((med_id_str, today_key), []))
+                if doc["scheduled_today"]
+                else []
+            )
+            doc["course_status"] = course_status(doc, today_key)
             _add_stock_status(doc)
 
         return jsonify({"medications": meds})
@@ -403,6 +400,36 @@ def log_intake(id):
         elif dose_taken is None:
             dose_taken = medication.get("default_dose", 1.0)
 
+        # The same dose marked twice (two people, a second tap): asked about, not recorded silently. A course with no
+        # schedule (a dose when needed) can be given again at any time, and a skip is not a dose.
+        if not skipped and not data.force and (medication.get("schedule") or {}).get("times"):
+            window = timedelta(minutes=DUPLICATE_WINDOW_MINUTES)
+            near = app.db.medication_intakes.find_one(
+                {
+                    "medication_id": id,
+                    "skipped": {"$ne": True},
+                    "date_time": {"$gt": event_dt - window, "$lt": event_dt + window},
+                },
+                sort=[("date_time", -1)],
+            )
+            if near:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "code": "duplicate_intake",
+                            "error": "Этот приём уже отмечен",
+                            "existing": {
+                                "date": near["date_time"].strftime("%Y-%m-%d"),
+                                "time": near["date_time"].strftime("%H:%M"),
+                                "username": near.get("username"),
+                                "own": near.get("username") == username,
+                            },
+                        }
+                    ),
+                    409,
+                )
+
         # Take the dose from the stock before recording the intake; the
         # insert below gives it back if it fails. A dose is always
         # recorded: when the stock can't cover it (a new pack not entered
@@ -470,6 +497,10 @@ def log_intake(id):
             intake_data["tz"] = data.tz
         if skipped:
             intake_data["skipped"] = True
+        # The slot it was for, when the client knows (the dose widget does): that slot is closed, not the earliest one.
+        if data.slot_date and data.slot_time and minutes_of_day(data.slot_time) is not None:
+            intake_data["slot_date"] = data.slot_date
+            intake_data["slot_time"] = data.slot_time
 
         try:
             inserted = app.db.medication_intakes.insert_one(intake_data)
@@ -592,7 +623,12 @@ def update_intake(id):
         changes = {"date_time": event_dt}
         if event_dt != intake.get("date_time") and valid_tz(data.tz):
             changes["tz"] = data.tz  # the clock moved: it is now in the editor's zone
-        app.db.medication_intakes.update_one({"_id": intake["_id"]}, {"$set": changes})
+        update: dict = {"$set": changes}
+        if event_dt != intake.get("date_time"):
+            # Said to have been given at another time: it no longer vouches for the slot it was marked for, and
+            # closes the one that time is nearest to (see web/dose_slots.py).
+            update["$unset"] = {"slot_date": "", "slot_time": ""}
+        app.db.medication_intakes.update_one({"_id": intake["_id"]}, update)
         return jsonify({"message": "Intake updated"})
     except Exception as e:
         app.logger.error(f"Error updating intake: {e}")
@@ -684,7 +720,39 @@ def get_upcoming_doses():
         # exactly like the original same-day bug this endpoint already
         # had to fix once.
         med_ids = [str(med["_id"]) for med in medications]
-        taken_count_by_med_day = compute_taken_counts(app.db, med_ids, today_start, window_end)
+        day_intakes = load_day_intakes(app.db, med_ids, today_start - timedelta(days=1), window_end)
+
+        # A dose of last evening that nobody marked is still offered for a few hours after midnight (it was due
+        # yesterday, and giving it now must not close this morning's slot): see web/dose_slots.py.
+        carried = []
+        y_start = today_start - timedelta(days=1)
+        y_key = y_start.strftime("%Y-%m-%d")
+        for med in medications:
+            schedule = med.get("schedule", {})
+            if (current_day - 1) % 7 not in schedule.get("days", []) or not schedule.get("times"):
+                continue
+            if not course_covers(med, y_key):
+                continue
+            med_id_str = str(med["_id"])
+            for t in open_slots(schedule["times"], day_intakes.get((med_id_str, y_key), [])):
+                try:
+                    hour, minute = map(int, t.split(":"))
+                except (ValueError, TypeError):
+                    continue
+                slot_moment = now.replace(hour=hour, minute=minute, second=0, microsecond=0) - timedelta(days=1)
+                if now - slot_moment < timedelta(hours=CARRY_OVER_HOURS):
+                    carried.append(
+                        {
+                            "medication_id": med_id_str,
+                            "name": med["name"],
+                            "type": med.get("type", "pill"),
+                            "time": t,
+                            "date": y_key,
+                            "is_overdue": True,
+                            "inventory_warning": stock_status(med)[1],
+                            "carried_over": True,
+                        }
+                    )
 
         # Walk today, then each following day in the lookahead window,
         # stopping at the first day that still has anything due — showing
@@ -711,13 +779,8 @@ def get_upcoming_doses():
                     continue
 
                 med_id_str = str(med["_id"])
-                taken_count = taken_count_by_med_day.get((med_id_str, day_key), 0)
 
-                for slot_index, t in enumerate(sched_times):
-                    # The earliest `taken_count` slots are considered given.
-                    if slot_index < taken_count:
-                        continue
-
+                for t in open_slots(sched_times, day_intakes.get((med_id_str, day_key), [])):
                     is_overdue = False
                     if offset == 0:
                         try:
@@ -736,11 +799,13 @@ def get_upcoming_doses():
                             "date": day_key,
                             "is_overdue": is_overdue,
                             "inventory_warning": stock_status(med)[1],
+                            "carried_over": False,
                         }
                     )
 
         # In time order across courses: the widget shows the first one, and
         # walking course by course put a 08:00 dose ahead of a 07:00 one.
+        upcoming = carried + upcoming
         upcoming.sort(key=lambda dose: (dose["date"], dose["time"]))
         return jsonify({"doses": upcoming})
     except Exception as e:
