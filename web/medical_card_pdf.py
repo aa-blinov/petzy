@@ -237,11 +237,19 @@ def draw_header(pdf: _Card, card: dict) -> None:
         line_in_box("Заметки", pet["health_notes"])
 
 
-def draw_course(pdf: _Card, c: dict) -> None:
-    """One medication course in two lines: the name with its dates, then everything else it needs said."""
+COMPACT_FROM = 9  # courses; with more, page one gives each one line, not two
+
+
+def draw_course(pdf: _Card, c: dict, compact: bool = False) -> None:
+    """One medication course in two lines: the name with its dates, then everything else it needs said.
+    Compact (a big pet on many medicines): one line, the name with its dose and schedule."""
     if pdf.get_y() > pdf.h - 32:  # the name never stays on one page and its line on the next
         pdf.add_page()
     name = c["name"] + (f", {c['strength']}" if c.get("strength") else "")
+    if compact:
+        said = ", ".join(x for x in (c.get("dose_text"), c.get("schedule_text")) if x)
+        pdf.row(f"{name}: {said}" if said else name, _period(c), MUTED, bold_left=False)
+        return
     pdf.row(name, _period(c), MUTED, bold_left=True)
     bits = [", ".join(x for x in (c.get("dose_text"), c.get("schedule_text")) if x)]
     if c.get("purpose"):
@@ -540,7 +548,50 @@ def _visit_prep_section(pdf: _Card, prep: dict | None) -> None:
         pdf.muted("Как обычно: " + ", ".join(normal) + ".")
 
 
+_GLYPHS: set[int] | None = None
+
+
+def _font_glyphs() -> set[int]:
+    """The code points the bundled font can draw."""
+    global _GLYPHS
+    if _GLYPHS is None:
+        from fontTools.ttLib import TTFont
+
+        _GLYPHS = set(TTFont(os.path.join(FONT_DIR, "DejaVuSans.ttf")).getBestCmap())
+    return _GLYPHS
+
+
+def _say_unsupported(text: str) -> str:
+    """A picture the font cannot draw (an emoji in a note) is said as «[значок]», not dropped without a word.
+    Joiners and variation selectors that only glue pictures together go."""
+    glyphs = _font_glyphs()
+    out: list[str] = []
+    for ch in text:
+        code = ord(ch)
+        if code in (0x200D, 0xFE0F) or 0x1F3FB <= code <= 0x1F3FF:
+            continue
+        if code in glyphs or ch in "\n\t" or code < 32:
+            out.append(ch)
+        elif code >= 0x1F000 or 0x2190 <= code <= 0x2BFF:
+            if not out or out[-1] != "[значок]":
+                out.append("[значок]")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _clean(value):
+    if isinstance(value, str):
+        return _say_unsupported(value)
+    if isinstance(value, dict):
+        return {k: _clean(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_clean(v) for v in value]
+    return value
+
+
 def render_medical_card_pdf(card: dict) -> bytes:
+    card = _clean(card)
     pet = card["pet"]
     pdf = _Card(pet["name"], card["generated_at"])
     pdf.alias_nb_pages()
@@ -558,7 +609,7 @@ def render_medical_card_pdf(card: dict) -> bytes:
     pdf.section("Лекарства сейчас")
     if card["medications"]:
         for c in card["medications"]:
-            draw_course(pdf, c)
+            draw_course(pdf, c, compact=len(card["medications"]) >= COMPACT_FROM)
     else:
         pdf.muted("Сейчас не принимает.")
 

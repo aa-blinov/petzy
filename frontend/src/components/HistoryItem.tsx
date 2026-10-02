@@ -7,7 +7,9 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HistoryItem as HistoryItemType, EventDisplayConfig } from '../utils/eventDisplay';
 import { formatRelativeDateTime } from '../utils/relativeTime';
-import { medicationsService } from '../services/medications.service';
+import { medicationsService, type IntakeInput } from '../services/medications.service';
+import { showUndo } from '../utils/undo';
+import { INTAKE_UNDO_MS } from '../utils/stock';
 import { refreshAfterIntake } from '../utils/intakeViews';
 import { pastelColorMap } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
@@ -58,28 +60,59 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
     navigate(`/form/${type}/${item._id}?tab=${activeTab}`, { state: { recordData: item } });
   };
 
+  // A dose is deleted at once, so the stock, the dose card and the slot are right straight away; «Отменить» writes the same
+  // dose again (its dose, time, slot and comment). An event waits on its undo bar instead (utils/deferredDelete.ts).
+  const deleteIntake = async () => {
+    const name = String(item.medication_name || 'лекарство');
+    const skipped = !!item.skipped;
+    const again: IntakeInput = {
+      date: intakeDate,
+      time: intakeTime.slice(0, 5),
+      dose_taken: skipped ? undefined : Number(item.dose_taken) || undefined,
+      comment: typeof item.comment === 'string' && item.comment ? item.comment : undefined,
+      skipped: skipped || undefined,
+      slot_date: typeof item.slot_date === 'string' ? item.slot_date : undefined,
+      slot_time: typeof item.slot_time === 'string' ? item.slot_time : undefined,
+      force: true,
+    };
+    try {
+      await medicationsService.deleteIntake(item._id);
+    } catch {
+      showToast.failure('Не удалось удалить приём');
+      return;
+    }
+    await refreshAfterIntake(queryClient);
+    showUndo({
+      duration: INTAKE_UNDO_MS,
+      message: `Удалён приём: ${name}, ${intakeTime.slice(0, 5)}`,
+      onUndo: async () => {
+        await medicationsService.logIntake(String(item.medication_id), again);
+        await refreshAfterIntake(queryClient);
+      },
+    });
+  };
+
   // No «Удалить эту запись?»: the record leaves the lists at once and
   // «Отменить» stays at the bottom for a few seconds; the server is only
   // asked when that time is up (utils/deferredDelete.ts).
   const handleDelete = () => {
     setIntakeInfoVisible(false);
+    if (isIntake) {
+      void deleteIntake();
+      return;
+    }
     deleteWithUndo({
       id: item._id,
-      // An intake is not an event: deleting it through /events/ was a 404,
-      // so a dose could never be removed from the feed or History.
-      path: isIntake ? `/medications/intakes/${item._id}` : `/events/${item._id}`,
-      // Which one: two doses in a row, or a feeding and a weight, look the same in «Запись удалена».
-      message: isIntake ? `Удалён приём: ${String(item.medication_name || 'лекарство')}, ${intakeTime.slice(0, 5)}` : `Удалена запись: ${config.displayName}`,
+      path: `/events/${item._id}`,
+      message: `Удалена запись: ${config.displayName}`,
       onDeleted: () =>
-        isIntake
-          ? refreshAfterIntake(queryClient)
-          : // See HealthRecordForm's onSubmit for why this is a predicate rather
-            // than queryKey: ['history'] — none of these views' query keys start
-            // with 'history', so that form never actually matched anything.
-            queryClient.invalidateQueries({
-              predicate: (query) =>
-                ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
-            }),
+        // See HealthRecordForm's onSubmit for why this is a predicate rather
+        // than queryKey: ['history'] — none of these views' query keys start
+        // with 'history', so that form never actually matched anything.
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+        }),
     });
   };
 

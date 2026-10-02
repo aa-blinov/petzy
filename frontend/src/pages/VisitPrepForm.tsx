@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { fieldNote } from '../components/FieldNote';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -40,6 +41,7 @@ export function VisitPrepForm() {
   const checks: Checks = typed?.checks ?? saved?.checks ?? {};
   const dirty = typed !== null;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
+  useSessionDraft({ dirty, getValues: () => typed as { complaint: string; checks: Checks }, reset: (values) => setTyped(values), ready: !!query.data, release });
 
   const setComplaint = (value: string) => setTyped({ complaint: value, checks });
   const setCheck = (key: VisitCheck, value: 'normal' | 'changed') => {

@@ -49,7 +49,8 @@ export function History() {
     const { tilesSettings } = usePetTilesSettings(selectedPetId);
     const { eventTypes } = useEventTypes();
     const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
-    const [filterType, setFilterType] = useState<string>(FILTER_ALL);
+    // «История веса» from a visit's form arrives with ?type=weight.
+    const [filterType, setFilterType] = useState<string>(() => new URLSearchParams(window.location.search).get('type') || FILTER_ALL);
     const [exportVisible, setExportVisible] = useState(false);
     const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 

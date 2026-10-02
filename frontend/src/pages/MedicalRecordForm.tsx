@@ -31,6 +31,7 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
+import { formatAmount } from '../utils/stock';
 import { getPushSubscriptionState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
 import { addInterval, daysBetween, DEFAULT_REPEAT, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
@@ -213,6 +214,7 @@ export function MedicalRecordForm() {
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0);
   useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!kind && (isEditing ? !!record.data : !!card.data), release });
   const date = useWatch({ control, name: 'date' });
+  const weightThatDay = kind === 'visit' ? card.data?.weight?.series.find((point) => point.date === date)?.value : undefined;
   const nextDue = useWatch({ control, name: 'next_due' });
   const title = useWatch({ control, name: 'title' });
   const documentIds = useWatch({ control, name: 'document_ids' });
@@ -632,6 +634,17 @@ export function MedicalRecordForm() {
                   </Form.Item>
                 )}
               />
+              {isEditing && weightThatDay !== undefined && (
+                // The weight said at the visit lives in the weight diary, not in this record: the row says so and goes there.
+                <Form.Item
+                  label="Вес в этот день"
+                  clickable
+                  arrow
+                  description="Записан отдельно, в дневнике. Открыть историю веса"
+                  extra={`${formatAmount(weightThatDay)} кг`}
+                  onClick={() => navigate('/history?type=weight')}
+                />
+              )}
               {!isEditing && (
                 <Controller
                   name="weight"
