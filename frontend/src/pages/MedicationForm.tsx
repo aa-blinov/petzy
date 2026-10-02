@@ -102,7 +102,9 @@ const DAYS_OF_WEEK = [
     { label: 'Вс', value: 6 },
 ];
 
-const COMMON_TYPES = ['Таблетка', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Сироп', 'Суспензия'];
+const COMMON_TYPES = ['Таблетка', 'Капсула', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Гель', 'Сироп', 'Суспензия', 'Порошок', 'Спрей', 'Паста'];
+/** The last line of the picker: a form that is not in the list is written in. */
+const OTHER_TYPE = 'Другое...';
 
 /** Units counted in pieces, and how «сколько … давать» says them. */
 const PIECES_WORD: Record<string, string> = { 'таб': 'таблеток', 'капс': 'капсул', 'шт': 'штук' };
@@ -395,16 +397,23 @@ export function MedicationForm() {
                                     >
                                         <PickerValue value={field.value} placeholder="Выберите форму" />
                                     </Form.Item>
+                                    {(showCustomType || (!!field.value && !COMMON_TYPES.includes(field.value))) && (
+                                        <Form.Item label="Какая форма" required>
+                                            <Input value={field.value} onChange={field.onChange} placeholder="Например, ушные капли" maxLength={50} clearable />
+                                        </Form.Item>
+                                    )}
                                     <Picker
-                                        columns={[COMMON_TYPES.map(t => ({ label: t, value: t }))]}
+                                        columns={[[...COMMON_TYPES, OTHER_TYPE].map(t => ({ label: t === OTHER_TYPE ? 'Другое' : t, value: t }))]}
                                         visible={typePickerVisible}
                                         onClose={() => setTypePickerVisible(false)}
-                                        value={[showCustomType ? 'Другое...' : field.value]}
+                                        // A saved form that is not in the list stands on «Другое»: opening the wheel and pressing «Выбрать»
+                                        // must not turn it into the first line.
+                                        value={[showCustomType || (!!field.value && !COMMON_TYPES.includes(field.value)) ? OTHER_TYPE : field.value]}
                                         onConfirm={(val) => {
                                             const selected = val[0] as string;
-                                            if (selected === 'Другое...') {
+                                            if (selected === OTHER_TYPE) {
                                                 setShowCustomType(true);
-                                                field.onChange('');
+                                                if (COMMON_TYPES.includes(field.value)) field.onChange('');
                                             } else {
                                                 setShowCustomType(false);
                                                 field.onChange(selected);
@@ -793,7 +802,7 @@ export function MedicationForm() {
                                     yearsForward={1}
                                     clearLabel="Убрать дату окончания"
                                     placeholder="Не указано"
-                                    description={error?.message ? <FieldError message={error.message} /> : 'С этого дня напоминания и запись приёмов не предлагаются'}
+                                    description={error?.message ? <FieldError message={error.message} /> : 'Последний день курса: в этот день приёмы ещё предлагаются, со следующего нет'}
                                 />
                             )}
                         />

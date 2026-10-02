@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { formatTime } from '../utils/dateUtils';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -53,8 +53,8 @@ function courseTag(med: Medication): string | null {
 
 /** «С 12.05.2026 по 26.05.2026», from the dates the course has. */
 function coursePeriod(med: Medication): string | null {
-    if (med.started_on && med.ended_on) return `С ${ruDate(med.started_on)} по ${ruDate(med.ended_on)}`;
-    if (med.ended_on) return `До ${ruDate(med.ended_on)}`;
+    if (med.started_on && med.ended_on) return `С ${ruDate(med.started_on)} по ${ruDate(med.ended_on)} включительно`;
+    if (med.ended_on) return `До ${ruDate(med.ended_on)} включительно`;
     if (med.started_on && med.course_status !== 'planned') return `С ${ruDate(med.started_on)}`;
     return null;
 }
@@ -69,6 +69,24 @@ export function MedicationsList() {
         ...medicationsListQuery(selectedPetId ?? ''),
         enabled: !!selectedPetId,
     });
+
+    // What is to be given first comes first: the course whose next unmarked dose is the earliest, then the ones done for
+    // today, then those still to begin, and the finished ones last (the order of creation put the oldest, often the most
+    // overdue, at the bottom).
+    const orderedMedications = useMemo(() => {
+        const rank = (m: Medication): [number, string] => {
+            const status = m.course_status ?? (m.is_active ? 'active' : 'ended');
+            if (status === 'ended') return [3, ''];
+            if (status === 'planned') return [2, m.started_on ?? ''];
+            const next = m.open_slots_today?.[0];
+            return next ? [0, next] : [1, ''];
+        };
+        return [...medications].sort((a, b) => {
+            const [ra, ta] = rank(a);
+            const [rb, tb] = rank(b);
+            return ra - rb || ta.localeCompare(tb);
+        });
+    }, [medications]);
 
     const [logIntakeDialog, setLogIntakeDialog] = useState<{
         visible: boolean;
@@ -134,7 +152,10 @@ export function MedicationsList() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['medications'] });
             showToast.success('Лекарство удалено');
-        }
+        },
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Не удалось удалить лекарство'));
+        },
     });
 
     const handleDelete = (med: Medication) => {
@@ -315,7 +336,7 @@ export function MedicationsList() {
                         gap: 'var(--spacing-md)',
                         marginTop: 'var(--spacing-sm)',
                     }}>
-                        {medications.map((med) => (
+                        {orderedMedications.map((med) => (
                             <SwipeableRow
                                 key={med._id}
                                 itemLabel={med.name}
@@ -391,6 +412,15 @@ export function MedicationsList() {
                                         {med.purpose && (
                                             <div style={{ marginBottom: 'var(--spacing-sm)' }}>
                                                 <span>От чего: {med.purpose}</span>
+                                            </div>
+                                        )}
+
+                                        {med.scheduled_today && med.open_slots_today && (
+                                            <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                                                <span>
+                                                    Сегодня {med.schedule.times.length - med.open_slots_today.length} из {med.schedule.times.length}
+                                                    {med.open_slots_today.length > 0 ? `, дальше в ${med.open_slots_today[0]}` : ''}
+                                                </span>
                                             </div>
                                         )}
 
@@ -487,10 +517,25 @@ export function MedicationsList() {
                                                 onClick={() => handleLogIntake(med)}
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
                                                 disabled={doneToday(med)}
+                                                aria-label={doneToday(med) ? `${med.name}: на сегодня всё` : `Отметить приём: ${med.name}`}
                                                 style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
                                                 {doneToday(med) ? 'На сегодня всё' : `Отметить приём (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>
+                                            {doneToday(med) && (
+                                                // Every dose of the day is handled, and one more was given (a vet said so, a missed
+                                                // one made up): written down on purpose, not through a stale screen.
+                                                <Button
+                                                    block
+                                                    fill="none"
+                                                    size="small"
+                                                    onClick={() => handleLogIntake(med)}
+                                                    aria-label={`Записать дополнительный приём: ${med.name}`}
+                                                    style={{ marginTop: 'var(--spacing-xs)', color: 'var(--app-text-secondary)' }}
+                                                >
+                                                    Записать дополнительный приём
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -504,7 +549,7 @@ export function MedicationsList() {
 
             <Dialog
                 visible={logIntakeDialog.visible}
-                title="Подтвердите приём"
+                title={logIntakeDialog.medication ? `Отметить приём: ${logIntakeDialog.medication.name}` : 'Отметить приём'}
                 content={
                     logIntakeDialog.medication && (
                         <div style={{ textAlign: 'center' }}>
@@ -582,14 +627,15 @@ export function MedicationsList() {
                         onClick: confirmLogIntake
                     },
                     {
-                        key: 'skip',
-                        text: 'Пропустить приём',
-                        onClick: skipIntake
-                    },
-                    {
                         key: 'cancel',
                         text: 'Отмена',
                         onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
+                    },
+                    // Last, and apart from «Записать»: a skip closes the dose and stops its reminder.
+                    {
+                        key: 'skip',
+                        text: 'Пропустить приём',
+                        onClick: skipIntake
                     },
                 ]}
             />
@@ -651,7 +697,10 @@ export function MedicationsList() {
                 title="Удаление лекарства"
                 content={
                     deleteDialog.medication && (
-                        <span>Удалить «{deleteDialog.medication.name}» вместе со всеми отмеченными приёмами?</span>
+                        <span>
+                            Удалить «{deleteDialog.medication.name}» вместе со всеми отмеченными приёмами? Курс пропадёт и из медкарты. Чтобы сохранить его
+                            в истории, откройте лекарство и нажмите «Завершить курс»
+                        </span>
                     )
                 }
                 onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
