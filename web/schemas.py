@@ -596,6 +596,11 @@ class MedicalProfile(BaseModel):
         default_factory=Clinic,
         description="Основная клиника и её первый врач: то же, что первая запись в clinics (для старых клиентов)",
     )
+    base_version: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="Версия профиля, из которой сделана форма. Если с тех пор профиль сохранил кто-то другой, ответ 409",
+    )
 
     @field_validator("chip_number", "blood_type", "diet", "living", "reproduction", mode="before")
     @classmethod
@@ -628,6 +633,7 @@ class MedicalProfile(BaseModel):
 
 class MedicalProfileOut(MedicalProfile):
     updated_at: Optional[str] = None
+    version: Optional[str] = Field(None, description="Версия профиля: меняется при каждом сохранении")
 
 
 class PetCreate(BaseModel):

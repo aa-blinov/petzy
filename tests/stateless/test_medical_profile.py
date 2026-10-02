@@ -119,6 +119,7 @@ class TestSavingTheProfile:
             "clinics",
             "clinic",
             "updated_at",
+            "version",
         }
 
     def test_a_broken_stored_profile_does_not_take_the_card_down(self, client, mock_db, regular_user_token, test_pet):
@@ -290,3 +291,59 @@ class TestSeveralClinicsAndDoctors:
             client, regular_user_token, test_pet, {"clinics": [{"name": "Зубастик", "doctors": [{"name": "Сидорова"}]}]}
         )
         assert "Осмотр зубов Зубастик, врач Сидорова" not in text()
+
+
+@pytest.mark.health
+class TestTwoPeopleEditingTheProfile:
+    """The form is made from a version of the profile. Saving that copy after someone else saved would wipe their
+    allergy without a word, so the server compares versions and says so."""
+
+    def test_every_save_carries_a_new_version(self, client, mock_db, regular_user_token, test_pet):
+        first = _put(client, regular_user_token, test_pet, FULL).get_json()["profile"]
+        second = _put(client, regular_user_token, test_pet, FULL).get_json()["profile"]
+        assert first["version"] and second["version"] and first["version"] != second["version"]
+        assert _card(client, regular_user_token, test_pet)["profile"]["version"] == second["version"]
+
+    def test_a_save_from_the_current_version_goes_through(self, client, mock_db, regular_user_token, test_pet):
+        version = _put(client, regular_user_token, test_pet, FULL).get_json()["profile"]["version"]
+        response = _put(client, regular_user_token, test_pet, {**FULL, "blood_type": "B", "base_version": version})
+        assert response.status_code == 200
+        assert response.get_json()["profile"]["blood_type"] == "B"
+
+    def test_a_stale_copy_is_refused_and_the_other_persons_work_stays(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        opened = _put(client, regular_user_token, test_pet, FULL).get_json()["profile"]["version"]
+        # Someone else adds an allergy after this form was opened.
+        theirs = {**FULL, "allergies": [*FULL["allergies"], {"substance": "Рыба"}], "base_version": opened}
+        assert _put(client, regular_user_token, test_pet, theirs).status_code == 200
+        # The first form, still on the old version, saves a change to the chip.
+        response = _put(client, regular_user_token, test_pet, {**FULL, "chip_number": "111", "base_version": opened})
+        assert response.status_code == 409
+        body = response.get_json()
+        assert body["code"] == "conflict"
+        assert [a["substance"] for a in body["profile"]["allergies"]] == ["Курица", "Амоксициллин", "Рыба"]
+        stored = _card(client, regular_user_token, test_pet)["profile"]
+        assert stored["chip_number"] == "643093100123456" and len(stored["allergies"]) == 3
+
+    def test_a_client_that_sends_no_version_still_saves_as_before(self, client, mock_db, regular_user_token, test_pet):
+        _put(client, regular_user_token, test_pet, FULL)
+        assert _put(client, regular_user_token, test_pet, {**FULL, "blood_type": "C"}).status_code == 200
+
+    def test_a_form_made_from_an_unsaved_profile_is_stale_once_someone_saves(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        # Both forms opened on a profile with nothing in it (no version, sent as an empty string).
+        assert _put(client, regular_user_token, test_pet, {**FULL, "base_version": ""}).status_code == 200
+        second = _put(client, regular_user_token, test_pet, {**FULL, "blood_type": "B", "base_version": ""})
+        assert second.status_code == 409
+        assert second.get_json()["profile"]["blood_type"] == "A"
+
+    def test_a_profile_saved_before_versions_existed_takes_a_form_made_from_it(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        mock_db["pets"].update_one(
+            {"_id": test_pet["_id"]},
+            {"$set": {"medical_profile": {"chip_number": "1", "updated_at": "2026-01-01 10:00"}}},
+        )
+        assert _put(client, regular_user_token, test_pet, {**FULL, "base_version": ""}).status_code == 200

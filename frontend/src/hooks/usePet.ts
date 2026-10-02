@@ -3,6 +3,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalStorage } from './useLocalStorage';
 import { useSession } from './useSession';
 import { petsService, type Pet } from '../services/pets.service';
+import { showToast } from '../utils/toast';
+
+/** Pets the person was told about (or removed themselves): the notice of a vanished pet is said once, and never for
+ *  one they deleted or left on purpose. */
+const toldAbout = new Set<string>();
+export function expectPetGone(petId: string) {
+  toldAbout.add(petId);
+}
+function tellPetIsGone(petId: string, name: string | null) {
+  if (toldAbout.has(petId)) return;
+  toldAbout.add(petId);
+  showToast.info(`${name ? `«${name}»` : 'Питомец'} больше вам недоступен: владелец закрыл доступ или удалил питомца`);
+}
 
 export function usePet() {
   const [selectedPetId, setSelectedPetId] = useLocalStorage<string | null>('selectedPetId', null);
@@ -96,13 +109,22 @@ export function usePet() {
   // query lazily on its first render — no manual invalidation needed,
   // and importantly no render-storm from re-invalidating the pet roster.
   useEffect(() => {
-    if (pets.length === 0) return;
+    if (pets.length === 0) {
+      // Nothing left to choose, and the roster is really known (not a failed request): the chosen pet is gone, e.g.
+      // the owner closed the access. Kept, every screen would ask the server for a pet that is no longer there.
+      if (selectedPetId && isFetched && !isError) {
+        tellPetIsGone(selectedPetId, selectedPetName);
+        setSelectedPet(null);
+      }
+      return;
+    }
     if (selectedPetId && !pets.find(p => p._id === selectedPetId)) {
+      tellPetIsGone(selectedPetId, selectedPetName);
       setSelectedPet(pets[0]);
     } else if (!selectedPetId) {
       setSelectedPet(pets[0]);
     }
-  }, [pets, selectedPetId, setSelectedPet]);
+  }, [pets, selectedPetId, selectedPetName, isFetched, isError, setSelectedPet]);
 
   const getSelectedPet = useMemo((): Pet | null => {
     if (!selectedPetId) return null;

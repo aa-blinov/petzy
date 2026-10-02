@@ -4,6 +4,8 @@ import { usePet } from './usePet';
 import { DEFAULT_TILES_SETTINGS } from '../utils/tilesConfig';
 import type { TilesSettings } from '../utils/tilesConfig';
 import { petsService } from '../services/pets.service';
+import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export function usePetTilesSettings(petId: string | null) {
   const { pets } = usePet();
@@ -31,6 +33,11 @@ export function usePetTilesSettings(petId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
+    },
+    // A refusal is said (the list snaps back to what the server has): silence read as a switch that does not work.
+    onError: (err: unknown) => {
+      queryClient.invalidateQueries({ queryKey: ['pets'] });
+      showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить плитки'));
     },
   });
 

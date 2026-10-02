@@ -21,7 +21,9 @@ import { LayoutGrid } from 'lucide-react';
 
 export function TilesSettings() {
   const navigate = useNavigate();
-  const { selectedPetId, selectedPetName } = usePet();
+  const { selectedPetId, selectedPetName, getSelectedPet } = usePet();
+  // Tiles are the owner's to set (the server refuses anyone else): a member sees them, not a switch that snaps back.
+  const readOnly = getSelectedPet?.current_user_is_owner === false;
   const { resetSettings } = usePetTilesSettings(selectedPetId);
 
   const handleReset = () => {
@@ -51,6 +53,12 @@ export function TilesSettings() {
           </p>
         </div>
 
+        {readOnly && (
+          <p className="safe-area-padding" role="note" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
+            Плитки меняет владелец питомца.
+          </p>
+        )}
+
         {!selectedPetId ? (
           <EmptyState
             icon={LayoutGrid}
@@ -60,7 +68,7 @@ export function TilesSettings() {
             onAction={() => navigate('/pets')}
           />
         ) : (
-          <>
+          <div {...(readOnly ? { inert: '' } : {})} style={readOnly ? { opacity: 0.7 } : undefined}>
             <TilesEditor petId={selectedPetId} mode="card" />
 
             <div className="safe-area-padding" style={{
@@ -82,7 +90,7 @@ export function TilesSettings() {
                 Сбросить к значениям по умолчанию
               </Button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

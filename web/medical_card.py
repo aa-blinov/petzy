@@ -8,6 +8,7 @@ and there is no second copy of anything to keep in step: a weight entered a
 minute ago is on it a minute later.
 """
 
+import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 from urllib.parse import quote
@@ -432,7 +433,11 @@ def get_medical_card_pdf(pet_id):
 @api.validate(
     body=Request(MedicalProfile),
     resp=Response(
-        HTTP_200=MedicalProfileResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse
+        HTTP_200=MedicalProfileResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_422=ErrorResponse,
     ),
     tags=["pets"],
 )
@@ -449,10 +454,31 @@ def put_medical_profile(pet_id):
         return access_error[0], access_error[1]
 
     data = request.context.body  # type: ignore[attr-defined]
-    profile = data.model_dump()
+    profile = data.model_dump(exclude={"base_version"})
+    # The form was made from a version of the profile; someone else may have saved since, and saving the old copy
+    # would wipe their allergy without a word. The client is told, and shown what is there now.
+    # «» is a form made from a profile that had no version yet (never saved, or saved before versions existed).
+    stored_version = (pet.get("medical_profile") or {}).get("version")
+    if data.base_version is not None and data.base_version != (stored_version or ""):
+        response, status = error_response("conflict", "Профиль изменил другой человек, пока вы его правили")
+        body = response.get_json()
+        body["profile"] = _profile(pet)
+        return jsonify(body), status
     # No author is stored: the field would outlive the account it names.
     profile["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-    app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"medical_profile": profile}})
+    profile["version"] = uuid.uuid4().hex
+    # Taken only if nobody saved between the read above and now: two saves in the same instant do not both win.
+    result = app.db.pets.update_one(
+        {"_id": pet["_id"], "medical_profile.version": stored_version}
+        if stored_version is not None
+        else {"_id": pet["_id"]},
+        {"$set": {"medical_profile": profile}},
+    )
+    if stored_version is not None and result.matched_count == 0:
+        response, status = error_response("conflict", "Профиль изменил другой человек, пока вы его правили")
+        body = response.get_json()
+        body["profile"] = _profile(app.db.pets.find_one({"_id": pet["_id"]}) or pet)
+        return jsonify(body), status
     app.logger.info(f"Medical profile updated: pet_id={pet_id}, user={username}")
     return jsonify({"profile": profile})
 

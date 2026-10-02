@@ -4,7 +4,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
-import { Button, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
+import { Button, Dialog, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { Camera } from 'lucide-react';
@@ -128,6 +128,8 @@ export function PetForm() {
     },
     enabled: isEditing && !!id,
   });
+  // Someone it is shared with sees the card but cannot change it (the server refuses): so the screen does not offer to.
+  const readOnly = isEditing && !!pet && !pet.current_user_is_owner;
 
   // Anything typed, a photo picked or removed, or a change to who has access
   // is unsaved until «Сохранить».
@@ -242,11 +244,22 @@ export function PetForm() {
     }
   };
 
-  const handleRemoveSharedUser = (username: string) => {
+  const handleRemoveSharedUser = async (username: string) => {
+    // Taking access from someone who has it is not undone by a tap on the bin: ask. A pending invitation is only withdrawn.
+    if ((pet?.shared_with || []).includes(username)) {
+      const confirmed = await Dialog.confirm({
+        title: 'Закрыть доступ',
+        content: `${username} больше не увидит «${pet?.name ?? 'питомца'}» и его записи. Доступ закроется после «Сохранить»`,
+        confirmText: 'Закрыть доступ',
+        cancelText: 'Оставить',
+      });
+      if (!confirmed) return;
+    }
     setLocalSharedWith(prev => prev.filter(u => u !== username));
   };
 
   const onSubmit = async (values: PetFormData) => {
+    let invited = false;
     try {
       setLoading(true);
       const hasNewFile = fileList[0]?.file instanceof File;
@@ -292,6 +305,7 @@ export function PetForm() {
 
         // Opened to the wrong person: take it back right away.
         if (toAdd.length > 0) {
+          invited = true;
           const sharedPetId = petId;
           showUndo({
             message: `Приглашение отправлено: ${toAdd.join(', ')}`,
@@ -311,7 +325,8 @@ export function PetForm() {
       }
 
       // Leave at once; the toast lives on over the list.
-      showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен');
+      // An invitation has its own message with «Отменить»: a second one would take its place at once.
+      if (!invited) showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен');
       release();
       goBack(navigate, '/pets');
     } catch (error) {
@@ -341,7 +356,13 @@ export function PetForm() {
           </h1>
         </div>
 
-        <div>
+        {readOnly && (
+          <p className="safe-area-padding" role="note" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
+            Карточку питомца меняет владелец. Вам можно смотреть её и добавлять записи, а когда питомец больше не нужен, выйти из доступа.
+          </p>
+        )}
+        {/* inert: nothing in a card that cannot be saved takes focus or a tap. */}
+        <div {...(readOnly ? { inert: '' } : {})} style={readOnly ? { opacity: 0.7 } : undefined}>
           <Form
             layout="horizontal"
             mode="card"
@@ -710,7 +731,7 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет добавлять и смотреть записи так же, как вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
+              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет смотреть и добавлять записи и данные для врача. Менять карточку питомца, плитки и доступ сможете только вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -833,25 +854,29 @@ export function PetForm() {
             marginTop: 'var(--spacing-xl)',
             paddingBottom: 'var(--spacing-xl)',
           }}>
-            <button
-              style={{ display: 'none' }}
-              type="submit"
-              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
-            />
-            <SpinnerButton
-              loading={loading}
-              onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
-              style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
-            >
-              {isEditing ? 'Сохранить' : 'Добавить'}
-            </SpinnerButton>
+            {!readOnly && (
+              <>
+                <button
+                  style={{ display: 'none' }}
+                  type="submit"
+                  onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
+                />
+                <SpinnerButton
+                  loading={loading}
+                  onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
+                  style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
+                >
+                  {isEditing ? 'Сохранить' : 'Добавить'}
+                </SpinnerButton>
+              </>
+            )}
             <Button
               block
               size="large"
               onClick={() => goBack(navigate, '/pets')}
               style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
             >
-              Отмена
+              {readOnly ? 'Назад' : 'Отмена'}
             </Button>
             {/* Only the owner can delete; the backend refuses anyone else. */}
             {isEditing && pet?.current_user_is_owner && (
