@@ -103,7 +103,10 @@ export function HealthRecordForm() {
           // Only enforce a bound the field actually declares — `field.min
           // || 0` used to apply an implicit "can't be negative" to every
           // numeric field, including ones with no declared min at all.
-          let numberSchema = z.coerce.number({ error: 'Введите число, например 4,5' });
+          let numberSchema = z.number({
+            // An empty field is asked for by name; something that is not a number is told how a number is written.
+            error: (issue) => (issue.input === undefined || issue.input === null ? `Укажите: ${field.label.toLowerCase()}` : 'Введите число, например 4,5'),
+          });
           const hard = hardBounds(type, field.name);
           const lowest = hard ? Math.max(field.min ?? -Infinity, hard[0]) : field.min;
           const highest = hard ? Math.min(field.max ?? Infinity, hard[1]) : field.max;
@@ -116,7 +119,11 @@ export function HealthRecordForm() {
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
             // A Russian number pad types «4,5»: a comma is a decimal point, and a thin or plain space between thousands is not part of the number.
-            if (typeof val === 'string') return val.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+            if (typeof val === 'string') {
+              const text = val.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+              const number = Number(text);
+              return text !== '' && Number.isFinite(number) ? number : val;
+            }
             return val;
           }, numberSchema);
 
@@ -343,7 +350,7 @@ export function HealthRecordForm() {
           minHeight: '40px'
         }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {id ? 'Редактировать запись' : `Записать: ${eventType.label}`}
+            {id ? `${eventType.label}: правка` : `Записать: ${eventType.label}`}
           </h1>
         </div>
         {/* Whose record: with several pets, a form that does not say is a form that may be for the wrong one. */}

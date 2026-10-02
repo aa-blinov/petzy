@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
-import { Button, Form, Picker } from 'antd-mobile';
+import { Button, Dialog, Form, Picker } from 'antd-mobile';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_FORM_SETTINGS, cacheFormSettings, getFormSettings, type FormSettings } from '../utils/formsConfig';
 import { formDefaultsService } from '../services/formDefaults.service';
@@ -101,7 +101,7 @@ function PickerRow({
                     onClosePicker();
                 }}
                 cancelText="Отмена"
-                confirmText="Выбрать"
+                confirmText="Готово"
             />
         </Form.Item>
     );
@@ -162,7 +162,11 @@ export function FormDefaults() {
     }, [formSettings, navigate, persist, saving]);
 
     const handleReset = useCallback(async () => {
-        const confirmed = window.confirm('Очистить все значения по умолчанию? Формы будут открываться пустыми.');
+        const confirmed = await Dialog.confirm({
+            content: 'Очистить все значения по умолчанию? Формы будут открываться пустыми.',
+            confirmText: 'Очистить',
+            cancelText: 'Оставить',
+        });
         if (confirmed) {
             try {
                 await persist(DEFAULT_FORM_SETTINGS);

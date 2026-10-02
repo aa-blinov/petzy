@@ -194,12 +194,12 @@ def _serialize_html(title: str, records: list[dict], fields: list[FieldSpec]) ->
         f"<title>{title}</title>",
         "<style>"
         "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
-        "padding:20px;background:#000;color:#fff}"
-        "table{width:100%;border-collapse:collapse;background:#1c1c1e;border-radius:10px;overflow:hidden}"
-        "th{background:#2c2c2e;padding:12px;text-align:left;font-weight:600;border-bottom:1px solid #38383a}"
-        "td{padding:12px;border-bottom:1px solid #38383a}"
+        "padding:20px;background:#fff;color:#1f1b16}"
+        "table{width:100%;border-collapse:collapse;border:1px solid #ddd}"
+        "th{background:#f3f0ea;padding:10px;text-align:left;font-weight:600;border-bottom:1px solid #ccc}"
+        "td{padding:10px;border-bottom:1px solid #e5e1d8}"
         "tr:last-child td{border-bottom:none}"
-        "tr:hover{background:#2c2c2e}"
+        "@media print{body{padding:0}}"
         "</style></head><body>",
         f"<h1>{title}</h1><table><thead><tr>",
     ]
@@ -374,7 +374,10 @@ def export_data(export_type, format_type):
             title, included = spec.title, [spec.title]
 
         stamp = _user_now(tz_name).strftime("%Y%m%d_%H%M")
-        filename_base = f"{title.replace(' ', '_').lower()}_{stamp}"
+        # The pet in the name: with two pets, «кормление_2026…» says whose feedings these are no more than a feeding does.
+        pet_name = ((getattr(g, "pet", None) or {}).get("name") or "").strip()
+        pet_slug = re.sub(r"[^\w-]+", "_", pet_name).strip("_").lower()[:30]
+        filename_base = f"{pet_slug + '_' if pet_slug else ''}{title.replace(' ', '_').lower()}_{stamp}"
         filename = f"{filename_base}.{suffix}"
         encoded_filename = quote(filename)
 

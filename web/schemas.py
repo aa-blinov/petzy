@@ -1779,7 +1779,7 @@ class MedicalRecordBody(BaseModel):
     @model_validator(mode="after")
     def next_after_date(self):
         if self.next_due and self.next_due < self.date:
-            raise ValueError("Повтор раньше самой записи")
+            raise ValueError("Дата повтора раньше даты записи")
         return self
 
 

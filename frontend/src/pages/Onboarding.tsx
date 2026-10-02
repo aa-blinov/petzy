@@ -341,7 +341,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             }}
             title="Кто у вас?"
             cancelText="Отмена"
-            confirmText="Выбрать"
+            confirmText="Готово"
           />
         </div>
       );

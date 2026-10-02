@@ -10,7 +10,7 @@
  */
 
 import { useNavigate } from 'react-router-dom';
-import { Button } from 'antd-mobile';
+import { Button, Dialog } from 'antd-mobile';
 
 import { showToast } from '../utils/toast';
 import { usePet } from '../hooks/usePet';
@@ -26,8 +26,13 @@ export function TilesSettings() {
   const readOnly = getSelectedPet?.current_user_is_owner === false;
   const { resetSettings } = usePetTilesSettings(selectedPetId);
 
-  const handleReset = () => {
-    if (!window.confirm('Вернуть порядок и видимость плиток по умолчанию?')) return;
+  const handleReset = async () => {
+    const sure = await Dialog.confirm({
+      content: 'Вернуть порядок и видимость плиток по умолчанию?',
+      confirmText: 'Вернуть',
+      cancelText: 'Оставить',
+    });
+    if (!sure) return;
     try {
       resetSettings();
       showToast.success('Настройки плиток сброшены');

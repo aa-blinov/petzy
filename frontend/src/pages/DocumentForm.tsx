@@ -566,7 +566,7 @@ export function DocumentForm() {
                       }
                     }}
                     cancelText="Отмена"
-                    confirmText="Выбрать"
+                    confirmText="Готово"
                   />
                 </>
               )}
@@ -660,7 +660,7 @@ export function DocumentForm() {
                         setInternalPickerDate([]);
                       }}
                       cancelText="Отмена"
-                      confirmText="Сохранить"
+                      confirmText="Готово"
                     />
                   </Form.Item>
                 );

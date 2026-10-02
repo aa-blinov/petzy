@@ -167,7 +167,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
                       setInternalPickerDate([]);
                     }}
                     cancelText="Отмена"
-                    confirmText="Сохранить"
+                    confirmText="Готово"
                   />
                 </>
               );
@@ -212,7 +212,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
                       setPickerVisible(false);
                     }}
                     cancelText="Отмена"
-                    confirmText="Сохранить"
+                    confirmText="Готово"
                   />
                 </>
               );
@@ -242,7 +242,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
                       setPickerVisible(false);
                     }}
                     cancelText="Отмена"
-                    confirmText="Сохранить"
+                    confirmText="Готово"
                   />
                 </>
               );
