@@ -11,7 +11,7 @@ export function NoPetState({ what }: { what: string }) {
         <EmptyState
           icon={PawPrint}
           title="Сначала добавьте питомца"
-          description={`${what} появятся, когда в Petzy будет питомец`}
+          description={`Когда в Petzy будет питомец, здесь появится раздел «${what}»`}
           actionLabel="Добавить питомца"
           onAction={() => navigate('/pets/new')}
         />

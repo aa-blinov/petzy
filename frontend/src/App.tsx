@@ -24,6 +24,8 @@ import { formDefaultsService } from './services/formDefaults.service';
 import { cacheFormSettings, getFormSettings, hasCachedFormSettings } from './utils/formsConfig';
 import { documentsListQuery } from './services/documents.service';
 import { medicationsListQuery } from './services/medications.service';
+import { returnState } from './utils/returnTo';
+import { MedicalCardEntry, RequirePet } from './components/RequirePet';
 
 // Lazy load pages for code splitting. Every route is split, Dashboard
 // included: these five used to be eager imports, which meant every
@@ -121,7 +123,7 @@ function SessionExpiryBridge() {
       // Stop in-flight requests first so a late response can't
       // repopulate the cache we're about to drop.
       queryClient.cancelQueries();
-      navigate('/login', { replace: true });
+      navigate('/login', { replace: true, state: returnState(window.location.pathname + window.location.search) });
       // Clear on the next macrotask, once the navigation has rendered
       // and the protected pages have unmounted. Clearing while their
       // queries still have active observers makes every one of them
@@ -252,6 +254,14 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/medical-card"
+                element={
+                  <ProtectedRoute>
+                    <MedicalCardEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/history"
                 element={
                   <ProtectedRoute>
@@ -335,7 +345,9 @@ function AppRoutes() {
                 path="/form/:type"
                 element={
                   <ProtectedRoute>
-                    <HealthRecordForm />
+                    <RequirePet what="Записи">
+                      <HealthRecordForm />
+                    </RequirePet>
                   </ProtectedRoute>
                 }
               />
@@ -383,7 +395,9 @@ function AppRoutes() {
                 path="/medications/new"
                 element={
                   <ProtectedRoute>
-                    <MedicationForm />
+                    <RequirePet what="Лекарства">
+                      <MedicationForm />
+                    </RequirePet>
                   </ProtectedRoute>
                 }
               />
@@ -407,7 +421,9 @@ function AppRoutes() {
                 path="/documents/new"
                 element={
                   <ProtectedRoute>
-                    <DocumentForm />
+                    <RequirePet what="Документы">
+                      <DocumentForm />
+                    </RequirePet>
                   </ProtectedRoute>
                 }
               />
