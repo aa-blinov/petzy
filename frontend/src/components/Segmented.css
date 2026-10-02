@@ -1,0 +1,29 @@
+/* Same look as the medical card's mode switch: the chosen segment is the lit one, the rest sit on a plain track. */
+.segmented {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius-md);
+    background: var(--app-card-background);
+    box-shadow: 0 0 0 1px var(--app-border-color);
+}
+
+.segmented__item {
+    flex: 1;
+    min-height: var(--touch-min);
+    border: none;
+    border-radius: calc(var(--radius-md) - 3px);
+    background: transparent;
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--app-text-secondary);
+    cursor: pointer;
+}
+
+.segmented__item[aria-pressed="true"] {
+    background: var(--app-accent-soft);
+    box-shadow: 0 0 0 1px var(--app-accent-deep);
+    color: var(--app-accent-deep);
+    font-weight: 700;
+}

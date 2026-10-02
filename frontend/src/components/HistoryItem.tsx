@@ -131,12 +131,15 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
 
           {/* Body */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* Header row: relative date/time */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            {/* Header row: what it is, and when. An icon alone does not say «Смена лотка». */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span
                 className="display-headline"
                 style={{ fontSize: '15px', fontWeight: 600 }}
               >
+                {config.displayName}
+              </span>
+              <span style={{ fontSize: '13px', color: 'var(--app-text-secondary)' }}>
                 {formatRelativeDateTime(item.date_time)}
               </span>
             </div>

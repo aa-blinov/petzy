@@ -10,6 +10,10 @@ import { scrollToTop } from '../utils/scroll';
     the current tab on the card's own screens (the profile, a record, «К приёму»). */
 const MEDICAL_PATH = /^\/pets\/[^/]+\/(medical-|visit-prep)/;
 
+/** The screens that open from Settings and are part of it: the Settings tab stays lit on them, so the person knows where
+    they are. The medical card's own screens (/pets/<id>/medical-...) are the other tab's and are not in this list. */
+const SETTINGS_PATH = /^\/(settings(\/|$)|form-defaults|tiles-settings|event-types|help|pets(\/new|\/[^/]+\/edit)?$|users\/)/;
+
 const tabs = [
   { key: 'feed', to: '/', title: 'Лента', Icon: BookOpen },
   { key: 'medications', to: '/medications', title: 'Лекарства', Icon: Pill },
@@ -49,9 +53,9 @@ export function BottomTabBar() {
         {tabs.map(({ key, to: fixed, title, Icon }) => {
           // No pet chosen yet: the card has nobody to open, the list of pets is where one is added.
           const to = key === 'medical' ? (selectedPetId ? `/pets/${selectedPetId}/medical-card` : '/pets') : fixed;
-          // The current tab: the exact page, as before (/pets is reached from Settings but is not the Settings tab); the
+          // The current tab: the exact page for the first ones; Settings stays lit on the screens it opens; the
           // medical card is the tab for all of its own screens.
-          const current = key === 'medical' ? MEDICAL_PATH.test(pathname) : pathname === fixed;
+          const current = key === 'medical' ? MEDICAL_PATH.test(pathname) : key === 'settings' ? SETTINGS_PATH.test(pathname) : pathname === fixed;
           return (
             <li key={key}>
               <Link

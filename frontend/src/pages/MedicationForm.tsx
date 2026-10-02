@@ -122,7 +122,7 @@ export function MedicationForm() {
     const { id } = useParams<{ id: string }>();
     const isEditing = !!id;
     const navigate = useNavigate();
-    const { selectedPetId } = usePet();
+    const { selectedPetId, selectedPetName } = usePet();
     const queryClient = useQueryClient();
     const [typePickerVisible, setTypePickerVisible] = useState(false);
     const [showCustomType, setShowCustomType] = useState(false);
@@ -349,6 +349,11 @@ export function MedicationForm() {
                         </Button>
                     )}
                 </div>
+                {selectedPetName && (
+                    <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
+                        Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
+                    </p>
+                )}
 
                 <div>
                     <Form

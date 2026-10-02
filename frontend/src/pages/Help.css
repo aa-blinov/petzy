@@ -88,3 +88,26 @@
 .help-item__body li::marker {
     color: var(--app-accent);
 }
+
+.help-search {
+    width: 100%;
+    min-height: var(--touch-min);
+    margin-bottom: var(--spacing-md);
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--app-border-color);
+    border-radius: var(--radius-md);
+    background: var(--app-card-background);
+    color: var(--app-text-primary);
+    font: inherit;
+    font-size: var(--text-md);
+}
+
+.help-search:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+}
+
+.help-empty {
+    margin: var(--spacing-lg) 0;
+    color: var(--app-text-secondary);
+}

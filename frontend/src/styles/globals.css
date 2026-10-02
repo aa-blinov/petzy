@@ -1423,6 +1423,12 @@ textarea:focus-visible,
     border-color: var(--app-accent) !important;
 }
 
+/* A form row says it has the cursor: the label turns accent (above) and a line under the row does too, so that
+   keyboard focus is seen without boxing the field on every tap. */
+.adm-form-item:focus-within {
+    box-shadow: inset 0 -2px 0 var(--app-accent);
+}
+
 /* SearchBar keeps its own focus indicator: library CSS turns
    .adm-search-bar-input-box's border copper while its input is focused
    (.adm-search-bar-active), one ring around the whole pill, icon
@@ -1674,13 +1680,23 @@ label:has(~ .file-picker-input:focus-visible),
    export icons, colour swatches) keep their visible size but get an
    invisible hit area of at least 44×44, the Apple HIG / WCAG 2.5.5
    size. Inline position (fixed, absolute) still wins over this. */
+/* Small controls keep their look and get a 44px area to touch: antd's mini and small buttons, its switch, and the
+   chips in the pets list. */
 .touch-target,
-.history-filter-trigger {
+.history-filter-trigger,
+.adm-button-mini,
+.adm-button-small,
+.adm-switch,
+button.chip {
     position: relative;
 }
 
 .touch-target::after,
-.history-filter-trigger::after {
+.history-filter-trigger::after,
+.adm-button-mini::after,
+.adm-button-small::after,
+.adm-switch::after,
+button.chip::after {
     content: '';
     position: absolute;
     top: 50%;

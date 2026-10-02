@@ -44,7 +44,7 @@ export function HealthRecordForm() {
   const { type, id } = useParams<{ type: string; id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedPetId } = usePet();
+  const { selectedPetId, selectedPetName } = usePet();
   const queryClient = useQueryClient();
   const { eventTypesByKey, isLoading: eventTypesLoading } = useEventTypes();
 
@@ -295,6 +295,12 @@ export function HealthRecordForm() {
             {id ? 'Редактировать запись' : `Записать: ${eventType.label}`}
           </h1>
         </div>
+        {/* Whose record: with several pets, a form that does not say is a form that may be for the wrong one. */}
+        {selectedPetName && (
+          <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
+            Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
+          </p>
+        )}
 
         <div>
           <FormProvider {...methods}>

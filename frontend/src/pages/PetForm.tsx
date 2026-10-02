@@ -670,6 +670,7 @@ export function PetForm() {
                         fontSize: '16px',
                       }}
                       title="Заменить фото"
+                      className="touch-target"
                     >
                       <Camera size={16} strokeWidth={2} style={{ display: 'block' }} />
                     </button>
@@ -691,6 +692,7 @@ export function PetForm() {
                         fontWeight: 'bold',
                       }}
                       aria-label="Удалить фото"
+                      className="touch-target"
                     >
                       <span aria-hidden>×</span>
                     </button>
