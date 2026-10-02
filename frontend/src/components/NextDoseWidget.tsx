@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { Button } from 'antd-mobile';
 import { Pill, TriangleAlert } from 'lucide-react';
 import { medicationsService, type UpcomingDose } from '../services/medications.service';
+import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
 
 /**
@@ -23,6 +24,11 @@ import { usePet } from '../hooks/usePet';
  * handled and the reminder stops, but nothing leaves the stock.
  */
 const DUE_WINDOW_MINUTES = 30;
+
+/** Minutes from now to the dose's own moment; negative once it has passed (a dose of last evening, long). */
+function minutesUntilDose(dose: UpcomingDose, now = new Date()): number {
+    return Math.round((new Date(`${dose.date}T${dose.time}:00`).getTime() - now.getTime()) / 60000);
+}
 
 /** «Принять» now, «Уже дали в 08:00» at the slot, or «Пропустить». */
 type IntakeKind = 'now' | 'scheduled' | 'skip';
@@ -48,7 +54,10 @@ export function NextDoseWidget() {
             );
         },
         enabled: !!selectedPetId,
-        refetchInterval: 60000, // Refresh every minute
+        // Another person may have marked this dose: looked at again every half minute and whenever the app comes back to
+        // the front, not left to show a dose that is already given.
+        refetchInterval: 30000,
+        refetchOnWindowFocus: true,
     });
 
     const intakeMutation = useMutation({
@@ -62,10 +71,13 @@ export function NextDoseWidget() {
             const now = new Date();
             const nowDate = formatDate(now);
             const nowTime = formatTime(now);
-            if (kind === 'now') return medicationsService.logIntake(dose.medication_id, { date: nowDate, time: nowTime });
+            // The slot the dose is for goes with it: «Принять сейчас» at 14:30 for the 08:00 dose closes the 08:00 one,
+            // not the nearest, and a dose of last evening given after midnight closes that evening.
+            const slot = { slot_date: dose.date, slot_time: dose.time };
+            if (kind === 'now') return logIntakeAsking(dose.medication_id, dose.name, { date: nowDate, time: nowTime, ...slot });
             const slotIsPast = `${dose.date} ${dose.time}` <= `${nowDate} ${nowTime}`;
             const at = slotIsPast ? { date: dose.date, time: dose.time } : { date: nowDate, time: nowTime };
-            return medicationsService.logIntake(dose.medication_id, { ...at, skipped: kind === 'skip' });
+            return logIntakeAsking(dose.medication_id, dose.name, { ...at, ...slot, skipped: kind === 'skip' });
         },
         onSuccess: ({ id, ran_out }, { dose, kind }) => {
             refreshAfterIntake(queryClient);
@@ -75,8 +87,10 @@ export function NextDoseWidget() {
                     : ran_out
                         ? `${dose.name}: принято, лекарство закончилось. Пополните остаток`
                         : kind === 'scheduled'
-                            ? `${dose.name}: отмечено, дали в ${dose.time}`
-                            : `${dose.name}: приём отмечен`;
+                            ? `${dose.name}: отмечено, дали в ${dose.time}${dose.carried_over ? ' вчера' : ''}`
+                            : -minutesUntilDose(dose) > DUE_WINDOW_MINUTES
+                                ? `${dose.name}: принято, закрыт приём в ${dose.time}${dose.carried_over ? ' вчера' : ''}`
+                                : `${dose.name}: приём отмечен`;
             // Ten seconds: a dose is marked with a thumb, and read back a moment later. The «лекарство закончилось» is in the
             // same message: a second one on top of it took the «Отменить» away.
             showUndo({
@@ -89,21 +103,21 @@ export function NextDoseWidget() {
             });
         },
         onError: (err: unknown, { kind }) => {
+            if (err instanceof IntakeDeclined) return;
             showToast.failure(getApiErrorMessage(err, kind === 'skip' ? 'Не удалось пропустить приём' : 'Не удалось отметить приём'));
         }
     });
 
     const today = formatDate(new Date());
-    const todays = upcoming.filter((dose) => dose.date === today);
+    // Today's, and last evening's that nobody marked: a dose forgotten at 23:30 is still there at 00:10.
+    const todays = upcoming.filter((dose) => dose.date === today || dose.carried_over);
     if (isLoading || todays.length === 0) return null;
 
     // The next of today's doses: an overdue one first (the list is in time order).
     const nextDose = todays[0];
     // Due from half an hour before its time: at 07:50 an 08:00 dose is
     // «Пора дать лекарство», not «Дать раньше».
-    const [h, m] = nextDose.time.split(':').map(Number);
-    const now = new Date();
-    const minutesUntil = h * 60 + m - (now.getHours() * 60 + now.getMinutes());
+    const minutesUntil = minutesUntilDose(nextDose);
     const due = nextDose.is_overdue || minutesUntil <= DUE_WINDOW_MINUTES;
     // Well past its time the dose may have been given on time and not
     // marked: then «Уже дали в 08:00» puts it where it belongs.
@@ -158,7 +172,9 @@ export function NextDoseWidget() {
                             {nextDose.name}
                         </h2>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
-                            {due ? `по расписанию в ${nextDose.time}` : `сегодня в ${nextDose.time}`}
+                            {nextDose.carried_over
+                                ? `вчера в ${nextDose.time}, не отмечено`
+                                : due ? `по расписанию в ${nextDose.time}` : `сегодня в ${nextDose.time}`}
                         </div>
                     </div>
                 </div>
@@ -214,7 +230,7 @@ export function NextDoseWidget() {
                                 loading={pendingKind === 'scheduled'}
                                 disabled={busy}
                             >
-                                Уже дали в {nextDose.time}
+                                Уже дали в {nextDose.time}{nextDose.carried_over ? ' вчера' : ''}
                             </Button>
                         )}
                         <Button

@@ -39,7 +39,8 @@ from zoneinfo import ZoneInfo
 import web.app  # noqa: F401
 from web.courses import course_covers
 from web.medical_records import SOON_DAYS, record_states, repeating_document_ids
-from web.medications import UPCOMING_LOOKAHEAD_DAYS, compute_taken_counts
+from web.dose_slots import open_slots
+from web.medications import UPCOMING_LOOKAHEAD_DAYS, load_day_intakes
 from web.push_delivery import send_push_to_subscriptions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -224,7 +225,7 @@ def find_due_medication_reminders(
         date_key = today_start.strftime("%Y-%m-%d")
 
         pet_med_ids = [str(m["_id"]) for m in medications]
-        taken_counts = compute_taken_counts(db, pet_med_ids, today_start, window_end)
+        day_intakes = load_day_intakes(db, pet_med_ids, today_start, window_end)
 
         for med in medications:
             schedule = med.get("schedule", {})
@@ -238,12 +239,8 @@ def find_due_medication_reminders(
                 continue
 
             med_id_str = str(med["_id"])
-            taken_count = taken_counts.get((med_id_str, date_key), 0)
 
-            for slot_index, t in enumerate(sched_times):
-                if slot_index < taken_count:
-                    continue  # already given today
-
+            for t in open_slots(sched_times, day_intakes.get((med_id_str, date_key), [])):
                 try:
                     dose_hour, dose_min = map(int, t.split(":"))
                 except (ValueError, TypeError):

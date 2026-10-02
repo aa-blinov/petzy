@@ -7,7 +7,8 @@ import { Button, Card, Tag, Dialog, Input, PullToRefresh, Selector } from 'antd-
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
-import { medicationsListQuery, medicationsService, type Medication } from '../services/medications.service';
+import { medicationsListQuery, medicationsService, type IntakeInput, type Medication } from '../services/medications.service';
+import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
@@ -28,8 +29,14 @@ import { nowWhen, whenLabel, whenPhrase, type IntakeWhen } from '../utils/intake
 function pastSlotToday(med: Medication): string | null {
     const now = new Date();
     if (!med.schedule.days.includes((now.getDay() + 6) % 7)) return null;
-    const slot = [...med.schedule.times].sort()[med.intakes_today || 0];
+    const slot = med.open_slots_today ? med.open_slots_today[0] : [...med.schedule.times].sort()[med.intakes_today || 0];
     return slot && slot <= formatTime(now) ? slot : null;
+}
+
+/** Every dose of today's schedule is handled. A course with nothing scheduled today (a dose when needed) is never done. */
+function doneToday(med: Medication): boolean {
+    if (med.open_slots_today) return !!med.scheduled_today && med.open_slots_today.length === 0;
+    return (med.intakes_today || 0) >= med.schedule.times.length;
 }
 
 /** «Когда дали» in the intake dialog: now, at the slot, or a picked time. */
@@ -90,8 +97,11 @@ export function MedicationsList() {
     });
 
     const intakeMutation = useMutation({
-        mutationFn: ({ id, dose, when, skipped }: { id: string; dose?: number; when: IntakeWhen; skipped?: boolean }) =>
-            medicationsService.logIntake(id, { ...when, dose_taken: dose, skipped }),
+        mutationFn: ({ id, dose, when, skipped, slot }: { id: string; dose?: number; when: IntakeWhen; skipped?: boolean; slot?: string | null }) => {
+            // «По расписанию»: the slot picked is the one that closes, however late the dose is marked.
+            const input: IntakeInput = { ...when, dose_taken: dose, skipped, ...(slot ? { slot_date: nowWhen().date, slot_time: slot } : {}) };
+            return logIntakeAsking(id, medications.find((m) => m._id === id)?.name ?? 'Лекарство', input);
+        },
         onSuccess: ({ id, ran_out }, { id: medId, skipped, when }) => {
             refreshAfterIntake(queryClient);
             const name = medications.find((m) => m._id === medId)?.name ?? 'Приём';
@@ -114,6 +124,7 @@ export function MedicationsList() {
             });
         },
         onError: (err: unknown) => {
+            if (err instanceof IntakeDeclined) return;
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
         }
     });
@@ -162,7 +173,7 @@ export function MedicationsList() {
             showToast.failure('Укажите, сколько дали');
             return;
         }
-        intakeMutation.mutate({ id: logIntakeDialog.medication._id, dose, when: chosenWhen() });
+        intakeMutation.mutate({ id: logIntakeDialog.medication._id, dose, when: chosenWhen(), slot: logIntakeDialog.choice === 'slot' ? logIntakeDialog.slot : null });
         setLogIntakeDialog(prev => ({ ...prev, visible: false }));
     };
 
@@ -175,6 +186,7 @@ export function MedicationsList() {
             id: logIntakeDialog.medication._id,
             when: slot ? { date: nowWhen().date, time: slot } : nowWhen(),
             skipped: true,
+            slot,
         });
         setLogIntakeDialog(prev => ({ ...prev, visible: false }));
     };
@@ -474,10 +486,10 @@ export function MedicationsList() {
                                                 fill="outline"
                                                 onClick={() => handleLogIntake(med)}
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
-                                                disabled={(med.intakes_today || 0) >= med.schedule.times.length}
+                                                disabled={doneToday(med)}
                                                 style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
-                                                {(med.intakes_today || 0) >= med.schedule.times.length ? 'На сегодня всё' : `Отметить приём (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
+                                                {doneToday(med) ? 'На сегодня всё' : `Отметить приём (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>
                                         </div>
                                     )}

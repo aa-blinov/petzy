@@ -1376,6 +1376,10 @@ class MedicationItem(BaseModel):
     )
     last_taken_at: Optional[str] = None
     intakes_today: int = 0
+    scheduled_today: Optional[bool] = Field(None, description="Сегодня по расписанию есть приёмы (день недели и курс)")
+    open_slots_today: Optional[List[str]] = Field(
+        None, description="Сегодняшние приёмы по расписанию, которые ещё ничем не закрыты, по времени"
+    )
     username: Optional[str] = None
 
 
@@ -1402,6 +1406,16 @@ class MedicationIntakeCreate(BaseModel):
     comment: Optional[str] = None
     # «Пропустить»: the slot is handled, nothing is given or taken from the stock.
     skipped: bool = False
+    slot_date: Optional[str] = Field(
+        None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="День приёма по расписанию, который закрывает эта отметка"
+    )
+    slot_time: Optional[str] = Field(
+        None, pattern=r"^\d{2}:\d{2}$", description="Время приёма по расписанию (08:00), которое закрывает эта отметка"
+    )
+    force: bool = Field(
+        False,
+        description="Записать, даже если такой же приём уже отмечен рядом по времени (ответ 409 duplicate_intake)",
+    )
     tz: Optional[str] = Field(
         None,
         max_length=64,
@@ -1444,6 +1458,7 @@ class UpcomingDoseItem(BaseModel):
     date: str
     is_overdue: bool
     inventory_warning: bool
+    carried_over: bool = Field(False, description="Приём со вчерашнего вечера, который ещё не отмечен")
 
 
 class UpcomingDosesResponse(BaseModel):

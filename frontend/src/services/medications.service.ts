@@ -41,6 +41,10 @@ export interface Medication {
     course_status?: 'active' | 'planned' | 'ended';
     last_taken_at?: string;
     intakes_today?: number;
+    /** Today's schedule has doses (day of the week and course). */
+    scheduled_today?: boolean;
+    /** Today's scheduled times nothing has closed yet, in order. */
+    open_slots_today?: string[];
     username?: string;
 }
 
@@ -91,6 +95,19 @@ export interface MedicationIntake {
     skipped?: boolean;
 }
 
+/** What is sent to log a dose. ``slot_*``: the scheduled dose it is for, so that one is closed, not the earliest. */
+export interface IntakeInput {
+    date: string;
+    time: string;
+    dose_taken?: number;
+    comment?: string;
+    skipped?: boolean;
+    slot_date?: string;
+    slot_time?: string;
+    /** Record it although the same dose is already marked close in time. */
+    force?: boolean;
+}
+
 export interface UpcomingDose {
     medication_id: string;
     name: string;
@@ -99,6 +116,8 @@ export interface UpcomingDose {
     date: string;
     is_overdue: boolean;
     inventory_warning: boolean;
+    /** Last evening's dose that nobody marked, still offered for a few hours after midnight. */
+    carried_over?: boolean;
 }
 
 export const medicationsService = {
@@ -132,7 +151,7 @@ export const medicationsService = {
 
     /** Always records the dose; ``ran_out`` says the stock is now empty,
      *  ``id`` is the intake's, for «Отменить». */
-    async logIntake(id: string, data: { date: string; time: string; dose_taken?: number; comment?: string; skipped?: boolean }): Promise<{ id: string; ran_out: boolean }> {
+    async logIntake(id: string, data: IntakeInput): Promise<{ id: string; ran_out: boolean }> {
         const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, { ...data, tz: deviceTimeZone() });
         return { id: response.data.id, ran_out: !!response.data.ran_out };
     },
@@ -175,5 +194,8 @@ export function medicationsListQuery(petId: string) {
         // already taken, so a UTC date put the window on the wrong day
         // near midnight.
         queryFn: () => medicationsService.getList(petId, formatDate(new Date())),
+        // Another person may mark a dose: the list is looked at again when the app comes back to the front and every half minute.
+        refetchOnWindowFocus: true,
+        refetchInterval: 30000,
     };
 }

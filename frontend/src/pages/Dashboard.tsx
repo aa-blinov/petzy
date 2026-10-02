@@ -65,7 +65,9 @@ export function Dashboard() {
     },
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
     initialPageParam: 1,
-    enabled: !!selectedPetId
+    enabled: !!selectedPetId,
+    // What another person wrote while the app was in the background is there when it comes back to the front.
+    refetchOnWindowFocus: true,
   });
 
   // Records deleted a moment ago, «Отменить» still on offer, are left out.
