@@ -4,9 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFieldArray, useForm, Controller, useWatch, type Control, type UseFormGetValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Form, Input, Switch } from 'antd-mobile';
+import { isAxiosError } from 'axios';
+import { Button, Dialog, Form, Input, Switch } from 'antd-mobile';
 import { DeleteOutline } from 'antd-mobile-icons';
-import { medicalCardService } from '../services/medicalCard.service';
+import { medicalCardService, type MedicalProfile } from '../services/medicalCard.service';
 import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
@@ -180,6 +181,22 @@ function ClinicBlock({ control, index, only, onRemove, getValues }: { control: C
   );
 }
 
+function profileToForm(profile: MedicalProfile): ProfileForm {
+  return {
+    chip_number: profile.chip_number ?? '',
+    blood_type: profile.blood_type ?? '',
+    diet: profile.diet ?? '',
+    living: profile.living ?? '',
+    reproduction: profile.reproduction ?? '',
+    allergies_none_known: profile.allergies_none_known,
+    allergies: profile.allergies.map((a) => ({ substance: a.substance, reaction: a.reaction ?? '' })),
+    conditions: profile.conditions.map((c) => ({ name: c.name, since_year: c.since_year ? String(c.since_year) : '', note: c.note ?? '' })),
+    clinics: profile.clinics.length
+      ? profile.clinics.map((c) => ({ name: c.name ?? '', phone: c.phone ?? '', doctors: c.doctors.map((d) => ({ name: d.name, specialty: d.specialty ?? '' })) }))
+      : EMPTY.clinics,
+  };
+}
+
 /** What a vet asks first: allergies, chronic conditions, chip, blood type and the clinics.
     Kept on the pet and open to everyone who has access to it, like the weight. */
 export function MedicalProfileForm() {
@@ -208,6 +225,8 @@ export function MedicalProfileForm() {
   const noneKnown = useWatch({ control, name: 'allergies_none_known' });
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
 
+  // The version the form was made from: the server refuses a save from an older one (someone else saved since).
+  const baseVersion = useRef<string | null>(null);
   // The saved profile goes into the form once, when it arrives.
   const loaded = useRef(false);
   const section = useSearchParams()[0].get('section');
@@ -223,19 +242,8 @@ export function MedicalProfileForm() {
         document.querySelector<HTMLInputElement>('input[placeholder="Где наблюдается"]')?.focus({ preventScroll: true });
       }, 80);
     }
-    reset({
-      chip_number: profile.chip_number ?? '',
-      blood_type: profile.blood_type ?? '',
-      diet: profile.diet ?? '',
-      living: profile.living ?? '',
-      reproduction: profile.reproduction ?? '',
-      allergies_none_known: profile.allergies_none_known,
-      allergies: profile.allergies.map((a) => ({ substance: a.substance, reaction: a.reaction ?? '' })),
-      conditions: profile.conditions.map((c) => ({ name: c.name, since_year: c.since_year ? String(c.since_year) : '', note: c.note ?? '' })),
-      clinics: profile.clinics.length
-        ? profile.clinics.map((c) => ({ name: c.name ?? '', phone: c.phone ?? '', doctors: c.doctors.map((d) => ({ name: d.name, specialty: d.specialty ?? '' })) }))
-        : EMPTY.clinics,
-    });
+    baseVersion.current = profile.version ?? null;
+    reset(profileToForm(profile));
   }, [query.data, reset, section]);
 
   const save = useMutation({
@@ -260,6 +268,7 @@ export function MedicalProfileForm() {
           }))
           .filter((c) => c.name || c.phone || c.doctors.length),
         clinic: { name: null, vet: null, phone: null },
+        base_version: baseVersion.current ?? "",
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
@@ -269,9 +278,33 @@ export function MedicalProfileForm() {
       goBack(navigate, cardPath);
     },
     onError: (err: unknown) => {
+      const current = isAxiosError(err) && err.response?.status === 409 ? (err.response.data as { profile?: MedicalProfile } | undefined)?.profile : undefined;
+      if (current) {
+        void resolveConflict(current);
+        return;
+      }
       showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
     },
   });
+
+  // Someone else saved the profile while this form was open. Saving over it would wipe what they entered: say so,
+  // and let the person look at what is there now, or knowingly keep their own version.
+  const resolveConflict = async (current: MedicalProfile) => {
+    const showCurrent = await Dialog.confirm({
+      title: 'Профиль изменили',
+      content: 'Пока вы правили, другой человек сохранил профиль. Показать, что там сейчас? Ваши правки в этой форме тогда не сохранятся',
+      confirmText: 'Показать актуальный',
+      cancelText: 'Сохранить моё',
+    });
+    baseVersion.current = current.version ?? null;
+    if (showCurrent) {
+      reset(profileToForm(current));
+      queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
+      showToast.info('Показали актуальный профиль. Внесите правки ещё раз');
+    } else {
+      save.mutate(getValues());
+    }
+  };
 
   // A row added and left completely empty is not an entry: it goes before the
   // form is checked, instead of being an error about a field nobody filled.

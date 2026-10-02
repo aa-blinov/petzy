@@ -59,6 +59,8 @@ export interface MedicalProfile {
   /** The main clinic and its first doctor: the same as the first of `clinics`. */
   clinic: { name?: string | null; vet?: string | null; phone?: string | null };
   updated_at?: string | null;
+  /** Changes at every save: a form saved from an older one is refused (409), so nobody's entry is wiped unseen. */
+  version?: string | null;
 }
 
 export interface MedicalCardCourse {
@@ -164,7 +166,7 @@ export const medicalCardService = {
     await api.put(`/pets/${petId}/visit-prep`, { complaint: null, checks: {} });
   },
 
-  async saveProfile(petId: string, profile: Omit<MedicalProfile, 'updated_at'>): Promise<MedicalProfile> {
+  async saveProfile(petId: string, profile: Omit<MedicalProfile, 'updated_at' | 'version'> & { base_version?: string | null }): Promise<MedicalProfile> {
     const response = await api.put<{ profile: MedicalProfile }>(`/pets/${petId}/medical-profile`, profile);
     return response.data.profile;
   },

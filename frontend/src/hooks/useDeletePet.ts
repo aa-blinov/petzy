@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { petsService, type Pet } from '../services/pets.service';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
-import { usePet } from './usePet';
+import { expectPetGone, usePet } from './usePet';
 
 /**
  * Takes a pet off the list and keeps the selection sensible: if it was
@@ -18,6 +18,7 @@ function useRemoveFromList(remove: (petId: string) => Promise<void>, done: strin
       const wasSelected = getSelectedPet?._id === pet._id;
       const index = pets.findIndex((p) => p._id === pet._id);
 
+      expectPetGone(pet._id);
       await remove(pet._id);
 
       const updated = await petsService.getPets();
