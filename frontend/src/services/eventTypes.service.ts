@@ -60,7 +60,8 @@ export const eventTypesService = {
     return response.data;
   },
 
-  async remove(key: string): Promise<void> {
-    await api.delete(`/event-types/${key}`);
+  /** ``withEvents``: the type goes together with its records (asked after the server says how many there are). */
+  async remove(key: string, withEvents = false): Promise<void> {
+    await api.delete(`/event-types/${key}`, { params: withEvents ? { with_events: 'true' } : undefined });
   },
 };

@@ -1,5 +1,5 @@
 import api from './api';
-import { deviceTimeZone } from '../utils/timezone';
+import { deviceTimeZone, toDeviceClock } from '../utils/timezone';
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -17,8 +17,15 @@ export interface HealthRecord {
   record_type?: string;
   medication_name?: string;
   comment?: string;
+  /** The zone of the clock date_time was entered on. */
+  tz?: string | null;
   fields: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+/** The record's time on this device's clock (see toDeviceClock). */
+function onThisClock<T extends HealthRecord>(record: T): T {
+  return record.date_time ? { ...record, date_time: toDeviceClock(record.date_time, record.tz) } : record;
 }
 
 export type TimelineResponse = PaginatedResponse<HealthRecord>;
@@ -43,8 +50,8 @@ export interface EventUpdate {
  *  registry key (a builtin one or a custom one) — the API doesn't special-
  *  case it. Medications go through their own service instead. */
 export const healthRecordsService = {
-  async create(type: string, data: EventCreate): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>('/events', { ...data, type, tz: deviceTimeZone() });
+  async create(type: string, data: EventCreate): Promise<{ message: string; id?: string }> {
+    const response = await api.post<{ message: string; id?: string }>('/events', { ...data, type, tz: deviceTimeZone() });
     return response.data;
   },
 
@@ -52,12 +59,12 @@ export const healthRecordsService = {
     const response = await api.get<EventListResponse>('/events', {
       params: { pet_id: petId, type, page, page_size: pageSize },
     });
-    return response.data;
+    return { ...response.data, items: response.data.items.map(onThisClock) };
   },
 
   async get(recordId: string): Promise<HealthRecord> {
     const response = await api.get<HealthRecord>(`/events/${recordId}`);
-    return response.data;
+    return onThisClock(response.data);
   },
 
   async update(recordId: string, data: EventUpdate): Promise<{ message: string }> {
@@ -89,6 +96,6 @@ export const healthRecordsService = {
     const response = await api.get<TimelineResponse>('/history/timeline', {
       params: { pet_id: petId, page, page_size: pageSize, type }
     });
-    return response.data;
+    return { ...response.data, items: response.data.items.map(onThisClock) };
   }
 };

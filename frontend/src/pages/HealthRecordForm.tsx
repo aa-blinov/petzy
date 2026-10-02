@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Fragment, useEffect, useState, useMemo, useCallback } from 'react';
 import { showToast } from '../utils/toast';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { deleteWithUndo } from '../utils/deferredDelete';
@@ -6,7 +6,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Form } from 'antd-mobile';
@@ -15,6 +15,9 @@ import { useEventTypes } from '../hooks/useEventTypes';
 import type { EventType } from '../services/eventTypes.service';
 import { getFormSettings } from '../utils/formsConfig';
 import { hardBounds, shown } from '../utils/fieldBounds';
+import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
+import { showUndo } from '../utils/undo';
+import { formatDate, formatTime } from '../utils/dateUtils';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
@@ -40,6 +43,14 @@ function buildFields(eventType: EventType): FormFieldType[] {
   }));
 }
 
+/** The times a record is most often written down for after the fact. */
+const WHEN_CHOICES: { label: string; at: (now: Date) => Date }[] = [
+  { label: 'Сейчас', at: (now) => now },
+  { label: 'Час назад', at: (now) => new Date(now.getTime() - 60 * 60 * 1000) },
+  { label: '2 часа назад', at: (now) => new Date(now.getTime() - 2 * 60 * 60 * 1000) },
+  { label: 'Вчера в это время', at: (now) => new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+];
+
 export function HealthRecordForm() {
   const { type, id } = useParams<{ type: string; id?: string }>();
   const navigate = useNavigate();
@@ -50,6 +61,31 @@ export function HealthRecordForm() {
 
   const eventType = type ? eventTypesByKey[type] : undefined;
   const fields = useMemo(() => (eventType ? buildFields(eventType) : []), [eventType]);
+  // The field a new record starts at: the first thing it asks to be typed (the portion, the weight), with the keyboard open.
+  const firstAskedField = useMemo(() => fields.find((f) => f.required && (f.type === 'number' || f.type === 'text'))?.name, [fields]);
+  // The last few values of each number field for this pet: «195, 200» for a portion is one tap.
+  const lastRecords = useQuery({
+    queryKey: ['recent-values', selectedPetId, type],
+    queryFn: () => healthRecordsService.getList(type!, selectedPetId!, 1, 12),
+    enabled: !!selectedPetId && !!type && !id,
+    staleTime: 60_000,
+  });
+  const recentValues = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    for (const field of fields) {
+      if (field.type !== 'number') continue;
+      const seen: string[] = [];
+      for (const record of lastRecords.data?.items ?? []) {
+        const raw = record.fields?.[field.name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        const value = String(raw);
+        if (!seen.includes(value)) seen.push(value);
+        if (seen.length === 3) break;
+      }
+      out[field.name] = seen;
+    }
+    return out;
+  }, [fields, lastRecords.data]);
 
   // Create Zod schema dynamically from the type's own fields, plus the
   // date/time/comment every event shares.
@@ -228,7 +264,7 @@ export function HealthRecordForm() {
         fields: fieldsPayload,
       };
 
-      const response = id
+      const response: { message: string; id?: string } = id
         ? await healthRecordsService.update(id, payload)
         : await healthRecordsService.create(type, payload);
 
@@ -242,7 +278,22 @@ export function HealthRecordForm() {
           ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
       });
 
-      showToast.success(response.message);
+      // A new record can be taken back from the bar that follows, not only by finding it in the feed and deleting it.
+      if (!id && response.id) {
+        const createdId = response.id;
+        showUndo({
+          message: response.message,
+          onUndo: async () => {
+            await healthRecordsService.delete(createdId);
+            await queryClient.invalidateQueries({
+              predicate: (query) =>
+                ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+            });
+          },
+        });
+      } else {
+        showToast.success(response.message);
+      }
       // Leave at once; the toast lives on over the screen we return to
       // (waiting for it to close kept a saved form on screen for two
       // seconds). Not a fixed destination: this form opens from the
@@ -311,14 +362,50 @@ export function HealthRecordForm() {
                 '--prefix-width': '7em'
               } as React.CSSProperties}
             >
+              {!isEditing && (
+                <div style={{ padding: '0 var(--spacing-md)' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }} aria-hidden>Когда было</span>
+                  {/* Written down afterwards: the common «when» is one tap, not two wheels turned by a finger. */}
+                  <ChoiceChips label="Когда">
+                    {WHEN_CHOICES.map((choice) => (
+                      <ChoiceChip
+                        key={choice.label}
+                        pressed={false}
+                        onClick={() => {
+                          const at = choice.at(new Date());
+                          methods.setValue('date', formatDate(at), { shouldDirty: true, shouldValidate: true });
+                          methods.setValue('time', formatTime(at), { shouldDirty: true, shouldValidate: true });
+                        }}
+                      >
+                        {choice.label}
+                      </ChoiceChip>
+                    ))}
+                  </ChoiceChips>
+                </div>
+              )}
               <FormField field={{ name: 'date', type: 'date', label: 'Дата', required: true, id: 'event-date' }} defaultValue={defaultValues.date} />
               <FormField field={{ name: 'time', type: 'time', label: 'Время', required: true, id: 'event-time' }} defaultValue={defaultValues.time} />
               {fields.map((field) => (
-                <FormField
-                  key={field.id}
-                  field={field}
-                  defaultValue={defaultValues[field.name]}
-                />
+                <Fragment key={field.id}>
+                  <FormField
+                    field={field}
+                    defaultValue={defaultValues[field.name]}
+                    autoFocus={!isEditing && field.name === firstAskedField}
+                  />
+                  {!isEditing && field.type === 'number' && (recentValues[field.name]?.length ?? 0) > 0 && (
+                    // What was given or weighed last time is one tap, not typed from the start again.
+                    <div style={{ padding: '0 var(--spacing-md)' }}>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }} aria-hidden>Как раньше</span>
+                      <ChoiceChips label="Как раньше">
+                        {recentValues[field.name].map((value) => (
+                          <ChoiceChip key={value} pressed={false} onClick={() => methods.setValue(field.name, value, { shouldDirty: true, shouldValidate: true })}>
+                            {value.replace('.', ',')}
+                          </ChoiceChip>
+                        ))}
+                      </ChoiceChips>
+                    </div>
+                  )}
+                </Fragment>
               ))}
               <FormField
                 field={{ name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'event-comment' }}

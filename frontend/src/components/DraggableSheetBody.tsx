@@ -43,7 +43,7 @@
  * the sheet shut.
  */
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 /** Downward travel that commits the dismiss, in CSS px. */
 const DISMISS_AFTER_PX = 90;
@@ -53,10 +53,13 @@ export function DraggableSheetBody({
   onClose,
   children,
   maxHeight,
+  label,
 }: {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
+  /** What the sheet is, for a screen reader: it is a dialog. */
+  label?: string;
   /** Ceiling for the card's height — taller content scrolls inside instead of growing past it. */
   maxHeight?: string;
 }) {
@@ -68,6 +71,24 @@ export function DraggableSheetBody({
   const dragFrom = useRef<number | null>(null);
   // The scrollable content region for the drag in progress, if any.
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Opened: the keyboard goes into it (the first thing to choose), and Escape closes it. A sheet that left focus on the
+  // button that opened it made Tab walk the page behind.
+  useEffect(() => {
+    if (!visible) return;
+    const focusTimer = window.setTimeout(() => {
+      cardRef.current?.querySelector<HTMLElement>('button:not([aria-label="Закрыть"]), a[href], input, [tabindex="0"]:not([aria-label="Закрыть"])')?.focus({ preventScroll: true });
+    }, 250);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [visible, onClose]);
 
   const [wasVisible, setWasVisible] = useState(visible);
   if (visible !== wasVisible) {
@@ -117,6 +138,10 @@ export function DraggableSheetBody({
 
   return (
     <div
+      ref={cardRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
       style={{
         display: 'flex',
         flexDirection: 'column',

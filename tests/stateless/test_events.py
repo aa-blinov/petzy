@@ -1117,3 +1117,54 @@ class TestHardBoundsOfWeightAndFeeding:
     def test_a_portion_of_99999_grams_is_refused(self, client, regular_user_token, test_pet):
         assert self._post(client, regular_user_token, test_pet, "feeding", {"food_weight": 99999}).status_code == 422
         assert self._post(client, regular_user_token, test_pet, "feeding", {"food_weight": 120}).status_code == 201
+
+
+class TestCreatingAnEventSaysWhichOne:
+    def test_the_response_carries_the_id_of_the_new_record(self, client, mock_db, regular_user_token, test_pet):
+        response = client.post(
+            "/api/events",
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "litter",
+                "date": "2026-10-01",
+                "time": "09:00",
+                "fields": {},
+            },
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 201
+        new_id = response.get_json()["id"]
+        assert mock_db["events"].count_documents({"_id": __import__("bson").ObjectId(new_id)}) == 1
+
+
+class TestDeletingATypeWithRecords:
+    def _make(self, client, token, pet):
+        created = client.post(
+            "/api/event-types",
+            json={"label": "Прогулка с зайцем", "icon": "footprints", "color": "green", "fields": []},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert created.status_code in (200, 201), created.get_json()
+        key = created.get_json()["key"]
+        client.post(
+            "/api/events",
+            json={"pet_id": str(pet["_id"]), "type": key, "date": "2026-10-01", "time": "09:00", "fields": {}},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        return key
+
+    def test_a_type_with_records_says_how_many_and_stays(self, client, mock_db, regular_user_token, test_pet):
+        key = self._make(client, regular_user_token, test_pet)
+        response = client.delete(f"/api/event-types/{key}", headers={"Authorization": f"Bearer {regular_user_token}"})
+        assert response.status_code == 422
+        assert response.get_json()["events_count"] == 1
+        assert mock_db["events"].count_documents({"type": key}) == 1
+
+    def test_asked_for_both_it_takes_the_records_with_it(self, client, mock_db, regular_user_token, test_pet):
+        key = self._make(client, regular_user_token, test_pet)
+        response = client.delete(
+            f"/api/event-types/{key}?with_events=true", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 200
+        assert mock_db["events"].count_documents({"type": key}) == 0
+        assert mock_db["event_types"].count_documents({"key": key}) == 0
