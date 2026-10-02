@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, Download, History as HistoryIcon, KeyRound, Mail, Moon, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
@@ -10,6 +10,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { SettingsRow } from '../components/SettingsRow';
+import { Segmented } from '../components/Segmented';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { usePet } from '../hooks/usePet';
 import { showToast } from '../utils/toast';
@@ -100,39 +101,23 @@ export function Settings() {
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
             Внешний вид
           </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<Moon size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Тёмная тема"
-              description={
-                theme === 'system'
-                  ? 'Следует за настройками системы'
-                  : isDark
-                    ? 'Включена'
-                    : 'Выключена'
-              }
-              control={
-                <Switch
-                  checked={isDark}
-                  onChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-                />
-              }
+          <div className="card-soft" style={{ padding: 'var(--spacing-md)', display: 'grid', gap: 'var(--spacing-sm)' }}>
+            {/* One choice of three, where there were two switches that had to be read together: «Тёмная тема» off and
+                «Следовать за системой» on said nothing about which theme was showing. */}
+            <div className="setting-row__label" id="theme-label">Тема оформления</div>
+            <Segmented
+              label="Тема оформления"
+              value={theme}
+              options={[
+                { value: 'light', label: 'Светлая' },
+                { value: 'dark', label: 'Тёмная' },
+                { value: 'system', label: 'Как в системе' },
+              ]}
+              onChange={setTheme}
             />
-            {/* Always visible with its own on/off state — this used to be
-                a plain clickable row that only showed up while OFF and
-                vanished the moment you turned it on, with no way to see
-                (or turn back off) the setting it had just applied. */}
-            <SettingsRow
-              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Следовать за системой"
-              description="Авто-переключение день/ночь"
-              control={
-                <Switch
-                  checked={theme === 'system'}
-                  onChange={(checked) => setTheme(checked ? 'system' : (isDark ? 'dark' : 'light'))}
-                />
-              }
-            />
+            {theme === 'system' && (
+              <div className="setting-row__description">Сейчас {isDark ? 'тёмная' : 'светлая'}, как на телефоне</div>
+            )}
           </div>
 
           {/* Section: Push-уведомления. The row itself only ever shows

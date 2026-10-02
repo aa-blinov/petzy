@@ -129,6 +129,7 @@ export function EventTypesSettings() {
                       {mine && (
                         <button
                           type="button"
+                          className="touch-target"
                           aria-label={`Удалить ${eventType.label}`}
                           onClick={() => setConfirmKey(eventType.key)}
                           disabled={deletingKey === eventType.key}
