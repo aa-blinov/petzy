@@ -88,12 +88,19 @@ export interface PetDocument {
   created_at: string;
   /** The kinds of medical-card record that point at this document (vaccination, visit...). */
   medical_record_kinds?: string[];
+  /** A record with a repeat date points at this document and reminds about it. */
+  record_reminds?: boolean;
 }
 
-/** Part of a vaccination or treatment record: the card watches its repeat date, so the
- *  document's own expiry is not shown as a second, possibly stale, verdict. */
-export function isCoveredByMedicalCard(doc: Pick<PetDocument, 'medical_record_kinds'>): boolean {
+/** Attached to a vaccination or treatment record, so the document has become part of the card. */
+export function isInMedicalCard(doc: Pick<PetDocument, 'medical_record_kinds'>): boolean {
   return (doc.medical_record_kinds ?? []).some((k) => k === 'vaccination' || k === 'parasite');
+}
+
+/** The record has a repeat date and reminds about it itself, so the document's own expiry is not shown as a second,
+ *  possibly stale, verdict. A record with no repeat date reminds about nothing: the document's date stays. */
+export function isCoveredByMedicalCard(doc: Pick<PetDocument, 'record_reminds'>): boolean {
+  return doc.record_reminds === true;
 }
 
 export interface DocumentCreateInput {

@@ -18,6 +18,7 @@ import {
   documentsListQuery,
   documentsService,
   isCoveredByMedicalCard,
+  isInMedicalCard,
   DOCUMENT_CATEGORY_LABELS,
   type DocumentCategory,
   type PetDocument,
@@ -321,8 +322,9 @@ export function DocumentsList() {
                       // Preview reflects the file's actual format — the
                       // category already reads from the section header above.
                       const badge = formatBadge(doc);
-                      const inCard = isCoveredByMedicalCard(doc);
-                      const expiry = doc.expires_at && !inCard ? describeExpiry(doc.expires_at) : null;
+                      const inCard = isInMedicalCard(doc);
+                      // The record's own reminder speaks for the document only when the record has a repeat date.
+                      const expiry = doc.expires_at && !isCoveredByMedicalCard(doc) ? describeExpiry(doc.expires_at) : null;
                       return (
                         <SwipeableRow
                           key={doc._id}

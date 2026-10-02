@@ -58,6 +58,12 @@ export function daysBetween(fromIso: string, toIso: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
+/** The interval put in the new record's «Следующая» for it, by kind: the usual one, one tap from gone. */
+export const DEFAULT_REPEAT: Partial<Record<MedicalKind, { months?: number; years?: number }>> = {
+  vaccination: { years: 1 },
+  parasite: { months: 3 },
+};
+
 /** The repeat intervals offered as buttons next to «Следующая», by kind. */
 export const REPEAT_CHOICES: Partial<Record<MedicalKind, { label: string; months?: number; years?: number }[]>> = {
   vaccination: [

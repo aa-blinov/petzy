@@ -1543,6 +1543,10 @@ class DocumentItem(BaseModel):
         default_factory=list,
         description="Виды записей медкарты (vaccination, visit...), которые ссылаются на этот документ",
     )
+    record_reminds: bool = Field(
+        default=False,
+        description="Запись с датой повтора ссылается на документ: напоминает о сроке сама, срок документа не дублируется",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 

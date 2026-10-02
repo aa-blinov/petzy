@@ -30,7 +30,8 @@ import { healthRecordsService } from '../services/healthRecords.service';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
-import { addInterval, daysBetween, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
+import { getPushSubscriptionState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
+import { addInterval, daysBetween, DEFAULT_REPEAT, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
@@ -130,6 +131,51 @@ const left = { style: { '--text-align': 'left' } as React.CSSProperties };
     Made to be quick: the date is today, the title is a tap away, the repeat is a
     button, the clinic is already filled in. «Записать снова» and a certificate kept as a
     document both open it pre-filled. */
+/** What the line under «Следующая» says: the reminder it brings, or that there will be none. */
+function repeatHint(kind: MedicalKind, hasDate: boolean, putInByForm: boolean): string {
+  if (!hasDate) return 'Без даты напоминания не будет';
+  const steps = kind === 'parasite' ? 'за неделю, за три дня, в день даты и после неё' : 'за две недели, за три дня, в день даты и после неё';
+  if (putInByForm) {
+    const what = kind === 'parasite' ? 'через 3 месяца, как у большинства обработок' : 'через год, как у большинства прививок';
+    return `Поставили ${what}. Измените или уберите. Напомним ${steps}`;
+  }
+  return `Напомним ${steps}`;
+}
+
+/** A reminder is a push: it is promised only where this phone can receive one. Says so when it cannot, and offers to turn it on. */
+function PushNote() {
+  const [state, setState] = useState<PushSupportState | null>(null);
+  useEffect(() => {
+    let live = true;
+    getPushSubscriptionState().then((s) => live && setState(s)).catch(() => live && setState(null));
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!state || state === 'on') return null;
+  const turnOn = async () => {
+    try {
+      await subscribeToPush();
+      setState('on');
+      showToast.success('Уведомления включены');
+    } catch (err) {
+      showToast.failure(err instanceof Error ? err.message : 'Не удалось включить уведомления');
+    }
+  };
+  return (
+    <span className="record-push-note" role="note">
+      {state === 'off' && (
+        <>
+          {' '}Уведомления выключены на этом телефоне, напоминание сюда не придёт.{' '}
+          <button type="button" className="record-push-note__button" onClick={turnOn}>Включить</button>
+        </>
+      )}
+      {state === 'denied' && ' Уведомления заблокированы в настройках браузера, напоминание сюда не придёт.'}
+      {state === 'unsupported' && ' На этом устройстве уведомления недоступны, срок виден в медкарте.'}
+    </span>
+  );
+}
+
 export function MedicalRecordForm() {
   const { id: petId, recordId } = useParams<{ id: string; recordId?: string }>();
   const [params] = useSearchParams();
@@ -176,10 +222,10 @@ export function MedicalRecordForm() {
   const autoDue = useRef('');
   useEffect(() => {
     if (!autoDue.current || !date || nextDue !== autoDue.current) return;
-    const moved = addInterval(date, { years: 1 });
+    const moved = addInterval(date, DEFAULT_REPEAT[kind ?? 'vaccination'] ?? { years: 1 });
     autoDue.current = moved;
     setValue('next_due', moved);
-  }, [date, nextDue, setValue]);
+  }, [date, nextDue, kind, setValue]);
 
   // Filled once, when what it needs has arrived: a record being edited, or the
   // defaults (and, when asked, a record or a certificate to copy from) of a new one.
@@ -209,9 +255,9 @@ export function MedicalRecordForm() {
     const last = Object.values(card.data.records).flat().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.clinic || r.vet);
     const clinic = last?.clinic ?? card.data.profile.clinic.name ?? '';
     const vet = last?.vet ?? card.data.profile.clinic.vet ?? '';
-    // A vaccination is nearly always repeated: a year on is put in, so that skipping the field does not
-    // switch the reminder off. It follows the date until it is touched, and is one tap from gone.
-    const firstDue = kind === 'vaccination' && !source && !sourceDoc ? addInterval(today, { years: 1 }) : '';
+    // A vaccination or a treatment is nearly always repeated: the usual interval is put in (a year, three months),
+    // so that skipping the field does not switch the reminder off. It follows the date until it is touched, and is one tap from gone.
+    const firstDue = repeating && !source && !sourceDoc ? addInterval(today, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
     autoDue.current = firstDue;
     const blank: FormData = { title: '', date: today, next_due: firstDue, target: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
@@ -237,7 +283,7 @@ export function MedicalRecordForm() {
     }
     reset(blank);
     (Object.keys(copy) as (keyof FormData)[]).forEach((key) => setValue(key, copy[key] as never, { shouldDirty: true }));
-  }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, reset, setValue, today]);
+  }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, repeating, reset, setValue, today]);
 
   const recorded = record.data;
   const moreOpen = moreChosen ?? (isEditing && !!(recorded?.clinic || recorded?.vet || recorded?.note || recorded?.batch));
@@ -480,7 +526,16 @@ export function MedicalRecordForm() {
                     yearsBack={0}
                     yearsForward={10}
                     placeholder="Повтор не нужен"
-                    description={error?.message ? <FieldError message={error.message} /> : autoDue.current && nextDue === autoDue.current ? 'Поставили через год, как у большинства прививок. Измените или уберите. Напомним за две недели, за три дня, в день даты и после неё' : kind === 'parasite' ? 'Напомним за неделю, за три дня, в день даты и после неё' : 'Напомним за две недели, за три дня, в день даты и после неё'}
+                    description={
+                      error?.message ? (
+                        <FieldError message={error.message} />
+                      ) : (
+                        <>
+                          {repeatHint(kind!, !!nextDue, !!autoDue.current && nextDue === autoDue.current)}
+                          {nextDue && <PushNote />}
+                        </>
+                      )
+                    }
                   />
                   <Form.Item>
                     <ChoiceChips label="Повторить через">
