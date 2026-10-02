@@ -29,9 +29,7 @@ export const exportService = {
         }
       }
 
-      saveBlob(response.data, filename);
-
-      return true;
+      return await saveBlob(response.data, filename);
     } catch (error) {
       console.error('Export failed:', error);
       // The body of a failed download is a blob too: the server's own words (there is nothing to export) are read out of it.
