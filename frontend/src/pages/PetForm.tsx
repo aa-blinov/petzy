@@ -4,6 +4,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
+import { usePet } from '../hooks/usePet';
 import { Button, Dialog, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
@@ -24,7 +25,6 @@ const NEUTERED_OPTIONS = [
 
 import { petsService } from '../services/pets.service';
 import { usersService } from '../services/users.service';
-import { TilesEditor } from '../components/TilesEditor';
 import { UserAvatar } from '../components/UserAvatar';
 import { GENDER_OPTIONS } from '../utils/constants';
 import { SPECIES, defaultTilesFor, getSpecies, neuteringLabel, speciesLabel } from '../utils/species';
@@ -36,6 +36,7 @@ import { PhotoCropModal } from '../components/PhotoCropModal';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { useDeletePet, useLeavePet } from '../hooks/useDeletePet';
+import { PetDeleteSummary } from '../components/PetDeleteSummary';
 import { showUndo } from '../utils/undo';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { fieldNote } from '../components/FieldNote';
@@ -60,6 +61,7 @@ interface PetPhotoItem {
 
 export function PetForm() {
   const navigate = useNavigate();
+  const { selectPet } = usePet();
   const deletePet = useDeletePet();
   const leavePet = useLeavePet();
   const { id } = useParams<{ id: string }>();
@@ -274,8 +276,6 @@ export function PetForm() {
         photo_url: undefined,
         remove_photo: photoWasRemoved ? true : undefined,
       };
-
-      console.log('petData.remove_photo:', petData.remove_photo);
 
       let petId = id;
       if (isEditing && id) {
@@ -859,10 +859,19 @@ export function PetForm() {
           </Form>
           )}
 
-          {isEditing && id && (
+          {isEditing && id && pet && (
+            // One place for the tiles: Settings. This row takes the person there for this pet.
             <Form layout="horizontal" mode="card">
-              <Form.Header>Плитки в ленте</Form.Header>
-              <PetTilesSettingsSection petId={id} />
+              <Form.Item
+                label="Кнопки быстрого добавления"
+                description="Какие записи видны в окне «+» и в каком порядке"
+                clickable
+                arrow
+                onClick={() => {
+                  selectPet(pet);
+                  navigate('/tiles-settings');
+                }}
+              />
             </Form>
           )}
 
@@ -904,9 +913,7 @@ export function PetForm() {
               <FormDangerButton
                 label="Удалить питомца"
                 confirmTitle="Удаление питомца"
-                confirmContent={`Удалить «${pet.name}»? Вместе с ним удалятся все записи, лекарства и документы${
-                  (pet.shared_with?.length ?? 0) > 0 ? `, а ${pet.shared_with!.length === 1 ? 'один человек потеряет' : `${pet.shared_with!.length} человек потеряют`} доступ` : ''
-                }. Вернуть их нельзя: если нужна история, сначала скачайте PDF медкарты или выгрузите записи в Настройках`}
+                confirmContent={<PetDeleteSummary pet={pet} />}
                 onConfirm={async () => {
                   await deletePet(pet);
                   release();
@@ -952,21 +959,5 @@ export function PetForm() {
       )}
       {leaveDialog}
     </div>
-  );
-}
-
-function PetTilesSettingsSection({ petId }: { petId: string }) {
-  return (
-    <Form.Item layout="vertical">
-      <TilesEditor petId={petId} />
-      <div style={{
-        marginTop: 'var(--spacing-sm)',
-        fontSize: 'var(--text-xs)',
-        color: 'var(--app-text-tertiary)',
-        lineHeight: 'var(--line-height-tight)'
-      }}>
-        Перетащите плитки, чтобы поменять порядок. Снимите галочку, чтобы скрыть плитку
-      </div>
-    </Form.Item>
   );
 }

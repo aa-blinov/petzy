@@ -1407,6 +1407,7 @@ class MedicationItem(BaseModel):
     )
     last_taken_at: Optional[str] = None
     last_taken_by: Optional[str] = Field(None, description="Кто отметил последний приём")
+    last_taken_tz: Optional[str] = Field(None, description="Часовой пояс часов, на которых отмечен последний приём")
     intakes_today: int = 0
     scheduled_today: Optional[bool] = Field(None, description="Сегодня по расписанию есть приёмы (день недели и курс)")
     open_slots_today: Optional[List[str]] = Field(

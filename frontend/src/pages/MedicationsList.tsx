@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatTime } from '../utils/dateUtils';
+import { pluralRu } from '../utils/relativeTime';
+import { toDeviceClock } from '../utils/timezone';
+import { deleteMedicationWithUndo, medicationDeleteText } from '../utils/medicationDelete';
+import { useHiddenRecords } from '../utils/deferredDelete';
+import { PendingIntakesNotice } from '../components/PendingIntakesNotice';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Tag, Dialog, Input, PullToRefresh, Selector } from 'antd-mobile';
+import { Button, Card, Tag, Dialog, Input, PullToRefresh, SearchBar, Selector } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type IntakeInput, type Medication } from '../services/medications.service';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
@@ -23,7 +28,7 @@ import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { IntakeTimePicker } from '../components/IntakeTimePicker';
-import { minutesAgo, nowWhen, whenLabel, whenPhrase, type IntakeWhen } from '../utils/intakeWhen';
+import { minutesAgo, nowWhen, whenLabel, whenPhrase, yesterdayEvening, type IntakeWhen } from '../utils/intakeWhen';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import { getCurrentDate } from '../utils/dateUtils';
 
@@ -76,6 +81,8 @@ export function MedicationsList() {
     // What is to be given first comes first: the course whose next unmarked dose is the earliest, then the ones done for
     // today, then those still to begin, and the finished ones last (the order of creation put the oldest, often the most
     // overdue, at the bottom).
+    // A course deleted a moment ago, «Отменить» still on offer, is already out of the list.
+    const hiddenMedications = useHiddenRecords();
     const orderedMedications = useMemo(() => {
         const rank = (m: Medication): [number, string] => {
             const status = m.course_status ?? (m.is_active ? 'active' : 'ended');
@@ -84,12 +91,23 @@ export function MedicationsList() {
             const next = m.open_slots_today?.[0];
             return next ? [0, next] : [1, ''];
         };
-        return [...medications].sort((a, b) => {
+        return medications.filter((m) => !hiddenMedications.has(m._id)).sort((a, b) => {
             const [ra, ta] = rank(a);
             const [rb, tb] = rank(b);
             return ra - rb || ta.localeCompare(tb);
         });
-    }, [medications]);
+    }, [medications, hiddenMedications]);
+
+    // Finished courses are folded under one line, and a long list can be searched.
+    const isEnded = (m: Medication) => (m.course_status ? m.course_status === 'ended' : !m.is_active);
+    const endedCount = orderedMedications.filter(isEnded).length;
+    const [showEnded, setShowEnded] = useState(false);
+    const [search, setSearch] = useState('');
+    const needle = search.trim().toLowerCase();
+    const shownMedications = orderedMedications.filter((m) => {
+        if (needle) return m.name.toLowerCase().includes(needle);
+        return showEnded || endedCount === orderedMedications.length || !isEnded(m);
+    });
 
     const [logIntakeDialog, setLogIntakeDialog] = useState<{
         visible: boolean;
@@ -123,7 +141,11 @@ export function MedicationsList() {
             const input: IntakeInput = { ...when, dose_taken: dose, skipped, ...(slot ? { slot_date: nowWhen().date, slot_time: slot } : {}) };
             return logIntakeAsking(id, medications.find((m) => m._id === id)?.name ?? 'Лекарство', input);
         },
-        onSuccess: ({ id, ran_out }, { id: medId, skipped, when }) => {
+        onSuccess: ({ id, ran_out, queued }, { id: medId, skipped, when }) => {
+            if (queued) {
+                showToast.info('Нет связи. Отметка сохранена на телефоне и отправится сама');
+                return;
+            }
             refreshAfterIntake(queryClient);
             const name = medications.find((m) => m._id === medId)?.name ?? 'Приём';
             const now = nowWhen();
@@ -148,17 +170,6 @@ export function MedicationsList() {
             if (err instanceof IntakeDeclined) return;
             showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
         }
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => medicationsService.delete(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['medications'] });
-            showToast.success('Лекарство удалено');
-        },
-        onError: (err: unknown) => {
-            showToast.failure(getApiErrorMessage(err, 'Не удалось удалить лекарство'));
-        },
     });
 
     // «Завершить курс» and «Возобновить» from the list: the course is switched off as of today, or on again, and the bar takes it back.
@@ -216,6 +227,12 @@ export function MedicationsList() {
         return nowWhen();
     };
 
+    // «Дали сейчас»: written at once with the course's own dose, the bar takes it back; the dialog is for the rest.
+    const logNow = (med: Medication) => {
+        hapticFeedback('light');
+        intakeMutation.mutate({ id: med._id, dose: med.default_dose || 1, when: nowWhen(), slot: null });
+    };
+
     const confirmLogIntake = () => {
         if (!logIntakeDialog.medication) return;
         const dose = parseAmount(logIntakeDialog.dose);
@@ -262,6 +279,20 @@ export function MedicationsList() {
         // A pack size saved on the course is the likely amount.
         setRestock({ medication: med, amount: med.inventory_total ? formatAmount(med.inventory_total) : '' });
     };
+    // The dose card's «Пополнить» arrives here with the course in the address.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const restockId = searchParams.get('restock');
+    useEffect(() => {
+        if (!restockId) return;
+        const med = medications.find((m) => m._id === restockId);
+        if (!med) return;
+        openRestock(med);
+        setSearchParams((params) => {
+            params.delete('restock');
+            return params;
+        }, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [restockId, medications]);
     const confirmRestock = () => {
         if (!restock.medication) return;
         const amount = parseAmount(restock.amount);
@@ -365,8 +396,17 @@ export function MedicationsList() {
                         gap: 'var(--spacing-md)',
                         marginTop: 'var(--spacing-sm)',
                     }}>
+                        <PendingIntakesNotice />
                         {orderedMedications.some((m) => (m.course_status ? m.course_status === 'active' : m.is_active) && m.schedule.times.length > 0) && <PushOffNotice />}
-                        {orderedMedications.map((med) => (
+                        {orderedMedications.length >= 6 && (
+                            <SearchBar placeholder="Найти лекарство" value={search} onChange={setSearch} onClear={() => setSearch('')} />
+                        )}
+                        {needle && shownMedications.length === 0 && (
+                            <div style={{ textAlign: 'center', color: 'var(--app-text-secondary)', padding: 'var(--spacing-lg)' }}>
+                                Ничего не найдено по «{search.trim()}»
+                            </div>
+                        )}
+                        {shownMedications.map((med) => (
                             <SwipeableRow
                                 key={med._id}
                                 itemLabel={med.name}
@@ -430,7 +470,9 @@ export function MedicationsList() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
                                             <ClockCircleOutline />
                                             <span>
-                                                {med.schedule.days.length === 7 ? 'Ежедневно' : 'В выбранные дни'} в {med.schedule.times.join(', ')}
+                                                {med.schedule.times.length === 0
+                                                    ? 'По необходимости'
+                                                    : `${med.schedule.days.length === 7 ? 'Ежедневно' : 'В выбранные дни'} в ${med.schedule.times.join(', ')}`}
                                             </span>
                                         </div>
 
@@ -454,9 +496,15 @@ export function MedicationsList() {
                                             </div>
                                         )}
 
+                                        {med.schedule.times.length === 0 && (med.intakes_today ?? 0) > 0 && (
+                                            <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                                                <span>Сегодня давали: {med.intakes_today} {pluralRu(med.intakes_today ?? 0, 'раз', 'раза', 'раз')}</span>
+                                            </div>
+                                        )}
+
                                         {med.last_taken_at && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
-                                                <span>Последний приём: {formatRelativeTime(med.last_taken_at)}</span>
+                                                <span>Последний приём: {formatRelativeTime(toDeviceClock(med.last_taken_at, med.last_taken_tz).replace(' ', 'T'))}</span>
                                             </div>
                                         )}
 
@@ -544,14 +592,27 @@ export function MedicationsList() {
                                                 block
                                                 color="primary"
                                                 fill="outline"
-                                                onClick={() => handleLogIntake(med)}
+                                                onClick={() => logNow(med)}
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
                                                 disabled={doneToday(med)}
-                                                aria-label={doneToday(med) ? `${med.name}: на сегодня всё` : `Отметить приём: ${med.name}`}
+                                                aria-label={doneToday(med) ? `${med.name}: на сегодня всё` : `Дали сейчас: ${med.name}`}
                                                 style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
-                                                {doneToday(med) ? 'На сегодня всё' : `Отметить приём (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
+                                                {doneToday(med) ? 'На сегодня всё' : `Дали сейчас (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>
+                                            {!doneToday(med) && (
+                                                // The common case is one tap; another time or another amount is a step aside.
+                                                <Button
+                                                    block
+                                                    fill="none"
+                                                    size="small"
+                                                    onClick={() => handleLogIntake(med)}
+                                                    aria-label={`Другое время или доза: ${med.name}`}
+                                                    style={{ marginTop: 'var(--spacing-xs)', color: 'var(--app-text-secondary)' }}
+                                                >
+                                                    Другое время или доза
+                                                </Button>
+                                            )}
                                             {doneToday(med) && (
                                                 // Every dose of the day is handled, and one more was given (a vet said so, a missed
                                                 // one made up): written down on purpose, not through a stale screen.
@@ -587,6 +648,11 @@ export function MedicationsList() {
                             </Card>
                             </SwipeableRow>
                         ))}
+                        {!needle && endedCount > 0 && endedCount < orderedMedications.length && (
+                            <Button block fill="none" onClick={() => setShowEnded((v) => !v)} aria-expanded={showEnded} style={{ color: 'var(--app-text-secondary)' }}>
+                                {showEnded ? 'Скрыть завершённые' : `Завершённые курсы: ${endedCount}`}
+                            </Button>
+                        )}
                     </div>
                     </PullToRefresh>
                 )}
@@ -661,11 +727,15 @@ export function MedicationsList() {
                             />
                             {/* A dose given a little while ago is one tap, not a wheel of sixty minutes. */}
                             <ChoiceChips label="Недавно">
-                                {[{ label: '15 минут назад', minutes: 15 }, { label: 'Час назад', minutes: 60 }].map((ago) => (
+                                {[
+                                    { label: '15 минут назад', when: () => minutesAgo(15) },
+                                    { label: 'Час назад', when: () => minutesAgo(60) },
+                                    { label: 'Вчера вечером', when: yesterdayEvening },
+                                ].map((ago) => (
                                     <ChoiceChip
-                                        key={ago.minutes}
+                                        key={ago.label}
                                         pressed={false}
-                                        onClick={() => setLogIntakeDialog((prev) => ({ ...prev, choice: 'other', other: minutesAgo(ago.minutes) }))}
+                                        onClick={() => setLogIntakeDialog((prev) => ({ ...prev, choice: 'other', other: ago.when() }))}
                                     >
                                         {ago.label}
                                     </ChoiceChip>
@@ -689,11 +759,14 @@ export function MedicationsList() {
                         onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
                     },
                     // Last, and apart from «Записать»: a skip closes the dose and stops its reminder.
-                    {
-                        key: 'skip',
-                        text: 'Пропустить приём',
-                        onClick: skipIntake
-                    },
+                    // A course taken when needed has no dose to skip.
+                    ...(logIntakeDialog.medication && logIntakeDialog.medication.schedule.times.length === 0
+                        ? []
+                        : [{
+                            key: 'skip',
+                            text: 'Пропустить приём',
+                            onClick: skipIntake
+                        }]),
                 ]}
             />
 
@@ -754,10 +827,7 @@ export function MedicationsList() {
                 title="Удаление лекарства"
                 content={
                     deleteDialog.medication && (
-                        <span>
-                            Удалить «{deleteDialog.medication.name}» вместе со всеми отмеченными приёмами? Курс пропадёт и из медкарты. Чтобы сохранить его
-                            в истории, откройте лекарство и нажмите «Завершить курс»
-                        </span>
+                        <span>{medicationDeleteText(deleteDialog.medication.name)}</span>
                     )
                 }
                 onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
@@ -769,7 +839,7 @@ export function MedicationsList() {
                         danger: true,
                         onClick: () => {
                             if (deleteDialog.medication) {
-                                deleteMutation.mutate(deleteDialog.medication._id);
+                                deleteMedicationWithUndo(deleteDialog.medication, queryClient);
                             }
                             setDeleteDialog(prev => ({ ...prev, visible: false }));
                         }

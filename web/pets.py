@@ -597,6 +597,29 @@ def delete_pet(pet_id):
         return error_response("invalid_pet_id")
 
 
+@pets_bp.route("/api/pets/<pet_id>/deletion-impact", methods=["GET"])
+@login_required
+@api.validate(resp=Response(HTTP_403=ErrorResponse, HTTP_404=ErrorResponse), tags=["pets"])
+def pet_deletion_impact(pet_id):
+    """What deleting the pet would take with it: the numbers the confirmation names."""
+    try:
+        username, _ = get_current_user()
+        pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
+        if access_error:
+            return access_error[0], access_error[1]
+        query = {"pet_id": str(pet["_id"])}
+        return jsonify(
+            {
+                "events": app.db["events"].count_documents(query),
+                "medications": app.db["medications"].count_documents(query),
+                "documents": app.db["documents"].count_documents(query),
+                "medical_records": app.db["medical_records"].count_documents(query),
+            }
+        )
+    except ValueError:
+        return error_response("invalid_pet_id")
+
+
 def purge_pet(pet: dict) -> bool:
     """Remove a pet with everything recorded for it and every file it has.
 

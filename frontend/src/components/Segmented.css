@@ -1,6 +1,8 @@
 /* Same look as the medical card's mode switch: the chosen segment is the lit one, the rest sit on a plain track. */
 .segmented {
     display: flex;
+    /* Large text: the segments stack instead of pushing the page sideways. */
+    flex-wrap: wrap;
     gap: 2px;
     padding: 3px;
     border-radius: var(--radius-md);
@@ -9,7 +11,9 @@
 }
 
 .segmented__item {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
     min-height: var(--touch-min);
     border: none;
     border-radius: calc(var(--radius-md) - 3px);

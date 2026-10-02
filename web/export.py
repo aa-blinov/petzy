@@ -156,6 +156,20 @@ def _build_export_specs() -> dict[str, ExportSpec]:
 _PLAIN_NUMBER = re.compile(r"^[+-]?\d+([.,]\d+)?$")
 
 
+_DOTTED_NUMBER = re.compile(r"^[+-]?\d+\.\d+$")
+
+
+def _russian_number(value):
+    """«4,6», not «4.6»: the file is opened in a Russian spreadsheet, which reads a dotted number as text or a date."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return f"{value:g}".replace(".", ",")
+    if isinstance(value, str) and _DOTTED_NUMBER.match(value):
+        return value.replace(".", ",")
+    return value
+
+
 def _cell(value) -> str:
     """A spreadsheet cell that can't be a formula: Excel runs a comment like
     ``=HYPERLINK(...)`` from a co-owner as one when the file is opened."""
@@ -292,6 +306,8 @@ def _render_export(spec: ExportSpec, pet_id, format_type, serializer, tz_name: O
             r["date_time"] = str(dt or "")
         r["comment"] = _replace_skip_blank(r.get("comment", ""))
         r["food"] = _replace_skip_blank(r.get("food", ""))
+        for key, value in list(r.items()):
+            r[key] = _russian_number(value)
     # Records entered in different zones are newest-first on the exporter's
     # clock, not on each author's.
     records.sort(key=lambda r: r["_sort"], reverse=True)

@@ -4,6 +4,7 @@ import { useLocalStorage } from './useLocalStorage';
 import { useSession } from './useSession';
 import { petsService, type Pet } from '../services/pets.service';
 import { showToast } from '../utils/toast';
+import { useHiddenRecords } from '../utils/deferredDelete';
 
 /** Pets the person was told about (or removed themselves): the notice of a vanished pet is said once, and never for
  *  one they deleted or left on purpose. */
@@ -26,7 +27,7 @@ export function usePet() {
   // Use React Query to cache pets data - shared across all components
   // React Query automatically deduplicates requests with the same key
   // Use refetchOnMount: false to prevent refetching if data is already in cache
-  const { data: pets = [], isLoading, isFetched, isError, refetch } = useQuery({
+  const { data: allPets = [], isLoading, isFetched, isError, refetch } = useQuery({
     queryKey: ['pets'],
     queryFn: () => petsService.getPets(),
     // This hook renders inside the Navbar, which mounts on every route
@@ -45,6 +46,10 @@ export function usePet() {
     refetchOnMount: false, // Don't refetch if data is already in cache
     refetchOnWindowFocus: false, // Already set in App.tsx, but explicit here
   });
+
+  // A pet deleted a moment ago, «Отменить» still on offer, is already gone from every list and switcher.
+  const hiddenPets = useHiddenRecords();
+  const pets = useMemo(() => (hiddenPets.size ? allPets.filter((p) => !hiddenPets.has(p._id)) : allPets), [allPets, hiddenPets]);
 
   /**
    * Update the selected pet's id+name in localStorage only — no query

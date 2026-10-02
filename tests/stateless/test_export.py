@@ -484,3 +484,22 @@ class TestTheFileNamesThePet:
         assert name.startswith(slug + "_")
         page = response.data.decode("utf-8")
         assert "background:#fff" in page and "background:#000" not in page
+
+
+class TestRussianNumbers:
+    def test_a_dotted_number_is_written_with_a_comma(self):
+        from web.export import _russian_number
+
+        assert _russian_number(4.6) == "4,6"
+        assert _russian_number("4.6") == "4,6"
+        assert _russian_number(5.0) == "5"
+        assert _russian_number(-0.5) == "-0,5"
+
+    def test_what_is_not_a_decimal_is_left_alone(self):
+        from web.export import _russian_number
+
+        assert _russian_number(True) is True
+        assert _russian_number("30.09.2026 10:00") == "30.09.2026 10:00"
+        assert _russian_number("1.5 мл") == "1.5 мл"
+        assert _russian_number("пропущен") == "пропущен"
+        assert _russian_number(None) is None

@@ -216,6 +216,22 @@ class TestTheCourseList:
         ).get_json()["medications"][0]
         assert med["scheduled_today"] is False and med["open_slots_today"] == []
 
+    def test_the_last_mark_carries_the_zone_of_its_clock(self, client, mock_db, regular_user_token, test_pet, course):
+        mock_db["medication_intakes"].insert_one(
+            {
+                "medication_id": str(course),
+                "pet_id": str(test_pet["_id"]),
+                "date_time": datetime(2026, 10, 2, 8, 5),
+                "dose_taken": 1,
+                "username": "testuser",
+                "tz": "Europe/Moscow",
+            }
+        )
+        med = client.get(
+            f"/api/medications?pet_id={test_pet['_id']}&client_date=2026-10-02", headers=_auth(regular_user_token)
+        ).get_json()["medications"][0]
+        assert med["last_taken_at"] == "2026-10-02 08:05" and med["last_taken_tz"] == "Europe/Moscow"
+
     def test_every_slot_closed_leaves_none_open(self, client, regular_user_token, test_pet, course):
         _log(client, regular_user_token, course, at(8, 5))
         _log(client, regular_user_token, course, at(20, 5))

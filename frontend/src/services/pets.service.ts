@@ -66,10 +66,23 @@ export interface PetShareRequest {
   username: string;
 }
 
+export interface PetDeletionImpact {
+  events: number;
+  medications: number;
+  documents: number;
+  medical_records: number;
+}
+
 export const petsService = {
   async getPets(): Promise<Pet[]> {
     const response = await api.get<PetListResponse>('/pets');
     return response.data.pets;
+  },
+
+  /** What deleting the pet would take with it: the numbers its confirmation names. */
+  async deletionImpact(petId: string): Promise<PetDeletionImpact> {
+    const response = await api.get<PetDeletionImpact>(`/pets/${petId}/deletion-impact`);
+    return response.data;
   },
 
   async getPet(petId: string): Promise<Pet> {

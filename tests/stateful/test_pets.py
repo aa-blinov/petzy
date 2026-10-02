@@ -156,6 +156,25 @@ class TestPetManagement:
         pet = db["pets"].find_one({"_id": test_pet["_id"]})
         assert pet is None
 
+    def test_deletion_impact_counts_what_would_go(self, client, mock_db, regular_user_token, test_pet):
+        from web.app import db
+
+        pet_id = str(test_pet["_id"])
+        db["events"].insert_many([{"pet_id": pet_id, "type": "litter"}, {"pet_id": pet_id, "type": "litter"}])
+        db["medications"].insert_one({"pet_id": pet_id, "name": "A"})
+        db["events"].insert_one({"pet_id": "another-pet", "type": "litter"})
+        response = client.get(
+            f"/api/pets/{pet_id}/deletion-impact", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 200
+        assert response.get_json() == {"events": 2, "medications": 1, "documents": 0, "medical_records": 0}
+
+    def test_deletion_impact_is_for_the_owner_only(self, client, mock_db, regular_user_token, admin_pet):
+        response = client.get(
+            f"/api/pets/{admin_pet['_id']}/deletion-impact", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        assert response.status_code == 404
+
     def test_delete_pet_not_owner(self, client, mock_db, regular_user_token, admin_pet):
         """Test deleting pet when not owner."""
         response = client.delete(

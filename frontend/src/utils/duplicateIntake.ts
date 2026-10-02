@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios';
 import { Dialog } from 'antd-mobile';
 import { medicationsService, type IntakeInput } from '../services/medications.service';
+import { enqueueIntake, isOffline } from './offlineIntakes';
 
 /** The server found the same dose already marked close in time (two people, a second tap). */
 export interface DuplicateIntake {
@@ -24,10 +25,14 @@ export function duplicateOf(err: unknown): DuplicateIntake | null {
 }
 
 /** Logs a dose; when it is the same one already marked, says who marked it and when, and records another only if asked to. */
-export async function logIntakeAsking(medicationId: string, name: string, input: IntakeInput) {
+export async function logIntakeAsking(medicationId: string, name: string, input: IntakeInput): Promise<{ id: string; ran_out: boolean; queued?: boolean }> {
   try {
     return await medicationsService.logIntake(medicationId, input);
   } catch (err) {
+    if (isOffline(err)) {
+      enqueueIntake(medicationId, name, input);
+      return { id: '', ran_out: false, queued: true };
+    }
     const existing = duplicateOf(err);
     if (!existing || input.force) throw err;
     const who = existing.own ? 'Вы уже отметили этот приём' : `Этот приём уже отмечен: ${existing.username ?? 'другой человек'}`;

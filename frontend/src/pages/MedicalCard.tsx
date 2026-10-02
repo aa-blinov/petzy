@@ -268,7 +268,6 @@ function recordLines(record: MedicalRecord): RowLine[] {
     record.recommendations ? { label: 'Рекомендации', text: record.recommendations, tier: 'fact' } : null,
     { text: [record.clinic, record.vet ? `врач ${record.vet}` : null].filter(Boolean).join(', '), tier: 'meta' },
     record.note ? { label: 'Заметка', text: record.note, tier: 'meta' } : null,
-    record.documents.length ? { label: 'Документы', text: record.documents.map((d) => d.title).join(', '), tier: 'meta' } : null,
     record.superseded ? { text: 'Есть более новая запись', tier: 'meta' } : null,
   ];
   return lines.filter((l): l is RowLine => !!l && !!l.text);
@@ -295,12 +294,24 @@ function RecordPill({ record }: { record: MedicalRecord }) {
   );
 }
 
+/** What a screen reader says for the row: the title and what the eye takes from the pill, not only «открыть запись». */
+function recordAriaLabel(record: MedicalRecord): string {
+  const parts = [record.title];
+  if (record.status !== 'none') parts.push(recordStatusText(record.status, record.days_left));
+  else if (!record.superseded && (record.kind === 'vaccination' || record.kind === 'parasite')) parts.push('без напоминания');
+  if (record.next_due && !record.superseded && (record.kind === 'vaccination' || record.kind === 'parasite')) parts.push(`следующая ${formatDate(record.next_due)}`);
+  else parts.push(formatDate(record.date));
+  parts.push('открыть запись');
+  return parts.join(', ');
+}
+
 /** One record of the card: what, when, and (for a vaccination or a treatment) when it is due again. */
 function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void; onStop?: () => void }) {
   const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
+  const navigate = useNavigate();
   return (
     <li className={`medcard__row medcard__row--stack${record.superseded ? ' medcard__row--history' : ''}`}>
-      <button type="button" className="medcard__row-button" onClick={onOpen} aria-label={`${record.title}, открыть запись`}>
+      <button type="button" className="medcard__row-button" onClick={onOpen} aria-label={recordAriaLabel(record)}>
         <span className="medcard__row-top">
           <span className="medcard__row-main">
             <span className="medcard__row-title" style={{ display: 'block' }}>{record.title}</span>
@@ -309,6 +320,12 @@ function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord
           </span>
         </span>
       </button>
+      {record.documents.map((d) => (
+        // Attached files are one tap from the record, not only a name in a line of text.
+        <button key={d.id} type="button" className="medcard__row-action medcard__row-action--quiet" onClick={() => navigate(`/documents?open=${d.id}`)}>
+          Открыть документ: {d.title}
+        </button>
+      ))}
       {repeating && onRepeat && !record.superseded && (
         <button type="button" className="medcard__row-action" onClick={onRepeat}>
           {record.kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
@@ -658,7 +675,7 @@ function PatientLine({ pet }: { pet: Card['pet'] }) {
   );
 }
 
-function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; onPdf: () => void; onAll: () => void }) {
+function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; onAll: () => void }) {
   const due = (['vaccination', 'parasite'] as const)
     .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
     .sort((a, b) => urgencyRank(a) - urgencyRank(b));
@@ -671,13 +688,20 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
 
       {/* At the top, not after the whole page: the file to hand over, and the way to the full card. */}
       <div className="medcard__topactions">
-        <Button size="small" color="primary" fill="outline" loading={saving} disabled={saving} onClick={onPdf}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Download size={16} strokeWidth={2.2} aria-hidden />
-            Скачать PDF
-          </span>
-        </Button>
-        <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>
+        {canPdf ? (
+          <>
+            <Button size="small" color="primary" fill="outline" loading={saving} disabled={saving} onClick={onPdf}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Download size={16} strokeWidth={2.2} aria-hidden />
+                Скачать PDF
+              </span>
+            </Button>
+            <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>
+          </>
+        ) : (
+          // A PDF of an empty card helps nobody: it is offered once two of the five are there, as in the whole card.
+          <p className="medcard__hint">Карта почти пуста. Заполните её во «Вся карта», и здесь появится PDF</p>
+        )}
       </div>
 
       {card.visit_prep && (
@@ -803,12 +827,14 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
       )}
 
       <div className="medcard__actions">
+        {canPdf && (
         <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={18} strokeWidth={2.2} aria-hidden />
             Скачать PDF для врача
           </span>
         </Button>
+        )}
         <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
           Вся карта
         </button>
@@ -866,6 +892,7 @@ export function MedicalCard() {
     setSaving(true);
     try {
       await medicalCardService.downloadPdf(id, card.pet.name);
+      showToast.success('PDF сохранён');
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось сформировать PDF'));
     } finally {
@@ -924,7 +951,7 @@ export function MedicalCard() {
           <OverdueStrip card={card} petId={id!} navigate={navigate} canAct={mode === 'fill'} hidden={hidden} />
 
           {mode === 'vet' ? (
-            <VetView card={card} hidden={hidden} saving={saving} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
+            <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
           ) : (
             <>
           <ReadinessBlock card={card} petId={id!} navigate={navigate} onShowVet={() => chooseMode('vet')} />

@@ -130,10 +130,12 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
               fontSize: "var(--text-xl)",
               fontWeight: 700,
               color: "var(--app-text-primary)",
-              // Long names like «Шерри-Мими» truncate instead of wrapping.
-              whiteSpace: "nowrap",
+              // Two lines before a cut: a long name is still a name.
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
               overflow: "hidden",
-              textOverflow: "ellipsis",
+              overflowWrap: "anywhere",
             }}
           >
             {pet.name}

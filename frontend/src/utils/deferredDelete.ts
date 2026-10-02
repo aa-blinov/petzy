@@ -52,11 +52,15 @@ export interface DeferredDelete {
   /** API path of the DELETE, relative to the API root: `/events/123`. */
   path: string;
   message: string;
+  /** Said when the real DELETE fails and the record comes back. */
+  failure?: string;
+  /** «Отменить» was pressed. */
+  onUndo?: () => void;
   /** Once the server has deleted it: refresh whatever shows the record. */
   onDeleted: () => Promise<unknown> | void;
 }
 
-export function deleteWithUndo({ id, path, message, onDeleted }: DeferredDelete): void {
+export function deleteWithUndo({ id, path, message, failure, onUndo, onDeleted }: DeferredDelete): void {
   hide(id);
   pending.set(id, path);
   showSnackbar({
@@ -67,6 +71,7 @@ export function deleteWithUndo({ id, path, message, onDeleted }: DeferredDelete)
       run: () => {
         pending.delete(id);
         show(id);
+        onUndo?.();
       },
     },
     onDismiss: async (reason) => {
@@ -76,7 +81,7 @@ export function deleteWithUndo({ id, path, message, onDeleted }: DeferredDelete)
         await api.delete(path);
         await onDeleted();
       } catch {
-        showToast.failure('Не удалось удалить, запись возвращена');
+        showToast.failure(failure ?? 'Не удалось удалить, запись возвращена');
         show(id);
         return;
       }

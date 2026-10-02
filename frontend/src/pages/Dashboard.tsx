@@ -17,6 +17,7 @@ import { HistoryItem } from '../components/HistoryItem';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { NextDoseWidget } from '../components/NextDoseWidget';
+import { PendingIntakesNotice } from '../components/PendingIntakesNotice';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { QuickAddSheet } from '../components/QuickAddSheet';
 import { EmptyState } from '../components/EmptyState';
@@ -218,6 +219,7 @@ export function Dashboard() {
 
             {/* Widget for upcoming medication block */}
             <div style={{ paddingBottom: '8px' }}>
+              <PendingIntakesNotice />
               <NextDoseWidget />
             </div>
 

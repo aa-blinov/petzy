@@ -42,6 +42,8 @@ export interface Medication {
     last_taken_at?: string;
     /** Who marked the last dose. */
     last_taken_by?: string | null;
+    /** The zone of the clock last_taken_at was marked on. */
+    last_taken_tz?: string | null;
     intakes_today?: number;
     /** Today's schedule has doses (day of the week and course). */
     scheduled_today?: boolean;
@@ -75,14 +77,15 @@ export interface MedicationCreate {
     prescribed_by?: string;
 }
 
+/** Examples to start a form from: the name, the form and the strength of the box. The dose is the vet's to set, so none is put in. */
 export const COMMON_MEDICATIONS = [
-    { name: 'Синулокс 50мг', type: 'Таблетка', form_factor: 'tablet', strength: '50 мг', dose_unit: 'таб', default_dose: 1 },
-    { name: 'Синулокс 250мг', type: 'Таблетка', form_factor: 'tablet', strength: '250 мг', dose_unit: 'таб', default_dose: 0.5 },
-    { name: 'Габапентин', type: 'Капсула', form_factor: 'tablet', strength: '300 мг', dose_unit: 'капс', default_dose: 0.1 },
-    { name: 'Мелоксидил', type: 'Суспензия', form_factor: 'liquid', strength: '0.5 мг/мл', dose_unit: 'мл', default_dose: 2.5 },
-    { name: 'Преднизолон', type: 'Таблетка', form_factor: 'tablet', strength: '5 мг', dose_unit: 'таб', default_dose: 1 },
-    { name: 'Онсиор', type: 'Таблетка', form_factor: 'tablet', strength: '6 мг', dose_unit: 'таб', default_dose: 1 },
-    { name: 'Доксициклин', type: 'Таблетка', form_factor: 'tablet', strength: '100 мг', dose_unit: 'таб', default_dose: 0.5 },
+    { name: 'Синулокс 50мг', type: 'Таблетка', form_factor: 'tablet', strength: '50 мг', dose_unit: 'таб' },
+    { name: 'Синулокс 250мг', type: 'Таблетка', form_factor: 'tablet', strength: '250 мг', dose_unit: 'таб' },
+    { name: 'Габапентин', type: 'Капсула', form_factor: 'tablet', strength: '300 мг', dose_unit: 'капс' },
+    { name: 'Мелоксидил', type: 'Суспензия', form_factor: 'liquid', strength: '0,5 мг/мл', dose_unit: 'мл' },
+    { name: 'Преднизолон', type: 'Таблетка', form_factor: 'tablet', strength: '5 мг', dose_unit: 'таб' },
+    { name: 'Онсиор', type: 'Таблетка', form_factor: 'tablet', strength: '6 мг', dose_unit: 'таб' },
+    { name: 'Доксициклин', type: 'Таблетка', form_factor: 'tablet', strength: '100 мг', dose_unit: 'таб' },
 ];
 
 export interface MedicationIntake {
@@ -154,7 +157,8 @@ export const medicationsService = {
     /** Always records the dose; ``ran_out`` says the stock is now empty,
      *  ``id`` is the intake's, for «Отменить». */
     async logIntake(id: string, data: IntakeInput): Promise<{ id: string; ran_out: boolean }> {
-        const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, { ...data, tz: deviceTimeZone() });
+        // Fifteen seconds, not thirty: a mark with no answer by then is kept on the phone and sent later.
+        const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, { ...data, tz: deviceTimeZone() }, { timeout: 15_000 });
         return { id: response.data.id, ran_out: !!response.data.ran_out };
     },
 

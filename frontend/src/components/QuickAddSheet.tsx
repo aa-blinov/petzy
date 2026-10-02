@@ -132,8 +132,13 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                       lineHeight: 1.25,
                       letterSpacing: '-0.01em',
                       overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      // Two lines before a cut: «Приступ астмы» on a narrow phone is not «Приступ аст…».
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflowWrap: 'anywhere',
+                      minWidth: 0,
+                      textAlign: 'left',
                     }}
                   >
                     {tile.title}

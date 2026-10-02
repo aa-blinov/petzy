@@ -95,6 +95,8 @@ interface ChartPoint {
     label: string;
     tooltipLabel: string;
     value: number;
+    /** How many records the point stands for. */
+    count: number;
 }
 
 export function HistoryChart({ type, petId }: HistoryChartProps) {
@@ -150,6 +152,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                 // to one decimal so an averaged weight doesn't show up as
                 // 28.733333333333334 in the tooltip.
                 value: isValueChart ? Math.round((sum / count) * 10) / 10 : sum,
+                count,
             }))
             .sort((a, b) => a.key.localeCompare(b.key));
     }, [data, isValueChart, granularity]);
@@ -246,7 +249,11 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                             <Tooltip
                                 cursor={false}
                                 labelFormatter={labelFormatter}
-                                formatter={(value: ValueType | undefined) => [formatValue(value), valueLabel]}
+                                // A point that stands for several readings says so: a mean is not a measurement.
+                                formatter={(value: ValueType | undefined, _name, item) => {
+                                    const count = (item.payload as ChartPoint | undefined)?.count ?? 1;
+                                    return [formatValue(value), count > 1 ? `${valueLabel}, среднее по ${count} записям` : valueLabel];
+                                }}
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',
@@ -268,6 +275,8 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 // it is — one highlight too many. The tooltip alone
                                 // is enough.
                                 activeDot={false}
+                                // One reading draws no line at all: a dot shows it is there, and so does each one on a short range.
+                                dot={chartData.length <= 31 ? { r: 3, fill: 'var(--app-primary-color)', strokeWidth: 0 } : false}
                             />
                         </AreaChart>
                     ) : (

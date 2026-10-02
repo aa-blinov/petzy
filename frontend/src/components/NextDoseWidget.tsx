@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { refreshAfterIntake } from '../utils/intakeViews';
@@ -6,12 +6,15 @@ import { showUndo } from '../utils/undo';
 import { INTAKE_UNDO_MS } from '../utils/stock';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { useNavigate } from 'react-router-dom';
 import { Button } from 'antd-mobile';
 import { Check, Pill, TriangleAlert } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type UpcomingDose } from '../services/medications.service';
 import { useAuth } from '../hooks/useAuth';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
+import { toDeviceClock } from '../utils/timezone';
+import { useHiddenRecords } from '../utils/deferredDelete';
 
 /**
  * Today's next dose, on the feed. Only today's: marking a dose for a day
@@ -38,8 +41,10 @@ type IntakeKind = 'now' | 'scheduled' | 'skip';
 export function NextDoseWidget() {
     const { selectedPetId } = usePet();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
-    const { data: upcoming = [], isLoading, isFetching } = useQuery({
+    const hiddenMedications = useHiddenRecords();
+    const { data: allUpcoming = [], isLoading, isFetching } = useQuery({
         queryKey: ['medications', 'upcoming', selectedPetId],
         queryFn: () => {
             // The client's own wall clock, not toISOString(): that emits
@@ -63,6 +68,8 @@ export function NextDoseWidget() {
         // Always looked at again on return: the app-wide thirty seconds of «fresh» would let a given dose stay on the card.
         staleTime: 0,
     });
+    // A course deleted a moment ago, «Отменить» still on offer, has no dose on the card.
+    const upcoming = useMemo(() => allUpcoming.filter((d) => !hiddenMedications.has(d.medication_id)), [allUpcoming, hiddenMedications]);
 
     const intakeMutation = useMutation({
         onMutate: () => { lastOwnMark.current = Date.now(); },
@@ -84,7 +91,11 @@ export function NextDoseWidget() {
             const at = slotIsPast ? { date: dose.date, time: dose.time } : { date: nowDate, time: nowTime };
             return logIntakeAsking(dose.medication_id, dose.name, { ...at, ...slot, skipped: kind === 'skip' });
         },
-        onSuccess: ({ id, ran_out }, { dose, kind }) => {
+        onSuccess: ({ id, ran_out, queued }, { dose, kind }) => {
+            if (queued) {
+                showToast.info('Нет связи. Отметка сохранена на телефоне и отправится сама');
+                return;
+            }
             refreshAfterIntake(queryClient);
             const message =
                 kind === 'skip'
@@ -126,7 +137,7 @@ export function NextDoseWidget() {
             void queryClient.fetchQuery({ ...medicationsListQuery(selectedPetId), staleTime: 0 }).then((meds) => {
                 const med = meds.find((m) => m._id === was.medication_id);
                 if (med?.last_taken_by && med.last_taken_by !== username && med.last_taken_at) {
-                    showToast.info(`${was.name}: приём в ${med.last_taken_at.slice(11, 16)} уже отметил ${med.last_taken_by}`);
+                    showToast.info(`${was.name}: приём в ${toDeviceClock(med.last_taken_at, med.last_taken_tz).slice(11, 16)} уже отметил ${med.last_taken_by}`);
                 }
             }).catch(() => undefined);
         }
@@ -236,7 +247,15 @@ export function NextDoseWidget() {
                     fontSize: 'var(--text-xs)',
                 }}>
                     <TriangleAlert size={16} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
-                    <span>Лекарство заканчивается, пора купить</span>
+                    <span style={{ flex: 1 }}>{nextDose.name} заканчивается, пора купить</span>
+                    <button
+                        type="button"
+                        className="touch-target"
+                        onClick={() => navigate(`/medications?restock=${nextDose.medication_id}`)}
+                        style={{ border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', fontWeight: 600, textDecoration: 'underline', padding: 'var(--spacing-xs)' }}
+                    >
+                        Пополнить
+                    </button>
                 </div>
             )}
 

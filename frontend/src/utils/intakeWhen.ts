@@ -52,6 +52,13 @@ export function minutesAgo(minutes: number): IntakeWhen {
   return { date: formatDate(at), time: `${pad(at.getHours())}:${pad(at.getMinutes())}` };
 }
 
+/** Yesterday at 20:00: «вчера вечером», the usual answer to «когда давали?» the morning after. */
+export function yesterdayEvening(): IntakeWhen {
+  const at = new Date();
+  at.setDate(at.getDate() - 1);
+  return { date: formatDate(at), time: '20:00' };
+}
+
 /** Now, as an IntakeWhen, from the local wall clock. */
 export function nowWhen(): IntakeWhen {
   const now = new Date();

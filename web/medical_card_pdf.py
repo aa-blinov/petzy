@@ -156,11 +156,17 @@ def _clinics(profile: dict) -> list[dict]:
     return []
 
 
+def _lower_first(text: str) -> str:
+    """«Терапевт» -> «терапевт», as the screen shows it; an abbreviation («УЗИ-врач») stays."""
+    return text[:1].lower() + text[1:] if text[1:2] != text[1:2].upper() or not text[1:2].isalpha() else text
+
+
 def _clinic_line(clinic: dict) -> str:
     """«Вет-клиника Друг, +7 701 000 00 00. Врачи: Иванова, терапевт; Петров, кардиолог.»"""
     head = ", ".join(x for x in (clinic.get("name") or "Клиника", clinic.get("phone")) if x)
     doctors = "; ".join(
-        d["name"] + (f", {d['specialty']}" if d.get("specialty") else "") for d in clinic.get("doctors") or []
+        d["name"] + (f", {_lower_first(d['specialty'])}" if d.get("specialty") else "")
+        for d in clinic.get("doctors") or []
     )
     if not doctors:
         return head
@@ -484,6 +490,40 @@ def _due_section(pdf: _Card, card: dict) -> None:
         pdf.ln(1.5)
 
 
+STANDING_LIMIT = 8
+
+
+def _standing_items(card: dict) -> list[dict]:
+    """The vaccinations and treatments in force, newest first: what a vet looks for on page one (is the rabies
+    shot current, and until when). The overdue and near ones are in «Что пора сделать» already, said once."""
+    return sorted(
+        (
+            r
+            for r in card["timeline_records"]
+            if r["kind"] in ("vaccination", "parasite") and not r["superseded"] and r["status"] in ("ok", "none")
+        ),
+        key=lambda r: r["date"],
+        reverse=True,
+    )
+
+
+def _standing_section(pdf: _Card, card: dict) -> None:
+    items = _standing_items(card)
+    if not items:
+        return
+    pdf.section("Прививки и обработки в силе")
+    for r in items[:STANDING_LIMIT]:
+        pdf.row(
+            r["title"],
+            f"Следующая {_date(r['next_due'])}" if r.get("next_due") else "Повтор не назначен",
+            bold_left=True,
+        )
+        pdf.muted(f"{KIND_LABELS.get(r['kind'], r['kind'])}, сделано {_date(r['date'])}")
+        pdf.ln(1.5)
+    if len(items) > STANDING_LIMIT:
+        pdf.muted(f"Ещё {len(items) - STANDING_LIMIT} в хронологии.")
+
+
 def _visit_prep_section(pdf: _Card, prep: dict | None) -> None:
     """What the household wants to tell the vet at this appointment: the first thing a vet asks about."""
     if not prep:
@@ -514,6 +554,7 @@ def render_medical_card_pdf(card: dict) -> bytes:
         pdf.ln(4)
         pdf.row(f"Вес: {_number(weight['latest']['value'])} кг", _date(weight["latest"]["date"]), MUTED)
     _due_section(pdf, card)
+    _standing_section(pdf, card)
     pdf.section("Лекарства сейчас")
     if card["medications"]:
         for c in card["medications"]:

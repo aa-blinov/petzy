@@ -23,10 +23,7 @@ export function AccountPassword() {
 
   const save = async () => {
     setSubmitted(true);
-    if (!current || nextError || repeatError) {
-      if (!current) showToast.failure('Введите текущий пароль');
-      return;
-    }
+    if (!current || nextError || repeatError) return;
     setBusy(true);
     try {
       await accountService.changePassword(current, next);
@@ -46,8 +43,8 @@ export function AccountPassword() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Пароль</h1>
         </div>
         <Form layout="vertical" mode="card">
-          <Form.Item label="Текущий пароль">
-            <Input type="password" value={current} onChange={setCurrent} autoComplete="current-password" placeholder="Текущий пароль" />
+          <Form.Item label="Текущий пароль" description={shows('current') && !current ? <FieldError message="Введите текущий пароль" /> : undefined}>
+            <Input type="password" value={current} onChange={setCurrent} onBlur={touch('current')} autoComplete="current-password" placeholder="Текущий пароль" />
           </Form.Item>
           <Form.Item label="Новый пароль" description={shows('next') && nextError ? <FieldError message={nextError} /> : 'Не короче 8 символов'}>
             <Input type="password" value={next} onChange={setNext} onBlur={touch('next')} autoComplete="new-password" placeholder="Новый пароль" />

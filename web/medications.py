@@ -227,9 +227,12 @@ def get_medications():
                 dt = last_intake["date_time"]
                 doc["last_taken_at"] = dt.strftime("%Y-%m-%d %H:%M")
                 doc["last_taken_by"] = last_intake.get("username")
+                # The zone of the clock it was marked on, so a phone in another zone shows it on its own clock.
+                doc["last_taken_tz"] = last_intake.get("tz")
             else:
                 doc["last_taken_at"] = None
                 doc["last_taken_by"] = None
+                doc["last_taken_tz"] = None
 
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
             today_key = today_start.strftime("%Y-%m-%d")

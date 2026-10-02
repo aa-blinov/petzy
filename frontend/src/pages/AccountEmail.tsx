@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Form, Input } from 'antd-mobile';
+import { Button, Dialog, Form, Input } from 'antd-mobile';
+import { FieldError } from '../components/FieldError';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -17,20 +18,28 @@ export function AccountEmail() {
   const [email, setEmail] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'resend' | 'remove' | null>(null);
+  const [asked, setAsked] = useState(false);
 
   const current = account?.email || account?.pending_email || '';
   const value = email ?? current;
 
   const save = async (next: string, kind: 'save' | 'remove') => {
-    if (!password) {
-      showToast.failure('Введите текущий пароль');
-      return;
+    setAsked(true);
+    if (!password) return;
+    if (kind === 'remove') {
+      const sure = await Dialog.confirm({
+        content: 'Удалить почту? Без неё забытый пароль придётся сбрасывать через администратора.',
+        confirmText: 'Удалить',
+        cancelText: 'Оставить',
+      });
+      if (!sure) return;
     }
     setBusy(kind);
     try {
       const updated = await accountService.changeEmail(next, password);
       queryClient.setQueryData(ACCOUNT_QUERY_KEY, updated);
       setPassword('');
+      setAsked(false);
       setEmail(null);
       showToast.success(
         !next ? 'Почта удалена' : updated.pending_email ? `Письмо отправлено на ${updated.pending_email}` : 'Почта не изменилась',
@@ -69,7 +78,7 @@ export function AccountEmail() {
               {account?.email_verified && !account.pending_email
                 ? `Подтверждена: ${account.email}. Если забудете пароль, ссылка для нового придёт сюда.`
                 : account?.pending_email
-                  ? `Ждёт подтверждения: ${account.pending_email}. Откройте ссылку из письма, оно действует сутки.`
+                  ? `${account.email_verified && account.email ? `Подтверждена: ${account.email}. ` : ''}Ждёт подтверждения: ${account.pending_email}. Откройте ссылку из письма, оно действует сутки.`
                   : 'Почта не указана. Без неё забытый пароль придётся сбрасывать через администратора.'}
             </p>
             {account?.pending_email && (
@@ -83,7 +92,7 @@ export function AccountEmail() {
               <Form.Item label="Адрес почты">
                 <Input type="email" value={value} onChange={setEmail} placeholder="name@example.com" clearable maxLength={254} autoComplete="email" />
               </Form.Item>
-              <Form.Item label="Текущий пароль" description="Почтой можно вернуть доступ к аккаунту, поэтому менять её можно только с паролем">
+              <Form.Item label="Текущий пароль" description={asked && !password ? <FieldError message="Введите текущий пароль" /> : 'Почтой можно вернуть доступ к аккаунту, поэтому менять её можно только с паролем'}>
                 <Input type="password" value={password} onChange={setPassword} placeholder="Пароль от Petzy" autoComplete="current-password" />
               </Form.Item>
             </Form>
