@@ -182,7 +182,7 @@ ERRORS: Dict[str, ErrorDef] = {
     ),
     "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
     # Other
-    "no_data_for_export": ErrorDef("no_data_for_export", "Нет данных для экспорта", 404),
+    "no_data_for_export": ErrorDef("no_data_for_export", "У этого питомца пока нет записей для выгрузки", 404),
     "upload_error": ErrorDef("upload_error", "Не удалось загрузить файл", 404),
     # Rate limit (429)
     "rate_limit_exceeded": ErrorDef("rate_limit_exceeded", "Превышен лимит запросов", 429),

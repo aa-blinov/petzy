@@ -25,7 +25,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PickerValue } from '../components/PickerValue';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { getApiErrorMessage } from '../utils/apiError';
-import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
+import { getCurrentDate, getCurrentTime, utcStampToLocal } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -282,7 +282,7 @@ export function MedicalRecordForm() {
     } else if (sourceDoc) {
       copy.title = sourceDoc.title;
       copy.document_ids = [sourceDoc._id];
-      const filed = sourceDoc.created_at.slice(0, 10);
+      const filed = utcStampToLocal(sourceDoc.created_at).slice(0, 10);
       // A certificate that had already run out when it was filed says nothing about the day of the shot, and its
       // end is not a repeat to put in: the date is left for the person to enter, not guessed.
       if (sourceDoc.expires_at && sourceDoc.expires_at <= filed) {

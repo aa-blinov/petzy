@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import api from './api';
 import { deviceTimeZone } from '../utils/timezone';
 import { saveBlob } from '../utils/download';
@@ -33,6 +34,15 @@ export const exportService = {
       return true;
     } catch (error) {
       console.error('Export failed:', error);
+      // The body of a failed download is a blob too: the server's own words (there is nothing to export) are read out of it.
+      if (isAxiosError(error) && error.response?.data instanceof Blob) {
+        try {
+          const body = JSON.parse(await error.response.data.text()) as { error?: string };
+          if (body.error) error.response.data = { error: body.error };
+        } catch {
+          /* not JSON: the usual message applies */
+        }
+      }
       throw error;
     }
   }

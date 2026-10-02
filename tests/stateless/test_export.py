@@ -443,3 +443,26 @@ def test_user_made_labels_and_values_cannot_run_in_the_exported_file():
     assert "<img" not in text and "<script>" not in text and "<b " not in text
     assert _cell('=HYPERLINK("http://x")').startswith("'")
     assert _cell("Royal Canin") == "Royal Canin"
+
+
+@pytest.mark.health
+class TestZeroIsAValueInTheFile:
+    def test_a_zero_is_written_as_zero_not_as_an_empty_cell(self, client, mock_db, regular_user_token, test_pet):
+        # A record that already holds 0 (before the form refused it): the file must say 0, not leave the cell empty.
+        _insert_event(mock_db, str(test_pet["_id"]), "feeding", datetime(2026, 9, 1, 9, 0), {"food_weight": 0})
+        response = client.get(
+            f"/api/export/feeding/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 200
+        rows = list(csv.reader(io.StringIO(response.data.decode("utf-8-sig"))))
+        header, first = rows[0], rows[1]
+        assert first[header.index("Вес корма (г)")] == "0"
+
+    def test_a_pet_with_nothing_to_export_is_told_so_in_words(self, client, mock_db, regular_user_token, test_pet):
+        response = client.get(
+            f"/api/export/feeding/csv?pet_id={test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 404
+        assert "нет записей" in response.get_json()["error"]
