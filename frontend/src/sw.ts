@@ -60,7 +60,7 @@ registerRoute(/^\/api\/.*/i, new NetworkOnly(), 'GET')
 // to work while the app itself isn't open; that's the entire point of
 // push over an in-app reminder.
 self.addEventListener('push', (event: PushEvent) => {
-  let data: { title?: string; body?: string; url?: string } = {}
+  let data: { title?: string; body?: string; url?: string; tag?: string } = {}
   try {
     data = event.data?.json() ?? {}
   } catch {
@@ -71,6 +71,8 @@ self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     self.registration.showNotification(data.title ?? 'Petzy', {
       body: data.body,
+      // The same dose reaching one phone twice (two subscriptions of one person) is one notification, not two.
+      tag: data.tag,
       // PNG: notification icons don't reliably render SVG. The badge is a
       // white silhouette on transparent, which Android tints itself.
       icon: '/icon-192.png',

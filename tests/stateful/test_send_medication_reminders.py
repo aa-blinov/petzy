@@ -390,3 +390,36 @@ class TestSendReminders:
             send_reminders(mock_db, DUE_NOW_UTC, "fake-private-key", {"sub": "mailto:test@example.com"})
 
         assert mock_db.push_subscriptions.find_one({"endpoint": "https://push.example/flaky-device"}) is not None
+
+
+@pytest.mark.push
+class TestOnePushPerPetAndMinute:
+    def test_two_courses_at_one_time_are_one_push_naming_both(self, mock_db):
+        pet_id = _make_pet(mock_db)
+        _make_medication(mock_db, pet_id)
+        mock_db.medications.insert_one(
+            {
+                "_id": ObjectId(),
+                "pet_id": str(pet_id),
+                "name": "Габапентин",
+                "is_active": True,
+                "schedule": {"days": [TUESDAY], "times": ["08:00"]},
+            }
+        )
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+        with patch("scripts.send_medication_reminders.send_push_to_subscriptions", return_value=1) as send:
+            send_reminders(mock_db, DUE_NOW_UTC, "fake-key", {"sub": "mailto:t@example.com"})
+        assert send.call_count == 1
+        payload = send.call_args.args[2]
+        assert payload["title"] == "Пора дать лекарства"
+        assert "Синулокс" in payload["body"] and "Габапентин" in payload["body"] and payload["body"].endswith("08:00")
+        assert payload["tag"].startswith("dose-")
+        # Each course is recorded as notified: neither comes back on the next tick.
+        assert mock_db.medication_reminders_sent.count_documents({"time": "08:00"}) == 2
+
+    def test_a_dose_two_minutes_late_in_a_slow_tick_is_still_found(self, mock_db):
+        pet_id = _make_pet(mock_db)
+        _make_medication(mock_db, pet_id)
+        _subscribe(mock_db, "testuser", "https://push.example/owner-device")
+        late = datetime(2024, 1, 2, 3, 2, 10, tzinfo=timezone.utc)  # 08:02:10 local, 130 s after the slot
+        assert len(find_due_medication_reminders(mock_db, late)) == 1

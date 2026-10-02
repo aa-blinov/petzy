@@ -602,3 +602,31 @@ html[data-prefers-color-scheme='dark'] .medcard__important-text,
 html[data-prefers-color-scheme='dark'] .medcard__alert-text {
     line-height: 1.5;
 }
+
+/* A row action that is available but not the one asked for: quiet, a step below «Записать повторную». */
+.medcard__row-action--quiet {
+    color: var(--app-text-secondary);
+    font-weight: 500;
+}
+
+.medcard__topactions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.medcard__hint {
+    margin: 0;
+    flex: 1 1 12rem;
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}
+
+.medcard__ready-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}

@@ -68,6 +68,15 @@ export async function confirmWithProgress(queryClient: QueryClient, petId: strin
     const card = await queryClient.fetchQuery({ queryKey: ['medical-card', petId], queryFn: () => medicalCardService.get(petId), staleTime: 0 });
     const checks = readinessChecks(card, petId);
     const done = checks.filter((c) => c.done).length;
+    if (done === checks.length) {
+      // The card was not complete a moment ago and is now: it stays the whole card when the person returns to it, and says
+      // so there, instead of turning into the reading mode under their hands (see MedicalCard).
+      try {
+        sessionStorage.setItem(`petzy:justCompleted:${petId}`, '1');
+      } catch {
+        /* no storage: the card opens as it usually does */
+      }
+    }
     showToast.success(done === checks.length ? `${saved}. Главное для врача заполнено` : `${saved}. Заполнено ${done} из ${checks.length}`);
   } catch {
     showToast.success(saved);

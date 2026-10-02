@@ -13,6 +13,7 @@ import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
+import { PushOffNotice } from '../components/PushOffNotice';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
@@ -336,6 +337,7 @@ export function MedicationsList() {
                         gap: 'var(--spacing-md)',
                         marginTop: 'var(--spacing-sm)',
                     }}>
+                        {orderedMedications.some((m) => (m.course_status ? m.course_status === 'active' : m.is_active) && m.schedule.times.length > 0) && <PushOffNotice />}
                         {orderedMedications.map((med) => (
                             <SwipeableRow
                                 key={med._id}

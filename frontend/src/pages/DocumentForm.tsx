@@ -704,7 +704,7 @@ export function DocumentForm() {
               <FormDangerButton
                 label="Удалить документ"
                 confirmTitle="Удаление документа"
-                confirmContent={`Удалить документ «${document.title}»?`}
+                confirmContent={`Удалить документ «${document.title}»?${(document.medical_record_kinds?.length ?? 0) > 0 ? ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт.' : ''} Файл будет стёрт насовсем`}
                 onConfirm={async () => {
                   try {
                     await documentsService.delete(id);
