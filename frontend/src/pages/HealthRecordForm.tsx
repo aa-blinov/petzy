@@ -14,6 +14,7 @@ import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import type { EventType } from '../services/eventTypes.service';
 import { getFormSettings } from '../utils/formsConfig';
+import { hardBounds, shown } from '../utils/fieldBounds';
 import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
@@ -67,11 +68,14 @@ export function HealthRecordForm() {
           // || 0` used to apply an implicit "can't be negative" to every
           // numeric field, including ones with no declared min at all.
           let numberSchema = z.coerce.number({ error: 'Введите число, например 4,5' });
-          if (field.min !== undefined) {
-            numberSchema = numberSchema.min(field.min, `Не меньше ${field.min}`);
+          const hard = hardBounds(type, field.name);
+          const lowest = hard ? Math.max(field.min ?? -Infinity, hard[0]) : field.min;
+          const highest = hard ? Math.min(field.max ?? Infinity, hard[1]) : field.max;
+          if (lowest !== undefined && Number.isFinite(lowest)) {
+            numberSchema = numberSchema.min(lowest, `Не меньше ${shown(lowest)}`);
           }
-          if (field.max !== undefined) {
-            numberSchema = numberSchema.max(field.max, `Не больше ${field.max}`);
+          if (highest !== undefined && Number.isFinite(highest)) {
+            numberSchema = numberSchema.max(highest, `Не больше ${shown(highest)}`);
           }
           const baseSchema = z.preprocess((val) => {
             if (val === '' || val === undefined || val === null) return undefined;
@@ -89,7 +93,7 @@ export function HealthRecordForm() {
         return acc;
       }, baseFields)
     );
-  }, [fields]);
+  }, [fields, type]);
 
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(isEditing);

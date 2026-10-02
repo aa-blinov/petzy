@@ -1091,3 +1091,29 @@ class TestEventRouteRaceConditionsAndErrors:
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
         assert response.status_code == 404
+
+
+class TestHardBoundsOfWeightAndFeeding:
+    """An older install keeps `min: 0` for the weight and no top for a portion: a slip of the finger or a zero must
+    not reach the chart whatever the stored definition says."""
+
+    def _post(self, client, token, pet, type_, fields):
+        return client.post(
+            "/api/events",
+            json={
+                "pet_id": str(pet["_id"]),
+                "type": type_,
+                "date": "2026-10-01",
+                "time": "09:00",
+                "fields": fields,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def test_a_weight_of_zero_is_refused_and_a_real_one_is_not(self, client, regular_user_token, test_pet):
+        assert self._post(client, regular_user_token, test_pet, "weight", {"weight": 0}).status_code == 422
+        assert self._post(client, regular_user_token, test_pet, "weight", {"weight": 4.2}).status_code == 201
+
+    def test_a_portion_of_99999_grams_is_refused(self, client, regular_user_token, test_pet):
+        assert self._post(client, regular_user_token, test_pet, "feeding", {"food_weight": 99999}).status_code == 422
+        assert self._post(client, regular_user_token, test_pet, "feeding", {"food_weight": 120}).status_code == 201
