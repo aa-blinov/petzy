@@ -170,6 +170,13 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
     },
 ]
 
+# Bounds that hold whatever an older install stored for the field: a weight of 0 kg draws a false point on the chart
+# and a pet card, 99999 g is a slip of the finger. (event type key, field name) -> (lowest, highest).
+HARD_BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
+    ("weight", "weight"): (0.01, 100),
+    ("feeding", "food_weight"): (0.1, 5000),
+}
+
 # Old collection name -> event type key, and which of its fields (besides
 # the shared pet_id/date_time/comment/username) move into `fields`.
 LEGACY_COLLECTION_MAP: dict[str, dict[str, Any]] = {

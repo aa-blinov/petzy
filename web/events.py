@@ -43,7 +43,7 @@ from web.schemas import (
     TimelineQuery,
     TimelineResponse,
 )
-from web.builtin_event_types import BUILTIN_TYPE_ORDER
+from web.builtin_event_types import BUILTIN_TYPE_ORDER, HARD_BOUNDS
 from web.security import get_current_user, is_admin, login_required
 
 
@@ -235,7 +235,9 @@ def delete_event_type(key):
 # ---------------------------------------------------------------------------
 
 
-def _validate_event_fields(raw_fields: dict, field_defs: list) -> tuple[Optional[dict], Optional[str]]:
+def _validate_event_fields(
+    raw_fields: dict, field_defs: list, type_key: Optional[str] = None
+) -> tuple[Optional[dict], Optional[str]]:
     """Coerce & validate a ``fields`` payload against an event type's schema.
 
     Keys not declared on the type are silently dropped — the same "process
@@ -259,6 +261,10 @@ def _validate_event_fields(raw_fields: dict, field_defs: list) -> tuple[Optional
                 return None, f"Поле «{field_def['label']}» должно быть числом"
             field_min = field_def.get("min")
             field_max = field_def.get("max")
+            hard = HARD_BOUNDS.get((type_key, name))
+            if hard:
+                field_min = hard[0] if field_min is None else max(field_min, hard[0])
+                field_max = hard[1] if field_max is None else min(field_max, hard[1])
             if field_min is not None and value < field_min:
                 return None, f"Поле «{field_def['label']}» не может быть меньше {field_min:g}"
             if field_max is not None and value > field_max:
@@ -331,7 +337,9 @@ def create_event():
     if not event_type:
         return error_response("event_type_not_found")
 
-    cleaned_fields, field_error = _validate_event_fields(data.fields, event_type.get("fields", []))
+    cleaned_fields, field_error = _validate_event_fields(
+        data.fields, event_type.get("fields", []), event_type.get("key")
+    )
     if field_error:
         return error_response("validation_error", field_error)
 
@@ -466,7 +474,9 @@ def update_event(record_id):
     if data.comment is not None:
         update_data["comment"] = data.comment
     if data.fields is not None:
-        cleaned_fields, field_error = _validate_event_fields(data.fields, event_type.get("fields", []))
+        cleaned_fields, field_error = _validate_event_fields(
+            data.fields, event_type.get("fields", []), event_type.get("key")
+        )
         if field_error:
             return error_response("validation_error", field_error)
         update_data["fields"] = cleaned_fields
