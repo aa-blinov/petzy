@@ -96,6 +96,40 @@ def load_day_intakes(db, med_ids: list, window_start: datetime, window_end: date
     return group_by_day(found)
 
 
+# A dose left unmarked this long after its time is overdue enough to be shown on a tab: marked a little late is normal.
+OVERDUE_DOSE_GRACE_MINUTES = 60
+
+
+def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
+    """Whether an active course of the pet has a dose of today (or last evening, still carried over) that nobody has
+    marked and whose time passed more than an hour ago. One read for the tab and the pet switcher, same slot rule as
+    the dose widget (web/dose_slots.py)."""
+    medications = list(db.medications.find({"pet_id": pet_id, "is_active": True}))
+    if not medications:
+        return False
+    today_start = datetime(now_local.year, now_local.month, now_local.day)
+    start = today_start - timedelta(days=1)
+    day_intakes = load_day_intakes(db, [str(m["_id"]) for m in medications], start, today_start + timedelta(days=1))
+    grace = timedelta(minutes=OVERDUE_DOSE_GRACE_MINUTES)
+    for med in medications:
+        schedule = med.get("schedule") or {}
+        times = schedule.get("times") or []
+        for day_start in (start, today_start):
+            day_key = day_start.strftime("%Y-%m-%d")
+            if day_start.weekday() not in schedule.get("days", []) or not course_covers(med, day_key):
+                continue
+            for t in open_slots(times, day_intakes.get((str(med["_id"]), day_key), [])):
+                minutes = minutes_of_day(t)
+                if minutes is None:
+                    continue
+                due = day_start + timedelta(minutes=minutes)
+                if now_local - due > grace and (
+                    day_start == today_start or now_local - due < timedelta(hours=CARRY_OVER_HOURS)
+                ):
+                    return True
+    return False
+
+
 @medications_bp.route("/api/medications", methods=["POST"])
 @api.validate(
     body=Request(MedicationCreate),
@@ -192,8 +226,10 @@ def get_medications():
             if last_intake and last_intake.get("date_time"):
                 dt = last_intake["date_time"]
                 doc["last_taken_at"] = dt.strftime("%Y-%m-%d %H:%M")
+                doc["last_taken_by"] = last_intake.get("username")
             else:
                 doc["last_taken_at"] = None
+                doc["last_taken_by"] = None
 
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
             today_key = today_start.strftime("%Y-%m-%d")

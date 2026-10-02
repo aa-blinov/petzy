@@ -21,11 +21,13 @@ export function usePetAlerts(pets: Pet[], enabled: boolean): ReadonlyMap<string,
   return byPet;
 }
 
-/** «Просрочена прививка», in words: the picker says what, the dot only says that. */
+/** «Просрочена прививка», «Не отмечен приём лекарства», in words: the picker says what, the dot only says that. */
 export function alertText(alerts: MedicalAlerts | undefined): string | null {
   if (!alerts) return null;
-  if (alerts.vaccination && alerts.parasite) return 'Просрочены прививка и обработка';
-  if (alerts.vaccination) return 'Просрочена прививка';
-  if (alerts.parasite) return 'Просрочена обработка';
-  return null;
+  const parts: string[] = [];
+  if (alerts.vaccination && alerts.parasite) parts.push('Просрочены прививка и обработка');
+  else if (alerts.vaccination) parts.push('Просрочена прививка');
+  else if (alerts.parasite) parts.push('Просрочена обработка');
+  if (alerts.medication) parts.push('Не отмечен приём лекарства');
+  return parts.length ? parts.join('. ') : null;
 }

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { refreshAfterIntake } from '../utils/intakeViews';
@@ -7,7 +8,8 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { Button } from 'antd-mobile';
 import { Pill, TriangleAlert } from 'lucide-react';
-import { medicationsService, type UpcomingDose } from '../services/medications.service';
+import { medicationsListQuery, medicationsService, type UpcomingDose } from '../services/medications.service';
+import { useAuth } from '../hooks/useAuth';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
 
@@ -58,9 +60,12 @@ export function NextDoseWidget() {
         // the front, not left to show a dose that is already given.
         refetchInterval: 30000,
         refetchOnWindowFocus: true,
+        // Always looked at again on return: the app-wide thirty seconds of «fresh» would let a given dose stay on the card.
+        staleTime: 0,
     });
 
     const intakeMutation = useMutation({
+        onMutate: () => { lastOwnMark.current = Date.now(); },
         mutationFn: ({ dose, kind }: { dose: UpcomingDose; kind: IntakeKind }) => {
             // No dose_taken: the backend uses the course's own dose. A
             // hard-coded 1 took a whole tablet off a half-tablet course.
@@ -107,6 +112,26 @@ export function NextDoseWidget() {
             showToast.failure(getApiErrorMessage(err, kind === 'skip' ? 'Не удалось пропустить приём' : 'Не удалось отметить приём'));
         }
     });
+
+    // The dose on the card was marked by someone else while it was open: it goes away, and the person is told who and
+    // when, instead of watching a card vanish. (A dose marked from this phone says so itself, in its own bar.)
+    const shown = useRef<UpcomingDose | null>(null);
+    const lastOwnMark = useRef(0);
+    const { username } = useAuth();
+    useEffect(() => {
+        const was = shown.current;
+        const stillThere = upcoming.some((d) => d.medication_id === was?.medication_id && d.date === was?.date && d.time === was?.time);
+        const next = upcoming.filter((d) => d.date === formatDate(new Date()) || d.carried_over)[0] ?? null;
+        if (was && !stillThere && Date.now() - lastOwnMark.current > 20_000 && selectedPetId) {
+            void queryClient.fetchQuery({ ...medicationsListQuery(selectedPetId), staleTime: 0 }).then((meds) => {
+                const med = meds.find((m) => m._id === was.medication_id);
+                if (med?.last_taken_by && med.last_taken_by !== username && med.last_taken_at) {
+                    showToast.info(`${was.name}: приём в ${med.last_taken_at.slice(11, 16)} уже отметил ${med.last_taken_by}`);
+                }
+            }).catch(() => undefined);
+        }
+        shown.current = next;
+    }, [upcoming, queryClient, selectedPetId, username]);
 
     const today = formatDate(new Date());
     // Today's, and last evening's that nobody marked: a dose forgotten at 23:30 is still there at 00:10.

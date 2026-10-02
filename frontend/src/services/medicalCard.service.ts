@@ -140,6 +140,8 @@ async function savePdf(path: string, fallbackName: string): Promise<void> {
 export interface MedicalAlerts {
   vaccination: boolean;
   parasite: boolean;
+  /** A dose of the schedule not marked an hour after its time. */
+  medication: boolean;
 }
 
 export const medicalCardService = {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
 import { useSession } from '../hooks/useSession';
-import { isOnboardingDismissed } from '../utils/onboarding';
+import { hadPets, isOnboardingDismissed, rememberHavingPets } from '../utils/onboarding';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
@@ -33,6 +33,9 @@ export function Dashboard() {
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
   const invites = usePetInvites();
+  useEffect(() => {
+    if (pets.length > 0) rememberHavingPets(username);
+  }, [pets.length, username]);
 
 
   const pageSize = 20;
@@ -138,15 +141,20 @@ export function Dashboard() {
         </div>
       );
     }
-    if (!isOnboardingDismissed(username)) return <Navigate to="/welcome" replace />;
+    const lostAccess = hadPets(username);
+    if (!isOnboardingDismissed(username) && !lostAccess) return <Navigate to="/welcome" replace />;
     return (
       <div className="page-container">
         <div className="max-width-container">
           <h1 className="sr-only">Лента</h1>
           <EmptyState
             icon={PawPrint}
-            title="Питомцев пока нет"
-            description={`Когда с вами поделятся питомцем, он появится здесь. Ваш логин: ${username ?? ''}`}
+            title={lostAccess ? 'Доступ к питомцу закрыт' : 'Питомцев пока нет'}
+            description={
+              lostAccess
+                ? `Владелец закрыл вам доступ или удалил питомца. Если с вами поделятся снова, он появится здесь. Ваш логин: ${username ?? ''}`
+                : `Когда с вами поделятся питомцем, он появится здесь. Ваш логин: ${username ?? ''}`
+            }
             actionLabel="Добавить своего"
             onAction={() => navigate('/welcome')}
           />

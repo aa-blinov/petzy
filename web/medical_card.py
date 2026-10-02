@@ -22,6 +22,7 @@ from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
+from web.medications import has_overdue_dose
 from web.medical_records import linked_document_ids, normalize_title, pet_records, record_states
 from web.schemas import (
     MEDICAL_KINDS,
@@ -126,9 +127,14 @@ def schedule_text(schedule: dict) -> str:
     return f"По {names} {when}".strip() if names else when
 
 
-def _today(tz_name: Optional[str]) -> date:
+def _now_local(tz_name: Optional[str]) -> datetime:
+    """The wall clock of the person's zone, naive: what schedules and intakes are written in."""
     zone = valid_tz(tz_name)
-    return datetime.now(ZoneInfo(zone) if zone else timezone.utc).date()
+    return datetime.now(ZoneInfo(zone) if zone else timezone.utc).replace(tzinfo=None)
+
+
+def _today(tz_name: Optional[str]) -> date:
+    return _now_local(tz_name).date()
 
 
 def neutered_text(is_neutered, gender) -> Optional[str]:
@@ -349,7 +355,7 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
     }
 
 
-def build_medical_alerts(pet_id: str, today: date) -> dict:
+def build_medical_alerts(pet_id: str, today: date, now_local: Optional[datetime] = None) -> dict:
     """Whether a vaccination or a parasite treatment is overdue: the card's own rule (a newer record of the same
     name replaces the older, a certificate that became a record counts once), read without building the card."""
     records = list(app.db.medical_records.find({"pet_id": pet_id, "kind": {"$in": ["vaccination", "parasite"]}}))
@@ -361,6 +367,8 @@ def build_medical_alerts(pet_id: str, today: date) -> dict:
     return {
         "vaccination": overdue("vaccination") or any(v["status"] == "expired" for v in _vaccinations(pet_id, today)),
         "parasite": overdue("parasite"),
+        # Not the card's, but the same read serves the «Лекарства» tab and the pet switcher.
+        "medication": has_overdue_dose(app.db, pet_id, now_local or datetime.combine(today, datetime.min.time())),
     }
 
 
@@ -406,8 +414,8 @@ def get_medical_alerts(pet_id):
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
     if access_error:
         return access_error[0], access_error[1]
-    today = _today(request.context.query.tz)  # type: ignore[attr-defined]
-    response = jsonify({"alerts": build_medical_alerts(pet_id, today)})
+    now_local = _now_local(request.context.query.tz)  # type: ignore[attr-defined]
+    response = jsonify({"alerts": build_medical_alerts(pet_id, now_local.date(), now_local)})
     response.headers["Cache-Control"] = "private, no-store"
     return response
 
