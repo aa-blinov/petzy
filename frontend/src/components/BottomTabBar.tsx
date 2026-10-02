@@ -39,8 +39,12 @@ export function BottomTabBar() {
     queryFn: () => medicalCardService.alerts(selectedPetId!),
     enabled: !!selectedPetId && !hidden,
     staleTime: 60_000,
+    // A dose becomes overdue with time, not with a change anyone makes.
+    refetchInterval: 120_000,
   });
   const overdue = !!alerts.data && (alerts.data.vaccination || alerts.data.parasite);
+  // A dose not marked an hour after its time: the dot is on «Лекарства», where it is marked.
+  const doseLate = !!alerts.data?.medication;
 
   // Login and onboarding own the whole viewport
   if (hidden) {
@@ -73,10 +77,11 @@ export function BottomTabBar() {
               >
                 <span className="app-tab-bar__icon" aria-hidden>
                   <Icon size={22} strokeWidth={1.8} />
-                  {key === 'medical' && overdue && <span className="app-tab-bar__dot" />}
+                  {((key === 'medical' && overdue) || (key === 'medications' && doseLate)) && <span className="app-tab-bar__dot" />}
                 </span>
                 <span className="app-tab-bar__title">{title}</span>
                 {key === 'medical' && overdue && <span className="sr-only">, есть просроченное</span>}
+                {key === 'medications' && doseLate && <span className="sr-only">, есть неотмеченный приём</span>}
               </Link>
             </li>
           );

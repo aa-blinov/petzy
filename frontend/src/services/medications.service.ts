@@ -40,6 +40,8 @@ export interface Medication {
     /** active (идёт), planned (ещё не началась), ended (закончена). */
     course_status?: 'active' | 'planned' | 'ended';
     last_taken_at?: string;
+    /** Who marked the last dose. */
+    last_taken_by?: string | null;
     intakes_today?: number;
     /** Today's schedule has doses (day of the week and course). */
     scheduled_today?: boolean;
@@ -197,5 +199,6 @@ export function medicationsListQuery(petId: string) {
         // Another person may mark a dose: the list is looked at again when the app comes back to the front and every half minute.
         refetchOnWindowFocus: true,
         refetchInterval: 30000,
+        staleTime: 5000,
     };
 }

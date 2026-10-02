@@ -1406,6 +1406,7 @@ class MedicationItem(BaseModel):
         None, description="active (идёт), planned (ещё не началась), ended (закончена)"
     )
     last_taken_at: Optional[str] = None
+    last_taken_by: Optional[str] = Field(None, description="Кто отметил последний приём")
     intakes_today: int = 0
     scheduled_today: Optional[bool] = Field(None, description="Сегодня по расписанию есть приёмы (день недели и курс)")
     open_slots_today: Optional[List[str]] = Field(
@@ -2002,6 +2003,9 @@ class MedicalAlerts(BaseModel):
 
     vaccination: bool = Field(description="Есть просроченная прививка: запись со сроком или справка с истёкшим сроком")
     parasite: bool = Field(description="Есть просроченная обработка от паразитов")
+    medication: bool = Field(
+        False, description="Есть приём лекарства по расписанию, который не отмечен больше часа после времени"
+    )
 
 
 class MedicalAlertsResponse(BaseModel):

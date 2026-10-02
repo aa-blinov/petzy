@@ -268,19 +268,35 @@ class TestMedicalAlerts:
         )
 
     def test_nothing_overdue_on_an_empty_card(self, client, mock_db, regular_user_token, test_pet):
-        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": False, "parasite": False}
+        assert _alerts(client, regular_user_token, test_pet) == {
+            "vaccination": False,
+            "parasite": False,
+            "medication": False,
+        }
 
     def test_an_overdue_vaccination_and_an_overdue_treatment_are_told_apart(
         self, client, mock_db, regular_user_token, test_pet
     ):
         self._record(mock_db, test_pet, "vaccination", "Нобивак", 400, -5)
-        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": True, "parasite": False}
+        assert _alerts(client, regular_user_token, test_pet) == {
+            "vaccination": True,
+            "parasite": False,
+            "medication": False,
+        }
         self._record(mock_db, test_pet, "parasite", "Бравекто", 100, -2)
-        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": True, "parasite": True}
+        assert _alerts(client, regular_user_token, test_pet) == {
+            "vaccination": True,
+            "parasite": True,
+            "medication": False,
+        }
 
     def test_soon_is_not_overdue(self, client, mock_db, regular_user_token, test_pet):
         self._record(mock_db, test_pet, "vaccination", "Нобивак", 350, 10)
-        assert _alerts(client, regular_user_token, test_pet) == {"vaccination": False, "parasite": False}
+        assert _alerts(client, regular_user_token, test_pet) == {
+            "vaccination": False,
+            "parasite": False,
+            "medication": False,
+        }
 
     def test_a_newer_record_of_the_same_name_ends_the_alarm(self, client, mock_db, regular_user_token, test_pet):
         self._record(mock_db, test_pet, "vaccination", "Нобивак", 400, -5)
@@ -318,7 +334,9 @@ class TestMedicalAlerts:
             kind: any(r["status"] == "overdue" and not r["superseded"] for r in card["records"][kind])
             for kind in ("vaccination", "parasite")
         }
-        assert _alerts(client, regular_user_token, test_pet) == from_card
+        assert {
+            k: v for k, v in _alerts(client, regular_user_token, test_pet).items() if k != "medication"
+        } == from_card
 
     def test_a_stranger_and_a_visitor_are_refused(self, client, mock_db, test_pet):
         from web.security import create_access_token

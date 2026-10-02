@@ -216,3 +216,47 @@ class TestTheCourseList:
             f"/api/medications?pet_id={test_pet['_id']}&client_date=2026-10-02", headers=_auth(regular_user_token)
         ).get_json()["medications"][0]
         assert med["open_slots_today"] == []
+
+
+@pytest.mark.medications
+class TestAnOverdueDoseIsShownOnTheTab:
+    """The tab and the pet switcher say a dose is overdue: unmarked, and more than an hour after its time."""
+
+    def _alerts(self, client, token, pet, now):
+        # The endpoint reads the zone's clock; the function behind it takes the moment, which is what is tested.
+        from web.medications import has_overdue_dose
+        import web.app as app
+
+        return has_overdue_dose(app.db, str(pet["_id"]), now)
+
+    def test_a_dose_more_than_an_hour_late_is_overdue_a_minute_late_is_not(
+        self, client, mock_db, regular_user_token, test_pet, course
+    ):
+        assert self._alerts(client, regular_user_token, test_pet, at(8, 1)) is False
+        assert self._alerts(client, regular_user_token, test_pet, at(9, 5)) is True
+
+    def test_marked_it_is_not(self, client, mock_db, regular_user_token, test_pet, course):
+        _log(client, regular_user_token, course, at(8, 10), slot_date="2026-10-02", slot_time="08:00")
+        assert self._alerts(client, regular_user_token, test_pet, at(9, 30)) is False
+        assert self._alerts(client, regular_user_token, test_pet, at(21, 30)) is True  # the 20:00 one
+
+    def test_a_finished_course_and_a_day_off_are_not(self, client, mock_db, regular_user_token, test_pet, course):
+        mock_db["medications"].update_one({"_id": course}, {"$set": {"schedule.days": [0, 1]}})  # 2026-10-02 is Friday
+        assert self._alerts(client, regular_user_token, test_pet, at(12, 0)) is False
+        mock_db["medications"].update_one(
+            {"_id": course}, {"$set": {"schedule.days": [0, 1, 2, 3, 4, 5, 6], "is_active": False}}
+        )
+        assert self._alerts(client, regular_user_token, test_pet, at(12, 0)) is False
+
+    def test_last_evenings_dose_counts_for_a_few_hours_after_midnight_only(
+        self, client, mock_db, regular_user_token, test_pet, course
+    ):
+        mock_db["medications"].update_one({"_id": course}, {"$set": {"schedule.times": ["23:30"]}})
+        assert self._alerts(client, regular_user_token, test_pet, at(0, 40, day=3)) is True
+        assert self._alerts(client, regular_user_token, test_pet, at(8, 0, day=3)) is False
+
+    def test_the_endpoint_carries_it(self, client, mock_db, regular_user_token, test_pet, course):
+        # Any real clock: a course with a time that is certainly past an hour ago today only when it is late in the day,
+        # so the answer is checked for its shape, and the function above for its logic.
+        response = client.get(f"/api/pets/{test_pet['_id']}/medical-card/alerts", headers=_auth(regular_user_token))
+        assert set(response.get_json()["alerts"]) == {"vaccination", "parasite", "medication"}

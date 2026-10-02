@@ -11,6 +11,8 @@ export function refreshAfterIntake(queryClient: QueryClient): Promise<unknown> {
     predicate: (query) =>
       ['medications', 'timeline', 'history-timeline', 'stats', 'pet-summary', 'pets'].includes(
         query.queryKey[0] as string,
-      ),
+      ) ||
+      // The dot on the «Лекарства» tab and the pet switcher: a dose marked puts it out.
+      (query.queryKey[0] === 'medical-card' && query.queryKey[2] === 'alerts'),
   });
 }
