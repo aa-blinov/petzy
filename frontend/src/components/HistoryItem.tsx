@@ -68,7 +68,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       // An intake is not an event: deleting it through /events/ was a 404,
       // so a dose could never be removed from the feed or History.
       path: isIntake ? `/medications/intakes/${item._id}` : `/events/${item._id}`,
-      message: 'Запись удалена',
+      // Which one: two doses in a row, or a feeding and a weight, look the same in «Запись удалена».
+      message: isIntake ? `Удалён приём: ${String(item.medication_name || 'лекарство')}, ${intakeTime.slice(0, 5)}` : `Удалена запись: ${config.displayName}`,
       onDeleted: () =>
         isIntake
           ? refreshAfterIntake(queryClient)

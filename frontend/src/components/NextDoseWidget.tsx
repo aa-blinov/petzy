@@ -7,7 +7,7 @@ import { INTAKE_UNDO_MS } from '../utils/stock';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { Button } from 'antd-mobile';
-import { Pill, TriangleAlert } from 'lucide-react';
+import { Check, Pill, TriangleAlert } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type UpcomingDose } from '../services/medications.service';
 import { useAuth } from '../hooks/useAuth';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
@@ -133,20 +133,31 @@ export function NextDoseWidget() {
         shown.current = next;
     }, [upcoming, queryClient, selectedPetId, username]);
 
+    // The courses: to tell «everything is given for today» from «nothing is scheduled», which look alike when the card is gone.
+    const courses = useQuery({ ...medicationsListQuery(selectedPetId ?? ''), enabled: !!selectedPetId });
+
     const today = formatDate(new Date());
     // Today's, and last evening's that nobody marked: a dose forgotten at 23:30 is still there at 00:10.
     const todays = upcoming.filter((dose) => dose.date === today || dose.carried_over);
-    if (isLoading || todays.length === 0) return null;
+    if (isLoading) return null;
+    if (todays.length === 0) {
+        const scheduled = (courses.data ?? []).filter((m) => (m.course_status ? m.course_status === 'active' : m.is_active) && m.scheduled_today);
+        if (scheduled.length === 0 || scheduled.some((m) => (m.open_slots_today?.length ?? 0) > 0)) return null;
+        return (
+            <div className="card-soft" role="status" style={{ marginBottom: 'var(--spacing-lg)', padding: 'var(--spacing-md) var(--spacing-lg)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--app-success-text)', fontWeight: 600 }}>
+                <Check size={18} strokeWidth={2.4} aria-hidden style={{ flexShrink: 0 }} />
+                Все приёмы на сегодня отмечены
+            </div>
+        );
+    }
 
     // The next of today's doses: an overdue one first (the list is in time order).
     const nextDose = todays[0];
+    const sameTimeAsNext = todays.filter((d) => d !== nextDose && d.date === nextDose.date && d.time === nextDose.time).length;
     // Due from half an hour before its time: at 07:50 an 08:00 dose is
     // «Пора дать лекарство», not «Дать раньше».
     const minutesUntil = minutesUntilDose(nextDose);
     const due = nextDose.is_overdue || minutesUntil <= DUE_WINDOW_MINUTES;
-    // Well past its time the dose may have been given on time and not
-    // marked: then «Уже дали в 08:00» puts it where it belongs.
-    const late = -minutesUntil > DUE_WINDOW_MINUTES;
     const busy = intakeMutation.isPending || isFetching;
     const pendingKind = intakeMutation.isPending ? intakeMutation.variables?.kind : undefined;
 
@@ -184,14 +195,13 @@ export function NextDoseWidget() {
                             {due ? 'Пора дать лекарство' : 'Следующий приём'}
                         </div>
                         <h2
+                            className="clamp-2"
                             style={{
                                 margin: '2px 0 0',
                                 fontSize: 'var(--text-lg)',
                                 fontWeight: 700,
                                 color: 'var(--app-text-primary)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                                overflowWrap: 'anywhere',
                             }}
                         >
                             {nextDose.name}
@@ -201,6 +211,14 @@ export function NextDoseWidget() {
                                 ? `вчера в ${nextDose.time}, не отмечено`
                                 : due ? `по расписанию в ${nextDose.time}` : `сегодня в ${nextDose.time}`}
                         </div>
+                        {todays.length > 1 && (
+                            // One card for one dose: what else is waiting is said, not left to appear after the first is marked.
+                            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
+                                {sameTimeAsNext > 0
+                                    ? `ещё ${sameTimeAsNext} ${sameTimeAsNext === 1 ? 'лекарство' : 'лекарства'} в это же время, всего сегодня осталось ${todays.length}`
+                                    : `сегодня осталось приёмов: ${todays.length}`}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -241,34 +259,37 @@ export function NextDoseWidget() {
                     // reason to stop offering it.
                     disabled={busy}
                 >
-                    {!due ? 'Дать раньше' : late ? 'Принять сейчас' : 'Принять'}
+                    Дали сейчас
                 </Button>
+                {minutesUntil < 0 && (
+                    // The slot has passed: whoever gave the dose on time and marks it only now puts it where it belongs.
+                    <Button
+                        fill="none"
+                        color="primary"
+                        size="small"
+                        block
+                        style={{ minHeight: 44, fontWeight: 600 }}
+                        onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'scheduled' })}
+                        loading={pendingKind === 'scheduled'}
+                        disabled={busy}
+                    >
+                        Дали вовремя, в {nextDose.time}{nextDose.carried_over ? ' вчера' : ''}
+                    </Button>
+                )}
                 {due && (
-                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
-                        {late && (
-                            <Button
-                                fill="none"
-                                color="primary"
-                                size="small"
-                                style={{ flex: 1, minHeight: 40, fontWeight: 600 }}
-                                onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'scheduled' })}
-                                loading={pendingKind === 'scheduled'}
-                                disabled={busy}
-                            >
-                                Уже дали в {nextDose.time}{nextDose.carried_over ? ' вчера' : ''}
-                            </Button>
-                        )}
-                        <Button
-                            fill="none"
-                            size="small"
-                            style={{ flex: 1, minHeight: 40, color: 'var(--app-text-secondary)' }}
-                            onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'skip' })}
-                            loading={pendingKind === 'skip'}
-                            disabled={busy}
-                        >
-                            Пропустить
-                        </Button>
-                    </div>
+                    // Apart from the buttons above and quiet: a skip closes the dose and stops its reminder, and a
+                    // thumb in a hurry should not land on it.
+                    <Button
+                        fill="none"
+                        size="small"
+                        block
+                        style={{ minHeight: 44, marginTop: 'var(--spacing-md)', color: 'var(--app-text-secondary)' }}
+                        onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'skip' })}
+                        loading={pendingKind === 'skip'}
+                        disabled={busy}
+                    >
+                        Пропустить приём
+                    </Button>
                 )}
             </div>
         </div>
