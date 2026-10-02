@@ -232,11 +232,13 @@ export function MedicalRecordForm() {
   const filled = useRef(false);
   const fromId = params.get('from');
   const docId = params.get('doc');
+  // A certificate that has run out and a new shot of the same vaccine: only its name is taken, the certificate is not attached to it.
+  const renewId = params.get('renew');
   const source: MedicalRecord | undefined = useMemo(
     () => (fromId && kind ? card.data?.records[kind]?.find((r) => r._id === fromId) : undefined),
     [fromId, kind, card.data],
   );
-  const sourceDoc = docId ? documents.data?.find((d) => d._id === docId) : undefined;
+  const sourceDoc = docId || renewId ? documents.data?.find((d) => d._id === (docId ?? renewId)) : undefined;
   useEffect(() => {
     if (filled.current || !kind) return;
     if (isEditing) {
@@ -249,7 +251,7 @@ export function MedicalRecordForm() {
       });
       return;
     }
-    if (!card.data || (fromId && !source) || (docId && !sourceDoc && documents.isPending)) return;
+    if (!card.data || (fromId && !source) || ((docId || renewId) && !sourceDoc && documents.isPending)) return;
     filled.current = true;
     // The clinic the pet was last taken to, else the one in its profile.
     const last = Object.values(card.data.records).flat().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.clinic || r.vet);
@@ -257,7 +259,7 @@ export function MedicalRecordForm() {
     const vet = last?.vet ?? card.data.profile.clinic.vet ?? '';
     // A vaccination or a treatment is nearly always repeated: the usual interval is put in (a year, three months),
     // so that skipping the field does not switch the reminder off. It follows the date until it is touched, and is one tap from gone.
-    const firstDue = repeating && !source && !sourceDoc ? addInterval(today, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
+    const firstDue = repeating && !source && (!sourceDoc || !!renewId) ? addInterval(today, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
     autoDue.current = firstDue;
     const blank: FormData = { title: '', date: today, next_due: firstDue, target: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
@@ -275,21 +277,41 @@ export function MedicalRecordForm() {
       copy.clinic = source.clinic ?? clinic;
       copy.vet = source.vet ?? vet;
       if (source.next_due) copy.next_due = shiftByDays(today, daysBetween(source.date, source.next_due));
+    } else if (sourceDoc && renewId) {
+      copy.title = sourceDoc.title;
     } else if (sourceDoc) {
       copy.title = sourceDoc.title;
-      copy.date = sourceDoc.created_at.slice(0, 10);
-      copy.next_due = sourceDoc.expires_at ?? '';
       copy.document_ids = [sourceDoc._id];
+      const filed = sourceDoc.created_at.slice(0, 10);
+      // A certificate that had already run out when it was filed says nothing about the day of the shot, and its
+      // end is not a repeat to put in: the date is left for the person to enter, not guessed.
+      if (sourceDoc.expires_at && sourceDoc.expires_at <= filed) {
+        copy.date = '';
+        copy.next_due = '';
+      } else {
+        copy.date = filed;
+        copy.next_due = sourceDoc.expires_at ?? '';
+      }
     }
     reset(blank);
     (Object.keys(copy) as (keyof FormData)[]).forEach((key) => setValue(key, copy[key] as never, { shouldDirty: true }));
-  }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, repeating, reset, setValue, today]);
+  }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, renewId, repeating, reset, setValue, today]);
 
   const recorded = record.data;
   const moreOpen = moreChosen ?? (isEditing && !!(recorded?.clinic || recorded?.vet || recorded?.note || recorded?.batch));
   // The titles of a vaccination or a treatment come back (the next shot is the same vaccine); a visit's title does not.
   const own = useMemo(() => (kind && repeating && card.data ? card.data.records[kind].map((r) => r.title) : []), [kind, repeating, card.data]);
   const chips = kind ? suggestionsFor(kind, pet?.species, own) : [];
+  // A new name that only contains, or is contained in, a name already there («Чумка» and «Чумка (Эурикан)») is another
+  // vaccine to the card: the earlier record stays in the list as it was, overdue or not. Said before it is saved.
+  const normalizedTitle = title.trim().toLowerCase().replace(/\s+/g, ' ');
+  const similar =
+    repeating && !isEditing && normalizedTitle.length >= 4
+      ? own.find((t) => {
+          const other = t.trim().toLowerCase().replace(/\s+/g, ' ');
+          return other !== normalizedTitle && (other.includes(normalizedTitle) || normalizedTitle.includes(other));
+        })
+      : undefined;
   // The clinics and doctors of the profile, one tap away: a pet may be seen by a general vet, a cardiologist and a
   // dental clinic, each with its own doctors. Offered when there is a choice (two or more).
   const clinicValue = useWatch({ control, name: 'clinic' });
@@ -471,6 +493,14 @@ export function MedicalRecordForm() {
                       </ChoiceChip>
                     ))}
                   </ChoiceChips>
+                )}
+                {similar && (
+                  <span className="record-push-note" role="note">
+                    «{similar}» уже есть в списке и останется там как есть: карта считает записью той же вакцины только название, совпадающее полностью.{' '}
+                    <button type="button" className="record-push-note__button" onClick={() => setValue('title', similar, { shouldDirty: true, shouldValidate: true })}>
+                      Назвать так же
+                    </button>
+                  </span>
                 )}
               </Form.Item>
             )}

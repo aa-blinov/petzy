@@ -22,7 +22,7 @@ from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
-from web.medical_records import linked_document_ids, pet_records, record_states
+from web.medical_records import linked_document_ids, normalize_title, pet_records, record_states
 from web.schemas import (
     MEDICAL_KINDS,
     ErrorResponse,
@@ -243,8 +243,18 @@ def _vaccinations(pet_id: str, today: date) -> list[dict]:
     result = []
     # A certificate that has become a record is shown as that record, not twice.
     linked = linked_document_ids(pet_id)
+    # A shot of the same vaccine entered after the certificate was filed is the renewal: the old certificate does not
+    # stay «истекла» beside it for ever.
+    shots: dict = {}
+    for r in app.db.medical_records.find({"pet_id": pet_id, "kind": "vaccination"}, {"title": 1, "date": 1}):
+        key = normalize_title(r.get("title", ""))
+        shots[key] = max(shots.get(key, ""), r.get("date") or "")
     for doc in app.db.documents.find({"pet_id": pet_id, "category": "vaccination"}):
         if str(doc["_id"]) in linked:
+            continue
+        filed = doc.get("created_at")
+        filed_day = filed.strftime("%Y-%m-%d") if isinstance(filed, datetime) else ""
+        if shots.get(normalize_title(doc.get("title", "")), "") >= filed_day > "":
             continue
         expires = _as_date_str(doc.get("expires_at"))
         status, days_left = _vaccination_status(expires, today)
@@ -321,6 +331,12 @@ def build_medical_card(pet: dict, username: str, today: date) -> dict:
         "visit_prep": _visit_prep(pet),
         "profile": _profile(pet),
         "records": {kind: [r for r in every_record if r["kind"] == kind][:RECORDS_PER_KIND] for kind in MEDICAL_KINDS},
+        # Whatever is overdue, from all the records and not only the latest ten shown: the strip and the dot say the same.
+        "overdue_records": [
+            r
+            for r in every_record
+            if r["kind"] in ("vaccination", "parasite") and r["status"] == "overdue" and not r["superseded"]
+        ],
         "record_counts": {kind: sum(1 for r in every_record if r["kind"] == kind) for kind in MEDICAL_KINDS},
         "weight": _weight(pet_id),
         "medications": current_courses,

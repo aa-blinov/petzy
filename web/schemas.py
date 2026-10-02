@@ -1978,6 +1978,10 @@ class MedicalCardData(BaseModel):
         description="По видам (vaccination, parasite, visit, procedure), новые сверху, не больше десяти"
     )
     record_counts: Dict[str, int] = Field(description="Сколько записей каждого вида всего")
+    overdue_records: List[MedicalRecordItem] = Field(
+        default_factory=list,
+        description="Все просроченные прививки и обработки, без «не больше десяти»: полоса и точка говорят об одном",
+    )
     medications: List[MedicalCardMedication] = Field(description="Курсы, которые идут сейчас или ещё начнутся")
     past_courses: List[MedicalCardMedication] = Field(
         description="Законченные курсы, последние сверху, не больше десяти"

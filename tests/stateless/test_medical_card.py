@@ -330,3 +330,67 @@ class TestMedicalAlerts:
         )
         assert response.status_code in (403, 404)
         assert client.get(f"/api/pets/{test_pet['_id']}/medical-card/alerts").status_code == 401
+
+
+@pytest.mark.health
+class TestOverdueFromAllRecordsAndRenewedCertificates:
+    def _record(self, mock_db, pet, title, days_ago, due_in, kind="vaccination"):
+        today = date.today()
+        mock_db["medical_records"].insert_one(
+            {
+                "pet_id": str(pet["_id"]),
+                "kind": kind,
+                "title": title,
+                "date": (today - timedelta(days=days_ago)).isoformat(),
+                "next_due": (today + timedelta(days=due_in)).isoformat(),
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
+
+    def test_an_overdue_record_older_than_the_latest_ten_is_still_listed(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        self._record(mock_db, test_pet, "Старая", 900, -30)
+        for i in range(12):
+            self._record(mock_db, test_pet, f"Новая {i}", 5 + i, 300)
+        card = _get(client, regular_user_token, test_pet).get_json()["card"]
+        assert "Старая" not in [r["title"] for r in card["records"]["vaccination"]]
+        assert [r["title"] for r in card["overdue_records"]] == ["Старая"]
+
+    def test_a_superseded_record_is_not_listed_as_overdue(self, client, mock_db, regular_user_token, test_pet):
+        self._record(mock_db, test_pet, "Нобивак", 400, -5)
+        self._record(mock_db, test_pet, "нобивак", 1, 364)
+        assert _get(client, regular_user_token, test_pet).get_json()["card"]["overdue_records"] == []
+
+    def test_a_shot_of_the_same_vaccine_after_the_certificate_renews_it(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        mock_db["documents"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "category": "vaccination",
+                "title": "Бешенство",
+                "expires_at": "2020-01-01",
+                "created_at": datetime(2019, 6, 1),
+            }
+        )
+        assert [v["status"] for v in _get(client, regular_user_token, test_pet).get_json()["card"]["vaccinations"]] == [
+            "expired"
+        ]
+        self._record(mock_db, test_pet, " бешенство ", 3, 360)
+        assert _get(client, regular_user_token, test_pet).get_json()["card"]["vaccinations"] == []
+
+    def test_a_shot_of_another_vaccine_leaves_the_certificate_alone(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        mock_db["documents"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "category": "vaccination",
+                "title": "Бешенство",
+                "expires_at": "2020-01-01",
+                "created_at": datetime(2019, 6, 1),
+            }
+        )
+        self._record(mock_db, test_pet, "Нобивак", 3, 360)
+        assert len(_get(client, regular_user_token, test_pet).get_json()["card"]["vaccinations"]) == 1
