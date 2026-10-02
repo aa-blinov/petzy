@@ -234,7 +234,11 @@ def get_medications():
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
             today_key = today_start.strftime("%Y-%m-%d")
             schedule = doc.get("schedule") or {}
-            due_today = today_start.weekday() in schedule.get("days", []) and course_covers(doc, today_key)
+            due_today = (
+                doc.get("is_active", True)
+                and today_start.weekday() in schedule.get("days", [])
+                and course_covers(doc, today_key)
+            )
             doc["scheduled_today"] = bool(due_today and schedule.get("times"))
             doc["open_slots_today"] = (
                 open_slots(schedule.get("times", []), today_intakes.get((med_id_str, today_key), []))

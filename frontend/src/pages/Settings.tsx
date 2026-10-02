@@ -170,7 +170,7 @@ export function Settings() {
                 !account
                   ? ' '
                   : account.pending_email
-                    ? `Ждёт подтверждения: ${account.pending_email}`
+                    ? `${account.email_verified && account.email ? `Подтверждена: ${account.email}. ` : ''}Ждёт подтверждения: ${account.pending_email}`
                     : account.email_verified
                       ? account.email
                       : 'Не указана. Нужна, чтобы восстановить пароль'
