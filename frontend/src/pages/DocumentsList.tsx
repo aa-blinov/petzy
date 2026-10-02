@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Dialog, ImageViewer, PullToRefresh, SearchBar } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import { FileText, Pencil, Trash2, X } from 'lucide-react';
@@ -25,6 +25,7 @@ import {
 } from '../services/documents.service';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { deleteWithUndo, useHiddenRecords } from '../utils/deferredDelete';
 import { utcStampToLocal } from '../utils/dateUtils';
 import { NoPetState } from '../components/NoPetState';
 import { LoadError } from '../components/LoadError';
@@ -155,11 +156,14 @@ export function DocumentsList() {
     enabled: !!selectedPetId,
   });
 
+  // A document deleted a moment ago, «Отменить» still on offer, is left out of the list.
+  const hiddenDocuments = useHiddenRecords();
   const searchedDocuments = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return documents;
-    return documents.filter((doc) => doc.title.toLowerCase().includes(q));
-  }, [documents, searchQuery]);
+    const shown = documents.filter((doc) => !hiddenDocuments.has(doc._id));
+    if (!q) return shown;
+    return shown.filter((doc) => doc.title.toLowerCase().includes(q));
+  }, [documents, searchQuery, hiddenDocuments]);
 
   // Sections replace the old category filter — with the handful of
   // documents a pet typically has, always showing every category beats
@@ -178,13 +182,19 @@ export function DocumentsList() {
       .filter(([, docs]) => docs.length > 0);
   }, [searchedDocuments]);
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => documentsService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
-      showToast.success('Документ удалён');
-    },
-  });
+  // The file is not wiped at the tap: the card goes at once and «Отменить» waits a few seconds (as for a record); the server
+  // is asked when that time is up, and a failure says so and brings the card back.
+  const removeDocument = (doc: PetDocument) =>
+    deleteWithUndo({
+      id: doc._id,
+      path: `/documents/${doc._id}`,
+      message: `Документ «${doc.title}» удалён`,
+      onDeleted: () =>
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] }),
+          queryClient.invalidateQueries({ queryKey: ['medical-card'] }),
+        ]),
+    });
 
   const handleDelete = (doc: PetDocument) => {
     hapticFeedback('light');
@@ -699,7 +709,7 @@ export function DocumentsList() {
             text: 'Удалить',
             danger: true,
             onClick: () => {
-              if (deleteDialog.document) deleteMutation.mutate(deleteDialog.document._id);
+              if (deleteDialog.document) removeDocument(deleteDialog.document);
               setDeleteDialog((prev) => ({ ...prev, visible: false }));
             },
           },

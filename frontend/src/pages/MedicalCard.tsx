@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { readinessChecks } from '../utils/medicalReadiness';
+import { usePet } from '../hooks/usePet';
 import { LoadError } from '../components/LoadError';
 import { EmptyState } from '../components/EmptyState';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
+import { showUndo } from '../utils/undo';
 import { httpStatus } from '../services/api';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import './MedicalCard.css';
@@ -294,7 +296,7 @@ function RecordPill({ record }: { record: MedicalRecord }) {
 }
 
 /** One record of the card: what, when, and (for a vaccination or a treatment) when it is due again. */
-function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void }) {
+function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void; onStop?: () => void }) {
   const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
   return (
     <li className={`medcard__row medcard__row--stack${record.superseded ? ' medcard__row--history' : ''}`}>
@@ -310,6 +312,13 @@ function RecordRow({ record, onOpen, onRepeat }: { record: MedicalRecord; onOpen
       {repeating && onRepeat && !record.superseded && (
         <button type="button" className="medcard__row-action" onClick={onRepeat}>
           {record.kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
+        </button>
+      )}
+      {onStop && record.status === 'overdue' && !record.superseded && (
+        // Not done any more (the vaccine was dropped, the pet is too old): the record stays in the history, and the card and
+        // the reminders stop counting it as overdue.
+        <button type="button" className="medcard__row-action medcard__row-action--quiet" onClick={onStop}>
+          Больше не делаем
         </button>
       )}
     </li>
@@ -393,15 +402,20 @@ function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; p
 /** What a vet looks for first, and whether the card has it. Each gap is a row that opens the
     place to fill it; when nothing is missing the block says so in one line, so the owner knows
     the card is good enough to show. */
-function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; navigate: (to: string) => void }) {
+function ReadinessBlock({ card, petId, navigate, onShowVet }: { card: Card; petId: string; navigate: (to: string) => void; onShowVet: () => void }) {
   const checks = readinessChecks(card, petId);
   const missing = checks.filter((c) => !c.done);
   if (missing.length === 0) {
     return (
-      <p className="medcard__ready" role="status">
-        <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
-        Главное для врача заполнено
-      </p>
+      <div className="medcard__ready-box">
+        <p className="medcard__ready" role="status">
+          <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
+          Главное для врача заполнено
+        </p>
+        <Button size="small" color="primary" fill="outline" onClick={onShowVet}>
+          Показать врачу
+        </Button>
+      </div>
     );
   }
   // The order is the order a vet asks in. One step is the next one; the others wait below it as a short list.
@@ -435,7 +449,29 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
 /** The records of one kind. The card brings the latest ten; «Показать все» asks for the rest. */
 function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKind; card: Card; petId: string; hidden: ReadonlySet<string>; navigate: (to: string) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const queryClient = useQueryClient();
   const total = card.record_counts[kind];
+  // The repeat date taken off the record, and given back by «Отменить».
+  const stopTracking = async (r: MedicalRecord) => {
+    const input = {
+      date: r.date, title: r.title, next_due: null as string | null, clinic: r.clinic, vet: r.vet, note: r.note, batch: r.batch, target: r.target,
+      complaint: r.complaint, diagnosis: r.diagnosis, recommendations: r.recommendations, document_ids: r.documents.map((d) => d.id),
+    };
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ['medical-card', petId] });
+    try {
+      await medicalRecordsService.update(r._id, input);
+      await refresh();
+      showUndo({
+        message: `«${r.title}»: больше не напоминаем и не считаем просроченной`,
+        onUndo: async () => {
+          await medicalRecordsService.update(r._id, { ...input, next_due: r.next_due });
+          await refresh();
+        },
+      });
+    } catch (err) {
+      showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
+    }
+  };
   const all = useQuery({
     queryKey: ['medical-records', petId, kind],
     queryFn: () => medicalRecordsService.list(petId, kind),
@@ -465,6 +501,7 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
               record={r}
               onOpen={() => navigate(`/pets/${petId}/medical-records/${r._id}`)}
               onRepeat={repeating ? () => navigate(`/pets/${petId}/medical-records/new?kind=${kind}&from=${r._id}`) : undefined}
+              onStop={repeating ? () => void stopTracking(r) : undefined}
             />
           ))}
           {legacy.map((v) => {
@@ -626,9 +663,22 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
     .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
     .sort((a, b) => urgencyRank(a) - urgencyRank(b));
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
+  // An operation does not wait for the full card: a vet asks about the neutering first.
+  const procedures = card.records.procedure.filter((r) => !hidden.has(r._id)).slice(0, 3);
   return (
     <>
       <PatientLine pet={card.pet} />
+
+      {/* At the top, not after the whole page: the file to hand over, and the way to the full card. */}
+      <div className="medcard__topactions">
+        <Button size="small" color="primary" fill="outline" loading={saving} disabled={saving} onClick={onPdf}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Download size={16} strokeWidth={2.2} aria-hidden />
+            Скачать PDF
+          </span>
+        </Button>
+        <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>
+      </div>
 
       {card.visit_prep && (
         <Section id="medcard-vet-prep" title="На приём">
@@ -729,6 +779,29 @@ function VetView({ card, hidden, saving, onPdf, onAll }: { card: Card; hidden: R
         </Section>
       )}
 
+      {procedures.length > 0 && (
+        <Section id="medcard-vet-procedures" title="Операции и процедуры">
+          <ul className="medcard__list">
+            {procedures.map((r) => (
+              <li key={r._id} className="medcard__row medcard__row--stack">
+                <div className="medcard__row-title">{r.title}</div>
+                <RowLines lines={recordLines(r).filter((l) => l.tier === 'body' || l.tier === 'fact')} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {card.past_courses.length > 0 && (
+        <Section id="medcard-vet-past" title="Прошлые курсы">
+          <ul className="medcard__list">
+            {card.past_courses.slice(0, 3).map((c) => (
+              <CourseRow key={c.id} course={c} />
+            ))}
+          </ul>
+        </Section>
+      )}
+
       <div className="medcard__actions">
         <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -756,6 +829,27 @@ export function MedicalCard() {
   // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
   const linkMode = useSearchParams()[0].get('mode');
   const [chosen, setChosen] = useState<Mode | null>(linkMode === 'fill' || linkMode === 'vet' ? linkMode : null);
+  // Just filled in to «5 из 5»: the card is shown as the whole card with its «Показать врачу», not changed into the reading
+  // mode under the person's hands. Read once, from the flag the save left (utils/medicalReadiness.ts), and put away.
+  const justCompleted = useRef(false);
+  const flagRead = useRef(false);
+  if (!flagRead.current && id) {
+    flagRead.current = true;
+    try {
+      const key = `petzy:justCompleted:${id}`;
+      justCompleted.current = sessionStorage.getItem(key) === '1';
+      sessionStorage.removeItem(key);
+    } catch {
+      /* no storage: the usual mode */
+    }
+  }
+  // A card opened by an address of another pet (a link, a notification) makes that pet the chosen one: the bar, the
+  // tab and the switcher then say whose card this is.
+  const { pets, selectedPetId, selectPet } = usePet();
+  useEffect(() => {
+    const target = pets.find((p) => p._id === id);
+    if (target && target._id !== selectedPetId) selectPet(target);
+  }, [id, pets, selectedPetId, selectPet]);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -813,7 +907,7 @@ export function MedicalCard() {
   const optionalEmpty = (['visit', 'procedure'] as MedicalKind[]).filter((kind) => card.record_counts[kind] === 0);
   // Everyone with access to the pet may fill the card in (the profile and the records are the family's). A card that is not
   // filled in opens as the whole card, whatever was chosen last; a complete one opens as the person left it, else for the vet.
-  const mode: Mode = chosen ?? (complete ? stored ?? 'vet' : 'fill');
+  const mode: Mode = chosen ?? (justCompleted.current ? 'fill' : complete ? stored ?? 'vet' : 'fill');
   const chooseMode = (next: Mode) => {
     setChosen(next);
     if (complete) saveMode(id, next);
@@ -833,7 +927,7 @@ export function MedicalCard() {
             <VetView card={card} hidden={hidden} saving={saving} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
           ) : (
             <>
-          <ReadinessBlock card={card} petId={id!} navigate={navigate} />
+          <ReadinessBlock card={card} petId={id!} navigate={navigate} onShowVet={() => chooseMode('vet')} />
 
           {/* A PDF of an empty card helps nobody: it is offered once two of the five are there. */}
           {doneCount >= 2 && (

@@ -46,10 +46,10 @@ from web.push_delivery import send_push_to_subscriptions
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("send_medication_reminders")
 
-# How wide a window counts as "the dose just became due". Matched to a bit
-# more than the outer loop's own poll interval (60s) so a slow tick or a
-# GC pause doesn't let a slot fall through the gap between two polls.
-TICK_SECONDS = 90
+# How wide a window counts as "the dose just became due". Wider than the outer loop's own poll interval (60s) plus
+# what sending takes (a few seconds a dead subscription), so a slow tick or a GC pause doesn't let a slot fall through the
+# gap between two polls; a dose is never sent twice for it, the sent-table says so.
+TICK_SECONDS = 150
 
 # How many days ahead of a document's own expires_at to send the one-time
 # "this is expiring soon" heads up (a vaccination certificate, insurance
@@ -370,17 +370,24 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
     # would independently re-run the same push_subscriptions + pets scan.
     subscribed_pets = list(_iter_subscribed_pets(db, now_utc))
 
+    # Courses that fall due at the same minute for one pet go out as one push: two phones buzzing twice for «Рекс, 08:00»
+    # was one dose to give, not two things to do.
+    groups: dict = {}
     for slot in find_due_medication_reminders(db, now_utc, subscribed_pets=subscribed_pets):
-        medication = slot["medication"]
-        pet = slot["pet"]
+        groups.setdefault((str(slot["pet"]["_id"]), slot["date"], slot["time"]), []).append(slot)
+
+    for (pet_id, date_key, time_key), slots in groups.items():
+        pet = slots[0]["pet"]
+        names = ", ".join(s["medication"]["name"] for s in slots)
         # The pet in the text and in the link: with two pets «Синулокс, 08:00» does not say whose dose it is, and the
         # feed opens on the pet last chosen on that phone.
         payload = {
-            "title": "Пора дать лекарство",
-            "body": f"{pet.get('name', 'Питомец')}: {medication['name']}, {slot['time']}",
-            "url": f"/?pet={pet['_id']}",
+            "title": "Пора дать лекарство" if len(slots) == 1 else "Пора дать лекарства",
+            "body": f"{pet.get('name', 'Питомец')}: {names}, {time_key}",
+            "url": f"/?pet={pet_id}",
+            "tag": f"dose-{pet_id}-{date_key}-{time_key}",
         }
-        sent += send_push_to_subscriptions(db, slot["subscriptions"], payload, vapid_private_key, vapid_claims)
+        sent += send_push_to_subscriptions(db, slots[0]["subscriptions"], payload, vapid_private_key, vapid_claims)
 
         # Written after the sends above, not before: if the process is
         # killed between a successful webpush() call and this insert, a
@@ -391,20 +398,22 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
         # failure — a crash in that gap would silently mark the slot
         # "sent" and skip it forever — which is worse for a medication
         # reminder than an occasional duplicate.
-        try:
-            db.medication_reminders_sent.insert_one(
-                {
-                    "medication_id": str(medication["_id"]),
-                    "date": slot["date"],
-                    "time": slot["time"],
-                    "created_at": now_utc,
-                    "expires_at": now_utc + timedelta(days=30),
-                }
-            )
-        except Exception:
-            # Unique-index race from two overlapping runs — the slot is
-            # recorded either way, nothing more to do.
-            logger.warning(f"Could not record dedupe row for medication={medication['_id']}, slot={slot['time']}")
+        for slot in slots:
+            medication = slot["medication"]
+            try:
+                db.medication_reminders_sent.insert_one(
+                    {
+                        "medication_id": str(medication["_id"]),
+                        "date": slot["date"],
+                        "time": slot["time"],
+                        "created_at": now_utc,
+                        "expires_at": now_utc + timedelta(days=30),
+                    }
+                )
+            except Exception:
+                # Unique-index race from two overlapping runs — the slot is
+                # recorded either way, nothing more to do.
+                logger.warning(f"Could not record dedupe row for medication={medication['_id']}, slot={slot['time']}")
 
     for expiry in find_due_document_expiry_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         document = expiry["document"]
