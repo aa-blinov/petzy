@@ -109,6 +109,17 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
       >
         <div
           className="card-soft card-soft--interactive"
+          // A card that opens is a button for the keyboard and a screen reader too: Tab reaches it, Enter and Space open it.
+          role="button"
+          tabIndex={0}
+          aria-label={`${config.displayName}, ${formatRelativeDateTime(item.date_time)}, открыть`}
+          onKeyDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              (canEdit ? handleEdit : () => setIntakeInfoVisible(true))();
+            }
+          }}
           onClick={canEdit ? handleEdit : () => setIntakeInfoVisible(true)}
           style={{
             cursor: 'pointer',

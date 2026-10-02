@@ -12,9 +12,11 @@ import { PickerValue } from './PickerValue';
 interface FormFieldProps {
   field: FormFieldType;
   defaultValue?: string;
+  /** The cursor starts here (the one thing a new record asks for, with the keyboard already open). */
+  autoFocus?: boolean;
 }
 
-export function FormField({ field, defaultValue }: FormFieldProps) {
+export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
   const { control, getValues } = useFormContext();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -270,6 +272,7 @@ export function FormField({ field, defaultValue }: FormFieldProps) {
                   type={field.type === 'number' ? 'text' : field.type}
                   inputMode={field.type === 'number' ? 'decimal' : undefined}
                   id={field.name}
+                  autoFocus={autoFocus}
                   value={displayValue}
                   onChange={onChange}
                   onBlur={onBlur}

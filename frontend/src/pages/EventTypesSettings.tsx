@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { Button, Dialog } from 'antd-mobile';
 import { Plus, Trash2, Sparkles } from 'lucide-react';
 
@@ -36,7 +37,21 @@ export function EventTypesSettings() {
   const handleDelete = async (key: string) => {
     setDeletingKey(key);
     try {
-      await eventTypesService.remove(key);
+      try {
+        await eventTypesService.remove(key);
+      } catch (error) {
+        // The type has records: the server says how many, and the person decides, instead of a flat refusal.
+        const count = isAxiosError(error) ? (error.response?.data as { events_count?: number } | undefined)?.events_count : undefined;
+        if (!count) throw error;
+        const sure = await Dialog.confirm({
+          title: 'У типа есть записи',
+          content: `Записей этого типа: ${count}. Удалить тип вместе с ними? Вернуть их будет нельзя`,
+          confirmText: 'Удалить тип и записи',
+          cancelText: 'Оставить',
+        });
+        if (!sure) return;
+        await eventTypesService.remove(key, true);
+      }
       invalidate();
       showToast.success('Тип события удалён');
     } catch (error) {

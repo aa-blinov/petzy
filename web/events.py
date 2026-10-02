@@ -222,8 +222,17 @@ def delete_event_type(key):
         return error_response("event_type_builtin_immutable")
     if existing.get("created_by") != username:
         return error_response("event_type_not_yours")
-    if app.db[EVENTS_COLLECTION].count_documents({"type": key}) > 0:
-        return error_response("event_type_has_events")
+    count = app.db[EVENTS_COLLECTION].count_documents({"type": key})
+    with_events = request.args.get("with_events") == "true"
+    if count > 0 and not with_events:
+        # Says how many, so that the client can ask «delete the type with its N records?» instead of refusing flatly.
+        response, status = error_response("event_type_has_events")
+        body = response.get_json()
+        body["events_count"] = count
+        return jsonify(body), status
+    if count > 0:
+        app.db[EVENTS_COLLECTION].delete_many({"type": key})
+        app.logger.info(f"Event type records deleted with it: key={key}, count={count}, user={username}")
 
     app.db[EVENT_TYPES_COLLECTION].delete_one({"key": key})
     app.logger.info(f"Event type deleted: key={key}, user={username}")
@@ -381,14 +390,15 @@ def create_event():
     # exporter's clock. Absent for old records and clients that don't say.
     if valid_tz(data.tz):
         doc["tz"] = data.tz
-    app.db[EVENTS_COLLECTION].insert_one(doc)
+    inserted = app.db[EVENTS_COLLECTION].insert_one(doc)
     app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
 
     if anomaly:
         field_label = (field_def or {}).get("label", value_field)
         _notify_trend_anomaly(g.pet, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
 
-    return get_message("event_created", status=201, label=event_type["label"])
+    # The id lets the client offer «Отменить» for a record made by mistake.
+    return get_message("event_created", status=201, label=event_type["label"], id=str(inserted.inserted_id))
 
 
 @events_bp.route("/api/events", methods=["GET"])

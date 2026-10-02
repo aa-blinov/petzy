@@ -54,7 +54,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
     >
       {/* Sized to its tiles; many event types scroll inside, same cap as
           HistoryFilterSheet. */}
-      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh">
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh" label="Что записать?">
 
         {/* Title */}
         <h2

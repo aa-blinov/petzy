@@ -46,7 +46,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
       // block while dragging — this slot just needs to be invisible.
       bodyStyle={{ background: 'transparent' }}
     >
-      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh">
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh" label="Фильтр по типу записи">
         <h2
           className="section-header"
           style={{

@@ -15,7 +15,15 @@ export function ChoiceChips({ label, flush = false, children }: { label: string;
     though the chip is drawn small. */
 export function ChoiceChip({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" className="choice-chip" aria-pressed={pressed} onClick={onClick}>
+    <button
+      type="button"
+      className="choice-chip"
+      aria-pressed={pressed}
+      // A chip does not take the cursor from a field that has it: the field would be left, say so about what is still empty,
+      // and the message would push the chip from under the finger before the tap lands.
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+    >
       {children}
     </button>
   );
