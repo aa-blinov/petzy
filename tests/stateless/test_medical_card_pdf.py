@@ -397,3 +397,41 @@ class TestWhatIsInForceOnPageOne:
         line = _clinic_line({"name": "Друг", "doctors": [{"name": "Иванова А. П.", "specialty": "Терапевт"}]})
         assert line.endswith("Иванова А. П., терапевт")
         assert "УЗИ-врач" in _clinic_line({"name": "Друг", "doctors": [{"name": "П", "specialty": "УЗИ-врач"}]})
+
+
+class TestWhatDoesNotFit:
+    def test_a_picture_the_font_cannot_draw_is_said_not_dropped(self, client, mock_db, regular_user_token, test_pet):
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"health_notes": "аллергия на 🍗 курицу"}})
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert "аллергия на [значок] курицу" in _flat(text)
+
+    def test_many_medicines_keep_page_one_a_page(self, client, mock_db, regular_user_token, test_pet):
+        mock_db["pets"].update_one(
+            {"_id": test_pet["_id"]},
+            {
+                "$set": {
+                    "medical_profile": {
+                        "allergies": [{"substance": f"Аллерген{i}", "reaction": "зуд"} for i in range(10)],
+                        "allergies_none_known": False,
+                        "conditions": [{"name": f"Состояние{i}"} for i in range(3)],
+                    }
+                }
+            },
+        )
+        for i in range(20):
+            mock_db["medications"].insert_one(
+                {
+                    "pet_id": str(test_pet["_id"]),
+                    "name": f"Препарат{i:02d}",
+                    "type": "Таблетка",
+                    "dose_unit": "таб",
+                    "default_dose": 1,
+                    "is_active": True,
+                    "schedule": {"days": list(range(7)), "times": ["08:00", "20:00"]},
+                    "created_at": datetime(2026, 1, 1),
+                }
+            )
+        first = _flat(_first_page(client, regular_user_token, test_pet))
+        assert all(f"Препарат{i:02d}" in first for i in range(20))
+        assert "Аллерген9" in first
+        assert "Хронология" not in first

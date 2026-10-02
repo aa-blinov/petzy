@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { showSnackbar } from '../utils/snackbar';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { parseRecordDate } from '../utils/relativeTime';
@@ -85,7 +86,7 @@ export function DocumentForm() {
   // swept on the server.
   useEffect(() => () => uploadAbort.current?.abort(), []);
 
-  const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<DocumentFormData>({
+  const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty } } = useForm<DocumentFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
     // Validated when a field is left, and after that as it changes: an error
@@ -216,6 +217,8 @@ export function DocumentForm() {
       });
     }
   }, [document, reset]);
+  // The typed fields come back after a session that ran out; the chosen file has to be chosen again.
+  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!document, release });
 
   const createMutation = useMutation({
     mutationFn: (data: DocumentFormData) =>

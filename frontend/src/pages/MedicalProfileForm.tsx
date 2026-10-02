@@ -13,6 +13,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { fieldNote } from '../components/FieldNote';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
@@ -245,6 +246,7 @@ export function MedicalProfileForm() {
     baseVersion.current = profile.version ?? null;
     reset(profileToForm(profile));
   }, [query.data, reset, section]);
+  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!query.data?.profile, release });
 
   const save = useMutation({
     mutationFn: (data: ProfileForm) =>

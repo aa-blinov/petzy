@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { usePet } from '../hooks/usePet';
+import { useSessionDraft } from '../hooks/useSessionDraft';
 import { Button, Dialog, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
 import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
@@ -91,7 +92,7 @@ export function PetForm() {
   const breedInputRef = useRef<InputRef>(null);
   const healthNotesInputRef = useRef<TextAreaRef>(null);
 
-  const { control, handleSubmit, reset, watch, formState: { isDirty } } = useForm<PetFormData>({
+  const { control, handleSubmit, reset, watch, getValues, formState: { isDirty } } = useForm<PetFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
     // Validated when a field is left, and after that as it changes: an error
@@ -178,6 +179,8 @@ export function PetForm() {
       setFileList([]);
     }
   }, [pet, isEditing, reset]);
+  // The typed fields come back after a session that ran out (the photo and the sharing do not).
+  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!pet, release });
 
   const dateColumns = useMemo(() => {
     let month = new Date().getMonth();
