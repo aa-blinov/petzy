@@ -13,6 +13,13 @@ import type { Pet } from '../services/pets.service';
 
 export const PET_TAGLINE_MAX = 40;
 
+export interface PetCrop {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface PetLook {
   tagline?: string;
   accent?: string;
@@ -20,6 +27,8 @@ export interface PetLook {
   font?: string;
   /** A key of PET_FRAMES: the frame around the photo (or the species picture) on the card. */
   frame?: string;
+  /** The part of the photo each frame shows: every frame has a window of its own shape, so its own part. */
+  crops?: Record<string, PetCrop>;
 }
 
 /** `swatch` is the deep tone in the light theme, for the picker button only; the card takes its tints from the CSS. */
@@ -89,22 +98,84 @@ export const PET_FRAMES = [
   { key: 'neon', label: 'Неон' },
   { key: 'holo', label: 'Голограмма' },
   { key: 'polaroid', label: 'Полароид' },
+  { key: 'gallery', label: 'Галерея' },
+  { key: 'porthole', label: 'Иллюминатор' },
+  { key: 'film', label: 'Плёнка' },
+  { key: 'stamp', label: 'Марка' },
+  { key: 'popart', label: 'Поп-арт' },
+  { key: 'glitch', label: 'Глитч' },
+  { key: 'aura', label: 'Аура' },
   { key: 'arch', label: 'Арка' },
-  { key: 'flower', label: 'Цветок' },
   { key: 'circle', label: 'Круг' },
+  { key: 'flower', label: 'Цветок' },
+  { key: 'heart', label: 'Сердце' },
+  { key: 'star', label: 'Звезда' },
+  { key: 'cloud', label: 'Облако' },
+  { key: 'paw', label: 'Лапка' },
 ] as const;
 
 export function petFrameOf(look?: PetLook | null): (typeof PET_FRAMES)[number] | undefined {
   return PET_FRAMES.find((f) => f.key === look?.frame);
 }
 
-// Eight petals round a centre, one mask: the photo takes the shape of a flower.
-const FLOWER_MASK = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g fill='#000'><circle cx='50' cy='50' r='33'/>${Array.from({ length: 8 }, (_, i) => {
-    const a = (i * Math.PI) / 4;
-    return `<circle cx='${(50 + 31 * Math.cos(a)).toFixed(1)}' cy='${(50 + 31 * Math.sin(a)).toFixed(1)}' r='19'/>`;
-  }).join('')}</g></svg>`,
-)}")`;
+/** The frames whose window is round: the crop editor shows a round window for them. */
+export const ROUND_FRAMES = ['story', 'porthole', 'circle'];
+
+/**
+ * Width over height of the window each frame leaves for the photo (at the card's 112 px), so the crop editor cuts the
+ * shape the card will show: the polaroid's is wider than tall, the film strip's taller. Not listed: square.
+ */
+export const FRAME_ASPECT: Record<string, number> = { polaroid: 102 / 91, film: 92 / 112 };
+
+export function petFrameAspect(frame: string | undefined): number {
+  return (frame && FRAME_ASPECT[frame]) || 1;
+}
+
+/** The saved part of the photo for the frame the pet wears, if one was chosen. */
+export function petCropOf(look?: PetLook | null): PetCrop | undefined {
+  return look?.frame ? look.crops?.[look.frame] : undefined;
+}
+
+/** A shape cut out of the picture by a mask drawn in a 100 x 100 box; the photo takes its outline. */
+function shapeMask(inner: string): CSSProperties {
+  const url = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>${inner}</svg>`)}")`;
+  return {
+    borderRadius: 0,
+    background: 'transparent',
+    WebkitMaskImage: url,
+    maskImage: url,
+    WebkitMaskSize: '100% 100%',
+    maskSize: '100% 100%',
+    WebkitMaskRepeat: 'no-repeat',
+    maskRepeat: 'no-repeat',
+  };
+}
+
+const ring = (n: number, r: number, f: (x: number, y: number, i: number) => string) =>
+  Array.from({ length: n }, (_, i) => {
+    const a = (i * 2 * Math.PI) / n - Math.PI / 2;
+    return f(+(50 + r * Math.cos(a)).toFixed(1), +(50 + r * Math.sin(a)).toFixed(1), i);
+  }).join('');
+
+const SHAPES: Record<string, string> = {
+  // Eight petals round a centre.
+  flower: `<g fill='#000'><circle cx='50' cy='50' r='33'/>${ring(8, 31, (x, y) => `<circle cx='${x}' cy='${y}' r='19'/>`)}</g>`,
+  heart: `<path fill='#000' d='M50 90 C18 67 5 49 5 32 C5 17 17 8 30 8 C39 8 46 13 50 21 C54 13 61 8 70 8 C83 8 95 17 95 32 C95 49 82 67 50 90 Z'/>`,
+  // A seal: the points of a badge.
+  star: `<polygon fill='#000' points='${Array.from({ length: 32 }, (_, i) => {
+    const a = (i * Math.PI) / 16 - Math.PI / 2;
+    const r = i % 2 === 0 ? 49 : 41;
+    return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ')}'/>`,
+  cloud: `<g fill='#000'><circle cx='27' cy='63' r='19'/><circle cx='47' cy='42' r='25'/><circle cx='72' cy='50' r='21'/><circle cx='50' cy='67' r='24'/><circle cx='77' cy='69' r='17'/></g>`,
+  // A big pad and four toes.
+  paw: `<g fill='#000'><ellipse cx='50' cy='69' rx='28' ry='23'/><ellipse cx='19' cy='44' rx='11' ry='15' transform='rotate(-22 19 44)'/><ellipse cx='39' cy='23' rx='11' ry='15' transform='rotate(-7 39 23)'/><ellipse cx='61' cy='23' rx='11' ry='15' transform='rotate(7 61 23)'/><ellipse cx='81' cy='44' rx='11' ry='15' transform='rotate(22 81 44)'/></g>`,
+  // A postage stamp: paper with a perforated edge.
+  stamp: `<mask id='m'><rect width='100' height='100' fill='#fff'/><g fill='#000'>${Array.from({ length: 10 }, (_, i) => {
+    const c = 5 + i * 10;
+    return `<circle cx='${c}' cy='0' r='3.2'/><circle cx='${c}' cy='100' r='3.2'/><circle cx='0' cy='${c}' r='3.2'/><circle cx='100' cy='${c}' r='3.2'/>`;
+  }).join('')}</g></mask><rect width='100' height='100' fill='#000' mask='url(#m)'/>`,
+};
 
 export interface PetFrameStyle {
   /** On the box that holds the picture; it keeps its size: shadows and rotation draw outside it, borders sit inside it. */
@@ -115,7 +186,8 @@ export interface PetFrameStyle {
 
 /**
  * What a frame adds to the picture, drawn in CSS only. `scale` shrinks the widths for the small samples in the picker.
- * The neon takes the pet's colour, so it follows the accent chosen next to it; the others have colours of their own.
+ * The neon and the pop-art shadow take the pet's colour, so they follow the accent chosen next to them; the rest have
+ * colours of their own.
  */
 export function petFrameStyle(frame: string | undefined, scale = 1): PetFrameStyle {
   const px = (n: number) => `${Math.max(1, Math.round(n * scale))}px`;
@@ -173,24 +245,85 @@ export function petFrameStyle(frame: string | undefined, scale = 1): PetFrameSty
           transform: 'rotate(-3deg)',
         },
       };
-    case 'arch':
-      return { box: { borderRadius: `50% 50% ${px(10)} ${px(10)} / 42% 42% ${px(10)} ${px(10)}` } };
-    case 'flower':
+    case 'gallery':
+      // A wooden frame with a cream mat, as hung in a gallery.
       return {
         box: {
-          borderRadius: 0,
-          background: 'transparent',
-          WebkitMaskImage: FLOWER_MASK,
-          maskImage: FLOWER_MASK,
-          WebkitMaskSize: '100% 100%',
-          maskSize: '100% 100%',
-          WebkitMaskRepeat: 'no-repeat',
-          maskRepeat: 'no-repeat',
+          boxSizing: 'border-box',
+          border: `${px(5)} solid transparent`,
+          padding: px(5),
+          borderRadius: px(2),
+          background:
+            'linear-gradient(#f4efe6, #f4efe6) padding-box, linear-gradient(135deg, #6b4a2b, #a67c52, #5a3d22, #8f6a43) border-box',
+          boxShadow: '0 3px 8px rgba(0, 0, 0, 0.35)',
         },
       };
+    case 'porthole':
+      // A ship's porthole: a round window in a ring of metal.
+      return {
+        box: {
+          boxSizing: 'border-box',
+          border: `${px(6)} solid transparent`,
+          borderRadius: '50%',
+          background:
+            'linear-gradient(#0b2a3c, #0b2a3c) padding-box, linear-gradient(145deg, #f5f7fa, #9aa7b5 40%, #e8edf2 60%, #6f7c8a) border-box',
+          boxShadow: '0 3px 8px rgba(0, 0, 0, 0.35)',
+        },
+      };
+    case 'film':
+      // A strip of film: a dark band with a column of light holes down each side.
+      return {
+        box: {
+          boxSizing: 'border-box',
+          padding: `0 ${px(10)}`,
+          borderRadius: px(4),
+          background: `repeating-linear-gradient(180deg, #111 0 ${px(3)}, #eee ${px(3)} ${px(7)}, #111 ${px(7)} ${px(10)}) left ${px(2.5)} top 0 / ${px(5)} 100% no-repeat, repeating-linear-gradient(180deg, #111 0 ${px(3)}, #eee ${px(3)} ${px(7)}, #111 ${px(7)} ${px(10)}) right ${px(2.5)} top 0 / ${px(5)} 100% no-repeat, #111`,
+        },
+      };
+    case 'stamp':
+      return { box: { ...shapeMask(SHAPES.stamp), boxSizing: 'border-box', padding: px(8), background: '#fff' } };
+    case 'popart':
+      return {
+        box: {
+          boxSizing: 'border-box',
+          border: `${px(3)} solid var(--app-text-primary)`,
+          borderRadius: px(6),
+          boxShadow: `${px(6)} ${px(6)} 0 var(--app-accent-deep)`,
+        },
+      };
+    case 'glitch':
+      // Two colour channels slipped apart.
+      return { box: { borderRadius: px(4), boxShadow: `${px(5)} ${px(4)} 0 #ff2d95, ${px(-5)} ${px(-4)} 0 #00e5ff` } };
+    case 'aura':
+      return {
+        box: {
+          boxShadow: `0 0 ${px(14)} ${px(2)} #ff7ab6, ${px(-9)} ${px(6)} ${px(20)} #7aa2ff, ${px(9)} ${px(-6)} ${px(20)} #ffd36e`,
+        },
+      };
+    case 'arch':
+      return { box: { borderRadius: `50% 50% ${px(10)} ${px(10)} / 42% 42% ${px(10)} ${px(10)}` } };
     case 'circle':
       return { box: { borderRadius: '50%' } };
+    case 'flower':
+    case 'heart':
+    case 'star':
+    case 'cloud':
+    case 'paw':
+      return { box: shapeMask(SHAPES[frame]) };
     default:
       return { box: {} };
   }
+}
+
+/** The photo's own box for a crop: the part of it in the window, set by where it starts and how much of it shows. */
+export function petCropStyle(crop: PetCrop): CSSProperties {
+  return {
+    position: 'absolute',
+    maxWidth: 'none',
+    width: `${10000 / crop.w}%`,
+    height: `${10000 / crop.h}%`,
+    left: `${(-crop.x * 100) / crop.w}%`,
+    top: `${(-crop.y * 100) / crop.h}%`,
+    objectFit: 'cover',
+  };
 }

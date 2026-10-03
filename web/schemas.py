@@ -377,7 +377,27 @@ PET_ACCENTS = ("sage", "sky", "lilac", "rose", "sun", "teal", "slate")
 # The hand-written faces the name on the card can take; the files are the frontend's (petLook.ts).
 PET_FONTS = ("caveat", "marck", "bad", "pacifico", "neucha", "amatic")
 # The frames the pet's photo can take, drawn in the frontend (petLook.ts).
-PET_FRAMES = ("story", "sticker", "neon", "holo", "polaroid", "arch", "flower", "circle")
+PET_FRAMES = (
+    "story",
+    "sticker",
+    "neon",
+    "holo",
+    "polaroid",
+    "arch",
+    "flower",
+    "circle",
+    "heart",
+    "star",
+    "cloud",
+    "paw",
+    "stamp",
+    "film",
+    "glitch",
+    "popart",
+    "aura",
+    "gallery",
+    "porthole",
+)
 PET_TAGLINE_MAX = 40
 
 
@@ -391,6 +411,9 @@ class PetLook(BaseModel):
     accent: str = ""
     font: str = ""
     frame: str = ""
+    # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
+    # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
+    crops: Dict[str, Dict[str, float]] = Field(default_factory=dict)
 
     @field_validator("tagline")
     @classmethod
@@ -424,9 +447,26 @@ class PetLook(BaseModel):
             raise ValueError("Такой рамки нет")
         return value
 
+    @field_validator("crops")
+    @classmethod
+    def _crops(cls, value: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str, float]]:
+        cleaned: Dict[str, Dict[str, float]] = {}
+        for frame, crop in (value or {}).items():
+            if frame not in PET_FRAMES:
+                raise ValueError("Такой рамки нет")
+            if set(crop) != {"x", "y", "w", "h"}:
+                raise ValueError("Область фото задаётся четырьмя числами")
+            x, y, w, h = (round(float(crop[k]), 2) for k in ("x", "y", "w", "h"))
+            if not (0 <= x <= 100 and 0 <= y <= 100 and 1 <= w <= 100 and 1 <= h <= 100):
+                raise ValueError("Область фото вне снимка")
+            if x + w > 100.5 or y + h > 100.5:
+                raise ValueError("Область фото вне снимка")
+            cleaned[frame] = {"x": x, "y": y, "w": w, "h": h}
+        return cleaned
+
 
 class PetLookResponse(BaseModel):
-    look: Dict[str, str] = Field(default_factory=dict)
+    look: Dict[str, Any] = Field(default_factory=dict)
 
 
 class UserSearchResponse(BaseModel):

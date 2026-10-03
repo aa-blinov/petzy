@@ -5,11 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
 import { NoPetState } from '../components/NoPetState';
-import { PetImage } from '../components/PetImage';
+import { PetPhotoFill } from '../components/PetPhotoFill';
+import { FrameCropModal } from '../components/FrameCropModal';
 import { getSpecies } from '../utils/species';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { SpinnerButton } from '../components/SpinnerButton';
-import { PET_ACCENTS, PET_FONTS, PET_FRAMES, PET_TAGLINE_MAX, loadPetFont, petFontStyle, petFrameStyle, petLookOf, type PetLook } from '../utils/petLook';
+import { PET_ACCENTS, PET_FONTS, PET_FRAMES, PET_TAGLINE_MAX, loadPetFont, petFontStyle, petFrameStyle, petLookOf, type PetCrop, type PetLook } from '../utils/petLook';
 import { showToast } from '../utils/toast';
 
 const BRAND = { key: '', label: 'Терракот', swatch: '#C46A3F' };
@@ -31,6 +32,9 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const [accent, setAccent] = useState(saved.accent ?? '');
   const [font, setFont] = useState(saved.font ?? '');
   const [frame, setFrame] = useState(saved.frame ?? '');
+  const [crops, setCrops] = useState<Record<string, PetCrop>>(saved.crops ?? {});
+  // The frame being cropped, before it is the pet's: cancelling leaves the old one.
+  const [cropping, setCropping] = useState<string | null>(null);
   const SpeciesIcon = getSpecies(pet.species).icon;
   const [saving, setSaving] = useState(false);
   const mountedRef = useRef(true);
@@ -47,7 +51,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
     };
   }, []);
 
-  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame };
+  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops };
 
   const save = async () => {
     if (saving) return;
@@ -203,7 +207,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                     role="radio"
                     aria-checked={on}
                     className="tap-feedback"
-                    onClick={() => setFrame(f.key)}
+                    onClick={() => (f.key && pet.photo_url ? setCropping(f.key) : setFrame(f.key))}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -236,7 +240,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                       }}
                     >
                       {pet.photo_url ? (
-                        <PetImage src={pet.photo_url} alt="" size={44} species={pet.species} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, ...sample.image }} />
+                        <PetPhotoFill src={pet.photo_url} alt="" size={44} species={pet.species} crop={crops[f.key]} style={sample.image} />
                       ) : (
                         <SpeciesIcon size={24} strokeWidth={1.6} aria-hidden />
                       )}
@@ -248,6 +252,29 @@ function PetLookFor({ pet }: { pet: Pet }) {
             </div>
           </div>
 
+          {frame && pet.photo_url && (
+            <button
+              type="button"
+              className="tap-feedback"
+              onClick={() => setCropping(frame)}
+              style={{
+                width: '100%',
+                minHeight: 'var(--touch-min)',
+                marginBottom: 'var(--spacing-md)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--app-border-color)',
+                background: 'var(--app-card-background)',
+                color: 'var(--app-text-primary)',
+                fontFamily: 'inherit',
+                fontSize: 'var(--text-md)',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Изменить кадр
+            </button>
+          )}
+
           <div style={{ paddingBottom: 'var(--spacing-md)' }}>
             <SpinnerButton type="button" block loading={saving} onClick={save}>
               Сохранить
@@ -255,6 +282,20 @@ function PetLookFor({ pet }: { pet: Pet }) {
           </div>
         </div>
       </div>
+      {cropping && pet.photo_url && (
+        <FrameCropModal
+          src={pet.photo_url}
+          species={pet.species}
+          frame={cropping}
+          initial={crops[cropping]}
+          onCancel={() => setCropping(null)}
+          onDone={(crop) => {
+            setCrops((prev) => ({ ...prev, [cropping]: crop }));
+            setFrame(cropping);
+            setCropping(null);
+          }}
+        />
+      )}
     </div>
   );
 }
