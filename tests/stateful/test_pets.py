@@ -275,6 +275,20 @@ class TestPetManagement:
         assert self._look(client, regular_user_token, test_pet, {"tagline": "я" * 41}).status_code == 422
         assert self._look(client, regular_user_token, test_pet, {"tagline": "я" * 40}).status_code == 200
 
+    def test_a_font_the_set_lacks_is_refused_and_a_known_one_is_kept(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        assert self._look(client, regular_user_token, test_pet, {"font": "Comic Sans"}).status_code == 422
+        response = self._look(client, regular_user_token, test_pet, {"font": "marck", "accent": "sun"})
+        assert response.get_json() == {"look": {"accent": "sun", "font": "marck"}}
+
+    def test_a_frame_the_set_lacks_is_refused_and_a_known_one_is_kept(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        assert self._look(client, regular_user_token, test_pet, {"frame": "wooden"}).status_code == 422
+        response = self._look(client, regular_user_token, test_pet, {"frame": "polaroid"})
+        assert response.get_json() == {"look": {"frame": "polaroid"}}
+
     def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
         assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
 

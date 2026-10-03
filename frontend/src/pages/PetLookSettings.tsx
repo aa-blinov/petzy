@@ -5,9 +5,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
 import { NoPetState } from '../components/NoPetState';
+import { PetImage } from '../components/PetImage';
+import { getSpecies } from '../utils/species';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { SpinnerButton } from '../components/SpinnerButton';
-import { PET_ACCENTS, PET_TAGLINE_MAX, petLookOf, type PetLook } from '../utils/petLook';
+import { PET_ACCENTS, PET_FONTS, PET_FRAMES, PET_TAGLINE_MAX, loadPetFont, petFontStyle, petFrameStyle, petLookOf, type PetLook } from '../utils/petLook';
 import { showToast } from '../utils/toast';
 
 const BRAND = { key: '', label: 'Терракот', swatch: '#C46A3F' };
@@ -27,8 +29,16 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const saved = petLookOf(pet);
   const [tagline, setTagline] = useState(saved.tagline ?? '');
   const [accent, setAccent] = useState(saved.accent ?? '');
+  const [font, setFont] = useState(saved.font ?? '');
+  const [frame, setFrame] = useState(saved.frame ?? '');
+  const SpeciesIcon = getSpecies(pet.species).icon;
   const [saving, setSaving] = useState(false);
   const mountedRef = useRef(true);
+
+  // The options show the name in each face, so all of them are fetched here (and only here).
+  useEffect(() => {
+    PET_FONTS.forEach((f) => void loadPetFont(f));
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -37,7 +47,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
     };
   }, []);
 
-  const draft: PetLook = { tagline: tagline.trim(), accent };
+  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame };
 
   const save = async () => {
     if (saving) return;
@@ -134,6 +144,104 @@ function PetLookFor({ pet }: { pet: Pet }) {
                     }}
                   >
                     {on && <Check size={20} strokeWidth={3} aria-hidden />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div id="pet-font-label" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' }}>
+              Шрифт имени
+            </div>
+            <div role="radiogroup" aria-labelledby="pet-font-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+              {[{ key: '', label: 'Обычный', family: '', weight: 700, scale: 1 }, ...PET_FONTS].map((f) => {
+                const on = font === f.key;
+                const face = PET_FONTS.find((x) => x.key === f.key);
+                return (
+                  <button
+                    key={f.key || 'plain'}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    aria-label={`${pet.name}, ${f.label}`}
+                    className="tap-feedback"
+                    onClick={() => setFont(f.key)}
+                    style={{
+                      minHeight: 'var(--touch-min)',
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      border: on ? '2px solid var(--app-accent-deep)' : '1px solid var(--app-border-color)',
+                      background: on ? 'var(--app-accent-soft)' : 'var(--app-page-background)',
+                      color: 'var(--app-text-primary)',
+                      fontFamily: 'inherit',
+                      fontSize: 'var(--text-lg)',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      ...petFontStyle(face, 'var(--text-lg)'),
+                    }}
+                  >
+                    {pet.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div id="pet-frame-label" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' }}>
+              Рамка фото
+            </div>
+            <div role="radiogroup" aria-labelledby="pet-frame-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+              {[{ key: '', label: 'Без рамки' }, ...PET_FRAMES].map((f) => {
+                const on = frame === f.key;
+                const sample = petFrameStyle(f.key, 0.45);
+                return (
+                  <button
+                    key={f.key || 'plain'}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    className="tap-feedback"
+                    onClick={() => setFrame(f.key)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      minHeight: 'var(--touch-min)',
+                      padding: '12px 4px 8px',
+                      borderRadius: 'var(--radius-md)',
+                      border: on ? '2px solid var(--app-accent-deep)' : '1px solid var(--app-border-color)',
+                      background: on ? 'var(--app-accent-soft)' : 'var(--app-page-background)',
+                      color: 'var(--app-text-primary)',
+                      fontFamily: 'inherit',
+                      fontSize: 'var(--text-xs)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        overflow: 'hidden',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--app-accent-soft)',
+                        color: 'var(--app-accent-deep)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        ...sample.box,
+                      }}
+                    >
+                      {pet.photo_url ? (
+                        <PetImage src={pet.photo_url} alt="" size={44} species={pet.species} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, ...sample.image }} />
+                      ) : (
+                        <SpeciesIcon size={24} strokeWidth={1.6} aria-hidden />
+                      )}
+                    </span>
+                    {f.label}
                   </button>
                 );
               })}

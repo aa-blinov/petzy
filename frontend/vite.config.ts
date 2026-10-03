@@ -22,6 +22,9 @@ export default defineConfig(() => {
       filename: 'sw.ts',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // The pets' hand-written faces are fetched when one is used and kept by the service worker's own cache (sw.ts), not
+        // installed with the app for everyone.
+        globIgnores: ['**/assets/{caveat,marck-script,bad-script,pacifico,neucha,amatic-sc}-*.woff2'],
       },
       includeAssets: ['favicon.svg', 'icon.svg', 'apple-touch-icon.png', 'badge-96.png'],
       // The one manifest (a second, hand-written public/manifest.json with

@@ -374,17 +374,23 @@ class PetFormDefaultsResponse(BaseModel):
 
 # The colours a pet's card can take; the palette itself lives in the frontend (petLook.ts), the server only knows the names.
 PET_ACCENTS = ("sage", "sky", "lilac", "rose", "sun", "teal", "slate")
+# The hand-written faces the name on the card can take; the files are the frontend's (petLook.ts).
+PET_FONTS = ("caveat", "marck", "bad", "pacifico", "neucha", "amatic")
+# The frames the pet's photo can take, drawn in the frontend (petLook.ts).
+PET_FRAMES = ("story", "sticker", "neon", "holo", "polaroid", "arch", "flower", "circle")
 PET_TAGLINE_MAX = 40
 
 
 class PetLook(BaseModel):
-    """PUT /api/pets/<id>/look: how the pet's card shows it, a line about it and a colour.
+    """PUT /api/pets/<id>/look: how the pet's card shows it, a line about it, a colour, a hand-written face for the name and a frame for the photo.
 
     The whole look, replacing the old one; an empty line and no colour clear it. Everyone with access to the pet sees
     (and may change) the same, like its form defaults."""
 
     tagline: str = ""
     accent: str = ""
+    font: str = ""
+    frame: str = ""
 
     @field_validator("tagline")
     @classmethod
@@ -400,6 +406,22 @@ class PetLook(BaseModel):
         value = (value or "").strip()
         if value and value not in PET_ACCENTS:
             raise ValueError("Такого цвета нет")
+        return value
+
+    @field_validator("font")
+    @classmethod
+    def _font(cls, value: str) -> str:
+        value = (value or "").strip()
+        if value and value not in PET_FONTS:
+            raise ValueError("Такого шрифта нет")
+        return value
+
+    @field_validator("frame")
+    @classmethod
+    def _frame(cls, value: str) -> str:
+        value = (value or "").strip()
+        if value and value not in PET_FRAMES:
+            raise ValueError("Такой рамки нет")
         return value
 
 
