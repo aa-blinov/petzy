@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,21 +7,171 @@ import { usePet } from '../hooks/usePet';
 import { NoPetState } from '../components/NoPetState';
 import { PetPhotoFill } from '../components/PetPhotoFill';
 import { FrameCropModal } from '../components/FrameCropModal';
-import { getSpecies } from '../utils/species';
 import { PetSummaryCard } from '../components/PetSummaryCard';
 import { SpinnerButton } from '../components/SpinnerButton';
-import { PET_ACCENTS, PET_FONTS, PET_FRAMES, PET_TAGLINE_MAX, loadPetFont, petFontStyle, petFrameStyle, petLookOf, type PetCrop, type PetLook } from '../utils/petLook';
+import { getSpecies } from '../utils/species';
+import {
+  PET_ACCENTS,
+  PET_BACKDROPS,
+  PET_FONTS,
+  PET_FRAMES,
+  PET_FRAME_GROUPS,
+  PET_SCENES,
+  PET_TAGLINE_MAX,
+  PET_VIBES,
+  loadPetFont,
+  petAccentAttr,
+  petBackdropKey,
+  petBackdropStyle,
+  petFontStyle,
+  petFrameStyle,
+  petLookOf,
+  petSceneStyle,
+  petTintAttr,
+  petTintHex,
+  type PetCrop,
+  type PetLook,
+} from '../utils/petLook';
 import { showToast } from '../utils/toast';
 
 const BRAND = { key: '', label: 'Терракот', swatch: '#C46A3F' };
 
-/** «Карточка питомца»: a line under the name and a colour, for the selected pet. They are how the family sees the pet,
- *  so everyone with access to it sees (and may change) the same. */
+const labelStyle: CSSProperties = { fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' };
+const optionBase: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '8px',
+  minHeight: 'var(--touch-min)',
+  padding: '12px 4px 8px',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--app-text-primary)',
+  fontFamily: 'inherit',
+  fontSize: 'var(--text-xs)',
+  cursor: 'pointer',
+};
+const optionState = (on: boolean): CSSProperties => ({
+  border: on ? '2px solid var(--app-accent-deep)' : '1px solid var(--app-border-color)',
+  background: on ? 'var(--app-accent-soft)' : 'var(--app-page-background)',
+});
+
+/** «Оформление питомца»: how the pet shows in the feed, for the selected pet. It is how the family sees the pet, so everyone
+ *  with access to it sees (and may change) the same. */
 export function PetLookSettings() {
   const { getSelectedPet } = usePet();
-  if (!getSelectedPet) return <NoPetState what="Карточка питомца" />;
+  if (!getSelectedPet) return <NoPetState what="Оформление питомца" />;
   // Keyed by the pet: choosing another pet in the switcher opens that pet's own card.
   return <PetLookFor key={getSelectedPet._id} pet={getSelectedPet} />;
+}
+
+function Block({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="card-soft" style={{ padding: '16px', marginBottom: 'var(--spacing-md)' }}>
+      <h2 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--app-text-primary)' }}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+/** A row of round colour buttons: one radio group, `none` first (the pet's own colour, or the brand's). */
+function Swatches({ label, value, onChange, noneLabel }: { label: string; value: string; onChange: (key: string) => void; noneLabel: string }) {
+  const id = `sw-${label}`;
+  return (
+    <>
+      <div id={id} style={labelStyle}>
+        {label}
+      </div>
+      <div role="radiogroup" aria-labelledby={id} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+        {[{ ...BRAND, label: noneLabel }, ...PET_ACCENTS].map((a) => {
+          const on = value === a.key;
+          return (
+            <button
+              key={a.key || 'none'}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-label={a.label}
+              title={a.label}
+              className="tap-feedback"
+              onClick={() => onChange(a.key)}
+              style={{
+                width: 'var(--touch-min)',
+                height: 'var(--touch-min)',
+                borderRadius: '50%',
+                border: on ? '3px solid var(--app-text-primary)' : '3px solid transparent',
+                boxShadow: on ? 'inset 0 0 0 2px var(--app-card-background)' : 'none',
+                background: a.swatch,
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              {on && <Check size={20} strokeWidth={3} aria-hidden />}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/** A grid of backdrops, each drawn as a small sample of itself in the chosen tint. */
+function BackdropGrid({
+  label,
+  items,
+  value,
+  onChange,
+  hex,
+  photoUrl,
+  tintAttr,
+}: {
+  label: string;
+  items: readonly { key: string; label: string }[];
+  value: string;
+  onChange: (key: string) => void;
+  hex: string;
+  photoUrl?: string;
+  tintAttr: { 'data-pet-tint'?: string };
+}) {
+  const id = `bd-${label}`;
+  return (
+    <>
+      <div id={id} style={labelStyle}>
+        {label}
+      </div>
+      <div role="radiogroup" aria-labelledby={id} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+        {items.map((b) => {
+          const on = value === b.key;
+          return (
+            <button key={b.key} type="button" role="radio" aria-checked={on} className="tap-feedback" onClick={() => onChange(b.key)} style={{ ...optionBase, ...optionState(on) }}>
+              <span
+                aria-hidden
+                {...tintAttr}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '40px',
+                  overflow: 'hidden',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--app-border-color)',
+                  background: 'var(--app-card-background)',
+                  ...petBackdropStyle(b.key, hex),
+                }}
+              >
+                {b.key === 'photo' && photoUrl && (
+                  <span style={{ position: 'absolute', inset: 0, backgroundImage: `url(${photoUrl})`, backgroundSize: 'cover', filter: 'blur(8px) saturate(1.3)', transform: 'scale(1.5)', opacity: 0.7 }} />
+                )}
+              </span>
+              {b.label}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
 function PetLookFor({ pet }: { pet: Pet }) {
@@ -33,7 +183,11 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const [font, setFont] = useState(saved.font ?? '');
   const [frame, setFrame] = useState(saved.frame ?? '');
   const [crops, setCrops] = useState<Record<string, PetCrop>>(saved.crops ?? {});
-  // The frame being cropped, before it is the pet's: cancelling leaves the old one.
+  // Empty keeps the default (a tint of the pet's colour, none without one); the grid shows what that comes to.
+  const [backdrop, setBackdrop] = useState(saved.backdrop ?? '');
+  const [tint, setTint] = useState(saved.tint ?? '');
+  const [scene, setScene] = useState(saved.scene ?? '');
+  // The frame being cropped, from the button under the frames: each frame has a window of its own shape and its own crop.
   const [cropping, setCropping] = useState<string | null>(null);
   const SpeciesIcon = getSpecies(pet.species).icon;
   const [saving, setSaving] = useState(false);
@@ -51,7 +205,27 @@ function PetLookFor({ pet }: { pet: Pet }) {
     };
   }, []);
 
-  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops };
+  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops, backdrop, tint, scene };
+  const hex = petTintHex(draft);
+  const tintAttr = petTintAttr(draft);
+
+  const applyVibe = (v: (typeof PET_VIBES)[number]) => {
+    setAccent(v.look.accent);
+    setFont(v.look.font);
+    setBackdrop(v.look.backdrop);
+    setTint(v.look.tint);
+    setScene(v.look.scene);
+    setFrame(v.look.frame);
+  };
+
+  const reset = () => {
+    setAccent('');
+    setFont('');
+    setFrame('');
+    setBackdrop('');
+    setTint('');
+    setScene('');
+  };
 
   const save = async () => {
     if (saving) return;
@@ -59,30 +233,76 @@ function PetLookFor({ pet }: { pet: Pet }) {
     try {
       const look = await petsService.saveLook(pet._id, draft);
       queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, look } : p)));
-      showToast.success('Карточка сохранена');
+      showToast.success('Оформление сохранено');
       navigate('/settings');
     } catch {
-      showToast.failure('Не удалось сохранить карточку');
+      showToast.failure('Не удалось сохранить оформление');
     } finally {
       if (mountedRef.current) setSaving(false);
     }
   };
 
   return (
-    <div className="page-container">
+    // The page itself wears the feed's look: what is chosen below shows behind it as it will behind the feed.
+    <div
+      className="page-container"
+      data-pet-accent={petAccentAttr(draft)['data-pet-accent'] ?? 'none'}
+      data-pet-tint={tintAttr['data-pet-tint'] ?? 'none'}
+      style={{ background: petSceneStyle(draft).background ?? 'var(--app-page-background)' }}
+    >
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Карточка питомца</h1>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: {pet.name}. Подпись и цвет видят все, у кого есть доступ к питомцу, и каждый из них может их поменять
+            Питомец: {pet.name}. Оформление видят все, у кого есть доступ к питомцу, и каждый из них может его поменять
           </p>
         </div>
 
         <div style={{ padding: '0 var(--spacing-md)' }}>
           <PetSummaryCard pet={pet} look={draft} />
 
-          <div className="card-soft" style={{ padding: '16px', marginBottom: 'var(--spacing-md)' }}>
-            <label htmlFor="pet-tagline" style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', marginBottom: '8px' }}>
+          <Block title="Готовые образы">
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 2px 4px' }}>
+              {PET_VIBES.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  className="tap-feedback"
+                  onClick={() => applyVibe(v)}
+                  style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minHeight: 'var(--touch-min)',
+                    padding: '0 14px',
+                    borderRadius: '999px',
+                    border: '1px solid var(--app-border-color)',
+                    background: 'var(--app-page-background)',
+                    color: 'var(--app-text-primary)',
+                    fontFamily: 'inherit',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span aria-hidden style={{ width: '14px', height: '14px', borderRadius: '50%', background: PET_ACCENTS.find((a) => a.key === v.look.accent)?.swatch }} />
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="tap-feedback"
+              onClick={reset}
+              style={{ marginTop: '8px', minHeight: 'var(--touch-min)', padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+            >
+              Сбросить оформление
+            </button>
+          </Block>
+
+          <Block title="Подпись и цвет">
+            <label htmlFor="pet-tagline" style={labelStyle}>
               Подпись
             </label>
             <input
@@ -115,45 +335,11 @@ function PetLookFor({ pet }: { pet: Pet }) {
             <div style={{ marginTop: '6px', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textAlign: 'right' }}>
               {tagline.length} из {PET_TAGLINE_MAX}
             </div>
+            <Swatches label="Цвет питомца" value={accent} onChange={setAccent} noneLabel="Терракот" />
+          </Block>
 
-            <div id="pet-accent-label" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '8px 0' }}>
-              Цвет
-            </div>
-            <div role="radiogroup" aria-labelledby="pet-accent-label" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              {[BRAND, ...PET_ACCENTS].map((a) => {
-                const on = accent === a.key;
-                return (
-                  <button
-                    key={a.key || 'brand'}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    aria-label={a.label}
-                    title={a.label}
-                    className="tap-feedback"
-                    onClick={() => setAccent(a.key)}
-                    style={{
-                      width: 'var(--touch-min)',
-                      height: 'var(--touch-min)',
-                      borderRadius: '50%',
-                      border: on ? '3px solid var(--app-text-primary)' : '3px solid transparent',
-                      boxShadow: on ? 'inset 0 0 0 2px var(--app-card-background)' : 'none',
-                      background: a.swatch,
-                      color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 0,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {on && <Check size={20} strokeWidth={3} aria-hidden />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div id="pet-font-label" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' }}>
+          <Block title="Имя и фото">
+            <div id="pet-font-label" style={labelStyle}>
               Шрифт имени
             </div>
             <div role="radiogroup" aria-labelledby="pet-font-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
@@ -173,8 +359,6 @@ function PetLookFor({ pet }: { pet: Pet }) {
                       minHeight: 'var(--touch-min)',
                       padding: '6px 12px',
                       borderRadius: 'var(--radius-md)',
-                      border: on ? '2px solid var(--app-accent-deep)' : '1px solid var(--app-border-color)',
-                      background: on ? 'var(--app-accent-soft)' : 'var(--app-page-background)',
                       color: 'var(--app-text-primary)',
                       fontFamily: 'inherit',
                       fontSize: 'var(--text-lg)',
@@ -184,6 +368,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
+                      ...optionState(on),
                       ...petFontStyle(face, 'var(--text-lg)'),
                     }}
                   >
@@ -193,87 +378,82 @@ function PetLookFor({ pet }: { pet: Pet }) {
               })}
             </div>
 
-            <div id="pet-frame-label" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' }}>
+            <div style={labelStyle}>
               Рамка фото
             </div>
-            <div role="radiogroup" aria-labelledby="pet-frame-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
-              {[{ key: '', label: 'Без рамки' }, ...PET_FRAMES].map((f) => {
-                const on = frame === f.key;
-                const sample = petFrameStyle(f.key, 0.45);
-                return (
-                  <button
-                    key={f.key || 'plain'}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    className="tap-feedback"
-                    onClick={() => (f.key && pet.photo_url ? setCropping(f.key) : setFrame(f.key))}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '8px',
-                      minHeight: 'var(--touch-min)',
-                      padding: '12px 4px 8px',
-                      borderRadius: 'var(--radius-md)',
-                      border: on ? '2px solid var(--app-accent-deep)' : '1px solid var(--app-border-color)',
-                      background: on ? 'var(--app-accent-soft)' : 'var(--app-page-background)',
-                      color: 'var(--app-text-primary)',
-                      fontFamily: 'inherit',
-                      fontSize: 'var(--text-xs)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        overflow: 'hidden',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--app-accent-soft)',
-                        color: 'var(--app-accent-deep)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        ...sample.box,
-                      }}
-                    >
-                      {pet.photo_url ? (
-                        <PetPhotoFill src={pet.photo_url} alt="" size={44} species={pet.species} crop={crops[f.key]} style={sample.image} />
-                      ) : (
-                        <SpeciesIcon size={24} strokeWidth={1.6} aria-hidden />
-                      )}
-                    </span>
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            {PET_FRAME_GROUPS.map((g) => (
+              <div key={g.key} role="radiogroup" aria-label={`Рамка: ${g.label}`} style={{ marginBottom: '12px' }}>
+                <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: '4px 2px 6px' }}>
+                  {g.label}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+                  {[...(g.key === 'style' ? [{ key: '', label: 'Без рамки', group: 'style' }] : []), ...PET_FRAMES.filter((f) => f.group === g.key)].map((f) => {
+                    const on = frame === f.key;
+                    const sample = petFrameStyle(f.key, 0.45);
+                    return (
+                      <button key={f.key || 'plain'} type="button" role="radio" aria-checked={on} className="tap-feedback" onClick={() => setFrame(f.key)} style={{ ...optionBase, gap: '8px', ...optionState(on) }}>
+                        <span
+                          aria-hidden
+                          style={{
+                            width: '44px',
+                            height: '44px',
+                            overflow: 'hidden',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--app-accent-soft)',
+                            color: 'var(--app-accent-deep)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            ...sample.box,
+                          }}
+                        >
+                          {pet.photo_url ? (
+                            <PetPhotoFill src={pet.photo_url} alt="" size={44} species={pet.species} crop={crops[f.key]} style={sample.image} />
+                          ) : (
+                            <SpeciesIcon size={24} strokeWidth={1.6} aria-hidden />
+                          )}
+                        </span>
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {frame && pet.photo_url && (
+              <button
+                type="button"
+                className="tap-feedback"
+                onClick={() => setCropping(frame)}
+                style={{
+                  width: '100%',
+                  minHeight: 'var(--touch-min)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--app-border-color)',
+                  background: 'var(--app-card-background)',
+                  color: 'var(--app-text-primary)',
+                  fontFamily: 'inherit',
+                  fontSize: 'var(--text-md)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Кадрировать фото под рамку
+              </button>
+            )}
+          </Block>
 
-          {frame && pet.photo_url && (
-            <button
-              type="button"
-              className="tap-feedback"
-              onClick={() => setCropping(frame)}
-              style={{
-                width: '100%',
-                minHeight: 'var(--touch-min)',
-                marginBottom: 'var(--spacing-md)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--app-border-color)',
-                background: 'var(--app-card-background)',
-                color: 'var(--app-text-primary)',
-                fontFamily: 'inherit',
-                fontSize: 'var(--text-md)',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Изменить кадр
-            </button>
-          )}
+          <Block title="Подложка карточки">
+            <BackdropGrid label="Узор" items={PET_BACKDROPS.filter((b) => b.key !== 'photo' || pet.photo_url)} value={petBackdropKey(draft)} onChange={setBackdrop} hex={hex} photoUrl={pet.photo_url} tintAttr={tintAttr} />
+            <Swatches label="Цвет подложки" value={tint} onChange={setTint} noneLabel="Как у питомца" />
+          </Block>
+
+          <Block title="Фон ленты">
+            <p style={{ margin: '8px 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+              Что за записями этого питомца, пока открыта его лента. Тот же цвет подложки
+            </p>
+            <BackdropGrid label="Узор фона" items={[{ key: '', label: 'Без фона' }, ...PET_SCENES.filter((b) => b.key !== 'plain')]} value={scene} onChange={setScene} hex={hex} tintAttr={tintAttr} />
+          </Block>
 
           <div style={{ paddingBottom: 'var(--spacing-md)' }}>
             <SpinnerButton type="button" block loading={saving} onClick={save}>

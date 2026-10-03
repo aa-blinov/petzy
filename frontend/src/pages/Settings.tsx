@@ -278,8 +278,8 @@ export function Settings() {
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
               icon={<Palette size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Карточка питомца"
-              description="Подпись под именем и цвет карточки"
+              label="Оформление питомца"
+              description="Образ, цвет, шрифт имени, рамка фото и фон ленты"
               chevron
               onClick={() => navigate('/pet-look')}
             />

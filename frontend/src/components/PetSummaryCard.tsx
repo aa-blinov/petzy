@@ -18,7 +18,7 @@ import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
 import { PetPhotoFill } from './PetPhotoFill';
-import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petCropOf, petFrameStyle, petLookOf, type PetLook } from '../utils/petLook';
+import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petBackdropKey, petBackdropStyle, petCropOf, petFrameStyle, petLookOf, petTintAttr, petTintHex, type PetLook } from '../utils/petLook';
 
 
 
@@ -29,6 +29,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
   const accentAttr = petAccentAttr(look);
   const font = petFontOf(look);
   const frame = petFrameStyle(look.frame);
+  const backdrop = petBackdropKey(look);
   useEffect(() => {
     if (font) void loadPetFont(font);
   }, [font]);
@@ -49,21 +50,41 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
     <div
       className="card-soft"
       {...accentAttr}
+      {...petTintAttr(look)}
       style={{
         overflow: "hidden",
+        position: "relative",
         marginBottom: "var(--spacing-md)",
         padding: "16px",
-        // A chosen colour tints the whole card (a photo pet has no tinted avatar to show it); none keeps the plain card.
-        ...(accentAttr["data-pet-accent"]
-          ? { background: "color-mix(in srgb, var(--app-accent-soft) 60%, var(--app-card-background))" }
-          : {}),
+        // What lies behind the card: the owner's choice, else a tint of the pet's colour, else the plain card.
+        ...petBackdropStyle(backdrop, petTintHex(look)),
       }}
     >
+      {/* The photo itself, blurred and washed out, as the backdrop: a pet with no photo has nothing to blur. */}
+      {backdrop === "photo" && pet.photo_url && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${pet.photo_url})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(22px) saturate(1.35)",
+            transform: "scale(1.4)",
+            opacity: 0.6,
+          }}
+        />
+      )}
+      {backdrop === "photo" && (
+        <div aria-hidden style={{ position: "absolute", inset: 0, background: "color-mix(in srgb, var(--app-card-background) 45%, transparent)" }} />
+      )}
       {/* Header row — square avatar on the left, name + meta on the right.
           The avatar slot is fixed-size (112 × 112) so text alignment stays
           consistent across photo / no-photo / long-name cases. */}
       <div
         style={{
+          position: "relative",
           display: "flex",
           alignItems: "center",
           gap: "var(--spacing-md)",

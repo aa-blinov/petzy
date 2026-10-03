@@ -592,6 +592,9 @@ def put_pet_look(pet_id):
             ("accent", body.accent),
             ("font", body.font),
             ("frame", body.frame),
+            ("backdrop", body.backdrop),
+            ("scene", body.scene),
+            ("tint", body.tint),
         )
         if value
     }
