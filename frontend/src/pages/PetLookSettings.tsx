@@ -30,7 +30,12 @@ import {
   type PetLook,
 } from '../utils/petLook';
 import { setPetLookPreview } from '../utils/petLookPreview';
+import { rovingKeyDown, rovingTabIndex } from '../utils/roving';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { showToast } from '../utils/toast';
+
+/** Columns of option tiles: four on a phone, fewer when the text is large, so a label is never cut. */
+const OPTION_GRID = 'repeat(auto-fill, minmax(max(5rem, 22%), 1fr))';
 
 const BRAND = { key: '', label: 'Терракот', swatch: '#C46A3F' };
 
@@ -70,8 +75,8 @@ function Swatches({ label, value, onChange, noneLabel }: { label: string; value:
       <div id={id} style={labelStyle}>
         {label}
       </div>
-      <div role="radiogroup" aria-labelledby={id} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-        {[{ ...BRAND, label: noneLabel }, ...PET_ACCENTS].map((a) => {
+      <div role="radiogroup" aria-labelledby={id} onKeyDown={rovingKeyDown} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+        {[{ ...BRAND, label: noneLabel }, ...PET_ACCENTS].map((a, i) => {
           const on = value === a.key;
           return (
             <button
@@ -79,6 +84,7 @@ function Swatches({ label, value, onChange, noneLabel }: { label: string; value:
               type="button"
               role="radio"
               aria-checked={on}
+              tabIndex={rovingTabIndex(on, i === 0, true)}
               aria-label={a.label}
               title={a.label}
               className="tap-feedback"
@@ -129,11 +135,11 @@ function BackdropGrid({
       <div id={id} style={labelStyle}>
         {label}
       </div>
-      <div role="radiogroup" aria-labelledby={id} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
-        {items.map((b) => {
+      <div role="radiogroup" aria-labelledby={id} onKeyDown={rovingKeyDown} style={{ display: 'grid', gridTemplateColumns: OPTION_GRID, gap: '8px' }}>
+        {items.map((b, i) => {
           const on = value === b.key;
           return (
-            <button key={b.key} type="button" role="radio" aria-checked={on} className="tap-feedback" onClick={() => onChange(b.key)} style={{ ...optionBase, ...optionState(on) }}>
+            <button key={b.key} type="button" role="radio" aria-checked={on} tabIndex={rovingTabIndex(on, i === 0, items.some((x) => x.key === value))} className="tap-feedback" onClick={() => onChange(b.key)} style={{ ...optionBase, ...optionState(on) }}>
               <span
                 aria-hidden
                 style={{
@@ -246,6 +252,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const SpeciesIcon = getSpecies(pet.species).icon;
   const [saving, setSaving] = useState(false);
   const mountedRef = useRef(true);
+  const pinRef = useRef<HTMLDivElement | null>(null);
 
   const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops, backdrop, scene };
   const hex = petAccentHex(draft);
@@ -259,6 +266,21 @@ function PetLookFor({ pet }: { pet: Pet }) {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+    };
+  }, []);
+
+  // With large text the card and the tabs would fill the screen: then they scroll with the page instead of staying pinned.
+  useEffect(() => {
+    const el = pinRef.current;
+    if (!el) return;
+    const check = () => el.setAttribute('data-unpinned', String(el.offsetHeight > window.innerHeight * 0.4));
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    window.addEventListener('resize', check);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', check);
     };
   }, []);
 
@@ -286,6 +308,11 @@ function PetLookFor({ pet }: { pet: Pet }) {
     setScene('');
   };
 
+  // What has been changed and not saved: the screen asks before it is left, like the app's other forms.
+  const snapshot = (l: PetLook) => JSON.stringify([l.tagline ?? '', l.accent ?? '', l.font ?? '', l.frame ?? '', l.backdrop ?? '', l.scene ?? '', l.crops ?? {}]);
+  const dirty = snapshot(draft) !== snapshot(saved);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
+
   const save = async () => {
     if (saving) return;
     setSaving(true);
@@ -293,6 +320,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
       const look = await petsService.saveLook(pet._id, draft);
       queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, look } : p)));
       showToast.success('Оформление сохранено');
+      release();
       navigate('/settings');
     } catch {
       showToast.failure('Не удалось сохранить оформление');
@@ -313,7 +341,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
 
         <div style={{ padding: '0 var(--spacing-md)' }}>
           {/* The card and the switch of what to change stay in view while the options scroll beneath them. */}
-          <div className="look-sticky">
+          <div className="look-sticky" ref={pinRef}>
             <PetSummaryCard pet={pet} look={draft} compact />
             <TabStrip value={tab} onChange={setTab} />
           </div>
@@ -407,8 +435,8 @@ function PetLookFor({ pet }: { pet: Pet }) {
                 <div id="pet-font-label" style={labelStyle}>
                   Шрифт имени
                 </div>
-                <div role="radiogroup" aria-labelledby="pet-font-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-                  {[{ key: '', label: 'Обычный', family: '', weight: 700, scale: 1 }, ...PET_FONTS].map((f) => {
+                <div role="radiogroup" aria-labelledby="pet-font-label" onKeyDown={rovingKeyDown} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(max(9rem, 44%), 1fr))', gap: '8px' }}>
+                  {[{ key: '', label: 'Обычный', family: '', weight: 700, scale: 1 }, ...PET_FONTS].map((f, i) => {
                     const on = font === f.key;
                     const face = PET_FONTS.find((x) => x.key === f.key);
                     return (
@@ -417,6 +445,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                         type="button"
                         role="radio"
                         aria-checked={on}
+                        tabIndex={rovingTabIndex(on, i === 0, font === '' || PET_FONTS.some((x) => x.key === font))}
                         aria-label={`${pet.name}, ${f.label}`}
                         className="tap-feedback"
                         onClick={() => setFont(f.key)}
@@ -448,16 +477,16 @@ function PetLookFor({ pet }: { pet: Pet }) {
             {tab === 'frame' && (
               <>
                 {PET_FRAME_GROUPS.map((g) => (
-                  <div key={g.key} role="radiogroup" aria-label={`Рамка: ${g.label}`} style={{ marginBottom: '12px' }}>
+                  <div key={g.key} role="radiogroup" aria-label={`Рамка: ${g.label}`} onKeyDown={rovingKeyDown} style={{ marginBottom: '12px' }}>
                     <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: '4px 2px 6px' }}>
                       {g.label}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
-                      {[...(g.key === 'style' ? [{ key: '', label: 'Без рамки', group: 'style' }] : []), ...PET_FRAMES.filter((f) => f.group === g.key)].map((f) => {
+                    <div style={{ display: 'grid', gridTemplateColumns: OPTION_GRID, gap: '8px' }}>
+                      {[...(g.key === 'style' ? [{ key: '', label: 'Без рамки', group: 'style' }] : []), ...PET_FRAMES.filter((f) => f.group === g.key)].map((f, i, list) => {
                         const on = frame === f.key;
                         const sample = petFrameStyle(f.key, 0.45);
                         return (
-                          <button key={f.key || 'plain'} type="button" role="radio" aria-checked={on} className="tap-feedback" onClick={() => setFrame(f.key)} style={{ ...optionBase, gap: '8px', ...optionState(on) }}>
+                          <button key={f.key || 'plain'} type="button" role="radio" aria-checked={on} tabIndex={rovingTabIndex(on, i === 0, list.some((x) => x.key === frame))} className="tap-feedback" onClick={() => setFrame(f.key)} style={{ ...optionBase, gap: '8px', ...optionState(on) }}>
                             <span
                               aria-hidden
                               style={{
@@ -531,6 +560,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
           </div>
         </div>
       </div>
+      {leaveDialog}
       {cropping && pet.photo_url && (
         <FrameCropModal
           src={pet.photo_url}
