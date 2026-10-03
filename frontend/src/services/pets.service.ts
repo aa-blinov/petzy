@@ -93,7 +93,7 @@ export const petsService = {
 
   /** Replaces the pet's look; empty values clear it. Anyone with access to the pet may. */
   async saveLook(petId: string, look: PetLook): Promise<PetLook> {
-    const response = await api.put<{ look: PetLook }>(`/pets/${petId}/look`, { tagline: look.tagline ?? '', accent: look.accent ?? '' });
+    const response = await api.put<{ look: PetLook }>(`/pets/${petId}/look`, { tagline: look.tagline ?? '', accent: look.accent ?? '', font: look.font ?? '', frame: look.frame ?? '' });
     return response.data.look;
   },
 

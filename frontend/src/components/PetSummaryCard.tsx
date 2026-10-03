@@ -8,7 +8,7 @@
  * something to act on), so the card stays a card of who the pet is.
  */
 
-import { createElement, useState, type KeyboardEvent } from 'react';
+import { createElement, useEffect, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhotoViewer } from './PhotoViewer';
 
@@ -18,7 +18,7 @@ import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
 import { PetImage } from './PetImage';
-import { petAccentAttr, petLookOf, type PetLook } from '../utils/petLook';
+import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petFrameStyle, petLookOf, type PetLook } from '../utils/petLook';
 
 
 
@@ -27,6 +27,11 @@ import { petAccentAttr, petLookOf, type PetLook } from '../utils/petLook';
 export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: PetLook }) {
   const look = lookOverride ?? petLookOf(pet);
   const accentAttr = petAccentAttr(look);
+  const font = petFontOf(look);
+  const frame = petFrameStyle(look.frame);
+  useEffect(() => {
+    if (font) void loadPetFont(font);
+  }, [font]);
   const age = computePetAge(pet.birth_date ?? "");
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
   const { username } = useAuth();
@@ -96,6 +101,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            ...frame.box,
           }}
         >
           {pet.photo_url ? (
@@ -109,6 +115,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
                 height: "100%",
                 objectFit: "cover",
                 borderRadius: 0,
+                ...frame.image,
               }}
             />
           ) : (
@@ -131,6 +138,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
               overflowWrap: "anywhere",
+              ...petFontStyle(font, "var(--text-xl)"),
             }}
           >
             {pet.name}

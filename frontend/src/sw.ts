@@ -5,7 +5,7 @@ declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: str
 
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { NetworkOnly } from 'workbox-strategies'
+import { CacheFirst, NetworkOnly } from 'workbox-strategies'
 import { clientsClaim } from 'workbox-core'
 
 // A new release takes over open pages at once (see utils/swUpdate.ts,
@@ -29,6 +29,13 @@ registerRoute(
   new NavigationRoute(createHandlerBoundToURL('index.html'), {
     denylist: [/^\/assets\//, /^\/api\//],
   })
+)
+
+// The pets' hand-written faces are left out of the precache (vite.config.ts): the first time one is used it is fetched, and
+// from then on it is served from here, so a name keeps its face offline.
+registerRoute(
+  ({ url }) => /^\/assets\/(caveat|marck-script|bad-script|pacifico|neucha|amatic-sc)-.*\.woff2$/.test(url.pathname),
+  new CacheFirst({ cacheName: 'pet-fonts' })
 )
 
 // No API response is ever served from a cache.
