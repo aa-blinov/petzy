@@ -251,6 +251,51 @@ class TestPetManagement:
             "eye_drops": {"drops_type": "Гелевые"}
         }
 
+    def _look(self, client, token, pet, body):
+        return client.put(f"/api/pets/{pet['_id']}/look", json=body, headers={"Authorization": f"Bearer {token}"})
+
+    def test_a_pet_keeps_its_look_and_the_list_returns_it(self, client, mock_db, regular_user_token, test_pet):
+        response = self._look(client, regular_user_token, test_pet, {"tagline": "  Хозяин   дивана ", "accent": "sage"})
+        assert response.status_code == 200
+        assert response.get_json() == {"look": {"tagline": "Хозяин дивана", "accent": "sage"}}
+        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
+        mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
+        assert mine["look"] == {"tagline": "Хозяин дивана", "accent": "sage"}
+
+    def test_an_empty_look_clears_it(self, client, mock_db, regular_user_token, test_pet):
+        self._look(client, regular_user_token, test_pet, {"accent": "rose"})
+        response = self._look(client, regular_user_token, test_pet, {"tagline": " ", "accent": ""})
+        assert response.get_json() == {"look": {}}
+        assert "look" not in mock_db["pets"].find_one({"_id": test_pet["_id"]})
+
+    def test_a_colour_the_palette_lacks_and_a_long_line_are_refused(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        assert self._look(client, regular_user_token, test_pet, {"accent": "#ff0000"}).status_code == 422
+        assert self._look(client, regular_user_token, test_pet, {"tagline": "я" * 41}).status_code == 422
+        assert self._look(client, regular_user_token, test_pet, {"tagline": "я" * 40}).status_code == 200
+
+    def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
+        assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
+
+    def test_a_member_can_set_a_look(self, client, mock_db, regular_user_token, test_pet):
+        from web.security import create_access_token
+
+        mock_db["users"].insert_one(
+            {
+                "username": "member2",
+                "password_hash": "x",
+                "full_name": "Member",
+                "email": "",
+                "created_at": datetime.now(timezone.utc),
+                "is_active": True,
+            }
+        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["member2"]}})
+        response = self._look(client, create_access_token("member2"), test_pet, {"tagline": "Лапы"})
+        assert response.status_code == 200
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"tagline": "Лапы"}
+
     def test_share_pet_success(self, client, mock_db, regular_user_token, test_pet, admin_pet):
         """Test sharing pet with another user."""
         # Create another user

@@ -2175,3 +2175,62 @@ html.keyboard-open .form-sticky-action {
         bottom: var(--spacing-sm);
     }
 }
+
+/* A pet's own colour (utils/petLook.ts): re-tints the soft and deep accent inside whatever carries data-pet-accent,
+   the pet card and its chip in the switcher. Light and dark are separate sets, each deep tone 5:1 on its soft one. */
+[data-pet-accent='sage'] {
+    --app-accent-soft: #E6F0E4;
+    --app-accent-deep: #3F6B3A;
+}
+[data-pet-accent='sky'] {
+    --app-accent-soft: #E3EFF9;
+    --app-accent-deep: #2D6190;
+}
+[data-pet-accent='lilac'] {
+    --app-accent-soft: #EEE8F7;
+    --app-accent-deep: #6040A0;
+}
+[data-pet-accent='rose'] {
+    --app-accent-soft: #FBE6EC;
+    --app-accent-deep: #B03358;
+}
+[data-pet-accent='sun'] {
+    --app-accent-soft: #FBF0D4;
+    --app-accent-deep: #8A5F00;
+}
+[data-pet-accent='teal'] {
+    --app-accent-soft: #DFF1EF;
+    --app-accent-deep: #1F6B66;
+}
+[data-pet-accent='slate'] {
+    --app-accent-soft: #E9ECF0;
+    --app-accent-deep: #475569;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='sage'] {
+    --app-accent-soft: #1F2E1E;
+    --app-accent-deep: #9BCB93;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='sky'] {
+    --app-accent-soft: #1B2A38;
+    --app-accent-deep: #8FC0EB;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='lilac'] {
+    --app-accent-soft: #2A2238;
+    --app-accent-deep: #C0A6EE;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='rose'] {
+    --app-accent-soft: #38202A;
+    --app-accent-deep: #F09AB4;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='sun'] {
+    --app-accent-soft: #35290F;
+    --app-accent-deep: #E6B84D;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='teal'] {
+    --app-accent-soft: #17302E;
+    --app-accent-deep: #72CBC4;
+}
+html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
+    --app-accent-soft: #262B33;
+    --app-accent-deep: #AEB9C8;
+}

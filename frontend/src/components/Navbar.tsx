@@ -10,6 +10,7 @@ import { getSpecies, speciesLabel } from '../utils/species';
 import type { Pet } from '../services/pets.service';
 import { isMainTabPath, medicalCardPetId } from '../utils/navigation';
 import { isPublicPage } from '../utils/publicPages';
+import { petAccentAttr, petLookOf } from '../utils/petLook';
 
 export function Navbar() {
   const location = useLocation();
@@ -214,7 +215,7 @@ export function Navbar() {
                           style={{ borderRadius: 'var(--radius-md)', flexShrink: 0 }}
                         />
                       ) : (
-                        <div style={{
+                        <div {...petAccentAttr(petLookOf(pet))} style={{
                           width: '40px',
                           height: '40px',
                           flexShrink: 0,

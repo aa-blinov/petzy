@@ -1,6 +1,7 @@
 import api from './api';
 import type { FormSettings } from '../utils/formsConfig';
 import type { TilesSettings } from '../utils/tilesConfig';
+import type { PetLook } from '../utils/petLook';
 
 export interface PetInvite {
   pet_id: string;
@@ -22,6 +23,8 @@ export interface Pet {
   tiles_settings?: TilesSettings;
   /** What a new record of each built-in type starts with for this pet; everyone with access sees the same. */
   form_defaults?: FormSettings;
+  /** A line about the pet and a palette colour for its card; everyone with access sees (and may change) the same. */
+  look?: PetLook;
   owner: string;
   shared_with?: string[];
   /** Invited, not yet accepted. Present for the owner only. */
@@ -86,6 +89,12 @@ export const petsService = {
   async saveFormDefaults(petId: string, settings: FormSettings): Promise<FormSettings> {
     const response = await api.put<{ form_defaults: FormSettings }>(`/pets/${petId}/form-defaults`, { form_defaults: settings });
     return response.data.form_defaults;
+  },
+
+  /** Replaces the pet's look; empty values clear it. Anyone with access to the pet may. */
+  async saveLook(petId: string, look: PetLook): Promise<PetLook> {
+    const response = await api.put<{ look: PetLook }>(`/pets/${petId}/look`, { tagline: look.tagline ?? '', accent: look.accent ?? '' });
+    return response.data.look;
   },
 
   /** What deleting the pet would take with it: the numbers its confirmation names. */

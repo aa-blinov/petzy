@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Bell, CircleHelp, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
@@ -265,6 +265,23 @@ export function Settings() {
               description="Что подставляется в новые записи выбранного питомца"
               chevron
               onClick={() => navigate('/form-defaults')}
+            />
+          </div>
+
+          {/* Section: the pet's card: how its page shows it. */}
+          <h2
+            className="section-header"
+            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
+          >
+            Питомец
+          </h2>
+          <div className="card-soft" style={{ overflow: 'hidden' }}>
+            <SettingsRow
+              icon={<Palette size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Карточка питомца"
+              description="Подпись под именем и цвет карточки"
+              chevron
+              onClick={() => navigate('/pet-look')}
             />
           </div>
 

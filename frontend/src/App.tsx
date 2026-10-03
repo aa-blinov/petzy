@@ -58,6 +58,7 @@ const Settings = lazy(() => loadSettings().then(m => ({ default: m.Settings })))
 const Pets = lazy(() => import('./pages/Pets').then(m => ({ default: m.Pets })));
 const UserProfile = lazy(() => import('./pages/UserProfile').then(m => ({ default: m.UserProfile })));
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
+const PetLookSettings = lazy(() => import('./pages/PetLookSettings').then(m => ({ default: m.PetLookSettings })));
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
@@ -482,6 +483,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <AccountDelete />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pet-look"
+                element={
+                  <ProtectedRoute>
+                    <PetLookSettings />
                   </ProtectedRoute>
                 }
               />

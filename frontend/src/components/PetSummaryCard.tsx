@@ -18,11 +18,15 @@ import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
 import { PetImage } from './PetImage';
+import { petAccentAttr, petLookOf, type PetLook } from '../utils/petLook';
 
 
 
 
-export function PetSummaryCard({ pet }: { pet: Pet }) {
+/** `look` shows a draft in place of the saved one: the settings page previews it on this same card. */
+export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: PetLook }) {
+  const look = lookOverride ?? petLookOf(pet);
+  const accentAttr = petAccentAttr(look);
   const age = computePetAge(pet.birth_date ?? "");
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
   const { username } = useAuth();
@@ -39,10 +43,15 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
   return (
     <div
       className="card-soft"
+      {...accentAttr}
       style={{
         overflow: "hidden",
         marginBottom: "var(--spacing-md)",
         padding: "16px",
+        // A chosen colour tints the whole card (a photo pet has no tinted avatar to show it); none keeps the plain card.
+        ...(accentAttr["data-pet-accent"]
+          ? { background: "color-mix(in srgb, var(--app-accent-soft) 60%, var(--app-card-background))" }
+          : {}),
       }}
     >
       {/* Header row — square avatar on the left, name + meta on the right.
@@ -126,6 +135,20 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
           >
             {pet.name}
           </div>
+
+          {/* The line the family put under the name; the pet's own colour reaches the avatar tint and this line. */}
+          {look.tagline && (
+            <div
+              style={{
+                fontSize: "var(--text-sm)",
+                fontWeight: 600,
+                color: "var(--app-accent-deep)",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {look.tagline}
+            </div>
+          )}
 
           {/* Meta line — only render the parts we have. Wraps instead of
               truncating: age + breed + gender together routinely overrun
