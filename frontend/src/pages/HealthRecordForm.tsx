@@ -10,11 +10,12 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Form } from 'antd-mobile';
+import { Button, Form, Switch } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import type { EventType } from '../services/eventTypes.service';
-import { getFormSettings } from '../utils/formsConfig';
+import { DEFAULTABLE_FIELDS, type FormSettings } from '../utils/formsConfig';
+import { petsService, type Pet } from '../services/pets.service';
 import { hardBounds, shown } from '../utils/fieldBounds';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import { showUndo } from '../utils/undo';
@@ -56,7 +57,7 @@ export function HealthRecordForm() {
   const { type, id } = useParams<{ type: string; id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedPetId, selectedPetName } = usePet();
+  const { selectedPetId, selectedPetName, getSelectedPet } = usePet();
   const queryClient = useQueryClient();
   const { eventTypesByKey, isLoading: eventTypesLoading } = useEventTypes();
 
@@ -144,8 +145,16 @@ export function HealthRecordForm() {
   // Who wrote the record down: a household of several people looks at this line to know whom to ask.
   const [recordedBy, setRecordedBy] = useState<string | null>(null);
 
+  // The fields of a new record that can hold a default, and which of them came filled from the person's own defaults.
+  const defaultableFields = useMemo(
+    () => (!isEditing && type ? fields.filter((f) => DEFAULTABLE_FIELDS[type]?.includes(f.name)) : []),
+    [isEditing, type, fields],
+  );
+  const [remember, setRemember] = useState(false);
+
   const defaultValues = useMemo(() => {
-    const settings = getFormSettings();
+    // The pet's own: its food or drops are about it, and everyone who can add its records starts from the same.
+    const settings: FormSettings = getSelectedPet?.form_defaults ?? {};
     const values: Record<string, string | undefined> = {
       date: isEditing ? '' : getCurrentDate(),
       time: isEditing ? '' : getCurrentTime(),
@@ -168,7 +177,8 @@ export function HealthRecordForm() {
       }
     }
     return values;
-  }, [isEditing, type, selectedPetId, fields]);
+  }, [isEditing, type, selectedPetId, fields, getSelectedPet]);
+  const filledFromDefaults = defaultableFields.filter((f) => !!defaultValues[f.name]);
 
   const methods = useForm({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
@@ -290,6 +300,24 @@ export function HealthRecordForm() {
           ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
       });
 
+      // «Запомнить как значения по умолчанию»: what was typed into the fields that can have a default goes to the account.
+      let rememberFailed = false;
+      if (!id && remember && defaultableFields.length > 0) {
+        try {
+          const settings: FormSettings = getSelectedPet?.form_defaults ?? {};
+          const typed: Record<string, string> = {};
+          for (const field of defaultableFields) {
+            const value = data[field.name];
+            if (value !== undefined && value !== null && String(value).trim() !== '') typed[field.name] = String(value).trim();
+          }
+          const next = { ...settings, [type]: { ...((settings as Record<string, object>)[type] ?? {}), ...typed } } as FormSettings;
+          const saved = await petsService.saveFormDefaults(selectedPetId, next);
+          queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === selectedPetId ? { ...p, form_defaults: saved } : p)));
+        } catch {
+          rememberFailed = true;
+        }
+      }
+
       // A new record can be taken back from the bar that follows, not only by finding it in the feed and deleting it.
       if (!id && response.id) {
         const createdId = response.id;
@@ -306,6 +334,7 @@ export function HealthRecordForm() {
       } else {
         showToast.success(response.message);
       }
+      if (rememberFailed) showToast.failure('Запись сохранена, а значения по умолчанию не сохранились');
       // Leave at once; the toast lives on over the screen we return to
       // (waiting for it to close kept a saved form on screen for two
       // seconds). Not a fixed destination: this form opens from the
@@ -405,6 +434,22 @@ export function HealthRecordForm() {
                     defaultValue={defaultValues[field.name]}
                     autoFocus={!isEditing && field.name === firstAskedField}
                   />
+                  {field.name === filledFromDefaults[filledFromDefaults.length - 1]?.name && (
+                    // Under the last field that came filled, so that a value already there is not a surprise: where it came from and where to change it.
+                    <p style={{ margin: '0 var(--spacing-md) var(--spacing-sm)', fontSize: 'var(--text-xs)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+                      Подставлено из значений по умолчанию для {selectedPetName}: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}{' '}
+                      <button
+                        type="button"
+                        className="touch-target"
+                        // Not a blur of the field being typed in: its error would open under the thumb and move this link away before the tap ends.
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => navigate('/form-defaults')}
+                        style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--app-accent-deep)', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        Изменить
+                      </button>
+                    </p>
+                  )}
                   {!isEditing && field.type === 'number' && (recentValues[field.name]?.length ?? 0) > 0 && (
                     // What was given or weighed last time is one tap, not typed from the start again.
                     <div style={{ padding: '0 var(--spacing-md)' }}>
@@ -424,6 +469,13 @@ export function HealthRecordForm() {
                 field={{ name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'event-comment' }}
                 defaultValue={defaultValues.comment}
               />
+              {defaultableFields.length > 0 && (
+                <Form.Item
+                  label="Запомнить значения"
+                  extra={<Switch checked={remember} onChange={setRemember} aria-label="Запомнить как значения по умолчанию" />}
+                  description={`Поля «${defaultableFields.map((f) => f.label).join('», «')}» будут подставляться в новые записи этого вида у ${selectedPetName}, их увидят все, у кого есть доступ к питомцу. Менять можно в Настройках, «Значения по умолчанию»`}
+                />
+              )}
             </Form>
           </FormProvider>
 

@@ -18,11 +18,8 @@ import { RouteTransition } from './components/RouteTransition';
 import { RouteFocus } from './components/RouteFocus';
 import { Snackbar } from './components/Snackbar';
 import { usePet } from './hooks/usePet';
-import { useAuth } from './hooks/useAuth';
 import { useSession } from './hooks/useSession';
 import { flushPendingIntakes, usePendingIntakes } from './utils/offlineIntakes';
-import { formDefaultsService } from './services/formDefaults.service';
-import { cacheFormSettings, getFormSettings, hasCachedFormSettings } from './utils/formsConfig';
 import { documentsListQuery } from './services/documents.service';
 import { medicationsListQuery } from './services/medications.service';
 import { returnState } from './utils/returnTo';
@@ -216,33 +213,6 @@ function PrefetchTabs() {
   return null;
 }
 
-/**
- * «Настройки форм» live on the account: after sign-in this device's copy
- * is refreshed from the server. The first time, when the server has
- * none yet, what this device saved before they moved is uploaded.
- */
-function FormDefaultsSync() {
-  const { isAuthenticated, username } = useAuth();
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let cancelled = false;
-    formDefaultsService
-      .get()
-      .then((server) => {
-        if (cancelled) return;
-        if (Object.keys(server).length > 0) cacheFormSettings(server);
-        else if (hasCachedFormSettings()) return formDefaultsService.save(getFormSettings());
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, username]);
-
-  return null;
-}
-
 /** Errors in Sentry carry the signed-in login (none after signing out). */
 function SentryUser() {
   const { username } = useSession();
@@ -267,7 +237,6 @@ function AppRoutes() {
       <SessionExpiryBridge />
       <PrefetchTabs />
       <SendPendingIntakes />
-      <FormDefaultsSync />
       <UpdateOnMainTabs />
       <SentryUser />
       <PrivacyConsentGate />

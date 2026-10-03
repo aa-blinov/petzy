@@ -1,4 +1,5 @@
 import api from './api';
+import type { FormSettings } from '../utils/formsConfig';
 import type { TilesSettings } from '../utils/tilesConfig';
 
 export interface PetInvite {
@@ -19,6 +20,8 @@ export interface Pet {
   health_notes?: string;
   photo_url?: string;
   tiles_settings?: TilesSettings;
+  /** What a new record of each built-in type starts with for this pet; everyone with access sees the same. */
+  form_defaults?: FormSettings;
   owner: string;
   shared_with?: string[];
   /** Invited, not yet accepted. Present for the owner only. */
@@ -77,6 +80,12 @@ export const petsService = {
   async getPets(): Promise<Pet[]> {
     const response = await api.get<PetListResponse>('/pets');
     return response.data.pets;
+  },
+
+  /** Replaces the pet's form defaults; anyone who can add its records may. */
+  async saveFormDefaults(petId: string, settings: FormSettings): Promise<FormSettings> {
+    const response = await api.put<{ form_defaults: FormSettings }>(`/pets/${petId}/form-defaults`, { form_defaults: settings });
+    return response.data.form_defaults;
   },
 
   /** What deleting the pet would take with it: the numbers its confirmation names. */

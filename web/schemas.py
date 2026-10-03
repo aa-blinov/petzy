@@ -310,8 +310,9 @@ class UserSearchItem(BaseModel):
 class FormDefaults(BaseModel):
     """What a new record's form starts with, per type: {"defecation": {"food": "…"}}.
 
-    Stored on the account so every device of the user shares it (it used
-    to be in each browser's localStorage)."""
+    Kept on the account since the defaults moved off each browser; superseded by the pet's own
+    (PetFormDefaults): a pet's food or drops are about that pet and shared by everyone who can add its records.
+    Nothing in the app reads this one any more."""
 
     form_defaults: Dict[str, Dict[str, str]] = Field(default_factory=dict)
 
@@ -324,6 +325,51 @@ class FormDefaults(BaseModel):
             if len(form) > 50 or any(len(k) > 50 or len(v) > 300 for k, v in fields.items()):
                 raise ValueError("Слишком длинное значение по умолчанию")
         return value
+
+
+# The built-in types' fields that can carry a default: the ones «Значения по умолчанию» offers.
+FORM_DEFAULT_FIELDS: Dict[str, tuple] = {
+    "asthma": ("duration", "inhalation", "reason"),
+    "defecation": ("stool_type", "color", "food"),
+    "weight": ("food",),
+    "eye_drops": ("drops_type",),
+    "tooth_brushing": ("brushing_type",),
+    "ear_cleaning": ("cleaning_type",),
+}
+
+
+class PetFormDefaults(BaseModel):
+    """PUT /api/pets/<id>/form-defaults: what a new record of each built-in type starts with for this pet.
+
+    The whole set, replacing the old one; empty values are dropped. A pet's food, drops or way of cleaning are about the
+    pet, so everyone with access to it gets the same ones."""
+
+    form_defaults: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+
+    @field_validator("form_defaults")
+    @classmethod
+    def _known_and_bounded(cls, value: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+        cleaned: Dict[str, Dict[str, str]] = {}
+        for form, fields in value.items():
+            allowed = FORM_DEFAULT_FIELDS.get(form)
+            if allowed is None:
+                raise ValueError("Для этой записи значения по умолчанию не задаются")
+            kept: Dict[str, str] = {}
+            for name, text in fields.items():
+                if name not in allowed:
+                    raise ValueError("Для этого поля значение по умолчанию не задаётся")
+                text = (text or "").strip()
+                if len(text) > 200:
+                    raise ValueError("Слишком длинное значение по умолчанию")
+                if text:
+                    kept[name] = text
+            if kept:
+                cleaned[form] = kept
+        return cleaned
+
+
+class PetFormDefaultsResponse(BaseModel):
+    form_defaults: Dict[str, Dict[str, str]] = Field(default_factory=dict)
 
 
 class UserSearchResponse(BaseModel):
