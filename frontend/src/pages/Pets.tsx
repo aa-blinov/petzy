@@ -294,7 +294,7 @@ function PetCard({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#FFFFFF',
+                  color: 'var(--app-text-on-dark)',
                   opacity: 0.9,
                 }}
               >

@@ -155,7 +155,7 @@ export function AdminPanel() {
               background: 'var(--app-primary-fill)',
               border: 'none',
               borderRadius: '999px',
-              color: '#FFFFFF',
+              color: 'var(--app-text-on-dark)',
               fontSize: 'var(--text-sm)',
               fontWeight: 600,
               padding: '7px 16px',
