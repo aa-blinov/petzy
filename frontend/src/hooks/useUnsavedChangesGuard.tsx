@@ -41,7 +41,7 @@ export function useUnsavedChangesGuard(dirty: boolean): { dialog: ReactNode; rel
     <Dialog
       visible={blocker.state === 'blocked'}
       title="Выйти без сохранения?"
-      content="То, что вы ввели, пропадёт."
+      content="То, что вы ввели, пропадёт"
       getContainer={() => document.body}
       onClose={() => blocker.reset?.()}
       actions={[

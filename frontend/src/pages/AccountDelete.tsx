@@ -104,42 +104,42 @@ export function AccountDelete() {
           {isLoading && <LoadingSpinner />}
           {isError && (
             <p style={{ color: 'var(--app-text-secondary)' }}>
-              Не удалось узнать, что станет с питомцами. Попробуйте открыть страницу ещё раз.
+              Не удалось узнать, что станет с питомцами. Попробуйте открыть страницу ещё раз
             </p>
           )}
 
           {preview && !preview.can_delete && (
             <p style={{ color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-md)' }}>
-              Аккаунт администратора удалить нельзя: без него никто не сможет управлять Petzy.
+              Аккаунт администратора удалить нельзя: без него никто не сможет управлять Petzy
             </p>
           )}
 
           {preview?.can_delete && (
             <>
               <p style={{ color: 'var(--app-text-color)', marginTop: 'var(--spacing-md)', marginBottom: 0 }}>
-                Аккаунт {username} удалится насовсем, восстановить его не получится.
+                Аккаунт {username} удалится насовсем, восстановить его не получится
               </p>
 
               <PetGroup
                 title="Удалятся"
-                note="Их больше никто не ведёт, поэтому они удалятся вместе с записями, лекарствами и документами."
+                note="Их больше никто не ведёт, поэтому они удалятся вместе с записями, лекарствами и документами"
                 pets={preview.deleted}
               />
               <PetGroup
                 title="Перейдут другим"
-                note="Вы делились ими, поэтому они останутся со всей историей у того, кому вы дали доступ первым."
+                note="Вы делились ими, поэтому они останутся со всей историей у того, кому вы дали доступ первым"
                 pets={preview.transferred}
                 detail={pet => `Владельцем станет ${pet.new_owner}`}
               />
               <PetGroup
                 title="Пропадёт доступ"
-                note="Этими питомцами делятся с вами. У владельцев они останутся."
+                note="Этими питомцами делятся с вами. У владельцев они останутся"
                 pets={preview.left}
                 detail={pet => `Питомец ${pet.owner}`}
               />
               {keepsRecords && (
                 <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)', marginTop: 'var(--spacing-md)' }}>
-                  Записи, которые вы добавили этим питомцам, останутся, но без вашего имени.
+                  Записи, которые вы добавили этим питомцам, останутся, но без вашего имени
                 </p>
               )}
             </>
@@ -179,7 +179,7 @@ export function AccountDelete() {
       <Dialog
         visible={confirmVisible}
         title="Удалить аккаунт?"
-        content="Это нельзя отменить."
+        content="Это нельзя отменить"
         onClose={() => setConfirmVisible(false)}
         getContainer={() => document.body}
         actions={[

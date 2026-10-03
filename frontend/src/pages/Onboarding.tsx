@@ -241,7 +241,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       title: 'С вами поделятся питомцем?',
       content: (
         <div style={{ textAlign: 'center', lineHeight: 1.5 }}>
-          Попросите владельца открыть питомца и выбрать «Поделиться доступом».
+          Попросите владельца открыть питомца и выбрать «Поделиться доступом»
           Ваш логин: <strong>{username}</strong>. Питомец появится у вас сам
         </div>
       ),

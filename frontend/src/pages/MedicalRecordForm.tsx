@@ -168,12 +168,12 @@ function PushNote() {
     <span className="record-push-note" role="note">
       {state === 'off' && (
         <>
-          {' '}Уведомления выключены на этом телефоне, напоминание сюда не придёт.{' '}
+          {' '}Уведомления выключены на этом телефоне, напоминание сюда не придёт{' '}
           <button type="button" className="record-push-note__button" onClick={turnOn}>Включить</button>
         </>
       )}
-      {state === 'denied' && ' Уведомления заблокированы в настройках браузера, напоминание сюда не придёт.'}
-      {state === 'unsupported' && ' На этом устройстве уведомления недоступны, срок виден в медкарте.'}
+      {state === 'denied' && ' Уведомления заблокированы в настройках браузера, напоминание сюда не придёт'}
+      {state === 'unsupported' && ' На этом устройстве уведомления недоступны, срок виден в медкарте'}
     </span>
   );
 }
@@ -395,7 +395,7 @@ export function MedicalRecordForm() {
           });
           weightSaved.current = true;
         } catch {
-          showToast.failure('Визит сохранён, а вес не записался. Добавьте его в ленте.');
+          showToast.failure('Визит сохранён, а вес не записался. Добавьте его в ленте');
         }
       }
     },
@@ -500,7 +500,7 @@ export function MedicalRecordForm() {
                 )}
                 {similar && (
                   <span className="record-push-note" role="note">
-                    «{similar}» уже есть в списке и останется там как есть: карта считает записью той же вакцины только название, совпадающее полностью.{' '}
+                    «{similar}» уже есть в списке и останется там как есть: карта считает записью той же вакцины только название, совпадающее полностью{' '}
                     <button type="button" className="record-push-note__button" onClick={() => setValue('title', similar, { shouldDirty: true, shouldValidate: true })}>
                       Назвать так же
                     </button>
@@ -795,7 +795,7 @@ export function MedicalRecordForm() {
               </span>
             </Button>
           </div>
-          <p className="medrec__add-hint">Фото или PDF до {formatFileSize(MAX_FILE_BYTES)}. Файл появится и в разделе «Документы», когда вы сохраните запись.</p>
+          <p className="medrec__add-hint">Фото или PDF до {formatFileSize(MAX_FILE_BYTES)}. Файл появится и в разделе «Документы», когда вы сохраните запись</p>
           {/* Two inputs: one opens the camera, the other the gallery and files. */}
           <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden aria-label="Сфотографировать" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
           <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden aria-label="Выбрать файл" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />

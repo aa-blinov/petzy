@@ -71,7 +71,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         {tiles.length === 0 && (
           // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
           <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
-            <p style={{ margin: '0 0 var(--spacing-md)' }}>Все кнопки быстрого добавления скрыты в настройках.</p>
+            <p style={{ margin: '0 0 var(--spacing-md)' }}>Все кнопки быстрого добавления скрыты в настройках</p>
             <button
               type="button"
               className="touch-target"

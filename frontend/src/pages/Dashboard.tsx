@@ -257,7 +257,7 @@ export function Dashboard() {
                       gap: '8px 12px',
                     }}
                   >
-                    <span style={{ flex: '1 1 14em' }}>Смахните запись влево, чтобы удалить, вправо, чтобы изменить.</span>
+                    <span style={{ flex: '1 1 14em' }}>Смахните запись влево, чтобы удалить, вправо, чтобы изменить</span>
                     {/* A button that looks like one: a bare bold word at the end of a sentence read as part of the sentence. */}
                     <button
                       type="button"

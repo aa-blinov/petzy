@@ -83,7 +83,7 @@ export function VisitPrepForm() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>К приёму</h1>
           <p className="medrec__pet">{query.data.pet.name}</p>
           <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Врач увидит это первой строкой. После записи визита заметка очищается.
+            Врач увидит это первой строкой. После записи визита заметка очищается
           </p>
         </div>
 

@@ -28,7 +28,7 @@ export function AccountEmail() {
     if (!password) return;
     if (kind === 'remove') {
       const sure = await Dialog.confirm({
-        content: 'Удалить почту? Без неё забытый пароль придётся сбрасывать через администратора.',
+        content: 'Удалить почту? Без неё забытый пароль придётся сбрасывать через администратора',
         confirmText: 'Удалить',
         cancelText: 'Оставить',
       });
@@ -71,15 +71,15 @@ export function AccountEmail() {
         </div>
 
         {account && !account.mail_enabled ? (
-          <p style={noteStyle}>Отправка писем пока не настроена. Пока её нет, забытый пароль сбрасывает администратор Petzy.</p>
+          <p style={noteStyle}>Отправка писем пока не настроена. Пока её нет, забытый пароль сбрасывает администратор Petzy</p>
         ) : (
           <>
             <p style={noteStyle}>
               {account?.email_verified && !account.pending_email
-                ? `Подтверждена: ${account.email}. Если забудете пароль, ссылка для нового придёт сюда.`
+                ? `Подтверждена: ${account.email}. Если забудете пароль, ссылка для нового придёт сюда`
                 : account?.pending_email
-                  ? `${account.email_verified && account.email ? `Подтверждена: ${account.email}. ` : ''}Ждёт подтверждения: ${account.pending_email}. Откройте ссылку из письма, оно действует сутки.`
-                  : 'Почта не указана. Без неё забытый пароль придётся сбрасывать через администратора.'}
+                  ? `${account.email_verified && account.email ? `Подтверждена: ${account.email} ` : ''}Ждёт подтверждения: ${account.pending_email}. Откройте ссылку из письма, оно действует сутки`
+                  : 'Почта не указана. Без неё забытый пароль придётся сбрасывать через администратора'}
             </p>
             {account?.pending_email && (
               <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
