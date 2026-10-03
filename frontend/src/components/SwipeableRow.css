@@ -125,6 +125,17 @@
     opacity: 0;
 }
 
+.swipeable-row__menu::after {
+    /* 44px to touch, the circle keeps its 40. */
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+}
+
 .swipeable-row__menu:focus-visible {
     clip-path: none;
     opacity: 1;

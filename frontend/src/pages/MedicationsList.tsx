@@ -355,6 +355,7 @@ export function MedicationsList() {
                                 fontSize: 'var(--text-sm)',
                                 cursor: 'pointer',
                                 padding: '8px 12px',
+                                minHeight: 'var(--touch-min)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 4,

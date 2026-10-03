@@ -515,6 +515,7 @@ export function MedicationForm() {
                                                             background: 'transparent',
                                                             border: 'none',
                                                             padding: 0,
+                                                            minHeight: 'var(--touch-min)',
                                                             textAlign: 'center',
                                                             color: 'var(--app-primary-text)',
                                                             cursor: 'pointer',
