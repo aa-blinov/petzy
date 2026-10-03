@@ -73,6 +73,9 @@ export default defineConfig(() => {
     // Enable chunk splitting for better caching
     rollupOptions: {
       output: {
+        // Icons and helpers of 600 to 1500 bytes each were two dozen separate requests on the feed alone, queued six at a
+        // time over HTTP/1.1: pieces under this size are merged into a neighbour.
+        experimentalMinChunkSize: 8_000,
         manualChunks: {
           // Split vendor code
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],

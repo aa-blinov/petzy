@@ -44,6 +44,10 @@ const PrivacyPolicy = lazy(() => import('./pages/Privacy').then(m => ({ default:
 const PrivacyConsent = lazy(() => import('./pages/Privacy').then(m => ({ default: m.PrivacyConsent })));
 const AccountDelete = lazy(() => import('./pages/AccountDelete').then(m => ({ default: m.AccountDelete })));
 const loadDashboard = () => import('./pages/Dashboard');
+// The feed is where nearly every visit lands: its code is asked for while this file is evaluated, in step with the app's
+// own startup, and not only once the router has rendered the route (about 0.6 s later on a slow line, then its small
+// dependencies one after another).
+if (typeof window !== 'undefined' && window.location.pathname === '/') void loadDashboard();
 const Dashboard = lazy(() => loadDashboard().then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
 const loadHistory = () => import('./pages/History');
