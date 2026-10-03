@@ -2254,3 +2254,7 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
         position: static;
     }
 }
+/* Set by the page when the pinned part takes too much of the screen (large text). */
+.look-sticky[data-unpinned='true'] {
+    position: static;
+}

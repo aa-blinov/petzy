@@ -6,7 +6,7 @@
  * written to the photo, only which part of it the frame shows.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, { type Area } from 'react-easy-crop';
 import { Slider } from 'antd-mobile';
@@ -49,6 +49,7 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<PetCrop | undefined>(initial);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const label = PET_FRAMES.find((f) => f.key === frame)?.label ?? '';
   const aspect = petFrameAspect(frame);
   // The sample is as tall as the card's avatar slot at its scale, in the shape the frame gives it.
@@ -58,14 +59,53 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
     setArea({ x: round2(percent.x), y: round2(percent.y), w: round2(percent.width), h: round2(percent.height) });
   }, []);
 
+  // A modal takes the focus in, keeps it inside (Tab goes round), closes on Escape, hands the focus back, and the page behind it
+  // is inert: without that a keyboard or a screen reader walks on through the page under a full-screen layer.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const root = document.getElementById('root');
+    root?.setAttribute('inert', '');
+    dialogRef.current?.focus();
+    return () => {
+      root?.removeAttribute('inert');
+      opener?.focus?.();
+    };
+  }, []);
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      onCancel();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), [role="slider"], [tabindex="0"]') ?? [])];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || active === dialogRef.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   // Portaled to <body> above the navbar and tab bar, like the photo's own crop step (1020, below antd toasts).
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={`Кадр для рамки «${label}»`}
-      style={{ position: 'fixed', inset: 0, zIndex: 1020, background: '#000', display: 'flex', flexDirection: 'column' }}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+      style={{ position: 'fixed', inset: 0, zIndex: 1020, background: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', outline: 'none' }}
     >
+      {/* On a wide screen the editor is a column, not a window the size of the monitor. */}
+      <div style={{ width: '100%', maxWidth: '560px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <style>{windowShapeCss(frame)}</style>
       <div style={{ color: 'var(--app-text-on-dark)', padding: '12px 16px', fontWeight: 600, fontSize: 'var(--text-md)' }}>
         Кадр для рамки «{label}»
@@ -161,6 +201,7 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
             Готово
           </button>
         </div>
+      </div>
       </div>
     </div>,
     document.body,
