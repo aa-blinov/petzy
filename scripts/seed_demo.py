@@ -266,6 +266,9 @@ def seed(base: str) -> None:
             "inventory_current": 35,
             "inventory_warning_days": 3,
             "comment": "Перед едой",
+            "started_on": _day(40),
+            "purpose": "Нейропатическая боль",
+            "prescribed_by": "Иванова А. П.",
         },
     )["id"]
     omega = demo.call(
@@ -298,6 +301,9 @@ def seed(base: str) -> None:
             "schedule": {"days": every_day, "times": ["08:00", "20:00"]},
             "is_active": True,
             "comment": "Курс антибиотика на 7 дней",
+            "started_on": _day(27),
+            "purpose": "Инфекция верхних дыхательных путей",
+            "prescribed_by": "Иванова А. П.",
         },
     )["id"]
     drontal = demo.call(
@@ -313,6 +319,8 @@ def seed(base: str) -> None:
             "schedule": {"days": [5], "times": ["10:00"]},
             "inventory_enabled": True,
             "inventory_current": 2,
+            "purpose": "Профилактика глистов",
+            "prescribed_by": "Каримов Д.",
         },
     )["id"]
 
@@ -331,7 +339,7 @@ def seed(base: str) -> None:
     for d in range(26, 19, -1):  # a finished course, now in the archive
         dose(sinulox, d, _time(8, 5, 10))
         dose(sinulox, d, _time(20, 5, 10))
-    demo.call("PUT", f"/api/medications/{sinulox}", {"is_active": False})
+    demo.call("PUT", f"/api/medications/{sinulox}", {"is_active": False, "ended_on": _day(20)})
     for d in range(56, -1, -7):
         dose(drontal, d, "10:00")
     # Габапентин: 35 at the start, about 29 doses given: three days left,
@@ -339,7 +347,7 @@ def seed(base: str) -> None:
     print("medications: Габапентин, Омега-3, Синулокс (archive), Дронтал Плюс")
 
     soon = (date.today() + timedelta(days=10)).isoformat()
-    demo.call(
+    rabies_doc = demo.call(
         "POST",
         "/api/documents",
         {
@@ -350,13 +358,13 @@ def seed(base: str) -> None:
             "note": "Ветклиника «Айболит», ревакцинация через год",
         },
         files={"file": ("rabies.pdf", _pdf("Rabies vaccination - Murzik"), "application/pdf")},
-    )
-    demo.call(
+    )["id"]
+    blood_doc = demo.call(
         "POST",
         "/api/documents",
         {"pet_id": cat, "category": "lab_result", "title": "Общий анализ крови", "note": "Всё в норме"},
         files={"file": ("blood.pdf", _pdf("Blood test - Murzik"), "application/pdf")},
-    )
+    )["id"]
     demo.call(
         "POST",
         "/api/documents",
@@ -374,7 +382,15 @@ def seed(base: str) -> None:
         },
         files={"file": ("insurance.pdf", _pdf("Insurance - Rex"), "application/pdf")},
     )
-    print("documents: 4, one expiring in 10 days")
+    dog_blood_doc = demo.call(
+        "POST",
+        "/api/documents",
+        {"pet_id": dog, "category": "lab_result", "title": "Анализ крови", "note": "Печень и почки в норме"},
+        files={"file": ("blood-rex.pdf", _pdf("Blood test - Rex"), "application/pdf")},
+    )["id"]
+    print("documents: 5, one expiring in 10 days")
+
+    seed_medical_card(demo, cat, dog, rabies_doc, blood_doc, dog_blood_doc)
 
     # The family: invited to Мурзик, accepted, and logged tonight's meal.
     demo.call("POST", f"/api/pets/{cat}/share", {"username": FAMILY_LOGIN})
@@ -392,6 +408,10 @@ def seed(base: str) -> None:
             "comment": "Дал немного, доест позже",
         },
     )
+    # A few more days of the family's own entries: who marked what shows on the cards.
+    for ago in (1, 2, 4, 6):
+        _event(family, cat, "feeding", ago, "19:40", {"food_weight": random.randint(40, 50)}, "Вечерняя порция")
+    _event(family, cat, "litter", 2, "20:30")
     # And Рекс is offered to them but not answered yet: an invitation to see.
     demo.call("POST", f"/api/pets/{dog}/share", {"username": FAMILY_LOGIN})
     print(f"sharing: Мурзик shared with {FAMILY_LOGIN}, Рекс invited")
@@ -409,6 +429,244 @@ def seed(base: str) -> None:
 
     print()
     print(f"Done. Sign in at {base} as «{DEMO_LOGIN}» (owner) or «{FAMILY_LOGIN}», password: {DEMO_PASSWORD}")
+
+
+def seed_medical_card(demo: "Api", cat: str, dog: str, rabies_doc: str, blood_doc: str, dog_blood_doc: str) -> None:
+    """What a family fills in over a year: the profile for a vet, vaccinations, treatments, visits, an operation,
+    a course taken when needed and a finished one, and what to tell at the next appointment. Dates are
+    counted back from today, so the card always has something overdue, something soon and something fine."""
+
+    def record(pet: str, kind: str, days_ago: int, title: str, **more) -> str:
+        body = {"pet_id": pet, "kind": kind, "date": _day(days_ago), "title": title, **more}
+        return demo.call("POST", "/api/medical-records", body)["id"]
+
+    def ahead(days: int) -> str:
+        return (date.today() + timedelta(days=days)).isoformat()
+
+    aibolit = {
+        "name": "Ветклиника «Айболит»",
+        "phone": "+7 701 555 01 02",
+        "doctors": [
+            {"name": "Иванова А. П.", "specialty": "терапевт"},
+            {"name": "Сергеев М. Н.", "specialty": "стоматолог"},
+        ],
+    }
+    ortovet = {
+        "name": "Ортовет",
+        "phone": "+7 727 555 03 04",
+        "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
+    }
+    demo.call(
+        "PUT",
+        f"/api/pets/{cat}/medical-profile",
+        {
+            "chip_number": "643094100200277",
+            "blood_type": "A",
+            "allergies": [{"substance": "Курица", "reaction": "зуд, покраснение ушей"}],
+            "conditions": [
+                {"name": "Бронхиальная астма", "since_year": 2022, "note": "ингалятор при приступе"},
+                {"name": "Чувствительный желудок", "since_year": 2020},
+            ],
+            "diet": "Гипоаллергенный сухой корм, два раза в день",
+            "living": "Квартира, один",
+            "clinics": [aibolit],
+        },
+    )
+    demo.call(
+        "PUT",
+        f"/api/pets/{dog}/medical-profile",
+        {
+            "chip_number": "643094100200311",
+            "blood_type": "DEA 1.1+",
+            "allergies": [
+                {"substance": "Курица", "reaction": "зуд, покраснение ушей"},
+                {"substance": "Амоксициллин", "reaction": "сыпь"},
+            ],
+            "conditions": [
+                {"name": "Дисплазия тазобедренных суставов", "since_year": 2023, "note": "обострения после нагрузки"},
+                {"name": "Хронический гастрит", "since_year": 2024},
+            ],
+            "diet": "Сухой корм для крупных пород, два раза в день",
+            "living": "Квартира, гуляет два раза в день",
+            "clinics": [
+                ortovet,
+                {
+                    "name": "Ветклиника «Айболит»",
+                    "phone": "+7 701 555 01 02",
+                    "doctors": [{"name": "Иванова А. П.", "specialty": "терапевт"}],
+                },
+            ],
+        },
+    )
+
+    # Мурзик: rabies soon (its certificate expires too), the trio fine, worms overdue, fleas fine.
+    record(
+        cat,
+        "vaccination",
+        355,
+        "Нобивак Rabies",
+        next_due=ahead(10),
+        batch="B-4471",
+        clinic="Ветклиника «Айболит»",
+        vet="Иванова А. П.",
+        document_ids=[rabies_doc],
+    )
+    record(
+        cat,
+        "vaccination",
+        200,
+        "Нобивак Tricat Trio",
+        next_due=ahead(165),
+        batch="T-2290",
+        clinic="Ветклиника «Айболит»",
+        vet="Иванова А. П.",
+    )
+    record(cat, "parasite", 130, "Милбемакс", target="worms", next_due=ahead(-40))
+    record(cat, "parasite", 20, "Бравекто", target="fleas_ticks", next_due=ahead(70))
+    record(
+        cat,
+        "visit",
+        34,
+        "Рвота и вялость",
+        complaint="Рвота два дня подряд, ест мало",
+        diagnosis="Обострение гастрита",
+        recommendations="Диета на неделю, омез по схеме, повторный осмотр при рвоте",
+        clinic="Ветклиника «Айболит»",
+        vet="Иванова А. П.",
+        document_ids=[blood_doc],
+    )
+    record(
+        cat,
+        "visit",
+        190,
+        "Плановый осмотр",
+        complaint="Профилактический осмотр",
+        diagnosis="Без патологии",
+        recommendations="Взвешивать раз в месяц",
+        clinic="Ветклиника «Айболит»",
+        vet="Иванова А. П.",
+    )
+    record(cat, "procedure", 1600, "Кастрация", clinic="Ветклиника «Айболит»", note="Без осложнений")
+    record(cat, "procedure", 410, "Чистка зубов под наркозом", clinic="Ветклиника «Айболит»", vet="Сергеев М. Н.")
+    demo.call(
+        "PUT",
+        f"/api/pets/{cat}/visit-prep",
+        {
+            "complaint": "Вечером кашляет после игры, ингалятор не нужен",
+            "checks": {"appetite": "normal", "thirst": "normal", "cough": "changed", "activity": "normal"},
+        },
+    )
+
+    # Рекс: the first shot is a month overdue, rabies is fine, fleas are due in a few days.
+    dog_cert = demo.call(
+        "POST",
+        "/api/documents",
+        {"pet_id": dog, "category": "vaccination", "title": "Паспорт, прививки 2025", "note": "Страница с наклейками"},
+        files={"file": ("passport.pdf", _pdf("Vaccination passport - Rex"), "application/pdf")},
+    )["id"]
+    record(
+        dog,
+        "vaccination",
+        400,
+        "Нобивак DHPPi",
+        next_due=ahead(-35),
+        batch="B-4471",
+        clinic="Ортовет",
+        vet="Каримов Д.",
+        document_ids=[dog_cert],
+    )
+    record(
+        dog,
+        "vaccination",
+        65,
+        "Нобивак Rabies",
+        next_due=ahead(300),
+        batch="R-7718",
+        clinic="Ортовет",
+        vet="Каримов Д.",
+    )
+    record(dog, "vaccination", 65, "Нобивак KC", next_due=ahead(300), clinic="Ортовет", vet="Каримов Д.")
+    record(dog, "parasite", 83, "Бравекто", target="fleas_ticks", next_due=ahead(4))
+    record(dog, "parasite", 25, "Дронтал Плюс", target="worms", next_due=ahead(65))
+    record(
+        dog,
+        "visit",
+        10,
+        "Плановый осмотр",
+        complaint="Чаще пьёт воду",
+        diagnosis="Без патологии",
+        recommendations="Повторить анализы через три месяца",
+        clinic="Ортовет",
+        vet="Каримов Д.",
+        document_ids=[dog_blood_doc],
+    )
+    record(
+        dog,
+        "visit",
+        112,
+        "Хромота на левую заднюю",
+        complaint="Хромает после прогулок",
+        diagnosis="Дисплазия тазобедренных суставов, 1 степень",
+        recommendations="Ограничить прыжки, курс хондропротекторов",
+        clinic="Ортовет",
+        vet="Каримов Д.",
+    )
+    record(dog, "procedure", 950, "Чипирование", clinic="Ортовет")
+    demo.call(
+        "PUT",
+        f"/api/pets/{dog}/visit-prep",
+        {
+            "complaint": "Стал меньше гулять, хромает после вчерашней пробежки",
+            "checks": {"appetite": "normal", "stool": "normal", "thirst": "changed", "activity": "changed"},
+        },
+    )
+
+    # Рекс: a painkiller taken when needed, and a finished course of joint support.
+    meloxi = demo.call(
+        "POST",
+        "/api/medications",
+        {
+            "pet_id": dog,
+            "name": "Мелоксидил",
+            "type": "Суспензия",
+            "form_factor": "liquid",
+            "strength": "1,5 мг/мл",
+            "dose_unit": "мл",
+            "default_dose": 2.5,
+            "schedule": {"days": [], "times": []},
+            "purpose": "Обезболивающее при хромоте",
+            "prescribed_by": "Каримов Д.",
+            "comment": "Не чаще раза в сутки, с едой",
+        },
+    )["id"]
+    for ago, hhmm in ((13, "19:10"), (9, "08:30"), (4, "20:05")):
+        demo.call("POST", f"/api/medications/{meloxi}/log", {"date": _day(ago), "time": hhmm})
+    chondro = demo.call(
+        "POST",
+        "/api/medications",
+        {
+            "pet_id": dog,
+            "name": "Глюкозамин",
+            "type": "Таблетка",
+            "form_factor": "tablet",
+            "strength": "500 мг",
+            "dose_unit": "таб",
+            "default_dose": 2,
+            "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": ["09:00"]},
+            "started_on": _day(110),
+            "purpose": "Поддержка суставов",
+            "prescribed_by": "Каримов Д.",
+        },
+    )["id"]
+    for ago in range(110, 49, -1):
+        if _past(ago, "09:05"):
+            demo.call(
+                "POST",
+                f"/api/medications/{chondro}/log",
+                {"date": _day(ago), "time": "09:05", "skipped": ago in (88, 61)},
+            )
+    demo.call("PUT", f"/api/medications/{chondro}", {"is_active": False, "ended_on": _day(50)})
+    print("medical card: profiles, vaccinations, treatments, visits, operations, courses, visit notes")
 
 
 def main() -> None:
