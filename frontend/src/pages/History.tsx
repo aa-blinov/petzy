@@ -219,6 +219,7 @@ export function History() {
                             disabled={isFetchingNextPage}
                             style={{
                                 padding: '10px 24px',
+                                minHeight: 'var(--touch-min)',
                                 borderRadius: 'var(--app-border-radius)',
                                 border: '1px solid var(--app-border-color)',
                                 background: 'var(--app-card-background)',

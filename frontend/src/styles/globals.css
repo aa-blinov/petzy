@@ -1110,6 +1110,12 @@ a,
     --border-radius: var(--app-border-radius) !important;
 }
 
+/* Buttons of the usual and the large size are at least a thumb tall (44px): «Дали сейчас» was 40. The mini and small ones
+   keep their look and get an invisible 44px area to touch (see .touch-target below). */
+.adm-button:not(.adm-button-mini):not(.adm-button-small) {
+    min-height: var(--touch-min);
+}
+
 .adm-form-item-description {
     font-size: var(--text-xs) !important;
 }

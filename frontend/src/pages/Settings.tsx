@@ -361,6 +361,7 @@ export function Settings() {
             style={{
               marginTop: 'var(--spacing-xl)',
               padding: 'var(--spacing-md)',
+              minHeight: 'var(--touch-min)',
               width: '100%',
               background: 'transparent',
               border: 'none',
