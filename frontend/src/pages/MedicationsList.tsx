@@ -538,6 +538,15 @@ export function MedicationsList() {
                                             </button>
                                         )}
 
+                                    </div>
+
+                                    </div>
+                                    {/* Centred on the details, not the whole card: beside the
+                                        «Отметить приём» button it would read as the button's. */}
+                                    <CardChevron />
+                                    </div>
+                                    {/* The stock is the width of the whole card, like the buttons below it: «Пополнить» ends where «Дали сейчас» does,
+                                        not at the chevron's column. */}
                                         {(() => {
                                             const stock = stockSummary(med);
                                             if (!stock) return null;
@@ -578,13 +587,6 @@ export function MedicationsList() {
                                                 </div>
                                             );
                                         })()}
-                                    </div>
-
-                                    </div>
-                                    {/* Centred on the details, not the whole card: beside the
-                                        «Отметить приём» button it would read as the button's. */}
-                                    <CardChevron />
-                                    </div>
                                     {(med.course_status ? med.course_status === 'active' : med.is_active) && (
                                         // Logging a dose is its own action, not a tap on the card
                                         // (a disabled button's click must not open the form either).
