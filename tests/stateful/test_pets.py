@@ -316,13 +316,10 @@ class TestPetManagement:
             body = {"frame": "heart", "crops": crops}
             assert self._look(client, regular_user_token, test_pet, body).status_code == 422, crops
 
-    def test_a_backdrop_and_its_tint_are_kept_and_unknown_ones_refused(
-        self, client, mock_db, regular_user_token, test_pet
-    ):
-        response = self._look(client, regular_user_token, test_pet, {"backdrop": "aurora", "tint": "lilac"})
-        assert response.get_json() == {"look": {"backdrop": "aurora", "tint": "lilac"}}
+    def test_a_backdrop_is_kept_and_an_unknown_one_refused(self, client, mock_db, regular_user_token, test_pet):
+        response = self._look(client, regular_user_token, test_pet, {"backdrop": "aurora"})
+        assert response.get_json() == {"look": {"backdrop": "aurora"}}
         assert self._look(client, regular_user_token, test_pet, {"backdrop": "lava"}).status_code == 422
-        assert self._look(client, regular_user_token, test_pet, {"tint": "#fff"}).status_code == 422
         response = self._look(client, regular_user_token, test_pet, {"scene": "stars"})
         assert response.get_json() == {"look": {"scene": "stars"}}
         assert self._look(client, regular_user_token, test_pet, {"scene": "lava"}).status_code == 422

@@ -18,7 +18,7 @@ import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
 import { PetPhotoFill } from './PetPhotoFill';
-import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petBackdropKey, petBackdropStyle, petCropOf, petFrameStyle, petLookOf, petTintAttr, petTintHex, type PetLook } from '../utils/petLook';
+import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petBackdropKey, petBackdropStyle, petCropOf, petFrameStyle, petLookOf, petAccentHex, type PetLook } from '../utils/petLook';
 
 
 
@@ -53,14 +53,13 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
     <div
       className="card-soft"
       {...accentAttr}
-      {...petTintAttr(look)}
       style={{
         overflow: "hidden",
         position: "relative",
         marginBottom: compact ? 0 : "var(--spacing-md)",
         padding: compact ? "12px 16px" : "16px",
         // What lies behind the card: the owner's choice, else a tint of the pet's colour, else the plain card.
-        ...petBackdropStyle(backdrop, petTintHex(look)),
+        ...petBackdropStyle(backdrop, petAccentHex(look)),
       }}
     >
       {/* The photo itself, blurred and washed out, as the backdrop: a pet with no photo has nothing to blur. */}

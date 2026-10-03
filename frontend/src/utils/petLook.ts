@@ -31,8 +31,6 @@ export interface PetLook {
   backdrop?: string;
   /** The same catalogue behind the whole feed area of the pet; empty: none. */
   scene?: string;
-  /** A palette colour for the backdrop alone, when it is not the card's own. */
-  tint?: string;
   /** The part of the photo each frame shows: every frame has a window of its own shape, so its own part. */
   crops?: Record<string, PetCrop>;
 }
@@ -542,19 +540,13 @@ export function petBackdropKey(look?: PetLook | null): string {
   return look?.accent ? 'fill' : 'plain';
 }
 
-/** The tint attribute: a backdrop colour of its own, set on the card, read by the backdrop alone (see globals.css). */
-export function petTintAttr(look?: PetLook | null): { 'data-pet-tint'?: string } {
-  return look?.tint && PET_ACCENTS.some((a) => a.key === look.tint) ? { 'data-pet-tint': look.tint } : {};
+/** The colour the backdrop's patterns are drawn in: the pet's colour, else the brand's. */
+export function petAccentHex(look?: PetLook | null): string {
+  return PET_ACCENTS.find((a) => a.key === look?.accent)?.swatch ?? COPPER;
 }
 
-/** The colour the backdrop's patterns are drawn in: the tint, else the pet's colour, else the brand's. */
-export function petTintHex(look?: PetLook | null): string {
-  const key = look?.tint || look?.accent;
-  return PET_ACCENTS.find((a) => a.key === key)?.swatch ?? COPPER;
-}
-
-const soft = 'var(--bd-soft, var(--app-accent-soft))';
-const deep = 'var(--bd-deep, var(--app-accent-deep))';
+const soft = 'var(--app-accent-soft)';
+const deep = 'var(--app-accent-deep)';
 const base = 'var(--app-card-background)';
 const wash = `color-mix(in srgb, ${soft} 38%, ${base})`;
 
@@ -618,7 +610,7 @@ export const PET_SCENES = PET_BACKDROPS.filter((b) => b.key !== 'photo');
 /** The feed area's own background, from `scene`; none leaves the page as it is. */
 export function petSceneStyle(look?: PetLook | null): CSSProperties {
   const key = look?.scene;
-  return key && key !== 'plain' && key !== 'photo' ? { ...petBackdropStyle(key, petTintHex(look)) } : {};
+  return key && key !== 'plain' && key !== 'photo' ? { ...petBackdropStyle(key, petAccentHex(look)) } : {};
 }
 
 /**
@@ -626,13 +618,13 @@ export function petSceneStyle(look?: PetLook | null): CSSProperties {
  * the name is the owner's own and is not touched.
  */
 export const PET_VIBES = [
-  { key: 'cozy', label: 'Уют', look: { accent: 'sun', font: 'marck', frame: 'gallery', backdrop: 'linen', scene: 'paper', tint: '' } },
-  { key: 'cute', label: 'Милота', look: { accent: 'rose', font: 'pacifico', frame: 'heart', backdrop: 'hearts', scene: 'dots', tint: '' } },
-  { key: 'pastel', label: 'Пастель', look: { accent: 'lilac', font: 'bad', frame: 'pearl', backdrop: 'aurora', scene: 'fill', tint: 'sky' } },
-  { key: 'retro', label: 'Ретро', look: { accent: 'sun', font: 'neucha', frame: 'film', backdrop: 'grid', scene: 'paper', tint: '' } },
-  { key: 'neon', label: 'Неон', look: { accent: 'lilac', font: 'amatic', frame: 'neon', backdrop: 'aurora', scene: 'stars', tint: '' } },
-  { key: 'space', label: 'Космос', look: { accent: 'lilac', font: 'amatic', frame: 'star', backdrop: 'stars', scene: 'gradient', tint: 'sky' } },
-  { key: 'nature', label: 'Природа', look: { accent: 'sage', font: 'caveat', frame: 'flower', backdrop: 'waves', scene: 'linen', tint: '' } },
-  { key: 'sea', label: 'Море', look: { accent: 'sky', font: 'pacifico', frame: 'porthole', backdrop: 'waves', scene: 'waves', tint: 'teal' } },
-  { key: 'minimal', label: 'Минимал', look: { accent: 'slate', font: '', frame: 'polaroid', backdrop: 'plain', scene: 'plain', tint: '' } },
+  { key: 'cozy', label: 'Уют', look: { accent: 'sun', font: 'marck', frame: 'gallery', backdrop: 'linen', scene: 'paper' } },
+  { key: 'cute', label: 'Милота', look: { accent: 'rose', font: 'pacifico', frame: 'heart', backdrop: 'hearts', scene: 'dots' } },
+  { key: 'pastel', label: 'Пастель', look: { accent: 'lilac', font: 'bad', frame: 'pearl', backdrop: 'aurora', scene: 'fill' } },
+  { key: 'retro', label: 'Ретро', look: { accent: 'sun', font: 'neucha', frame: 'film', backdrop: 'grid', scene: 'paper' } },
+  { key: 'neon', label: 'Неон', look: { accent: 'lilac', font: 'amatic', frame: 'neon', backdrop: 'aurora', scene: 'stars' } },
+  { key: 'space', label: 'Космос', look: { accent: 'lilac', font: 'amatic', frame: 'star', backdrop: 'stars', scene: 'gradient' } },
+  { key: 'nature', label: 'Природа', look: { accent: 'sage', font: 'caveat', frame: 'flower', backdrop: 'waves', scene: 'linen' } },
+  { key: 'sea', label: 'Море', look: { accent: 'sky', font: 'pacifico', frame: 'porthole', backdrop: 'waves', scene: 'waves' } },
+  { key: 'minimal', label: 'Минимал', look: { accent: 'slate', font: '', frame: 'polaroid', backdrop: 'plain', scene: 'plain' } },
 ] as const;
