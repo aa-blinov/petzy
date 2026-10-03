@@ -10,6 +10,7 @@ import { Navbar } from './components/Navbar';
 import { BottomTabBar } from './components/BottomTabBar';
 import { PrivacyConsentGate } from './components/PrivacyConsentGate';
 import { ScrollManager } from './components/ScrollManager';
+import { PetLookTheme } from './components/PetLookTheme';
 import { ThemeProvider } from './components/ThemeProvider';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -242,6 +243,7 @@ function AppRoutes() {
       <SentryUser />
       <PrivacyConsentGate />
       <Snackbar />
+      <PetLookTheme />
       <Navbar />
       <RouteFocus />
       <ScrollManager />

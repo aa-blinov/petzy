@@ -316,6 +316,17 @@ class TestPetManagement:
             body = {"frame": "heart", "crops": crops}
             assert self._look(client, regular_user_token, test_pet, body).status_code == 422, crops
 
+    def test_a_backdrop_and_its_tint_are_kept_and_unknown_ones_refused(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        response = self._look(client, regular_user_token, test_pet, {"backdrop": "aurora", "tint": "lilac"})
+        assert response.get_json() == {"look": {"backdrop": "aurora", "tint": "lilac"}}
+        assert self._look(client, regular_user_token, test_pet, {"backdrop": "lava"}).status_code == 422
+        assert self._look(client, regular_user_token, test_pet, {"tint": "#fff"}).status_code == 422
+        response = self._look(client, regular_user_token, test_pet, {"scene": "stars"})
+        assert response.get_json() == {"look": {"scene": "stars"}}
+        assert self._look(client, regular_user_token, test_pet, {"scene": "lava"}).status_code == 422
+
     def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
         assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
 

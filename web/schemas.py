@@ -376,6 +376,23 @@ class PetFormDefaultsResponse(BaseModel):
 PET_ACCENTS = ("sage", "sky", "lilac", "rose", "sun", "teal", "slate")
 # The hand-written faces the name on the card can take; the files are the frontend's (petLook.ts).
 PET_FONTS = ("caveat", "marck", "bad", "pacifico", "neucha", "amatic")
+# What lies behind the card (drawn in the frontend): a fill, a gradient, a pattern, the photo blurred, a paper.
+PET_BACKDROPS = (
+    "plain",
+    "fill",
+    "gradient",
+    "aurora",
+    "photo",
+    "dots",
+    "stripes",
+    "grid",
+    "waves",
+    "paws",
+    "stars",
+    "hearts",
+    "paper",
+    "linen",
+)
 # The frames the pet's photo can take, drawn in the frontend (petLook.ts).
 PET_FRAMES = (
     "story",
@@ -397,6 +414,17 @@ PET_FRAMES = (
     "aura",
     "gallery",
     "porthole",
+    "gold",
+    "marble",
+    "leather",
+    "denim",
+    "kraft",
+    "velvet",
+    "glitter",
+    "pearl",
+    "glass",
+    "carbon",
+    "rope",
 )
 PET_TAGLINE_MAX = 40
 
@@ -411,6 +439,11 @@ class PetLook(BaseModel):
     accent: str = ""
     font: str = ""
     frame: str = ""
+    backdrop: str = ""
+    # The same catalogue behind the whole feed area of the pet (not the card): its background.
+    scene: str = ""
+    # The colour of the backdrop when it is not the pet's own: a name of the palette.
+    tint: str = ""
     # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
     # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
     crops: Dict[str, Dict[str, float]] = Field(default_factory=dict)
@@ -463,6 +496,22 @@ class PetLook(BaseModel):
                 raise ValueError("Область фото вне снимка")
             cleaned[frame] = {"x": x, "y": y, "w": w, "h": h}
         return cleaned
+
+    @field_validator("backdrop", "scene")
+    @classmethod
+    def _backdrop(cls, value: str) -> str:
+        value = (value or "").strip()
+        if value and value not in PET_BACKDROPS:
+            raise ValueError("Такой подложки нет")
+        return value
+
+    @field_validator("tint")
+    @classmethod
+    def _tint(cls, value: str) -> str:
+        value = (value or "").strip()
+        if value and value not in PET_ACCENTS:
+            raise ValueError("Такого цвета нет")
+        return value
 
 
 class PetLookResponse(BaseModel):
