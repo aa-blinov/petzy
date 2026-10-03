@@ -63,8 +63,27 @@ const optionState = (on: boolean): CSSProperties => ({
 export function PetLookSettings() {
   const { getSelectedPet } = usePet();
   if (!getSelectedPet) return <NoPetState what="Оформление питомца" />;
+  // The look is the owner's to set; the family sees it. A link or a stale tab does not get a member into the editor.
+  if (getSelectedPet.current_user_is_owner === false) return <OwnerOnly name={getSelectedPet.name} />;
   // Keyed by the pet: choosing another pet in the switcher opens that pet's own card.
   return <PetLookFor key={getSelectedPet._id} pet={getSelectedPet} />;
+}
+
+function OwnerOnly({ name }: { name: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="page-container">
+      <div className="max-width-container safe-area-padding">
+        <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
+        <p style={{ margin: 'var(--spacing-md) 0', fontSize: 'var(--text-md)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+          Питомец: {name}. Оформление меняет только владелец, вы видите его таким, каким его выбрали
+        </p>
+        <SpinnerButton type="button" block loading={false} onClick={() => navigate('/settings')}>
+          В настройки
+        </SpinnerButton>
+      </div>
+    </div>
+  );
 }
 
 /** A row of round colour buttons: one radio group, `none` first (the pet's own colour, or the brand's). */
@@ -335,7 +354,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: {pet.name}. Оформление видят все, у кого есть доступ к питомцу, и каждый из них может его поменять
+            Питомец: {pet.name}. Оформление видят все, у кого есть доступ к питомцу, а менять его можете только вы
           </p>
         </div>
 

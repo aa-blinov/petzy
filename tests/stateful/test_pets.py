@@ -327,7 +327,9 @@ class TestPetManagement:
     def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
         assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
 
-    def test_a_member_can_set_a_look(self, client, mock_db, regular_user_token, test_pet):
+    def test_only_the_owner_sets_a_look_a_member_sees_it_but_cannot_change_it(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
         from web.security import create_access_token
 
         mock_db["users"].insert_one(
@@ -341,9 +343,14 @@ class TestPetManagement:
             }
         )
         mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["member2"]}})
-        response = self._look(client, create_access_token("member2"), test_pet, {"tagline": "Лапы"})
-        assert response.status_code == 200
+        assert self._look(client, regular_user_token, test_pet, {"tagline": "Лапы"}).status_code == 200
+        member = create_access_token("member2")
+        response = self._look(client, member, test_pet, {"tagline": "Чужое"})
+        assert response.status_code == 403
         assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"tagline": "Лапы"}
+        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {member}"}).get_json()
+        mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
+        assert mine["look"] == {"tagline": "Лапы"}
 
     def test_share_pet_success(self, client, mock_db, regular_user_token, test_pet, admin_pet):
         """Test sharing pet with another user."""

@@ -24,7 +24,7 @@ import {
 
 export function Settings() {
   const navigate = useNavigate();
-  const { selectedPetId } = usePet();
+  const { selectedPetId, getSelectedPet } = usePet();
   const [exportVisible, setExportVisible] = useState(false);
   const { theme, setTheme, isDark } = useTheme();
   const { logout } = useAuth();
@@ -279,9 +279,13 @@ export function Settings() {
             <SettingsRow
               icon={<Palette size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Оформление питомца"
-              description="Образ, цвет, шрифт имени, рамка фото и фон ленты"
-              chevron
-              onClick={() => navigate('/pet-look')}
+              description={
+                getSelectedPet && getSelectedPet.current_user_is_owner === false
+                  ? 'Меняет только владелец питомца'
+                  : 'Образ, цвет, шрифт имени, рамка фото и фон ленты'
+              }
+              // Someone a pet is shared with sees the look but does not set it.
+              {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-look') })}
             />
           </div>
 
