@@ -33,6 +33,8 @@ from web.schemas import (
     PetShareRequest,
     PetFormDefaults,
     PetFormDefaultsResponse,
+    PetLook,
+    PetLookResponse,
     PetCreatedResponse,
     PetInviteListResponse,
     PhotoQueryParams,
@@ -566,6 +568,27 @@ def put_pet_form_defaults(pet_id):
     form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
     app.db["pets"].update_one({"_id": pet["_id"]}, {"$set": {"form_defaults": form_defaults}})
     return jsonify({"form_defaults": form_defaults})
+
+
+@pets_bp.route("/api/pets/<pet_id>/look", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(PetLook),
+    resp=Response(HTTP_200=PetLookResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    tags=["pets"],
+)
+def put_pet_look(pet_id):
+    """The line and the colour of the pet's card. Anyone with access to the pet may set them (not owner-only: it is
+    how the family sees the pet, not what is recorded about it). Empty clears."""
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username)
+    if access_error:
+        return access_error[0], access_error[1]
+    body = request.context.body  # type: ignore[attr-defined]
+    look = {key: value for key, value in (("tagline", body.tagline), ("accent", body.accent)) if value}
+    update = {"$set": {"look": look}} if look else {"$unset": {"look": ""}}
+    app.db["pets"].update_one({"_id": pet["_id"]}, update)
+    return jsonify({"look": look})
 
 
 @pets_bp.route("/api/pets/<pet_id>/leave", methods=["POST"])

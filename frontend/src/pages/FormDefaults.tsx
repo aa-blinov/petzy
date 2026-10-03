@@ -195,7 +195,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
                 <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
                     <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
                     <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-                        Для {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Пока вы ничего не выбрали, поля пустые
+                        Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Пока вы ничего не выбрали, поля пустые
                     </p>
                 </div>
 

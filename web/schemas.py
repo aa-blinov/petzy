@@ -372,6 +372,41 @@ class PetFormDefaultsResponse(BaseModel):
     form_defaults: Dict[str, Dict[str, str]] = Field(default_factory=dict)
 
 
+# The colours a pet's card can take; the palette itself lives in the frontend (petLook.ts), the server only knows the names.
+PET_ACCENTS = ("sage", "sky", "lilac", "rose", "sun", "teal", "slate")
+PET_TAGLINE_MAX = 40
+
+
+class PetLook(BaseModel):
+    """PUT /api/pets/<id>/look: how the pet's card shows it, a line about it and a colour.
+
+    The whole look, replacing the old one; an empty line and no colour clear it. Everyone with access to the pet sees
+    (and may change) the same, like its form defaults."""
+
+    tagline: str = ""
+    accent: str = ""
+
+    @field_validator("tagline")
+    @classmethod
+    def _tagline(cls, value: str) -> str:
+        value = " ".join((value or "").split())
+        if len(value) > PET_TAGLINE_MAX:
+            raise ValueError(f"Подпись не длиннее {PET_TAGLINE_MAX} символов")
+        return value
+
+    @field_validator("accent")
+    @classmethod
+    def _accent(cls, value: str) -> str:
+        value = (value or "").strip()
+        if value and value not in PET_ACCENTS:
+            raise ValueError("Такого цвета нет")
+        return value
+
+
+class PetLookResponse(BaseModel):
+    look: Dict[str, str] = Field(default_factory=dict)
+
+
 class UserSearchResponse(BaseModel):
     """List of usernames for autocomplete."""
 
