@@ -21,6 +21,8 @@
     font-size: var(--text-sm);
     cursor: pointer;
     min-height: var(--touch-min);
+    /* A short label («29») is still a thumb wide. */
+    min-width: var(--touch-min);
 }
 
 .choice-chip[aria-pressed='true'] {

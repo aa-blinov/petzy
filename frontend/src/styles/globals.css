@@ -110,6 +110,10 @@
     --color-gray-light: #EEEEEE;
 
     /* Translucent Colors */
+    --app-white-90: rgba(255, 255, 255, 0.9);
+    /* Dark veils over a photo: behind a control that sits on it, and under the gradient that makes its buttons readable. */
+    --app-scrim: rgba(0, 0, 0, 0.5);
+    --app-scrim-strong: rgba(0, 0, 0, 0.7);
     --app-white-10: rgba(255, 255, 255, 0.1);
     --app-white-20: rgba(255, 255, 255, 0.2);
     --app-white-05: rgba(255, 255, 255, 0.05);

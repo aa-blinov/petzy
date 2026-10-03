@@ -43,7 +43,7 @@ export function PhotoViewer({ image, visible, onClose }: PhotoViewerProps) {
               top: 'calc(env(safe-area-inset-top) + var(--spacing-md))',
               right: 'var(--spacing-md)',
               zIndex: 1001,
-              background: 'rgba(0, 0, 0, 0.5)',
+              background: 'var(--app-scrim)',
               color: 'var(--app-text-on-dark)',
               border: 'none',
               borderRadius: '50%',
