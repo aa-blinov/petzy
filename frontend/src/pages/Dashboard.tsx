@@ -241,12 +241,39 @@ export function Dashboard() {
             ) : (
               <>
                 {!swipeHintSeen && (
-                  <p role="note" style={{ margin: '0 0 12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--app-accent-soft)', color: 'var(--app-accent-deep)', fontSize: 'var(--text-sm)' }}>
-                    Смахните запись влево, чтобы удалить, вправо, чтобы изменить.{' '}
+                  <div
+                    role="note"
+                    style={{
+                      margin: '0 0 12px',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--app-accent-soft)',
+                      color: 'var(--app-accent-deep)',
+                      fontSize: 'var(--text-sm)',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px 12px',
+                    }}
+                  >
+                    <span style={{ flex: '1 1 14em' }}>Смахните запись влево, чтобы удалить, вправо, чтобы изменить.</span>
+                    {/* A button that looks like one: a bare bold word at the end of a sentence read as part of the sentence. */}
                     <button
                       type="button"
                       className="touch-target"
-                      style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', cursor: 'pointer' }}
+                      style={{
+                        flexShrink: 0,
+                        minHeight: 'var(--touch-min)',
+                        padding: '0 18px',
+                        border: '1.5px solid currentColor',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'transparent',
+                        font: 'inherit',
+                        fontWeight: 600,
+                        color: 'inherit',
+                        cursor: 'pointer',
+                      }}
                       onClick={() => {
                         setSwipeHintSeen(true);
                         try {
@@ -258,7 +285,7 @@ export function Dashboard() {
                     >
                       Понятно
                     </button>
-                  </p>
+                  </div>
                 )}
                 {Object.entries(groupedItems).map(([dateStr, itemsForDate]) => (
                   <div key={dateStr} style={{ marginBottom: '16px' }}>
