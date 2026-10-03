@@ -44,7 +44,7 @@ export function PhotoViewer({ image, visible, onClose }: PhotoViewerProps) {
               right: 'var(--spacing-md)',
               zIndex: 1001,
               background: 'rgba(0, 0, 0, 0.5)',
-              color: '#FFFFFF',
+              color: 'var(--app-text-on-dark)',
               border: 'none',
               borderRadius: '50%',
               width: 36,

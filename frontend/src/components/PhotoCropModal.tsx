@@ -91,7 +91,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ZoomIn size={18} strokeWidth={2} style={{ color: '#fff', flexShrink: 0 }} />
+          <ZoomIn size={18} strokeWidth={2} style={{ color: 'var(--app-text-on-dark)', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <Slider
               aria-label="Масштаб"
@@ -122,7 +122,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
               borderRadius: 'var(--radius-md)',
               border: 'none',
               background: 'rgba(255, 255, 255, 0.12)',
-              color: '#fff',
+              color: 'var(--app-text-on-dark)',
               fontWeight: 600,
               fontSize: 'var(--text-md)',
               cursor: isSaving ? 'not-allowed' : 'pointer',
@@ -145,7 +145,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
               borderRadius: 'var(--radius-md)',
               border: 'none',
               background: 'var(--app-primary-fill)',
-              color: '#fff',
+              color: 'var(--app-text-on-dark)',
               fontWeight: 600,
               fontSize: 'var(--text-md)',
               cursor: isSaving || !croppedAreaPixels ? 'not-allowed' : 'pointer',

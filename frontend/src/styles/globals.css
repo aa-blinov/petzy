@@ -63,6 +63,7 @@
     --app-text-secondary: #6F675D;
     --app-text-tertiary: #786E62;
     --app-text-placeholder: var(--app-text-tertiary);
+    /* White on what is dark in both themes: the photo viewer and crop overlays, a species tile, a primary fill. */
     --app-text-on-dark: #FFFFFF;
 
     /* The one copper did three jobs: accent (icons, active tab, rings),
