@@ -2309,3 +2309,22 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='none'] {
     --bd-soft: var(--app-accent-soft);
     --bd-deep: var(--app-accent-deep);
 }
+
+/* The pet card and the switch of what to change, held under the header while the options scroll: the result is always in view.
+   On a short screen (a phone on its side) they would take the whole view, so there they scroll with the page. */
+.look-sticky {
+    position: sticky;
+    top: calc(var(--page-padding-top) - 24px);
+    z-index: 5;
+    margin: 0 calc(-1 * var(--spacing-md));
+    padding: 0 var(--spacing-md) var(--spacing-xs);
+    background: color-mix(in srgb, var(--app-page-background) 86%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--app-border-color);
+}
+@media (max-height: 560px) {
+    .look-sticky {
+        position: static;
+    }
+}
