@@ -185,11 +185,11 @@ const SHAPES: Record<string, string> = {
   flower: `<g fill='#000'><circle cx='50' cy='50' r='33'/>${ring(8, 31, (x, y) => `<circle cx='${x}' cy='${y}' r='19'/>`)}</g>`,
   heart: `<path fill='#000' d='M50 90 C18 67 5 49 5 32 C5 17 17 8 30 8 C39 8 46 13 50 21 C54 13 61 8 70 8 C83 8 95 17 95 32 C95 49 82 67 50 90 Z'/>`,
   // A seal: the points of a badge.
-  star: `<polygon fill='#000' points='${Array.from({ length: 32 }, (_, i) => {
+  star: `<path fill='#000' d='${Array.from({ length: 32 }, (_, i) => {
     const a = (i * Math.PI) / 16 - Math.PI / 2;
     const r = i % 2 === 0 ? 49 : 41;
-    return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
-  }).join(' ')}'/>`,
+    return `${i === 0 ? 'M' : 'L'}${(50 + r * Math.cos(a)).toFixed(1)} ${(50 + r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ')} Z'/>`,
   cloud: `<g fill='#000'><circle cx='27' cy='63' r='19'/><circle cx='47' cy='42' r='25'/><circle cx='72' cy='50' r='21'/><circle cx='50' cy='67' r='24'/><circle cx='77' cy='69' r='17'/></g>`,
   // A big pad and four toes.
   paw: `<g fill='#000'><ellipse cx='50' cy='69' rx='28' ry='23'/><ellipse cx='19' cy='44' rx='11' ry='15' transform='rotate(-22 19 44)'/><ellipse cx='39' cy='23' rx='11' ry='15' transform='rotate(-7 39 23)'/><ellipse cx='61' cy='23' rx='11' ry='15' transform='rotate(7 61 23)'/><ellipse cx='81' cy='44' rx='11' ry='15' transform='rotate(22 81 44)'/></g>`,
@@ -219,6 +219,18 @@ function rim(width: number, paint: string, extra: CSSProperties = {}, mat = 'tra
     boxShadow: '0 3px 8px rgba(0, 0, 0, 0.35)',
     ...extra,
   };
+}
+
+/**
+ * The window a frame leaves, as a shape in a 100 x 100 box, for the crop editor to show: the same outline the frame cuts. Only
+ * the frames that are a shape have one; the rest are a rectangle or a circle, which the editor draws itself. `outline` says
+ * whether the edge can be stroked (a single path, not several circles overlapped).
+ */
+export function frameWindowShape(frame: string): { inner: string; outline: boolean } | undefined {
+  if (frame === 'arch') return { inner: `<path fill='#000' d='M0 100 L0 52 C0 20 22 0 50 0 C78 0 100 20 100 52 L100 100 Z'/>`, outline: true };
+  if (frame === 'heart' || frame === 'star') return { inner: SHAPES[frame], outline: true };
+  if (frame === 'flower' || frame === 'cloud' || frame === 'paw') return { inner: SHAPES[frame], outline: false };
+  return undefined;
 }
 
 export interface PetFrameStyle {

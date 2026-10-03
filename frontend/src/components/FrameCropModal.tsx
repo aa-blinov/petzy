@@ -13,7 +13,7 @@ import { Slider } from 'antd-mobile';
 import { Check, X, ZoomIn } from 'lucide-react';
 
 import { PetPhotoFill } from './PetPhotoFill';
-import { PET_FRAMES, ROUND_FRAMES, petFrameAspect, petFrameStyle, type PetCrop } from '../utils/petLook';
+import { PET_FRAMES, ROUND_FRAMES, frameWindowShape, petFrameAspect, petFrameStyle, type PetCrop } from '../utils/petLook';
 import { hapticFeedback } from '../utils/haptic';
 
 interface Props {
@@ -27,6 +27,23 @@ interface Props {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+const svgUrl = (inner: string) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'>${inner}</svg>`)}")`;
+
+/**
+ * The crop window is a rectangle (or a circle) whatever the frame; for a frame that is a shape, the shape is drawn over it:
+ * everything in the window outside the shape is dimmed like the rest of the photo, and the edge is stroked where it can be.
+ */
+function windowShapeCss(frame: string): string {
+  const shape = frameWindowShape(frame);
+  if (!shape) return '';
+  const stroke = shape.outline
+    ? `.frame-crop-window::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: ${svgUrl(shape.inner.replace(/fill='#000'/g, "fill='none' stroke='#fff' stroke-width='1.6' stroke-linejoin='round' vector-effect='non-scaling-stroke'"))} center / 100% 100% no-repeat; }`
+    : '';
+  // One mask, the shape cut out of a solid sheet (an SVG mask: white sheet, black shape), so no two layers are composited.
+  const outside = `<mask id='w'><rect width='100' height='100' fill='#fff'/>${shape.inner}</mask><rect width='100' height='100' fill='#000' mask='url(#w)'/>`;
+  return `.frame-crop-window::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: rgba(0, 0, 0, 0.62); -webkit-mask-image: ${svgUrl(outside)}; mask-image: ${svgUrl(outside)}; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; } ${stroke}`;
+}
 
 export function FrameCropModal({ src, species, frame, initial, onCancel, onDone }: Props) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -49,6 +66,7 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
       aria-label={`Кадр для рамки «${label}»`}
       style={{ position: 'fixed', inset: 0, zIndex: 1020, background: '#000', display: 'flex', flexDirection: 'column' }}
     >
+      <style>{windowShapeCss(frame)}</style>
       <div style={{ color: 'var(--app-text-on-dark)', padding: '12px 16px', fontWeight: 600, fontSize: 'var(--text-md)' }}>
         Кадр для рамки «{label}»
       </div>
@@ -59,7 +77,8 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
           zoom={zoom}
           aspect={aspect}
           cropShape={ROUND_FRAMES.includes(frame) ? 'round' : 'rect'}
-          showGrid={!ROUND_FRAMES.includes(frame)}
+          showGrid={!ROUND_FRAMES.includes(frame) && !frameWindowShape(frame)}
+          classes={{ cropAreaClassName: 'frame-crop-window' }}
           initialCroppedAreaPercentages={initial ? { x: initial.x, y: initial.y, width: initial.w, height: initial.h } : undefined}
           onCropChange={setCrop}
           onZoomChange={setZoom}
