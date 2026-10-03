@@ -24,11 +24,14 @@ import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petBackdropKey, pe
 
 
 /** `look` shows a draft in place of the saved one: the settings page previews it on this same card. */
-export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: PetLook }) {
+export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { pet: Pet; look?: PetLook; compact?: boolean }) {
+  // The compact card is the same card in miniature, for a place where it is pinned over something else (the look settings):
+  // a smaller picture with its frame scaled to match, the name and the line, no age and breed.
+  const slot = compact ? 72 : 112;
   const look = lookOverride ?? petLookOf(pet);
   const accentAttr = petAccentAttr(look);
   const font = petFontOf(look);
-  const frame = petFrameStyle(look.frame);
+  const frame = petFrameStyle(look.frame, slot / 112);
   const backdrop = petBackdropKey(look);
   useEffect(() => {
     if (font) void loadPetFont(font);
@@ -54,8 +57,8 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
       style={{
         overflow: "hidden",
         position: "relative",
-        marginBottom: "var(--spacing-md)",
-        padding: "16px",
+        marginBottom: compact ? 0 : "var(--spacing-md)",
+        padding: compact ? "12px 16px" : "16px",
         // What lies behind the card: the owner's choice, else a tint of the pet's colour, else the plain card.
         ...petBackdropStyle(backdrop, petTintHex(look)),
       }}
@@ -88,7 +91,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
           display: "flex",
           alignItems: "center",
           gap: "var(--spacing-md)",
-          marginBottom: "var(--spacing-md)",
+          marginBottom: compact ? 0 : "var(--spacing-md)",
         }}
       >
         {/* Square avatar — image if available, else species icon on the
@@ -112,8 +115,8 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
             : {})}
           style={{
             flexShrink: 0,
-            width: "112px",
-            height: "112px",
+            width: `${slot}px`,
+            height: `${slot}px`,
             cursor: pet.photo_url ? "pointer" : "default",
             borderRadius: "var(--radius-md)",
             overflow: "hidden",
@@ -129,13 +132,13 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
             <PetPhotoFill
               src={pet.photo_url}
               alt={pet.name}
-              size={112}
+              size={slot}
               priority
               crop={petCropOf(look)}
               style={frame.image}
             />
           ) : (
-            createElement(SpeciesIcon, { size: 56, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
+            createElement(SpeciesIcon, { size: slot / 2, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
           )}
         </div>
 
@@ -145,7 +148,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
           <div
             className="display-headline"
             style={{
-              fontSize: "var(--text-xl)",
+              fontSize: compact ? "var(--text-lg)" : "var(--text-xl)",
               fontWeight: 700,
               color: "var(--app-text-primary)",
               // Two lines before a cut: a long name is still a name.
@@ -154,7 +157,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
               overflowWrap: "anywhere",
-              ...petFontStyle(font, "var(--text-xl)"),
+              ...petFontStyle(font, compact ? "var(--text-lg)" : "var(--text-xl)"),
             }}
           >
             {pet.name}
@@ -185,6 +188,7 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
               Doesn't touch the underlying data or other screens. */}
           {/* Three lines at most: an ordinary breed still reads whole, a
               100-character one no longer pushes the card to six lines. */}
+          {!compact && (
           <div
             className="clamp-3"
             style={{
@@ -195,7 +199,8 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
           >
             {meta || (!canFillIn && speciesLabel(pet.species))}
           </div>
-          {canFillIn && (
+          )}
+          {!compact && canFillIn && (
             <button
               type="button"
               className="touch-target"
