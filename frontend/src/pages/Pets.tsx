@@ -232,6 +232,8 @@ function PetCard({
         onTrigger: onDelete,
       };
 
+  const Avatar = pet.photo_url ? 'button' : 'div';
+
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction} itemLabel={pet.name}>
       {/* Tap opens the edit form; swiping is the shortcut to edit or
@@ -242,18 +244,19 @@ function PetCard({
               its gradient tile. Same treatment as PetSummaryCard on the
               dashboard, just without the кормление/вес row below — this
               list is for managing pets, not logging events. */}
-          <button
-            type="button"
-            onClick={(e) => {
-              // The photo, not the edit form the rest of the card opens.
-              if (!pet.photo_url) return;
-              e.stopPropagation();
-              onImageTap(pet.photo_url);
-            }}
-            // Without a photo the avatar is part of the card and opens
-            // the edit form like the rest of it.
-            tabIndex={pet.photo_url ? undefined : -1}
-            aria-label={pet.photo_url ? `Открыть фото ${pet.name}` : undefined}
+          <Avatar
+            // With a photo the avatar is a button of its own that opens the photo, not the edit form. Without one it is
+            // only a picture: a button that does nothing and has no name is what a screen reader read as «кнопка».
+            {...(pet.photo_url
+              ? {
+                  type: 'button' as const,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    onImageTap(pet.photo_url as string);
+                  },
+                  'aria-label': `Открыть фото ${pet.name}`,
+                }
+              : { 'aria-hidden': true })}
             style={{
               position: 'relative',
               flexShrink: 0,
@@ -298,7 +301,7 @@ function PetCard({
                 <SpeciesIcon size={40} strokeWidth={1.5} style={{ display: 'block' }} />
               </div>
             )}
-          </button>
+          </Avatar>
 
           {/* Right column — name, age/breed/gender summary, weight chip.
               Stretched to the avatar's full height and spread with
