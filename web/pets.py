@@ -31,6 +31,8 @@ from web.schemas import (
     PetResponseWrapper,
     PetListResponse,
     PetShareRequest,
+    PetFormDefaults,
+    PetFormDefaultsResponse,
     PetCreatedResponse,
     PetInviteListResponse,
     PhotoQueryParams,
@@ -545,6 +547,25 @@ def accept_pet_invite(pet_id):
 def decline_pet_invite(pet_id):
     """Decline an invitation."""
     return _answer_invite(pet_id, accept=False)
+
+
+@pets_bp.route("/api/pets/<pet_id>/form-defaults", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(PetFormDefaults),
+    resp=Response(HTTP_200=PetFormDefaultsResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    tags=["pets"],
+)
+def put_pet_form_defaults(pet_id):
+    """What a new record's form starts with for this pet. Anyone who can add its records can set it (not owner-only:
+    the food in the bowl is known to whoever feeds the pet)."""
+    username, _ = get_current_user()
+    pet, access_error = get_pet_and_validate(pet_id, username)
+    if access_error:
+        return access_error[0], access_error[1]
+    form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
+    app.db["pets"].update_one({"_id": pet["_id"]}, {"$set": {"form_defaults": form_defaults}})
+    return jsonify({"form_defaults": form_defaults})
 
 
 @pets_bp.route("/api/pets/<pet_id>/leave", methods=["POST"])

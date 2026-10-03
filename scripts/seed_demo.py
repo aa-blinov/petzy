@@ -416,16 +416,7 @@ def seed(base: str) -> None:
     demo.call("POST", f"/api/pets/{dog}/share", {"username": FAMILY_LOGIN})
     print(f"sharing: Мурзик shared with {FAMILY_LOGIN}, Рекс invited")
 
-    demo.call(
-        "PUT",
-        "/api/me/form-defaults",
-        {
-            "form_defaults": {
-                "weight": {"food": "Royal Canin Sensitivity"},
-                "defecation": {"food": "Royal Canin Sensitivity"},
-            }
-        },
-    )
+    # No form defaults: a new account starts with empty fields, and the demo shows exactly that.
 
     print()
     print(f"Done. Sign in at {base} as «{DEMO_LOGIN}» (owner) or «{FAMILY_LOGIN}», password: {DEMO_PASSWORD}")

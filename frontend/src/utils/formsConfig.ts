@@ -18,9 +18,9 @@ export interface FormField {
   id: string;
 }
 
-/** Remembered default values for the builtin types' own fields, edited on
- *  the "Значения по умолчанию" settings page and applied when a new
- *  record of that type is opened. Custom types don't get this — there's
+/** Remembered default values for a pet's builtin types' own fields, edited on
+ *  the "Значения по умолчанию" settings page (or by the switch at the foot of a new record's form), kept on the pet and
+ *  applied when a new record of that type is opened. Custom types don't get this — there's
  *  no fixed field set to hang a default on ahead of time. */
 export interface FormSettings {
   asthma?: {
@@ -47,53 +47,17 @@ export interface FormSettings {
   };
 }
 
+/** The fields of each built-in type that can have a default: the same ones «Значения по умолчанию» offers. A form of a new
+ *  record can save what was typed into them as the default (the switch at its foot). */
+export const DEFAULTABLE_FIELDS: Record<string, string[]> = {
+  asthma: ['duration', 'inhalation', 'reason'],
+  defecation: ['stool_type', 'color', 'food'],
+  weight: ['food'],
+  eye_drops: ['drops_type'],
+  tooth_brushing: ['brushing_type'],
+  ear_cleaning: ['cleaning_type'],
+};
+
 /** Nothing is filled in until the person sets it themselves on «Значения по умолчанию»: a built-in value (a food
  *  brand, a stool colour, a reason) would be recorded as if the family had typed it, and the diary is shown to a vet. */
 export const DEFAULT_FORM_SETTINGS: FormSettings = {};
-
-/** This device's copy of the account's «Настройки форм» (the server holds
- *  them, see formDefaults.service): a new record's form reads it without
- *  waiting for the network. */
-const FORM_DEFAULTS_KEY = 'formDefaults';
-
-export function getFormSettings(): FormSettings {
-  try {
-    const saved = localStorage.getItem(FORM_DEFAULTS_KEY);
-    if (saved) {
-      const settings = JSON.parse(saved) as FormSettings;
-      // Ensure backward compatibility
-      if (settings.defecation && !settings.defecation.color) {
-        settings.defecation.color = 'Коричневый';
-      }
-      return settings;
-    }
-  } catch (e) {
-    console.error('Error loading settings:', e);
-  }
-  return DEFAULT_FORM_SETTINGS;
-}
-
-export function cacheFormSettings(settings: FormSettings): void {
-  try {
-    localStorage.setItem(FORM_DEFAULTS_KEY, JSON.stringify(settings));
-  } catch {
-    /* private mode: the server copy still holds them */
-  }
-}
-
-/** Saved on this device before they moved to the account. */
-export function hasCachedFormSettings(): boolean {
-  try {
-    return localStorage.getItem(FORM_DEFAULTS_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-export function clearCachedFormSettings(): void {
-  try {
-    localStorage.removeItem(FORM_DEFAULTS_KEY);
-  } catch {
-    /* ignore */
-  }
-}

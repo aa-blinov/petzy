@@ -185,6 +185,72 @@ class TestPetManagement:
         data = response.get_json()
         assert "error" in data
 
+    def _defaults(self, client, token, pet, body):
+        return client.put(
+            f"/api/pets/{pet['_id']}/form-defaults", json=body, headers={"Authorization": f"Bearer {token}"}
+        )
+
+    def test_a_pet_keeps_its_own_form_defaults(self, client, mock_db, regular_user_token, test_pet):
+        response = self._defaults(
+            client, regular_user_token, test_pet, {"form_defaults": {"weight": {"food": " Монж Лабрадор "}}}
+        )
+        assert response.status_code == 200
+        assert response.get_json() == {"form_defaults": {"weight": {"food": "Монж Лабрадор"}}}
+        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
+        mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
+        assert mine["form_defaults"] == {"weight": {"food": "Монж Лабрадор"}}
+
+    def test_empty_values_are_dropped_and_the_whole_set_is_replaced(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        self._defaults(client, regular_user_token, test_pet, {"form_defaults": {"weight": {"food": "А"}}})
+        response = self._defaults(
+            client, regular_user_token, test_pet, {"form_defaults": {"defecation": {"color": "", "food": "Б"}}}
+        )
+        assert response.get_json() == {"form_defaults": {"defecation": {"food": "Б"}}}
+
+    def test_a_type_or_field_that_has_no_defaults_is_refused(self, client, mock_db, regular_user_token, test_pet):
+        assert (
+            self._defaults(client, regular_user_token, test_pet, {"form_defaults": {"feeding": {"x": "1"}}}).status_code
+            == 422
+        )
+        assert (
+            self._defaults(
+                client, regular_user_token, test_pet, {"form_defaults": {"weight": {"weight": "4"}}}
+            ).status_code
+            == 422
+        )
+        assert (
+            self._defaults(
+                client, regular_user_token, test_pet, {"form_defaults": {"weight": {"food": "x" * 201}}}
+            ).status_code
+            == 422
+        )
+
+    def test_someone_else_cannot_set_them(self, client, mock_db, regular_user_token, admin_pet):
+        assert self._defaults(client, regular_user_token, admin_pet, {"form_defaults": {}}).status_code == 404
+
+    def test_a_member_can_set_them_though_the_card_is_the_owners(self, client, mock_db, regular_user_token, test_pet):
+        from web.security import create_access_token
+
+        mock_db["users"].insert_one(
+            {
+                "username": "member1",
+                "password_hash": "x",
+                "full_name": "Member",
+                "email": "",
+                "created_at": datetime.now(timezone.utc),
+                "is_active": True,
+            }
+        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["member1"]}})
+        member = create_access_token("member1")
+        response = self._defaults(client, member, test_pet, {"form_defaults": {"eye_drops": {"drops_type": "Гелевые"}}})
+        assert response.status_code == 200
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["form_defaults"] == {
+            "eye_drops": {"drops_type": "Гелевые"}
+        }
+
     def test_share_pet_success(self, client, mock_db, regular_user_token, test_pet, admin_pet):
         """Test sharing pet with another user."""
         # Create another user

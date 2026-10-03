@@ -255,7 +255,7 @@ export function Settings() {
             <SettingsRow
               icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Настройки форм"
-              description="Значения по умолчанию и единицы измерения"
+              description="Что подставляется в новые записи выбранного питомца"
               chevron
               onClick={() => navigate('/form-defaults')}
             />

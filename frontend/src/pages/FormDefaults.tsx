@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { Button, Dialog, Form, Picker } from 'antd-mobile';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_FORM_SETTINGS, cacheFormSettings, getFormSettings, type FormSettings } from '../utils/formsConfig';
-import { formDefaultsService } from '../services/formDefaults.service';
+import { useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_FORM_SETTINGS, type FormSettings } from '../utils/formsConfig';
+import { petsService, type Pet } from '../services/pets.service';
+import { usePet } from '../hooks/usePet';
+import { NoPetState } from '../components/NoPetState';
 
 /** Static option lists for each categorical field. Kept here rather than
     in formsConfig so the picker columns read in the same place the
@@ -107,27 +109,23 @@ function PickerRow({
     );
 }
 
+/** «Значения по умолчанию»: what a new record of a built-in type starts with, for the selected pet. They are the pet's, not
+ *  the person's: its food or drops are the same for everyone who feeds it. */
 export function FormDefaults() {
+    const { getSelectedPet } = usePet();
+    if (!getSelectedPet) return <NoPetState what="Значения по умолчанию" />;
+    // Keyed by the pet: choosing another pet in the switcher opens that pet's own values.
+    return <FormDefaultsFor key={getSelectedPet._id} pet={getSelectedPet} />;
+}
+
+function FormDefaultsFor({ pet }: { pet: Pet }) {
     const navigate = useNavigate();
     const mountedRef = useRef(true);
-    const [formSettings, setFormSettings] = useState<FormSettings>(() => getFormSettings());
+    const [formSettings, setFormSettings] = useState<FormSettings>(() => pet.form_defaults ?? {});
     const [visiblePicker, setVisiblePicker] = useState<PickerKey | null>(null);
     const [saving, setSaving] = useState(false);
     const edited = useRef(false);
     const queryClient = useQueryClient();
-
-    // The account's copy: set on another device, it replaces this one's
-    // cached copy unless something was already changed here.
-    const { data: serverSettings } = useQuery({
-        queryKey: ['form-defaults'],
-        queryFn: () => formDefaultsService.get(),
-    });
-    useEffect(() => {
-        if (serverSettings && Object.keys(serverSettings).length > 0 && !edited.current) {
-            setFormSettings(serverSettings);
-            cacheFormSettings(serverSettings);
-        }
-    }, [serverSettings]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -137,10 +135,9 @@ export function FormDefaults() {
     }, []);
 
     const persist = useCallback(async (settings: FormSettings) => {
-        await formDefaultsService.save(settings);
-        cacheFormSettings(settings);
-        queryClient.setQueryData(['form-defaults'], settings);
-    }, [queryClient]);
+        const saved = await petsService.saveFormDefaults(pet._id, settings);
+        queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, form_defaults: saved } : p)));
+    }, [pet._id, queryClient]);
 
     const handleSave = useCallback(async () => {
         if (saving) return;
@@ -163,7 +160,7 @@ export function FormDefaults() {
 
     const handleReset = useCallback(async () => {
         const confirmed = await Dialog.confirm({
-            content: 'Очистить все значения по умолчанию? Формы будут открываться пустыми',
+            content: `Очистить значения по умолчанию для ${pet.name}? Формы будут открываться пустыми`,
             confirmText: 'Очистить',
             cancelText: 'Оставить',
         });
@@ -177,7 +174,7 @@ export function FormDefaults() {
                 showToast.failure('Не удалось сбросить настройки');
             }
         }
-    }, [persist]);
+    }, [persist, pet.name]);
 
     const updateFormSetting = useCallback((formType: keyof FormSettings, field: string, value: string) => {
         edited.current = true;
@@ -197,6 +194,9 @@ export function FormDefaults() {
             <div className="max-width-container">
                 <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
                     <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
+                    <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+                        Для {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Пока вы ничего не выбрали, поля пустые
+                    </p>
                 </div>
 
                 <Form layout="horizontal" mode="card" style={{ '--prefix-width': '7em' } as React.CSSProperties}>
