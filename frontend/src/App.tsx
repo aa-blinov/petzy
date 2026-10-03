@@ -183,13 +183,30 @@ function PrefetchTabs() {
       queryClient.prefetchQuery(documentsListQuery(selectedPetId));
       queryClient.prefetchQuery(medicationsListQuery(selectedPetId));
     };
-    // After the current screen has settled, not competing with it.
-    if ('requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(run, { timeout: 3000 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const id = setTimeout(run, 1500);
-    return () => clearTimeout(id);
+    // After the current screen has settled, not competing with it: on a slow connection the tabs' code and lists
+    // were fetched in the same seconds as the screen's own, and held its photo and records back by about two seconds.
+    // So it waits until the page has loaded and nothing is being fetched, and then for an idle moment.
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let idle: number | undefined;
+    const startedAt = Date.now();
+    const settled = () => {
+      if (stopped) return;
+      const quiet = document.readyState === 'complete' && queryClient.isFetching() === 0;
+      // Never held back for good: after twelve seconds it goes anyway.
+      if (!quiet && Date.now() - startedAt < 12_000) {
+        timer = setTimeout(settled, 400);
+        return;
+      }
+      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(run, { timeout: 3000 });
+      else timer = setTimeout(run, 500);
+    };
+    timer = setTimeout(settled, 400);
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+    };
   }, [selectedPetId, queryClient]);
 
   return null;
