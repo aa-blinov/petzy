@@ -289,6 +289,33 @@ class TestPetManagement:
         response = self._look(client, regular_user_token, test_pet, {"frame": "polaroid"})
         assert response.get_json() == {"look": {"frame": "polaroid"}}
 
+    def test_each_frame_keeps_its_own_part_of_the_photo(self, client, mock_db, regular_user_token, test_pet):
+        crops = {
+            "heart": {"x": 10.123, "y": 5, "w": 60, "h": 60},
+            "polaroid": {"x": 0, "y": 20, "w": 100, "h": 80},
+        }
+        response = self._look(client, regular_user_token, test_pet, {"frame": "heart", "crops": crops})
+        assert response.get_json()["look"]["crops"] == {
+            "heart": {"x": 10.12, "y": 5.0, "w": 60.0, "h": 60.0},
+            "polaroid": {"x": 0.0, "y": 20.0, "w": 100.0, "h": 80.0},
+        }
+        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
+        mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
+        assert set(mine["look"]["crops"]) == {"heart", "polaroid"}
+
+    def test_a_crop_outside_the_photo_or_for_no_such_frame_is_refused(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        for crops in (
+            {"heart": {"x": 50, "y": 0, "w": 60, "h": 60}},
+            {"heart": {"x": 0, "y": 0, "w": 0, "h": 10}},
+            {"heart": {"x": -1, "y": 0, "w": 50, "h": 50}},
+            {"heart": {"x": 0, "y": 0, "w": 50}},
+            {"wooden": {"x": 0, "y": 0, "w": 50, "h": 50}},
+        ):
+            body = {"frame": "heart", "crops": crops}
+            assert self._look(client, regular_user_token, test_pet, body).status_code == 422, crops
+
     def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
         assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
 

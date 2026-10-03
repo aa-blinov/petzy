@@ -595,6 +595,8 @@ def put_pet_look(pet_id):
         )
         if value
     }
+    if body.crops:
+        look["crops"] = body.crops
     update = {"$set": {"look": look}} if look else {"$unset": {"look": ""}}
     app.db["pets"].update_one({"_id": pet["_id"]}, update)
     return jsonify({"look": look})

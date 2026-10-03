@@ -17,8 +17,8 @@ import { computePetAge } from '../utils/relativeTime';
 import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
-import { PetImage } from './PetImage';
-import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petFrameStyle, petLookOf, type PetLook } from '../utils/petLook';
+import { PetPhotoFill } from './PetPhotoFill';
+import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petCropOf, petFrameStyle, petLookOf, type PetLook } from '../utils/petLook';
 
 
 
@@ -105,18 +105,13 @@ export function PetSummaryCard({ pet, look: lookOverride }: { pet: Pet; look?: P
           }}
         >
           {pet.photo_url ? (
-            <PetImage
+            <PetPhotoFill
               src={pet.photo_url}
               alt={pet.name}
               size={112}
               priority
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                borderRadius: 0,
-                ...frame.image,
-              }}
+              crop={petCropOf(look)}
+              style={frame.image}
             />
           ) : (
             createElement(SpeciesIcon, { size: 56, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
