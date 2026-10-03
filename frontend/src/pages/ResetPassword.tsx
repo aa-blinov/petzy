@@ -52,7 +52,7 @@ export function ResetPassword() {
     return (
       <AuthShell>
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
-          Ссылка устарела или уже использована. Запросите новую, она придёт на ту же почту.
+          Ссылка устарела или уже использована. Запросите новую, она придёт на ту же почту
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
           <Link to="/forgot-password" style={linkStyle}>Запросить новую ссылку</Link>

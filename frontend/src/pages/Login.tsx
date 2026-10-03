@@ -86,7 +86,7 @@ export function Login() {
     <AuthShell>
           {target !== '/' && (
             <p role="status" style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-              Войдите, и вы вернётесь на тот же экран, где были.
+              Войдите, и вы вернётесь на тот же экран, где были
             </p>
           )}
           <Form

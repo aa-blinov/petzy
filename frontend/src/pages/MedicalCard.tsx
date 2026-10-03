@@ -18,10 +18,10 @@ import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/doc
 import './MedicalCard.css';
 
 const EMPTY_TEXT: Record<MedicalKind, string> = {
-  vaccination: 'Прививок пока нет. Добавьте прививку или сертификат из документов, и срок повтора появится здесь.',
-  parasite: 'Обработок пока нет. Запишите последнюю, и придёт напоминание, когда пора повторить.',
-  visit: 'Визитов пока нет. Запишите визит, диагноз и рекомендации врача.',
-  procedure: 'Операций и процедур пока нет.',
+  vaccination: 'Прививок пока нет. Добавьте прививку или сертификат из документов, и срок повтора появится здесь',
+  parasite: 'Обработок пока нет. Запишите последнюю, и придёт напоминание, когда пора повторить',
+  visit: 'Визитов пока нет. Запишите визит, диагноз и рекомендации врача',
+  procedure: 'Операций и процедур пока нет',
 };
 
 const formatDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
@@ -135,7 +135,7 @@ function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit
             </button>
           )}
         </div>
-        {!filled && <p className="medcard__important-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми.</p>}
+        {!filled && <p className="medcard__important-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми</p>}
         {!hasAllergies && !profile.allergies_none_known && pet.health_notes && (
           <div className="medcard__fact">
             <span className="medcard__fact-label">Аллергии</span>
@@ -549,7 +549,7 @@ function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKin
         <div className="medcard__more">
           {more ? (
             <>
-              {source.length === 1 ? `Показана последняя запись из ${total}.` : `Показаны последние ${source.length} из ${total}.`}{' '}
+              {source.length === 1 ? `Показана последняя запись из ${total}` : `Показаны последние ${source.length} из ${total}`}{' '}
               <button type="button" className="medcard__link touch-target" style={{ padding: 0 }} disabled={all.isFetching} onClick={() => setExpanded(true)}>
                 {all.isFetching ? 'Загружаем…' : 'Показать все'}
               </button>
@@ -716,7 +716,7 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
 
       <Section id="medcard-vet-due" title="Прививки и обработки">
         {due.length === 0 && card.vaccinations.length === 0 ? (
-          <p className="medcard__empty">Не указаны.</p>
+          <p className="medcard__empty">Не указаны</p>
         ) : (
           <ul className="medcard__list">
             {due.map((r) => (
@@ -780,7 +780,7 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
 
       <Section id="medcard-vet-clinic" title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}>
         {card.profile.clinics.length === 0 ? (
-          <p className="medcard__empty">Не указана.</p>
+          <p className="medcard__empty">Не указана</p>
         ) : (
           <ul className="medcard__list">
             {card.profile.clinics.map((c, i) => (
@@ -964,7 +964,7 @@ export function MedicalCard() {
                   Скачать PDF для врача
                 </span>
               </Button>
-              <p className="medcard__hint">Первая страница для приёма, дальше история.</p>
+              <p className="medcard__hint">Первая страница для приёма, дальше история</p>
             </div>
           )}
 
@@ -978,7 +978,7 @@ export function MedicalCard() {
                 <PrepRows prep={card.visit_prep} />
               </ul>
             ) : (
-              <p className="medcard__empty">Что беспокоит и что изменилось: врач увидит это первой строкой.</p>
+              <p className="medcard__empty">Что беспокоит и что изменилось: врач увидит это первой строкой</p>
             )}
           </Section>
 
@@ -1004,7 +1004,7 @@ export function MedicalCard() {
 
           <Section id="medcard-medications" title="Лекарства сейчас" action={{ label: card.medications.length ? 'Все лекарства' : 'Добавить', onClick: () => navigate(card.medications.length ? '/medications' : '/medications/new') }}>
             {card.medications.length === 0 ? (
-              <p className="medcard__empty">Сейчас ничего не принимает.</p>
+              <p className="medcard__empty">Сейчас ничего не принимает</p>
             ) : (
               <ul className="medcard__list">
                 {card.medications.map((c) => (
@@ -1041,7 +1041,7 @@ export function MedicalCard() {
                 ))}
               </ul>
               {card.past_courses_total > card.past_courses.length && (
-                <p className="medcard__more">{card.past_courses.length === 1 ? `Показан последний курс из ${card.past_courses_total}.` : `Показаны последние ${card.past_courses.length} из ${card.past_courses_total}.`} Остальные есть в PDF.</p>
+                <p className="medcard__more">{card.past_courses.length === 1 ? `Показан последний курс из ${card.past_courses_total}` : `Показаны последние ${card.past_courses.length} из ${card.past_courses_total}`} Остальные есть в PDF</p>
               )}
             </Section>
           )}

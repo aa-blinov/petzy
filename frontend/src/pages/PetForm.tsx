@@ -371,7 +371,7 @@ export function PetForm() {
 
         {readOnly && (
           <p className="safe-area-padding" role="note" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
-            Карточку питомца меняет владелец. Вам можно смотреть её и добавлять записи, а когда питомец больше не нужен, выйти из доступа.
+            Карточку питомца меняет владелец. Вам можно смотреть её и добавлять записи, а когда питомец больше не нужен, выйти из доступа
           </p>
         )}
         {/* inert: nothing in a card that cannot be saved takes focus or a tap. */}

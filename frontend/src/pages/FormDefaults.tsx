@@ -163,7 +163,7 @@ export function FormDefaults() {
 
     const handleReset = useCallback(async () => {
         const confirmed = await Dialog.confirm({
-            content: 'Очистить все значения по умолчанию? Формы будут открываться пустыми.',
+            content: 'Очистить все значения по умолчанию? Формы будут открываться пустыми',
             confirmText: 'Очистить',
             cancelText: 'Оставить',
         });

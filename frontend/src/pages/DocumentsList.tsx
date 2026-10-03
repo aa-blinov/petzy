@@ -712,7 +712,7 @@ export function DocumentsList() {
           deleteDialog.document && (
             <span>
               Удалить документ «{deleteDialog.document.title}»?
-              {(deleteDialog.document.medical_record_kinds?.length ?? 0) > 0 && ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт.'}
+              {(deleteDialog.document.medical_record_kinds?.length ?? 0) > 0 && ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт'}
             </span>
           )
         }

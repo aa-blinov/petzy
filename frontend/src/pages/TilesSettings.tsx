@@ -60,7 +60,7 @@ export function TilesSettings() {
 
         {readOnly && (
           <p className="safe-area-padding" role="note" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
-            Плитки меняет владелец питомца.
+            Плитки меняет владелец питомца
           </p>
         )}
 

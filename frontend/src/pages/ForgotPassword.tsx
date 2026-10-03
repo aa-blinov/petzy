@@ -35,7 +35,7 @@ export function ForgotPassword() {
     return (
       <AuthShell>
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
-          Восстановление по почте пока не работает. Напишите администратору Petzy, он задаст новый пароль.
+          Восстановление по почте пока не работает. Напишите администратору Petzy, он задаст новый пароль
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
           <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
@@ -48,9 +48,9 @@ export function ForgotPassword() {
     return (
       <AuthShell>
         <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-lg)', textAlign: 'center' }}>Проверьте почту</h2>
-        <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>{sent}.</p>
+        <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>{sent}</p>
         <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-          Ссылка работает один час. Письма нет? Загляните в «Спам». Если почту к аккаунту не привязывали, напишите администратору Petzy.
+          Ссылка работает один час. Письма нет? Загляните в «Спам». Если почту к аккаунту не привязывали, напишите администратору Petzy
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
           <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>

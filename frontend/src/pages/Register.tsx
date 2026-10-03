@@ -82,7 +82,7 @@ export function Register() {
     return (
       <AuthShell>
         <p style={{ margin: 0, textAlign: 'center', color: 'var(--app-text-primary)', lineHeight: 1.5 }}>
-          Регистрация сейчас закрыта. Попросите администратора Petzy создать вам аккаунт.
+          Регистрация сейчас закрыта. Попросите администратора Petzy создать вам аккаунт
         </p>
         <div style={{ textAlign: 'center', marginTop: 'var(--spacing-lg)' }}>
           <Link to="/login" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
