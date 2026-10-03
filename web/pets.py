@@ -574,14 +574,14 @@ def put_pet_form_defaults(pet_id):
 @login_required
 @api.validate(
     body=Request(PetLook),
-    resp=Response(HTTP_200=PetLookResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=PetLookResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["pets"],
 )
 def put_pet_look(pet_id):
-    """The line, the colour, the name's face and the photo's frame on the pet's card. Anyone with access to the pet may set them (not owner-only: it is
-    how the family sees the pet, not what is recorded about it). Empty clears."""
+    """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop. The owner's to set: the family sees
+    it, but a sitter or a vet with access does not restyle someone else's pet. Empty clears."""
     username, _ = get_current_user()
-    pet, access_error = get_pet_and_validate(pet_id, username)
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
     if access_error:
         return access_error[0], access_error[1]
     body = request.context.body  # type: ignore[attr-defined]

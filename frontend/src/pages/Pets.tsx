@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
-import { Pencil, Scale, Trash2, Cat, LogOut, FileHeart } from 'lucide-react';
+import { Pencil, Scale, Trash2, Cat, LogOut, FileHeart, Palette } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
@@ -197,6 +197,7 @@ function PetCard({
   onImageTap: (url: string) => void;
 }) {
   const navigate = useNavigate();
+  const { selectPet } = usePet();
   const age = computePetAge(pet.birth_date ?? '');
   const { icon: SpeciesIcon, gradient: speciesGradient } = getSpecies(pet.species);
 
@@ -336,11 +337,12 @@ function PetCard({
               {/* Nothing known yet: at least what animal it is, not a lone dash. */}
               {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
             </div>
+            {/* Every chip of the pet on a line that wraps: two to a row where they fit, not one under another. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'flex-start' }}>
             {lastWeight && (
               <span
                 className="chip"
                 style={{
-                  alignSelf: 'flex-start',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
@@ -356,29 +358,55 @@ function PetCard({
                 {formatAmount(Number(lastWeight.fields?.weight))} кг
               </span>
             )}
-            <button
-              type="button"
-              className="chip touch-target"
-              onClick={(e) => {
-                e.stopPropagation(); // the card itself opens the edit form
-                navigate(`/pets/${pet._id}/medical-card`);
-              }}
-              style={{
-                alignSelf: 'flex-start',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '12px',
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                borderRadius: 'var(--radius-sm)',
-              }}
-            >
-              <FileHeart size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
-              Медкарта
-            </button>
+              <button
+                type="button"
+                className="chip touch-target"
+                onClick={(e) => {
+                  e.stopPropagation(); // the card itself opens the edit form
+                  navigate(`/pets/${pet._id}/medical-card`);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <FileHeart size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
+                Медкарта
+              </button>
+              {/* The look is the owner's to set, and it is set for the pet that is selected: choose it, then open the settings. */}
+              {pet.current_user_is_owner && (
+                <button
+                  type="button"
+                  className="chip touch-target"
+                  aria-label={`Оформление: ${pet.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    selectPet(pet);
+                    navigate('/pet-look');
+                  }}
+                  style={{
+                      display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  <Palette size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
+                  Оформление
+                </button>
+              )}
             {/* Nothing indicated a pet was shared anywhere outside its own
                 edit form — an owner had no quick way to see at a glance
                 which of their pets someone else already has access to.
@@ -388,7 +416,6 @@ function PetCard({
               <span
                 className="chip"
                 style={{
-                  alignSelf: 'flex-start',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
@@ -412,6 +439,7 @@ function PetCard({
                 {`Общий доступ${pet.shared_with.length > 1 ? ` (${pet.shared_with.length})` : ''}`}
               </span>
             )}
+            </div>
           </div>
           <span style={{ alignSelf: 'center' }}><CardChevron /></span>
         </div>
