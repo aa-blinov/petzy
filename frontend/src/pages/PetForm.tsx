@@ -648,7 +648,7 @@ export function PetForm() {
                     height: '120px',
                     borderRadius: '16px',
                     overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    boxShadow: 'var(--app-shadow)',
                   }}
                 >
                   <img
@@ -673,7 +673,7 @@ export function PetForm() {
                       justifyContent: 'center',
                       gap: '8px',
                       padding: '8px',
-                      background: 'linear-gradient(transparent, rgba(0, 0, 0, 0.7))',
+                      background: 'linear-gradient(transparent, var(--app-scrim-strong))',
                     }}
                   >
                     <button
@@ -684,7 +684,7 @@ export function PetForm() {
                         height: '32px',
                         borderRadius: '50%',
                         border: 'none',
-                        background: 'rgba(255, 255, 255, 0.9)',
+                        background: 'var(--app-white-90)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -704,8 +704,8 @@ export function PetForm() {
                         height: '32px',
                         borderRadius: '50%',
                         border: 'none',
-                        background: 'rgba(255, 82, 82, 0.9)',
-                        color: 'white',
+                        background: 'var(--app-danger-color)',
+                        color: 'var(--app-text-on-dark)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
