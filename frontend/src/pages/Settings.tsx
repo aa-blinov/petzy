@@ -244,29 +244,12 @@ export function Settings() {
             />
           </div>
 
-          {/* Section: Defaults */}
+          {/* Section: New records: what the «+» offers and what a new form starts with, both for the selected pet. */}
           <h2
             className="section-header"
             style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
           >
-            Значения по умолчанию
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Настройки форм"
-              description="Что подставляется в новые записи выбранного питомца"
-              chevron
-              onClick={() => navigate('/form-defaults')}
-            />
-          </div>
-
-          {/* Section: Dashboard */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Лента
+            Новые записи
           </h2>
           <div className="card-soft" style={{ overflow: 'hidden' }}>
             <SettingsRow
@@ -275,6 +258,13 @@ export function Settings() {
               description="Какие записи видны в окне «+» и в каком порядке"
               chevron
               onClick={() => navigate('/tiles-settings')}
+            />
+            <SettingsRow
+              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Значения по умолчанию"
+              description="Что подставляется в новые записи выбранного питомца"
+              chevron
+              onClick={() => navigate('/form-defaults')}
             />
           </div>
 
