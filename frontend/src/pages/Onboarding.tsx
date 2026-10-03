@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, DatePicker, Dialog, Input, Picker } from 'antd-mobile';
 import {
-  Archive,
   Bell,
   Bird,
   Cake,
@@ -11,9 +10,9 @@ import {
   Cat,
   ChevronLeft,
   Dog,
+  FileHeart,
   FileText,
   Fish,
-  Footprints,
   PawPrint,
   Pill,
   Scale,
@@ -287,20 +286,20 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       break;
     case 'diary':
       art = <DiaryArt />;
-      title = 'Все записи о питомце в одной ленте';
-      lead = 'Отмечайте кормление, вес и уход в пару касаний, а для остального заведите свои события, например прогулки';
+      title = 'Все записи и приёмы лекарств в одной ленте';
+      lead = 'Кормление, вес и уход записываются в пару касаний, а приём лекарства отмечается одним нажатием «Дали сейчас». Для остального заведите свои события, например прогулки';
       cta = ctaButton('Дальше', next);
       break;
     case 'care':
       art = <CareArt />;
-      title = 'Напомнит и подскажет';
-      lead = 'Уведомление, когда пора дать лекарство, и сигнал, если вес или аппетит резко изменились';
+      title = 'Напомнит о лекарствах и прививках';
+      lead = 'Уведомление, когда пора дать лекарство или повторить прививку, и сигнал, если вес или порция корма резко изменились';
       cta = ctaButton('Дальше', next);
       break;
     case 'family':
       art = <FamilyArt />;
-      title = 'Документы и семья рядом';
-      lead = 'Храните здесь справки, анализы и снимки МРТ или КТ. Откройте доступ близким, и все будут видеть одно и то же';
+      title = 'Медкарта для врача и семья рядом';
+      lead = 'Медкарта собирается сама из записей: на приёме её можно показать с экрана или отдать PDF. Справки, снимки и доступ для близких тоже здесь';
       cta = ctaButton(replay ? 'Понятно' : 'Добавить питомца', finishIntro);
       break;
     case 'species':
@@ -442,7 +441,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       );
       title = 'Включить уведомления?';
-      lead = 'Напомним о лекарствах и истекающих документах, сообщим о необычных показателях';
+      lead = 'Напомним о лекарствах, прививках и истекающих документах, сообщим о необычных показателях';
       cta = ctaButton('Включить', enablePush, { loading: enablingPush });
       secondary = (
         <button type="button" className="onb__secondary tap-feedback" onClick={next}>
@@ -492,7 +491,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       );
       title = `${displayName} теперь в Petzy`;
-      lead = 'Добавьте первую запись, например сегодняшнее кормление';
+      lead = 'Добавьте первую запись, например сегодняшнее кормление, или заведите лекарство, чтобы Petzy напоминал о приёмах';
       // Straight into the first real record: the feed underneath, so
       // saving the form lands there rather than back in onboarding.
       cta = ctaButton('Записать кормление', () => {
@@ -500,9 +499,21 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         navigate('/form/feeding');
       });
       secondary = (
-        <button type="button" className="onb__secondary tap-feedback" onClick={() => navigate('/', { replace: true })}>
-          Открыть ленту
-        </button>
+        <>
+          <button
+            type="button"
+            className="onb__secondary tap-feedback"
+            onClick={() => {
+              navigate('/', { replace: true });
+              navigate('/medications/new');
+            }}
+          >
+            Добавить лекарство
+          </button>
+          <button type="button" className="onb__secondary tap-feedback" onClick={() => navigate('/', { replace: true })}>
+            Открыть ленту
+          </button>
+        </>
       );
       break;
   }
@@ -634,7 +645,7 @@ function DiaryArt() {
     <div className="onb-stack" aria-hidden>
       <EventCard icon={Utensils} tile="brown" title="Кормление" meta="280 г корма" time="08:00" delay={0} />
       <EventCard icon={Scale} tile="orange" title="Вес" meta="4.6 кг" time="вчера" delay={140} />
-      <EventCard icon={Footprints} tile="green" title="Прогулка" meta="45 минут" time="вчера" delay={280} />
+      <EventCard icon={Pill} tile="purple" title="Лекарство" meta="Синулокс, 1 таб" time="08:00" delay={280} />
     </div>
   );
 }
@@ -658,24 +669,7 @@ function CareArt() {
   return (
     <div className="onb-stack" aria-hidden>
       <NotificationMock delay={0} title="Пора дать лекарство" body="Синулокс, 08:00" />
-      <NotificationMock
-        delay={160}
-        title="Необычное значение: Вес"
-        body="Барсик. Вес (кг): 5.4 (обычно ~4.6)"
-        extra={
-          <svg className="onb-spark" viewBox="0 0 260 44" preserveAspectRatio="none">
-            <polyline
-              points="0,30 40,29 80,31 120,28 160,30 200,29 244,8"
-              fill="none"
-              stroke="var(--app-accent)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle cx="244" cy="8" r="5" fill="var(--app-accent)" />
-          </svg>
-        }
-      />
+      <NotificationMock delay={160} title="Скоро прививка" body="Мурзик: Нобивак Rabies, через 10 дней" />
       <span className="onb-chip onb-float" style={floatDelay(320)}>
         <Pill size={14} strokeWidth={2.2} /> Осталось 12 таблеток
       </span>
@@ -697,14 +691,14 @@ function FamilyArt() {
         <span className="onb-chip onb-chip--warn">до 16 янв</span>
       </div>
       <div className="onb-card onb-float" style={floatDelay(150)}>
-        <span className="onb-card__tile onb-card__tile--film">
-          <Archive size={20} strokeWidth={2.2} />
+        <span className="onb-card__tile" style={{ background: 'var(--tile-orange)' }}>
+          <FileHeart size={20} strokeWidth={2.2} />
         </span>
         <span className="onb-card__body">
-          <span className="onb-card__title">КТ грудной клетки</span>
-          <span className="onb-card__meta">Архив со снимками</span>
+          <span className="onb-card__title">Медкарта Рекса</span>
+          <span className="onb-card__meta">Собрана из записей</span>
         </span>
-        <span className="onb-chip">312 МБ</span>
+        <span className="onb-chip">PDF</span>
       </div>
       <div className="onb-card onb-float" style={floatDelay(300)}>
         <span className="onb-card__tile" style={{ background: 'var(--tile-pink)' }}>
