@@ -2,41 +2,27 @@
  * Pet summary card shown at the top of the dashboard.
  *
  * Side-by-side layout: a square avatar (or species icon when no photo)
- * on the left, the pet's name, quick meta and the last weight on the right.
+ * on the left, the pet's name and quick meta on the right.
  * The medical card has its own tab, so no way into it here. The last feeding and weight used to
- * be two tiles here: the feed under the card already shows them, so the card
- * stays a card of the pet.
+ * be here: the feed under the card already shows them (and the weight is a slow figure with its own chart, not
+ * something to act on), so the card stays a card of who the pet is.
  */
 
-import { useQuery } from '@tanstack/react-query';
 import { createElement, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Scale } from 'lucide-react';
 import { PhotoViewer } from './PhotoViewer';
 
 import { type Pet } from '../services/pets.service';
-import { healthRecordsService } from '../services/healthRecords.service';
 import { computePetAge } from '../utils/relativeTime';
 import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
 import { PetImage } from './PetImage';
-import { CountUp } from './CountUp';
 
 
 
 
 export function PetSummaryCard({ pet }: { pet: Pet }) {
-  // Fetch the most-recent feeding and weight to render "last X" lines.
-  const weights = useQuery({
-    queryKey: ["pet-summary", "weight", pet._id],
-    queryFn: () => healthRecordsService.getList("weight", pet._id, 1, 1),
-    enabled: !!pet._id,
-    staleTime: 30_000,
-  });
-
-  const lastWeightRecord = weights.data?.items?.[0];
-
   const age = computePetAge(pet.birth_date ?? "");
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
   const { username } = useAuth();
@@ -121,7 +107,7 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
           )}
         </div>
 
-        {/* Right column — name, age/gender/breed summary, weight chip.
+        {/* Right column — name and the age, breed and gender line.
             minWidth: 0 lets flex children ellipsis correctly. */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
           <div
@@ -182,28 +168,6 @@ export function PetSummaryCard({ pet }: { pet: Pet }) {
             >
               Добавить возраст и породу
             </button>
-          )}
-
-          {/* The weight, the always-relevant health metric. The medical card is its own row
-              below: next to this chip it looked like one more figure, not a way in. */}
-          {lastWeightRecord && (
-            <span
-              className="chip"
-              style={{
-                alignSelf: "flex-start",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                fontSize: "12px",
-                // A full pill next to the avatar's soft rounded-square
-                // photo read as two different shape languages in the
-                // same card — this matches the avatar's corner instead.
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              <Scale size={13} strokeWidth={2.2} style={{ display: "block" }} />
-              <CountUp to={lastWeightRecord.fields?.weight as number} duration={800} decimals={1} /> кг
-            </span>
           )}
         </div>
       </div>
