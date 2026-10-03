@@ -20,18 +20,16 @@ import {
   PET_TAGLINE_MAX,
   PET_VIBES,
   loadPetFont,
-  petAccentAttr,
   petBackdropKey,
   petBackdropStyle,
   petFontStyle,
   petFrameStyle,
   petLookOf,
-  petSceneStyle,
-  petTintAttr,
-  petTintHex,
+  petAccentHex,
   type PetCrop,
   type PetLook,
 } from '../utils/petLook';
+import { setPetLookPreview } from '../utils/petLookPreview';
 import { showToast } from '../utils/toast';
 
 const BRAND = { key: '', label: 'Терракот', swatch: '#C46A3F' };
@@ -109,7 +107,7 @@ function Swatches({ label, value, onChange, noneLabel }: { label: string; value:
   );
 }
 
-/** A grid of backdrops, each drawn as a small sample of itself in the chosen tint. */
+/** A grid of backdrops, each drawn as a small sample of itself in the pet's colour. */
 function BackdropGrid({
   label,
   items,
@@ -117,7 +115,6 @@ function BackdropGrid({
   onChange,
   hex,
   photoUrl,
-  tintAttr,
 }: {
   label: string;
   items: readonly { key: string; label: string }[];
@@ -125,7 +122,6 @@ function BackdropGrid({
   onChange: (key: string) => void;
   hex: string;
   photoUrl?: string;
-  tintAttr: { 'data-pet-tint'?: string };
 }) {
   const id = `bd-${label}`;
   return (
@@ -140,7 +136,6 @@ function BackdropGrid({
             <button key={b.key} type="button" role="radio" aria-checked={on} className="tap-feedback" onClick={() => onChange(b.key)} style={{ ...optionBase, ...optionState(on) }}>
               <span
                 aria-hidden
-                {...tintAttr}
                 style={{
                   position: 'relative',
                   width: '100%',
@@ -245,13 +240,15 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const [crops, setCrops] = useState<Record<string, PetCrop>>(saved.crops ?? {});
   // Empty keeps the default (a tint of the pet's colour, none without one); the grid shows what that comes to.
   const [backdrop, setBackdrop] = useState(saved.backdrop ?? '');
-  const [tint, setTint] = useState(saved.tint ?? '');
   const [scene, setScene] = useState(saved.scene ?? '');
   // The frame being cropped, from the button under the frames: each frame has a window of its own shape and its own crop.
   const [cropping, setCropping] = useState<string | null>(null);
   const SpeciesIcon = getSpecies(pet.species).icon;
   const [saving, setSaving] = useState(false);
   const mountedRef = useRef(true);
+
+  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops, backdrop, scene };
+  const hex = petAccentHex(draft);
 
   // The options show the name in each face, so they are fetched when that tab is opened and not before (about 320 KB).
   useEffect(() => {
@@ -265,15 +262,18 @@ function PetLookFor({ pet }: { pet: Pet }) {
     };
   }, []);
 
-  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops, backdrop, tint, scene };
-  const hex = petTintHex(draft);
-  const tintAttr = petTintAttr(draft);
+  // The whole app shows the draft while this page is open, and the saved look again when it closes.
+  const draftKey = JSON.stringify(draft);
+  useEffect(() => {
+    setPetLookPreview(JSON.parse(draftKey) as PetLook);
+  }, [draftKey]);
+  useEffect(() => () => setPetLookPreview(null), []);
+
 
   const applyVibe = (v: (typeof PET_VIBES)[number]) => {
     setAccent(v.look.accent);
     setFont(v.look.font);
     setBackdrop(v.look.backdrop);
-    setTint(v.look.tint);
     setScene(v.look.scene);
     setFrame(v.look.frame);
   };
@@ -283,7 +283,6 @@ function PetLookFor({ pet }: { pet: Pet }) {
     setFont('');
     setFrame('');
     setBackdrop('');
-    setTint('');
     setScene('');
   };
 
@@ -303,13 +302,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
   };
 
   return (
-    // The page itself wears the feed's look: what is chosen below shows behind it as it will behind the feed.
-    <div
-      className="page-container"
-      data-pet-accent={petAccentAttr(draft)['data-pet-accent'] ?? 'none'}
-      data-pet-tint={tintAttr['data-pet-tint'] ?? 'none'}
-      style={{ background: petSceneStyle(draft).background ?? 'var(--app-page-background)' }}
-    >
+    <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
@@ -519,15 +512,14 @@ function PetLookFor({ pet }: { pet: Pet }) {
 
             {tab === 'card' && (
               <>
-                <BackdropGrid label="Узор" items={PET_BACKDROPS.filter((b) => b.key !== 'photo' || pet.photo_url)} value={petBackdropKey(draft)} onChange={setBackdrop} hex={hex} photoUrl={pet.photo_url} tintAttr={tintAttr} />
-                <Swatches label="Цвет подложки" value={tint} onChange={setTint} noneLabel="Как у питомца" />
+                <BackdropGrid label="Узор" items={PET_BACKDROPS.filter((b) => b.key !== 'photo' || pet.photo_url)} value={petBackdropKey(draft)} onChange={setBackdrop} hex={hex} photoUrl={pet.photo_url} />
               </>
             )}
 
             {tab === 'scene' && (
               <>
-                <p style={{ ...hint, margin: 0 }}>Фон за записями на всех экранах этого питомца. Цвет берётся из подложки карточки</p>
-                <BackdropGrid label="Узор фона" items={[{ key: '', label: 'Без фона' }, ...PET_SCENES.filter((b) => b.key !== 'plain')]} value={scene} onChange={setScene} hex={hex} tintAttr={tintAttr} />
+                <p style={{ ...hint, margin: 0 }}>Фон за записями на всех экранах этого питомца, в цвете питомца</p>
+                <BackdropGrid label="Узор фона" items={[{ key: '', label: 'Без фона' }, ...PET_SCENES.filter((b) => b.key !== 'plain')]} value={scene} onChange={setScene} hex={hex} />
               </>
             )}
           </section>

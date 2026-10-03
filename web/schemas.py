@@ -442,8 +442,6 @@ class PetLook(BaseModel):
     backdrop: str = ""
     # The same catalogue behind the whole feed area of the pet (not the card): its background.
     scene: str = ""
-    # The colour of the backdrop when it is not the pet's own: a name of the palette.
-    tint: str = ""
     # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
     # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
     crops: Dict[str, Dict[str, float]] = Field(default_factory=dict)
@@ -503,14 +501,6 @@ class PetLook(BaseModel):
         value = (value or "").strip()
         if value and value not in PET_BACKDROPS:
             raise ValueError("Такой подложки нет")
-        return value
-
-    @field_validator("tint")
-    @classmethod
-    def _tint(cls, value: str) -> str:
-        value = (value or "").strip()
-        if value and value not in PET_ACCENTS:
-            raise ValueError("Такого цвета нет")
         return value
 
 
