@@ -48,8 +48,9 @@
     --motion-ease-standard:    cubic-bezier(0.2, 0, 0, 1);
     --motion-ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
     --motion-ease-emphasized:  cubic-bezier(0.32, 0.72, 0, 1);
-    /* Overshoots past the target and settles — for gestures that spring
-       back to rest (the swipeable row releasing below threshold). */
+    /* Overshoots past the target and settles. Only for a thing the finger let go of, which really springs back to rest (the
+       swipeable row below its threshold, the sheet that was dragged and not dismissed). Never for something that just
+       appears or is selected: that decelerates (--motion-ease-emphasized). */
     --motion-ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
 
     --app-accent-deep: #9F4F2A;
@@ -884,7 +885,7 @@ select {
     height: 24px;
     align-items: center;
     margin-bottom: var(--spacing-xs);
-    transition: transform var(--motion-duration-fast) var(--motion-ease-spring);
+    transition: transform var(--motion-duration-fast) var(--motion-ease-emphasized);
 }
 
 /* On the pet switcher: another pet has something overdue. The picker says which, in words. */
