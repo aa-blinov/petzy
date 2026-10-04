@@ -209,23 +209,41 @@ class TestPetManagement:
         )
         assert response.get_json() == {"form_defaults": {"defecation": {"food": "Б"}}}
 
-    def test_a_type_or_field_that_has_no_defaults_is_refused(self, client, mock_db, regular_user_token, test_pet):
-        assert (
-            self._defaults(client, regular_user_token, test_pet, {"form_defaults": {"feeding": {"x": "1"}}}).status_code
-            == 422
-        )
-        assert (
-            self._defaults(
-                client, regular_user_token, test_pet, {"form_defaults": {"weight": {"weight": "4"}}}
-            ).status_code
-            == 422
-        )
-        assert (
-            self._defaults(
-                client, regular_user_token, test_pet, {"form_defaults": {"weight": {"food": "x" * 201}}}
-            ).status_code
-            == 422
-        )
+    def test_any_plain_field_of_any_type_can_have_a_default_even_a_custom_one(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        body = {
+            "form_defaults": {
+                "feeding": {"food": "Монж", "portion": " 195 "},
+                "66f0a1b2c3d4e5f607182930": {"x_1": "да"},
+            }
+        }
+        response = self._defaults(client, regular_user_token, test_pet, body)
+        assert response.status_code == 200
+        assert response.get_json()["form_defaults"] == {
+            "feeding": {"food": "Монж", "portion": "195"},
+            "66f0a1b2c3d4e5f607182930": {"x_1": "да"},
+        }
+
+    def test_what_says_when_or_for_whom_or_is_malformed_or_too_long_is_refused(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        for bad in (
+            {"weight": {"date": "2026-10-01"}},
+            {"weight": {"comment": "x"}},
+            {"weight": {"pet_id": "x"}},
+            {"we ight": {"food": "x"}},
+            {"weight": {"fo od": "x"}},
+            {"weight": {"food": "x" * 201}},
+            {"weight": {"$set": "x"}},
+        ):
+            assert self._defaults(client, regular_user_token, test_pet, {"form_defaults": bad}).status_code == 422, bad
+
+    def test_a_flood_of_defaults_is_refused(self, client, mock_db, regular_user_token, test_pet):
+        many_types = {f"t{i}": {"a": "1"} for i in range(41)}
+        many_fields = {"weight": {f"f{i}": "1" for i in range(31)}}
+        assert self._defaults(client, regular_user_token, test_pet, {"form_defaults": many_types}).status_code == 422
+        assert self._defaults(client, regular_user_token, test_pet, {"form_defaults": many_fields}).status_code == 422
 
     def test_someone_else_cannot_set_them(self, client, mock_db, regular_user_token, admin_pet):
         assert self._defaults(client, regular_user_token, admin_pet, {"form_defaults": {}}).status_code == 404

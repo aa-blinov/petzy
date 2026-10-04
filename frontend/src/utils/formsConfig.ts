@@ -47,16 +47,9 @@ export interface FormSettings {
   };
 }
 
-/** The fields of each built-in type that can have a default: the same ones «Значения по умолчанию» offers. A form of a new
- *  record can save what was typed into them as the default (the switch at its foot). */
-export const DEFAULTABLE_FIELDS: Record<string, string[]> = {
-  asthma: ['duration', 'inhalation', 'reason'],
-  defecation: ['stool_type', 'color', 'food'],
-  weight: ['food'],
-  eye_drops: ['drops_type'],
-  tooth_brushing: ['brushing_type'],
-  ear_cleaning: ['cleaning_type'],
-};
+/** The fields a new record can remember a value for, for the pet it is written for: a choice, a word or a number. Not the date
+ *  and the time, which are never the same twice, nor the comment. Any record type, built-in or the family's own. */
+export const isDefaultableField = (field: { type: string }): boolean => ['select', 'text', 'number'].includes(field.type);
 
 /** Nothing is filled in until the person sets it themselves on «Значения по умолчанию»: a built-in value (a food
  *  brand, a stool colour, a reason) would be recorded as if the family had typed it, and the diary is shown to a vet. */
