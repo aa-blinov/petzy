@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Bug, FileText, HeartPulse, Pill, Scale, ShieldAlert, Stethoscope, type LucideIcon } from 'lucide-react';
+import { Building2, Bug, FileText, Pill, Scale, ShieldAlert, Stethoscope, Utensils, type LucideIcon } from 'lucide-react';
 
 import type { MedicalCard as Card } from '../services/medicalCard.service';
 import type { MedicalRecord } from '../services/medicalRecords.service';
@@ -53,6 +53,7 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
   const procedures = card.record_counts.procedure;
   const lastVisit = card.records.visit[0];
   const clinic = profile.clinics.find((c) => c.name)?.name;
+  const life = profile.diet || profile.living || profile.reproduction;
   const latestDoc = card.documents[0];
 
   return [
@@ -99,9 +100,16 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
     },
     {
       key: 'clinic',
-      label: 'Клиника и условия',
-      icon: HeartPulse,
+      label: 'Клиника и врачи',
+      icon: Building2,
       value: clinic ?? 'Не указана',
+      note: profile.clinics.length > 1 ? { text: `Ещё ${profile.clinics.length - 1}`, tone: 'none' } : undefined,
+    },
+    {
+      key: 'life',
+      label: 'Питание и условия',
+      icon: Utensils,
+      value: life ?? 'Не указано',
     },
   ];
 }
