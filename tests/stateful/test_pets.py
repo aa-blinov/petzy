@@ -342,6 +342,30 @@ class TestPetManagement:
         assert response.get_json() == {"look": {"scene": "stars"}}
         assert self._look(client, regular_user_token, test_pet, {"scene": "lava"}).status_code == 422
 
+    def test_the_owner_sees_who_inherits_the_pet_and_a_member_does_not(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        from web.security import create_access_token
+
+        for name in ("first", "second"):
+            mock_db["users"].insert_one(
+                {
+                    "username": name,
+                    "password_hash": "x",
+                    "full_name": name,
+                    "email": "",
+                    "created_at": datetime.now(timezone.utc),
+                    "is_active": True,
+                }
+            )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["first", "second"]}})
+        mine = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()["pets"]
+        assert next(p for p in mine if p["_id"] == str(test_pet["_id"]))["next_owner"] == "first"
+        theirs = client.get(
+            "/api/pets", headers={"Authorization": f"Bearer {create_access_token('second')}"}
+        ).get_json()
+        assert "next_owner" not in next(p for p in theirs["pets"] if p["_id"] == str(test_pet["_id"]))
+
     def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
         assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
 

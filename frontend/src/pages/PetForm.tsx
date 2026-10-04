@@ -829,6 +829,7 @@ export function PetForm() {
                 }
               >
                 {(pet?.shared_with || []).includes(username) ? (
+                  <>
                   <button
                     type="button"
                     onClick={() => navigate(`/users/${username}`)}
@@ -847,6 +848,13 @@ export function PetForm() {
                     <UserAvatar username={username} size={24} />
                     <span style={{ fontWeight: 500 }}>{username}</span>
                   </button>
+                  {username === pet?.next_owner && (
+                    // The family is an order: if the owner's account goes, the pet goes to the first of them.
+                    <span style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>
+                      Станет владельцем, если вы удалите аккаунт
+                    </span>
+                  )}
+                  </>
                 ) : (
                   // Invited, not a member yet: no profile to open.
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
