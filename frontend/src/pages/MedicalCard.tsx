@@ -422,7 +422,7 @@ function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; p
 /** What a vet looks for first, and whether the card has it. Each gap is a row that opens the
     place to fill it; when nothing is missing the block says so in one line, so the owner knows
     the card is good enough to show. */
-function ReadinessBlock({ card, petId, navigate, onShowVet }: { card: Card; petId: string; navigate: (to: string) => void; onShowVet: () => void }) {
+function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; navigate: (to: string) => void }) {
   const checks = readinessChecks(card, petId);
   const missing = checks.filter((c) => !c.done);
   if (missing.length === 0) {
@@ -432,9 +432,6 @@ function ReadinessBlock({ card, petId, navigate, onShowVet }: { card: Card; petI
           <CheckCircle2 size={18} strokeWidth={2.2} aria-hidden />
           Главное для врача заполнено
         </p>
-        <Button size="small" color="primary" fill="outline" onClick={onShowVet}>
-          Показать врачу
-        </Button>
       </div>
     );
   }
@@ -950,18 +947,10 @@ export function MedicalCard() {
             <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
           ) : (
             <>
-          <ReadinessBlock card={card} petId={id!} navigate={navigate} onShowVet={() => chooseMode('vet')} />
+          <ReadinessBlock card={card} petId={id!} navigate={navigate} />
 
-          {/* A PDF of an empty card helps nobody: it is offered once two of the five are there. */}
-          {doneCount >= 2 && (
-            <div className="medcard__actions">
-              <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
-                <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-                  Скачать PDF для врача
-              </Button>
-              <p className="medcard__hint">Первая страница для приёма, дальше история</p>
-            </div>
-          )}
+
+          <MedicalSummary card={card} petId={id!} hidden={hidden} navigate={navigate} />
 
           <Section
             id="medcard-prep"
@@ -976,8 +965,6 @@ export function MedicalCard() {
               <p className="medcard__empty">Что беспокоит и что изменилось: врач увидит это первой строкой</p>
             )}
           </Section>
-
-          <MedicalSummary card={card} petId={id!} hidden={hidden} navigate={navigate} />
 
             </>
           )}

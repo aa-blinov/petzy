@@ -1683,6 +1683,20 @@ button:focus-visible,
     transform: scale(0.94);
 }
 
+/* Stepped aside while the page is read downward (RecordFab): out of the way of the links at the edge, back on a scroll up. */
+.app-fab--away {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(16px);
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard), visibility 0s linear var(--motion-duration-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-fab--away {
+        transition: none;
+    }
+}
+
 /* A visually hidden file input (PetForm, DocumentForm) takes the
    keyboard focus; show the ring on the visible picker next to it. */
 label:has(~ .file-picker-input:focus-visible),

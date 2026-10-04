@@ -1,4 +1,4 @@
-import { createElement, useState } from 'react';
+import { createElement, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Popup } from 'antd-mobile';
@@ -87,11 +87,31 @@ export function RecordSheet({ visible, petId, petName, onClose, onChoose }: { vi
     as the feed's is, so that no page-level containing block moves it. */
 export function RecordFab({ petId, petName }: { petId: string; petName?: string }) {
   const [open, setOpen] = useState(false);
+  const [away, setAway] = useState(false);
   const navigate = useNavigate();
+  // Reading down the card, the button steps aside, so that it does not stand over a link at the edge of the page; any scroll up,
+  // the top of the page or a key brings it back.
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - last;
+      if (y <= 80 || delta < -8) setAway(false);
+      else if (delta > 8) setAway(true);
+      last = y;
+    };
+    const onKey = () => setAway(false);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
   return (
     <>
       {createPortal(
-        <button type="button" className="app-fab" aria-label="Записать в медкарту" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        <button type="button" className={`app-fab${away ? ' app-fab--away' : ''}`} aria-label="Записать в медкарту" aria-haspopup="dialog" onClick={() => setOpen(true)}>
           <AddOutline fontSize={28} aria-hidden />
         </button>,
         document.body,

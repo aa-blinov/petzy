@@ -20,7 +20,7 @@ import './MedicalCard.css';
 export type CardSectionKey = 'risks' | 'meds' | 'prevention' | 'weight' | 'visits' | 'documents' | 'clinic' | 'life';
 
 const TITLES: Record<CardSectionKey, string> = {
-  risks: 'Риски',
+  risks: 'Здоровье и аллергии',
   meds: 'Лекарства',
   prevention: 'Профилактика',
   weight: 'Вес',
@@ -38,7 +38,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
   const profileTo = `/pets/${petId}/medical-profile`;
   switch (section) {
     case 'risks':
-      return <ImportantBlock card={card} onEdit={() => navigate(profileTo)} />;
+      return <ImportantBlock card={card} onEdit={() => navigate(`${profileTo}?section=allergies`)} />;
     case 'meds':
       return (
         <>

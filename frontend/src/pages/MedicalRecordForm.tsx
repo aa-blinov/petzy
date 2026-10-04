@@ -678,7 +678,7 @@ export function MedicalRecordForm() {
                   name="weight"
                   control={control}
                   render={({ field, fieldState }) => (
-                    <Form.Item label="Вес, кг" description={fieldState.error ? <FieldError message={fieldState.error.message} /> : 'Если взвешивали, запишется и в вес питомца'}>
+                    <Form.Item label="Вес, кг" description={fieldState.error ? <FieldError message={fieldState.error.message} /> : weightThatDay !== undefined ? `За этот день вес уже записан: ${formatAmount(weightThatDay)} кг. Запишется ещё одно взвешивание` : 'Если взвешивали, запишется и в вес питомца'}>
                       <Input {...left} type="text" inputMode="decimal" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={6} />
                     </Form.Item>
                   )}
@@ -779,6 +779,11 @@ export function MedicalRecordForm() {
           </SpinnerButton>
         </div>
         <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
+          {isEditing && repeating && (
+            <Button block size="large" fill="outline" color="primary" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=${kind}&from=${recordId}`)}>
+              {kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
+            </Button>
+          )}
           <Button block size="large" onClick={() => goBack(navigate, cardPath)}>
             Отмена
           </Button>
