@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Popup } from 'antd-mobile';
 
 import { getApiErrorMessage } from '../utils/apiError';
-import { medicalShareService, shareUrl, type CreatedShare } from '../services/medicalShare.service';
+import { formatShareEnd as formatEnd, medicalShareService, shareUrl, type CreatedShare } from '../services/medicalShare.service';
 import { showToast } from '../utils/toast';
 import { DraggableSheetBody } from './DraggableSheetBody';
 import { Segmented } from './Segmented';
@@ -14,8 +14,6 @@ const DAYS = [
   { value: '7', label: '7 дней' },
   { value: '30', label: '30 дней' },
 ] as const;
-
-const formatEnd = (iso: string) => new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /**
  * A link to the card for a vet: opens without signing in, only to read, for a day, a week or a month, and can be taken back at

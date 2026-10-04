@@ -44,3 +44,6 @@ export const medicalShareService = {
 
 /** The address to give out: the page for the link on this site. */
 export const shareUrl = (path: string) => `${window.location.origin}${path}`;
+
+/** When a link ends, as the Russian reader writes it: 05.10.2026, 18:16. */
+export const formatShareEnd = (iso: string) => new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
