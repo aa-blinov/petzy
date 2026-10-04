@@ -106,8 +106,8 @@ class _Card(FPDF):
         self.set_y(-12)
         self.set_font("DejaVu", "", META_SIZE)
         self.set_text_color(*MUTED)
-        self.cell(0, 6, f"Медицинская карта: {self.pet_name}. Petzy, {_date(self.generated_at)}", align="L")
-        self.cell(0, 6, f"{self.page_no()} из {{nb}}", align="R")
+        # The date the card was made and the page: the pet's name is on top of page one, and the app's name is not for a vet.
+        self.cell(0, 6, f"{_date(self.generated_at)}, {self.page_no()} из {{nb}}", align="R")
 
     def section(self, title: str):
         """A heading: space above, little below; no rule, the space does the separating."""
