@@ -217,8 +217,10 @@ export function MedicalCardSection() {
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
         <div className="medcard medcard--entering">
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{TITLES[section]}</h1>
-          <p className="medcard__hint" style={{ margin: 0 }}>{card.pet.name}</p>
+          <div className="medcard__header">
+            <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{TITLES[section]}</h1>
+            <p className="medcard__hint">{card.pet.name}</p>
+          </div>
           <SectionBody section={section} card={card} petId={id!} hidden={hidden} navigate={navigate} />
         </div>
       </div>

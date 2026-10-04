@@ -314,13 +314,6 @@
     color: var(--app-text-secondary);
 }
 
-.medcard__hint {
-    margin: 0;
-    font-size: var(--text-xs);
-    line-height: 1.4;
-    color: var(--app-text-secondary);
-}
-
 /* The next step, one thing at a time; the rest wait below it as a short list. */
 .medcard__todos {
     display: flex;
@@ -618,9 +611,15 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
 
 .medcard__hint {
     margin: 0;
-    flex: 1 1 12rem;
     font-size: var(--text-sm);
+    line-height: 1.4;
     color: var(--app-text-secondary);
+}
+
+/* Beside the button of the top row the hint takes what is left, and wraps under it on a narrow phone. Only there: in a column
+   a flex basis is a height, and this one stood the hint 12rem tall. */
+.medcard__topactions .medcard__hint {
+    flex: 1 1 12rem;
 }
 
 .medcard__ready-box {
@@ -634,4 +633,18 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
 /* The round «+» (.app-fab) sits over the last lines of the card in the mode that edits: room under them. */
 .medcard--entering {
     padding-bottom: calc(56px + var(--spacing-xl));
+}
+
+/* A part of the card (a section with its head and its list) stands 24px from what is above it; the pieces of the top
+   (the overdue strip, the readiness, the buttons) stay 16px apart, as one group. */
+.medcard > section,
+.medcard > .medcard__important {
+    margin-top: var(--spacing-sm);
+}
+
+/* The title and the pet it is about: a caption under a title sits close to it. */
+.medcard__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
 }
