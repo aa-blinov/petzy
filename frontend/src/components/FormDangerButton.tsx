@@ -46,7 +46,6 @@ export function FormDangerButton({ label, confirmTitle, confirmContent, onConfir
           hapticFeedback('medium');
           setConfirmVisible(true);
         }}
-        style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
       >
         {label}
       </Button>

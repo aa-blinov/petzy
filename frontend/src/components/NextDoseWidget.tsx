@@ -267,7 +267,6 @@ export function NextDoseWidget() {
                     // what the card is asking for, so it doesn't shout.
                     fill={due ? 'solid' : 'outline'}
                     shape="rounded"
-                    style={{ fontWeight: 600 }}
                     onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'now' })}
                     loading={pendingKind === 'now'}
                     // Once the log request succeeds, the invalidated query
@@ -287,7 +286,7 @@ export function NextDoseWidget() {
                         color="primary"
                         size="small"
                         block
-                        style={{ minHeight: 44, fontWeight: 600 }}
+                        style={{ minHeight: 44 }}
                         onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'scheduled' })}
                         loading={pendingKind === 'scheduled'}
                         disabled={busy}

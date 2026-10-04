@@ -166,7 +166,7 @@ function ClinicBlock({ control, index, only, onRemove, getValues }: { control: C
       ))}
       {doctors.fields.length < MAX_DOCTORS && (
         <Form.Item>
-          <Button block fill="outline" style={{ minHeight: 'var(--touch-min)' }} onClick={() => doctors.append({ name: '', specialty: '' })}>
+          <Button block fill="outline" color="primary" style={{ minHeight: 'var(--touch-min)' }} onClick={() => doctors.append({ name: '', specialty: '' })}>
             + Добавить врача
           </Button>
         </Form.Item>

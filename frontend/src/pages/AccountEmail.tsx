@@ -83,7 +83,7 @@ export function AccountEmail() {
             </p>
             {account?.pending_email && (
               <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
-                <Button fill="outline" block loading={busy === 'resend'} disabled={!!busy} onClick={resend}>
+                <Button fill="outline" color="primary" block loading={busy === 'resend'} disabled={!!busy} onClick={resend}>
                   Отправить письмо ещё раз
                 </Button>
               </div>

@@ -55,7 +55,7 @@ export function PetAddedSheet({
           type="button"
           className="tap-feedback"
           onClick={() => onRecord(first, firstLabel)}
-          style={{ width: '100%', minHeight: 'var(--touch-min)', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
+          style={{ width: '100%', minHeight: 'var(--btn-height)', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
         >
           Записать: {firstLabel.toLowerCase()}
         </button>
@@ -63,7 +63,7 @@ export function PetAddedSheet({
           type="button"
           className="tap-feedback"
           onClick={onLook}
-          style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', borderRadius: 'var(--radius-md)', border: '1px solid var(--app-border-color)', background: 'var(--app-card-background)', color: 'var(--app-text-primary)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
+          style={{ width: '100%', minHeight: 'var(--btn-height)', marginTop: 'var(--spacing-md)', borderRadius: 'var(--radius-md)', border: '1px solid var(--app-border-color)', background: 'var(--app-card-background)', color: 'var(--app-text-primary)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
         >
           Оформить карточку
         </button>

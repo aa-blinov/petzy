@@ -699,7 +699,6 @@ export function DocumentForm() {
               // The upload is aborted when the form unmounts, so leaving is
               // enough; aborting here would cancel it even if «Остаться» is chosen.
               onClick={() => goBack(navigate, '/documents')}
-              style={{ borderRadius: '12px', fontWeight: 500 }}
             >
               Отмена
             </Button>

@@ -579,8 +579,9 @@ export function MedicationsList() {
                                                     <Button
                                                         size="small"
                                                         fill="outline"
+                                                        color="primary"
                                                         onClick={() => openRestock(med)}
-                                                        style={{ flexShrink: 0, borderRadius: 'var(--radius-sm)' }}
+                                                        style={{ flexShrink: 0 }}
                                                     >
                                                         Пополнить
                                                     </Button>
@@ -599,7 +600,6 @@ export function MedicationsList() {
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
                                                 disabled={doneToday(med)}
                                                 aria-label={doneToday(med) ? `${med.name}: на сегодня всё` : `Дали сейчас: ${med.name}`}
-                                                style={{ borderRadius: 'var(--radius-sm)' }}
                                             >
                                                 {doneToday(med) ? 'На сегодня всё' : `Дали сейчас (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>

@@ -652,7 +652,7 @@ export function MedicationForm() {
                                 fill="outline"
                                 color="primary"
                                 onClick={() => appendTime(nextFreeTime(watchedTimes))}
-                                style={{ borderRadius: 'var(--radius-md)', marginTop: 'var(--spacing-xs)' }}
+                                style={{ marginTop: 'var(--spacing-xs)' }}
                             >
                                 + Время
                             </Button>
@@ -899,7 +899,7 @@ export function MedicationForm() {
                             block
                             size="large"
                             onClick={() => goBack(navigate, '/medications')}
-                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
+                            style={{ marginBottom: 'var(--spacing-md)' }}
                         >
                             Отмена
                         </Button>
@@ -911,7 +911,7 @@ export function MedicationForm() {
                                 loading={finishCourse.isPending}
                                 disabled={finishCourse.isPending}
                                 onClick={() => finishCourse.mutate()}
-                                style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
+                                style={{ marginBottom: 'var(--spacing-md)' }}
                             >
                                 Завершить курс
                             </Button>

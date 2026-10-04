@@ -829,10 +829,8 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
       <div className="medcard__actions">
         {canPdf && (
         <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <Download size={18} strokeWidth={2.2} aria-hidden />
+          <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
             Скачать PDF для врача
-          </span>
         </Button>
         )}
         <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
@@ -959,10 +957,8 @@ export function MedicalCard() {
           {doneCount >= 2 && (
             <div className="medcard__actions">
               <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <Download size={18} strokeWidth={2.2} aria-hidden />
+                <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
                   Скачать PDF для врача
-                </span>
               </Button>
               <p className="medcard__hint">Первая страница для приёма, дальше история</p>
             </div>

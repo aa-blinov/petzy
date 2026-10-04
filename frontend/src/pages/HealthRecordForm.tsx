@@ -503,7 +503,6 @@ export function HealthRecordForm() {
               size="large"
               onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
               loading={isSubmitting}
-              style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
             >
               {id ? 'Сохранить' : 'Создать'}
             </Button>
@@ -511,7 +510,6 @@ export function HealthRecordForm() {
               block
               size="large"
               onClick={() => goBack(navigate, id ? '/history' : '/')}
-              style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
             >
               Отмена
             </Button>

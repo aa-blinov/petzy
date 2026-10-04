@@ -26,7 +26,7 @@ export function PendingIntakesNotice() {
     >
       <CloudOff size={16} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} aria-hidden />
       <span style={{ flex: 1 }}>Не отправлено: {names}. Отправим, когда появится связь</span>
-      <Button size="mini" fill="none" onClick={() => void flushPendingIntakes(queryClient)} style={{ color: 'inherit', fontWeight: 600 }}>
+      <Button size="mini" fill="none" onClick={() => void flushPendingIntakes(queryClient)} style={{ color: 'inherit' }}>
         Отправить
       </Button>
     </div>

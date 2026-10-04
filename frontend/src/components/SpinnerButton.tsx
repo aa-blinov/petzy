@@ -7,7 +7,7 @@
  *  - `aria-busy` is set so screen readers announce the loading state.
  *
  * Visual states come from the surrounding card surface — the button
- * itself is just a 44-px-tall copper pill, matching the shared
+ * itself is just a 48-px-tall copper pill (--btn-height), matching the shared
  * vocabulary used elsewhere (auth login, admin-panel FAB, etc).
  */
 
@@ -58,7 +58,7 @@ export function SpinnerButton({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        height: 44,
+        minHeight: 'var(--btn-height)',
         padding: '0 20px',
         background: isPrimary ? 'var(--app-primary-fill)' : 'transparent',
         color: isPrimary ? 'var(--app-on-primary-fill)' : 'var(--app-primary-text)',

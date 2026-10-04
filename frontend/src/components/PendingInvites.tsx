@@ -94,7 +94,7 @@ function InviteCard({ invite }: { invite: PetInvite }) {
         Вы будете видеть его записи, лекарства и документы и получать напоминания
       </div>
       <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
-        <Button color="primary" shape="rounded" style={{ flex: 1, fontWeight: 600 }} loading={busy === 'accept'} disabled={!!busy} onClick={() => answer(true)}>
+        <Button color="primary" shape="rounded" style={{ flex: 1 }} loading={busy === 'accept'} disabled={!!busy} onClick={() => answer(true)}>
           Принять
         </Button>
         <Button fill="outline" shape="rounded" style={{ flex: 1 }} loading={busy === 'decline'} disabled={!!busy} onClick={() => answer(false)}>
