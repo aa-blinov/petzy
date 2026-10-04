@@ -221,6 +221,10 @@ One value per kind of gap, taken from the `--spacing-*` tokens, never a raw pixe
 | One section and the next | 24px (`xl`) |
 | The last field and the button that closes the form | 24px (`xl`): `.form-sticky-action`, `.form-actions` |
 | A title and the one-line caption under it | 2px (`2xs`) |
+| A screen's title and the pet or the line it is about | 4px (`xs`) |
+| The pieces at the top of a screen (an alert, a status line, the main buttons) | 16px (`lg`), as one group |
+| A part of a screen (a section, a block of the card) and what is above it | 24px (`xl`) |
+| The groups of a bottom sheet | 24px (`xl`); a group's title to its tiles 8px (`sm`) |
 | A card's inner padding | 16px (`lg`); a centred message or empty state 24px (`xl`) |
 
 Allowed to stay off the ladder, because the label or a fixed neighbour sets them: the padding inside a control (a chip, a badge, a button is sized by its label and its 44px target); the room kept clear for the fixed bars (`calc(env(safe-area-inset-*) + 80px)` and its like); an optical nudge of an icon to the first line of its text; a negative margin that widens a tap target; the miniature product screens on the intro slides.
