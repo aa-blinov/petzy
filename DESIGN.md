@@ -259,6 +259,9 @@ Soft and composed: one primary per screen.
 - **Danger:** red text for destructive actions at the foot of a form; a solid red button only where deletion is the screen's purpose (dark text on it in the dark theme).
 - **Press:** 0.98 scale and a slight dim; no hover lift. A visible focus ring for the keyboard.
 
+### The round «+»
+One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). What its sheet offers depends on the screen: the feed's is the diary of events («Добавить запись»), the medical card's, in the mode that edits, is «Что записать?» (a vaccination, a treatment, a visit, an allergy, a medicine, a weight, a document). The reading mode of the card has none, because nothing is added there.
+
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.
 - **Target:** at least 44px (the `--touch-min` token) to press even when the chip is drawn smaller.

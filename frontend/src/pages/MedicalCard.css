@@ -630,3 +630,8 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
     gap: var(--spacing-md);
     flex-wrap: wrap;
 }
+
+/* The round «+» (.app-fab) sits over the last lines of the card in the mode that edits: room under them. */
+.medcard--entering {
+    padding-bottom: calc(56px + var(--spacing-xl));
+}
