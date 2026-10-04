@@ -105,7 +105,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
     }
     case 'weight':
       return card.weight ? (
-        <Section id="medcard-weight" title="Сейчас" action={{ label: 'История', onClick: () => navigate('/history') }}>
+        <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }} secondary={{ label: 'История', onClick: () => navigate('/history') }}>
           <div className="medcard__weight">
             <div className="medcard__weight-now">
               <span className="medcard__weight-value">{card.weight.latest.value.toLocaleString('ru-RU')} кг</span>
