@@ -10,11 +10,11 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Form, Switch } from 'antd-mobile';
+import { Button, Form } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import type { EventType } from '../services/eventTypes.service';
-import { DEFAULTABLE_FIELDS, type FormSettings } from '../utils/formsConfig';
+import { isDefaultableField, type FormSettings } from '../utils/formsConfig';
 import { petsService, type Pet } from '../services/pets.service';
 import { hardBounds, shown } from '../utils/fieldBounds';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
@@ -146,11 +146,13 @@ export function HealthRecordForm() {
   const [recordedBy, setRecordedBy] = useState<string | null>(null);
 
   // The fields of a new record that can hold a default, and which of them came filled from the person's own defaults.
+  // The weight itself is what changes each time; everything else about a record can be remembered.
   const defaultableFields = useMemo(
-    () => (!isEditing && type ? fields.filter((f) => DEFAULTABLE_FIELDS[type]?.includes(f.name)) : []),
+    () => (!isEditing && type ? fields.filter((f) => isDefaultableField(f) && !(type === 'weight' && f.name === 'weight')) : []),
     [isEditing, type, fields],
   );
-  const [remember, setRemember] = useState(false);
+  // Which fields are remembered for this pet: what the person has switched, else whatever is remembered already.
+  const [pinChanged, setPinChanged] = useState<Record<string, boolean>>({});
 
   const defaultValues = useMemo(() => {
     // The pet's own: its food or drops are about it, and everyone who can add its records starts from the same.
@@ -173,12 +175,15 @@ export function HealthRecordForm() {
         const value = saved[field.name];
         if (!value) continue;
         if (field.type === 'select' && field.options && !field.options.some((o) => o.value === value)) continue;
-        values[field.name] = value;
+        // A number is shown the way it is typed here, with a comma.
+        values[field.name] = field.type === 'number' ? value.replace('.', ',') : value;
       }
     }
     return values;
   }, [isEditing, type, selectedPetId, fields, getSelectedPet]);
   const filledFromDefaults = defaultableFields.filter((f) => !!defaultValues[f.name]);
+  const defaultableNames = useMemo(() => new Set(defaultableFields.map((f) => f.name)), [defaultableFields]);
+  const isPinned = (name: string) => pinChanged[name] ?? !!defaultValues[name];
 
   const methods = useForm({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
@@ -300,19 +305,27 @@ export function HealthRecordForm() {
           ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
       });
 
-      // «Запомнить как значения по умолчанию»: what was typed into the fields that can have a default goes to the account.
+      // What the person asked to remember (the pin under a field) goes to the pet: a pinned field takes the value typed now, an
+      // unpinned one that was remembered is forgotten. Nothing is sent when nothing changed.
       let rememberFailed = false;
-      if (!id && remember && defaultableFields.length > 0) {
+      if (!id && defaultableFields.length > 0) {
         try {
-          const settings: FormSettings = getSelectedPet?.form_defaults ?? {};
-          const typed: Record<string, string> = {};
+          const settings = (getSelectedPet?.form_defaults ?? {}) as Record<string, Record<string, string>>;
+          const current = { ...(settings[type] ?? {}) };
+          const next = { ...current };
           for (const field of defaultableFields) {
-            const value = data[field.name];
-            if (value !== undefined && value !== null && String(value).trim() !== '') typed[field.name] = String(value).trim();
+            const typed = data[field.name];
+            const text = typed === undefined || typed === null ? '' : String(typed).trim();
+            if (isPinned(field.name) && text !== '') next[field.name] = text;
+            else if (isPinned(field.name) || next[field.name] !== undefined) delete next[field.name];
           }
-          const next = { ...settings, [type]: { ...((settings as Record<string, object>)[type] ?? {}), ...typed } } as FormSettings;
-          const saved = await petsService.saveFormDefaults(selectedPetId, next);
-          queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === selectedPetId ? { ...p, form_defaults: saved } : p)));
+          if (JSON.stringify(next) !== JSON.stringify(current)) {
+            const all = { ...settings };
+            if (Object.keys(next).length) all[type] = next;
+            else delete all[type];
+            const saved = await petsService.saveFormDefaults(selectedPetId, all as FormSettings);
+            queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === selectedPetId ? { ...p, form_defaults: saved } : p)));
+          }
         } catch {
           rememberFailed = true;
         }
@@ -437,18 +450,18 @@ export function HealthRecordForm() {
                   {field.name === filledFromDefaults[filledFromDefaults.length - 1]?.name && (
                     // Under the last field that came filled, so that a value already there is not a surprise: where it came from and where to change it.
                     <p style={{ margin: '0 var(--spacing-md) var(--spacing-sm)', fontSize: 'var(--text-xs)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-                      Подставлено из значений по умолчанию для {selectedPetName}: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}{' '}
-                      <button
-                        type="button"
-                        className="touch-target"
-                        // Not a blur of the field being typed in: its error would open under the thumb and move this link away before the tap ends.
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => navigate('/form-defaults')}
-                        style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--app-accent-deep)', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        Изменить
-                      </button>
+                      Подставлено из значений по умолчанию для {selectedPetName}: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, снимите «Запоминается» под полем
                     </p>
+                  )}
+                  {defaultableNames.has(field.name) && (
+                    // Remembered for this pet: the next record of this kind starts with what is typed here, and another pet has its own.
+                    <div style={{ padding: '0 var(--spacing-md)' }}>
+                      <ChoiceChips label="Запоминание">
+                        <ChoiceChip pressed={isPinned(field.name)} onClick={() => setPinChanged((prev) => ({ ...prev, [field.name]: !isPinned(field.name) }))}>
+                          {isPinned(field.name) ? `Запоминается для ${selectedPetName}` : `Запомнить для ${selectedPetName}`}
+                        </ChoiceChip>
+                      </ChoiceChips>
+                    </div>
                   )}
                   {!isEditing && field.type === 'number' && (recentValues[field.name]?.length ?? 0) > 0 && (
                     // What was given or weighed last time is one tap, not typed from the start again.
@@ -469,13 +482,6 @@ export function HealthRecordForm() {
                 field={{ name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'event-comment' }}
                 defaultValue={defaultValues.comment}
               />
-              {defaultableFields.length > 0 && (
-                <Form.Item
-                  label="Запомнить значения"
-                  extra={<Switch checked={remember} onChange={setRemember} aria-label="Запомнить как значения по умолчанию" />}
-                  description={`Поля «${defaultableFields.map((f) => f.label).join('», «')}» будут подставляться в новые записи этого вида у ${selectedPetName}, их увидят все, у кого есть доступ к питомцу. Менять можно в Настройках, «Значения по умолчанию»`}
-                />
-              )}
             </Form>
           </FormProvider>
 

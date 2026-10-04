@@ -327,19 +327,18 @@ class FormDefaults(BaseModel):
         return value
 
 
-# The built-in types' fields that can carry a default: the ones «Значения по умолчанию» offers.
-FORM_DEFAULT_FIELDS: Dict[str, tuple] = {
-    "asthma": ("duration", "inhalation", "reason"),
-    "defecation": ("stool_type", "color", "food"),
-    "weight": ("food",),
-    "eye_drops": ("drops_type",),
-    "tooth_brushing": ("brushing_type",),
-    "ear_cleaning": ("cleaning_type",),
-}
+# What may be remembered as a default: any plain field of any record type, built-in or the family's own. Only the shape is
+# checked here (a type is a short code, a field a short name), since the types and fields of a household are its own.
+_DEFAULT_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+# Not remembered: they say when and for whom, which is never the same twice.
+_NOT_DEFAULTABLE = {"date", "time", "comment", "pet_id", "_id", "type", "username"}
+_DEFAULTS_MAX_TYPES = 40
+_DEFAULTS_MAX_FIELDS = 30
+_DEFAULTS_MAX_TOTAL = 300
 
 
 class PetFormDefaults(BaseModel):
-    """PUT /api/pets/<id>/form-defaults: what a new record of each built-in type starts with for this pet.
+    """PUT /api/pets/<id>/form-defaults: what a new record of each type starts with for this pet.
 
     The whole set, replacing the old one; empty values are dropped. A pet's food, drops or way of cleaning are about the
     pet, so everyone with access to it gets the same ones."""
@@ -348,23 +347,30 @@ class PetFormDefaults(BaseModel):
 
     @field_validator("form_defaults")
     @classmethod
-    def _known_and_bounded(cls, value: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+    def _shaped_and_bounded(cls, value: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+        if len(value) > _DEFAULTS_MAX_TYPES:
+            raise ValueError("Слишком много значений по умолчанию")
         cleaned: Dict[str, Dict[str, str]] = {}
+        total = 0
         for form, fields in value.items():
-            allowed = FORM_DEFAULT_FIELDS.get(form)
-            if allowed is None:
+            if not _DEFAULT_NAME.match(form):
                 raise ValueError("Для этой записи значения по умолчанию не задаются")
+            if len(fields) > _DEFAULTS_MAX_FIELDS:
+                raise ValueError("Слишком много значений по умолчанию")
             kept: Dict[str, str] = {}
             for name, text in fields.items():
-                if name not in allowed:
+                if not _DEFAULT_NAME.match(name) or name in _NOT_DEFAULTABLE:
                     raise ValueError("Для этого поля значение по умолчанию не задаётся")
                 text = (text or "").strip()
                 if len(text) > 200:
                     raise ValueError("Слишком длинное значение по умолчанию")
                 if text:
                     kept[name] = text
+            total += len(kept)
             if kept:
                 cleaned[form] = kept
+        if total > _DEFAULTS_MAX_TOTAL:
+            raise ValueError("Слишком много значений по умолчанию")
         return cleaned
 
 
