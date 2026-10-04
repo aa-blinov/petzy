@@ -1,6 +1,7 @@
 """The medical card as a PDF: page one is «now», the pages after are the whole history."""
 
 import io
+import re
 from datetime import datetime, timedelta
 from urllib.parse import unquote
 
@@ -199,7 +200,6 @@ class TestCoursesWeightEventsDocuments:
     def test_an_empty_pet_gets_an_honest_empty_history(self, client, mock_db, regular_user_token, test_pet):
         _, text = _pdf(client, regular_user_token, test_pet)
         for needle in (
-            "Медицинская карта: ",
             "Сейчас не принимает.",
             "Замеров нет.",
             "Документов нет.",
@@ -579,3 +579,13 @@ class TestPageOneStaysOnePage:
         first, second = pages[0].extract_text(), pages[1].extract_text()
         assert "Питание и условия" in first and "Квартира" in first
         assert second.lstrip().startswith("Хронология"), second[:80]
+
+
+class TestTheFooter:
+    def test_it_has_the_date_and_the_page_and_neither_the_app_nor_the_pets_name_again(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert "Petzy" not in text and "Медицинская карта:" not in text
+        assert re.search(r"\d{2}\.\d{2}\.\d{4}, 1 из \d+", text), text[-200:]
+        assert text.count(test_pet["name"]) == 1  # the name is the title of page one, not a line of every page
