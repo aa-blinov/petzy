@@ -86,6 +86,8 @@ def ensure_indexes() -> None:
       event_types         key unique         (registry lookup by type)
       documents           pet_id + created_at (document list for a pet)
       medical_records     pet_id + kind + date (the medical card's records of one kind)
+      medical_shares      token_hash (a link opens by it; unique), pet_id + created_at (a pet's links),
+                          purge_at (the database drops a link a month after its end)
                           pet_id + category + created_at (category filter)
       users               username unique (login lookup)
                           role             (admin queries)
@@ -145,6 +147,9 @@ def ensure_indexes() -> None:
             [("pet_id", ASCENDING), ("category", ASCENDING), ("created_at", DESCENDING)],
             "documents_pet_category_created",
         ),
+        (db.medical_shares, [("token_hash", ASCENDING)], "medical_shares_token_unique", {"unique": True}),
+        (db.medical_shares, [("pet_id", ASCENDING), ("created_at", DESCENDING)], "medical_shares_pet_created"),
+        (db.medical_shares, [("purge_at", ASCENDING)], "medical_shares_purge", {"expireAfterSeconds": 0}),
         (db.image_thumbnails, [("source_file_id", ASCENDING)], "image_thumbnails_source"),
         # Scan upload slots, swept by created_at (web/storage.py).
         (db.document_uploads, [("created_at", ASCENDING)], "document_uploads_created"),

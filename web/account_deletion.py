@@ -18,7 +18,7 @@ from web import storage
 from web.app import logger
 
 # The records that carry the login of whoever made them.
-AUTHORED_COLLECTIONS = ("events", "medication_intakes", "medications", "documents", "medical_records")
+AUTHORED_COLLECTIONS = ("events", "medication_intakes", "medications", "documents", "medical_records", "medical_shares")
 # The user's own rows elsewhere: sessions, links in letters, devices.
 PERSONAL_COLLECTIONS = ("refresh_tokens", "account_tokens", "push_subscriptions")
 

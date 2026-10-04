@@ -719,6 +719,7 @@ def purge_pet(pet: dict) -> bool:
         ("medications", {"pet_id": pet_id}),
         ("documents", {"pet_id": pet_id}),
         ("medical_records", {"pet_id": pet_id}),
+        ("medical_shares", {"pet_id": pet_id}),
     ]
 
     # Captured before the record goes
