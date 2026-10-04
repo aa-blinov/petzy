@@ -211,7 +211,9 @@ export function MedicalRecordForm() {
   const uploaded = useRef(new Map<string, string>());
   const cameraInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0);
+  // Other vaccinations of the same day (a paper passport lists several under one date): each is recorded with this date, term and clinic.
+  const [extras, setExtras] = useState<string[]>([]);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0 || extras.length > 0);
   useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!kind && (isEditing ? !!record.data : !!card.data), release });
   const date = useWatch({ control, name: 'date' });
   const weightThatDay = kind === 'visit' ? card.data?.weight?.series.find((point) => point.date === date)?.value : undefined;
@@ -226,6 +228,7 @@ export function MedicalRecordForm() {
   const guessedTarget = kind === 'parasite' && !isEditing ? parasiteTargetOf(title) : null;
   const targetAuto = !targetTouched && !!guessedTarget && target === guessedTarget;
   const changeTitle = (value: string) => {
+    setExtras((current) => current.filter((x) => x.toLowerCase() !== value.trim().toLowerCase()));
     setValue('title', value, { shouldDirty: true, shouldValidate: true });
     const guess = kind === 'parasite' && !isEditing && !targetTouched ? parasiteTargetOf(value) : null;
     if (guess) {
@@ -392,7 +395,22 @@ export function MedicalRecordForm() {
         input.document_ids.push(id);
       }
       if (isEditing) await medicalRecordsService.update(recordId!, input);
-      else await medicalRecordsService.create(petId!, kind!, input);
+      else {
+        await medicalRecordsService.create(petId!, kind!, input);
+        // The others of the day: the same date, term, clinic and doctor; the lot and the files belong to the first. One that does not
+        // go through is said, and the rest stand: the first is already saved, a retry of the whole must not write it twice.
+        if (kind === 'vaccination' && extras.length > 0) {
+          const failed: string[] = [];
+          for (const extra of extras) {
+            try {
+              await medicalRecordsService.create(petId!, kind!, { ...input, title: extra, batch: null, document_ids: [] });
+            } catch {
+              failed.push(extra);
+            }
+          }
+          if (failed.length > 0) showToast.failure(`Не записались: ${failed.join(', ')}. Добавьте их отдельно`);
+        }
+      }
       // The visit is recorded, with what was said before it: «К приёму» starts empty for the next one.
       if (kind === 'visit' && !isEditing && card.data?.visit_prep) {
         try {
@@ -433,7 +451,7 @@ export function MedicalRecordForm() {
         const again = new URLSearchParams({ kind: kind!, date: saved.date });
         if (saved.clinic?.trim()) again.set('clinic', saved.clinic.trim());
         if (saved.vet?.trim()) again.set('vet', saved.vet.trim());
-        void confirmWithProgress(queryClient, petId!, 'Запись добавлена', repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined);
+        void confirmWithProgress(queryClient, petId!, extras.length > 0 ? `Записано: ${1 + extras.length}` : 'Запись добавлена', repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined);
       }
       release();
       goBack(navigate, cardPath);
@@ -533,6 +551,24 @@ export function MedicalRecordForm() {
               </Form.Item>
             )}
           />
+
+          {kind === 'vaccination' && !isEditing && !fromId && title.trim() && (
+            <Form.Item description={extras.length > 0 ? `Каждая запишется с этой датой, сроком и клиникой: всего ${1 + extras.length}` : 'Другие прививки того же дня: запишутся с этой датой, сроком и клиникой'}>
+              <ChoiceChips label="Ещё прививки в этот день">
+                {chips
+                  .filter((chip) => chip.trim().toLowerCase() !== title.trim().toLowerCase())
+                  .map((chip) => (
+                    <ChoiceChip
+                      key={chip}
+                      pressed={extras.includes(chip)}
+                      onClick={() => setExtras((current) => (current.includes(chip) ? current.filter((x) => x !== chip) : [...current, chip]))}
+                    >
+                      {`+ ${chip}`}
+                    </ChoiceChip>
+                  ))}
+              </ChoiceChips>
+            </Form.Item>
+          )}
 
           {kind === 'parasite' && (
             <Controller
@@ -775,7 +811,7 @@ export function MedicalRecordForm() {
         {/* A long form: the button stays in reach above the tab bar, not three screens down. */}
         <div className="form-sticky-action safe-area-padding">
           <SpinnerButton loading={save.isPending || isSubmitting} onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}>
-            {isEditing ? 'Сохранить' : 'Добавить'}
+            {isEditing ? 'Сохранить' : extras.length > 0 ? `Добавить ${1 + extras.length} ${(1 + extras.length) % 10 >= 2 && (1 + extras.length) % 10 <= 4 && ((1 + extras.length) % 100 < 12 || (1 + extras.length) % 100 > 14) ? 'записи' : 'записей'}` : 'Добавить'}
           </SpinnerButton>
         </div>
         <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
