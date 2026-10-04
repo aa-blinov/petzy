@@ -13,8 +13,22 @@ import web.app as app
 from web.medical_card import _as_date_str, _courses, _weight, build_medical_card
 from web.medical_records import pet_records
 
-# A kind of event whose own section says more than a count does (the weight curve).
-EVENTS_SHOWN_ELSEWHERE = {"weight"}
+# What the owner noted about the health, which a vet reads: the stool, the vomit, the appetite and the thirst, the cough, the
+# seizures. How often the pet was fed or walked is not for a vet (the weight has its own section).
+CLINICAL_EVENTS = {
+    "asthma",
+    "temperature",
+    "mood",
+    "cough",
+    "seizure",
+    "itching",
+    "limping",
+    "vomiting",
+    "defecation",
+    "urination",
+    "appetite",
+    "water_intake",
+}
 
 
 def _documents(pet_id: str) -> list[dict]:
@@ -42,7 +56,7 @@ def _event_summary(pet_id: str) -> list[dict]:
     stats: dict[str, dict] = {}
     for event in app.db.events.find({"pet_id": pet_id}, {"type": 1, "date_time": 1}):
         kind, moment = event.get("type"), event.get("date_time")
-        if not kind or kind in EVENTS_SHOWN_ELSEWHERE or not isinstance(moment, datetime):
+        if kind not in CLINICAL_EVENTS or not isinstance(moment, datetime):
             continue
         row = stats.setdefault(kind, {"total": 0, "first": moment, "last": moment, "years": {}})
         row["total"] += 1

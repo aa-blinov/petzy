@@ -714,6 +714,33 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
         )}
       </div>
 
+      <ImportantBlock card={card} onEdit={() => undefined} readOnly />
+
+      <Section id="medcard-vet-meds" title="Лекарства и вес">
+        <ul className="medcard__list">
+          {card.medications.map((c) => (
+            <CourseRow key={c.id} course={c} />
+          ))}
+          {card.medications.length === 0 && (
+            <li className="medcard__row">
+              <div className="medcard__row-main">
+                <div className="medcard__row-title">Лекарства</div>
+                <div className="medcard__row-sub">Сейчас ничего не принимает</div>
+              </div>
+            </li>
+          )}
+          <li className="medcard__row">
+            <div className="medcard__row-main">
+              <div className="medcard__row-title">Вес</div>
+              <div className="medcard__row-sub">
+                {card.weight ? `${card.weight.latest.value.toLocaleString('ru-RU')} кг, ${formatDate(card.weight.latest.date)}` : 'Не указан'}
+              </div>
+              {card.weight && weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
+            </div>
+          </li>
+        </ul>
+      </Section>
+
       {card.visit_prep && (
         <Section id="medcard-vet-prep" title="На приём">
           <ul className="medcard__list">
@@ -721,8 +748,6 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
           </ul>
         </Section>
       )}
-
-      <ImportantBlock card={card} onEdit={() => undefined} readOnly />
 
       <Section id="medcard-vet-due" title="Прививки и обработки">
         {due.length === 0 && card.vaccinations.length === 0 ? (
@@ -755,39 +780,6 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
         )}
       </Section>
 
-      <Section id="medcard-vet-meds" title="Лекарства и вес">
-        <ul className="medcard__list">
-          {card.medications.map((c) => (
-            <CourseRow key={c.id} course={c} />
-          ))}
-          {card.medications.length === 0 && (
-            <li className="medcard__row">
-              <div className="medcard__row-main">
-                <div className="medcard__row-title">Лекарства</div>
-                <div className="medcard__row-sub">Сейчас ничего не принимает</div>
-              </div>
-            </li>
-          )}
-          <li className="medcard__row">
-            <div className="medcard__row-main">
-              <div className="medcard__row-title">Вес</div>
-              <div className="medcard__row-sub">
-                {card.weight ? `${card.weight.latest.value.toLocaleString('ru-RU')} кг, ${formatDate(card.weight.latest.date)}` : 'Не указан'}
-              </div>
-              {card.weight && weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
-            </div>
-          </li>
-        </ul>
-      </Section>
-
-      {hasLife(card.profile) && (
-        <Section id="medcard-vet-life" title="Питание и условия">
-          <ul className="medcard__list">
-            <LifeRows profile={card.profile} />
-          </ul>
-        </Section>
-      )}
-
       <Section id="medcard-vet-clinic" title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}>
         {card.profile.clinics.length === 0 ? (
           <p className="medcard__empty">Не указана</p>
@@ -799,6 +791,14 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
           </ul>
         )}
       </Section>
+
+      {hasLife(card.profile) && (
+        <Section id="medcard-vet-life" title="Питание и условия">
+          <ul className="medcard__list">
+            <LifeRows profile={card.profile} />
+          </ul>
+        </Section>
+      )}
 
       {visits.length > 0 && (
         <Section id="medcard-vet-visits" title="Последние визиты">

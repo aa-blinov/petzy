@@ -174,7 +174,7 @@ def _clinic_line(clinic: dict) -> str:
 
 
 def draw_header(pdf: _Card, card: dict) -> None:
-    """The top of page one: the name, who the animal is, and the box a vet reads first."""
+    """The top of page one: the name, who the animal is, and right under it the box a vet reads first: what could harm."""
     pet = card["pet"]
     profile = card.get("profile") or {}
 
@@ -192,6 +192,9 @@ def draw_header(pdf: _Card, card: dict) -> None:
     pdf.text(", ".join(f for f in facts if f) or "Данные о питомце не заполнены", color=MUTED)
 
     ids = []
+    weight = card.get("weight")
+    if weight:
+        ids.append(f"вес {_number(weight['latest']['value'])} кг ({_date(weight['latest']['date'])})")
     if profile.get("blood_type"):
         ids.append(f"группа крови {profile['blood_type']}")
     if profile.get("chip_number"):
@@ -199,12 +202,6 @@ def draw_header(pdf: _Card, card: dict) -> None:
     if ids:
         line = ", ".join(ids)
         pdf.text(line[0].upper() + line[1:], color=MUTED)
-    for clinic in _clinics(profile):
-        pdf.text(_clinic_line(clinic), color=MUTED)
-    for label, key in (("Питание", "diet"), ("Условия жизни", "living"), ("Репродуктивный статус", "reproduction")):
-        if profile.get(key):
-            pdf.text(f"{label}: {profile[key]}", color=MUTED)
-
     # What a vet asks first: allergies and conditions, in a box of their own.
     pdf.ln(4)
     pdf.set_fill_color(*BAND)
@@ -240,6 +237,30 @@ def draw_header(pdf: _Card, card: dict) -> None:
 COMPACT_FROM = 9  # courses; with more, page one gives each one line, not two
 
 
+def _clinic_section(pdf: _Card, profile: dict) -> None:
+    """Where the animal is seen and whom to call: after what a vet needs to know, before the life it leads."""
+    clinics = _clinics(profile)
+    if not clinics:
+        return
+    pdf.section("Клиника и врачи" if len(clinics) > 1 else "Клиника")
+    for clinic in clinics:
+        pdf.text(_clinic_line(clinic))
+
+
+def _life_section(pdf: _Card, profile: dict) -> None:
+    """Food, home and the reproductive state: they help when the cause is not clear, so they come last on page one."""
+    rows = [
+        (label, profile[key])
+        for label, key in (("Питание", "diet"), ("Условия жизни", "living"), ("Репродуктивный статус", "reproduction"))
+        if profile.get(key)
+    ]
+    if not rows:
+        return
+    pdf.section("Питание и условия")
+    for label, value in rows:
+        pdf.text(f"{label}: {value}")
+
+
 def draw_course(pdf: _Card, c: dict, compact: bool = False) -> None:
     """One medication course in two lines: the name with its dates, then everything else it needs said.
     Compact (a big pet on many medicines): one line, the name with its dose and schedule."""
@@ -251,17 +272,23 @@ def draw_course(pdf: _Card, c: dict, compact: bool = False) -> None:
         pdf.row(f"{name}: {said}" if said else name, _period(c), MUTED, bold_left=False)
         return
     pdf.row(name, _period(c), MUTED, bold_left=True)
-    bits = [", ".join(x for x in (c.get("dose_text"), c.get("schedule_text")) if x)]
+    dose, schedule = c.get("dose_text"), c.get("schedule_text")
+    bits = [
+        ", ".join(
+            x for x in ((dose, _lower_first(schedule) if dose and schedule else schedule) if schedule else (dose,)) if x
+        )
+    ]
     if c.get("purpose"):
         bits.append(f"от чего: {c['purpose']}")
     if c.get("prescribed_by"):
         bits.append(f"назначил {c['prescribed_by']}")
     if c.get("given") or c.get("skipped"):
         skipped = f", пропущено {c['skipped']}" if c.get("skipped") else ""
-        bits.append(f"дано {c['given']}{skipped}")
+        bits.append(f"дано доз: {c['given']}{skipped}")
     if c.get("comment"):
         bits.append(c["comment"])
-    pdf.muted(". ".join(b[0].upper() + b[1:] for b in bits if b) + ".")
+    # A sentence each, ended once: «Назначил Каримов Д.» already has its full stop.
+    pdf.muted(" ".join(b[0].upper() + b[1:] + ("" if b.endswith(".") else ".") for b in bits if b))
     pdf.ln(1.5)
 
 
@@ -415,10 +442,9 @@ def _weight_section(pdf: _Card, weight: dict | None) -> None:
 
 
 def _events_section(pdf: _Card, summary: list[dict]) -> None:
-    pdf.section("Записи из дневника")
     if not summary:
-        pdf.muted("Записей нет.")
-        return
+        return  # nothing the owner noted about the health: no section is better than a section that says so
+    pdf.section("Наблюдения владельца")
     for row in summary:
         if pdf.get_y() > pdf.h - 34:  # a title and its line of numbers stay on one page
             pdf.add_page()
@@ -596,22 +622,21 @@ def render_medical_card_pdf(card: dict) -> bytes:
     pdf = _Card(pet["name"], card["generated_at"])
     pdf.alias_nb_pages()
 
-    # Page one: now. Readable alone, at an appointment.
+    # Page one: now. Readable alone, at an appointment, and in the order a vet asks: who it is, what could harm (allergies,
+    # what it takes now), why it came, what is due, then the clinic and the life it leads (the weight is a line of the header, with the chip and the blood group).
     pdf.add_page()
     draw_header(pdf, card)
-    _visit_prep_section(pdf, card.get("visit_prep"))
-    weight = card.get("weight")
-    if weight:
-        pdf.ln(4)
-        pdf.row(f"Вес: {_number(weight['latest']['value'])} кг", _date(weight["latest"]["date"]), MUTED)
-    _due_section(pdf, card)
-    _standing_section(pdf, card)
     pdf.section("Лекарства сейчас")
     if card["medications"]:
         for c in card["medications"]:
             draw_course(pdf, c, compact=len(card["medications"]) >= COMPACT_FROM)
     else:
         pdf.muted("Сейчас не принимает.")
+    _visit_prep_section(pdf, card.get("visit_prep"))
+    _due_section(pdf, card)
+    _standing_section(pdf, card)
+    _clinic_section(pdf, card.get("profile") or {})
+    _life_section(pdf, card.get("profile") or {})
 
     # The record from the birth on, on the pages after.
     pdf.add_page()
@@ -627,7 +652,7 @@ def render_medical_card_pdf(card: dict) -> bytes:
         for c in card["past_courses"]:
             draw_course(pdf, c)
 
-    _weight_section(pdf, weight)
+    _weight_section(pdf, card.get("weight"))
     _events_section(pdf, card["event_summary"])
     _documents_section(pdf, card["documents"])
     return bytes(pdf.output())

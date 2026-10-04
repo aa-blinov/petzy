@@ -175,6 +175,7 @@ class TestCoursesWeightEventsDocuments:
             {"pet_id": pid, "type": "weight", "date_time": datetime(2025, 3, 1, 8), "fields": {"weight": 4.0}}
         )
         _, text = _pdf(client, regular_user_token, test_pet)
+        assert "Наблюдения владельца" in text
         assert "Приступ астмы" in text and "всего 3" in text
         assert "С 01.02.2024 по 01.03.2025. По годам: 2024: 2, 2025: 1" in text
         # the weight has its own section, not a line among the kinds of event
@@ -201,10 +202,11 @@ class TestCoursesWeightEventsDocuments:
             "Медицинская карта: ",
             "Сейчас не принимает.",
             "Замеров нет.",
-            "Записей нет.",
             "Документов нет.",
         ):
             assert needle in text, needle
+        # no observations, no section that says so
+        assert "Наблюдения владельца" not in text
 
 
 @pytest.mark.health
@@ -278,7 +280,7 @@ class TestPageOne:
             "Скоро",
             "Лекарства сейчас",
             "Габапентин",
-            "Вес: 4,5 кг",
+            "Вес 4,5 кг (28.09.2026)",
         ):
             assert needle in page, needle
         assert "Хронология" not in page and "История" not in page
@@ -435,3 +437,145 @@ class TestWhatDoesNotFit:
         assert all(f"Препарат{i:02d}" in first for i in range(20))
         assert "Аллерген9" in first
         assert "Хронология" not in first
+
+
+class TestTheOrderOfPageOne:
+    """What a vet asks, in the order a vet asks: who, what could harm, what it takes, why it came, what is due, the weight, where it
+    is seen, how it lives. The same order as the reading view on the screen."""
+
+    def test_the_risks_and_the_medicines_come_before_the_contacts_and_the_way_of_life(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        mock_db["pets"].update_one(
+            {"_id": test_pet["_id"]},
+            {
+                "$set": {
+                    "medical_profile": {
+                        "allergies": [{"substance": "Курица", "reaction": "зуд"}],
+                        "clinics": [{"name": "Ортовет", "phone": "+7 727 555 03 04", "doctors": []}],
+                        "diet": "Сухой корм",
+                        "living": "Квартира",
+                    },
+                    "visit_prep": {"complaint": "Стал вялым"},
+                }
+            },
+        )
+        mock_db["medications"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "name": "Мелоксидил",
+                "is_active": True,
+                "default_dose": 1,
+                "dose_unit": "таб",
+                "schedule": {"days": list(range(7)), "times": ["08:00"]},
+            }
+        )
+        _record(mock_db, test_pet, title="Рабизин", day="2025-05-01", next_due="2020-01-01")
+        text = _first_page(client, regular_user_token, test_pet)
+        order = ["Аллергия", "Лекарства сейчас", "На приём", "Что пора сделать", "Клиника", "Питание и условия"]
+        found = [text.find(x) for x in order]
+        assert all(i >= 0 for i in found), dict(zip(order, found))
+        assert found == sorted(found), dict(zip(order, found))
+        # the contacts and the way of life are sections of their own, not lines of the header
+        assert "Ортовет" in text[found[4] :] and "Питание: Сухой корм" in text[found[5] :]
+
+    def test_a_course_reads_as_sentences_each_ended_once(self, client, mock_db, regular_user_token, test_pet):
+        mock_db["medications"].insert_one(
+            {
+                "pet_id": str(test_pet["_id"]),
+                "name": "Дронтал",
+                "is_active": True,
+                "default_dose": 1,
+                "dose_unit": "таб",
+                "schedule": {"days": [5], "times": ["10:00"]},
+                "purpose": "Профилактика глистов",
+                "prescribed_by": "Каримов Д.",
+            }
+        )
+        text = _flat(_first_page(client, regular_user_token, test_pet))
+        assert "Назначил Каримов Д." in text and "Д.." not in text
+        assert "1 таб, по сб в 10:00" in text
+
+
+class TestTheDiaryIsWhatAVetReads:
+    def test_how_often_it_was_fed_or_walked_is_not_there_but_the_health_notes_are(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        pid = str(test_pet["_id"])
+        for kind in ("feeding", "walk", "tooth_brushing", "vomiting", "appetite"):
+            mock_db["events"].insert_one(
+                {"pet_id": pid, "type": kind, "date_time": datetime(2025, 3, 1, 8), "fields": {}}
+            )
+        mock_db["event_types"].insert_many(
+            [
+                {"key": "vomiting", "label": "Рвота"},
+                {"key": "feeding", "label": "Кормление"},
+                {"key": "walk", "label": "Прогулка"},
+            ]
+        )
+        _, text = _pdf(client, regular_user_token, test_pet)
+        assert "Наблюдения владельца" in text and "Рвота" in text
+        assert "Кормление" not in text and "Прогулка" not in text and "Чистка зубов" not in text
+
+
+class TestPageOneStaysOnePage:
+    def test_a_full_card_with_two_clinics_and_a_way_of_life_still_fits_one_page(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        """The header, the risks, two medicines, the note, what is due, what is in force, two clinics and the way of life:
+        what the demo pet has. The history starts on page two, not after a page that holds two lines."""
+        pid = str(test_pet["_id"])
+        mock_db["pets"].update_one(
+            {"_id": test_pet["_id"]},
+            {
+                "$set": {
+                    "medical_profile": {
+                        "blood_type": "DEA 1.1+",
+                        "chip_number": "643094100200311",
+                        "allergies": [
+                            {"substance": "Курица", "reaction": "зуд"},
+                            {"substance": "Амоксициллин", "reaction": "сыпь"},
+                        ],
+                        "conditions": [{"name": "Дисплазия", "since_year": 2023, "note": "обострения после нагрузки"}],
+                        "clinics": [
+                            {
+                                "name": "Ортовет",
+                                "phone": "+7 727 555 03 04",
+                                "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
+                            },
+                            {
+                                "name": "Ветклиника Айболит",
+                                "phone": "+7 701 555 01 02",
+                                "doctors": [{"name": "Иванова А. П.", "specialty": "терапевт"}],
+                            },
+                        ],
+                        "diet": "Сухой корм для крупных пород, два раза в день",
+                        "living": "Квартира, гуляет два раза в день",
+                    },
+                    "visit_prep": {"complaint": "Стал меньше гулять, хромает после вчерашней пробежки"},
+                }
+            },
+        )
+        for name in ("Дронтал Плюс", "Мелоксидил"):
+            mock_db["medications"].insert_one(
+                {
+                    "pet_id": pid,
+                    "name": name,
+                    "is_active": True,
+                    "default_dose": 1,
+                    "dose_unit": "таб",
+                    "schedule": {"days": [5], "times": ["10:00"]},
+                    "purpose": "Профилактика",
+                    "prescribed_by": "Каримов Д.",
+                }
+            )
+        _record(mock_db, test_pet, title="Нобивак DHPPi", day="2025-08-29", next_due="2026-08-29")
+        for title, due in (("Нобивак Rabies", "2027-07-30"), ("Нобивак KC", "2027-07-30")):
+            _record(mock_db, test_pet, title=title, day="2026-07-30", next_due=due)
+        response = client.get(
+            f"/api/pets/{test_pet['_id']}/medical-card/pdf", headers={"Authorization": f"Bearer {regular_user_token}"}
+        )
+        pages = PdfReader(io.BytesIO(response.data)).pages
+        first, second = pages[0].extract_text(), pages[1].extract_text()
+        assert "Питание и условия" in first and "Квартира" in first
+        assert second.lstrip().startswith("Хронология"), second[:80]
