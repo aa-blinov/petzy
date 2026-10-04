@@ -18,34 +18,10 @@ export interface FormField {
   id: string;
 }
 
-/** Remembered default values for a pet's builtin types' own fields, edited on
- *  the "Значения по умолчанию" settings page (or by the switch at the foot of a new record's form), kept on the pet and
- *  applied when a new record of that type is opened. Custom types don't get this — there's
- *  no fixed field set to hang a default on ahead of time. */
-export interface FormSettings {
-  asthma?: {
-    duration?: string;
-    inhalation?: string;
-    reason?: string;
-  };
-  defecation?: {
-    stool_type?: string;
-    color?: string;
-    food?: string;
-  };
-  weight?: {
-    food?: string;
-  };
-  eye_drops?: {
-    drops_type?: string;
-  };
-  tooth_brushing?: {
-    brushing_type?: string;
-  };
-  ear_cleaning?: {
-    cleaning_type?: string;
-  };
-}
+/** What a new record of each type starts with for a pet: {type: {field: value}}. Any type, built-in or the family's own, any
+ *  plain field of it. Kept on the pet; set by the pin under a field of a new record, looked at and corrected on «Значения по
+ *  умолчанию». */
+export type FormSettings = Record<string, Record<string, string>>;
 
 /** The fields a new record can remember a value for, for the pet it is written for: a choice, a word or a number. Not the date
  *  and the time, which are never the same twice, nor the comment. Any record type, built-in or the family's own. */
