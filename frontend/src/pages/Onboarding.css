@@ -608,7 +608,7 @@
 /* Add-to-Home-Screen steps on the iPhone push step. */
 .onb-howto {
     display: grid;
-    gap: 10px;
+    gap: var(--spacing-md);
     width: 100%;
     max-width: 340px;
     margin: 0 auto;

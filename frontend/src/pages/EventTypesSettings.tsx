@@ -122,7 +122,7 @@ export function EventTypesSettings() {
                         display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0,
                         background: 'transparent', border: 'none', textAlign: 'left',
                         cursor: editable ? 'pointer' : 'default', color: 'inherit', opacity: 1,
-                        padding: '14px 16px',
+                        padding: 'var(--spacing-lg)',
                       }}
                     >
                       <div
@@ -139,7 +139,7 @@ export function EventTypesSettings() {
                         <div style={{ fontWeight: 500, fontSize: '15px', color: 'var(--app-text-primary)' }}>
                           {eventType.label}
                         </div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 2 }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>
                           {subtitle}
                         </div>
                       </div>
@@ -167,7 +167,7 @@ export function EventTypesSettings() {
           </div>
         )}
 
-        <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-lg)', paddingBottom: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-md)', paddingBottom: 'var(--spacing-lg)' }}>
           <Button
             block
             color="primary"
@@ -175,7 +175,7 @@ export function EventTypesSettings() {
             onClick={() => navigate('/event-types/new')}
             style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
           >
-            <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
             Создать тип события
           </Button>
         </div>

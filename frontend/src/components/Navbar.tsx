@@ -123,7 +123,7 @@ export function Navbar() {
               padding: '0 12px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: 'var(--spacing-sm)',
               cursor: 'pointer',
               borderRadius: 'var(--radius-md)',
               backgroundColor: 'var(--app-page-background)',
@@ -168,11 +168,11 @@ export function Navbar() {
               backgroundColor: 'var(--app-page-background)',
             }}
           >
-            <div style={{ padding: '20px' }}>
+            <div style={{ padding: 'var(--spacing-lg)' }}>
               <div style={{
                 fontSize: '18px',
                 fontWeight: 600,
-                marginBottom: '20px',
+                marginBottom: 'var(--spacing-lg)',
                 textAlign: 'center',
                 color: 'var(--app-text-color)'
               }}>

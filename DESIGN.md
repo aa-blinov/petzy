@@ -70,6 +70,7 @@ rounded:
   xl: "24px"
   round: "50%"
 spacing:
+  2xs: "2px"
   xs: "4px"
   sm: "8px"
   md: "12px"
@@ -143,7 +144,7 @@ Personality lives in two places only: the bubbly DynaPuff wordmark «Petzy» and
 - One accent: ginger copper, deepened wherever it carries text or white type.
 - Warm neutrals throughout: no pure grey, no pure black text, no pure white page.
 - Sheets lie flat on the paper; only floating layers cast a real shadow.
-- One ladder of radii and spacing (4/8/12/16/24), used concentrically.
+- One ladder of radii and spacing (spacing 2/4/8/12/16/24/32), used concentrically, with one rule for each gap (see Spacing rules).
 - Russian first: Cyrillic runs in the system face, Outfit sets digits and Latin.
 - Light and dark are one system: every colour has a dark counterpart by role.
 
@@ -197,12 +198,30 @@ The same roles on a warm night: night-hearth page, night-card sheets, night-ink 
 
 ## Layout
 
-One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (4, 8, 12, 16, 24, 32px); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. The page reserves room for the fixed top bar (64px) and the bottom bar.
+One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (2, 4, 8, 12, 16, 24, 32px, the `--spacing-*` tokens); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. Each kind of gap has one value, listed under Spacing rules. The page reserves room for the fixed top bar (64px) and the bottom bar.
 
 Responsive behaviour is contextual rather than stretched:
 - **Phone, portrait** (the design's home): top bar, one column, bottom tab bar of five sections; below 360px the tab labels tighten to 10px. The «Медкарта» tab carries a red dot, ringed in the bar's ground and read aloud as «есть просроченное», while a vaccination or a treatment of the chosen pet is overdue: the one signal that reaches every screen. With several pets the pet switcher carries the same dot when a pet that is not chosen has something overdue, and the picker says which one and what, in words, under its name. Red stays for overdue only.
 - **Phone, landscape** (height 500px or less): a 48px top bar and a 40px tab bar with labels beside their icons; content and tabs keep clear of the notch.
 - **1024px and wider** (a computer, a tablet held sideways): the same five sections move to a 96px rail on the left; the column stays 800px; the add button drops to the corner.
+
+### Spacing rules
+
+One value per kind of gap, taken from the `--spacing-*` tokens, never a raw pixel count between blocks. A new screen reuses these; an unlisted gap is a sign to reuse one that is.
+
+| Between | Gap |
+|---|---|
+| Two full-width buttons, one under another | 12px (`md`) |
+| A button and a text-only button under it («Готово», «Вернуть набор») | 8px (`sm`); the text button's 44px target gives it the rest |
+| Cards, rows or tiles in a list | 12px (`md`) |
+| Chips, tiles or an icon and its label in a row | 8px (`sm`) |
+| A section header and its content | 8px (`sm`) |
+| One section and the next | 24px (`xl`) |
+| The last field and the button that closes the form | 24px (`xl`): `.form-sticky-action`, `.form-actions` |
+| A title and the one-line caption under it | 2px (`2xs`) |
+| A card's inner padding | 16px (`lg`); a centred message or empty state 24px (`xl`) |
+
+Allowed to stay off the ladder, because the label or a fixed neighbour sets them: the padding inside a control (a chip, a badge, a button is sized by its label and its 44px target); the room kept clear for the fixed bars (`calc(env(safe-area-inset-*) + 80px)` and its like); an optical nudge of an icon to the first line of its text; a negative margin that widens a tap target; the miniature product screens on the intro slides.
 
 ### Named Rules
 **The Concentric Rule.** A rounded element inset in a rounded parent takes the radius one rung down the ladder for the spacing between them (a 24px card padded 12px holds 12px children).
@@ -269,7 +288,7 @@ One page of one pet, in two modes under the title (the pet is named in the bar a
 ### Do:
 - **Do** keep copper as the only accent; use ginger-deep (#AD5830) for copper text and fills under white type.
 - **Do** build screens as one column of milk-card sheets on cream-paper, 16px radius, 16px padding.
-- **Do** take radii and spacing from the one ladder (4/8/12/16/24) and nest radii concentrically.
+- **Do** take radii and spacing from the one ladder (radii 4/8/12/16/24, spacing 2/4/8/12/16/24/32), give each kind of gap its one value from Spacing rules, and nest radii concentrically.
 - **Do** give every colour a dark-theme counterpart by role, with dark text on the dark theme's light fills.
 - **Do** write numbers the Russian way with the unit beside them («29,1 кг»).
 - **Do** keep touch targets at 44px, even for small chips, grips and links.

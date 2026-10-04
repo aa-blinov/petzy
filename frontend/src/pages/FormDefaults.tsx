@@ -142,7 +142,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
                         className="tap-feedback"
                         onClick={() => open(row)}
                         disabled={!row.def}
-                        style={{ flex: 1, minWidth: 0, minHeight: 'var(--touch-min)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', font: 'inherit', cursor: row.def ? 'pointer' : 'default', color: 'var(--app-text-primary)' }}
+                        style={{ flex: 1, minWidth: 0, minHeight: 'var(--touch-min)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-2xs)', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', font: 'inherit', cursor: row.def ? 'pointer' : 'default', color: 'var(--app-text-primary)' }}
                       >
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{row.label}</span>
                         <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, overflowWrap: 'anywhere' }}>{shown(row)}</span>

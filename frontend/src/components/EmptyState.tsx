@@ -80,7 +80,7 @@ export function EmptyState({
       {description && (
         <p
           style={{
-            margin: '6px 0 0',
+            margin: 'var(--spacing-sm) 0 0',
             fontSize: 'var(--text-sm)',
             color: 'var(--app-text-secondary)',
             lineHeight: 1.5,
@@ -108,7 +108,7 @@ export function EmptyState({
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 'var(--spacing-sm)',
           }}
         >
           {actionLabel}

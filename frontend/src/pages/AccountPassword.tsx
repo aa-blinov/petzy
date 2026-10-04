@@ -53,7 +53,7 @@ export function AccountPassword() {
             <Input type="password" value={repeat} onChange={setRepeat} onBlur={touch('repeat')} autoComplete="new-password" placeholder="Повторите новый пароль" />
           </Form.Item>
         </Form>
-        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding form-actions">
           <Button block color="primary" size="large" data-enter-submit loading={busy} disabled={busy} onClick={save}>
             Сменить пароль
           </Button>

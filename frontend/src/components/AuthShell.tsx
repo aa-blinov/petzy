@@ -54,7 +54,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             lookup. */}
         <div
           className="card-soft"
-          style={{ padding: '28px 24px' }}
+          style={{ padding: 'var(--spacing-xl)' }}
           spellCheck={false}
           autoCapitalize="none"
           autoCorrect="off"

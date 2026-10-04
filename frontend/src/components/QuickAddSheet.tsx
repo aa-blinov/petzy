@@ -83,7 +83,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
           </div>
         )}
 
-        <Grid columns={2} gap={10}>
+        <Grid columns={2} gap={12}>
           {tiles.map(tile => {
             const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
             const Icon = displayConfigs[tile.id]?.icon;
@@ -100,7 +100,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: '10px',
+                    gap: 'var(--spacing-md)',
                     padding: '12px',
                     height: '56px',
                     width: '100%',

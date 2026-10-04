@@ -27,3 +27,11 @@ git config core.hooksPath .githooks
 Backend code is formatted with `ruff format` (line length 120, see
 `pyproject.toml`). Both the hooks above and CI's `Ruff` job enforce it —
 run `ruff format .` locally if either one complains.
+
+## Spacing
+
+Gaps between blocks come from the `--spacing-*` tokens, one value per kind of
+gap (stacked buttons 12px, list items 12px, section header to content 8px,
+fields to the closing button 24px, and so on): the table is under «Spacing
+rules» in `DESIGN.md`. Use `.form-actions` or `.form-sticky-action` for the
+buttons that close a form instead of hand-set margins.

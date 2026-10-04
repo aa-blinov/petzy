@@ -293,7 +293,7 @@ export function Dashboard() {
                     <h2
                       className="section-header"
                       style={{
-                        marginBottom: '10px',
+                        marginBottom: 'var(--spacing-sm)',
                         marginTop: '4px',
                         paddingLeft: '4px',
                       }}
@@ -323,7 +323,7 @@ export function Dashboard() {
 
                 {hasNextPage && (
                   <AutoLoadMore onVisible={() => { void fetchNextPage(); }} disabled={isFetchingNextPage}>
-                    <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', paddingBottom: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 'var(--spacing-xl)' }}>
                       <Button
                         fill="outline"
                         onClick={() => { fetchNextPage(); }}

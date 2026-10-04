@@ -447,7 +447,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                     fontFamily: 'inherit',
                   }}
                 />
-                <div style={{ marginTop: '6px', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textAlign: 'right' }}>
+                <div style={{ marginTop: 'var(--spacing-xs)', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textAlign: 'right' }}>
                   {tagline.length} из {PET_TAGLINE_MAX}
                 </div>
 
@@ -497,7 +497,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
               <>
                 {PET_FRAME_GROUPS.map((g) => (
                   <div key={g.key} role="radiogroup" aria-label={`Рамка: ${g.label}`} onKeyDown={rovingKeyDown} style={{ marginBottom: '12px' }}>
-                    <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: '4px 2px 6px' }}>
+                    <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: 'var(--spacing-xs) var(--spacing-xs) var(--spacing-sm)' }}>
                       {g.label}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: OPTION_GRID, gap: '8px' }}>

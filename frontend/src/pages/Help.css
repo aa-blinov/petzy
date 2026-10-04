@@ -82,7 +82,7 @@
     padding-left: 1.1em;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--spacing-sm);
 }
 
 .help-item__body li::marker {

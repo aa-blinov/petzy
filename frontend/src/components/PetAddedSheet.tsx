@@ -35,7 +35,7 @@ export function PetAddedSheet({
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
       <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="85vh" label={`${pet.name} добавлен`}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '4px 4px var(--spacing-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', margin: '4px 4px var(--spacing-md)' }}>
           <span
             aria-hidden
             style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 'var(--radius-md)', background: species.gradient, color: 'var(--app-text-on-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

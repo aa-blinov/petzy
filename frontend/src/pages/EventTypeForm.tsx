@@ -245,7 +245,7 @@ export function EventTypeForm() {
 
   if (isEditing && !existing) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
+      <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>
         <p>Тип события не найден</p>
         <Button onClick={() => goBack(navigate, '/event-types')}>Назад</Button>
       </div>
@@ -292,7 +292,7 @@ export function EventTypeForm() {
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Цвет</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
             {Object.values(TILE_COLORS).map((c) => (
               <button
                 key={c}
@@ -322,7 +322,7 @@ export function EventTypeForm() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
             {fields.map((field, index) => (
-              <div key={field.key} className="card-soft" style={{ padding: '14px' }}>
+              <div key={field.key} className="card-soft" style={{ padding: 'var(--spacing-lg)' }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   marginBottom: '12px',
@@ -389,7 +389,7 @@ export function EventTypeForm() {
             onClick={addField}
             style={{ marginTop: 'var(--spacing-md)', borderRadius: 'var(--radius-md)' }}
           >
-            <Plus size={16} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            <Plus size={16} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
             Добавить поле
           </Button>
         </div>
@@ -404,7 +404,7 @@ export function EventTypeForm() {
             value={[chartKind]}
             onChange={(v) => setChartKind((v[0] as 'count' | 'value') ?? 'count')}
             columns={1}
-            style={{ marginBottom: '10px' }}
+            style={{ marginBottom: 'var(--spacing-md)' }}
           />
           {chartKind === 'value' && (
             <>

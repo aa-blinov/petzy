@@ -104,7 +104,7 @@ export function EventCatalogSheet({
 
         {groups.map((group) => (
           <section key={group.key} aria-label={group.title} style={{ marginBottom: 'var(--spacing-md)' }}>
-            <h3 style={{ margin: '0 4px 6px', fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)' }}>
+            <h3 style={{ margin: '0 4px var(--spacing-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)' }}>
               {group.title}
             </h3>
             <div className="card-soft" style={{ overflow: 'hidden' }}>

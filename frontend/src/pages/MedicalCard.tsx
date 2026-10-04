@@ -691,7 +691,7 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
         {canPdf ? (
           <>
             <Button size="small" color="primary" fill="outline" loading={saving} disabled={saving} onClick={onPdf}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                 <Download size={16} strokeWidth={2.2} aria-hidden />
                 Скачать PDF
               </span>

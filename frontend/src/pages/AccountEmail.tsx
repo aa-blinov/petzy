@@ -96,7 +96,7 @@ export function AccountEmail() {
                 <Input type="password" value={password} onChange={setPassword} placeholder="Пароль от Petzy" autoComplete="current-password" />
               </Form.Item>
             </Form>
-            <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
+            <div className="safe-area-padding form-actions">
               <Button block color="primary" size="large" data-enter-submit loading={busy === 'save'} disabled={!!busy || !value.trim()} onClick={() => save(value.trim(), 'save')}>
                 Сохранить и подтвердить
               </Button>

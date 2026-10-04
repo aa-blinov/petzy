@@ -143,7 +143,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
 
         {/* Right column — name and the age, breed and gender line.
             minWidth: 0 lets flex children ellipsis correctly. */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "var(--spacing-sm)" }}>
           <div
             className="display-headline"
             style={{

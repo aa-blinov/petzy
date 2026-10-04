@@ -58,7 +58,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
           Показать записи
         </h2>
 
-        <Grid columns={2} gap={10}>
+        <Grid columns={2} gap={12}>
           {options.map(option => {
             const active = option.id === activeId;
             const bg = pastelColorMap[option.color] ?? 'var(--tile-blue)';
@@ -78,7 +78,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: '10px',
+                    gap: 'var(--spacing-md)',
                     padding: '12px',
                     height: '56px',
                     width: '100%',

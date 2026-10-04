@@ -379,7 +379,7 @@ export function HealthRecordForm() {
 
   if (!type || !eventType) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
+      <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>
         <p>Неизвестный тип записи</p>
         <Button onClick={() => navigate('/')}>На главную</Button>
       </div>

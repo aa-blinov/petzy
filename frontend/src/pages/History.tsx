@@ -190,7 +190,7 @@ export function History() {
                     <div key={dateStr} style={{ marginBottom: 'var(--spacing-lg)' }}>
                         <h2
                             className="section-header"
-                            style={{ marginBottom: '10px', paddingLeft: 4 }}
+                            style={{ marginBottom: 'var(--spacing-sm)', paddingLeft: 4 }}
                         >
                             {formatDateHeader(dateStr)}
                         </h2>
@@ -317,7 +317,7 @@ export function History() {
                         <activeFilterOption.Icon size={16} strokeWidth={2.4} aria-hidden />
                     )}
                     <span>{activeFilterOption.label}</span>
-                    <ChevronDown size={16} strokeWidth={2.4} aria-hidden style={{ marginLeft: 2 }} />
+                    <ChevronDown size={16} strokeWidth={2.4} aria-hidden style={{ marginLeft: 'var(--spacing-xs)' }} />
                 </button>
 
                 <HistoryFilterSheet
