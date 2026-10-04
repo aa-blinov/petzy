@@ -648,3 +648,14 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
     flex-direction: column;
     gap: var(--spacing-xs);
 }
+
+/* Two doors in a section's head: the one asked for in the accent, the other beside it, quieter. */
+.medcard__section-actions {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--spacing-lg);
+}
+
+.medcard__link--quiet {
+    color: var(--app-text-secondary);
+}

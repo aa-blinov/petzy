@@ -336,15 +336,24 @@ function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord
   );
 }
 
-export function Section({ id, title, action, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; children: React.ReactNode }) {
+export function Section({ id, title, action, secondary, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; /** A second, quieter door beside the first («История» next to «Записать вес»). */ secondary?: { label: string; onClick: () => void }; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id}>
       <div className="medcard__section-head">
         <h2 id={id} className="medcard__section-title">{title}</h2>
-        {action && (
-          <button type="button" className="medcard__link touch-target" onClick={action.onClick}>
-            {action.label}
-          </button>
+        {(action || secondary) && (
+          <span className="medcard__section-actions">
+            {secondary && (
+              <button type="button" className="medcard__link medcard__link--quiet touch-target" onClick={secondary.onClick}>
+                {secondary.label}
+              </button>
+            )}
+            {action && (
+              <button type="button" className="medcard__link touch-target" onClick={action.onClick}>
+                {action.label}
+              </button>
+            )}
+          </span>
         )}
       </div>
       <div className="card-soft" style={{ overflow: 'hidden' }}>{children}</div>
