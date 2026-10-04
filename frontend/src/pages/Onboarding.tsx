@@ -13,6 +13,8 @@ import {
   FileHeart,
   FileText,
   Fish,
+  Frame,
+  Palette,
   PawPrint,
   Pill,
   Scale,
@@ -37,9 +39,9 @@ import { PhotoCropModal } from '../components/PhotoCropModal';
 import { SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
 import './Onboarding.css';
 
-type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'species' | 'name' | 'notify' | 'install' | 'done';
+type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'look' | 'species' | 'name' | 'notify' | 'install' | 'done';
 
-const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'care', 'family'];
+const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'care', 'family', 'look'];
 
 /** The most common species get a tile; the rest are one tap away in
  *  «Другой питомец» (utils/species.ts holds them all). */
@@ -177,7 +179,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     const dy = t.clientY - start.y;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
     if (dx < 0) {
-      if (step === 'family') finishIntro();
+      if (step === 'look') finishIntro();
       else next();
     } else {
       back();
@@ -286,20 +288,26 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       break;
     case 'diary':
       art = <DiaryArt />;
-      title = 'Все записи и приёмы лекарств в одной ленте';
-      lead = 'Кормление, вес и уход записываются в пару касаний, а приём лекарства отмечается одним нажатием «Дали сейчас». Для остального заведите свои события, например прогулки';
+      title = 'Вся жизнь питомца в одной ленте';
+      lead = 'Кормление, вес и уход записываются в пару касаний, а лекарство отмечается одним нажатием «Дали сейчас»';
       cta = ctaButton('Дальше', next);
       break;
     case 'care':
       art = <CareArt />;
       title = 'Напомнит о лекарствах и прививках';
-      lead = 'Уведомление, когда пора дать лекарство или повторить прививку, и сигнал, если вес или порция корма резко изменились';
+      lead = 'Напомним о лекарствах и прививках и сообщим, если вес или порция корма резко изменились';
       cta = ctaButton('Дальше', next);
       break;
     case 'family':
       art = <FamilyArt />;
       title = 'Медкарта для врача и семья рядом';
-      lead = 'Медкарта собирается сама из записей: на приёме её можно показать с экрана или отдать PDF. Справки, снимки и доступ для близких тоже здесь';
+      lead = 'Медкарта собирается сама из записей: покажите её на приёме или отдайте PDF. Близкие тоже видят записи';
+      cta = ctaButton('Дальше', next);
+      break;
+    case 'look':
+      art = <LookArt />;
+      title = 'Сделайте карточку по-своему';
+      lead = 'Цвет, рамка для фото, шрифт имени и фон ленты. Меняет владелец, видит вся семья';
       cta = ctaButton(replay ? 'Понятно' : 'Добавить питомца', finishIntro);
       break;
     case 'species':
@@ -491,7 +499,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       );
       title = `${displayName} теперь в Petzy`;
-      lead = 'Добавьте первую запись, например сегодняшнее кормление, или заведите лекарство, чтобы Petzy напоминал о приёмах';
+      lead = 'Начните с первой записи, например сегодняшнего кормления, а карточку оформите, когда захочется';
       // Straight into the first real record: the feed underneath, so
       // saving the form lands there rather than back in onboarding.
       cta = ctaButton('Записать кормление', () => {
@@ -509,6 +517,16 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             }}
           >
             Добавить лекарство
+          </button>
+          <button
+            type="button"
+            className="onb__secondary tap-feedback"
+            onClick={() => {
+              navigate('/', { replace: true });
+              navigate('/pet-look');
+            }}
+          >
+            Оформить&nbsp;карточку
           </button>
           <button type="button" className="onb__secondary tap-feedback" onClick={() => navigate('/', { replace: true })}>
             Открыть ленту
@@ -673,6 +691,47 @@ function CareArt() {
       <span className="onb-chip onb-float" style={floatDelay(320)}>
         <Pill size={14} strokeWidth={2.2} /> Осталось 12 таблеток
       </span>
+    </div>
+  );
+}
+
+function LookArt() {
+  return (
+    <div className="onb-stack" aria-hidden>
+      <div className="onb-card onb-float" style={floatDelay(0)}>
+        <span className="onb-card__tile" style={{ background: 'var(--tile-pink)' }}>
+          <PawPrint size={20} strokeWidth={2.2} />
+        </span>
+        <span className="onb-card__body">
+          <span className="onb-card__title">Мурзик</span>
+          <span className="onb-card__meta">Хозяин дивана</span>
+        </span>
+        <span className="onb-chip">Сторис</span>
+      </div>
+      <div className="onb-card onb-float" style={floatDelay(150)}>
+        <span className="onb-card__tile" style={{ background: 'var(--tile-purple)' }}>
+          <Palette size={20} strokeWidth={2.2} />
+        </span>
+        <span className="onb-card__body">
+          <span className="onb-card__title">Цвет и фон ленты</span>
+          <span className="onb-card__meta">Свои для каждого питомца</span>
+        </span>
+        <span className="onb-avatars">
+          <span style={{ background: '#5E9A56' }} />
+          <span style={{ background: '#4A8CC7' }} />
+          <span style={{ background: '#D4577C' }} />
+        </span>
+      </div>
+      <div className="onb-card onb-float" style={floatDelay(300)}>
+        <span className="onb-card__tile" style={{ background: 'var(--tile-yellow)' }}>
+          <Frame size={20} strokeWidth={2.2} />
+        </span>
+        <span className="onb-card__body">
+          <span className="onb-card__title">Рамка для фото</span>
+          <span className="onb-card__meta">Полароид, золото, сердце</span>
+        </span>
+        <span className="onb-chip">19 рамок</span>
+      </div>
     </div>
   );
 }
