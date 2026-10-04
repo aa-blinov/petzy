@@ -123,7 +123,7 @@ export function Login() {
                   type="button"
                   disabled={isLoading}
                   onClick={() => navigate('/register')}
-                  style={{ marginTop: 'var(--spacing-sm)' }}
+                  style={{ marginTop: 'var(--spacing-md)' }}
                 >
                   Создать аккаунт
                 </Button>
