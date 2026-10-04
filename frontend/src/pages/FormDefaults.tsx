@@ -1,388 +1,216 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { showToast } from '../utils/toast';
-import { useNavigate } from 'react-router-dom';
-import { Button, Dialog, Form, Picker } from 'antd-mobile';
+import { useMemo, useState } from 'react';
+import { Dialog, Input, Picker, Popup } from 'antd-mobile';
+import { X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_FORM_SETTINGS, type FormSettings } from '../utils/formsConfig';
 import { petsService, type Pet } from '../services/pets.service';
+import type { EventTypeField } from '../services/eventTypes.service';
+import type { FormSettings } from '../utils/formsConfig';
+import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
 import { NoPetState } from '../components/NoPetState';
+import { SpinnerButton } from '../components/SpinnerButton';
+import { showToast } from '../utils/toast';
 
-/** Static option lists for each categorical field. Kept here rather than
-    in formsConfig so the picker columns read in the same place the
-    Form.Item reads them. */
-const OPTIONS = {
-    asthma_duration: [
-        { label: 'Короткий', value: 'Короткий' },
-        { label: 'Длительный', value: 'Длительный' },
-    ],
-    asthma_inhalation: [
-        { label: 'Нет', value: 'false' },
-        { label: 'Да', value: 'true' },
-    ],
-    defecation_stool_type: [
-        { label: 'Обычный', value: 'Обычный' },
-        { label: 'Твердый', value: 'Твердый' },
-        { label: 'Жидкий', value: 'Жидкий' },
-    ],
-    defecation_color: [
-        { label: 'Коричневый', value: 'Коричневый' },
-        { label: 'Темно-коричневый', value: 'Темно-коричневый' },
-        { label: 'Светло-коричневый', value: 'Светло-коричневый' },
-        { label: 'Другой', value: 'Другой' },
-    ],
-    eye_drops_type: [
-        { label: 'Обычные', value: 'Обычные' },
-        { label: 'Гелевые', value: 'Гелевые' },
-    ],
-    tooth_brushing_type: [
-        { label: 'Щетка', value: 'Щетка' },
-        { label: 'Марля', value: 'Марля' },
-        { label: 'Игрушка', value: 'Игрушка' },
-    ],
-    ear_cleaning_type: [
-        { label: 'Салфетка/Марля', value: 'Салфетка/Марля' },
-        { label: 'Капли', value: 'Капли' },
-    ],
-} as const;
-
-type PickerKey = keyof typeof OPTIONS;
-
-interface PickerRowProps {
-    label: string;
-    pickerKey: PickerKey;
-    value: string;
-    formType: keyof FormSettings;
-    field: string;
-    placeholder?: string;
-    visiblePicker: PickerKey | null;
-    onOpenPicker: (key: PickerKey) => void;
-    onClosePicker: () => void;
-    onUpdate: (formType: keyof FormSettings, field: string, value: string) => void;
+/** One remembered value, found again in the type it belongs to (it may be gone: a type or a field deleted since). */
+interface Row {
+  typeKey: string;
+  typeLabel: string;
+  field: string;
+  label: string;
+  value: string;
+  def?: EventTypeField;
 }
 
-/** Renders a categorical field — same look as PetForm's species /
-    gender / sterilisation pickers (chevron + selected-or-placeholder).
-    Defined at module scope (not inside FormDefaults) so it's a stable
-    component across renders rather than a fresh one every time — the
-    picker-open state and update callback come in as props instead of
-    being captured from an enclosing closure. */
-function PickerRow({
-    label,
-    pickerKey,
-    value,
-    formType,
-    field,
-    placeholder = 'Не выбрано',
-    visiblePicker,
-    onOpenPicker,
-    onClosePicker,
-    onUpdate,
-}: PickerRowProps) {
-    const selected = OPTIONS[pickerKey].find(o => o.value === value);
-    const display = selected?.label || placeholder;
-    return (
-        <Form.Item
-            label={label}
-            clickable
-            arrow
-            onClick={() => onOpenPicker(pickerKey)}
-        >
-            <span style={{
-                color: selected ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)',
-            }}>
-                {display}
-            </span>
-            <Picker
-                columns={[[...OPTIONS[pickerKey]]]}
-                visible={visiblePicker === pickerKey}
-                value={[value]}
-                onClose={onClosePicker}
-                onConfirm={(val) => {
-                    onUpdate(formType, field, val[0] as string);
-                    onClosePicker();
-                }}
-                cancelText="Отмена"
-                confirmText="Готово"
-            />
-        </Form.Item>
-    );
+/** The text of a value as the person would read it: the label of a choice, a number with a comma. */
+function shown(row: Row): string {
+  if (row.def?.type === 'select') return row.def.options?.find((o) => o.value === row.value)?.text ?? row.value;
+  if (row.def?.type === 'number') return row.value.replace('.', ',');
+  return row.value;
 }
 
-/** «Значения по умолчанию»: what a new record of a built-in type starts with, for the selected pet. They are the pet's, not
- *  the person's: its food or drops are the same for everyone who feeds it. */
+/** «Значения по умолчанию»: what is remembered for the selected pet, by record type, to correct or to forget. Remembering
+ *  itself is done where it is natural: under a field of a new record. The values are the pet's, not the person's: its food
+ *  or drops are the same for everyone who feeds it. */
 export function FormDefaults() {
-    const { getSelectedPet } = usePet();
-    if (!getSelectedPet) return <NoPetState what="Значения по умолчанию" />;
-    // Keyed by the pet: choosing another pet in the switcher opens that pet's own values.
-    return <FormDefaultsFor key={getSelectedPet._id} pet={getSelectedPet} />;
+  const { getSelectedPet } = usePet();
+  if (!getSelectedPet) return <NoPetState what="Значения по умолчанию" />;
+  // Keyed by the pet: choosing another pet in the switcher opens that pet's own values.
+  return <FormDefaultsFor key={getSelectedPet._id} pet={getSelectedPet} />;
 }
 
 function FormDefaultsFor({ pet }: { pet: Pet }) {
-    const navigate = useNavigate();
-    const mountedRef = useRef(true);
-    const [formSettings, setFormSettings] = useState<FormSettings>(() => pet.form_defaults ?? {});
-    const [visiblePicker, setVisiblePicker] = useState<PickerKey | null>(null);
-    const [saving, setSaving] = useState(false);
-    const edited = useRef(false);
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
+  const { eventTypesByKey } = useEventTypes();
+  const settings = useMemo<FormSettings>(() => pet.form_defaults ?? {}, [pet.form_defaults]);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        mountedRef.current = true;
-        return () => {
-            mountedRef.current = false;
-        };
-    }, []);
+  const groups = useMemo(() => {
+    const out: { typeKey: string; label: string; rows: Row[] }[] = [];
+    for (const [typeKey, values] of Object.entries(settings)) {
+      const type = eventTypesByKey[typeKey];
+      const rows: Row[] = Object.entries(values).map(([field, value]) => {
+        const def = type?.fields.find((f) => f.name === field);
+        return { typeKey, typeLabel: type?.label ?? 'Удалённый вид записи', field, label: def?.label ?? field, value, def };
+      });
+      if (rows.length) out.push({ typeKey, label: type?.label ?? 'Удалённый вид записи', rows });
+    }
+    return out;
+  }, [settings, eventTypesByKey]);
 
-    const persist = useCallback(async (settings: FormSettings) => {
-        const saved = await petsService.saveFormDefaults(pet._id, settings);
-        queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, form_defaults: saved } : p)));
-    }, [pet._id, queryClient]);
+  // The whole set is sent each time and replaces the old one: a change is a copy of what is there with one value changed.
+  const persist = async (next: FormSettings, done: string) => {
+    setSaving(true);
+    try {
+      const saved = await petsService.saveFormDefaults(pet._id, next);
+      queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, form_defaults: saved } : p)));
+      showToast.success(done);
+      return true;
+    } catch {
+      showToast.failure('Не удалось сохранить');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    const handleSave = useCallback(async () => {
-        if (saving) return;
-        setSaving(true);
-        try {
-            await persist(formSettings);
-            showToast.success('Настройки сохранены');
-            setTimeout(() => {
-                if (mountedRef.current) {
-                    navigate('/settings');
-                }
-            }, 1000);
-        } catch (err) {
-            showToast.failure('Не удалось сохранить настройки');
-            console.error('Error saving settings:', err);
-        } finally {
-            if (mountedRef.current) setSaving(false);
-        }
-    }, [formSettings, navigate, persist, saving]);
+  const change = (row: Row, value: string | null) => {
+    const next: FormSettings = { ...settings, [row.typeKey]: { ...settings[row.typeKey] } };
+    if (value === null || value.trim() === '') delete next[row.typeKey][row.field];
+    else next[row.typeKey][row.field] = value.trim();
+    if (!Object.keys(next[row.typeKey]).length) delete next[row.typeKey];
+    return persist(next, value === null || value.trim() === '' ? 'Забыто' : 'Сохранено');
+  };
 
-    const handleReset = useCallback(async () => {
-        const confirmed = await Dialog.confirm({
-            content: `Очистить значения по умолчанию для ${pet.name}? Формы будут открываться пустыми`,
-            confirmText: 'Очистить',
-            cancelText: 'Оставить',
-        });
-        if (confirmed) {
-            try {
-                await persist(DEFAULT_FORM_SETTINGS);
-                setFormSettings(DEFAULT_FORM_SETTINGS);
-                edited.current = false;
-                showToast.success('Значения очищены');
-            } catch {
-                showToast.failure('Не удалось сбросить настройки');
-            }
-        }
-    }, [persist, pet.name]);
+  const open = (row: Row) => {
+    setEditing(row);
+    setText(row.def?.type === 'number' ? row.value.replace('.', ',') : row.value);
+  };
 
-    const updateFormSetting = useCallback((formType: keyof FormSettings, field: string, value: string) => {
-        edited.current = true;
-        setFormSettings(prev => ({
-            ...prev,
-            [formType]: {
-                ...(prev[formType] || {}),
-                [field]: value
-            }
-        }));
-    }, []);
+  const saveText = async () => {
+    if (!editing) return;
+    let value = text.trim();
+    if (editing.def?.type === 'number') {
+      const n = Number(value.replace(/\s/g, '').replace(',', '.'));
+      if (value === '' || !Number.isFinite(n)) {
+        showToast.failure('Введите число, например 195,5');
+        return;
+      }
+      value = String(n);
+    }
+    if (await change(editing, value)) setEditing(null);
+  };
 
+  const forgetAll = async () => {
+    const confirmed = await Dialog.confirm({
+      content: `Забыть все значения по умолчанию для ${pet.name}? Новые записи будут открываться пустыми`,
+      confirmText: 'Забыть',
+      cancelText: 'Оставить',
+    });
+    if (confirmed) await persist({}, 'Забыто');
+  };
 
+  const isSelect = editing?.def?.type === 'select';
 
-    return (
-        <div className="page-container">
-            <div className="max-width-container">
-                <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-                    <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
-                    <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-                        Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Пока вы ничего не выбрали, поля пустые
-                    </p>
-                </div>
-
-                <Form layout="horizontal" mode="card" style={{ '--prefix-width': '7em' } as React.CSSProperties}>
-                    <Form.Header>Приступ астмы</Form.Header>
-                    <PickerRow
-                        label="Длительность"
-                        pickerKey="asthma_duration"
-                        value={formSettings.asthma?.duration ?? ''}
-                        formType="asthma"
-                        field="duration"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-                    <PickerRow
-                        label="Ингаляция"
-                        pickerKey="asthma_inhalation"
-                        value={formSettings.asthma?.inhalation ?? ''}
-                        formType="asthma"
-                        field="inhalation"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-                    <Form.Item
-                        label="Причина"
-                        clickable
-                        arrow={false}
-                        onClick={() => setVisiblePicker(null)}
-                    >
-                        {/* Free-text field — no picker needed. The whole row
-                            is clickable so the keyboard pops up immediately. */}
-                        <input
-                            aria-label="Причина"
-                            value={formSettings.asthma?.reason ?? ''}
-                            onChange={(e) => updateFormSetting('asthma', 'reason', e.target.value)}
-                            placeholder="Не указано"
-                            style={{
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--app-text-primary)',
-                                fontSize: 'var(--text-md)',
-                                fontFamily: 'inherit',
-                                minWidth: 0,
-                                maxWidth: '100%',
-                                width: '100%',
-                                textAlign: 'left',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap',
-                            }}
-                        />
-                    </Form.Item>
-
-                    <Form.Header>Дефекация</Form.Header>
-                    <PickerRow
-                        label="Тип стула"
-                        pickerKey="defecation_stool_type"
-                        value={formSettings.defecation?.stool_type ?? ''}
-                        formType="defecation"
-                        field="stool_type"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-                    <PickerRow
-                        label="Цвет стула"
-                        pickerKey="defecation_color"
-                        value={formSettings.defecation?.color ?? ''}
-                        formType="defecation"
-                        field="color"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-                    <Form.Item
-                        label="Корм"
-                        clickable
-                        arrow={false}
-                        onClick={() => setVisiblePicker(null)}
-                    >
-                        <input
-                            aria-label="Корм"
-                            value={formSettings.defecation?.food ?? ''}
-                            onChange={(e) => updateFormSetting('defecation', 'food', e.target.value)}
-                            placeholder="Название корма"
-                            style={{
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--app-text-primary)',
-                                fontSize: 'var(--text-md)',
-                                fontFamily: 'inherit',
-                                minWidth: 0,
-                                maxWidth: '100%',
-                                width: '100%',
-                                textAlign: 'left',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap',
-                            }}
-                        />
-                    </Form.Item>
-
-                    <Form.Header>Вес</Form.Header>
-                    <Form.Item
-                        label="Корм"
-                        clickable
-                        arrow={false}
-                        onClick={() => setVisiblePicker(null)}
-                    >
-                        <input
-                            aria-label="Корм"
-                            value={formSettings.weight?.food ?? ''}
-                            onChange={(e) => updateFormSetting('weight', 'food', e.target.value)}
-                            placeholder="Название корма"
-                            style={{
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--app-text-primary)',
-                                fontSize: 'var(--text-md)',
-                                fontFamily: 'inherit',
-                                minWidth: 0,
-                                maxWidth: '100%',
-                                width: '100%',
-                                textAlign: 'left',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap',
-                            }}
-                        />
-                    </Form.Item>
-
-                    <Form.Header>Закапывание глаз</Form.Header>
-                    <PickerRow
-                        label="Тип капель"
-                        pickerKey="eye_drops_type"
-                        value={formSettings.eye_drops?.drops_type ?? ''}
-                        formType="eye_drops"
-                        field="drops_type"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-
-                    <Form.Header>Чистка зубов</Form.Header>
-                    <PickerRow
-                        label="Способ чистки"
-                        pickerKey="tooth_brushing_type"
-                        value={formSettings.tooth_brushing?.brushing_type ?? ''}
-                        formType="tooth_brushing"
-                        field="brushing_type"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-
-                    <Form.Header>Чистка ушей</Form.Header>
-                    <PickerRow
-                        label="Способ чистки"
-                        pickerKey="ear_cleaning_type"
-                        value={formSettings.ear_cleaning?.cleaning_type ?? ''}
-                        formType="ear_cleaning"
-                        field="cleaning_type"
-                        visiblePicker={visiblePicker}
-                        onOpenPicker={setVisiblePicker}
-                        onClosePicker={() => setVisiblePicker(null)}
-                        onUpdate={updateFormSetting}
-                    />
-                </Form>
-
-                {/* Action Buttons */}
-                <div style={{ paddingTop: 'var(--spacing-md)', paddingBottom: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <Button block color="primary" size="large" onClick={handleSave} loading={saving}>
-                        Сохранить
-                    </Button>
-                    <Button block color="default" size="large" onClick={handleReset}>
-                        Сбросить к значениям по умолчанию
-                    </Button>
-                </div>
-            </div>
+  return (
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
+          <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+            Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запомнить для» и имя питомца. Здесь их можно поправить или забыть. Там, где есть выбор из вариантов, без запомненного значения выбран первый
+          </p>
         </div>
-    );
+
+        <div style={{ padding: '0 var(--spacing-md)' }}>
+          {groups.length === 0 ? (
+            <div className="card-soft" style={{ padding: '16px', color: 'var(--app-text-secondary)', fontSize: 'var(--text-md)', lineHeight: 1.5 }}>
+              Для {pet.name} пока ничего не запомнено, и новые записи открываются пустыми
+            </div>
+          ) : (
+            groups.map((g) => (
+              <section key={g.typeKey} style={{ marginBottom: 'var(--spacing-md)' }}>
+                <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                  {g.label}
+                </h2>
+                <div className="card-soft" style={{ overflow: 'hidden' }}>
+                  {g.rows.map((row, i) => (
+                    <div key={row.field} style={{ display: 'flex', alignItems: 'center', borderTop: i ? '1px solid var(--app-border-color)' : 'none' }}>
+                      <button
+                        type="button"
+                        className="tap-feedback"
+                        onClick={() => open(row)}
+                        disabled={!row.def}
+                        style={{ flex: 1, minWidth: 0, minHeight: 'var(--touch-min)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', font: 'inherit', cursor: row.def ? 'pointer' : 'default', color: 'var(--app-text-primary)' }}
+                      >
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{row.label}</span>
+                        <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, overflowWrap: 'anywhere' }}>{shown(row)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="tap-feedback"
+                        aria-label={`Забыть: ${g.label}, ${row.label}`}
+                        disabled={saving}
+                        onClick={() => void change(row, null)}
+                        style={{ width: 'var(--touch-min)', height: 'var(--touch-min)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--app-text-secondary)', cursor: 'pointer' }}
+                      >
+                        <X size={18} strokeWidth={2.2} aria-hidden />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+
+          {groups.length > 0 && (
+            <button
+              type="button"
+              className="tap-feedback"
+              onClick={() => void forgetAll()}
+              style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-danger-text, var(--app-danger-color))', cursor: 'pointer' }}
+            >
+              Забыть всё для {pet.name}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* A choice is picked from its own options; a word or a number is typed. */}
+      {editing && isSelect && (
+        <Picker
+          visible
+          columns={[(editing.def?.options ?? []).map((o) => ({ label: o.text, value: o.value }))]}
+          value={[editing.value]}
+          onClose={() => setEditing(null)}
+          onConfirm={async (val) => {
+            if (val[0] && (await change(editing, String(val[0])))) setEditing(null);
+          }}
+          cancelText="Отмена"
+          confirmText="Готово"
+        />
+      )}
+      <Popup visible={!!editing && !isSelect} onMaskClick={() => setEditing(null)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
+        <label htmlFor="default-value" style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', marginBottom: 8 }}>
+          {editing ? `${editing.typeLabel}: ${editing.label}` : ''}
+        </label>
+        <Input
+          id="default-value"
+          value={text}
+          onChange={setText}
+          onEnterPress={() => void saveText()}
+          placeholder="Значение"
+          maxLength={200}
+          inputMode={editing?.def?.type === 'number' ? 'decimal' : undefined}
+          style={{ '--font-size': 'var(--text-md)', border: '1px solid var(--app-border-color)', borderRadius: 'var(--radius-md)', padding: '0 12px', minHeight: 'var(--touch-min)' } as React.CSSProperties}
+        />
+        <div style={{ marginTop: 12 }}>
+          <SpinnerButton type="button" block loading={saving} onClick={() => void saveText()}>
+            Сохранить
+          </SpinnerButton>
+        </div>
+      </Popup>
+    </div>
+  );
 }

@@ -192,7 +192,7 @@ export function Settings() {
             <SettingsRow
               icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Значения по умолчанию"
-              description="Что подставляется в новые записи выбранного питомца"
+              description="Что запомнено для выбранного питомца: поправить или забыть"
               chevron
               onClick={() => navigate('/form-defaults')}
             />
