@@ -983,7 +983,6 @@ export function MedicalCard() {
             </>
           )}
 
-          <p className="medcard__stamp">Собрано из записей питомца на {formatDate(card.generated_at)}</p>
         </div>
       </div>
       {/* The same round «+» as the feed's, in the mode that edits; the reading mode has nothing to add to. */}
