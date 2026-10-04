@@ -3,9 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
-import { createPortal } from 'react-dom';
-import { AddOutline } from 'antd-mobile-icons';
-import { RecordSheet } from '../components/RecordSheet';
+import { RecordFab } from '../components/RecordSheet';
+import { MedicalSummary } from '../components/MedicalSummary';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
@@ -17,7 +16,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
 import { showUndo } from '../utils/undo';
 import { httpStatus } from '../services/api';
-import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
+import { formatDate, hasLife, weightDelta } from '../utils/medicalCardFormat';
 import './MedicalCard.css';
 
 const EMPTY_TEXT: Record<MedicalKind, string> = {
@@ -27,7 +26,6 @@ const EMPTY_TEXT: Record<MedicalKind, string> = {
   procedure: 'Операций и процедур пока нет',
 };
 
-const formatDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
 
 const STATUS: Record<MedicalCardVaccination['status'], { label: string; Icon: typeof CheckCircle2 }> = {
   valid: { label: 'Действует', Icon: CheckCircle2 },
@@ -39,7 +37,7 @@ const STATUS: Record<MedicalCardVaccination['status'], { label: string; Icon: ty
 /** A few numbers as a line: the trend of the weight, nothing to read off it.
     The line is stretched to the width; the dot at the latest value is its own
     element, so it stays round. */
-function Sparkline({ points }: { points: number[] }) {
+export function Sparkline({ points }: { points: number[] }) {
   if (points.length < 2) return null;
   const min = Math.min(...points);
   const max = Math.max(...points);
@@ -90,7 +88,7 @@ function RowLines({ lines }: { lines: RowLine[] }) {
 }
 
 /** One course: what, how much and when, what for, who prescribed it, how it went. */
-function CourseRow({ course }: { course: MedicalCardCourse }) {
+export function CourseRow({ course }: { course: MedicalCardCourse }) {
   const lines: (RowLine | null)[] = [
     { text: [course.dose_text, course.schedule_text ? lowerFirst(course.schedule_text) : null].filter(Boolean).join(', '), tier: 'key' },
     course.purpose ? { label: 'От чего', text: course.purpose, tier: 'fact' } : null,
@@ -111,7 +109,7 @@ function CourseRow({ course }: { course: MedicalCardCourse }) {
 }
 
 /** Allergies, chronic conditions and the notes: what a vet asks first, in the one block with a colour of its own. */
-function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit: () => void; readOnly?: boolean }) {
+export function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit: () => void; readOnly?: boolean }) {
   const { profile, pet } = card;
   const hasAllergies = profile.allergies.length > 0;
   const filled = hasAllergies || profile.allergies_none_known || profile.conditions.length > 0 || !!pet.health_notes;
@@ -223,14 +221,6 @@ function recordStatusText(status: 'overdue' | 'soon' | 'ok', daysLeft: number | 
 }
 
 /** «+0,3 кг с 05.09.2026»: how the latest weight differs from the one before it. */
-function weightDelta(series: { date: string; value: number }[]): string | null {
-  if (series.length < 2) return null;
-  const last = series[series.length - 1];
-  const before = series[series.length - 2];
-  const diff = Math.round((last.value - before.value) * 100) / 100;
-  const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
-  return `${sign}${Math.abs(diff).toLocaleString('ru-RU')} кг с ${formatDate(before.date)}`;
-}
 
 /** Overdue first, then soon, then the rest; a record replaced by a newer one last. The order inside a rank stays as it came. */
 function urgencyRank(r: MedicalRecord): number {
@@ -329,7 +319,8 @@ function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord
           Открыть документ: {d.title}
         </button>
       ))}
-      {repeating && onRepeat && !record.superseded && (
+      {/* Only where a repeat is asked for: a vaccination in its term has nothing to repeat yet (the «+» does it in two taps). */}
+      {repeating && onRepeat && !record.superseded && (record.status === 'overdue' || record.status === 'soon') && (
         <button type="button" className="medcard__row-action" onClick={onRepeat}>
           {record.kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
         </button>
@@ -345,7 +336,7 @@ function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord
   );
 }
 
-function Section({ id, title, action, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; children: React.ReactNode }) {
+export function Section({ id, title, action, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id}>
       <div className="medcard__section-head">
@@ -467,7 +458,7 @@ function ReadinessBlock({ card, petId, navigate, onShowVet }: { card: Card; petI
 }
 
 /** The records of one kind. The card brings the latest ten; «Показать все» asks for the rest. */
-function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKind; card: Card; petId: string; hidden: ReadonlySet<string>; navigate: (to: string) => void }) {
+export function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKind; card: Card; petId: string; hidden: ReadonlySet<string>; navigate: (to: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
   const total = card.record_counts[kind];
@@ -594,7 +585,7 @@ function saveMode(petId: string | undefined, mode: Mode) {
 function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
     <div className="medcard__modes" role="group" aria-label="Режим медкарты">
-      {([['fill', 'Вся карта'], ['vet', 'Врачу']] as const).map(([value, label]) => (
+      {([['fill', 'Сводка'], ['vet', 'Врачу']] as const).map(([value, label]) => (
         <button key={value} type="button" className="medcard__mode" aria-pressed={mode === value} onClick={() => onChange(value)}>
           {label}
         </button>
@@ -621,7 +612,7 @@ function PrepRows({ prep }: { prep: VisitPrep }) {
 }
 
 /** What is kept about the way of life: the food, the home, and when it matters the reproductive state. */
-function LifeRows({ profile }: { profile: Card['profile'] }) {
+export function LifeRows({ profile }: { profile: Card['profile'] }) {
   const rows = [
     ['Питание', profile.diet],
     ['Условия жизни', profile.living],
@@ -639,10 +630,9 @@ function LifeRows({ profile }: { profile: Card['profile'] }) {
   );
 }
 
-const hasLife = (profile: Card['profile']) => !!(profile.diet || profile.living || profile.reproduction);
 
 /** A clinic: its name, the doctors seen there with what they do, and the phone as a button that calls. */
-function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
+export function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
   const doctors = clinic.doctors.map((d) => (d.specialty ? `${d.name}, ${lowerFirst(d.specialty)}` : d.name));
   return (
     <li className="medcard__row medcard__row--stack">
@@ -703,7 +693,7 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
           </>
         ) : (
           // A PDF of an empty card helps nobody: it is offered once two of the five are there, as in the whole card.
-          <p className="medcard__hint">Карта почти пуста. Заполните её во «Вся карта», и здесь появится PDF</p>
+          <p className="medcard__hint">Карта почти пуста. Заполните её в «Сводке», и здесь появится PDF</p>
         )}
       </div>
 
@@ -837,7 +827,7 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
         </Button>
         )}
         <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
-          Вся карта
+          Открыть сводку
         </button>
       </div>
     </>
@@ -851,7 +841,6 @@ export function MedicalCard() {
   const navigate = useNavigate();
   const hidden = useHiddenRecords();
   const [saving, setSaving] = useState(false);
-  const [recordOpen, setRecordOpen] = useState(false);
   // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
   const [stored] = useState<Mode | null>(() => readMode(id));
   // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
@@ -930,9 +919,6 @@ export function MedicalCard() {
   const checks = readinessChecks(card, id!);
   const doneCount = checks.filter((c) => c.done).length;
   const complete = doneCount === checks.length;
-  const importantFilled = card.profile.allergies.length > 0 || card.profile.allergies_none_known || card.profile.conditions.length > 0 || !!card.pet.health_notes;
-  // The kinds of record that are only optional: a visit or an operation is not owed, so they wait in one group.
-  const optionalEmpty = (['visit', 'procedure'] as MedicalKind[]).filter((kind) => card.record_counts[kind] === 0);
   // Everyone with access to the pet may fill the card in (the profile and the records are the family's). A card that is not
   // filled in opens as the whole card, whatever was chosen last; a complete one opens as the person left it, else for the vet.
   const mode: Mode = chosen ?? (justCompleted.current ? 'fill' : complete ? stored ?? 'vet' : 'fill');
@@ -982,97 +968,7 @@ export function MedicalCard() {
             )}
           </Section>
 
-          {importantFilled && <ImportantBlock card={card} onEdit={() => navigate(`/pets/${id}/medical-profile`)} />}
-
-          {card.profile.clinics.length > 0 && (
-            <Section id="medcard-clinic" title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'} action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile?section=clinic`) }}>
-              <ul className="medcard__list">
-                {card.profile.clinics.map((c, i) => (
-                  <ClinicRow key={`${c.name ?? ''}-${i}`} clinic={c} />
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {hasLife(card.profile) && (
-            <Section id="medcard-life" title="Питание и условия" action={{ label: 'Изменить', onClick: () => navigate(`/pets/${id}/medical-profile`) }}>
-              <ul className="medcard__list">
-                <LifeRows profile={card.profile} />
-              </ul>
-            </Section>
-          )}
-
-          <Section id="medcard-medications" title="Лекарства сейчас" action={{ label: card.medications.length ? 'Все лекарства' : 'Добавить', onClick: () => navigate(card.medications.length ? '/medications' : '/medications/new') }}>
-            {card.medications.length === 0 ? (
-              <p className="medcard__empty">Сейчас ничего не принимает</p>
-            ) : (
-              <ul className="medcard__list">
-                {card.medications.map((c) => (
-                  <CourseRow key={c.id} course={c} />
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          {(['vaccination', 'parasite', 'visit', 'procedure'] as MedicalKind[]).map((kind) => (
-            <KindSection key={kind} kind={kind} card={card} petId={id!} hidden={hidden} navigate={navigate} />
-          ))}
-
-          {optionalEmpty.length > 0 && (
-            <Section id="medcard-optional" title={optionalEmpty.length > 1 ? 'Ещё можно добавить' : MEDICAL_KIND_LABELS[optionalEmpty[0]].section}>
-              <ul className="medcard__list">
-                {optionalEmpty.map((kind) => (
-                  <li key={kind} className="medcard__row" style={{ padding: 0 }}>
-                    <button type="button" className="medcard__row-button medcard__todo-row" onClick={() => navigate(`/pets/${id}/medical-records/new?kind=${kind}`)}>
-                      <span className="medcard__row-title">{MEDICAL_KIND_LABELS[kind].section}</span>
-                      <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {card.past_courses.length > 0 && (
-            <Section id="medcard-past-courses" title="Прошлые курсы">
-              <ul className="medcard__list">
-                {card.past_courses.map((c) => (
-                  <CourseRow key={c.id} course={c} />
-                ))}
-              </ul>
-              {card.past_courses_total > card.past_courses.length && (
-                <p className="medcard__more">{card.past_courses.length === 1 ? `Показан последний курс из ${card.past_courses_total}` : `Показаны последние ${card.past_courses.length} из ${card.past_courses_total}`} Остальные есть в PDF</p>
-              )}
-            </Section>
-          )}
-
-          {card.weight && (
-            <Section id="medcard-weight" title="Вес" action={{ label: 'История', onClick: () => navigate('/history') }}>
-              <div className="medcard__weight">
-                <div className="medcard__weight-now">
-                  <span className="medcard__weight-value">{card.weight.latest.value.toLocaleString('ru-RU')} кг</span>
-                  <span className="medcard__weight-date">{formatDate(card.weight.latest.date)}</span>
-                </div>
-                {weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
-                <Sparkline points={card.weight.series.map((p) => p.value)} />
-              </div>
-            </Section>
-          )}
-
-          {card.documents.length > 0 && (
-            <Section id="medcard-documents" title="Последние результаты" action={{ label: 'Все документы', onClick: () => navigate('/documents') }}>
-              <ul className="medcard__list">
-                {card.documents.map((d) => (
-                  <li key={d.id} className="medcard__row">
-                    <div className="medcard__row-main">
-                      <div className="medcard__row-title">{d.title}</div>
-                      <div className="medcard__row-sub">{DOCUMENT_CATEGORY_LABELS[d.category as DocumentCategory] ?? 'Документ'}, {formatDate(d.added)}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
+          <MedicalSummary card={card} petId={id!} hidden={hidden} navigate={navigate} />
 
             </>
           )}
@@ -1080,25 +976,8 @@ export function MedicalCard() {
           <p className="medcard__stamp">Собрано из записей питомца на {formatDate(card.generated_at)}</p>
         </div>
       </div>
-      {/* The same round «+» as the feed's, bottom right: one way to add, whose sheet depends on the screen (the feed's
-          is the diary, this one is the card). In a portal for the same reason, and only in the mode that edits. */}
-      {mode === 'fill' &&
-        createPortal(
-          <button type="button" className="app-fab" aria-label="Записать в медкарту" aria-haspopup="dialog" onClick={() => setRecordOpen(true)}>
-            <AddOutline fontSize={28} aria-hidden />
-          </button>,
-          document.body,
-        )}
-      <RecordSheet
-        visible={recordOpen}
-        petId={id!}
-        petName={pets.find((p) => p._id === id)?.name}
-        onClose={() => setRecordOpen(false)}
-        onChoose={(to) => {
-          setRecordOpen(false);
-          navigate(to);
-        }}
-      />
+      {/* The same round «+» as the feed's, in the mode that edits; the reading mode has nothing to add to. */}
+      {mode === 'fill' && <RecordFab petId={id!} petName={pets.find((p) => p._id === id)?.name} />}
     </div>
   );
 }

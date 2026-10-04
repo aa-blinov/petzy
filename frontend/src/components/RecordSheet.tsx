@@ -1,5 +1,8 @@
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { Popup } from 'antd-mobile';
+import { AddOutline } from 'antd-mobile-icons';
 import { Bug, FileText, HeartPulse, Pill, Scale, Scissors, Stethoscope, Syringe, TriangleAlert, type LucideIcon } from 'lucide-react';
 
 import { DraggableSheetBody } from './DraggableSheetBody';
@@ -68,5 +71,32 @@ export function RecordSheet({ visible, petId, petName, onClose, onChoose }: { vi
         ))}
       </DraggableSheetBody>
     </Popup>
+  );
+}
+
+/** The round «+» of the medical card and the sheet it opens: the same on every screen of the card that edits. In a portal,
+    as the feed's is, so that no page-level containing block moves it. */
+export function RecordFab({ petId, petName }: { petId: string; petName?: string }) {
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  return (
+    <>
+      {createPortal(
+        <button type="button" className="app-fab" aria-label="Записать в медкарту" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+          <AddOutline fontSize={28} aria-hidden />
+        </button>,
+        document.body,
+      )}
+      <RecordSheet
+        visible={open}
+        petId={petId}
+        petName={petName}
+        onClose={() => setOpen(false)}
+        onChoose={(to) => {
+          setOpen(false);
+          navigate(to);
+        }}
+      />
+    </>
   );
 }
