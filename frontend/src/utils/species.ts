@@ -30,7 +30,7 @@ export type BuiltinEvent =
   | 'feeding' | 'weight' | 'defecation' | 'litter' | 'asthma' | 'eye_drops' | 'ear_cleaning' | 'tooth_brushing'
   | 'treat' | 'water_intake' | 'appetite' | 'urination' | 'vomiting' | 'temperature' | 'mood' | 'cough' | 'seizure'
   | 'itching' | 'limping' | 'bathing' | 'brushing' | 'nail_trim' | 'walk' | 'play' | 'training' | 'cage_cleaning'
-  | 'water_change' | 'filter_cleaning' | 'uv_lamp' | 'misting' | 'shedding';
+  | 'water_change' | 'filter_cleaning' | 'uv_lamp' | 'misting' | 'shedding' | 'water_test' | 'terrarium_climate' | 'out_of_cage';
 
 /** The original eight: they were all a pet's, hidden or shown; the catalogue has since grown (see tilesConfig). */
 const ORIGINAL: BuiltinEvent[] = ['feeding', 'weight', 'defecation', 'litter', 'asthma', 'eye_drops', 'ear_cleaning', 'tooth_brushing'];
@@ -41,36 +41,39 @@ const ORIGINAL: BuiltinEvent[] = ['feeding', 'weight', 'defecation', 'litter', '
  * ones that suit its kind of animal come first (SUGGESTED).
  */
 const STARTER: Record<SpeciesKey, BuiltinEvent[]> = {
-  cat: ['feeding', 'weight', 'litter', 'vomiting', 'water_intake'],
+  cat: ['feeding', 'weight', 'litter', 'vomiting', 'brushing'],
   dog: ['feeding', 'weight', 'walk', 'defecation', 'vomiting'],
-  rabbit: ['feeding', 'weight', 'defecation', 'cage_cleaning', 'nail_trim'],
+  // Not eating is an emergency for a rabbit: appetite is on from the first day.
+  rabbit: ['feeding', 'weight', 'defecation', 'appetite', 'cage_cleaning'],
   ferret: ['feeding', 'weight', 'litter', 'play'],
   guinea_pig: ['feeding', 'weight', 'defecation', 'cage_cleaning'],
   chinchilla: ['feeding', 'weight', 'cage_cleaning', 'bathing'],
   rat: ['feeding', 'weight', 'cage_cleaning', 'play'],
   hamster: ['feeding', 'weight', 'cage_cleaning'],
-  bird: ['feeding', 'weight', 'cage_cleaning', 'bathing', 'shedding'],
-  fish: ['feeding', 'water_change', 'filter_cleaning'],
-  turtle: ['feeding', 'weight', 'water_change', 'uv_lamp', 'cage_cleaning'],
-  reptile: ['feeding', 'weight', 'shedding', 'misting', 'cage_cleaning'],
-  other: ['feeding', 'weight', 'defecation', 'cage_cleaning'],
+  bird: ['feeding', 'weight', 'cage_cleaning', 'bathing', 'out_of_cage'],
+  // The water is what an aquarium's care is about: its numbers, not a weight.
+  fish: ['feeding', 'water_test', 'water_change', 'filter_cleaning'],
+  turtle: ['feeding', 'weight', 'terrarium_climate', 'water_change', 'uv_lamp'],
+  reptile: ['feeding', 'weight', 'shedding', 'terrarium_climate', 'misting'],
+  // Not every animal has a cage: nothing about one here, it is in the catalogue for whoever has.
+  other: ['feeding', 'weight', 'defecation'],
 };
 
 /** Beyond the starter set, what is worth offering first for this kind of animal. */
 const SUGGESTED: Record<SpeciesKey, BuiltinEvent[]> = {
-  cat: ['defecation', 'urination', 'appetite', 'temperature', 'mood', 'cough', 'itching', 'brushing', 'nail_trim', 'bathing', 'play', 'treat', 'eye_drops', 'ear_cleaning', 'tooth_brushing', 'asthma', 'seizure'],
+  cat: ['water_intake', 'defecation', 'urination', 'appetite', 'temperature', 'mood', 'cough', 'itching', 'nail_trim', 'bathing', 'play', 'treat', 'eye_drops', 'ear_cleaning', 'tooth_brushing', 'asthma', 'seizure'],
   dog: ['water_intake', 'urination', 'appetite', 'temperature', 'mood', 'cough', 'itching', 'limping', 'bathing', 'brushing', 'nail_trim', 'training', 'play', 'treat', 'eye_drops', 'ear_cleaning', 'tooth_brushing', 'seizure'],
-  rabbit: ['water_intake', 'appetite', 'urination', 'temperature', 'mood', 'litter', 'brushing', 'treat', 'eye_drops', 'ear_cleaning', 'play'],
-  ferret: ['defecation', 'appetite', 'temperature', 'mood', 'bathing', 'nail_trim', 'treat', 'ear_cleaning', 'cage_cleaning'],
-  guinea_pig: ['water_intake', 'appetite', 'litter', 'temperature', 'mood', 'nail_trim', 'treat', 'eye_drops'],
-  chinchilla: ['water_intake', 'appetite', 'defecation', 'mood', 'nail_trim', 'treat'],
-  rat: ['water_intake', 'appetite', 'defecation', 'temperature', 'mood', 'treat', 'bathing', 'cough'],
+  rabbit: ['water_intake', 'urination', 'temperature', 'mood', 'litter', 'nail_trim', 'brushing', 'treat', 'eye_drops', 'ear_cleaning', 'out_of_cage', 'play'],
+  ferret: ['defecation', 'appetite', 'temperature', 'mood', 'bathing', 'nail_trim', 'treat', 'ear_cleaning', 'cage_cleaning', 'out_of_cage'],
+  guinea_pig: ['water_intake', 'appetite', 'litter', 'temperature', 'mood', 'nail_trim', 'treat', 'eye_drops', 'out_of_cage'],
+  chinchilla: ['water_intake', 'appetite', 'defecation', 'mood', 'nail_trim', 'treat', 'out_of_cage'],
+  rat: ['water_intake', 'appetite', 'defecation', 'temperature', 'mood', 'treat', 'bathing', 'cough', 'out_of_cage'],
   hamster: ['water_intake', 'appetite', 'defecation', 'mood', 'play', 'treat'],
-  bird: ['defecation', 'appetite', 'water_intake', 'mood', 'nail_trim', 'treat', 'misting'],
-  fish: ['water_intake', 'mood', 'treat'],
-  turtle: ['defecation', 'appetite', 'bathing', 'shedding', 'misting', 'mood'],
-  reptile: ['defecation', 'appetite', 'water_intake', 'bathing', 'uv_lamp', 'water_change', 'mood'],
-  other: ['water_intake', 'appetite', 'urination', 'temperature', 'mood', 'bathing', 'brushing', 'treat', 'play'],
+  bird: ['shedding', 'defecation', 'appetite', 'water_intake', 'mood', 'nail_trim', 'treat', 'misting'],
+  fish: ['water_intake', 'mood', 'treat', 'cage_cleaning'],
+  turtle: ['cage_cleaning', 'filter_cleaning', 'defecation', 'appetite', 'bathing', 'shedding', 'misting', 'mood'],
+  reptile: ['cage_cleaning', 'defecation', 'appetite', 'water_intake', 'bathing', 'uv_lamp', 'water_change', 'mood'],
+  other: ['water_intake', 'appetite', 'urination', 'temperature', 'mood', 'cage_cleaning', 'bathing', 'brushing', 'treat', 'play'],
 };
 
 export interface Species {
