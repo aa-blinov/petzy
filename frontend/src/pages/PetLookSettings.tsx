@@ -469,8 +469,13 @@ function PetLookFor({ pet }: { pet: Pet }) {
                         className="tap-feedback"
                         onClick={() => setFont(f.key)}
                         style={{
-                          minHeight: 'var(--touch-min)',
-                          padding: '6px 12px',
+                          // One height for every face (it also scales with the text size): the name sits in the middle,
+                          // and the line of each face is tall enough for its letters (PET_FONTS line).
+                          height: '3.25rem',
+                          padding: '0 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           borderRadius: 'var(--radius-md)',
                           color: 'var(--app-text-primary)',
                           fontFamily: 'inherit',
@@ -479,13 +484,11 @@ function PetLookFor({ pet }: { pet: Pet }) {
                           textAlign: 'center',
                           cursor: 'pointer',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
                           ...optionState(on),
                           ...petFontStyle(face, 'var(--text-lg)'),
                         }}
                       >
-                        {pet.name}
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pet.name}</span>
                       </button>
                     );
                   })}

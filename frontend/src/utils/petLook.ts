@@ -58,15 +58,19 @@ export function petLookOf(pet?: Pick<Pet, 'look'> | null): PetLook {
 
 /**
  * Hand-written faces with Cyrillic and Latin (a name may be either). `scale` evens out their very different sizes at the
- * same font-size: Amatic is tiny, Pacifico wide. Their files are loaded on demand, see loadPetFont.
+ * same font-size: Amatic is tiny, Pacifico wide. `line` is the line-height (a multiple of the font-size) that holds the
+ * face's tallest and lowest letters of a name (Ё, Й, Щ, Д, ф, р) whole: these faces run far past the usual line box, and
+ * the name is cut off at its box (the card clamps it to two lines, the picker tile is one line). Measured on the canvas
+ * (actualBoundingBox against fontBoundingBox) for the letters of the Russian and Latin alphabets used in names. Their
+ * files are loaded on demand, see loadPetFont.
  */
 export const PET_FONTS = [
-  { key: 'caveat', label: 'Живой почерк', family: 'Caveat', weight: 700, scale: 1.55, load: () => Promise.all([import('@fontsource/caveat/cyrillic-700.css'), import('@fontsource/caveat/latin-700.css')]) },
-  { key: 'marck', label: 'Перо', family: 'Marck Script', weight: 400, scale: 1.4, load: () => Promise.all([import('@fontsource/marck-script/cyrillic-400.css'), import('@fontsource/marck-script/latin-400.css')]) },
-  { key: 'bad', label: 'Письмо', family: 'Bad Script', weight: 400, scale: 1.4, load: () => Promise.all([import('@fontsource/bad-script/cyrillic-400.css'), import('@fontsource/bad-script/latin-400.css')]) },
-  { key: 'pacifico', label: 'Мягкая кисть', family: 'Pacifico', weight: 400, scale: 1.05, load: () => Promise.all([import('@fontsource/pacifico/cyrillic-400.css'), import('@fontsource/pacifico/latin-400.css')]) },
-  { key: 'neucha', label: 'Мелки', family: 'Neucha', weight: 400, scale: 1.3, load: () => Promise.all([import('@fontsource/neucha/cyrillic-400.css'), import('@fontsource/neucha/latin-400.css')]) },
-  { key: 'amatic', label: 'Тонкий', family: 'Amatic SC', weight: 700, scale: 1.75, load: () => Promise.all([import('@fontsource/amatic-sc/cyrillic-700.css'), import('@fontsource/amatic-sc/latin-700.css')]) },
+  { key: 'caveat', label: 'Живой почерк', family: 'Caveat', weight: 700, scale: 1.55, line: 1.22, load: () => Promise.all([import('@fontsource/caveat/cyrillic-700.css'), import('@fontsource/caveat/latin-700.css')]) },
+  { key: 'marck', label: 'Перо', family: 'Marck Script', weight: 400, scale: 1.4, line: 1.29, load: () => Promise.all([import('@fontsource/marck-script/cyrillic-400.css'), import('@fontsource/marck-script/latin-400.css')]) },
+  { key: 'bad', label: 'Письмо', family: 'Bad Script', weight: 400, scale: 1.2, line: 1.92, load: () => Promise.all([import('@fontsource/bad-script/cyrillic-400.css'), import('@fontsource/bad-script/latin-400.css')]) },
+  { key: 'pacifico', label: 'Мягкая кисть', family: 'Pacifico', weight: 400, scale: 1.05, line: 1.8, load: () => Promise.all([import('@fontsource/pacifico/cyrillic-400.css'), import('@fontsource/pacifico/latin-400.css')]) },
+  { key: 'neucha', label: 'Мелки', family: 'Neucha', weight: 400, scale: 1.3, line: 1.42, load: () => Promise.all([import('@fontsource/neucha/cyrillic-400.css'), import('@fontsource/neucha/latin-400.css')]) },
+  { key: 'amatic', label: 'Тонкий', family: 'Amatic SC', weight: 700, scale: 1.75, line: 1.18, load: () => Promise.all([import('@fontsource/amatic-sc/cyrillic-700.css'), import('@fontsource/amatic-sc/latin-700.css')]) },
 ] as const;
 
 export type PetFont = (typeof PET_FONTS)[number];
@@ -91,9 +95,9 @@ export function loadPetFont(font: PetFont): Promise<unknown> {
 }
 
 /** The inline style that sets a name in the face, or none for the ordinary one. */
-export function petFontStyle(font: PetFont | undefined, baseSize: string): { fontFamily?: string; fontWeight?: number; fontSize?: string; letterSpacing?: string } {
+export function petFontStyle(font: PetFont | undefined, baseSize: string): { fontFamily?: string; fontWeight?: number; fontSize?: string; letterSpacing?: string; lineHeight?: number } {
   if (!font) return {};
-  return { fontFamily: `'${font.family}', var(--font-display)`, fontWeight: font.weight, fontSize: `calc(${baseSize} * ${font.scale})`, letterSpacing: '0' };
+  return { fontFamily: `'${font.family}', var(--font-display)`, fontWeight: font.weight, fontSize: `calc(${baseSize} * ${font.scale})`, letterSpacing: '0', lineHeight: font.line };
 }
 
 export const PET_FRAME_GROUPS = [

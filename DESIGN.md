@@ -196,6 +196,8 @@ The same roles on a warm night: night-hearth page, night-card sheets, night-ink 
 ### Named Rules
 **The Units-Beside-Values Rule.** Numbers are Russian-formatted («29,1 кг», «4,8»), with the unit next to the value, in charts, tooltips and chips alike.
 
+**The Whole-Letter Rule.** A pet's name may be set in a hand-written face (Caveat, Marck Script, Bad Script, Pacifico, Neucha, Amatic SC), and these run far past the usual line: a tail of «Щ», the loop of «Д», the dots of «Ё». Each face carries its own `line` (line-height) and `scale` in `PET_FONTS`, measured so that the tallest and the lowest letters of a name sit inside the line box, because the card clamps the name to two lines and cuts anything outside the box. The picker tiles are one height for every face (`3.25rem`, scaling with the text size) with the name in the middle. A new face is added only with its measured `line`.
+
 ## Layout
 
 One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (2, 4, 8, 12, 16, 24, 32px, the `--spacing-*` tokens); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. Each kind of gap has one value, listed under Spacing rules. The page reserves room for the fixed top bar (64px) and the bottom bar.
