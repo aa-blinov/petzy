@@ -299,6 +299,9 @@ _CATALOG_TYPES: list[dict[str, Any]] = [
         "Длительность (мин)",
     ),
     _count_type(
+        "out_of_cage", "Выпуск из клетки", "sun", "yellow", "activity", [_number("minutes", "Сколько (мин)", 1, 720, 1)]
+    ),
+    _count_type(
         "training",
         "Дрессировка",
         "star",
@@ -307,7 +310,33 @@ _CATALOG_TYPES: list[dict[str, Any]] = [
         [{"name": "skill", "label": "Что отрабатывали", "type": "text", "required": False, "options": None}],
     ),
     # The place a pet lives in
-    _count_type("cage_cleaning", "Уборка клетки", "shovel", "brown", "habitat"),
+    _count_type("cage_cleaning", "Уборка клетки или террариума", "shovel", "brown", "habitat"),
+    _count_type(
+        "water_test",
+        "Параметры воды",
+        "thermometer",
+        "teal",
+        "habitat",
+        [
+            _number("ph", "pH", 0, 14, 0.1, True),
+            _number("ammonia", "Аммоний или аммиак (мг/л)", 0, 10, 0.01),
+            _number("nitrite", "Нитриты (мг/л)", 0, 10, 0.01),
+            _number("nitrate", "Нитраты (мг/л)", 0, 500, 1),
+            _number("water_temp_c", "Температура воды (°C)", 0, 45, 0.1),
+        ],
+    ),
+    _count_type(
+        "terrarium_climate",
+        "Климат террариума",
+        "thermometer",
+        "orange",
+        "habitat",
+        [
+            _number("warm_zone_c", "Тёплая зона (°C)", 0, 60, 0.5, True),
+            _number("cool_zone_c", "Холодная зона (°C)", 0, 60, 0.5),
+            _number("humidity", "Влажность (%)", 0, 100, 1),
+        ],
+    ),
     _count_type(
         "water_change", "Подмена воды", "droplet", "blue", "habitat", [_number("percent", "Подменено (%)", 1, 100, 1)]
     ),
@@ -455,7 +484,10 @@ def backfill_litter_type(db) -> int:
 # carrying the old default gets the new one; a name someone chose stays.
 # Feeding was «Дневная порция» on the tile and form while the feed card said
 # «Кормление», and its portion had no unit.
-_OLD_DEFAULT_LABELS = {"feeding": ("Дневная порция", "Кормление")}
+_OLD_DEFAULT_LABELS = {
+    "feeding": ("Дневная порция", "Кормление"),
+    "cage_cleaning": ("Уборка клетки", "Уборка клетки или террариума"),
+}
 _OLD_DEFAULT_FIELD_LABELS = {("feeding", "food_weight"): ("Вес корма", "Вес корма (г)")}
 
 
