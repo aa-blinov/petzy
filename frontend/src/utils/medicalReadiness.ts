@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { medicalCardService, type MedicalCard } from '../services/medicalCard.service';
+import { showSnackbar } from './snackbar';
 import { showToast } from './toast';
 
 export interface ReadinessCheck {
@@ -63,7 +64,7 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
 
 /** «Прививка добавлена. Заполнено 3 из 5.» after a save: the owner sees the card is getting there.
     The saved thing is confirmed at once; the count comes with the fresh card and is left out if it can't be had. */
-export async function confirmWithProgress(queryClient: QueryClient, petId: string, saved: string): Promise<void> {
+export async function confirmWithProgress(queryClient: QueryClient, petId: string, saved: string, action?: { label: string; run: () => void }): Promise<void> {
   try {
     const card = await queryClient.fetchQuery({ queryKey: ['medical-card', petId], queryFn: () => medicalCardService.get(petId), staleTime: 0 });
     const checks = readinessChecks(card, petId);
@@ -77,9 +78,12 @@ export async function confirmWithProgress(queryClient: QueryClient, petId: strin
         /* no storage: the card opens as it usually does */
       }
     }
-    showToast.success(done === checks.length ? `${saved}. Главное для врача заполнено` : `${saved}. Заполнено ${done} из ${checks.length}`);
+    const message = done === checks.length ? `${saved}. Главное для врача заполнено` : `${saved}. Заполнено ${done} из ${checks.length}`;
+    if (action) showSnackbar({ message, tone: 'success', action });
+    else showToast.success(message);
   } catch {
-    showToast.success(saved);
+    if (action) showSnackbar({ message: saved, tone: 'success', action });
+    else showToast.success(saved);
   }
 }
 
