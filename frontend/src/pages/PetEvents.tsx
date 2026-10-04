@@ -180,7 +180,7 @@ export function PetEvents() {
                 type="button"
                 className="tap-feedback"
                 onClick={() => setCatalogOpen(true)}
-                style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
+                style={{ width: '100%', minHeight: 'var(--btn-height)', marginTop: 'var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
               >
                 <Plus size={18} strokeWidth={2.4} aria-hidden />
                 Добавить событие

@@ -173,7 +173,6 @@ export function EventTypesSettings() {
             color="primary"
             size="large"
             onClick={() => navigate('/event-types/new')}
-            style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
           >
             <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
             Создать тип события

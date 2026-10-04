@@ -1,6 +1,6 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { PullToRefresh } from 'antd-mobile';
+import { Button, PullToRefresh } from 'antd-mobile';
 import { Download, Notebook, ChevronDown, Rows3 } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
@@ -222,28 +222,18 @@ export function History() {
                         display: 'flex',
                         justifyContent: 'center',
                     }}>
-                        <button
-                            type="button"
+                        <Button
+                            fill="outline"
+                            color="primary"
                             onClick={() => {
                                 hapticFeedback('light');
                                 fetchNextPage();
                             }}
                             disabled={isFetchingNextPage}
-                            style={{
-                                padding: '10px 24px',
-                                minHeight: 'var(--touch-min)',
-                                borderRadius: 'var(--app-border-radius)',
-                                border: '1px solid var(--app-border-color)',
-                                background: 'var(--app-card-background)',
-                                color: 'var(--app-accent-deep)',
-                                fontWeight: 600,
-                                fontSize: 'var(--text-sm)',
-                                cursor: isFetchingNextPage ? 'not-allowed' : 'pointer',
-                                opacity: isFetchingNextPage ? 0.6 : 1,
-                            }}
+                            loading={isFetchingNextPage}
                         >
                             {isFetchingNextPage ? 'Загрузка...' : 'Загрузить ещё'}
-                        </button>
+                        </Button>
                     </div>
                 )}
             </>

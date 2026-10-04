@@ -386,8 +386,9 @@ export function EventTypeForm() {
           <Button
             block
             fill="outline"
+            color="primary"
             onClick={addField}
-            style={{ marginTop: 'var(--spacing-md)', borderRadius: 'var(--radius-md)' }}
+            style={{ marginTop: 'var(--spacing-md)' }}
           >
             <Plus size={16} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
             Добавить поле
@@ -444,11 +445,10 @@ export function EventTypeForm() {
             size="large"
             loading={isSaving}
             onClick={handleSave}
-            style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
           >
             {isEditing ? 'Сохранить' : 'Создать'}
           </Button>
-          <Button block size="large" onClick={() => goBack(navigate, '/event-types')} style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}>
+          <Button block size="large" onClick={() => goBack(navigate, '/event-types')}>
             Отмена
           </Button>
         </div>

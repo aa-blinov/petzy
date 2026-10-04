@@ -326,6 +326,7 @@ export function Dashboard() {
                     <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 'var(--spacing-xl)' }}>
                       <Button
                         fill="outline"
+                        color="primary"
                         onClick={() => { fetchNextPage(); }}
                         disabled={isFetchingNextPage}
                         loading={isFetchingNextPage}

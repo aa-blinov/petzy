@@ -247,9 +247,12 @@ Softly rounded, never pill-shaped except where the shape is the meaning. The lad
 
 ### Buttons
 Soft and composed: one primary per screen.
-- **Shape:** gently rounded (12px).
+- **Shape:** gently rounded (12px), on every button; a chip is a pill and the add button is round, because there the shape is the meaning.
+- **Size:** two, picked by `size`, never by hand. **Large** (`size="large"`, 48px, the `--btn-height` token) is the main action of a screen or a sheet and the button stacked with it («Создать» and «Отмена», «Записать» and «Оформить карточку»). The **usual** size (44px, `--touch-min`) is for a button inside a card or a row («Дали сейчас», «Загрузить ещё»). The small and mini ones keep their look and get an invisible 44px area to touch. Plain `<button>`s that stand in for a large one (`SpinnerButton`, the sheet buttons) use the same `--btn-height`.
+- **Label:** body size (16px), weight 600, on every size but the small and mini ones, which keep their own size.
 - **Primary:** ginger-deep fill, white text, full width at 48px for the main action of a form or screen («Создать», «Принять сейчас»). The sign-in and sign-up buttons use the deepened brand gradient instead.
 - **Outline:** a copper outline with ginger-deep text for secondary actions in a card («Отметить приём», «Пополнить»).
+- **Neutral outline:** an oat outline with ink text for the way out («Отмена», «Отклонить»): it takes no colour, so a copper outline always means a step forward.
 - **Text:** plain ginger-deep text for header actions («+ Добавить»).
 - **Danger:** red text for destructive actions at the foot of a form; a solid red button only where deletion is the screen's purpose (dark text on it in the dark theme).
 - **Press:** 0.98 scale and a slight dim; no hover lift. A visible focus ring for the keyboard.
@@ -292,6 +295,7 @@ One page of one pet, in two modes under the title (the pet is named in the bar a
 - **Do** give every colour a dark-theme counterpart by role, with dark text on the dark theme's light fills.
 - **Do** write numbers the Russian way with the unit beside them («29,1 кг»).
 - **Do** keep touch targets at 44px, even for small chips, grips and links.
+- **Do** let `size` pick a button's height, radius and label: a `Button` carries no radius, height or weight of its own.
 
 ### Don't:
 - **Don't** put ginger-cat (#C46A3F) under white text or use it as text on cream.

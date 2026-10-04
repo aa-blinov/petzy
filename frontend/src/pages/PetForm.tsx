@@ -920,7 +920,6 @@ export function PetForm() {
               block
               size="large"
               onClick={() => goBack(navigate, '/pets')}
-              style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
             >
               {readOnly ? 'Назад' : 'Отмена'}
             </Button>

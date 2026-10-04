@@ -202,6 +202,8 @@
 
     /* The smallest target for a finger: a control may be drawn smaller, it may not be pressed smaller. */
     --touch-min: 44px;
+    /* The main action of a screen or a sheet (a large button); a button inside a card or a row is --touch-min tall. */
+    --btn-height: 48px;
 
     --line-height-tight: 1.2;
     --line-height-normal: 1.5;
@@ -1118,10 +1120,20 @@ a,
     --border-radius: var(--app-border-radius) !important;
 }
 
-/* Buttons of the usual and the large size are at least a thumb tall (44px): «Дали сейчас» was 40. The mini and small ones
-   keep their look and get an invisible 44px area to touch (see .touch-target below). */
+/* One button system. The usual size is a thumb tall (44px, inside a card or a row), the large one is the screen's main
+   action (48px, --btn-height); both set the label in the body size at weight 600. The mini and small ones keep their look
+   and get an invisible 44px area to touch (see .touch-target below). */
+.adm-button {
+    font-weight: 600;
+}
+
 .adm-button:not(.adm-button-mini):not(.adm-button-small) {
     min-height: var(--touch-min);
+    font-size: var(--text-md);
+}
+
+.adm-button-large:not(.adm-button-mini):not(.adm-button-small) {
+    min-height: var(--btn-height);
 }
 
 .adm-form-item-description {

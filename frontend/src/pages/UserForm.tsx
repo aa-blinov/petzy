@@ -288,7 +288,6 @@ export function UserForm() {
               block
               size="large"
               onClick={() => goBack(navigate, '/admin')}
-              style={{ borderRadius: '12px', fontWeight: 500 }}
             >
               Отмена
             </Button>
@@ -302,8 +301,8 @@ export function UserForm() {
                 fill="none"
                 loading={setActive.isPending}
                 onClick={() => setActive.mutate(true)}
-                style={{ borderRadius: '12px', fontWeight: 500, color: 'var(--app-success-text)' }}
-              >
+                style={{ color: 'var(--app-success-text)' }}
+            >
                 Активировать
               </Button>
             ) : (
