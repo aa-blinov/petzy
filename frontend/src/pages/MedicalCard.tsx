@@ -836,19 +836,13 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
         </Section>
       )}
 
-      <div className="medcard__actions">
-        {canPdf && (
-        <Button block color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
-          <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-            Скачать PDF для врача
-        </Button>
-        )}
-        {onAll && (
+      {onAll && (
+        <div className="medcard__actions">
           <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
             Открыть сводку
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }
@@ -979,6 +973,26 @@ export function MedicalCard() {
               <p className="medcard__empty">Что беспокоит и что изменилось: врач увидит это первой строкой</p>
             )}
           </Section>
+
+          {/* Two ways to hand the card over, below the tiles so that they stay high: the file, and a link that opens with no
+              sign-in. An empty card is not worth either, as in the reading view: they come with two of the five steps. */}
+          {doneCount >= 2 && (
+            <section aria-labelledby="medcard-forvet">
+              <div className="medcard__section-head">
+                <h2 id="medcard-forvet" className="medcard__section-title">Для врача</h2>
+              </div>
+              <div className="medcard__forvet">
+                <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
+                  <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+                  Скачать PDF
+                </Button>
+                <Button block fill="outline" color="primary" size="large" onClick={() => setShareOpen(true)}>
+                  <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+                  Ссылка для врача
+                </Button>
+              </div>
+            </section>
+          )}
 
             </>
           )}

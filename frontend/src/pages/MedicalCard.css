@@ -659,3 +659,10 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
 .medcard__link--quiet {
     color: var(--app-text-secondary);
 }
+
+/* The two ways to hand the card over, one under the other. */
+.medcard__forvet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}

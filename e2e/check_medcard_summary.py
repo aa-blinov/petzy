@@ -22,7 +22,17 @@ async def main():
         check("tiles start high on the first screen", ty < 420, f"first tile at y={ty}")
         check("at least four tiles are fully visible without scrolling", vis >= 4, f"{vis} of 8")
         body = await pg.inner_text("body")
-        check("the PDF button is not on the summary", "Скачать PDF" not in body and "Показать врачу" not in body)
+        check("the summary ends with «Для врача» and two different buttons", "Для врача" in body)
+        pdf = pg.get_by_role("button", name="Скачать PDF")
+        link = pg.get_by_role("button", name="Ссылка для врача")
+        check("one PDF button and one link button on the summary", await pdf.count() == 1 and await link.count() == 1)
+        lo = await pdf.evaluate("e => e.getBoundingClientRect().top")
+        tiles_bottom = await pg.evaluate("document.querySelector('.medsum').getBoundingClientRect().bottom")
+        check("they are below the tiles", lo > tiles_bottom)
+        gap = await pg.evaluate(
+            "(() => { const a = [...document.querySelectorAll('.medcard__forvet .adm-button')].map(b => b.getBoundingClientRect()); return Math.round(a[1].top - a[0].bottom); })()"
+        )
+        check("the buttons are 12px apart", gap == 12, f"{gap}px")
         order = await pg.evaluate(
             "(() => { const a = document.querySelector('.medsum').getBoundingClientRect().top, b = [...document.querySelectorAll('h2')].find(h => h.textContent.includes('К приёму')).getBoundingClientRect().top; return a < b; })()"
         )
