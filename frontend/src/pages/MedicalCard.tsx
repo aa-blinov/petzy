@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Link2, Minus, ShieldAlert } from 'lucide-react';
+import { MedicalShareSheet } from '../components/MedicalShareSheet';
 import { RecordFab } from '../components/RecordSheet';
 import { MedicalSummary } from '../components/MedicalSummary';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
@@ -676,7 +677,7 @@ function PatientLine({ pet }: { pet: Card['pet'] }) {
   );
 }
 
-function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; onAll: () => void }) {
+export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; /** The way to the summary: only where there is one (not on the page a vet opens by a link). */ onAll?: () => void; /** A link to the card for a vet: only the owner's side offers it. */ onShare?: () => void }) {
   const due = (['vaccination', 'parasite'] as const)
     .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
     .sort((a, b) => urgencyRank(a) - urgencyRank(b));
@@ -697,7 +698,15 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
                 Скачать PDF
               </span>
             </Button>
-            <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>
+            {onShare && (
+              <Button size="small" color="primary" fill="outline" onClick={onShare}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                  <Link2 size={16} strokeWidth={2.2} aria-hidden />
+                  Ссылка для врача
+                </span>
+              </Button>
+            )}
+            {onAll && <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>}
           </>
         ) : (
           // A PDF of an empty card helps nobody: it is offered once two of the five are there, as in the whole card.
@@ -834,9 +843,11 @@ function VetView({ card, hidden, saving, canPdf, onPdf, onAll }: { card: Card; h
             Скачать PDF для врача
         </Button>
         )}
-        <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
-          Открыть сводку
-        </button>
+        {onAll && (
+          <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
+            Открыть сводку
+          </button>
+        )}
       </div>
     </>
   );
@@ -849,6 +860,7 @@ export function MedicalCard() {
   const navigate = useNavigate();
   const hidden = useHiddenRecords();
   const [saving, setSaving] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
   const [stored] = useState<Mode | null>(() => readMode(id));
   // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
@@ -946,7 +958,7 @@ export function MedicalCard() {
           <OverdueStrip card={card} petId={id!} navigate={navigate} canAct={mode === 'fill'} hidden={hidden} />
 
           {mode === 'vet' ? (
-            <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} />
+            <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} onShare={() => setShareOpen(true)} />
           ) : (
             <>
           <ReadinessBlock card={card} petId={id!} navigate={navigate} />
@@ -976,6 +988,7 @@ export function MedicalCard() {
       </div>
       {/* The same round «+» as the feed's, in the mode that edits; the reading mode has nothing to add to. */}
       {mode === 'fill' && <RecordFab petId={id!} petName={pets.find((p) => p._id === id)?.name} />}
+      <MedicalShareSheet visible={shareOpen} petId={id!} petName={card.pet.name} onClose={() => setShareOpen(false)} />
     </div>
   );
 }

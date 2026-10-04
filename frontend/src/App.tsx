@@ -65,6 +65,7 @@ const PetEvents = lazy(() => import('./pages/PetEvents').then(m => ({ default: m
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
 const MedicalCard = lazy(() => import('./pages/MedicalCard').then(m => ({ default: m.MedicalCard })));
 const MedicalCardSection = lazy(() => import('./pages/MedicalCardSection').then(m => ({ default: m.MedicalCardSection })));
+const SharedMedicalCard = lazy(() => import('./pages/SharedMedicalCard').then(m => ({ default: m.SharedMedicalCard })));
 const MedicalProfileForm = lazy(() => import('./pages/MedicalProfileForm').then(m => ({ default: m.MedicalProfileForm })));
 const VisitPrepForm = lazy(() => import('./pages/VisitPrepForm').then(m => ({ default: m.VisitPrepForm })));
 const MedicalRecordForm = lazy(() => import('./pages/MedicalRecordForm').then(m => ({ default: m.MedicalRecordForm })));
@@ -254,6 +255,7 @@ function AppRoutes() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/share/medical/:token" element={<SharedMedicalCard />} />
               <Route path="/consent" element={<PrivacyConsent />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
