@@ -783,13 +783,13 @@ export function MedicalRecordForm() {
 
           <div className="medrec__add-files">
             <Button fill="outline" color="primary" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => cameraInput.current?.click()}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                 <Camera size={18} strokeWidth={2.2} aria-hidden />
                 Сфотографировать
               </span>
             </Button>
             <Button fill="outline" color="primary" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => fileInput.current?.click()}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                 <FileUp size={18} strokeWidth={2.2} aria-hidden />
                 Выбрать файл
               </span>

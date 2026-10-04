@@ -338,7 +338,7 @@ function PetCard({
               {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
             </div>
             {/* Every chip of the pet on a line that wraps: two to a row where they fit, not one under another. */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>
             {lastWeight && (
               <span
                 className="chip"
@@ -449,7 +449,7 @@ function PetCard({
                     />
                   ))}
                   {pet.shared_with.length > 3 && (
-                    <span style={{ marginLeft: '2px' }}>+{pet.shared_with.length - 3}</span>
+                    <span style={{ marginLeft: 'var(--spacing-xs)' }}>+{pet.shared_with.length - 3}</span>
                   )}
                 </div>
                 {`Общий доступ${pet.shared_with.length > 1 ? ` (${pet.shared_with.length})` : ''}`}

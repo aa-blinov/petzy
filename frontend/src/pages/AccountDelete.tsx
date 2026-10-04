@@ -162,8 +162,7 @@ export function AccountDelete() {
         )}
 
         <div
-          className="safe-area-padding"
-          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}
+          className="safe-area-padding form-actions"
         >
           {preview?.can_delete && (
             <Button block color="danger" size="large" loading={busy} disabled={busy} onClick={ask}>

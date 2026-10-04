@@ -162,7 +162,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
             // the icon and the row looked unanchored.
             alignItems: 'flex-start',
             gap: '12px',
-            padding: '14px',
+            padding: 'var(--spacing-lg)',
           }}
         >
           {/* Pill-icon on the left — tinted rounded square with category icon */}
@@ -200,7 +200,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: 'var(--spacing-sm)',
                   alignSelf: 'flex-start',
                   background: 'none',
                   border: 'none',
@@ -221,7 +221,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '2px',
+                gap: 'var(--spacing-2xs)',
                 color: 'var(--app-text-primary)',
                 fontSize: '14px',
                 lineHeight: 1.45,

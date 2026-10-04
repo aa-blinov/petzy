@@ -158,6 +158,7 @@
     --species-gradient-default: var(--app-brand-gradient);
 
     /* Spacing Scale */
+    --spacing-2xs: 2px;
     --spacing-xs: 4px;
     --spacing-sm: 8px;
     --spacing-md: 12px;
@@ -474,9 +475,9 @@
 .setting-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: var(--spacing-md);
     width: 100%;
-    padding: 14px 16px;
+    padding: var(--spacing-lg);
     background: transparent;
     border: none;
     text-align: left;
@@ -1612,7 +1613,7 @@ button:focus-visible,
 .history-filter-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--spacing-sm);
     /* Tap target, not a status badge — matches the old chip's size. */
     padding: 8px 14px;
     /* Sits in .max-width-container (no padding of its own), so the
@@ -2055,7 +2056,7 @@ button.chip::after {
 
     .app-tab-bar__item {
         flex-direction: row;
-        gap: 6px;
+        gap: var(--spacing-sm);
     }
 
     .app-tab-bar__icon {
@@ -2175,6 +2176,14 @@ html.keyboard-open .form-sticky-action {
     .form-sticky-action {
         bottom: var(--spacing-sm);
     }
+}
+
+/* The buttons that close a form, stacked: 24px under the fields (as .form-sticky-action), 12px between the buttons. */
+.form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
 }
 
 /* A pet's own colour (utils/petLook.ts): re-tints the soft and deep accent inside whatever carries data-pet-accent,

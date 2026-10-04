@@ -523,7 +523,7 @@ export function MedicationsList() {
                                                 style={{
                                                     display: 'inline-flex',
                                                     alignItems: 'center',
-                                                    gap: '6px',
+                                                    gap: 'var(--spacing-sm)',
                                                     marginBottom: 'var(--spacing-sm)',
                                                     background: 'none',
                                                     border: 'none',
@@ -571,7 +571,7 @@ export function MedicationsList() {
                                                             {stock.flag && <span>{stock.flag}</span>}
                                                         </div>
                                                         {stock.lasts && (
-                                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 2 }}>
+                                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>
                                                                 {stock.lasts}
                                                             </div>
                                                         )}

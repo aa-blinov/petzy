@@ -83,16 +83,16 @@ export function UserProfile() {
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-xl)' }}>
-          <h2 className="section-header" style={{ marginBottom: 10, paddingLeft: 4 }}>
+          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)', paddingLeft: 4 }}>
             Общие питомцы
           </h2>
           {profile.shared_pets.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
               {profile.shared_pets.map((petName) => (
                 <div
                   key={petName}
                   className="card-soft"
-                  style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}
+                  style={{ padding: 'var(--spacing-lg)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}
                 >
                   <PawPrint size={18} strokeWidth={2} style={{ color: 'var(--app-accent-deep)' }} />
                   <span style={{ fontWeight: 500 }}>{petName}</span>

@@ -389,7 +389,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--spacing-sm);
     margin: 0;
     font-size: var(--text-sm);
     font-weight: 600;
@@ -531,7 +531,7 @@
 /* A status pill under the lines of a stacked row: on its own line, at the left, the same place in every row. */
 .medcard__row--stack > .medcard__status {
     align-self: flex-start;
-    margin-top: 6px;
+    margin-top: var(--spacing-sm);
 }
 
 /* What is overdue: the one place on the card that is red, and the way to put it right. */

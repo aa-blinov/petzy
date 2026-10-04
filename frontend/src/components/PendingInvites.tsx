@@ -85,7 +85,7 @@ function InviteCard({ invite }: { invite: PetInvite }) {
           <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--app-accent-deep)' }}>
             Приглашение
           </div>
-          <div style={{ fontSize: 'var(--text-md)', color: 'var(--app-text-primary)', marginTop: 2, overflowWrap: 'anywhere' }}>
+          <div style={{ fontSize: 'var(--text-md)', color: 'var(--app-text-primary)', marginTop: 'var(--spacing-2xs)', overflowWrap: 'anywhere' }}>
             <strong>{invite.owner}</strong> приглашает вас вести дневник питомца <strong>{invite.pet_name}</strong>
           </div>
         </div>

@@ -208,7 +208,7 @@ export function NextDoseWidget() {
                         <h2
                             className="clamp-2"
                             style={{
-                                margin: '2px 0 0',
+                                margin: 'var(--spacing-2xs) 0 0',
                                 fontSize: 'var(--text-lg)',
                                 fontWeight: 700,
                                 color: 'var(--app-text-primary)',
@@ -217,14 +217,14 @@ export function NextDoseWidget() {
                         >
                             {nextDose.name}
                         </h2>
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>
                             {nextDose.carried_over
                                 ? `вчера в ${nextDose.time}, не отмечено`
                                 : due ? `по расписанию в ${nextDose.time}` : `сегодня в ${nextDose.time}`}
                         </div>
                         {todays.length > 1 && (
                             // One card for one dose: what else is waiting is said, not left to appear after the first is marked.
-                            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: '2px' }}>
+                            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>
                                 {sameTimeAsNext > 0
                                     ? `ещё ${sameTimeAsNext} ${sameTimeAsNext === 1 ? 'лекарство' : 'лекарства'} в это же время, всего сегодня осталось ${todays.length}`
                                     : `сегодня осталось приёмов: ${todays.length}`}

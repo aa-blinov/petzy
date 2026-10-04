@@ -11,7 +11,7 @@ export function HistoryItemSkeleton() {
       display: 'flex',
       alignItems: 'flex-start',
       gap: '12px',
-      padding: '14px',
+      padding: 'var(--spacing-lg)',
     }}>
       <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0 }} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -38,10 +38,10 @@ export function PetCardSkeleton() {
 
 export function MedicationCardSkeleton() {
   return (
-    <div className="card-soft" style={{ padding: '20px' }}>
+    <div className="card-soft" style={{ padding: 'var(--spacing-lg)' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
         <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 12 }} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="skeleton" style={{ height: 16, width: '45%' }} />
           <div className="skeleton" style={{ height: 12, width: '60%' }} />
         </div>
@@ -60,7 +60,7 @@ export function DashboardSkeleton() {
       {/* Pet hero skeleton */}
       <div className="card-soft" style={{ overflow: 'hidden' }}>
         <div className="skeleton" style={{ width: '100%', height: 180, borderRadius: 0 }} />
-        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="skeleton" style={{ height: 14, width: '30%' }} />
           <div style={{ display: 'flex', gap: 8 }}>
             <div className="skeleton" style={{ flex: 1, height: 56, borderRadius: 12 }} />

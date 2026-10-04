@@ -226,7 +226,7 @@ export function AdminPanel() {
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    marginBottom: 10,
+                    marginBottom: 'var(--spacing-md)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
@@ -256,7 +256,7 @@ export function AdminPanel() {
                     {user.email && (
                       <span style={{ fontSize: 12, color: 'var(--app-text-secondary)' }}>{user.email}</span>
                     )}
-                    <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ marginTop: 'var(--spacing-sm)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       {user.created_at && (
                         <span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>
                           {/* Raw "2026-09-20 07:40" was the only bare

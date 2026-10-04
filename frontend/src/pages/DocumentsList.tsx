@@ -337,7 +337,7 @@ export function DocumentsList() {
             >
               {groupedDocuments.map(([category, docs]) => (
                 <div key={category} style={{ marginBottom: 'var(--spacing-lg)' }}>
-                  <h2 className="section-header" style={{ marginBottom: '10px', paddingLeft: 4 }}>
+                  <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)', paddingLeft: 4 }}>
                     {DOCUMENT_CATEGORY_LABELS[category]}
                   </h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
@@ -463,7 +463,7 @@ export function DocumentsList() {
                                 </div>
                                 <p
                                   style={{
-                                    margin: '2px 0 0',
+                                    margin: 'var(--spacing-2xs) 0 0',
                                     fontSize: 'var(--text-sm)',
                                     color: 'var(--app-text-secondary)',
                                     whiteSpace: 'nowrap',
@@ -497,7 +497,7 @@ export function DocumentsList() {
                                     style={{
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '6px',
+                                      gap: 'var(--spacing-sm)',
                                       marginTop: '4px',
                                       background: 'none',
                                       border: 'none',
@@ -628,7 +628,7 @@ export function DocumentsList() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 'var(--spacing-sm)',
                   padding: '6px 12px',
                   border: 'none',
                   borderRadius: 999,
