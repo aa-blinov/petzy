@@ -25,6 +25,7 @@ from web.app import api
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
 from web.helpers import valid_tz
+from web.vaccines import GROUP_LABELS, effective_protects
 from web.schemas import (
     MEDICAL_KINDS,
     ErrorResponse,
@@ -74,20 +75,34 @@ def _latest_key(record: dict):
     return (record.get("date") or "", str(record.get("created_at") or ""), str(record["_id"]))
 
 
+def group_key(record: dict) -> tuple:
+    """What makes two records one line of the card: a newer one replaces an older one with the same key.
+
+    A vaccination is the same by what it is against (a change of brand is not a new vaccine), a treatment by what it is for;
+    when that is not known, by the name."""
+    kind = record["kind"]
+    protects = effective_protects(record)
+    if kind == "vaccination" and protects:
+        return (kind, "protects", protects)
+    if kind == "parasite" and record.get("target"):
+        return (kind, "target", record["target"])
+    return (kind, "title", normalize_title(record.get("title", "")))
+
+
 def record_states(records: list[dict], today: date) -> dict[str, dict]:
     """For every record: its status, days to the repeat, and whether a newer one replaced it."""
     latest: dict[tuple, dict] = {}
     for record in records:
         if record.get("kind") not in REPEATING_KINDS:
             continue
-        key = (record["kind"], normalize_title(record.get("title", "")))
+        key = group_key(record)
         if key not in latest or _latest_key(record) > _latest_key(latest[key]):
             latest[key] = record
     states = {}
     for record in records:
         rid = str(record["_id"])
         kind = record.get("kind")
-        if kind in REPEATING_KINDS and latest[(kind, normalize_title(record.get("title", "")))]["_id"] != record["_id"]:
+        if kind in REPEATING_KINDS and latest[group_key(record)]["_id"] != record["_id"]:
             states[rid] = {"status": "none", "days_left": None, "superseded": True}
             continue
         status, days_left = due_status(kind, record.get("next_due"), today)
@@ -124,6 +139,8 @@ def serialize_records(records: list[dict], today: date) -> list[dict]:
                 "note": r.get("note"),
                 "batch": r.get("batch"),
                 "target": r.get("target"),
+                "protects": effective_protects(r),
+                "protects_label": GROUP_LABELS.get(effective_protects(r) or ""),
                 "complaint": r.get("complaint"),
                 "diagnosis": r.get("diagnosis"),
                 "recommendations": r.get("recommendations"),
@@ -195,6 +212,7 @@ def _stored(data: dict, kind: str) -> dict:
         "document_ids": list(dict.fromkeys(data.get("document_ids") or [])),
         "batch": data.get("batch") if kind == "vaccination" else None,
         "target": data.get("target") if kind == "parasite" else None,
+        "protects": data.get("protects") if kind == "vaccination" else None,
         "complaint": data.get("complaint") if kind == "visit" else None,
         "diagnosis": data.get("diagnosis") if kind == "visit" else None,
         "recommendations": data.get("recommendations") if kind == "visit" else None,

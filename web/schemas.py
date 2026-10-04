@@ -1906,6 +1906,8 @@ class TimelineResponse(PaginatedResponse):
 
 MEDICAL_KINDS = ("vaccination", "parasite", "visit", "procedure")
 PARASITE_TARGETS = ("fleas_ticks", "worms", "both")
+# What a vaccination is against (web/vaccines.py keeps the labels and the known vaccines).
+VACCINE_PROTECTS = ("rabies", "dhpp", "lepto", "kennel", "fvrcp", "felv", "myxo_rhd")
 
 
 class MedicalRecordBody(BaseModel):
@@ -1922,6 +1924,10 @@ class MedicalRecordBody(BaseModel):
     note: Optional[str] = Field(None, max_length=500)
     batch: Optional[str] = Field(None, max_length=50, description="Серия или лот (прививка)")
     target: Optional[str] = Field(None, description="fleas_ticks, worms или both (обработка от паразитов)")
+    protects: Optional[str] = Field(
+        None,
+        description="От чего прививка: rabies, dhpp, lepto, kennel, fvrcp, felv или myxo_rhd. Смена марки с той же защитой заменяет прежнюю запись",
+    )
     complaint: Optional[str] = Field(None, max_length=500, description="С чем пришли на приём (визит)")
     diagnosis: Optional[str] = Field(None, max_length=300, description="Диагноз (визит)")
     recommendations: Optional[str] = Field(None, max_length=500, description="Рекомендации врача (визит)")
@@ -1943,6 +1949,7 @@ class MedicalRecordBody(BaseModel):
         "diagnosis",
         "recommendations",
         "target",
+        "protects",
         "next_due",
         mode="before",
     )
@@ -1967,6 +1974,13 @@ class MedicalRecordBody(BaseModel):
             raise ValueError("Укажите: от блох и клещей, от глистов или от всего")
         return v
 
+    @field_validator("protects")
+    @classmethod
+    def validate_protects(cls, v):
+        if v is not None and v not in VACCINE_PROTECTS:
+            raise ValueError("Неизвестная защита: выберите из списка")
+        return v
+
     @model_validator(mode="after")
     def next_after_date(self):
         if self.next_due and self.next_due < self.date:
@@ -1989,6 +2003,7 @@ class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
         # What the kind doesn't have is not kept; a treatment needs to say against what.
         if self.kind != "vaccination":
             self.batch = None
+            self.protects = None
         if self.kind != "visit":
             self.complaint = self.diagnosis = self.recommendations = None
         if self.kind == "parasite":
@@ -2025,6 +2040,10 @@ class MedicalRecordItem(BaseModel):
     note: Optional[str] = None
     batch: Optional[str] = None
     target: Optional[str] = None
+    protects: Optional[str] = Field(
+        None, description="От чего прививка (ключ); для старых записей определяется по названию"
+    )
+    protects_label: Optional[str] = Field(None, description="То же словами")
     complaint: Optional[str] = None
     diagnosis: Optional[str] = None
     recommendations: Optional[str] = None
@@ -2235,3 +2254,20 @@ class SharedMedicalCardResponse(BaseModel):
 
     card: MedicalCardData
     expires_at: str
+
+
+class VaccineGroupItem(BaseModel):
+    key: str
+    label: str
+    species: List[str]
+
+
+class VaccineProductItem(BaseModel):
+    name: str
+    species: List[str]
+    protects: str
+
+
+class VaccineCatalogResponse(BaseModel):
+    groups: List[VaccineGroupItem]
+    products: List[VaccineProductItem]
