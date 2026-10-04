@@ -221,7 +221,11 @@ class TestUsedTypes:
             == 201
         )
         assert (
-            client.post("/api/events", json={**base, "type": "litter", "fields": {}}, headers=headers).status_code
+            client.post(
+                "/api/events",
+                json={**base, "type": "litter", "fields": {"litter_type": "Комкующийся"}},
+                headers=headers,
+            ).status_code
             == 201
         )
         response = client.get(f"/api/events/used-types?pet_id={test_pet['_id']}", headers=headers)

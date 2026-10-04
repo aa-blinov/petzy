@@ -286,7 +286,7 @@ def _seed_demo_data(db) -> None:
 
         # Litter change — every 3 days.
         if day % 3 == 0:
-            add_cat_event(day, 20, 0, "litter", {})
+            add_cat_event(day, 20, 0, "litter", {"litter_type": "Комкующийся"})
 
         # Tooth brushing — twice a week.
         if day % 4 == 0:
