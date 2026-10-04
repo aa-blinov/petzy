@@ -59,7 +59,7 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
   return [
     {
       key: 'risks',
-      label: 'Риски',
+      label: 'Здоровье и аллергии',
       icon: ShieldAlert,
       value: risks.length ? risks.join(', ') : 'Не заполнено',
       note: risksFilled ? undefined : { text: 'Врач спросит первым', tone: 'warn' },
