@@ -83,3 +83,21 @@ def test_a_seeded_older_install_gets_the_new_types_and_a_category_on_the_old(moc
     seed_builtin_event_types(mock_db)
     assert mock_db.event_types.find_one({"key": "feeding"})["category"] == "food"
     assert mock_db.event_types.find_one({"key": "walk"})["category"] == "activity"
+
+
+def test_a_litter_type_is_added_to_an_older_install_and_old_changes_take_the_first_option(mock_db):
+    from web.builtin_event_types import LITTER_TYPES, backfill_litter_type
+
+    mock_db.event_types.insert_one({"key": "litter", "label": "Смена лотка", "is_builtin": True, "fields": []})
+    mock_db.events.insert_one({"type": "litter", "pet_id": "p", "fields": {}})
+    mock_db.events.insert_one({"type": "litter", "pet_id": "p", "fields": {"litter_type": "Древесный"}})
+    seed_builtin_event_types(mock_db)
+    assert [f["name"] for f in mock_db.event_types.find_one({"key": "litter"})["fields"]] == ["litter_type"]
+    assert backfill_litter_type(mock_db) == 1
+    assert sorted(e["fields"]["litter_type"] for e in mock_db.events.find({"type": "litter"})) == sorted(
+        [LITTER_TYPES[0], "Древесный"]
+    )
+    # Again: nothing left to do, and the field is not added twice.
+    seed_builtin_event_types(mock_db)
+    assert backfill_litter_type(mock_db) == 0
+    assert len(mock_db.event_types.find_one({"key": "litter"})["fields"]) == 1

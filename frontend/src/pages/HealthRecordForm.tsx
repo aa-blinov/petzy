@@ -450,7 +450,7 @@ export function HealthRecordForm() {
                   {field.name === filledFromDefaults[filledFromDefaults.length - 1]?.name && (
                     // Under the last field that came filled, so that a value already there is not a surprise: where it came from and where to change it.
                     <p style={{ margin: '0 var(--spacing-md) var(--spacing-sm)', fontSize: 'var(--text-xs)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-                      Подставлено из значений по умолчанию для {selectedPetName}: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, снимите «Запоминается» под полем
+                      Подставлено из значений по умолчанию питомца: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, снимите «Запоминается» под полем
                     </p>
                   )}
                   {defaultableNames.has(field.name) && (
@@ -458,7 +458,7 @@ export function HealthRecordForm() {
                     <div style={{ padding: '0 var(--spacing-md)' }}>
                       <ChoiceChips label="Запоминание">
                         <ChoiceChip pressed={isPinned(field.name)} onClick={() => setPinChanged((prev) => ({ ...prev, [field.name]: !isPinned(field.name) }))}>
-                          {isPinned(field.name) ? `Запоминается для ${selectedPetName}` : `Запомнить для ${selectedPetName}`}
+                          {isPinned(field.name) ? 'Запоминается для этого питомца' : 'Запомнить для этого питомца'}
                         </ChoiceChip>
                       </ChoiceChips>
                     </div>

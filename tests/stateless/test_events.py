@@ -188,7 +188,7 @@ class TestCreateEvent:
             "/api/events",
             json={
                 "pet_id": str(test_pet["_id"]),
-                "type": "litter",
+                "type": "cough",
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {"bogus_field": "x"},
@@ -196,14 +196,14 @@ class TestCreateEvent:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 201
-        record = mock_db["events"].find_one({"pet_id": str(test_pet["_id"]), "type": "litter"})
+        record = mock_db["events"].find_one({"pet_id": str(test_pet["_id"]), "type": "cough"})
         assert "bogus_field" not in record["fields"]
 
     def test_no_fields_type_creates_ok(self, client, mock_db, regular_user_token, test_pet):
-        """`litter` has no extra fields at all."""
+        """`cough` has no extra fields at all."""
         response = client.post(
             "/api/events",
-            json={"pet_id": str(test_pet["_id"]), "type": "litter", "date": "2024-01-15", "time": "14:30"},
+            json={"pet_id": str(test_pet["_id"]), "type": "cough", "date": "2024-01-15", "time": "14:30"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 201
@@ -616,7 +616,7 @@ class TestListEvents:
             mock_db["events"].insert_one(
                 {
                     "pet_id": pet_id,
-                    "type": "litter",
+                    "type": "cough",
                     "date_time": datetime.now(timezone.utc),
                     "fields": {},
                     "comment": f"{i}",
@@ -1125,7 +1125,7 @@ class TestCreatingAnEventSaysWhichOne:
             "/api/events",
             json={
                 "pet_id": str(test_pet["_id"]),
-                "type": "litter",
+                "type": "cough",
                 "date": "2026-10-01",
                 "time": "09:00",
                 "fields": {},

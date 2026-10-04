@@ -202,7 +202,7 @@ from web.push import push_bp  # noqa: E402
 from web.export import export_bp  # noqa: E402
 from web.medical_card import medical_card_bp  # noqa: E402
 from web.medical_records import medical_records_bp  # noqa: E402
-from web.builtin_event_types import reorder_default_tiles, seed_builtin_event_types  # noqa: E402
+from web.builtin_event_types import backfill_litter_type, reorder_default_tiles, seed_builtin_event_types  # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(pets_bp)
@@ -237,6 +237,8 @@ if _storage.storage_configured():
 # exists, so a user's edits to a builtin type's label/icon/color survive
 # restarts).
 seed_builtin_event_types(db)
+# Tray changes from before the filling was asked for take the first of its options.
+backfill_litter_type(db)
 # The admin's own row: every request checks the account is active, and a
 # sign-up must find the admin's login taken.
 security.ensure_default_admin()

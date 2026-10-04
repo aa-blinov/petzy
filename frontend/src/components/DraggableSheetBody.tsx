@@ -184,8 +184,9 @@ export function DraggableSheetBody({
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          height: 28,
-          marginTop: 'var(--spacing-sm)',
+          // A 44 px target for a finger; the bar stays where it was (8 + 28 / 2 = 44 / 2).
+          height: 44,
+          marginTop: 0,
           cursor: 'grab',
           touchAction: 'none',
         }}

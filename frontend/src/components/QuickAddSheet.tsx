@@ -31,7 +31,7 @@ interface QuickAddSheetProps {
 
 export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
   const navigate = useNavigate();
-  const { selectedPetId } = usePet();
+  const { selectedPetId, getSelectedPet } = usePet();
   const { tilesSettings } = usePetTilesSettings(selectedPetId);
   const { eventTypes } = useEventTypes();
   const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
@@ -145,6 +145,21 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
             );
           })}
         </Grid>
+
+        {/* A new pet starts with a few events; the rest of the catalogue is one tap from here, for whoever may change them. */}
+        {tiles.length > 0 && getSelectedPet?.current_user_is_owner !== false && (
+          <button
+            type="button"
+            className="tap-feedback"
+            onClick={() => {
+              onClose();
+              navigate('/pet-events');
+            }}
+            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+          >
+            Другие события
+          </button>
+        )}
       </DraggableSheetBody>
     </Popup>
   );

@@ -15,6 +15,14 @@ def _opts(*pairs: str) -> list[dict[str, str]]:
     return [{"value": p, "text": p} for p in pairs]
 
 
+# What fills the tray; the first is what every change made before the field existed is taken to have been.
+LITTER_TYPES = ("Комкующийся", "Впитывающий", "Силикагелевый", "Древесный", "Другой")
+
+
+def _pick(name: str, label: str, *options: str) -> dict[str, Any]:
+    return {"name": name, "label": label, "type": "select", "required": True, "options": _opts(*options)}
+
+
 BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
     {
         "key": "feeding",
@@ -117,7 +125,7 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
         "label": "Смена лотка",
         "icon": "shovel",
         "color": "purple",
-        "fields": [],
+        "fields": [_pick("litter_type", "Наполнитель", *LITTER_TYPES)],
         "chart": {"kind": "count", "value_field": None, "value_label": None},
     },
     {
@@ -184,10 +192,6 @@ def _count_type(
         "fields": fields or [],
         "chart": {"kind": "count", "value_field": None, "value_label": None},
     }
-
-
-def _pick(name: str, label: str, *options: str) -> dict[str, Any]:
-    return {"name": name, "label": label, "type": "select", "required": True, "options": _opts(*options)}
 
 
 def _number(name: str, label: str, low: float, high: float, step: float, required: bool = False) -> dict[str, Any]:
@@ -418,9 +422,33 @@ def seed_builtin_event_types(db) -> int:
             continue
         _backfill_numeric_bounds(db, existing, spec)
         _rename_old_defaults(db, existing)
+        _add_missing_fields(db, existing, spec)
         if spec.get("category") and not existing.get("category"):
             db.event_types.update_one({"_id": existing["_id"]}, {"$set": {"category": spec["category"]}})
     return inserted
+
+
+# Fields a built-in type got after it was first released: an install that already has the type is given the field, once. (The
+# rest of a stored type is left to whoever edited it.)
+_ADDED_FIELDS = {("litter", "litter_type")}
+
+
+def _add_missing_fields(db, existing: dict, spec: dict) -> None:
+    stored = existing.get("fields", [])
+    names = {f["name"] for f in stored}
+    added = [
+        f for f in spec.get("fields", []) if (existing["key"], f["name"]) in _ADDED_FIELDS and f["name"] not in names
+    ]
+    if added:
+        db.event_types.update_one({"_id": existing["_id"]}, {"$set": {"fields": [*stored, *added]}})
+
+
+def backfill_litter_type(db) -> int:
+    """Every change of the tray written before the filling was asked for is taken to have the first of the options."""
+    result = db.events.update_many(
+        {"type": "litter", "fields.litter_type": {"$exists": False}}, {"$set": {"fields.litter_type": LITTER_TYPES[0]}}
+    )
+    return result.modified_count
 
 
 # Names a builtin type shipped with and later replaced. A stored type still

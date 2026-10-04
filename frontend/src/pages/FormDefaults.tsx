@@ -104,7 +104,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
 
   const forgetAll = async () => {
     const confirmed = await Dialog.confirm({
-      content: `Забыть все значения по умолчанию для ${pet.name}? Новые записи будут открываться пустыми`,
+      content: 'Забыть все значения по умолчанию этого питомца? Новые записи будут открываться пустыми',
       confirmText: 'Забыть',
       cancelText: 'Оставить',
     });
@@ -119,14 +119,14 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запомнить для» и имя питомца. Здесь их можно поправить или забыть. Там, где есть выбор из вариантов, без запомненного значения выбран первый
+            Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запомнить для этого питомца». Здесь их можно поправить или забыть. Там, где есть выбор из вариантов, без запомненного значения выбран первый
           </p>
         </div>
 
         <div style={{ padding: '0 var(--spacing-md)' }}>
           {groups.length === 0 ? (
             <div className="card-soft" style={{ padding: '16px', color: 'var(--app-text-secondary)', fontSize: 'var(--text-md)', lineHeight: 1.5 }}>
-              Для {pet.name} пока ничего не запомнено, и новые записи открываются пустыми
+              Пока ничего не запомнено, и новые записи этого питомца открываются пустыми
             </div>
           ) : (
             groups.map((g) => (
@@ -171,7 +171,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
               onClick={() => void forgetAll()}
               style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-danger-text, var(--app-danger-color))', cursor: 'pointer' }}
             >
-              Забыть всё для {pet.name}
+              Забыть всё для этого питомца
             </button>
           )}
         </div>
