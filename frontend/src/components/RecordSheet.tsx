@@ -5,12 +5,15 @@ import { Popup } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import { Bug, FileText, HeartPulse, Pill, Scale, Scissors, Stethoscope, Syringe, TriangleAlert, type LucideIcon } from 'lucide-react';
 
+import { pastelColorMap } from '../utils/constants';
 import { DraggableSheetBody } from './DraggableSheetBody';
 import './RecordSheet.css';
 
 interface Choice {
   label: string;
   icon: LucideIcon;
+  /** The tile's colour, from the same palette as the feed's «+» (utils/constants pastelColorMap); the weight is orange there too. */
+  color: string;
   to: string;
 }
 
@@ -26,25 +29,25 @@ export function RecordSheet({ visible, petId, petName, onClose, onChoose }: { vi
     {
       title: 'В медкарту',
       items: [
-        { label: 'Прививка', icon: Syringe, to: `${card}?kind=vaccination` },
-        { label: 'Обработка от паразитов', icon: Bug, to: `${card}?kind=parasite` },
-        { label: 'Визит к врачу', icon: Stethoscope, to: `${card}?kind=visit` },
-        { label: 'Операция или процедура', icon: Scissors, to: `${card}?kind=procedure` },
+        { label: 'Прививка', icon: Syringe, color: 'green', to: `${card}?kind=vaccination` },
+        { label: 'Обработка от паразитов', icon: Bug, color: 'yellow', to: `${card}?kind=parasite` },
+        { label: 'Визит к врачу', icon: Stethoscope, color: 'blue', to: `${card}?kind=visit` },
+        { label: 'Операция или процедура', icon: Scissors, color: 'teal', to: `${card}?kind=procedure` },
       ],
     },
     {
       title: 'Данные для врача',
       items: [
-        { label: 'Аллергия', icon: TriangleAlert, to: `${profile}?section=allergies` },
-        { label: 'Хроническое состояние', icon: HeartPulse, to: `${profile}?section=conditions` },
+        { label: 'Аллергия', icon: TriangleAlert, color: 'red', to: `${profile}?section=allergies` },
+        { label: 'Хроническое состояние', icon: HeartPulse, color: 'pink', to: `${profile}?section=conditions` },
       ],
     },
     {
       title: 'Рядом с картой',
       items: [
-        { label: 'Лекарство', icon: Pill, to: '/medications/new' },
-        { label: 'Вес', icon: Scale, to: '/form/weight' },
-        { label: 'Анализ или документ', icon: FileText, to: '/documents/new' },
+        { label: 'Лекарство', icon: Pill, color: 'purple', to: '/medications/new' },
+        { label: 'Вес', icon: Scale, color: 'orange', to: '/form/weight' },
+        { label: 'Анализ или документ', icon: FileText, color: 'cyan', to: '/documents/new' },
       ],
     },
   ];
@@ -59,7 +62,13 @@ export function RecordSheet({ visible, petId, petName, onClose, onChoose }: { vi
             <h3 className="recsheet__group-title">{group.title}</h3>
             <div className="recsheet__grid">
               {group.items.map((item) => (
-                <button key={item.label} type="button" className="recsheet__tile tap-feedback" onClick={() => onChoose(item.to)}>
+                <button
+                  key={item.label}
+                  type="button"
+                  className="recsheet__tile tap-feedback"
+                  style={{ background: pastelColorMap[item.color] }}
+                  onClick={() => onChoose(item.to)}
+                >
                   <span className="recsheet__icon" aria-hidden>
                     {createElement(item.icon, { size: 20, strokeWidth: 2 })}
                   </span>
