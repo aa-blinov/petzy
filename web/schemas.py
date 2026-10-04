@@ -7,7 +7,7 @@ Naming Convention:
 
 from datetime import datetime, timedelta
 import re
-from typing import Optional, List, Annotated, Any, Dict
+from typing import Optional, List, Annotated, Any, Dict, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, StringConstraints
 
 # Custom type for ObjectId strings
@@ -2201,3 +2201,37 @@ class MedicalAlerts(BaseModel):
 
 class MedicalAlertsResponse(BaseModel):
     alerts: MedicalAlerts
+
+
+class MedicalShareCreate(BaseModel):
+    """A link to the card for a vet: how long it works."""
+
+    days: Literal[1, 7, 30] = Field(7, description="Сколько дней ссылка открывает карту: 1, 7 или 30")
+
+
+class MedicalShareItem(BaseModel):
+    id: str = Field(description="Идентификатор ссылки: по нему её отзывают")
+    username: str = Field(description="Кто создал ссылку; пусто, если его аккаунт удалён")
+    created_at: str = Field(description="Когда создана, UTC, ISO 8601")
+    expires_at: str = Field(description="До какого момента работает, UTC, ISO 8601")
+
+
+class MedicalShareCreated(BaseModel):
+    share: MedicalShareItem
+    token: str = Field(description="Секрет ссылки. Показывается один раз: на сервере хранится только его хэш")
+    path: str = Field(description="Путь страницы для врача на сайте: /share/medical/<token>")
+
+
+class MedicalSharesResponse(BaseModel):
+    shares: List[MedicalShareItem]
+
+
+class MedicalShareRevoked(BaseModel):
+    revoked: bool
+
+
+class SharedMedicalCardResponse(BaseModel):
+    """What a vet sees by the link: the card, read-only, and when the link ends."""
+
+    card: MedicalCardData
+    expires_at: str

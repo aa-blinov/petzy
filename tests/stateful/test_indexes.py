@@ -29,6 +29,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "event_types": ["event_types_key_unique"],
         "documents": ["documents_pet_created", "documents_pet_category_created"],
         "medical_records": ["medical_records_pet_kind_date"],
+        "medical_shares": ["medical_shares_token_unique", "medical_shares_pet_created", "medical_shares_purge"],
         "push_subscriptions": ["push_subscriptions_endpoint_unique", "push_subscriptions_username"],
         "medication_reminders_sent": ["reminders_sent_slot_unique", "reminders_sent_ttl"],
         "document_expiry_reminders_sent": [
