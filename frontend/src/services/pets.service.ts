@@ -26,6 +26,8 @@ export interface Pet {
   /** A line about the pet and a palette colour for its card; everyone with access sees (and may change) the same. */
   look?: PetLook;
   owner: string;
+  /** The owner's own view: who becomes the owner if they delete their account (the first of the family able to sign in). */
+  next_owner?: string | null;
   shared_with?: string[];
   /** Invited, not yet accepted. Present for the owner only. */
   share_invites?: string[];

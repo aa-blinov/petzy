@@ -11,6 +11,7 @@ from web.app import api, logger  # shared logger and api
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
 from web import storage
+from web.account_deletion import _heir
 from web.helpers import (
     PRIVATE_IMMUTABLE_CACHE,
     delete_stored_file,
@@ -85,6 +86,14 @@ def _store_pet_photo(photo_file, owner_username: str, pet_id) -> str:
 _INLINE_PHOTO_TYPES = {"image/webp", "image/jpeg", "image/png", "image/gif"}
 
 
+def _expose_next_owner(pet: dict, username: str) -> None:
+    """To the owner only: who becomes the owner if they delete their account (the first of the family still able to sign in)."""
+    if pet.get("owner") == username:
+        pet["next_owner"] = _heir(pet)
+    else:
+        pet.pop("next_owner", None)
+
+
 def get_tiles_settings(pet: dict) -> dict:
     """Get tiles settings from pet, or return default if not set."""
     if pet and pet.get("tiles_settings"):
@@ -133,6 +142,7 @@ def get_pets():
         # Who's been invited is the owner's business, not the other members'.
         if not pet["current_user_is_owner"]:
             pet.pop("share_invites", None)
+        _expose_next_owner(pet, username)
 
         # Ensure tiles_settings is present (use default if missing)
         tiles_settings = get_tiles_settings(pet)
@@ -274,6 +284,7 @@ def get_pet(pet_id):
         pet["current_user_is_owner"] = pet.get("owner") == username
         if not pet["current_user_is_owner"]:
             pet.pop("share_invites", None)
+        _expose_next_owner(pet, username)
 
         # Ensure tiles_settings is present (use default if missing)
         pet["tiles_settings"] = get_tiles_settings(pet)

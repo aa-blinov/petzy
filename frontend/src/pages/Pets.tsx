@@ -412,6 +412,22 @@ function PetCard({
                 which of their pets someone else already has access to.
                 Owner-only, like the sharing form itself (PetForm.tsx) —
                 a shared (non-owner) user isn't shown who else has access. */}
+            {/* A pet someone shared with me: whose it is, since only its owner can change it or delete it. */}
+            {pet.current_user_is_owner === false && pet.owner && (
+              <span
+                className="chip"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <UserAvatar username={pet.owner} size={16} />
+                {`Владелец: ${pet.owner}`}
+              </span>
+            )}
             {pet.current_user_is_owner && pet.shared_with && pet.shared_with.length > 0 && (
               <span
                 className="chip"
