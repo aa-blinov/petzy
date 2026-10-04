@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePet } from './usePet';
 import { DEFAULT_TILES_SETTINGS } from '../utils/tilesConfig';
 import type { TilesSettings } from '../utils/tilesConfig';
-import { petsService } from '../services/pets.service';
+import { petsService, type Pet } from '../services/pets.service';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -30,6 +30,10 @@ export function usePetTilesSettings(petId: string | null) {
         throw new Error('Pet not selected');
       }
       return petsService.updatePet(petId, { tiles_settings: newSettings });
+    },
+    // The change is on screen at once and the server confirms it after: a row dropped into place does not jump back first.
+    onMutate: (newSettings: TilesSettings) => {
+      queryClient.setQueryData<Pet[]>(['pets'], (all) => all?.map((p) => (p._id === petId ? { ...p, tiles_settings: newSettings } : p)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
@@ -66,6 +70,12 @@ export function usePetTilesSettings(petId: string | null) {
     [tilesSettings, updateTilesSettingsMutation]
   );
 
+  /** Replaces the pet's settings in one request (an event added is a change of both what is shown and where). */
+  const saveSettings = useCallback(
+    (next: TilesSettings) => updateTilesSettingsMutation.mutate(next),
+    [updateTilesSettingsMutation],
+  );
+
   const resetSettings = useCallback(() => {
     updateTilesSettingsMutation.mutate(DEFAULT_TILES_SETTINGS);
   }, [updateTilesSettingsMutation]);
@@ -74,6 +84,7 @@ export function usePetTilesSettings(petId: string | null) {
     tilesSettings,
     updateOrder,
     toggleVisibility,
+    saveSettings,
     resetSettings,
     isLoading: updateTilesSettingsMutation.isPending,
   };

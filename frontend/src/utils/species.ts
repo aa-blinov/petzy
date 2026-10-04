@@ -25,24 +25,59 @@ export type SpeciesKey =
   | 'reptile'
   | 'other';
 
-/** The builtin event types (web/builtin_event_types.py). */
-type BuiltinEvent =
-  | 'feeding'
-  | 'weight'
-  | 'defecation'
-  | 'litter'
-  | 'asthma'
-  | 'eye_drops'
-  | 'ear_cleaning'
-  | 'tooth_brushing';
+/** The built-in event types (web/builtin_event_types.py). */
+export type BuiltinEvent =
+  | 'feeding' | 'weight' | 'defecation' | 'litter' | 'asthma' | 'eye_drops' | 'ear_cleaning' | 'tooth_brushing'
+  | 'treat' | 'water_intake' | 'appetite' | 'urination' | 'vomiting' | 'temperature' | 'mood' | 'cough' | 'seizure'
+  | 'itching' | 'limping' | 'bathing' | 'brushing' | 'nail_trim' | 'walk' | 'play' | 'training' | 'cage_cleaning'
+  | 'water_change' | 'filter_cleaning' | 'uv_lamp' | 'misting' | 'shedding';
 
-const ALL_EVENTS: BuiltinEvent[] = [
-  'feeding', 'weight', 'defecation', 'litter', 'asthma', 'eye_drops', 'ear_cleaning', 'tooth_brushing',
-];
+/** The original eight: they were all a pet's, hidden or shown; the catalogue has since grown (see tilesConfig). */
+const ORIGINAL: BuiltinEvent[] = ['feeding', 'weight', 'defecation', 'litter', 'asthma', 'eye_drops', 'ear_cleaning', 'tooth_brushing'];
+
+/**
+ * What a new pet starts with: a handful that matter from the first day, in the order they are most often needed, so that the
+ * «+» is not a wall on the first look. Everything else is one tap away in the pet's events («Добавить событие»), where the
+ * ones that suit its kind of animal come first (SUGGESTED).
+ */
+const STARTER: Record<SpeciesKey, BuiltinEvent[]> = {
+  cat: ['feeding', 'weight', 'litter', 'vomiting', 'water_intake'],
+  dog: ['feeding', 'weight', 'walk', 'defecation', 'vomiting'],
+  rabbit: ['feeding', 'weight', 'defecation', 'cage_cleaning', 'nail_trim'],
+  ferret: ['feeding', 'weight', 'litter', 'play'],
+  guinea_pig: ['feeding', 'weight', 'defecation', 'cage_cleaning'],
+  chinchilla: ['feeding', 'weight', 'cage_cleaning', 'bathing'],
+  rat: ['feeding', 'weight', 'cage_cleaning', 'play'],
+  hamster: ['feeding', 'weight', 'cage_cleaning'],
+  bird: ['feeding', 'weight', 'cage_cleaning', 'bathing', 'shedding'],
+  fish: ['feeding', 'water_change', 'filter_cleaning'],
+  turtle: ['feeding', 'weight', 'water_change', 'uv_lamp', 'cage_cleaning'],
+  reptile: ['feeding', 'weight', 'shedding', 'misting', 'cage_cleaning'],
+  other: ['feeding', 'weight', 'defecation', 'cage_cleaning'],
+};
+
+/** Beyond the starter set, what is worth offering first for this kind of animal. */
+const SUGGESTED: Record<SpeciesKey, BuiltinEvent[]> = {
+  cat: ['defecation', 'urination', 'appetite', 'temperature', 'mood', 'cough', 'itching', 'brushing', 'nail_trim', 'bathing', 'play', 'treat', 'eye_drops', 'ear_cleaning', 'tooth_brushing', 'asthma', 'seizure'],
+  dog: ['water_intake', 'urination', 'appetite', 'temperature', 'mood', 'cough', 'itching', 'limping', 'bathing', 'brushing', 'nail_trim', 'training', 'play', 'treat', 'eye_drops', 'ear_cleaning', 'tooth_brushing', 'seizure'],
+  rabbit: ['water_intake', 'appetite', 'urination', 'temperature', 'mood', 'litter', 'brushing', 'treat', 'eye_drops', 'ear_cleaning', 'play'],
+  ferret: ['defecation', 'appetite', 'temperature', 'mood', 'bathing', 'nail_trim', 'treat', 'ear_cleaning', 'cage_cleaning'],
+  guinea_pig: ['water_intake', 'appetite', 'litter', 'temperature', 'mood', 'nail_trim', 'treat', 'eye_drops'],
+  chinchilla: ['water_intake', 'appetite', 'defecation', 'mood', 'nail_trim', 'treat'],
+  rat: ['water_intake', 'appetite', 'defecation', 'temperature', 'mood', 'treat', 'bathing', 'cough'],
+  hamster: ['water_intake', 'appetite', 'defecation', 'mood', 'play', 'treat'],
+  bird: ['defecation', 'appetite', 'water_intake', 'mood', 'nail_trim', 'treat', 'misting'],
+  fish: ['water_intake', 'mood', 'treat'],
+  turtle: ['defecation', 'appetite', 'bathing', 'shedding', 'misting', 'mood'],
+  reptile: ['defecation', 'appetite', 'water_intake', 'bathing', 'uv_lamp', 'water_change', 'mood'],
+  other: ['water_intake', 'appetite', 'urination', 'temperature', 'mood', 'bathing', 'brushing', 'treat', 'play'],
+};
 
 export interface Species {
   key: SpeciesKey;
   label: string;
+  /** «для собаки»: the name after «для», where the nominative reads wrongly. */
+  forWhom: string;
   /** Onboarding's name question: «Как зовут вашего кота?» */
   question: string;
   icon: LucideIcon;
@@ -52,8 +87,10 @@ export interface Species {
   /** What «Порода» is called: fish and reptiles have species, not breeds. */
   breedLabel: string;
   breedPlaceholder: string;
-  /** Builtin events shown by default for a new pet of this species. */
+  /** The few built-in events a new pet of this species starts with, in order. */
   events: BuiltinEvent[];
+  /** More that suit it, offered first when adding an event. */
+  suggested: BuiltinEvent[];
 }
 
 const GRADIENT = {
@@ -69,70 +106,82 @@ const GRADIENT = {
 
 export const SPECIES: Species[] = [
   {
-    key: 'cat', label: 'Кот', question: 'Как зовут вашего кота?', icon: Cat, gradient: GRADIENT.cat,
+    key: 'cat', label: 'Кот', forWhom: 'кота', question: 'Как зовут вашего кота?', icon: Cat, gradient: GRADIENT.cat,
     neutering: true, breedLabel: 'Порода', breedPlaceholder: 'Например, британская',
-    events: ALL_EVENTS,
+    events: STARTER.cat,
+    suggested: SUGGESTED.cat,
   },
   {
-    key: 'dog', label: 'Собака', question: 'Как зовут вашу собаку?', icon: Dog, gradient: GRADIENT.dog,
+    key: 'dog', label: 'Собака', forWhom: 'собаки', question: 'Как зовут вашу собаку?', icon: Dog, gradient: GRADIENT.dog,
     neutering: true, breedLabel: 'Порода', breedPlaceholder: 'Например, лабрадор',
-    events: ['feeding', 'weight', 'defecation', 'eye_drops', 'ear_cleaning', 'tooth_brushing'],
+    events: STARTER.dog,
+    suggested: SUGGESTED.dog,
   },
   {
-    key: 'rabbit', label: 'Кролик', question: 'Как зовут вашего кролика?', icon: Rabbit, gradient: GRADIENT.rabbit,
+    key: 'rabbit', label: 'Кролик', forWhom: 'кролика', question: 'Как зовут вашего кролика?', icon: Rabbit, gradient: GRADIENT.rabbit,
     neutering: true, breedLabel: 'Порода', breedPlaceholder: 'Например, карликовый',
-    // Rabbit teeth grow all their life and are never brushed.
-    events: ['feeding', 'weight', 'defecation', 'litter', 'eye_drops', 'ear_cleaning'],
+    events: STARTER.rabbit,
+    suggested: SUGGESTED.rabbit,
   },
   {
-    key: 'ferret', label: 'Хорёк', question: 'Как зовут вашего хорька?', icon: PawPrint, gradient: GRADIENT.small,
+    key: 'ferret', label: 'Хорёк', forWhom: 'хорька', question: 'Как зовут вашего хорька?', icon: PawPrint, gradient: GRADIENT.small,
     neutering: true, breedLabel: 'Окрас', breedPlaceholder: 'Например, соболиный',
-    events: ['feeding', 'weight', 'defecation', 'litter', 'eye_drops', 'ear_cleaning', 'tooth_brushing'],
+    events: STARTER.ferret,
+    suggested: SUGGESTED.ferret,
   },
   {
-    key: 'guinea_pig', label: 'Морская свинка', question: 'Как зовут вашу морскую свинку?', icon: PawPrint,
+    key: 'guinea_pig', label: 'Морская свинка', forWhom: 'морской свинки', question: 'Как зовут вашу морскую свинку?', icon: PawPrint,
     gradient: GRADIENT.small, neutering: true, breedLabel: 'Порода', breedPlaceholder: 'Например, абиссинская',
-    events: ['feeding', 'weight', 'defecation', 'litter', 'eye_drops'],
+    events: STARTER.guinea_pig,
+    suggested: SUGGESTED.guinea_pig,
   },
   {
-    key: 'chinchilla', label: 'Шиншилла', question: 'Как зовут вашу шиншиллу?', icon: Squirrel,
+    key: 'chinchilla', label: 'Шиншилла', forWhom: 'шиншиллы', question: 'Как зовут вашу шиншиллу?', icon: Squirrel,
     gradient: GRADIENT.small, neutering: true, breedLabel: 'Окрас', breedPlaceholder: 'Например, стандартный серый',
-    events: ['feeding', 'weight', 'defecation', 'litter', 'eye_drops'],
+    events: STARTER.chinchilla,
+    suggested: SUGGESTED.chinchilla,
   },
   {
-    key: 'rat', label: 'Крыса', question: 'Как зовут вашу крысу?', icon: Rat, gradient: GRADIENT.small,
+    key: 'rat', label: 'Крыса', forWhom: 'крысы', question: 'Как зовут вашу крысу?', icon: Rat, gradient: GRADIENT.small,
     neutering: true, breedLabel: 'Порода', breedPlaceholder: 'Например, дамбо',
-    events: ['feeding', 'weight', 'litter', 'eye_drops'],
+    events: STARTER.rat,
+    suggested: SUGGESTED.rat,
   },
   {
-    key: 'hamster', label: 'Хомяк', question: 'Как зовут вашего хомяка?', icon: Squirrel, gradient: GRADIENT.small,
+    key: 'hamster', label: 'Хомяк', forWhom: 'хомяка', question: 'Как зовут вашего хомяка?', icon: Squirrel, gradient: GRADIENT.small,
     neutering: true, breedLabel: 'Порода', breedPlaceholder: 'Например, джунгарский',
-    events: ['feeding', 'weight', 'litter'],
+    events: STARTER.hamster,
+    suggested: SUGGESTED.hamster,
   },
   {
-    key: 'bird', label: 'Птица', question: 'Как зовут вашу птицу?', icon: Bird, gradient: GRADIENT.bird,
+    key: 'bird', label: 'Птица', forWhom: 'птицы', question: 'Как зовут вашу птицу?', icon: Bird, gradient: GRADIENT.bird,
     neutering: false, breedLabel: 'Вид', breedPlaceholder: 'Например, волнистый попугай',
-    events: ['feeding', 'weight', 'defecation', 'eye_drops'],
+    events: STARTER.bird,
+    suggested: SUGGESTED.bird,
   },
   {
-    key: 'fish', label: 'Рыбка', question: 'Как зовут вашу рыбку?', icon: Fish, gradient: GRADIENT.fish,
+    key: 'fish', label: 'Рыбка', forWhom: 'рыбки', question: 'Как зовут вашу рыбку?', icon: Fish, gradient: GRADIENT.fish,
     neutering: false, breedLabel: 'Вид', breedPlaceholder: 'Например, гуппи',
-    events: ['feeding'],
+    events: STARTER.fish,
+    suggested: SUGGESTED.fish,
   },
   {
-    key: 'turtle', label: 'Черепаха', question: 'Как зовут вашу черепаху?', icon: Turtle, gradient: GRADIENT.reptile,
+    key: 'turtle', label: 'Черепаха', forWhom: 'черепахи', question: 'Как зовут вашу черепаху?', icon: Turtle, gradient: GRADIENT.reptile,
     neutering: false, breedLabel: 'Вид', breedPlaceholder: 'Например, красноухая',
-    events: ['feeding', 'weight', 'defecation', 'eye_drops'],
+    events: STARTER.turtle,
+    suggested: SUGGESTED.turtle,
   },
   {
-    key: 'reptile', label: 'Ящерица или змея', question: 'Как зовут вашего питомца?', icon: PawPrint,
+    key: 'reptile', label: 'Ящерица или змея', forWhom: 'ящерицы или змеи', question: 'Как зовут вашего питомца?', icon: PawPrint,
     gradient: GRADIENT.reptile, neutering: false, breedLabel: 'Вид', breedPlaceholder: 'Например, эублефар',
-    events: ['feeding', 'weight', 'defecation'],
+    events: STARTER.reptile,
+    suggested: SUGGESTED.reptile,
   },
   {
-    key: 'other', label: 'Другой питомец', question: 'Как зовут вашего питомца?', icon: PawPrint,
+    key: 'other', label: 'Другой питомец', forWhom: 'питомца', question: 'Как зовут вашего питомца?', icon: PawPrint,
     gradient: GRADIENT.default, neutering: true, breedLabel: 'Порода или вид', breedPlaceholder: 'Необязательно',
-    events: ALL_EVENTS,
+    events: STARTER.other,
+    suggested: SUGGESTED.other,
   },
 ];
 
@@ -189,15 +238,15 @@ export function neuteringLabel(gender?: string | null): string {
 }
 
 /**
- * Tiles for a new pet: this species' builtin events shown, the other
- * builtins hidden. Custom event types and medications stay visible (an
- * absent key counts as shown, see TilesEditor), and everything can be
- * turned back on in the pet's settings.
+ * Tiles for a new pet: the few built-in events that suit its species, in order. Of the original eight, those not in the set
+ * are said to be hidden (an unsaid one counts as shown, see tilesConfig); a type added to the catalogue since is hidden
+ * unless said otherwise. Custom event types and medications stay shown, and everything can be changed in the pet's events.
  */
 export function defaultTilesFor(value?: string | null): { order: string[]; visible: Record<string, boolean> } {
-  const shown = new Set<string>(getSpecies(value).events);
+  const starter = getSpecies(value).events;
+  const shown = new Set<string>(starter);
   return {
-    order: [],
-    visible: Object.fromEntries(ALL_EVENTS.map((key) => [key, shown.has(key)])),
+    order: [...starter],
+    visible: Object.fromEntries([...ORIGINAL, ...starter].map((key) => [key, shown.has(key)])),
   };
 }

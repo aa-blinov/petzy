@@ -170,11 +170,172 @@ BUILTIN_EVENT_TYPES: list[dict[str, Any]] = [
     },
 ]
 
+
+def _count_type(
+    key: str, label: str, icon: str, color: str, category: str, fields: list | None = None
+) -> dict[str, Any]:
+    """A type that is simply counted (it happened, with at most a note or a detail)."""
+    return {
+        "key": key,
+        "label": label,
+        "icon": icon,
+        "color": color,
+        "category": category,
+        "fields": fields or [],
+        "chart": {"kind": "count", "value_field": None, "value_label": None},
+    }
+
+
+def _pick(name: str, label: str, *options: str) -> dict[str, Any]:
+    return {"name": name, "label": label, "type": "select", "required": True, "options": _opts(*options)}
+
+
+def _number(name: str, label: str, low: float, high: float, step: float, required: bool = False) -> dict[str, Any]:
+    return {
+        "name": name,
+        "label": label,
+        "type": "number",
+        "required": required,
+        "options": None,
+        "min": low,
+        "max": high,
+        "step": step,
+    }
+
+
+def _valued(base: dict[str, Any], field: str, label: str) -> dict[str, Any]:
+    """The same type, charted by one of its numbers instead of counted."""
+    return {**base, "chart": {"kind": "value", "value_field": field, "value_label": label}}
+
+
+# The catalogue beyond the original eight: what is useful to write down, grouped by `category`. A new pet gets only a few of
+# them (utils/species.ts says which, by species); the rest are one tap away in the pet's events.
+_CATALOG_TYPES: list[dict[str, Any]] = [
+    # Food and water
+    _count_type(
+        "treat",
+        "Лакомство",
+        "gift",
+        "pink",
+        "food",
+        [{"name": "treat", "label": "Что дали", "type": "text", "required": False, "options": None}],
+    ),
+    _valued(
+        _count_type(
+            "water_intake", "Питьё", "droplet", "cyan", "food", [_number("amount_ml", "Выпито (мл)", 0, 5000, 1, True)]
+        ),
+        "amount_ml",
+        "Выпито (мл)",
+    ),
+    _count_type(
+        "appetite",
+        "Аппетит",
+        "smile",
+        "orange",
+        "food",
+        [_pick("level", "Какой", "Хороший", "Сниженный", "Отказывается от еды")],
+    ),
+    # Excretion
+    _count_type(
+        "urination",
+        "Мочеиспускание",
+        "droplet",
+        "yellow",
+        "excretion",
+        [_pick("kind", "Какое", "Обычное", "Частое", "Редкое", "С трудом", "С кровью")],
+    ),
+    _count_type(
+        "vomiting",
+        "Рвота",
+        "wind",
+        "red",
+        "excretion",
+        [_pick("kind", "Что вышло", "Пена", "Корм", "Желчь", "Шерсть", "Другое")],
+    ),
+    # Health
+    _valued(
+        _count_type(
+            "temperature",
+            "Температура",
+            "thermometer",
+            "red",
+            "health",
+            [_number("temp_c", "Температура (°C)", 30, 45, 0.1, True)],
+        ),
+        "temp_c",
+        "Температура (°C)",
+    ),
+    _count_type(
+        "mood",
+        "Самочувствие",
+        "heart",
+        "green",
+        "health",
+        [_pick("state", "Каков", "Бодрый", "Вялый", "Возбуждённый", "Прячется")],
+    ),
+    _count_type("cough", "Кашель или чихание", "wind", "orange", "health"),
+    _count_type("seizure", "Судороги", "zap", "red", "health", [_number("minutes", "Длительность (мин)", 0, 120, 0.5)]),
+    _count_type("itching", "Зуд", "paw", "orange", "health"),
+    _count_type("limping", "Хромота", "bone", "brown", "health"),
+    # Care
+    _count_type("bathing", "Купание", "droplet", "teal", "care"),
+    _count_type("brushing", "Расчёсывание", "star", "purple", "care"),
+    _count_type("nail_trim", "Стрижка когтей", "paw", "gray", "care"),
+    # Activity
+    _valued(
+        _count_type(
+            "walk", "Прогулка", "sun", "green", "activity", [_number("minutes", "Длительность (мин)", 1, 720, 1)]
+        ),
+        "minutes",
+        "Длительность (мин)",
+    ),
+    _valued(
+        _count_type("play", "Игра", "zap", "blue", "activity", [_number("minutes", "Длительность (мин)", 1, 720, 1)]),
+        "minutes",
+        "Длительность (мин)",
+    ),
+    _count_type(
+        "training",
+        "Дрессировка",
+        "star",
+        "yellow",
+        "activity",
+        [{"name": "skill", "label": "Что отрабатывали", "type": "text", "required": False, "options": None}],
+    ),
+    # The place a pet lives in
+    _count_type("cage_cleaning", "Уборка клетки", "shovel", "brown", "habitat"),
+    _count_type(
+        "water_change", "Подмена воды", "droplet", "blue", "habitat", [_number("percent", "Подменено (%)", 1, 100, 1)]
+    ),
+    _count_type("filter_cleaning", "Чистка фильтра", "droplet", "gray", "habitat"),
+    _count_type("uv_lamp", "Замена УФ-лампы", "sun", "yellow", "habitat"),
+    _count_type("misting", "Опрыскивание", "droplet", "teal", "habitat"),
+    _count_type("shedding", "Линька", "paw", "brown", "habitat"),
+]
+
+BUILTIN_EVENT_TYPES.extend(_CATALOG_TYPES)
+
+# Where each of the original eight belongs; the rest say it themselves.
+_ORIGINAL_CATEGORY = {
+    "feeding": "food",
+    "weight": "health",
+    "asthma": "health",
+    "defecation": "excretion",
+    "litter": "excretion",
+    "eye_drops": "care",
+    "tooth_brushing": "care",
+    "ear_cleaning": "care",
+}
+for _spec in BUILTIN_EVENT_TYPES:
+    _spec.setdefault("category", _ORIGINAL_CATEGORY.get(_spec["key"]))
+
+
 # Bounds that hold whatever an older install stored for the field: a weight of 0 kg draws a false point on the chart
 # and a pet card, 99999 g is a slip of the finger. (event type key, field name) -> (lowest, highest).
 HARD_BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("weight", "weight"): (0.01, 100),
     ("feeding", "food_weight"): (0.1, 5000),
+    ("temperature", "temp_c"): (30, 45),
 }
 
 # Old collection name -> event type key, and which of its fields (besides
@@ -193,7 +354,7 @@ LEGACY_COLLECTION_MAP: dict[str, dict[str, Any]] = {
 
 # The order a pet's «+» tiles take until someone reorders them: most
 # frequent first. By name put «Астма» first and «Кормление» in the middle.
-BUILTIN_TYPE_ORDER = [
+ORIGINAL_TYPE_ORDER = [
     "feeding",
     "weight",
     "defecation",
@@ -203,6 +364,8 @@ BUILTIN_TYPE_ORDER = [
     "ear_cleaning",
     "asthma",
 ]
+# The original eight first, then the catalogue as it is written (by category).
+BUILTIN_TYPE_ORDER = ORIGINAL_TYPE_ORDER + [spec["key"] for spec in _CATALOG_TYPES]
 
 # What every pet got before, alphabetical by the old names. A pet still
 # carrying exactly this was never reordered by hand.
@@ -222,7 +385,7 @@ def reorder_default_tiles(db) -> int:
     """Move pets still on the old alphabetical tile order to BUILTIN_TYPE_ORDER."""
     result = db.pets.update_many(
         {"tiles_settings.order": _OLD_DEFAULT_TILE_ORDER},
-        {"$set": {"tiles_settings.order": BUILTIN_TYPE_ORDER}},
+        {"$set": {"tiles_settings.order": ORIGINAL_TYPE_ORDER}},
     )
     return result.modified_count
 
@@ -255,6 +418,8 @@ def seed_builtin_event_types(db) -> int:
             continue
         _backfill_numeric_bounds(db, existing, spec)
         _rename_old_defaults(db, existing)
+        if spec.get("category") and not existing.get("category"):
+            db.event_types.update_one({"_id": existing["_id"]}, {"$set": {"category": spec["category"]}})
     return inserted
 
 

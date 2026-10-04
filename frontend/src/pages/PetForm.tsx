@@ -863,16 +863,16 @@ export function PetForm() {
           )}
 
           {isEditing && id && pet && (
-            // One place for the tiles: Settings. This row takes the person there for this pet.
+            // One place for the pet's events: its own screen. This row takes the person there for this pet.
             <Form layout="horizontal" mode="card">
               <Form.Item
-                label="Кнопки быстрого добавления"
-                description="Какие записи видны в окне «+» и в каком порядке"
+                label="События питомца"
+                description="Какие записи предлагает «+» и в каком порядке"
                 clickable
                 arrow
                 onClick={() => {
                   selectPet(pet);
-                  navigate('/tiles-settings');
+                  navigate('/pet-events');
                 }}
               />
             </Form>

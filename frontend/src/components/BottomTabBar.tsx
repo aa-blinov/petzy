@@ -12,7 +12,7 @@ const MEDICAL_PATH = /^\/pets\/[^/]+\/(medical-|visit-prep)/;
 
 /** The screens that open from Settings and are part of it: the Settings tab stays lit on them, so the person knows where
     they are. The medical card's own screens (/pets/<id>/medical-...) are the other tab's and are not in this list. */
-const SETTINGS_PATH = /^\/(settings(\/|$)|form-defaults|tiles-settings|event-types|help|pets(\/new|\/[^/]+\/edit)?$|users\/)/;
+const SETTINGS_PATH = /^\/(settings(\/|$)|form-defaults|tiles-settings|pet-events|pet-look|event-types|help|pets(\/new|\/[^/]+\/edit)?$|users\/)/;
 
 const tabs = [
   { key: 'feed', to: '/', title: 'Лента', Icon: BookOpen },

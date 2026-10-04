@@ -30,6 +30,8 @@ export interface EventType {
   icon: string;
   color: TileColor;
   is_builtin: boolean;
+  /** Where a built-in type belongs in the catalogue (food, health, care...); none for the family's own. */
+  category?: string | null;
   /** Who made a custom type; a household sees one another's. */
   created_by?: string | null;
   fields: EventTypeField[];
@@ -48,6 +50,12 @@ export const eventTypesService = {
   async list(): Promise<EventType[]> {
     const response = await api.get<{ event_types: EventType[] }>('/event-types');
     return response.data.event_types;
+  },
+
+  /** The types a pet has at least one record of: what a filter of its history has something to show for. */
+  async usedBy(petId: string): Promise<string[]> {
+    const response = await api.get<{ types: string[] }>('/events/used-types', { params: { pet_id: petId } });
+    return response.data.types;
   },
 
   async create(data: EventTypeInput): Promise<EventType> {

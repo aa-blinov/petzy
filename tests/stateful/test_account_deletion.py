@@ -154,11 +154,11 @@ def test_deleting_the_account(client, mock_db, s3_storage, household, regular_us
     _event(mock_db, annas, "anna")
     mock_db["event_types"].insert_many(
         [
-            {"key": "walk", "label": "Прогулка", "icon": "x", "color": "#000", "created_by": "testuser"},
+            {"key": "custom_walk", "label": "Прогулка", "icon": "x", "color": "#000", "created_by": "testuser"},
             {"key": "unused", "label": "Лишнее", "icon": "x", "color": "#000", "created_by": "testuser"},
         ]
     )
-    _event(mock_db, shared, "testuser", type_="walk")
+    _event(mock_db, shared, "testuser", type_="custom_walk")
     mock_db["push_subscriptions"].insert_one({"username": "testuser", "endpoint": "https://push.example/1"})
 
     response = _delete(client, regular_user_token)
@@ -202,7 +202,7 @@ def test_deleting_the_account(client, mock_db, s3_storage, household, regular_us
     assert "testuser" not in mock_db["pets"].find_one({"_id": ObjectId(household["borises"])})["share_invites"]
 
     # A record type still in use goes to the pet's new owner; an unused one goes.
-    assert mock_db["event_types"].find_one({"key": "walk"})["created_by"] == "anna"
+    assert mock_db["event_types"].find_one({"key": "custom_walk"})["created_by"] == "anna"
     assert mock_db["event_types"].find_one({"key": "unused"}) is None
 
 

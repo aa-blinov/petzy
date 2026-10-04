@@ -39,6 +39,7 @@ from web.schemas import (
     EventUpdate,
     HealthStatsQuery,
     HealthStatsResponse,
+    PetIdQuery,
     SuccessResponse,
     TimelineQuery,
     TimelineResponse,
@@ -65,6 +66,7 @@ def _serialize_event_type(doc: dict) -> dict:
         "icon": doc["icon"],
         "color": doc["color"],
         "is_builtin": doc.get("is_builtin", False),
+        "category": doc.get("category"),
         "created_by": doc.get("created_by"),
         "fields": doc.get("fields", []),
         "chart": doc.get("chart") or {"kind": "count"},
@@ -530,6 +532,15 @@ def delete_event(record_id):
 # ---------------------------------------------------------------------------
 # Aggregate endpoints — stats (chart data) + timeline
 # ---------------------------------------------------------------------------
+
+
+@events_bp.route("/api/events/used-types", methods=["GET"])
+@api.validate(query=PetIdQuery, resp=Response(HTTP_403=ErrorResponse), tags=["events"])
+@require_pet_access
+def used_event_types():
+    """The types this pet has at least one record of: what a filter of its history has something to show for."""
+    types = app.db[EVENTS_COLLECTION].distinct("type", {"pet_id": g.pet_id})
+    return jsonify({"types": sorted(t for t in types if isinstance(t, str))})
 
 
 @events_bp.route("/api/stats/health", methods=["GET"])
