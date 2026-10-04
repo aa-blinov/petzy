@@ -44,6 +44,21 @@ const TARGET_OF: [string, ParasiteTarget][] = [
   ['адвокат', 'both'],
 ];
 
+/** The treatments the list offers, by what they are for: the same products as `TARGET_OF`, with the names as sold. */
+export const PARASITE_PRODUCTS: { name: string; target: ParasiteTarget }[] = [
+  { name: 'Бравекто', target: 'fleas_ticks' },
+  { name: 'Нексгард', target: 'fleas_ticks' },
+  { name: 'Симпарика', target: 'fleas_ticks' },
+  { name: 'Фронтлайн', target: 'fleas_ticks' },
+  { name: 'Адвантикс', target: 'fleas_ticks' },
+  { name: 'Дронтал Плюс', target: 'worms' },
+  { name: 'Мильбемакс', target: 'worms' },
+  { name: 'Празицид', target: 'worms' },
+  { name: 'Прадакс', target: 'worms' },
+  { name: 'Азинокс', target: 'worms' },
+  { name: 'Адвокат', target: 'both' },
+];
+
 export function parasiteTargetOf(title: string): ParasiteTarget | null {
   const name = title.trim().toLowerCase();
   if (!name) return null;

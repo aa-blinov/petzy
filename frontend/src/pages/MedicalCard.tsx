@@ -261,6 +261,8 @@ function recordLines(record: MedicalRecord): RowLine[] {
     record.recommendations ? { label: 'Рекомендации', text: record.recommendations, tier: 'fact' } : null,
     { text: [record.clinic, record.vet ? `врач ${record.vet}` : null].filter(Boolean).join(', '), tier: 'meta' },
     record.note ? { label: 'Заметка', text: record.note, tier: 'meta' } : null,
+    // What it is against: the same line of the card for any brand of it, so a change of brand reads as a repeat.
+    record.kind === 'vaccination' && record.protects_label ? { label: 'Защита', text: record.protects_label, tier: 'meta' } : null,
     record.superseded ? { text: 'Есть более новая запись', tier: 'meta' } : null,
   ];
   return lines.filter((l): l is RowLine => !!l && !!l.text);

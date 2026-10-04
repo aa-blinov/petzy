@@ -34,6 +34,9 @@ export interface MedicalRecord {
   note: string | null;
   batch: string | null;
   target: ParasiteTarget | null;
+  /** What a vaccination is against (a key of the vaccine catalogue); an old entry's is read from its name. */
+  protects: string | null;
+  protects_label: string | null;
   complaint: string | null;
   diagnosis: string | null;
   recommendations: string | null;
@@ -49,6 +52,7 @@ export interface MedicalRecordInput {
   note: string | null;
   batch: string | null;
   target: ParasiteTarget | null;
+  protects?: string | null;
   complaint: string | null;
   diagnosis: string | null;
   recommendations: string | null;

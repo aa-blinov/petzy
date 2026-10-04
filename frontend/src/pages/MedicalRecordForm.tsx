@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, CheckList, Form, Input, Popup, Selector, TextArea } from 'antd-mobile';
+import { Button, CheckList, Form, Input, Popup, TextArea } from 'antd-mobile';
 import { medicalCardService } from '../services/medicalCard.service';
 import {
   MEDICAL_KIND_LABELS,
@@ -25,6 +25,9 @@ import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PickerValue } from '../components/PickerValue';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { PickerField } from '../components/PickerField';
+import { ProductPickerSheet, type ProductGroup } from '../components/ProductPickerSheet';
+import { catalogSpecies, inferProtects, useVaccineCatalog } from '../hooks/useVaccineCatalog';
 import { getApiErrorMessage } from '../utils/apiError';
 import { getCurrentDate, getCurrentTime, utcStampToLocal } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
@@ -33,7 +36,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { formatAmount } from '../utils/stock';
 import { getPushSubscriptionState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
-import { addInterval, daysBetween, DEFAULT_REPEAT, parasiteTargetOf, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
+import { addInterval, daysBetween, DEFAULT_REPEAT, PARASITE_PRODUCTS, parasiteTargetOf, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
@@ -88,6 +91,7 @@ const schema = z
     date: z.string().min(1, 'Укажите дату'),
     next_due: z.string().optional(),
     target: z.string().optional(),
+    protects: z.string().optional(),
     batch: z.string().max(50).optional(),
     complaint: z.string().max(500).optional(),
     diagnosis: z.string().max(300).optional(),
@@ -197,13 +201,15 @@ export function MedicalRecordForm() {
   const kind: MedicalKind | null = record.data?.kind ?? (isKind(kindParam) ? kindParam : null);
   const labels = kind ? MEDICAL_KIND_LABELS[kind] : null;
   const repeating = kind === 'vaccination' || kind === 'parasite';
+  // A vaccine or a treatment is chosen from a list with a search (the name can be typed); the other kinds keep their text field.
+  const usesList = repeating;
 
   const today = getCurrentDate();
   const { control, handleSubmit, reset, setValue, getValues, formState: { isDirty, isSubmitting } } = useForm<FormData>({
     mode: 'onTouched',
     shouldFocusError: false,
     resolver: zodResolver(schema),
-    defaultValues: { title: '', date: today, next_due: '', target: '', batch: '', complaint: '', diagnosis: '', recommendations: '', weight: '', clinic: '', vet: '', note: '', document_ids: [] },
+    defaultValues: { title: '', date: today, next_due: '', target: '', protects: '', batch: '', complaint: '', diagnosis: '', recommendations: '', weight: '', clinic: '', vet: '', note: '', document_ids: [] },
   });
   // Files added here are uploaded when the record is saved (so a form that is closed leaves nothing behind in
   // «Документы»); the ids of those already uploaded are kept, so a retry after a failure doesn't send them twice.
@@ -211,9 +217,7 @@ export function MedicalRecordForm() {
   const uploaded = useRef(new Map<string, string>());
   const cameraInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  // Other vaccinations of the same day (a paper passport lists several under one date): each is recorded with this date, term and clinic.
-  const [extras, setExtras] = useState<string[]>([]);
-  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0 || extras.length > 0);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0);
   useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!kind && (isEditing ? !!record.data : !!card.data), release });
   const date = useWatch({ control, name: 'date' });
   const weightThatDay = kind === 'visit' ? card.data?.weight?.series.find((point) => point.date === date)?.value : undefined;
@@ -224,11 +228,21 @@ export function MedicalRecordForm() {
   const [targetError, setTargetError] = useState<string | null>(null);
   // «От чего» follows a well-known product (Бравекто: блохи и клещи) until the person chooses it themselves.
   const [targetTouched, setTargetTouched] = useState(false);
+  // What a vaccination is against follows a name the catalogue knows until the person chooses it themselves (a record being
+  // edited keeps what it has).
+  const [protectsTouched, setProtectsTouched] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const catalogQuery = useVaccineCatalog();
+  const catalog = catalogQuery.data;
+  const species = catalogSpecies(pet?.species);
+  const protects = useWatch({ control, name: 'protects' });
   const target = useWatch({ control, name: 'target' });
   const guessedTarget = kind === 'parasite' && !isEditing ? parasiteTargetOf(title) : null;
   const targetAuto = !targetTouched && !!guessedTarget && target === guessedTarget;
   const changeTitle = (value: string) => {
-    setExtras((current) => current.filter((x) => x.toLowerCase() !== value.trim().toLowerCase()));
+    if (kind === 'vaccination' && !isEditing && !protectsTouched) {
+      setValue('protects', inferProtects(value, catalog, species) ?? '', { shouldDirty: true });
+    }
     setValue('title', value, { shouldDirty: true, shouldValidate: true });
     const guess = kind === 'parasite' && !isEditing && !targetTouched ? parasiteTargetOf(value) : null;
     if (guess) {
@@ -266,7 +280,7 @@ export function MedicalRecordForm() {
       if (!r) return;
       filled.current = true;
       reset({
-        title: r.title, date: r.date, next_due: r.next_due ?? '', target: r.target ?? '', batch: r.batch ?? '', complaint: r.complaint ?? '', diagnosis: r.diagnosis ?? '',
+        title: r.title, date: r.date, next_due: r.next_due ?? '', target: r.target ?? '', protects: r.protects ?? '', batch: r.batch ?? '', complaint: r.complaint ?? '', diagnosis: r.diagnosis ?? '',
         recommendations: r.recommendations ?? '', weight: '', clinic: r.clinic ?? '', vet: r.vet ?? '', note: r.note ?? '', document_ids: r.documents.map((d) => d.id),
       });
       return;
@@ -287,7 +301,7 @@ export function MedicalRecordForm() {
     const startVet = params.get('vet') ?? vet;
     const firstDue = repeating && !source && (!sourceDoc || !!renewId) ? addInterval(startDate, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
     autoDue.current = firstDue;
-    const blank: FormData = { title: '', date: startDate, next_due: firstDue, target: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic: startClinic, vet: startVet, note: '', document_ids: [] };
+    const blank: FormData = { title: '', date: startDate, next_due: firstDue, target: '', protects: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic: startClinic, vet: startVet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
       reset(blank);
       return;
@@ -300,6 +314,7 @@ export function MedicalRecordForm() {
       // The same again, today; the repeat keeps the interval it had.
       copy.title = source.title;
       copy.target = source.target ?? '';
+      copy.protects = source.protects ?? '';
       copy.clinic = source.clinic ?? clinic;
       copy.vet = source.vet ?? vet;
       if (source.next_due) copy.next_due = shiftByDays(today, daysBetween(source.date, source.next_due));
@@ -328,6 +343,21 @@ export function MedicalRecordForm() {
   // The titles of a vaccination or a treatment come back (the next shot is the same vaccine); a visit's title does not.
   const own = useMemo(() => (kind && repeating && card.data ? card.data.records[kind].map((r) => r.title) : []), [kind, repeating, card.data]);
   const chips = kind ? suggestionsFor(kind, pet?.species, own) : [];
+  const groupOptions = catalog ? catalog.groups.filter((g) => g.species.includes(species) || g.key === protects) : [];
+  const productGroups: ProductGroup[] =
+    kind === 'vaccination' && catalog
+      ? catalog.groups
+          .filter((g) => g.species.includes(species))
+          .map((g) => ({ key: g.key, label: g.label, detail: g.detail || undefined, items: catalog.products.filter((p) => p.protects === g.key && p.species.includes(species)).map((p) => p.name) }))
+      : kind === 'parasite'
+        ? (['fleas_ticks', 'worms', 'both'] as ParasiteTarget[]).map((t) => ({ key: t, label: PARASITE_TARGET_LABELS[t], items: PARASITE_PRODUCTS.filter((p) => p.target === t).map((p) => p.name) }))
+        : [];
+  // The shot of the same protection that is on the card now: this one will replace it (the card reads a change of brand as the
+  // repeat of the same vaccination, and the earlier entry stays in the history).
+  const replaced =
+    kind === 'vaccination' && protects
+      ? card.data?.records.vaccination.find((r) => !r.superseded && r.protects === protects && r._id !== recordId && r.title.trim().toLowerCase() !== title.trim().toLowerCase())
+      : undefined;
   // A new name that only contains, or is contained in, a name already there («Чумка» and «Чумка (Эурикан)») is another
   // vaccine to the card: the earlier record stays in the list as it was, overdue or not. Said before it is saved.
   const normalizedTitle = title.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -378,6 +408,7 @@ export function MedicalRecordForm() {
         note: data.note?.trim() || null,
         batch: kind === 'vaccination' ? data.batch?.trim() || null : null,
         target: kind === 'parasite' ? ((data.target || null) as ParasiteTarget | null) : null,
+        protects: kind === 'vaccination' ? data.protects || null : null,
         complaint: kind === 'visit' ? data.complaint?.trim() || null : null,
         diagnosis: kind === 'visit' ? data.diagnosis?.trim() || null : null,
         recommendations: kind === 'visit' ? data.recommendations?.trim() || null : null,
@@ -395,22 +426,7 @@ export function MedicalRecordForm() {
         input.document_ids.push(id);
       }
       if (isEditing) await medicalRecordsService.update(recordId!, input);
-      else {
-        await medicalRecordsService.create(petId!, kind!, input);
-        // The others of the day: the same date, term, clinic and doctor; the lot and the files belong to the first. One that does not
-        // go through is said, and the rest stand: the first is already saved, a retry of the whole must not write it twice.
-        if (kind === 'vaccination' && extras.length > 0) {
-          const failed: string[] = [];
-          for (const extra of extras) {
-            try {
-              await medicalRecordsService.create(petId!, kind!, { ...input, title: extra, batch: null, document_ids: [] });
-            } catch {
-              failed.push(extra);
-            }
-          }
-          if (failed.length > 0) showToast.failure(`Не записались: ${failed.join(', ')}. Добавьте их отдельно`);
-        }
-      }
+      else await medicalRecordsService.create(petId!, kind!, input);
       // The visit is recorded, with what was said before it: «К приёму» starts empty for the next one.
       if (kind === 'visit' && !isEditing && card.data?.visit_prep) {
         try {
@@ -451,7 +467,7 @@ export function MedicalRecordForm() {
         const again = new URLSearchParams({ kind: kind!, date: saved.date });
         if (saved.clinic?.trim()) again.set('clinic', saved.clinic.trim());
         if (saved.vet?.trim()) again.set('vet', saved.vet.trim());
-        void confirmWithProgress(queryClient, petId!, extras.length > 0 ? `Записано: ${1 + extras.length}` : 'Запись добавлена', repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined);
+        void confirmWithProgress(queryClient, petId!, 'Запись добавлена', repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined);
       }
       release();
       goBack(navigate, cardPath);
@@ -524,7 +540,37 @@ export function MedicalRecordForm() {
           <Controller
             name="title"
             control={control}
-            render={({ field, fieldState: { error } }) => (
+            render={({ field, fieldState: { error } }) =>
+              usesList ? (
+                <Form.Item
+                  label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>}
+                  clickable
+                  arrow
+                  onClick={() => setPickerOpen(true)}
+                  description={
+                    error?.message ? (
+                      <FieldError message={error.message} />
+                    ) : similar ? (
+                      <span role="note">
+                        «{similar}» уже есть в списке и останется там как есть: карта считает записью той же вакцины только название, не марку.{' '}
+                        <button
+                          type="button"
+                          className="record-push-note__button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setValue('title', similar, { shouldDirty: true, shouldValidate: true });
+                          }}
+                        >
+                          Назвать так же
+                        </button>
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  <PickerValue value={field.value} placeholder={kind === 'vaccination' ? 'Выберите или впишите' : 'Выберите или впишите'} />
+                </Form.Item>
+              ) : (
+
               <Form.Item label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>} description={error?.message ? <FieldError message={error.message} /> : fieldNote({ value: field.value, max: 100 })}>
                 <Input {...left} value={field.value} onChange={changeTitle} onBlur={field.onBlur} placeholder={labels!.titlePlaceholder} maxLength={100} />
                 {chips.length > 0 && (
@@ -549,25 +595,29 @@ export function MedicalRecordForm() {
                   </span>
                 )}
               </Form.Item>
-            )}
+              )
+            }
           />
 
-          {kind === 'vaccination' && !isEditing && !fromId && title.trim() && (
-            <Form.Item description={extras.length > 0 ? `Каждая запишется с этой датой, сроком и клиникой: всего ${1 + extras.length}` : 'Другие прививки того же дня: запишутся с этой датой, сроком и клиникой'}>
-              <ChoiceChips label="Ещё прививки в этот день">
-                {chips
-                  .filter((chip) => chip.trim().toLowerCase() !== title.trim().toLowerCase())
-                  .map((chip) => (
-                    <ChoiceChip
-                      key={chip}
-                      pressed={extras.includes(chip)}
-                      onClick={() => setExtras((current) => (current.includes(chip) ? current.filter((x) => x !== chip) : [...current, chip]))}
-                    >
-                      {`+ ${chip}`}
-                    </ChoiceChip>
-                  ))}
-              </ChoiceChips>
-            </Form.Item>
+          {kind === 'vaccination' && groupOptions.length > 0 && (
+            <PickerField
+              label="От чего"
+              value={protects ?? ''}
+              options={groupOptions.map((g) => ({ label: g.label, value: g.key }))}
+              placeholder="Не указано"
+              empty="Не указано"
+              description={
+                replaced
+                  ? `Заменит «${replaced.title}»: та же защита. Та запись останется в истории и больше не считается просроченной`
+                  : protects
+                    ? [groupOptions.find((g) => g.key === protects)?.detail, !protectsTouched && !isEditing ? 'Выбрано по названию. Можно изменить' : null].filter(Boolean).join('. ') || undefined
+                    : 'Нужно, чтобы смена марки не считалась новой прививкой. Если не знаете, оставьте пустым'
+              }
+              onChange={(v) => {
+                setProtectsTouched(true);
+                setValue('protects', v, { shouldDirty: true });
+              }}
+            />
           )}
 
           {kind === 'parasite' && (
@@ -575,20 +625,19 @@ export function MedicalRecordForm() {
               name="target"
               control={control}
               render={({ field }) => (
-                <Form.Item label={<RequiredLabel>От чего</RequiredLabel>} description={targetError ? <FieldError message={targetError} /> : targetAuto ? 'Выбрано по препарату. Можно изменить' : undefined}>
-                  <Selector
-                    columns={3}
-                    options={(Object.keys(PARASITE_TARGET_LABELS) as ParasiteTarget[]).map((value) => ({ label: PARASITE_TARGET_LABELS[value], value }))}
-                    value={field.value ? [field.value] : []}
-                    onChange={(v) => {
-                      // A required choice of three: tapping the chosen one again keeps it, as a radio does.
-                      if (!v[0]) return;
-                      setTargetTouched(true);
-                      setTargetError(null);
-                      field.onChange(v[0]);
-                    }}
-                  />
-                </Form.Item>
+                <PickerField
+                  label={<RequiredLabel>От чего</RequiredLabel>}
+                  value={field.value ?? ''}
+                  options={(Object.keys(PARASITE_TARGET_LABELS) as ParasiteTarget[]).map((value) => ({ label: PARASITE_TARGET_LABELS[value], value }))}
+                  placeholder="Выберите"
+                  description={targetError ? <FieldError message={targetError} /> : targetAuto ? 'Выбрано по препарату. Можно изменить' : undefined}
+                  onChange={(v) => {
+                    if (!v) return;
+                    setTargetTouched(true);
+                    setTargetError(null);
+                    field.onChange(v);
+                  }}
+                />
               )}
             />
           )}
@@ -811,7 +860,7 @@ export function MedicalRecordForm() {
         {/* A long form: the button stays in reach above the tab bar, not three screens down. */}
         <div className="form-sticky-action safe-area-padding">
           <SpinnerButton loading={save.isPending || isSubmitting} onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}>
-            {isEditing ? 'Сохранить' : extras.length > 0 ? `Добавить ${1 + extras.length} ${(1 + extras.length) % 10 >= 2 && (1 + extras.length) % 10 <= 4 && ((1 + extras.length) % 100 < 12 || (1 + extras.length) % 100 > 14) ? 'записи' : 'записей'}` : 'Добавить'}
+            {isEditing ? 'Сохранить' : 'Добавить'}
           </SpinnerButton>
         </div>
         <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
@@ -845,6 +894,28 @@ export function MedicalRecordForm() {
           )}
         </div>
       </div>
+
+      <ProductPickerSheet
+        visible={pickerOpen}
+        title={kind === 'vaccination' ? 'Название вакцины' : 'Препарат'}
+        placeholder={kind === 'vaccination' ? 'Название или болезнь' : 'Название препарата'}
+        groups={productGroups}
+        earlier={own}
+        loading={kind === 'vaccination' && catalogQuery.isPending}
+        failed={kind === 'vaccination' && catalogQuery.isError}
+        onRetry={() => void catalogQuery.refetch()}
+        onClose={() => setPickerOpen(false)}
+        onPick={(name, group) => {
+          setPickerOpen(false);
+          changeTitle(name);
+          if (!group) return;
+          if (kind === 'vaccination') setValue('protects', group, { shouldDirty: true });
+          else {
+            setValue('target', group, { shouldDirty: true });
+            setTargetError(null);
+          }
+        }}
+      />
 
       <Popup visible={docsOpen} onMaskClick={() => setDocsOpen(false)} onClose={() => setDocsOpen(false)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75vh', overflow: 'auto' }}>
         <div style={{ padding: 'var(--spacing-md)' }}>
