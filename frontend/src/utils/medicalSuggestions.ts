@@ -1,4 +1,4 @@
-import type { MedicalKind } from '../services/medicalRecords.service';
+import type { MedicalKind, ParasiteTarget } from '../services/medicalRecords.service';
 
 /**
  * Names offered as chips under the title field, to tap instead of type. They
@@ -26,6 +26,29 @@ const COMMON: Record<MedicalKind, Record<string, string[]>> = {
 };
 
 const MAX_CHIPS = 6;
+
+/** What a well-known treatment is for, so that the form can put «От чего» in itself. Only products with one plain purpose
+    are listed (a combined one, or one used for several things, is left to the person); the form shows the choice as made
+    and it is one tap to change. */
+const TARGET_OF: [string, ParasiteTarget][] = [
+  ['бравекто', 'fleas_ticks'],
+  ['нексгард', 'fleas_ticks'],
+  ['симпарика', 'fleas_ticks'],
+  ['фронтлайн', 'fleas_ticks'],
+  ['адвантикс', 'fleas_ticks'],
+  ['дронтал', 'worms'],
+  ['мильбемакс', 'worms'],
+  ['празицид', 'worms'],
+  ['прадакс', 'worms'],
+  ['азинокс', 'worms'],
+  ['адвокат', 'both'],
+];
+
+export function parasiteTargetOf(title: string): ParasiteTarget | null {
+  const name = title.trim().toLowerCase();
+  if (!name) return null;
+  return TARGET_OF.find(([product]) => name.startsWith(product))?.[1] ?? null;
+}
 
 /** `own`: the titles this pet already has for the kind, newest first. */
 export function suggestionsFor(kind: MedicalKind, species: string | undefined, own: string[]): string[] {

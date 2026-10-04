@@ -33,7 +33,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { formatAmount } from '../utils/stock';
 import { getPushSubscriptionState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
-import { addInterval, daysBetween, DEFAULT_REPEAT, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
+import { addInterval, daysBetween, DEFAULT_REPEAT, parasiteTargetOf, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
@@ -220,6 +220,19 @@ export function MedicalRecordForm() {
   const documentIds = useWatch({ control, name: 'document_ids' });
   const [docsOpen, setDocsOpen] = useState(false);
   const [targetError, setTargetError] = useState<string | null>(null);
+  // «От чего» follows a well-known product (Бравекто: блохи и клещи) until the person chooses it themselves.
+  const [targetTouched, setTargetTouched] = useState(false);
+  const target = useWatch({ control, name: 'target' });
+  const guessedTarget = kind === 'parasite' && !isEditing ? parasiteTargetOf(title) : null;
+  const targetAuto = !targetTouched && !!guessedTarget && target === guessedTarget;
+  const changeTitle = (value: string) => {
+    setValue('title', value, { shouldDirty: true, shouldValidate: true });
+    const guess = kind === 'parasite' && !isEditing && !targetTouched ? parasiteTargetOf(value) : null;
+    if (guess) {
+      setValue('target', guess, { shouldDirty: true });
+      setTargetError(null);
+    }
+  };
   // The optional fields are closed, except for a record being edited that has something in them.
   const [moreChosen, setMoreChosen] = useState<boolean | null>(null);
   // The repeat date put in by the form itself (not typed): it moves with the date until the person changes it.
@@ -263,9 +276,15 @@ export function MedicalRecordForm() {
     const vet = last?.vet ?? card.data.profile.clinic.vet ?? '';
     // A vaccination or a treatment is nearly always repeated: the usual interval is put in (a year, three months),
     // so that skipping the field does not switch the reminder off. It follows the date until it is touched, and is one tap from gone.
-    const firstDue = repeating && !source && (!sourceDoc || !!renewId) ? addInterval(today, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
+    // «Ещё одну» after a save brings the date and the clinic of the one just saved: a paper passport lists several shots
+    // of one day, and the second should not cost the whole form again.
+    const linkDate = params.get('date');
+    const startDate = linkDate && /^\d{4}-\d{2}-\d{2}$/.test(linkDate) && linkDate <= today ? linkDate : today;
+    const startClinic = params.get('clinic') ?? clinic;
+    const startVet = params.get('vet') ?? vet;
+    const firstDue = repeating && !source && (!sourceDoc || !!renewId) ? addInterval(startDate, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
     autoDue.current = firstDue;
-    const blank: FormData = { title: '', date: today, next_due: firstDue, target: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic, vet, note: '', document_ids: [] };
+    const blank: FormData = { title: '', date: startDate, next_due: firstDue, target: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic: startClinic, vet: startVet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
       reset(blank);
       return;
@@ -299,7 +318,7 @@ export function MedicalRecordForm() {
     }
     reset(blank);
     (Object.keys(copy) as (keyof FormData)[]).forEach((key) => setValue(key, copy[key] as never, { shouldDirty: true }));
-  }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, renewId, repeating, reset, setValue, today]);
+  }, [kind, isEditing, record.data, card.data, source, sourceDoc, documents.isPending, fromId, docId, renewId, repeating, reset, setValue, today, params]);
 
   const recorded = record.data;
   const moreOpen = moreChosen ?? (isEditing && !!(recorded?.clinic || recorded?.vet || recorded?.note || recorded?.batch));
@@ -399,7 +418,7 @@ export function MedicalRecordForm() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_result, saved) => {
       if (weightSaved.current) {
         queryClient.invalidateQueries({
           predicate: (query) => ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
@@ -410,7 +429,12 @@ export function MedicalRecordForm() {
       // The Documents list says «В медкарте» for what a record points at.
       queryClient.invalidateQueries({ queryKey: ['documents', petId] });
       if (isEditing) showToast.success('Запись сохранена');
-      else void confirmWithProgress(queryClient, petId!, 'Запись добавлена');
+      else {
+        const again = new URLSearchParams({ kind: kind!, date: saved.date });
+        if (saved.clinic?.trim()) again.set('clinic', saved.clinic.trim());
+        if (saved.vet?.trim()) again.set('vet', saved.vet.trim());
+        void confirmWithProgress(queryClient, petId!, 'Запись добавлена', repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined);
+      }
       release();
       goBack(navigate, cardPath);
     },
@@ -484,14 +508,14 @@ export function MedicalRecordForm() {
             control={control}
             render={({ field, fieldState: { error } }) => (
               <Form.Item label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>} description={error?.message ? <FieldError message={error.message} /> : fieldNote({ value: field.value, max: 100 })}>
-                <Input {...left} value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder={labels!.titlePlaceholder} maxLength={100} />
+                <Input {...left} value={field.value} onChange={changeTitle} onBlur={field.onBlur} placeholder={labels!.titlePlaceholder} maxLength={100} />
                 {chips.length > 0 && (
                   <ChoiceChips label="Подсказки">
                     {chips.map((chip) => (
                       <ChoiceChip
                         key={chip}
                         pressed={title.trim().toLowerCase() === chip.toLowerCase()}
-                        onClick={() => setValue('title', chip, { shouldDirty: true, shouldValidate: true })}
+                        onClick={() => changeTitle(chip)}
                       >
                         {chip}
                       </ChoiceChip>
@@ -515,14 +539,17 @@ export function MedicalRecordForm() {
               name="target"
               control={control}
               render={({ field }) => (
-                <Form.Item label={<RequiredLabel>От чего</RequiredLabel>} description={targetError ? <FieldError message={targetError} /> : undefined}>
+                <Form.Item label={<RequiredLabel>От чего</RequiredLabel>} description={targetError ? <FieldError message={targetError} /> : targetAuto ? 'Выбрано по препарату. Можно изменить' : undefined}>
                   <Selector
                     columns={3}
                     options={(Object.keys(PARASITE_TARGET_LABELS) as ParasiteTarget[]).map((value) => ({ label: PARASITE_TARGET_LABELS[value], value }))}
                     value={field.value ? [field.value] : []}
                     onChange={(v) => {
+                      // A required choice of three: tapping the chosen one again keeps it, as a radio does.
+                      if (!v[0]) return;
+                      setTargetTouched(true);
                       setTargetError(null);
-                      field.onChange(v[0] ?? '');
+                      field.onChange(v[0]);
                     }}
                   />
                 </Form.Item>
@@ -541,6 +568,7 @@ export function MedicalRecordForm() {
                 onBlur={field.onBlur}
                 yearsBack={30}
                 yearsForward={0}
+                quick
                 description={error?.message ? <FieldError message={error.message} /> : undefined}
               />
             )}
