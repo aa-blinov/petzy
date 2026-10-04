@@ -6,12 +6,12 @@ import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
-import { Button, Form, Input, Switch, Selector, Picker, Popup, List } from 'antd-mobile';
+import { Button, Form, Input, Switch, Selector, Picker } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { DeleteOutline, SearchOutline } from 'antd-mobile-icons';
+import { DeleteOutline } from 'antd-mobile-icons';
 import { medicationsService, type MedicationCreate, COMMON_MEDICATIONS } from '../services/medications.service';
 import { usePet } from '../hooks/usePet';
 import { Segmented } from '../components/Segmented';
@@ -23,6 +23,8 @@ import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
 import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
+import { ProductPickerSheet } from '../components/ProductPickerSheet';
+import { MEDICINE_GROUPS } from '../utils/medicineCatalog';
 import { DatePickerField } from '../components/DatePickerField';
 import { showUndo } from '../utils/undo';
 import { deleteMedicationWithUndo, medicationDeleteText } from '../utils/medicationDelete';
@@ -144,7 +146,7 @@ export function MedicationForm() {
     // "adjust state when a prop/query result changes") instead of in an
     // effect, which would cause an extra cascading render.
     const [lastSeenMedType, setLastSeenMedType] = useState<string | undefined>(undefined);
-    const [showCommonMeds, setShowCommonMeds] = useState(false);
+    const [namePickerOpen, setNamePickerOpen] = useState(false);
     const [activeTimeIndex, setActiveTimeIndex] = useState<number | null>(null);
     const [timePickerVisible, setTimePickerVisible] = useState(false);
     const [unitPickerVisible, setUnitPickerVisible] = useState(false);
@@ -266,16 +268,26 @@ export function MedicationForm() {
         }
     }
 
-    const handleCommonMedSelect = (common: typeof COMMON_MEDICATIONS[0]) => {
-        // shouldDirty: a filled-in template is unsaved data like typed text.
-        const filled = { shouldDirty: true };
-        setValue('name', common.name, filled);
+    // What this pet has been given before comes first in the list.
+    const { data: petMedicines } = useQuery({
+        queryKey: ['medications', selectedPetId, 'names'],
+        queryFn: () => medicationsService.getList(selectedPetId!),
+        enabled: !!selectedPetId,
+    });
+    const earlierMedicines = Array.from(new Set((petMedicines ?? []).map((m) => m.name.trim()).filter(Boolean)));
+
+    const handleNamePick = (name: string) => {
+        // shouldDirty: a chosen name, like a typed one, is unsaved data.
+        const filled = { shouldDirty: true, shouldValidate: true };
+        setValue('name', name, filled);
+        setNamePickerOpen(false);
+        const common = COMMON_MEDICATIONS.find((m) => m.name === name);
+        if (!common) return;
+        // A medicine known with its form and the strength of the box: those come along, the dose and the schedule are the vet's.
         setValue('type', common.type, filled);
         setValue('form_factor', common.form_factor, filled);
         setValue('strength', common.strength, filled);
         setValue('dose_unit', common.dose_unit, filled);
-        setShowCommonMeds(false);
-        showToast.success('Данные заполнены');
     };
 
     const endedOn = useWatch({ control, name: 'ended_on' });
@@ -356,14 +368,6 @@ export function MedicationForm() {
                         {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
                     </h1>
                 </div>
-                {!isEditing && (
-                    // Its own row, a full-size target: in the corner of the title it was a 30 px button.
-                    <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
-                        <Button block fill="outline" color="primary" onClick={() => setShowCommonMeds(true)}>
-                            <SearchOutline /> Выбрать из частых лекарств
-                        </Button>
-                    </div>
-                )}
                 {selectedPetName && (
                     <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
                         Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
@@ -382,15 +386,15 @@ export function MedicationForm() {
                             name="name"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Название" required description={fieldNote({ error: errors.name?.message, value: field.value, max: 100 })}>
-                                    <Input
-                                        onBlur={field.onBlur}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        placeholder="Напр. Синулокс"
-                                        maxLength={100}
-                                        clearable
-                                    />
+                                <Form.Item
+                                    label="Название"
+                                    required
+                                    clickable
+                                    arrow
+                                    onClick={() => setNamePickerOpen(true)}
+                                    description={errors.name?.message ? <FieldError message={errors.name.message} /> : undefined}
+                                >
+                                    <PickerValue value={field.value} placeholder="Выберите или впишите" />
                                 </Form.Item>
                             )}
                         />
@@ -932,37 +936,15 @@ export function MedicationForm() {
                 </div>
             </div>
 
-            <Popup
-                visible={showCommonMeds}
-                onMaskClick={() => setShowCommonMeds(false)}
-                bodyStyle={{ height: '60vh', borderTopLeftRadius: 'var(--radius-md)', borderTopRightRadius: 'var(--radius-md)' }}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div style={{ padding: 'var(--spacing-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--app-border-color)' }}>
-                        <span style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Частые лекарства</span>
-                        <Button fill="none" color="primary" onClick={() => setShowCommonMeds(false)}>Закрыть</Button>
-                    </div>
-                    <p style={{ margin: 0, padding: 'var(--spacing-sm) var(--spacing-lg)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', borderBottom: '1px solid var(--app-border-color)' }}>
-                        Это заготовки для примера: название, форма и дозировка упаковки. Дозу и расписание назначает ветеринар, их вы вводите сами
-                    </p>
-                    <div style={{ overflowY: 'auto', flex: 1 }}>
-                        <List>
-                            {COMMON_MEDICATIONS.map((med, idx) => (
-                                <List.Item
-                                    key={idx}
-                                    onClick={() => handleCommonMedSelect(med)}
-                                    arrow
-                                >
-                                    <div style={{ fontWeight: 500 }}>{med.name}</div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
-                                        {med.type}, {med.strength}
-                                    </div>
-                                </List.Item>
-                            ))}
-                        </List>
-                    </div>
-                </div>
-            </Popup>
+            <ProductPickerSheet
+                visible={namePickerOpen}
+                title="Лекарство"
+                placeholder="Название лекарства"
+                groups={MEDICINE_GROUPS}
+                earlier={earlierMedicines}
+                onClose={() => setNamePickerOpen(false)}
+                onPick={(name) => handleNamePick(name)}
+            />
             {leaveDialog}
         </div>
     );
