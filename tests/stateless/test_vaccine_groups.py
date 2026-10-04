@@ -56,7 +56,7 @@ class TestWhatAShotIsAgainst:
         assert effective_protects({"kind": "parasite", "title": "Нобивак DHPPi", "protects": "rabies"}) is None
 
     def test_the_catalogue_is_consistent(self):
-        assert {key for key, _, _ in GROUPS} == set(GROUP_KEYS)
+        assert {key for key, _, _, _ in GROUPS} == set(GROUP_KEYS)
         assert all(group in GROUP_KEYS for _, _, group in PRODUCTS)
         assert all(species for _, species, _ in PRODUCTS)
         names = {(name, species) for name, species, _ in PRODUCTS}
