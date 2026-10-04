@@ -17,7 +17,7 @@ import { formatDate, hasLife, weightDelta } from '../utils/medicalCardFormat';
 import { ClinicRow, CourseRow, ImportantBlock, KindSection, LifeRows, Section, Sparkline } from './MedicalCard';
 import './MedicalCard.css';
 
-export type CardSectionKey = 'risks' | 'meds' | 'prevention' | 'weight' | 'visits' | 'documents' | 'clinic';
+export type CardSectionKey = 'risks' | 'meds' | 'prevention' | 'weight' | 'visits' | 'documents' | 'clinic' | 'life';
 
 const TITLES: Record<CardSectionKey, string> = {
   risks: 'Риски',
@@ -26,7 +26,8 @@ const TITLES: Record<CardSectionKey, string> = {
   weight: 'Вес',
   visits: 'Визиты и операции',
   documents: 'Документы',
-  clinic: 'Клиника и условия',
+  clinic: 'Клиника и врачи',
+  life: 'Питание и условия',
 };
 
 const isSection = (value: string | undefined): value is CardSectionKey => !!value && value in TITLES;
@@ -140,32 +141,33 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
       );
     case 'clinic':
       return (
-        <>
-          <Section
-            id="medcard-clinic"
-            title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}
-            action={{ label: card.profile.clinics.length ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=clinic`) }}
-          >
-            {card.profile.clinics.length === 0 ? (
-              <p className="medcard__empty">Клиника не указана. Её телефон врач увидит в карте</p>
-            ) : (
-              <ul className="medcard__list">
-                {card.profile.clinics.map((c, i) => (
-                  <ClinicRow key={`${c.name ?? ''}-${i}`} clinic={c} />
-                ))}
-              </ul>
-            )}
-          </Section>
-          <Section id="medcard-life" title="Питание и условия" action={{ label: hasLife(card.profile) ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=life`) }}>
-            {hasLife(card.profile) ? (
-              <ul className="medcard__list">
-                <LifeRows profile={card.profile} />
-              </ul>
-            ) : (
-              <p className="medcard__empty">Чем кормят и где живёт: помогает врачу, когда причина не ясна</p>
-            )}
-          </Section>
-        </>
+        <Section
+          id="medcard-clinic"
+          title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}
+          action={{ label: card.profile.clinics.length ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=clinic`) }}
+        >
+          {card.profile.clinics.length === 0 ? (
+            <p className="medcard__empty">Клиника не указана. Её телефон врач увидит в карте</p>
+          ) : (
+            <ul className="medcard__list">
+              {card.profile.clinics.map((c, i) => (
+                <ClinicRow key={`${c.name ?? ''}-${i}`} clinic={c} />
+              ))}
+            </ul>
+          )}
+        </Section>
+      );
+    case 'life':
+      return (
+        <Section id="medcard-life" title="Сейчас" action={{ label: hasLife(card.profile) ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=life`) }}>
+          {hasLife(card.profile) ? (
+            <ul className="medcard__list">
+              <LifeRows profile={card.profile} />
+            </ul>
+          ) : (
+            <p className="medcard__empty">Чем кормят и где живёт: помогает врачу, когда причина не ясна</p>
+          )}
+        </Section>
       );
   }
 }
