@@ -65,6 +65,7 @@ const PetEvents = lazy(() => import('./pages/PetEvents').then(m => ({ default: m
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
 const MedicalCard = lazy(() => import('./pages/MedicalCard').then(m => ({ default: m.MedicalCard })));
 const MedicalCardSection = lazy(() => import('./pages/MedicalCardSection').then(m => ({ default: m.MedicalCardSection })));
+const MedicalLinks = lazy(() => import('./pages/MedicalLinks').then(m => ({ default: m.MedicalLinks })));
 const SharedMedicalCard = lazy(() => import('./pages/SharedMedicalCard').then(m => ({ default: m.SharedMedicalCard })));
 const MedicalProfileForm = lazy(() => import('./pages/MedicalProfileForm').then(m => ({ default: m.MedicalProfileForm })));
 const VisitPrepForm = lazy(() => import('./pages/VisitPrepForm').then(m => ({ default: m.VisitPrepForm })));
@@ -472,6 +473,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/medical-links"
+                element={
+                  <ProtectedRoute>
+                    <MedicalLinks />
                   </ProtectedRoute>
                 }
               />

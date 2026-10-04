@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Bell, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 
@@ -143,6 +143,24 @@ export function Settings() {
                   : 'Какие записи предлагает «+» и в каком порядке'
               }
               {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-events') })}
+            />
+          </Group>
+
+          {/* The medical card's own settings: what a vet asks (the profile of the selected pet) and the links given to a vet. */}
+          <Group title="Медкарта">
+            <SettingsRow
+              icon={<HeartPulse size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Данные для врача"
+              description="Аллергии, чип, клиники и питание выбранного питомца"
+              chevron
+              onClick={() => (selectedPetId ? navigate(`/pets/${selectedPetId}/medical-profile`) : showToast.info('Сначала выберите питомца'))}
+            />
+            <SettingsRow
+              icon={<Link2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Ссылки на медкарту"
+              description="Кому вы дали доступ к карте: посмотреть и отозвать"
+              chevron
+              onClick={() => navigate('/settings/medical-links')}
             />
           </Group>
 
