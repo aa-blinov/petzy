@@ -15,8 +15,6 @@ import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-const SPECIES_OPTIONS = SPECIES.map((s) => ({ label: s.label, value: s.key }));
-
 /** Neutering options; the row's own label says which (see neuteringLabel). */
 const NEUTERED_OPTIONS = [
     { label: 'Не указано', value: '' },
@@ -24,11 +22,13 @@ const NEUTERED_OPTIONS = [
     { label: 'Да', value: 'true' },
 ];
 
-import { petsService } from '../services/pets.service';
+import { petsService, type Pet } from '../services/pets.service';
 import { usersService } from '../services/users.service';
 import { UserAvatar } from '../components/UserAvatar';
 import { GENDER_OPTIONS } from '../utils/constants';
-import { SPECIES, defaultTilesFor, getSpecies, neuteringLabel, speciesLabel } from '../utils/species';
+import { defaultTilesFor, getSpecies, neuteringLabel } from '../utils/species';
+import { SpeciesTiles } from '../components/SpeciesTiles';
+import { PetAddedSheet } from '../components/PetAddedSheet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { EmptyState } from '../components/EmptyState';
@@ -74,7 +74,10 @@ export function PetForm() {
   const [loading, setLoading] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
-  const [speciesPickerVisible, setSpeciesPickerVisible] = useState(false);
+  // A new pet starts with the few things it needs; the rest of the form opens on a tap (an existing pet shows all of it).
+  const [showMore, setShowMore] = useState(false);
+  // The pet just added: what its «+» starts with and what to do next, before leaving the form.
+  const [addedPet, setAddedPet] = useState<Pet | null>(null);
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
 
@@ -281,6 +284,7 @@ export function PetForm() {
       };
 
       let petId = id;
+      let createdPet: Pet | undefined;
       if (isEditing && id) {
         await petsService.updatePet(id, petData);
       } else {
@@ -288,6 +292,7 @@ export function PetForm() {
         // (no litter or tooth brushing for a fish); all can be turned on later.
         const newPet = await petsService.createPet({ ...petData, tiles_settings: defaultTilesFor(values.species) });
         petId = newPet._id;
+        createdPet = newPet;
       }
 
       if (petId) {
@@ -321,10 +326,18 @@ export function PetForm() {
         await queryClient.invalidateQueries({ queryKey: ['pet', petId] });
       }
 
+      // The pet just added is the one the person is about to write about: it is the selected one from here on, as it is after onboarding.
+      if (createdPet) selectPet(createdPet);
+
+      release();
+      if (createdPet) {
+        // A new pet is greeted and offered what to do next; leaving the sheet leaves the form.
+        setAddedPet(createdPet);
+        return;
+      }
       // Leave at once; the toast lives on over the list.
       // An invitation has its own message with «Отменить»: a second one would take its place at once.
-      if (!invited) showToast.success(isEditing ? 'Питомец обновлён' : 'Питомец добавлен');
-      release();
+      if (!invited) showToast.success('Питомец обновлён');
       goBack(navigate, '/pets');
     } catch (error) {
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
@@ -384,7 +397,17 @@ export function PetForm() {
               '--prefix-width': '8em'
             } as React.CSSProperties}
           >
-            <Form.Header>Общие настройки</Form.Header>
+            <Form.Header>О питомце</Form.Header>
+            <Controller
+              name="species"
+              control={control}
+              render={({ field }) => (
+                <Form.Item label="Вид питомца" layout="vertical">
+                  <SpeciesTiles value={field.value} onChange={field.onChange} />
+                </Form.Item>
+              )}
+            />
+
             <Controller
               name="name"
               control={control}
@@ -409,38 +432,134 @@ export function PetForm() {
               )}
             />
 
-            <Controller
-              name="species"
-              control={control}
-              render={({ field }) => {
-                const selectedLabel = speciesLabel(field.value);
-                return (
-                  <Form.Item
-                    label="Тип питомца"
-                    clickable
-                    arrow
-                    onClick={() => setSpeciesPickerVisible(true)}
-                  >
-                    <span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
-                      {selectedLabel || 'Не выбран'}
-                    </span>
-                    <Picker
-                      columns={[SPECIES_OPTIONS]}
-                      visible={speciesPickerVisible}
-                      value={field.value ? [field.value] : []}
-                      onClose={() => setSpeciesPickerVisible(false)}
-                      onConfirm={(val) => {
-                        field.onChange(val[0] as string);
-                        setSpeciesPickerVisible(false);
-                      }}
-                      cancelText="Отмена"
-                      confirmText="Готово"
-                    />
-                  </Form.Item>
-                );
-              }}
-            />
+            <Form.Item label="Фото" layout="vertical">
+              <input
+                type="file"
+                accept="image/*"
+                id="pet-photo-input"
+                // Visually hidden, not display:none: the input stays in
+                // the Tab order, so the picker opens from the keyboard.
+                className="sr-only file-picker-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setCropTarget({ src: URL.createObjectURL(file), filename: file.name });
+                  }
+                  e.target.value = '';
+                }}
+              />
 
+              {fileList.length > 0 && fileList[0]?.url ? (
+                // Photo exists - show photo card with overlay actions
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: 'var(--app-shadow)',
+                  }}
+                >
+                  <img
+                    src={fileList[0].url}
+                    alt="Фото питомца"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setImageViewer({ visible: true, image: fileList[0].url })}
+                  />
+                  {/* Overlay with actions */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '8px',
+                      background: 'linear-gradient(transparent, var(--app-scrim-strong))',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('pet-photo-input')?.click()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: 'var(--app-white-90)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                      }}
+                      title="Заменить фото"
+                      className="touch-target"
+                    >
+                      <Camera size={16} strokeWidth={2} style={{ display: 'block' }} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFileList([])}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: 'var(--app-danger-color)',
+                        color: 'var(--app-text-on-dark)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                      }}
+                      aria-label="Удалить фото"
+                      className="touch-target"
+                    >
+                      <span aria-hidden>×</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // No photo - show upload zone. Wrapped in <label htmlFor="pet-photo-input">
+                // so keyboard / screen-reader users get the same affordance
+                // as mouse users — clicking the dashed zone opens the file
+                // picker just like clicking the hidden <input>.
+                <label htmlFor="pet-photo-input" className="photo-upload-zone">
+                  <Camera size={32} strokeWidth={1.5} style={{ display: 'block', opacity: 0.6 }} />
+                  <span style={{
+                    fontSize: '12px',
+                    color: 'var(--adm-color-text-secondary)',
+                    textAlign: 'center'
+                  }}>
+                    Добавить
+                  </span>
+                </label>
+              )}
+            </Form.Item>
+            {/* A new pet needs a name and a kind; the rest can be told later, so it is one tap away and not the whole form. */}
+            {!isEditing && !showMore && (
+              <Form.Item
+                clickable
+                arrow
+                onClick={() => setShowMore(true)}
+                description="Порода, дата рождения, пол, заметки о здоровье"
+              >
+                Ещё о питомце
+              </Form.Item>
+            )}
+            {(isEditing || showMore) && (
+              <>
             <Controller
               name="breed"
               control={control}
@@ -596,7 +715,6 @@ export function PetForm() {
               }}
             />
             )}
-
             <Controller
               name="health_notes"
               control={control}
@@ -622,121 +740,8 @@ export function PetForm() {
               )}
             />
 
-            <Form.Item label="Фото" layout="vertical">
-              <input
-                type="file"
-                accept="image/*"
-                id="pet-photo-input"
-                // Visually hidden, not display:none: the input stays in
-                // the Tab order, so the picker opens from the keyboard.
-                className="sr-only file-picker-input"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setCropTarget({ src: URL.createObjectURL(file), filename: file.name });
-                  }
-                  e.target.value = '';
-                }}
-              />
-
-              {fileList.length > 0 && fileList[0]?.url ? (
-                // Photo exists - show photo card with overlay actions
-                <div
-                  style={{
-                    position: 'relative',
-                    width: '120px',
-                    height: '120px',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: 'var(--app-shadow)',
-                  }}
-                >
-                  <img
-                    src={fileList[0].url}
-                    alt="Фото питомца"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => setImageViewer({ visible: true, image: fileList[0].url })}
-                  />
-                  {/* Overlay with actions */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '8px',
-                      background: 'linear-gradient(transparent, var(--app-scrim-strong))',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById('pet-photo-input')?.click()}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        background: 'var(--app-white-90)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '16px',
-                      }}
-                      title="Заменить фото"
-                      className="touch-target"
-                    >
-                      <Camera size={16} strokeWidth={2} style={{ display: 'block' }} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFileList([])}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        background: 'var(--app-danger-color)',
-                        color: 'var(--app-text-on-dark)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                      }}
-                      aria-label="Удалить фото"
-                      className="touch-target"
-                    >
-                      <span aria-hidden>×</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // No photo - show upload zone. Wrapped in <label htmlFor="pet-photo-input">
-                // so keyboard / screen-reader users get the same affordance
-                // as mouse users — clicking the dashed zone opens the file
-                // picker just like clicking the hidden <input>.
-                <label htmlFor="pet-photo-input" className="photo-upload-zone">
-                  <Camera size={32} strokeWidth={1.5} style={{ display: 'block', opacity: 0.6 }} />
-                  <span style={{
-                    fontSize: '12px',
-                    color: 'var(--adm-color-text-secondary)',
-                    textAlign: 'center'
-                  }}>
-                    Добавить
-                  </span>
-                </label>
-              )}
-            </Form.Item>
+              </>
+            )}
           </Form>
 
           {/* Sharing is an owner-only capability — the backend already
@@ -969,6 +974,19 @@ export function PetForm() {
         />
       )}
       {leaveDialog}
+      <PetAddedSheet
+        visible={!!addedPet}
+        pet={addedPet}
+        onClose={() => goBack(navigate, '/pets')}
+        onRecord={(key) => {
+          navigate('/', { replace: true });
+          navigate(`/form/${key}`);
+        }}
+        onLook={() => {
+          navigate('/', { replace: true });
+          navigate('/pet-look');
+        }}
+      />
     </div>
   );
 }

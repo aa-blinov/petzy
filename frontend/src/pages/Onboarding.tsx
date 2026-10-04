@@ -36,17 +36,13 @@ import { hapticFeedback } from '../utils/haptic';
 import { showToast } from '../utils/toast';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PhotoCropModal } from '../components/PhotoCropModal';
-import { SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
+import { MORE_SPECIES, TILE_SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
 import './Onboarding.css';
 
 type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'look' | 'species' | 'name' | 'notify' | 'install' | 'done';
 
 const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'care', 'family', 'look'];
 
-/** The most common species get a tile; the rest are one tap away in
- *  «Другой питомец» (utils/species.ts holds them all). */
-const TILE_SPECIES: SpeciesKey[] = ['cat', 'dog', 'rabbit', 'bird', 'fish'];
-const MORE_SPECIES = SPECIES.filter((s) => !TILE_SPECIES.includes(s.key)).map((s) => ({ label: s.label, value: s.key }));
 
 const MONTHS_NOMINATIVE = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',

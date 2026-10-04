@@ -253,3 +253,7 @@ export function defaultTilesFor(value?: string | null): { order: string[]; visib
     visible: Object.fromEntries([...ORIGINAL, ...starter].map((key) => [key, shown.has(key)])),
   };
 }
+
+/** The most common kinds get a tile when a pet is added; the rest are one tap away in «Другой». */
+export const TILE_SPECIES: SpeciesKey[] = ['cat', 'dog', 'rabbit', 'bird', 'fish'];
+export const MORE_SPECIES = SPECIES.filter((s) => !TILE_SPECIES.includes(s.key)).map((s) => ({ label: s.label, value: s.key }));
