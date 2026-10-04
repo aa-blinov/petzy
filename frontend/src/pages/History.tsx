@@ -1,5 +1,5 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { PullToRefresh } from 'antd-mobile';
 import { Download, Notebook, ChevronDown, Rows3 } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
@@ -18,6 +18,8 @@ import { LoadError } from '../components/LoadError';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
 import { HistoryFilterSheet, type HistoryFilterOption } from '../components/HistoryFilterSheet';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
+import { eventTypesService } from '../services/eventTypes.service';
+import { isTileShown } from '../utils/tilesConfig';
 import { buildTiles } from '../utils/tilesConfig';
 import { healthRecordsService, type TimelineResponse, type HealthRecord } from '../services/healthRecords.service';
 import { SkeletonList } from '../components/Skeletons';
@@ -68,8 +70,18 @@ export function History() {
     // way to reach it short of un-hiding it again in Settings. Only the
     // *order* is still worth sharing — it's the arrangement the user
     // already knows from the dashboard.
+    // What this pet has records of (the catalogue is long: a pet that never had a fever is not offered «Температура» here), plus
+    // what its «+» offers and the filter that is on.
+    const usedTypes = useQuery({
+        queryKey: ['used-types', selectedPetId],
+        queryFn: () => eventTypesService.usedBy(selectedPetId!),
+        enabled: !!selectedPetId,
+        staleTime: 0,
+    });
     const filterOptions: HistoryFilterOption[] = useMemo(() => {
+        const used = new Set(usedTypes.data ?? []);
         const orderedTiles = buildTiles(eventTypes)
+            .filter(tile => used.has(tile.id) || isTileShown(tilesSettings, tile.id) || tile.id === filterType)
             .sort((a, b) => {
                 const aIndex = tilesSettings.order.indexOf(a.id);
                 const bIndex = tilesSettings.order.indexOf(b.id);
@@ -87,7 +99,7 @@ export function History() {
                 };
             }),
         ];
-    }, [tilesSettings, eventTypes, historyConfig]);
+    }, [tilesSettings, eventTypes, historyConfig, usedTypes.data, filterType]);
 
     const activeFilterOption = filterOptions.find(o => o.id === filterType) ?? filterOptions[0];
 

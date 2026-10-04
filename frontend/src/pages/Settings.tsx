@@ -134,6 +134,16 @@ export function Settings() {
               // Someone a pet is shared with sees the look but does not set it.
               {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-look') })}
             />
+            <SettingsRow
+              icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="События питомца"
+              description={
+                getSelectedPet && getSelectedPet.current_user_is_owner === false
+                  ? 'Меняет только владелец питомца'
+                  : 'Какие записи предлагает «+» и в каком порядке'
+              }
+              {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-events') })}
+            />
           </Group>
 
           {/* The row itself only ever shows a switch: "unsupported"/"denied" states disable it with an explanatory description
@@ -182,13 +192,6 @@ export function Settings() {
           {/* How a record is entered: what the «+» offers and what a new form starts with (both for the selected pet), and the
               types of record themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. */}
           <Group title="Новые записи">
-            <SettingsRow
-              icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Кнопки быстрого добавления"
-              description="Какие записи видны в окне «+» и в каком порядке"
-              chevron
-              onClick={() => navigate('/tiles-settings')}
-            />
             <SettingsRow
               icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Значения по умолчанию"

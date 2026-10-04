@@ -1291,6 +1291,8 @@ class EventTypeItem(BaseModel):
     icon: str
     color: str
     is_builtin: bool
+    # Where a built-in type belongs in the catalogue (food, health, care...); empty for the family's own.
+    category: Optional[str] = None
     created_by: Optional[str] = None
     fields: List[EventTypeField]
     chart: EventChartConfig

@@ -2,7 +2,11 @@
 
 import pytest
 
-BUILTIN_KEYS = {
+from web.builtin_event_types import BUILTIN_TYPE_ORDER
+
+BUILTIN_KEYS = set(BUILTIN_TYPE_ORDER)
+# The original eight, which older installs and every old pet's tiles know by name.
+ORIGINAL_KEYS = {
     "feeding",
     "weight",
     "asthma",
@@ -26,6 +30,8 @@ class TestListEventTypes:
         data = response.get_json()["event_types"]
         assert {t["key"] for t in data} == BUILTIN_KEYS
         assert all(t["is_builtin"] for t in data)
+        assert ORIGINAL_KEYS <= BUILTIN_KEYS
+        assert all(t["category"] for t in data)
 
         defecation = next(t for t in data if t["key"] == "defecation")
         field_names = {f["name"] for f in defecation["fields"]}
@@ -201,3 +207,30 @@ class TestDeleteEventType:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 404
+
+
+@pytest.mark.health_records
+class TestUsedTypes:
+    def test_lists_only_the_types_the_pet_has_records_of(self, client, mock_db, regular_user_token, test_pet):
+        headers = {"Authorization": f"Bearer {regular_user_token}"}
+        base = {"pet_id": str(test_pet["_id"]), "date": "2026-10-01", "time": "08:00"}
+        assert (
+            client.post(
+                "/api/events", json={**base, "type": "feeding", "fields": {"food_weight": 100}}, headers=headers
+            ).status_code
+            == 201
+        )
+        assert (
+            client.post("/api/events", json={**base, "type": "litter", "fields": {}}, headers=headers).status_code
+            == 201
+        )
+        response = client.get(f"/api/events/used-types?pet_id={test_pet['_id']}", headers=headers)
+        assert response.status_code == 200
+        assert response.get_json() == {"types": ["feeding", "litter"]}
+
+    def test_someone_else_s_pet_is_refused(self, client, mock_db, regular_user_token, admin_pet):
+        response = client.get(
+            f"/api/events/used-types?pet_id={admin_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code in (403, 404)

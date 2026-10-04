@@ -33,6 +33,9 @@ export function EventTypesSettings() {
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const { isAdmin } = useAdmin();
   const { username: currentUsername } = useAuth();
+  // The family's own types first. The built-in ones are the catalogue, added to a pet in its events; only an administrator
+  // changes them, so for everyone else a list of thirty rows to look at and not touch is only noise.
+  const listed = [...eventTypes.filter((t) => !t.is_builtin), ...(isAdmin ? eventTypes.filter((t) => t.is_builtin) : [])];
 
   const handleDelete = async (key: string) => {
     setDeletingKey(key);
@@ -71,17 +74,19 @@ export function EventTypesSettings() {
             Типы событий
           </h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем. Встроенные типы общие для всех, их меняет администратор
+            Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем. Готовые события добавляются в «События питомца»
           </p>
         </div>
 
         {isLoading ? (
           <LoadingSpinner fullscreen={false} />
-        ) : eventTypes.length === 0 ? (
+        ) : listed.length === 0 ? (
           <EmptyState
             icon={Sparkles}
-            title="Типов пока нет"
-            description="Создайте первый тип события, чтобы записывать что-то своё"
+            title="Своих типов пока нет"
+            description="Создайте тип события, чтобы записывать что-то своё. Готовые события добавляются в «События питомца»"
+            actionLabel="Создать тип события"
+            onAction={() => navigate('/event-types/new')}
           />
         ) : (
           <div className="safe-area-padding">
@@ -89,7 +94,7 @@ export function EventTypesSettings() {
                 and TilesEditor's rhythm, rather than a stack of floating
                 cards with gaps between them. */}
             <div className="card-soft" style={{ overflow: 'hidden' }}>
-              {eventTypes.map((eventType, index) => {
+              {listed.map((eventType, index) => {
                 const Icon = getEventIcon(eventType.icon);
                 const bg = pastelColorMap[eventType.color] ?? 'var(--tile-blue)';
                 // A builtin type is everyone's (an admin's to change); a custom

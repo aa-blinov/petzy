@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { eventTypesService } from '../services/eventTypes.service';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
 import { Popup, Button, Selector, Form } from 'antd-mobile';
@@ -22,6 +24,8 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
   const { pets } = usePet();
   const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
   const [exportType, setExportType] = useState<string[]>([defaultType]);
+  // Only what the pet has records of: the catalogue is long, and a file of a type with nothing in it is not worth a chip.
+  const used = useQuery({ queryKey: ['used-types', petId], queryFn: () => eventTypesService.usedBy(petId), enabled: visible && !!petId, staleTime: 0 });
   const [format, setFormat] = useState<string[]>(['csv']);
   const [loading, setLoading] = useState(false);
 
@@ -61,7 +65,9 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
   // or mostly empty cells.
   const typeOptions = [
     { label: 'Все типы (архивом)', value: ALL_TYPES },
-    ...Object.entries(displayConfigs).map(([key, config]) => ({
+    ...Object.entries(displayConfigs)
+      .filter(([key]) => key === 'medications' || key === defaultType || exportType.includes(key) || (used.data ?? []).includes(key))
+      .map(([key, config]) => ({
       label: config.displayName,
       value: key,
     })),

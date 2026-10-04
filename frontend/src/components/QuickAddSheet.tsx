@@ -14,7 +14,7 @@ import { Popup, Grid } from 'antd-mobile';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { buildTiles } from '../utils/tilesConfig';
+import { buildTiles, byTileOrder, isTileShown } from '../utils/tilesConfig';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
@@ -36,13 +36,10 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
   const { eventTypes } = useEventTypes();
   const displayConfigs = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
-  const tiles = buildTiles(eventTypes)
-    .filter(t => t.isTile !== false && tilesSettings.visible[t.id] !== false)
-    .sort((a, b) => {
-      const ai = tilesSettings.order.indexOf(a.id);
-      const bi = tilesSettings.order.indexOf(b.id);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
+  const tiles = byTileOrder(
+    buildTiles(eventTypes).filter((t) => t.isTile !== false && isTileShown(tilesSettings, t.id)),
+    tilesSettings,
+  );
 
   return (
     <Popup
@@ -71,17 +68,17 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         {tiles.length === 0 && (
           // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
           <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
-            <p style={{ margin: '0 0 var(--spacing-md)' }}>Все кнопки быстрого добавления скрыты в настройках</p>
+            <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте события питомца</p>
             <button
               type="button"
               className="touch-target"
               style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
               onClick={() => {
                 onClose();
-                navigate('/tiles-settings');
+                navigate('/pet-events');
               }}
             >
-              Настроить
+              Добавить события
             </button>
           </div>
         )}

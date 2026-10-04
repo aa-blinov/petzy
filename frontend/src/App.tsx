@@ -61,7 +61,7 @@ const UserProfile = lazy(() => import('./pages/UserProfile').then(m => ({ defaul
 const PetForm = lazy(() => import('./pages/PetForm').then(m => ({ default: m.PetForm })));
 const PetLookSettings = lazy(() => import('./pages/PetLookSettings').then(m => ({ default: m.PetLookSettings })));
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
-const TilesSettings = lazy(() => import('./pages/TilesSettings').then(m => ({ default: m.TilesSettings })));
+const PetEvents = lazy(() => import('./pages/PetEvents').then(m => ({ default: m.PetEvents })));
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
 const MedicalCard = lazy(() => import('./pages/MedicalCard').then(m => ({ default: m.MedicalCard })));
 const MedicalProfileForm = lazy(() => import('./pages/MedicalProfileForm').then(m => ({ default: m.MedicalProfileForm })));
@@ -505,13 +505,15 @@ function AppRoutes() {
                 }
               />
               <Route
-                path="/tiles-settings"
+                path="/pet-events"
                 element={
                   <ProtectedRoute>
-                    <TilesSettings />
+                    <PetEvents />
                   </ProtectedRoute>
                 }
               />
+              {/* The old address of the screen (a link, a bookmark, an installed app that has not updated yet). */}
+              <Route path="/tiles-settings" element={<Navigate to="/pet-events" replace />} />
               <Route
                 path="/help"
                 element={
