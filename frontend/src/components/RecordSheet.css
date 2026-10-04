@@ -34,12 +34,13 @@
     gap: var(--spacing-md);
     min-height: 56px;
     padding: var(--spacing-md);
-    border: 1px solid var(--app-border-color);
+    border: none;
+    /* The same tile as the feed's «+» (QuickAddSheet): a pastel fill, dark text, a light shadow. */
     border-radius: var(--radius-md);
-    background: var(--app-card-background);
-    color: var(--app-text-primary);
+    box-shadow: var(--app-shadow-light);
+    color: var(--app-text-on-tile);
     font-family: inherit;
-    font-size: var(--text-sm);
+    font-size: 13px;
     font-weight: 600;
     line-height: 1.25;
     text-align: left;
@@ -50,12 +51,7 @@
     display: flex;
     flex-shrink: 0;
     align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    background: var(--app-accent-soft);
-    color: var(--app-accent-deep);
+    color: var(--app-text-on-tile);
 }
 
 .recsheet__label {
