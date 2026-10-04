@@ -52,3 +52,24 @@ def test_frame_variables_extra_and_breadcrumbs_are_scrubbed():
     }
     assert scrubbed["extra"]["refresh_token"] == FILTERED
     assert scrubbed["breadcrumbs"]["values"][0]["data"] == {"authorization": FILTERED, "url": "/api/pets"}
+
+
+def test_the_secret_of_a_card_link_is_taken_out_of_every_address():
+    secret = "DNHuHdJ7ipxTQsZ_jknR4KQL9bE7Jx0rV8"
+    event = {
+        "transaction": f"/share/medical/{secret}",
+        "request": {"url": f"https://petzy.example/api/shared/medical-card/{secret}/pdf?tz=Asia/Almaty"},
+        "breadcrumbs": {
+            "values": [
+                {
+                    "message": f"GET /api/shared/medical-card/{secret}",
+                    "data": {"url": f"/api/shared/medical-card/{secret}"},
+                },
+                {"message": "navigation", "data": {"to": f"/share/medical/{secret}"}},
+            ]
+        },
+    }
+    scrubbed = scrub_event(event)
+    assert secret not in str(scrubbed)
+    assert scrubbed["request"]["url"].endswith(f"/api/shared/medical-card/{FILTERED}/pdf?tz=Asia/Almaty")
+    assert scrubbed["transaction"] == f"/share/medical/{FILTERED}"

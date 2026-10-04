@@ -9,12 +9,27 @@ import * as Sentry from '@sentry/react';
 /** The part of an event this file touches: the request it happened in. */
 interface WithRequest {
   request?: { url?: string; query_string?: unknown; cookies?: unknown; headers?: Record<string, string> };
+  transaction?: string;
+  breadcrumbs?: { message?: string; data?: Record<string, unknown> }[];
 }
+
+/** The page of a link to a pet's medical card has its secret in the address (/share/medical/<secret>); the API call behind it
+ *  too. Neither goes to Sentry. */
+const LINK_SECRET = /(\/shared\/medical-card\/|\/share\/medical\/)[^/?#\s]+/g;
+const scrubLink = (text: string) => text.replace(LINK_SECRET, '$1[Filtered]');
 
 /** Belt and braces over dataCollection below: a reset or confirmation
  *  link carries its one-time token in the page URL. */
 function scrub<T extends WithRequest>(event: T): T {
   const request = event.request;
+  if (request?.url) request.url = scrubLink(request.url);
+  if (event.transaction) event.transaction = scrubLink(event.transaction);
+  for (const crumb of event.breadcrumbs ?? []) {
+    if (crumb.message) crumb.message = scrubLink(crumb.message);
+    for (const [key, value] of Object.entries(crumb.data ?? {})) {
+      if (typeof value === 'string') crumb.data![key] = scrubLink(value);
+    }
+  }
   if (request?.url && /[?&]token=/.test(request.url)) {
     request.url = request.url.replace(/([?&]token=)[^&#]*/, '$1[Filtered]');
   }

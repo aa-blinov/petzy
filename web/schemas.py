@@ -2259,6 +2259,7 @@ class SharedMedicalCardResponse(BaseModel):
 class VaccineGroupItem(BaseModel):
     key: str
     label: str
+    detail: str = Field("", description="Что входит, если название не говорит само")
     species: List[str]
 
 

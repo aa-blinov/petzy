@@ -12,6 +12,7 @@ token in a request body or query string.
 """
 
 import os
+import re
 
 # Keys whose values never go to Sentry, wherever they appear in a request.
 SECRET_KEYS = {
@@ -30,6 +31,14 @@ SECRET_KEYS = {
     "x-api-key",
 }
 FILTERED = "[Filtered]"
+
+# A link to a pet's medical card carries its secret in the address (web/medical_share.py): the address of a request, a page or
+# a breadcrumb must not take it to Sentry.
+_LINK_SECRET = re.compile(r"(/shared/medical-card/|/share/medical/)[^/?#\s]+")
+
+
+def _scrub_link(value):
+    return _LINK_SECRET.sub(lambda m: m.group(1) + FILTERED, value) if isinstance(value, str) else value
 
 
 def _scrub_value(value):
@@ -60,9 +69,15 @@ def scrub_event(event, _hint=None):
         event["extra"] = _scrub_value(event["extra"])
     for crumb in (event.get("breadcrumbs") or {}).get("values") or []:
         if isinstance(crumb.get("data"), dict):
-            crumb["data"] = _scrub_value(crumb["data"])
+            crumb["data"] = {k: _scrub_link(v) for k, v in _scrub_value(crumb["data"]).items()}
+        if "message" in crumb:
+            crumb["message"] = _scrub_link(crumb["message"])
+    if "transaction" in event:
+        event["transaction"] = _scrub_link(event["transaction"])
     request = event.get("request")
     if isinstance(request, dict):
+        if "url" in request:
+            request["url"] = _scrub_link(request["url"])
         request.pop("cookies", None)
         headers = request.get("headers")
         if isinstance(headers, dict):

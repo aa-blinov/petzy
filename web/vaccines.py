@@ -20,19 +20,19 @@ from web.security import login_required
 
 vaccines_bp = Blueprint("vaccines", __name__)
 
-# (key, the label, the species it is offered to). Shots are listed as sold; a combined one belongs to the group its
+# (key, the short label, what it covers, the species it is offered to). Shots are listed as sold; a combined one belongs to the group its
 # schedule follows (a dog's «комплексная», with or without leptospirosis, is one schedule for the card).
-GROUPS: list[tuple[str, str, tuple[str, ...]]] = [
-    ("rabies", "Бешенство", ("dog", "cat", "rabbit", "other")),
-    ("dhpp", "Комплексная для собак (чума, аденовирус, парвовирус, парагрипп)", ("dog",)),
-    ("lepto", "Лептоспироз", ("dog",)),
-    ("kennel", "Питомниковый кашель (бордетеллёз)", ("dog",)),
-    ("fvrcp", "Комплексная для кошек (панлейкопения, ринотрахеит, калицивироз)", ("cat",)),
-    ("felv", "Лейкоз кошек", ("cat",)),
-    ("myxo_rhd", "Миксоматоз и вирусная геморрагическая болезнь кроликов", ("rabbit",)),
+GROUPS: list[tuple[str, str, str, tuple[str, ...]]] = [
+    ("rabies", "Бешенство", "", ("dog", "cat", "rabbit", "other")),
+    ("dhpp", "Комплексная для собак", "Чума, аденовирус, парвовирус, парагрипп", ("dog",)),
+    ("lepto", "Лептоспироз", "", ("dog",)),
+    ("kennel", "Питомниковый кашель", "Бордетеллёз и парагрипп", ("dog",)),
+    ("fvrcp", "Комплексная для кошек", "Панлейкопения, ринотрахеит, калицивироз", ("cat",)),
+    ("felv", "Лейкоз кошек", "", ("cat",)),
+    ("myxo_rhd", "Миксоматоз и ВГБК", "Миксоматоз и вирусная геморрагическая болезнь кроликов", ("rabbit",)),
 ]
-GROUP_KEYS = tuple(key for key, _, _ in GROUPS)
-GROUP_LABELS = {key: label for key, label, _ in GROUPS}
+GROUP_KEYS = tuple(key for key, _, _, _ in GROUPS)
+GROUP_LABELS = {key: label for key, label, _, _ in GROUPS}
 
 # (the name shown, the species, the group). The name is also what is looked for in a typed one (a start of it, lower case).
 PRODUCTS: list[tuple[str, tuple[str, ...], str]] = [
@@ -106,7 +106,10 @@ def get_catalog():
     """The vaccines the form offers to search, each with what it protects against."""
     response = jsonify(
         {
-            "groups": [{"key": key, "label": label, "species": list(species)} for key, label, species in GROUPS],
+            "groups": [
+                {"key": key, "label": label, "detail": detail, "species": list(species)}
+                for key, label, detail, species in GROUPS
+            ],
             "products": [{"name": name, "species": list(species), "protects": key} for name, species, key in PRODUCTS],
         }
     )
