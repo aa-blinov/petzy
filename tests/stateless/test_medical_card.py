@@ -218,7 +218,7 @@ class TestMedicalCardPdf:
             "Аллергия на курицу",
             "Нобивак",
             "Габапентин",
-            "По пн в 10:00",
+            "по пн в 10:00",  # after the dose, in the middle of a sentence: in lower case
         ):
             assert needle in text, needle
 
