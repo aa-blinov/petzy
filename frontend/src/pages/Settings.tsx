@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
@@ -21,6 +21,20 @@ import {
   unsubscribeFromPush,
   type PushSupportState,
 } from '../utils/pushNotifications';
+
+/** A titled card of rows: every group of the settings looks the same and sits the same distance from the one above. */
+function Group({ title, first = false, children }: { title: string; first?: boolean; children: ReactNode }) {
+  return (
+    <section style={{ marginTop: first ? 0 : 'var(--spacing-xl)' }}>
+      <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
+        {title}
+      </h2>
+      <div className="card-soft" style={{ overflow: 'hidden' }}>
+        {children}
+      </div>
+    </section>
+  );
+}
 
 export function Settings() {
   const navigate = useNavigate();
@@ -97,41 +111,34 @@ export function Settings() {
         </div>
 
         <div className="safe-area-padding">
-          {/* Section: Внешний вид */}
-          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
-            Внешний вид
-          </h2>
-          <div className="card-soft" style={{ padding: 'var(--spacing-md)', display: 'grid', gap: 'var(--spacing-sm)' }}>
-            {/* One choice of three, where there were two switches that had to be read together: «Тёмная тема» off and
-                «Следовать за системой» on said nothing about which theme was showing. */}
-            <div className="setting-row__label" id="theme-label">Тема оформления</div>
-            <Segmented
-              label="Тема оформления"
-              value={theme}
-              options={[
-                { value: 'light', label: 'Светлая' },
-                { value: 'dark', label: 'Тёмная' },
-                { value: 'system', label: 'Как в системе' },
-              ]}
-              onChange={setTheme}
-            />
-            {theme === 'system' && (
-              <div className="setting-row__description">Сейчас {isDark ? 'тёмная' : 'светлая'}, как на телефоне</div>
-            )}
-          </div>
+          {/* Order: what the app is for first (the pets, the reminders, the records), then how entering a record is set up, then
+              the look of the app, the account, help, and the leaving and deleting at the very bottom. A pet's own settings (its
+              look, its quick buttons, its defaults, its export) act on the pet that is selected in the switcher. */}
 
-          {/* Section: Push-уведомления. The row itself only ever shows
-              a switch — "unsupported"/"denied" states disable it with an
-              explanatory description instead of hiding the row, so a
-              user on an unsupported browser at least understands why
-              it's not available rather than wondering if it's missing. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Уведомления
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
+          <Group title="Питомцы" first>
+            <SettingsRow
+              icon={<PawPrint size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Мои питомцы"
+              description="Добавить, изменить или удалить питомца"
+              chevron
+              onClick={() => navigate('/pets')}
+            />
+            <SettingsRow
+              icon={<Palette size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Оформление питомца"
+              description={
+                getSelectedPet && getSelectedPet.current_user_is_owner === false
+                  ? 'Меняет только владелец питомца'
+                  : 'Образ, цвет, шрифт имени, рамка фото и фон ленты'
+              }
+              // Someone a pet is shared with sees the look but does not set it.
+              {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-look') })}
+            />
+          </Group>
+
+          {/* The row itself only ever shows a switch: "unsupported"/"denied" states disable it with an explanatory description
+              instead of hiding the row, so a user on an unsupported browser understands why it is not available. */}
+          <Group title="Уведомления">
             <SettingsRow
               icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Push-уведомления"
@@ -152,17 +159,75 @@ export function Settings() {
                 />
               }
             />
-          </div>
+          </Group>
 
-          {/* Section: Account. The email is what a forgotten password is
-              recovered with, so its state is on the row itself. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Аккаунт
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
+          {/* The history screen is not a tab: this row and the card's «Вес» lead to it. */}
+          <Group title="Записи">
+            <SettingsRow
+              icon={<HistoryIcon size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="История записей"
+              description="Всё за всё время, фильтр по типу и графики"
+              chevron
+              onClick={() => navigate('/history')}
+            />
+            <SettingsRow
+              icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Экспорт записей"
+              description="Скачать записи питомца таблицей"
+              chevron
+              onClick={() => (selectedPetId ? setExportVisible(true) : showToast.info('Сначала выберите питомца'))}
+            />
+          </Group>
+
+          {/* How a record is entered: what the «+» offers and what a new form starts with (both for the selected pet), and the
+              types of record themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. */}
+          <Group title="Новые записи">
+            <SettingsRow
+              icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Кнопки быстрого добавления"
+              description="Какие записи видны в окне «+» и в каком порядке"
+              chevron
+              onClick={() => navigate('/tiles-settings')}
+            />
+            <SettingsRow
+              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Значения по умолчанию"
+              description="Что подставляется в новые записи выбранного питомца"
+              chevron
+              onClick={() => navigate('/form-defaults')}
+            />
+            <SettingsRow
+              icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Типы событий"
+              description="Свои типы записей со своими полями"
+              chevron
+              onClick={() => navigate('/event-types')}
+            />
+          </Group>
+
+          <Group title="Внешний вид">
+            <div style={{ padding: 'var(--spacing-md)', display: 'grid', gap: 'var(--spacing-sm)' }}>
+              {/* One choice of three, where there were two switches that had to be read together: «Тёмная тема» off and
+                  «Следовать за системой» on said nothing about which theme was showing. */}
+              <div className="setting-row__label" id="theme-label">Тема оформления</div>
+              <Segmented
+                label="Тема оформления"
+                value={theme}
+                options={[
+                  { value: 'light', label: 'Светлая' },
+                  { value: 'dark', label: 'Тёмная' },
+                  { value: 'system', label: 'Как в системе' },
+                ]}
+                onChange={setTheme}
+              />
+              {theme === 'system' && (
+                <div className="setting-row__description">Сейчас {isDark ? 'тёмная' : 'светлая'}, как на телефоне</div>
+              )}
+            </div>
+          </Group>
+
+          {/* The email is what a forgotten password is recovered with, so its state is on the row itself. */}
+          <Group title="Аккаунт">
             <SettingsRow
               icon={<Mail size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Почта"
@@ -185,6 +250,54 @@ export function Settings() {
               chevron
               onClick={() => navigate('/settings/password')}
             />
+          </Group>
+
+          <Group title="О приложении">
+            <SettingsRow
+              icon={<CircleHelp size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Справка"
+              description="Частые вопросы и как устроен каждый экран"
+              chevron
+              onClick={() => navigate('/help')}
+            />
+            <SettingsRow
+              icon={<Compass size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Знакомство с Petzy"
+              description="Показать вводные экраны ещё раз"
+              chevron
+              onClick={() => navigate('/welcome?replay=1')}
+            />
+            <SettingsRow
+              icon={<ShieldCheck size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Политика конфиденциальности"
+              description="Какие данные хранятся и где"
+              chevron
+              onClick={() => navigate('/privacy')}
+            />
+          </Group>
+
+          {/* Admin: used to be its own bottom-tab entry shown only to admins, a whole tab-bar slot for one link. As a row here it
+              needs no dedicated chrome and is reached like every other secondary screen. */}
+          {isAdmin && (
+            <Group title="Администрирование">
+              <SettingsRow
+                icon={<Users size={18} strokeWidth={2} style={{ display: 'block' }} />}
+                label="Пользователи"
+                description="Управление учётными записями"
+                chevron
+                onClick={() => navigate('/admin')}
+              />
+            </Group>
+          )}
+
+          {/* Leaving and deleting, apart from everything else and last: rare, and the second one cannot be undone. */}
+          <Group title="Выход">
+            <SettingsRow
+              icon={<LogOut size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Выйти из аккаунта"
+              description="На этом устройстве"
+              onClick={() => setLogoutDialogVisible(true)}
+            />
             {!isAdmin && (
               <SettingsRow
                 icon={<Trash2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -195,196 +308,7 @@ export function Settings() {
                 onClick={() => navigate('/settings/delete-account')}
               />
             )}
-          </div>
-
-          {/* Section: Pets
-              The only route to /pets used to be the "Управление
-              питомцами" button inside the navbar's pet picker, and that
-              picker only renders from the second pet onwards — so a
-              household with exactly one pet had no way to add a second
-              one, edit it, or delete it. This row is always reachable,
-              which also lets the navbar picker stay a pure switcher. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Питомцы
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<PawPrint size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Мои питомцы"
-              description="Добавить, изменить или удалить питомца"
-              chevron
-              onClick={() => navigate('/pets')}
-            />
-          </div>
-
-          {/* Section: Records. The history screen is not a tab: this row and the card's «Вес» lead to it. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Записи
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<HistoryIcon size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="История записей"
-              description="Всё за всё время, фильтр по типу и графики"
-              chevron
-              onClick={() => navigate('/history')}
-            />
-            <SettingsRow
-              icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Экспорт записей"
-              description="Скачать записи питомца таблицей"
-              chevron
-              onClick={() => (selectedPetId ? setExportVisible(true) : showToast.info('Сначала выберите питомца'))}
-            />
-          </div>
-
-          {/* Section: New records: what the «+» offers and what a new form starts with, both for the selected pet. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Новые записи
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Кнопки быстрого добавления"
-              description="Какие записи видны в окне «+» и в каком порядке"
-              chevron
-              onClick={() => navigate('/tiles-settings')}
-            />
-            <SettingsRow
-              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Значения по умолчанию"
-              description="Что подставляется в новые записи выбранного питомца"
-              chevron
-              onClick={() => navigate('/form-defaults')}
-            />
-          </div>
-
-          {/* Section: the pet's card: how its page shows it. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            Питомец
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<Palette size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Оформление питомца"
-              description={
-                getSelectedPet && getSelectedPet.current_user_is_owner === false
-                  ? 'Меняет только владелец питомца'
-                  : 'Образ, цвет, шрифт имени, рамка фото и фон ленты'
-              }
-              // Someone a pet is shared with sees the look but does not set it.
-              {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-look') })}
-            />
-          </div>
-
-          {/* Section: Event types — the "factory": builtin types can be
-              relabelled/recolored here too, and custom ones created from
-              scratch with their own fields. */}
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            События
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Типы событий"
-              description="Свои типы записей со своими полями"
-              chevron
-              onClick={() => navigate('/event-types')}
-            />
-          </div>
-
-          <h2
-            className="section-header"
-            style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-          >
-            О приложении
-          </h2>
-          <div className="card-soft" style={{ overflow: 'hidden' }}>
-            <SettingsRow
-              icon={<Compass size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Знакомство с Petzy"
-              description="Показать вводные экраны ещё раз"
-              chevron
-              onClick={() => navigate('/welcome?replay=1')}
-            />
-            <SettingsRow
-              icon={<CircleHelp size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Справка"
-              description="Частые вопросы и как устроен каждый экран"
-              chevron
-              onClick={() => navigate('/help')}
-            />
-            <SettingsRow
-              icon={<ShieldCheck size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Политика конфиденциальности"
-              description="Какие данные хранятся и где"
-              chevron
-              onClick={() => navigate('/privacy')}
-            />
-          </div>
-
-          {/* Section: Admin — used to be its own bottom-tab entry, shown
-              only to admins. That meant a whole tab-bar slot (and its own
-              full-page layout) existed purely to hold one link, visible to
-              a fraction of users. Folding it in here as a settings row
-              needs no dedicated chrome and matches how every other
-              secondary screen (pets, form defaults, event types) is
-              reached. */}
-          {isAdmin && (
-            <>
-              <h2
-                className="section-header"
-                style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-sm)' }}
-              >
-                Администрирование
-              </h2>
-              <div className="card-soft" style={{ overflow: 'hidden' }}>
-                <SettingsRow
-                  icon={<Users size={18} strokeWidth={2} style={{ display: 'block' }} />}
-                  label="Пользователи"
-                  description="Управление учётными записями"
-                  chevron
-                  onClick={() => navigate('/admin')}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Logout — destructive but tucked away at the bottom, not a giant red block */}
-          <button
-            type="button"
-            onClick={() => setLogoutDialogVisible(true)}
-            style={{
-              marginTop: 'var(--spacing-xl)',
-              padding: 'var(--spacing-md)',
-              minHeight: 'var(--touch-min)',
-              width: '100%',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--app-text-secondary)',
-              fontFamily: 'var(--font-display)',
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={16} strokeWidth={2} style={{ verticalAlign: 'middle', marginRight: 8, display: 'inline-block' }} />
-            Выйти из аккаунта
-          </button>
+          </Group>
         </div>
       </div>
 
