@@ -320,7 +320,7 @@ export function EventTypeForm() {
             Дата, время и комментарий добавляются автоматически. Здесь только то, что нужно именно этому типу
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
             {fields.map((field, index) => (
               <div key={field.key} className="card-soft" style={{ padding: '14px' }}>
                 <div style={{
@@ -387,7 +387,7 @@ export function EventTypeForm() {
             block
             fill="outline"
             onClick={addField}
-            style={{ marginTop: '10px', borderRadius: 'var(--radius-md)' }}
+            style={{ marginTop: 'var(--spacing-md)', borderRadius: 'var(--radius-md)' }}
           >
             <Plus size={16} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 6 }} />
             Добавить поле
