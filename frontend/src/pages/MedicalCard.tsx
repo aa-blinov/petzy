@@ -3,6 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Minus, ShieldAlert } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AddOutline } from 'antd-mobile-icons';
+import { RecordSheet } from '../components/RecordSheet';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
@@ -848,6 +851,7 @@ export function MedicalCard() {
   const navigate = useNavigate();
   const hidden = useHiddenRecords();
   const [saving, setSaving] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
   // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
   const [stored] = useState<Mode | null>(() => readMode(id));
   // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
@@ -939,7 +943,7 @@ export function MedicalCard() {
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
-        <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ''}`}>
+        <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ' medcard--entering'}`}>
           {/* The title stays in both modes: switching the mode changes what is below, not where the person is. */}
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
 
@@ -1076,6 +1080,25 @@ export function MedicalCard() {
           <p className="medcard__stamp">Собрано из записей питомца на {formatDate(card.generated_at)}</p>
         </div>
       </div>
+      {/* The same round «+» as the feed's, bottom right: one way to add, whose sheet depends on the screen (the feed's
+          is the diary, this one is the card). In a portal for the same reason, and only in the mode that edits. */}
+      {mode === 'fill' &&
+        createPortal(
+          <button type="button" className="app-fab" aria-label="Записать в медкарту" aria-haspopup="dialog" onClick={() => setRecordOpen(true)}>
+            <AddOutline fontSize={28} aria-hidden />
+          </button>,
+          document.body,
+        )}
+      <RecordSheet
+        visible={recordOpen}
+        petId={id!}
+        petName={pets.find((p) => p._id === id)?.name}
+        onClose={() => setRecordOpen(false)}
+        onChoose={(to) => {
+          setRecordOpen(false);
+          navigate(to);
+        }}
+      />
     </div>
   );
 }

@@ -200,6 +200,15 @@ function profileToForm(profile: MedicalProfile): ProfileForm {
 
 /** What a vet asks first: allergies, chronic conditions, chip, blood type and the clinics.
     Kept on the pet and open to everyone who has access to it, like the weight. */
+/** The parts of the form a link can open at (`?section=`): where it scrolls to and which field takes the cursor. */
+const PROFILE_SECTIONS: Record<string, { anchor: string; focus?: string }> = {
+  clinic: { anchor: 'medprofile-clinic', focus: 'input[placeholder="Где наблюдается"]' },
+  allergies: { anchor: 'medprofile-allergies', focus: 'input[placeholder="Например, курица"]' },
+  conditions: { anchor: 'medprofile-conditions', focus: 'input[placeholder="Например, хронический гастрит"]' },
+  id: { anchor: 'medprofile-id', focus: 'input[placeholder="Необязательно"][maxlength="20"]' },
+  life: { anchor: 'medprofile-life', focus: 'input[placeholder="Например, сухой корм, два раза в день"]' },
+};
+
 export function MedicalProfileForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -235,17 +244,22 @@ export function MedicalProfileForm() {
     const profile = query.data?.profile;
     if (!profile || loaded.current) return;
     loaded.current = true;
-    // Opened from «Указать клинику»: the form starts at the clinic, with the cursor in its first field.
-    if (section === 'clinic') {
+    // Opened from a link that names a part of the form («Указать клинику», «Аллергия» in «Записать»): the form starts there,
+    // with the cursor in the first field, and with an empty row ready where the part is a list that has none yet.
+    const target = section ? PROFILE_SECTIONS[section] : undefined;
+    if (target) {
       window.setTimeout(() => {
-        const anchor = document.getElementById('medprofile-clinic');
-        anchor?.scrollIntoView({ block: 'start' });
-        document.querySelector<HTMLInputElement>('input[placeholder="Где наблюдается"]')?.focus({ preventScroll: true });
+        if (section === 'allergies' && !profile.allergies_none_known && profile.allergies.length === 0) allergies.append({ substance: '', reaction: '' });
+        if (section === 'conditions' && profile.conditions.length === 0) conditions.append({ name: '', since_year: '', note: '' });
+        window.setTimeout(() => {
+          document.getElementById(target.anchor)?.scrollIntoView({ block: 'start' });
+          if (target.focus) document.querySelector<HTMLInputElement>(target.focus)?.focus({ preventScroll: true });
+        }, 60);
       }, 80);
     }
     baseVersion.current = profile.version ?? null;
     reset(profileToForm(profile));
-  }, [query.data, reset, section]);
+  }, [query.data, reset, section, allergies, conditions]);
   useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!query.data?.profile, release });
 
   const save = useMutation({
@@ -349,6 +363,7 @@ export function MedicalProfileForm() {
         </div>
 
         <Form layout="vertical" mode="card">
+          <span id="medprofile-allergies" />
           <Form.Header>Аллергии</Form.Header>
           <Controller
             name="allergies_none_known"
@@ -413,6 +428,7 @@ export function MedicalProfileForm() {
             </Form.Item>
           )}
 
+          <span id="medprofile-conditions" />
           <Form.Header>Хронические состояния</Form.Header>
           {conditions.fields.map((row, index) => (
             <div key={row.id}>
@@ -463,6 +479,7 @@ export function MedicalProfileForm() {
             </Button>
           </Form.Item>
 
+          <span id="medprofile-id" />
           <Form.Header>Чип и группа крови</Form.Header>
           <Controller
             name="blood_type"
@@ -483,6 +500,7 @@ export function MedicalProfileForm() {
             )}
           />
 
+          <span id="medprofile-life" />
           <Form.Header>Питание и условия жизни</Form.Header>
           <Controller
             name="diet"

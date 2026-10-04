@@ -1,0 +1,71 @@
+.recsheet__title {
+    margin: 4px 4px 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    color: var(--app-text-primary);
+}
+
+.recsheet__pet {
+    margin: var(--spacing-xs) 4px 0;
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.recsheet__group {
+    margin-top: var(--spacing-lg);
+}
+
+.recsheet__group-title {
+    margin: 0 4px var(--spacing-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-text-secondary);
+}
+
+.recsheet__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+}
+
+.recsheet__tile {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    min-height: 56px;
+    padding: var(--spacing-md);
+    border: 1px solid var(--app-border-color);
+    border-radius: var(--radius-md);
+    background: var(--app-card-background);
+    color: var(--app-text-primary);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+.recsheet__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+}
+
+.recsheet__label {
+    min-width: 0;
+    overflow-wrap: break-word;
+}
+
+/* Two columns need the width for a label like «Обработка от паразитов» on one or two lines; a narrower phone gets one. */
+@media (max-width: 359px) {
+    .recsheet__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
