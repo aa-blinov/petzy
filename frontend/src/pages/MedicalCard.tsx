@@ -692,20 +692,19 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
       <div className="medcard__topactions">
         {canPdf ? (
           <>
-            <Button size="small" color="primary" fill="outline" loading={saving} disabled={saving} onClick={onPdf}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                <Download size={16} strokeWidth={2.2} aria-hidden />
+            {/* The same large outline buttons as the summary's «Для врача»: side by side where they fit, one under the other where not. */}
+            <div className="medcard__topbuttons">
+              <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
+                <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
                 Скачать PDF
-              </span>
-            </Button>
-            {onShare && (
-              <Button size="small" color="primary" fill="outline" onClick={onShare}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                  <Link2 size={16} strokeWidth={2.2} aria-hidden />
-                  Ссылка для врача
-                </span>
               </Button>
-            )}
+              {onShare && (
+                <Button block fill="outline" color="primary" size="large" onClick={onShare}>
+                  <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+                  Ссылка для врача
+                </Button>
+              )}
+            </div>
             {onAll && <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>}
           </>
         ) : (
