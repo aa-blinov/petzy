@@ -17,6 +17,16 @@
     overflow-wrap: anywhere;
 }
 
+.medcard__patient p {
+    margin: 0;
+}
+
+/* The second line of the patient, the weight with its day: a fact to check against, not a second sentence of the first. */
+.medcard__patient p + p {
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+}
+
 .medcard__actions {
     display: flex;
     flex-direction: column;
@@ -164,7 +174,7 @@
 }
 
 .medcard__row-sub {
-    margin-top: 2px;
+    margin-top: var(--spacing-2xs);
     font-size: var(--text-sm);
     color: var(--app-text-secondary);
     line-height: 1.4;
@@ -261,6 +271,10 @@
     color: var(--app-text-secondary);
 }
 
+.medcard__stamp--top {
+    text-align: left;
+}
+
 /* A row of the card that opens its record, and the small action under it. */
 .medcard__row-button {
     display: block;
@@ -277,7 +291,7 @@
 .medcard__row--stack {
     flex-direction: column;
     align-items: stretch;
-    gap: 2px;
+    gap: 0;
 }
 
 .medcard__row-top {
@@ -480,7 +494,7 @@
 /* The weight of a line in a row: what is acted on is ink and heavier, the facts keep their label bold,
    the context stays grey, the rest is quiet. */
 .medcard__row-sub--key {
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
     font-weight: 600;
     color: var(--app-text-primary);
 }

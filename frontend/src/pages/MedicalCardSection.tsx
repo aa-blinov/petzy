@@ -14,6 +14,7 @@ import { medicalCardService, type MedicalCard as Card } from '../services/medica
 import { MEDICAL_KIND_LABELS, type MedicalKind } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { formatDate, hasLife, weightDelta } from '../utils/medicalCardFormat';
+import { pluralRu } from '../utils/relativeTime';
 import { ClinicRow, CourseRow, ImportantBlock, KindSection, LifeRows, Section, Sparkline } from './MedicalCard';
 import './MedicalCard.css';
 
@@ -38,7 +39,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
   const profileTo = `/pets/${petId}/medical-profile`;
   switch (section) {
     case 'risks':
-      return <ImportantBlock card={card} onEdit={() => navigate(`${profileTo}?section=allergies`)} />;
+      return <ImportantBlock card={card} onEdit={() => navigate(`${profileTo}?section=allergies`)} title="Аллергии и состояния" />;
     case 'meds':
       return (
         <>
@@ -103,23 +104,54 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
         </>
       );
     }
-    case 'weight':
-      return card.weight ? (
-        <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }} secondary={{ label: 'История', onClick: () => navigate('/history') }}>
-          <div className="medcard__weight">
-            <div className="medcard__weight-now">
-              <span className="medcard__weight-value">{card.weight.latest.value.toLocaleString('ru-RU')} кг</span>
-              <span className="medcard__weight-date">{formatDate(card.weight.latest.date)}</span>
+    case 'weight': {
+      if (!card.weight) {
+        return (
+          <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }}>
+            <p className="medcard__empty">Вес не записан. Врач считает по нему дозы</p>
+          </Section>
+        );
+      }
+      const { series, latest } = card.weight;
+      const values = series.map((p) => p.value);
+      const range = Math.min(...values) === Math.max(...values) ? null : `${Math.min(...values).toLocaleString('ru-RU')}–${Math.max(...values).toLocaleString('ru-RU')} кг`;
+      // The latest is the headline; what came before it is a short list, newest first, so the line has dates and values to read by.
+      const before = series.slice(0, -1).slice(-4).reverse();
+      return (
+        <>
+          <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }} secondary={{ label: 'История', onClick: () => navigate('/history') }}>
+            <div className="medcard__weight">
+              <div className="medcard__weight-now">
+                <span className="medcard__weight-value">{latest.value.toLocaleString('ru-RU')} кг</span>
+                <span className="medcard__weight-date">{formatDate(latest.date)}</span>
+              </div>
+              {weightDelta(series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(series)}</div>}
+              <Sparkline points={values} />
+              {series.length > 1 && (
+                <div className="medcard__row-sub medcard__row-sub--meta">
+                  {series.length} {pluralRu(series.length, 'замер', 'замера', 'замеров')} с {formatDate(series[0].date)}
+                  {range ? `, диапазон ${range}` : ''}
+                </div>
+              )}
             </div>
-            {weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
-            <Sparkline points={card.weight.series.map((p) => p.value)} />
-          </div>
-        </Section>
-      ) : (
-        <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }}>
-          <p className="medcard__empty">Вес не записан. Врач считает по нему дозы</p>
-        </Section>
+          </Section>
+          {before.length > 0 && (
+            <Section id="medcard-weight-before" title="Раньше">
+              <ul className="medcard__list">
+                {before.map((p) => (
+                  <li key={`${p.date}-${p.value}`} className="medcard__row">
+                    <div className="medcard__row-main">
+                      <div className="medcard__row-title">{p.value.toLocaleString('ru-RU')} кг</div>
+                      <div className="medcard__row-sub">{formatDate(p.date)}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+        </>
       );
+    }
     case 'documents':
       return (
         <Section id="medcard-documents" title="Последние результаты" action={{ label: 'Все документы', onClick: () => navigate('/documents') }}>
@@ -143,7 +175,8 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
       return (
         <Section
           id="medcard-clinic"
-          title={card.profile.clinics.length > 1 ? 'Клиники и врачи' : 'Клиника'}
+          title={card.profile.clinics.length > 1 ? 'Клиники' : 'Клиника'}
+          titleHidden
           action={{ label: card.profile.clinics.length ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=clinic`) }}
         >
           {card.profile.clinics.length === 0 ? (

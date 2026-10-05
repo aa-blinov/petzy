@@ -589,3 +589,42 @@ class TestTheFooter:
         assert "Petzy" not in text and "Медицинская карта:" not in text
         assert re.search(r"\d{2}\.\d{2}\.\d{4}, 1 из \d+", text), text[-200:]
         assert text.count(test_pet["name"]) == 1  # the name is the title of page one, not a line of every page
+
+
+@pytest.mark.health
+class TestWhatTheCritiqueFound:
+    """The overdue in days, the dose read as plainly as the name, the weight on one page."""
+
+    def test_overdue_is_said_in_days_with_the_date_under_it(self, client, mock_db, regular_user_token, test_pet):
+        due = (datetime.now() - timedelta(days=37)).strftime("%Y-%m-%d")
+        _record(mock_db, test_pet, title="Рабизин", day="2025-01-10", next_due=due)
+        page = _flat(_first_page(client, regular_user_token, test_pet))
+        assert "Просрочено на 37 дней" in page
+        assert f"срок {datetime.strptime(due, '%Y-%m-%d').strftime('%d.%m.%Y')}" in page
+
+    def test_the_days_decline(self):
+        from web.medical_card_pdf import _days_word
+
+        assert [_days_word(n) for n in (1, 2, 5, 11, 12, 21, 22, 25)] == [
+            "1 день",
+            "2 дня",
+            "5 дней",
+            "11 дней",
+            "12 дней",
+            "21 день",
+            "22 дня",
+            "25 дней",
+        ]
+
+    def test_the_weight_does_not_start_at_the_foot_of_a_page(self):
+        from web.medical_card_pdf import _Card, _weight_section
+
+        pdf = _Card("Тест", "2026-10-05")
+        pdf.add_page()
+        pdf.set_y(pdf.h - 60)  # room for a heading and a line, not for the chart that follows
+        series = [{"date": "2026-01-01", "value": 4.0}, {"date": "2026-06-01", "value": 4.5}]
+        _weight_section(pdf, {"latest": series[-1], "series": series})
+        pages = PdfReader(io.BytesIO(bytes(pdf.output()))).pages
+        assert len(pages) == 2
+        assert "Вес" not in pages[0].extract_text()
+        assert "Последний замер" in pages[1].extract_text()

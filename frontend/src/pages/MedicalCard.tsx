@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
@@ -110,7 +110,7 @@ export function CourseRow({ course }: { course: MedicalCardCourse }) {
 }
 
 /** Allergies, chronic conditions and the notes: what a vet asks first, in the one block with a colour of its own. */
-export function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card; onEdit: () => void; readOnly?: boolean }) {
+export function ImportantBlock({ card, onEdit, readOnly = false, title = 'Здоровье и аллергии' }: { card: Card; onEdit: () => void; readOnly?: boolean; /** Another name where the screen's h1 is already «Здоровье и аллергии». */ title?: string }) {
   const { profile, pet } = card;
   const hasAllergies = profile.allergies.length > 0;
   const filled = hasAllergies || profile.allergies_none_known || profile.conditions.length > 0 || !!pet.health_notes;
@@ -130,7 +130,7 @@ export function ImportantBlock({ card, onEdit, readOnly = false }: { card: Card;
       <ShieldAlert className="medcard__important-icon" size={22} strokeWidth={2} aria-hidden />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div className="medcard__section-head" style={{ marginBottom: 4 }}>
-          <h2 id="medcard-important" className="medcard__important-title" style={{ margin: 0 }}>Здоровье и аллергии</h2>
+          <h2 id="medcard-important" className="medcard__important-title" style={{ margin: 0 }}>{title}</h2>
           {!readOnly && (
             <button type="button" className="medcard__link touch-target" onClick={onEdit}>
               {filled ? 'Изменить' : 'Заполнить'}
@@ -339,11 +339,11 @@ function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord
   );
 }
 
-export function Section({ id, title, action, secondary, children }: { id: string; title: string; action?: { label: string; onClick: () => void }; /** A second, quieter door beside the first («История» next to «Записать вес»). */ secondary?: { label: string; onClick: () => void }; children: React.ReactNode }) {
+export function Section({ id, title, titleHidden = false, action, secondary, children }: { id: string; title: string; /** On a screen whose h1 already says it: the heading stays for screen readers and is not drawn twice. */ titleHidden?: boolean; action?: { label: string; onClick: () => void }; /** A second, quieter door beside the first («История» next to «Записать вес»). */ secondary?: { label: string; onClick: () => void }; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id}>
       <div className="medcard__section-head">
-        <h2 id={id} className="medcard__section-title">{title}</h2>
+        <h2 id={id} className={titleHidden ? 'sr-only' : 'medcard__section-title'}>{title}</h2>
         {(action || secondary) && (
           <span className="medcard__section-actions">
             {secondary && (
@@ -394,7 +394,7 @@ function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
 
 /** The one line that matters most, under the mode switch in both modes: what is overdue and, where the card can be
     edited, the way to put it right. */
-function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; petId: string; navigate: (to: string) => void; canAct: boolean; hidden: ReadonlySet<string> }) {
+export function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; petId: string; navigate: (to: string) => void; canAct: boolean; hidden: ReadonlySet<string> }) {
   const items = overdueItems(card, hidden);
   if (items.length === 0) return null;
   const [first, ...others] = items;
@@ -569,32 +569,10 @@ export function KindSection({ kind, card, petId, hidden, navigate }: { kind: Med
 }
 
 type Mode = 'vet' | 'fill';
-const modeKey = (petId: string) => `medcard-mode:${petId}`;
-
-/** The mode the person chose on this device, if any: the default depends on how much is filled in. */
-function readMode(petId: string | undefined): Mode | null {
-  if (!petId) return null;
-  try {
-    const v = localStorage.getItem(modeKey(petId));
-    return v === 'vet' || v === 'fill' ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveMode(petId: string | undefined, mode: Mode) {
-  if (!petId) return;
-  try {
-    localStorage.setItem(modeKey(petId), mode);
-  } catch {
-    /* a private window keeps no choice: the default applies next time */
-  }
-}
-
 function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
     <div className="medcard__modes" role="group" aria-label="Режим медкарты">
-      {([['fill', 'Сводка'], ['vet', 'Врачу']] as const).map(([value, label]) => (
+      {([['fill', 'Записи'], ['vet', 'Врачу']] as const).map(([value, label]) => (
         <button key={value} type="button" className="medcard__mode" aria-pressed={mode === value} onClick={() => onChange(value)}>
           {label}
         </button>
@@ -665,79 +643,75 @@ export function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
 
 /** What a vet reads at the counter, in the order they ask: allergies, what is due, what is taken now and the
     weight, the clinic, the last visits. Nothing here edits; the history and the forms are in the other mode. */
-/** Who this is about, in the first line a vet reads: a record read at the counter, or shown from a screenshot, names its patient. */
-function PatientLine({ pet }: { pet: Card['pet'] }) {
+/** Who this is about, in the first line a vet reads: a record read at the counter, or shown from a screenshot, names its patient.
+    The weight comes with it and with the day it was taken: it is what the doses are counted from, and an old one is seen as old. */
+function PatientLine({ pet, weight, named = true }: { pet: Card['pet']; weight: Card['weight']; named?: boolean }) {
   // Lowercase after the name: «Лабрадор, Мальчик» in the middle of a line reads as an artifact.
   const facts = [pet.species, pet.breed, pet.age_text, pet.gender, pet.neutered_text].filter(Boolean).join(', ').toLowerCase();
+  const delta = weight ? weightDelta(weight.series) : null;
   return (
-    <p className="medcard__patient">
-      <strong>{pet.name}</strong>
-      {facts ? `, ${facts}` : ''}
-    </p>
+    <div className="medcard__patient">
+      <p>
+        {named && <strong>{pet.name}</strong>}
+        {named && facts ? ', ' : ''}
+        {facts}
+      </p>
+      <p>
+        {weight ? `Вес ${weight.latest.value.toLocaleString('ru-RU')} кг на ${formatDate(weight.latest.date)}` : 'Вес не указан'}
+        {delta ? `, ${delta[0].toLowerCase()}${delta.slice(1)}` : ''}
+      </p>
+    </div>
   );
 }
 
-export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; /** The way to the summary: only where there is one (not on the page a vet opens by a link). */ onAll?: () => void; /** A link to the card for a vet: only the owner's side offers it. */ onShare?: () => void }) {
+export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, afterPatient, named = true }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; /** The way back to the records: only where there are some (not on the page a vet opens by a link). */ onAll?: () => void; /** A link to the card for a vet: only the owner's side offers it. */ onShare?: () => void; /** Under the patient line: what the page of a link says about its date and its end, and what is overdue. */ afterPatient?: ReactNode; /** Without the pet's name in the first line, where the page already carries it as its title. */ named?: boolean }) {
   const due = (['vaccination', 'parasite'] as const)
     .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
     .sort((a, b) => urgencyRank(a) - urgencyRank(b));
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
   // An operation does not wait for the full card: a vet asks about the neutering first.
   const procedures = card.records.procedure.filter((r) => !hidden.has(r._id)).slice(0, 3);
-  return (
-    <>
-      <PatientLine pet={card.pet} />
-
-      {/* At the top, not after the whole page: the file to hand over, and the way to the full card. */}
-      <div className="medcard__topactions">
-        {canPdf ? (
-          <>
-            {/* The same large outline buttons as the summary's «Для врача»: side by side where they fit, one under the other where not. */}
-            <div className="medcard__topbuttons">
-              <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
-                <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-                Скачать PDF
-              </Button>
-              {onShare && (
-                <Button block fill="outline" color="primary" size="large" onClick={onShare}>
-                  <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-                  Ссылка для врача
-                </Button>
-              )}
-            </div>
-            {onAll && <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>}
-          </>
-        ) : (
-          // A PDF of an empty card helps nobody: it is offered once two of the five are there, as in the whole card.
-          <p className="medcard__hint">Карта почти пуста. Заполните её в «Сводке», и здесь появится PDF</p>
+  const handover = canPdf ? (
+    <div className="medcard__topactions">
+      <div className="medcard__topbuttons">
+        <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={onPdf}>
+          <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+          Скачать PDF
+        </Button>
+        {onShare && (
+          <Button block fill="outline" color="primary" size="large" onClick={onShare}>
+            <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+            Ссылка для врача
+          </Button>
         )}
       </div>
+      {onAll && <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>}
+    </div>
+  ) : onShare ? (
+    // A PDF of an empty card helps nobody: it is offered once two of the five are there, as in the whole card.
+    <p className="medcard__hint">Карта почти пуста. Заполните её в «Записях», и здесь появится PDF</p>
+  ) : null;
+  return (
+    <>
+      <PatientLine pet={card.pet} weight={card.weight} named={named} />
+      {afterPatient}
 
       <ImportantBlock card={card} onEdit={() => undefined} readOnly />
 
-      <Section id="medcard-vet-meds" title="Лекарства и вес">
-        <ul className="medcard__list">
-          {card.medications.map((c) => (
-            <CourseRow key={c.id} course={c} />
-          ))}
-          {card.medications.length === 0 && (
-            <li className="medcard__row">
-              <div className="medcard__row-main">
-                <div className="medcard__row-title">Лекарства</div>
-                <div className="medcard__row-sub">Сейчас ничего не принимает</div>
-              </div>
-            </li>
-          )}
-          <li className="medcard__row">
-            <div className="medcard__row-main">
-              <div className="medcard__row-title">Вес</div>
-              <div className="medcard__row-sub">
-                {card.weight ? `${card.weight.latest.value.toLocaleString('ru-RU')} кг, ${formatDate(card.weight.latest.date)}` : 'Не указан'}
-              </div>
-              {card.weight && weightDelta(card.weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(card.weight.series)}</div>}
-            </div>
-          </li>
-        </ul>
+      {/* The owner hands the card over, so the file and the link come right after what could harm, the first thing a vet reads.
+          A vet who opened the link reads first: the one button of the file comes after what there is to read. */}
+      {onShare && handover}
+
+      <Section id="medcard-vet-meds" title="Лекарства">
+        {card.medications.length === 0 ? (
+          <p className="medcard__empty">Сейчас ничего не принимает</p>
+        ) : (
+          <ul className="medcard__list">
+            {card.medications.map((c) => (
+              <CourseRow key={c.id} course={c} />
+            ))}
+          </ul>
+        )}
       </Section>
 
       {card.visit_prep && (
@@ -835,10 +809,12 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare }:
         </Section>
       )}
 
+      {!onShare && handover}
+
       {onAll && (
         <div className="medcard__actions">
           <button type="button" className="medcard__link touch-target" style={{ alignSelf: 'center' }} onClick={onAll}>
-            Открыть сводку
+            К записям
           </button>
         </div>
       )}
@@ -854,25 +830,9 @@ export function MedicalCard() {
   const hidden = useHiddenRecords();
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  // Chosen per pet, on this device. It only counts for a card that is filled in: an incomplete one opens as the whole card.
-  const [stored] = useState<Mode | null>(() => readMode(id));
   // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
   const linkMode = useSearchParams()[0].get('mode');
   const [chosen, setChosen] = useState<Mode | null>(linkMode === 'fill' || linkMode === 'vet' ? linkMode : null);
-  // Just filled in to «5 из 5»: the card is shown as the whole card with its «Показать врачу», not changed into the reading
-  // mode under the person's hands. Read once, from the flag the save left (utils/medicalReadiness.ts), and put away.
-  const justCompleted = useRef(false);
-  const flagRead = useRef(false);
-  if (!flagRead.current && id) {
-    flagRead.current = true;
-    try {
-      const key = `petzy:justCompleted:${id}`;
-      justCompleted.current = sessionStorage.getItem(key) === '1';
-      sessionStorage.removeItem(key);
-    } catch {
-      /* no storage: the usual mode */
-    }
-  }
   // A card opened by an address of another pet (a link, a notification) makes that pet the chosen one: the bar, the
   // tab and the switcher then say whose card this is.
   const { pets, selectedPetId, selectPet } = usePet();
@@ -931,14 +891,11 @@ export function MedicalCard() {
 
   const checks = readinessChecks(card, id!);
   const doneCount = checks.filter((c) => c.done).length;
-  const complete = doneCount === checks.length;
-  // Everyone with access to the pet may fill the card in (the profile and the records are the family's). A card that is not
-  // filled in opens as the whole card, whatever was chosen last; a complete one opens as the person left it, else for the vet.
-  const mode: Mode = chosen ?? (justCompleted.current ? 'fill' : complete ? stored ?? 'vet' : 'fill');
-  const chooseMode = (next: Mode) => {
-    setChosen(next);
-    if (complete) saveMode(id, next);
-  };
+  // Everyone with access to the pet may fill the card in, so the card opens as the working mode every time: the reading
+  // mode is entered on purpose (or by a link that asks for it), and is not remembered, so that nobody who comes back to
+  // record a visit finds a view with no «+».
+  const mode: Mode = chosen ?? 'fill';
+  const chooseMode = setChosen;
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">

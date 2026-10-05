@@ -168,17 +168,20 @@ function PushNote() {
       showToast.failure(err instanceof Error ? err.message : 'Не удалось включить уведомления');
     }
   };
+  // A row of its own, under the date: a button inside the row that opens the date picker would be a control in a control.
   return (
-    <span className="record-push-note" role="note">
-      {state === 'off' && (
-        <>
-          {' '}Уведомления выключены на этом телефоне, напоминание сюда не придёт{' '}
-          <button type="button" className="record-push-note__button" onClick={turnOn}>Включить</button>
-        </>
-      )}
-      {state === 'denied' && ' Уведомления заблокированы в настройках браузера, напоминание сюда не придёт'}
-      {state === 'unsupported' && ' На этом устройстве уведомления недоступны, срок виден в медкарте'}
-    </span>
+    <Form.Item>
+      <span className="record-push-note" role="note">
+        {state === 'off' && (
+          <>
+            Уведомления выключены на этом телефоне, напоминание сюда не придёт{' '}
+            <button type="button" className="record-push-note__button" onClick={turnOn}>Включить</button>
+          </>
+        )}
+        {state === 'denied' && 'Уведомления заблокированы в настройках браузера, напоминание сюда не придёт'}
+        {state === 'unsupported' && 'На этом устройстве уведомления недоступны, срок виден в медкарте'}
+      </span>
+    </Form.Item>
   );
 }
 
@@ -677,10 +680,7 @@ export function MedicalRecordForm() {
                       error?.message ? (
                         <FieldError message={error.message} />
                       ) : (
-                        <>
-                          {repeatHint(kind!, !!nextDue, !!autoDue.current && nextDue === autoDue.current)}
-                          {nextDue && <PushNote />}
-                        </>
+                        repeatHint(kind!, !!nextDue, !!autoDue.current && nextDue === autoDue.current)
                       )
                     }
                   />
@@ -712,6 +712,7 @@ export function MedicalRecordForm() {
                       })}
                     </ChoiceChips>
                   </Form.Item>
+                  {nextDue && <PushNote />}
                 </>
               )}
             />

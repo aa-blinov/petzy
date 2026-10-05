@@ -70,6 +70,15 @@ def _date(iso: str | None) -> str:
         return iso
 
 
+def _days_word(n: int) -> str:
+    n = abs(n)
+    if n % 10 == 1 and n % 100 != 11:
+        return f"{n} день"
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return f"{n} дня"
+    return f"{n} дней"
+
+
 def _number(value: float) -> str:
     return f"{value:g}".replace(".", ",")
 
@@ -97,6 +106,7 @@ class _Card(FPDF):
         self.add_font("DejaVu", "B", os.path.join(FONT_DIR, "DejaVuSans-Bold.ttf"))
         self.set_title(f"Медицинская карта: {pet_name}")
         self.set_creator("Petzy")
+        self.set_lang("ru")
 
     @property
     def width(self) -> float:
@@ -182,7 +192,7 @@ def draw_header(pdf: _Card, card: dict) -> None:
     pdf.set_text_color(*INK)
     pdf.cell(0, 11, pet["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    facts = [pet.get("species"), pet.get("breed")]
+    facts = [pet.get("species"), _lower_first(pet["breed"]) if pet.get("breed") else None]
     if pet.get("birth_date"):
         facts.append(f"родился {_date(pet['birth_date'])}" + (f" ({pet['age_text']})" if pet.get("age_text") else ""))
     if pet.get("gender"):
@@ -414,7 +424,14 @@ def _weight_chart(pdf: _Card, series: list[dict]) -> None:
     pdf.set_y(top + height + 7)
 
 
+WEIGHT_BLOCK_HEIGHT = 100  # mm: the heading, the latest, the chart with its dates, the years and the last few
+
+
 def _weight_section(pdf: _Card, weight: dict | None) -> None:
+    # The whole of it or none on this page: a heading and its latest line at the foot of one page, the chart on the next,
+    # read as two sections.
+    if weight and len(weight["series"]) > 1 and pdf.get_y() + WEIGHT_BLOCK_HEIGHT > pdf.h - 18:
+        pdf.add_page()
     pdf.section("Вес")
     if not weight:
         pdf.muted("Замеров нет.")
@@ -479,12 +496,18 @@ def _due_items(card: dict) -> list[tuple[int, str, str, str, tuple]]:
         if r["status"] not in ("overdue", "soon"):
             continue
         overdue = r["status"] == "overdue"
+        left = r["days_left"]
+        # The distance says more than the date alone, and the date is under it: «Просрочено на 37 дней», «Скоро, через 12 дней».
+        if left is None:
+            right = f"{'Просрочено' if overdue else 'Скоро'}, {_date(r['next_due'])}"
+        else:
+            right = f"Просрочено на {_days_word(left)}" if overdue else f"Скоро, через {_days_word(left)}"
         items.append(
             (
-                r["days_left"] if r["days_left"] is not None else 0,
+                left if left is not None else 0,
                 r["title"],
-                KIND_LABELS.get(r["kind"], r["kind"]) + f", сделано {_date(r['date'])}",
-                f"{'Просрочено' if overdue else 'Скоро'}, {_date(r['next_due'])}",
+                KIND_LABELS.get(r["kind"], r["kind"]) + f", сделано {_date(r['date'])}, срок {_date(r['next_due'])}",
+                right,
                 ALERT if overdue else AMBER,
             )
         )

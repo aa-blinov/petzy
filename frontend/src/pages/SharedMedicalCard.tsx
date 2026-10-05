@@ -8,10 +8,11 @@ import { EmptyState } from '../components/EmptyState';
 import { getApiErrorMessage } from '../utils/apiError';
 import { medicalShareService } from '../services/medicalShare.service';
 import { showToast } from '../utils/toast';
-import { VetView } from './MedicalCard';
+import { OverdueStrip, VetView } from './MedicalCard';
 import './MedicalCard.css';
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
+const NO_NAVIGATE = () => undefined;
 
 /**
  * What a vet opens by the link the owner made: the card as the reading mode shows it, and its PDF, with no sign-in and nothing to
@@ -67,13 +68,29 @@ export function SharedMedicalCard() {
   };
   const ends = new Date(shared.expires_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const made = new Date(`${card.generated_at.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
+
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
         <div className="medcard medcard--reading">
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Медкарта</h1>
-          <VetView card={card} hidden={NO_HIDDEN} saving={saving} canPdf onPdf={() => void downloadPdf()} />
-          <p className="medcard__stamp">Собрано из записей питомца на {new Date(`${card.generated_at.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU')}. Ссылка действует до {ends}</p>
+          {/* The patient is the title: a page opened from a message names who it is about before anything else. */}
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{card.pet.name}</h1>
+          <VetView
+            card={card}
+            hidden={NO_HIDDEN}
+            saving={saving}
+            canPdf
+            onPdf={() => void downloadPdf()}
+            named={false}
+            afterPatient={
+              <>
+                {/* How old the data is, and until when the page lives, where a vet sees it with what is overdue. */}
+                <p className="medcard__stamp medcard__stamp--top">Собрано из записей питомца на {made}. Ссылка действует до {ends}</p>
+                <OverdueStrip card={card} petId="" navigate={NO_NAVIGATE} canAct={false} hidden={NO_HIDDEN} />
+              </>
+            }
+          />
         </div>
       </div>
     </div>

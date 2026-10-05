@@ -12,7 +12,9 @@
  *   - rows get role="button" and tabindex=0 as they mount
  *     (disabled rows get aria-disabled and stay out of the Tab order);
  *   - Enter or Space on a patched row clicks it, as on a real button;
- *   - form labels are linked to their fields (see linkLabel).
+ *   - form labels are linked to their fields (see linkLabel);
+ *   - the clear «×» of a text field, a `<div>` with an aria-label and no role (an attribute ARIA forbids there), becomes a
+ *     named button that stays out of the Tab order: whoever types can erase with the keyboard, so it is no second stop.
  */
 
 const ROW_SELECTOR = 'a.adm-list-item:not([href]), a.adm-action-sheet-button-item:not([href])';
@@ -54,7 +56,16 @@ function linkLabel(item: Element) {
   if (label.querySelector('.adm-form-item-required-asterisk')) field.setAttribute('aria-required', 'true');
 }
 
+const CLEAR_SELECTOR = '.adm-input-clear:not([role])';
+
+function patchClear(el: Element) {
+  el.setAttribute('role', 'button');
+  el.setAttribute('tabindex', '-1');
+}
+
 function patchWithin(root: ParentNode) {
+  if (root instanceof Element && root.matches(CLEAR_SELECTOR)) patchClear(root);
+  root.querySelectorAll(CLEAR_SELECTOR).forEach(patchClear);
   if (root instanceof Element && root.matches(ROW_SELECTOR)) patch(root);
   root.querySelectorAll(ROW_SELECTOR).forEach(patch);
   if (root instanceof Element && root.matches('.adm-form-item')) linkLabel(root);

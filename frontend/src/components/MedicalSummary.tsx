@@ -130,7 +130,7 @@ export function MedicalSummary({ card, petId, hidden, navigate }: { card: Card; 
               type="button"
               className="medsum__tile tap-feedback"
               aria-label={`${tile.label}: ${tile.value}${tile.note ? `, ${tile.note.text}` : ''}`}
-              onClick={() => navigate(`/pets/${petId}/medical-card/${tile.key}`)}
+              onClick={() => navigate(tile.key === 'documents' ? '/documents' : `/pets/${petId}/medical-card/${tile.key}`)}
             >
               <span className="medsum__label">
                 {createElement(tile.icon, { size: 16, strokeWidth: 2, 'aria-hidden': true })}
