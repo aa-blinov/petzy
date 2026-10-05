@@ -33,7 +33,14 @@ async def login(pg, user="demo", pet_prefix="Рекс"):
     await pg.wait_for_url(lambda u: "/login" not in u, timeout=20000)
     await pg.wait_for_timeout(1500)
     pets = await pg.evaluate("fetch('/api/pets').then(r => r.json()).then(d => d.pets.map(p => [p.name, p._id]))")
-    return next(i for n, i in pets if n.startswith(pet_prefix))
+    name, pet_id = next((n, i) for n, i in pets if n.startswith(pet_prefix))
+    # The app opens on the pet chosen last: the pet it was told to be, not whichever the account has newest (a pet added by hand on
+    # the stand must not move the checks to another pet's screens).
+    await pg.evaluate(
+        "([id, n]) => { localStorage.setItem('selectedPetId', JSON.stringify(id)); localStorage.setItem('selectedPetName', JSON.stringify(n)); }",
+        [pet_id, name],
+    )
+    return pet_id
 
 
 async def api(pg, method, path, body=None):

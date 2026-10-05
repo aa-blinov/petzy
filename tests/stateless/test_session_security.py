@@ -38,8 +38,11 @@ def test_a_token_for_a_login_that_does_not_exist_is_refused(client):
 
 def test_the_login_limit_is_per_client_not_global(client):
     attacker = {"X-Forwarded-For": "203.0.113.7"}
-    for _ in range(6):
+    # The window is fixed, so a minute boundary inside the run restarts the count: keep going until it trips.
+    for _ in range(12):
         response = client.post("/api/auth/login", json={"username": "admin", "password": "wrong"}, headers=attacker)
+        if response.status_code == 429:
+            break
     assert response.status_code == 429
     someone_else = {"X-Forwarded-For": "203.0.113.8"}
     response = client.post("/api/auth/login", json={"username": "admin", "password": "wrong"}, headers=someone_else)
