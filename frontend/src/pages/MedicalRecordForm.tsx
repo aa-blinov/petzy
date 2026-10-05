@@ -36,7 +36,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
 import { formatAmount } from '../utils/stock';
 import { getPushSubscriptionState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
-import { addInterval, daysBetween, DEFAULT_REPEAT, PARASITE_PRODUCTS, parasiteTargetOf, REPEAT_CHOICES, suggestionsFor } from '../utils/medicalSuggestions';
+import { addInterval, daysBetween, DEFAULT_REPEAT, PARASITE_PRODUCTS, parasiteTargetOf, OCCASION_GROUPS, REPEAT_CHOICES } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
@@ -204,8 +204,6 @@ export function MedicalRecordForm() {
   const kind: MedicalKind | null = record.data?.kind ?? (isKind(kindParam) ? kindParam : null);
   const labels = kind ? MEDICAL_KIND_LABELS[kind] : null;
   const repeating = kind === 'vaccination' || kind === 'parasite';
-  // A vaccine or a treatment is chosen from a list with a search (the name can be typed); the other kinds keep their text field.
-  const usesList = repeating;
 
   const today = getCurrentDate();
   const { control, handleSubmit, reset, setValue, getValues, formState: { isDirty, isSubmitting } } = useForm<FormData>({
@@ -343,9 +341,17 @@ export function MedicalRecordForm() {
 
   const recorded = record.data;
   const moreOpen = moreChosen ?? (isEditing && !!(recorded?.clinic || recorded?.vet || recorded?.note || recorded?.batch));
-  // The titles of a vaccination or a treatment come back (the next shot is the same vaccine); a visit's title does not.
-  const own = useMemo(() => (kind && repeating && card.data ? card.data.records[kind].map((r) => r.title) : []), [kind, repeating, card.data]);
-  const chips = kind ? suggestionsFor(kind, pet?.species, own) : [];
+  // What this pet already has under the kind, newest first: the next shot is the same vaccine, and a reason once written
+  // for a visit is one tap the next time.
+  const own = useMemo(() => {
+    const seen = new Set<string>();
+    return (kind && card.data ? card.data.records[kind].map((r) => r.title.trim()) : []).filter((t) => {
+      const key = t.toLowerCase();
+      if (!t || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [kind, card.data]);
   const groupOptions = catalog ? catalog.groups.filter((g) => g.species.includes(species) || g.key === protects) : [];
   const productGroups: ProductGroup[] =
     kind === 'vaccination' && catalog
@@ -354,7 +360,9 @@ export function MedicalRecordForm() {
           .map((g) => ({ key: g.key, label: g.label, detail: g.detail || undefined, items: catalog.products.filter((p) => p.protects === g.key && p.species.includes(species)).map((p) => p.name) }))
       : kind === 'parasite'
         ? (['fleas_ticks', 'worms', 'both'] as ParasiteTarget[]).map((t) => ({ key: t, label: PARASITE_TARGET_LABELS[t], items: PARASITE_PRODUCTS.filter((p) => p.target === t).map((p) => p.name) }))
-        : [];
+        : kind === 'visit' || kind === 'procedure'
+          ? OCCASION_GROUPS[kind]
+          : [];
   // The shot of the same protection that is on the card now: this one will replace it (the card reads a change of brand as the
   // repeat of the same vaccination, and the earlier entry stays in the history).
   const replaced =
@@ -543,8 +551,7 @@ export function MedicalRecordForm() {
           <Controller
             name="title"
             control={control}
-            render={({ field, fieldState: { error } }) =>
-              usesList ? (
+            render={({ field, fieldState: { error } }) => (
                 <Form.Item
                   label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>}
                   clickable
@@ -572,34 +579,7 @@ export function MedicalRecordForm() {
                 >
                   <PickerValue value={field.value} placeholder={kind === 'vaccination' ? 'Выберите или впишите' : 'Выберите или впишите'} />
                 </Form.Item>
-              ) : (
-
-              <Form.Item label={<RequiredLabel>{labels!.titleLabel}</RequiredLabel>} description={error?.message ? <FieldError message={error.message} /> : fieldNote({ value: field.value, max: 100 })}>
-                <Input {...left} value={field.value} onChange={changeTitle} onBlur={field.onBlur} placeholder={labels!.titlePlaceholder} maxLength={100} />
-                {chips.length > 0 && (
-                  <ChoiceChips label="Подсказки">
-                    {chips.map((chip) => (
-                      <ChoiceChip
-                        key={chip}
-                        pressed={title.trim().toLowerCase() === chip.toLowerCase()}
-                        onClick={() => changeTitle(chip)}
-                      >
-                        {chip}
-                      </ChoiceChip>
-                    ))}
-                  </ChoiceChips>
-                )}
-                {similar && (
-                  <span className="record-push-note" role="note">
-                    «{similar}» уже есть в списке и останется там как есть: карта считает записью той же вакцины только название, совпадающее полностью{' '}
-                    <button type="button" className="record-push-note__button" onClick={() => setValue('title', similar, { shouldDirty: true, shouldValidate: true })}>
-                      Назвать так же
-                    </button>
-                  </span>
-                )}
-              </Form.Item>
-              )
-            }
+            )}
           />
 
           {kind === 'vaccination' && groupOptions.length > 0 && (
@@ -938,8 +918,10 @@ export function MedicalRecordForm() {
 
       <ProductPickerSheet
         visible={pickerOpen}
-        title={kind === 'vaccination' ? 'Название вакцины' : 'Препарат'}
-        placeholder={kind === 'vaccination' ? 'Название или болезнь' : 'Название препарата'}
+        title={labels?.titleLabel ?? ''}
+        placeholder={
+          kind === 'vaccination' ? 'Название или болезнь' : kind === 'parasite' ? 'Название препарата' : kind === 'visit' ? 'Повод или своя причина' : 'Название или своё'
+        }
         groups={productGroups}
         earlier={own}
         loading={kind === 'vaccination' && catalogQuery.isPending}
@@ -951,7 +933,7 @@ export function MedicalRecordForm() {
           changeTitle(name);
           if (!group) return;
           if (kind === 'vaccination') setValue('protects', group, { shouldDirty: true });
-          else {
+          else if (kind === 'parasite') {
             setValue('target', group, { shouldDirty: true });
             setTargetError(null);
           }
