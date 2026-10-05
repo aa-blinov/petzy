@@ -9,7 +9,14 @@ import web.app as app
 from web.app import api
 from web.errors import error_response, MedicationNotFoundDuringDeletion
 from web.courses import course_covers, course_status
-from web.dose_slots import CARRY_OVER_HOURS, DUPLICATE_WINDOW_MINUTES, group_by_day, minutes_of_day, open_slots
+from web.dose_slots import (
+    CARRY_OVER_HOURS,
+    DUPLICATE_WINDOW_MINUTES,
+    group_by_day,
+    minutes_of_day,
+    open_slots,
+    slot_closers,
+)
 from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
@@ -405,6 +412,68 @@ def delete_medication(id):
         return error_response("internal_error")
 
 
+def _slot_of_the_mark(data) -> "tuple[str, str] | None":
+    """The (day, time) slot this mark is for, when the client named one."""
+    if not data.slot_date or not data.slot_time or minutes_of_day(data.slot_time) is None:
+        return None
+    return data.slot_date, data.slot_time
+
+
+def _already_handled(id: str, medication: dict, data, event_dt: datetime, username: str) -> "dict | None":
+    """Whether this dose is already recorded, and who/when, or None to write it.
+
+    Two cases, and the slot decides which. A mark that carries the slot it was for closes exactly
+    that slot, so a slot already closed by anybody (an hour earlier or a day earlier) is the same
+    dose marked twice, and it says «слот», because that is what the person was closing. Without a
+    slot there is nothing but the time of the mark, so a dose within DUPLICATE_WINDOW_MINUTES of a
+    given one is the finger landing twice.
+    """
+    slot = _slot_of_the_mark(data)
+    if slot is None:
+        window = timedelta(minutes=DUPLICATE_WINDOW_MINUTES)
+        near = app.db.medication_intakes.find_one(
+            {
+                "medication_id": id,
+                "skipped": {"$ne": True},
+                "date_time": {"$gt": event_dt - window, "$lt": event_dt + window},
+            },
+            sort=[("date_time", -1)],
+        )
+        if not near:
+            return None
+        return {
+            "error": "Этот приём уже отмечен",
+            "existing": {
+                "date": near["date_time"].strftime("%Y-%m-%d"),
+                "time": near["date_time"].strftime("%H:%M"),
+                "username": near.get("username"),
+                "own": near.get("username") == username,
+                "slot": False,
+            },
+        }
+
+    slot_date, slot_time = slot
+    times = (medication.get("schedule") or {}).get("times") or []
+    day_start = datetime.strptime(slot_date, "%Y-%m-%d")
+    # The window is the slot's day plus a day either side: a slot is closed by an intake marked for
+    # it, which can sit hours away from the slot (given late, or yesterday's evening after midnight).
+    day_intakes = load_day_intakes(app.db, [id], day_start - timedelta(days=1), day_start + timedelta(days=2))
+    closers = slot_closers(times, day_intakes.get((id, slot_date), []))
+    taken = closers.get(slot_time)
+    if taken is None:
+        return None
+    return {
+        "error": f"Приём на {slot_time} уже отмечен",
+        "existing": {
+            "date": slot_date,
+            "time": slot_time,
+            "username": taken.get("username"),
+            "own": taken.get("username") == username,
+            "slot": True,
+        },
+    }
+
+
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
 @api.validate(
     body=Request(MedicationIntakeCreate),
@@ -443,31 +512,22 @@ def log_intake(id):
         elif dose_taken is None:
             dose_taken = medication.get("default_dose", 1.0)
 
-        # The same dose marked twice (two people, a second tap): asked about, not recorded silently. A course with no
-        # schedule (a dose when needed) can be given again at any time, and a skip is not a dose.
+        # The same dose marked twice is asked about, not recorded silently. Two ways of telling, and
+        # the slot is the stronger one: an intake that carries the slot it was for (the dose widget
+        # sends it) can only close a slot that is still open, so two people an hour apart on the same
+        # 08:00 dose are caught too, and only that slot. Without a slot there is nothing but the
+        # time window, which stands for the finger that lands twice. A course with no schedule (a
+        # dose when needed) can be given again at any time, and a skip is not a dose.
         if not skipped and not data.force and (medication.get("schedule") or {}).get("times"):
-            window = timedelta(minutes=DUPLICATE_WINDOW_MINUTES)
-            near = app.db.medication_intakes.find_one(
-                {
-                    "medication_id": id,
-                    "skipped": {"$ne": True},
-                    "date_time": {"$gt": event_dt - window, "$lt": event_dt + window},
-                },
-                sort=[("date_time", -1)],
-            )
-            if near:
+            existing = _already_handled(id, medication, data, event_dt, username)
+            if existing:
                 return (
                     jsonify(
                         {
                             "success": False,
                             "code": "duplicate_intake",
-                            "error": "Этот приём уже отмечен",
-                            "existing": {
-                                "date": near["date_time"].strftime("%Y-%m-%d"),
-                                "time": near["date_time"].strftime("%H:%M"),
-                                "username": near.get("username"),
-                                "own": near.get("username") == username,
-                            },
+                            "error": existing["error"],
+                            "existing": existing["existing"],
                         }
                     ),
                     409,
