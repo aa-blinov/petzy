@@ -28,6 +28,22 @@ async def main():
             "a document held by no record says nothing of the kind",
             "Страховка на год" in await titles(pg) and len(sources) < len(await titles(pg)),
         )
+        check(
+            "the add button is the round plus at the bottom, not a link at the top",
+            await pg.locator(".app-fab").count() == 1
+            and await pg.get_by_role("button", name="Добавить", exact=True).count() == 0,
+        )
+        check("a row does not repeat the file's name under its title", await pg.get_by_text(".pdf").count() == 0)
+        await pg.locator(".app-fab").click()
+        await pg.wait_for_timeout(700)
+        check(
+            "it opens a sheet with the camera, the files and the scans",
+            await pg.locator(".recsheet__label").all_inner_texts()
+            == ["Сфотографировать", "Фото или PDF из файлов", "Снимки МРТ, КТ, архив"],
+        )
+        await pg.keyboard.press("Escape")
+        await pg.mouse.click(195, 60)
+        await pg.wait_for_timeout(500)
         search = pg.locator(".adm-search-bar input")
         await search.fill("плановый осмотр")
         await pg.wait_for_timeout(400)

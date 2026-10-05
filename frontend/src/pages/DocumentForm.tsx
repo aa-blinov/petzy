@@ -31,6 +31,7 @@ import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
+import { takePendingDocumentFile } from '../utils/pendingDocumentFile';
 
 const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -206,6 +207,14 @@ export function DocumentForm() {
       setValue('category', 'imaging', { shouldValidate: true });
     }
   };
+
+  // A file chosen on the list (the camera, the files) is already here when the form opens: it only has to be named.
+  useEffect(() => {
+    if (isEditing) return;
+    const waiting = takePendingDocumentFile();
+    if (waiting) pickFile(waiting);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (document) {
