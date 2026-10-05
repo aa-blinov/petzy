@@ -2397,3 +2397,12 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
 .fab-page {
     padding-bottom: calc(56px + var(--spacing-xl));
 }
+
+/* The feed's block of medicine notices: its room comes with it, and goes when it has nothing to say (the page's own gap is enough). */
+.feed-widgets {
+    padding-bottom: var(--spacing-sm);
+}
+
+.feed-widgets:empty {
+    display: none;
+}

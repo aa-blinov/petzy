@@ -1,4 +1,5 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
+import { uniqueById } from '../utils/uniqueById';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Button, PullToRefresh } from 'antd-mobile';
 import { Download, Notebook, ChevronDown, Rows3 } from 'lucide-react';
@@ -141,7 +142,7 @@ export function History() {
     // Records deleted a moment ago, «Отменить» still on offer, are left out.
     const hiddenRecords = useHiddenRecords();
     const filteredRecords = useMemo(
-        () => (data?.pages.flatMap(page => page.items) || []).filter(item => !hiddenRecords.has(item._id)),
+        () => uniqueById(data?.pages.flatMap(page => page.items) || []).filter(item => !hiddenRecords.has(item._id)),
         [data, hiddenRecords],
     );
 

@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, PullToRefresh } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
 import { PawPrint } from 'lucide-react';
 
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
@@ -15,6 +13,8 @@ import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { HistoryItem } from '../components/HistoryItem';
 import { useHiddenRecords } from '../utils/deferredDelete';
+import { uniqueById } from '../utils/uniqueById';
+import { Fab } from '../components/Fab';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { NextDoseWidget } from '../components/NextDoseWidget';
 import { PendingIntakesNotice } from '../components/PendingIntakesNotice';
@@ -105,9 +105,13 @@ export function Dashboard() {
 
   // Records deleted a moment ago, «Отменить» still on offer, are left out.
   const hiddenRecords = useHiddenRecords();
+  // Only what can be drawn: a record of a kind the app no longer knows would otherwise leave its day with a header and no card.
   const allItems = useMemo(
-    () => (data?.pages.flatMap(page => page.items) ?? []).filter(item => !hiddenRecords.has(item._id)),
-    [data, hiddenRecords],
+    () =>
+      uniqueById(data?.pages.flatMap(page => page.items) ?? []).filter(
+        item => !hiddenRecords.has(item._id) && !!item.record_type && !!historyConfig[item.record_type],
+      ),
+    [data, hiddenRecords, historyConfig],
   );
 
   const groupedItems = useMemo(() => {
@@ -218,7 +222,7 @@ export function Dashboard() {
             )}
 
             {/* Widget for upcoming medication block */}
-            <div style={{ paddingBottom: '8px' }}>
+            <div className="feed-widgets">
               <PendingIntakesNotice />
               <NextDoseWidget />
             </div>
@@ -304,16 +308,16 @@ export function Dashboard() {
                     {/* Cards for the day */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {itemsForDate.map((item: HealthRecord) => {
-                        if (!item.record_type) return null;
-                        const config = historyConfig[item.record_type];
-                        if (!config) return null;
+                        const type = item.record_type;
+                        const config = type ? historyConfig[type] : undefined;
+                        if (!type || !config) return null; // not reached: the list was filtered to what can be drawn
                         return (
                           <HistoryItem
                             key={item._id}
                             item={item}
                             config={config}
-                            type={item.record_type}
-                            activeTab={item.record_type}
+                            type={type}
+                            activeTab={type}
                           />
                         );
                       })}
@@ -344,23 +348,10 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* FAB in a portal so no page-level containing block (route
-          transitions, pull-to-refresh) can re-anchor its fixed position.
-          A real button: antd's FloatingBubble was a div that only
-          opened on pointer events, so a keyboard or screen reader
-          could never add a record. */}
-      {createPortal(
-        <button
-          type="button"
-          className="app-fab"
-          aria-label="Добавить запись"
-          aria-haspopup="dialog"
-          onClick={() => setActionSheetVisible(true)}
-        >
-          <AddOutline fontSize={28} aria-hidden />
-        </button>,
-        document.body
-      )}
+      {/* The round «+» is the one every list has (components/Fab): in a portal, and stepping aside on a scroll down, so that it
+          does not stand over the time and the arrow of the cards it passes. A real button: a keyboard or a screen reader adds a
+          record with it too. */}
+      <Fab label="Добавить запись" onClick={() => setActionSheetVisible(true)} popup />
 
       {/* Add Record — quick-add grid */}
       <QuickAddSheet
