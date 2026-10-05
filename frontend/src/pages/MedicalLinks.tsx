@@ -4,6 +4,7 @@ import { Button, Dialog } from 'antd-mobile';
 import { Link2 } from 'lucide-react';
 
 import { EmptyState } from '../components/EmptyState';
+import { MAX_ACTIVE_SHARES } from '../components/MedicalShareSheet';
 import { usePet } from '../hooks/usePet';
 import { formatShareEnd, medicalShareService } from '../services/medicalShare.service';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -52,6 +53,9 @@ export function MedicalLinks() {
         <div className="safe-area-padding medlinks__head">
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Ссылки на медкарту</h1>
           <p className="medlinks__lead">Ссылки, по которым врач открывает карту без входа. Здесь видно все действующие и можно отозвать любую</p>
+          <p className="medlinks__note" data-testid="medlinks-count">
+            {loading ? 'Считаем действующие ссылки' : `Действующих ссылок: ${total}`}
+          </p>
         </div>
 
         <div className="safe-area-padding medlinks__body">
@@ -66,7 +70,17 @@ export function MedicalLinks() {
             </p>
           ))}
 
-          {!loading && total === 0 && failed.length === 0 && (
+          {pets.length === 0 && (
+            <EmptyState
+              icon={Link2}
+              title="Питомцев пока нет"
+              description="Ссылку для врача делают в медкарте питомца: сначала добавьте питомца"
+              actionLabel="Добавить питомца"
+              onAction={() => navigate('/pets/new')}
+            />
+          )}
+
+          {pets.length > 0 && !loading && total === 0 && failed.length === 0 && (
             <EmptyState
               icon={Link2}
               title="Действующих ссылок нет"
@@ -80,6 +94,9 @@ export function MedicalLinks() {
             .map(({ pet, query }) => (
               <section key={pet._id} className="medlinks__pet" aria-label={pet.name}>
                 <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>{pet.name}</h2>
+                <p className="medlinks__note" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                  Занято {query.data!.length} из {MAX_ACTIVE_SHARES} ссылок
+                </p>
                 <ul className="card-soft medlinks__list">
                   {query.data!.map((share) => (
                     <li key={share.id} className="medlinks__item">

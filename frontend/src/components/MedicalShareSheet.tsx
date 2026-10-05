@@ -15,6 +15,10 @@ const DAYS = [
   { value: '30', label: '30 дней' },
 ] as const;
 
+/** How many links one pet may have working at once: MAX_ACTIVE_SHARES in web/medical_share.py. The number is shown next to
+    the button, so the refusal «слишком много ссылок» never comes out of nowhere. */
+export const MAX_ACTIVE_SHARES = 10;
+
 /**
  * A link to the card for a vet: opens without signing in, only to read, for a day, a week or a month, and can be taken back at
  * once. The address is shown once, as it was made (the server keeps only a hash of its secret), then only the links that still
@@ -45,6 +49,9 @@ export function MedicalShareSheet({ visible, petId, petName, onClose }: { visibl
   });
 
   const url = made ? shareUrl(made.path) : '';
+  // The list is what the limit counts: what the server keeps working, to the day it runs out.
+  const active = shares.data?.length ?? 0;
+  const full = active >= MAX_ACTIVE_SHARES;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -76,8 +83,12 @@ export function MedicalShareSheet({ visible, petId, petName, onClose }: { visibl
             <div className="shsheet__group">
               <Segmented label="Сколько действует ссылка" value={days} options={DAYS.map((d) => ({ value: d.value, label: d.label }))} onChange={setDays} />
             </div>
-            <p className="shsheet__note">В карте аллергии, лекарства и телефон клиники. Отправляйте ссылку только врачу</p>
-            <Button block color="primary" size="large" loading={create.isPending} disabled={create.isPending} onClick={() => create.mutate()}>
+            <p className="shsheet__note">Врач увидит аллергии и состояния, лекарства, прививки и обработки, вес, клинику с телефоном и записи визитов. Отправляйте ссылку только врачу</p>
+            <p className="shsheet__note">
+              Занято {active} из {MAX_ACTIVE_SHARES} ссылок
+              {active >= MAX_ACTIVE_SHARES ? ', отзовите ненужные, чтобы создать новую' : ''}
+            </p>
+            <Button block color="primary" size="large" loading={create.isPending} disabled={create.isPending || full} onClick={() => create.mutate()}>
               Создать ссылку
             </Button>
           </>
@@ -102,7 +113,7 @@ export function MedicalShareSheet({ visible, petId, petName, onClose }: { visibl
 
         {(shares.data?.length ?? 0) > 0 && (
           <section className="shsheet__list" aria-label="Действующие ссылки">
-            <h3 className="shsheet__list-title">Действующие ссылки</h3>
+            <h3 className="shsheet__list-title">Действующих ссылок: {active} из {MAX_ACTIVE_SHARES}</h3>
             <ul>
               {shares.data!.map((share) => (
                 <li key={share.id} className="shsheet__item">
