@@ -168,6 +168,20 @@ export function HealthRecordForm() {
       values[field.name] = field.type === 'number' ? undefined : '';
     }
 
+    // A required choice starts with its first option, and the value says so too.
+    // The row has always drawn that first option (see FormField), but the form
+    // kept an empty string, so «Заполните это поле» appeared under a row that
+    // showed an answer, and ten built-in types could not be saved at all. Now
+    // what is drawn is what is saved. An optional choice stays empty: nothing
+    // is written down that the person did not pick.
+    if (!isEditing) {
+      for (const field of fields) {
+        if (field.type === 'select' && field.required && !values[field.name] && field.options?.length) {
+          values[field.name] = field.options[0].value;
+        }
+      }
+    }
+
     if (!isEditing && type && type in settings) {
       // Only what the field still offers: a value saved before an option was renamed or dropped would be refused on save.
       const saved = (settings[type as keyof typeof settings] ?? {}) as Record<string, string | undefined>;

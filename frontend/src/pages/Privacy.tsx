@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Button } from 'antd-mobile';
 import { ChevronLeft } from 'lucide-react';
 import { legalService, LEGAL_QUERY_KEY, type LegalInfo } from '../services/legal.service';
 import { goBack } from '../utils/navigation';
@@ -61,7 +62,7 @@ function WriteTo({ info, verb = 'напишите' }: { info?: LegalInfo; verb?:
 
 function LegalPage({ title, children }: { title: string; children: (info?: LegalInfo) => ReactNode }) {
   const navigate = useNavigate();
-  const { data: info, isPending } = useQuery({
+  const { data: info, isPending, isError, refetch } = useQuery({
     queryKey: LEGAL_QUERY_KEY,
     queryFn: () => legalService.get(),
     staleTime: 60 * 60 * 1000,
@@ -82,8 +83,21 @@ function LegalPage({ title, children }: { title: string; children: (info?: Legal
             кто пригласил вас в Petzy.
           </p>
         )}
-        {/* Not before the facts arrive: «пока не указан» for a second reads as the truth. */}
-        {isPending ? <LoadingSpinner /> : children(info)}
+        {/* Not before the facts arrive, and never without them: «пока не указан» for a second reads as the truth. A legal
+            document drawn from a failed request is a document with the operator, the country and the retention period
+            invented, so the failure is said outright instead. */}
+        {isPending ? (
+          <LoadingSpinner />
+        ) : isError ? (
+          <div className="legal-page__notice">
+            <p role="alert">Не удалось загрузить документ. Проверьте соединение</p>
+            <Button color="primary" fill="outline" onClick={() => void refetch()}>
+              Повторить
+            </Button>
+          </div>
+        ) : (
+          children(info)
+        )}
       </article>
     </div>
   );
