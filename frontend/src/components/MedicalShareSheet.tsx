@@ -69,14 +69,14 @@ export function MedicalShareSheet({ visible, petId, petName, onClose }: { visibl
     <Popup visible={visible} onMaskClick={close} position="bottom" bodyStyle={{ background: 'transparent' }}>
       <DraggableSheetBody visible={visible} onClose={close} maxHeight="85vh" label="Ссылка для врача">
         <h2 className="shsheet__title">Ссылка для врача</h2>
-        <p className="shsheet__lead">Врач откроет карту {petName} без входа и только прочитает её. Ссылка перестанет работать через выбранное время, её можно отозвать в любой момент.</p>
+        <p className="shsheet__lead">Врач откроет карту {petName} без входа и только прочитает её. Ссылка перестанет работать через выбранное время, её можно отозвать в любой момент</p>
 
         {!made && (
           <>
             <div className="shsheet__group">
               <Segmented label="Сколько действует ссылка" value={days} options={DAYS.map((d) => ({ value: d.value, label: d.label }))} onChange={setDays} />
             </div>
-            <p className="shsheet__note">В карте аллергии, лекарства и телефон клиники. Отправляйте ссылку только врачу.</p>
+            <p className="shsheet__note">В карте аллергии, лекарства и телефон клиники. Отправляйте ссылку только врачу</p>
             <Button block color="primary" size="large" loading={create.isPending} disabled={create.isPending} onClick={() => create.mutate()}>
               Создать ссылку
             </Button>
@@ -86,7 +86,7 @@ export function MedicalShareSheet({ visible, petId, petName, onClose }: { visibl
         {made && (
           <div className="shsheet__made" role="group" aria-label="Новая ссылка">
             <p className="shsheet__url" data-testid="share-url">{url}</p>
-            <p className="shsheet__note">Действует до {formatEnd(made.share.expires_at)}. Адрес показан один раз: потом его не восстановить, можно только сделать новую ссылку.</p>
+            <p className="shsheet__note">Действует до {formatEnd(made.share.expires_at)}. Адрес показан один раз: потом его не восстановить, можно только сделать новую ссылку</p>
             <div className="shsheet__actions">
               <Button block color="primary" size="large" onClick={() => void copy()}>
                 Скопировать
