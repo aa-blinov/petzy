@@ -537,13 +537,18 @@ export function MedicationForm() {
                                                 render={({ field: unitField }) => (
                                                     <button
                                                         type="button"
+                                                        // The 44px to press come from the hit area, not from the height: a taller row would
+                                                        // push the amount off the line of its label.
+                                                        className="touch-target"
                                                         onClick={() => setUnitPickerVisible(true)}
                                                         style={{
+                                                            display: 'block',
                                                             width: '100%',
+                                                            height: 24,
+                                                            lineHeight: '24px',
                                                             background: 'transparent',
                                                             border: 'none',
                                                             padding: 0,
-                                                            minHeight: 'var(--touch-min)',
                                                             textAlign: 'center',
                                                             color: 'var(--app-primary-text)',
                                                             cursor: 'pointer',
@@ -554,7 +559,7 @@ export function MedicationForm() {
                                                         <PickerValue
                                                             value={unitField.value}
                                                             placeholder="таб/мл"
-                                                            style={{ textAlign: 'center', color: 'var(--app-primary-text)' }}
+                                                            style={{ textAlign: 'center', color: 'var(--app-primary-text)', lineHeight: '24px' }}
                                                         />
                                                     </button>
                                                 )}
