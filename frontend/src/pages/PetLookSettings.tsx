@@ -12,6 +12,7 @@ import { SpinnerButton } from '../components/SpinnerButton';
 import { getSpecies } from '../utils/species';
 import {
   PET_ACCENTS,
+  PET_BRAND_ACCENT,
   PET_BACKDROPS,
   PET_FONTS,
   PET_FRAMES,
@@ -37,7 +38,6 @@ import { showToast } from '../utils/toast';
 /** Columns of option tiles: four on a phone, fewer when the text is large, so a label is never cut. */
 const OPTION_GRID = 'repeat(auto-fill, minmax(max(5rem, 22%), 1fr))';
 
-const BRAND = { key: '', label: 'Терракот', swatch: '#C46A3F' };
 
 const labelStyle: CSSProperties = { fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' };
 const optionBase: CSSProperties = {
@@ -95,7 +95,7 @@ function Swatches({ label, value, onChange, noneLabel }: { label: string; value:
         {label}
       </div>
       <div role="radiogroup" aria-labelledby={id} onKeyDown={rovingKeyDown} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-        {[{ ...BRAND, label: noneLabel }, ...PET_ACCENTS].map((a, i) => {
+        {[{ ...PET_BRAND_ACCENT, label: noneLabel }, ...PET_ACCENTS].map((a, i) => {
           const on = value === a.key;
           return (
             <button
@@ -115,7 +115,7 @@ function Swatches({ label, value, onChange, noneLabel }: { label: string; value:
                 border: on ? '3px solid var(--app-text-primary)' : '3px solid transparent',
                 boxShadow: on ? 'inset 0 0 0 2px var(--app-card-background)' : 'none',
                 background: a.swatch,
-                color: '#fff',
+                color: 'var(--app-text-on-dark)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

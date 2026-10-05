@@ -263,7 +263,7 @@ export function EventTypeForm() {
 
         <div className="safe-area-padding">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
-          <Input value={label} onChange={setLabel} placeholder="Например, Игра" clearable maxLength={100} />
+          <Input className="input-row" value={label} onChange={setLabel} placeholder="Например, Игра" clearable maxLength={100} />
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
@@ -333,6 +333,7 @@ export function EventTypeForm() {
                   <button
                     type="button"
                     aria-label="Удалить поле"
+                    className="touch-target"
                     onClick={() => removeField(field.key)}
                     style={{ background: 'transparent', border: 'none', color: 'var(--app-danger-text)', cursor: 'pointer', padding: 4, display: 'flex' }}
                   >
@@ -342,6 +343,7 @@ export function EventTypeForm() {
 
                 <FieldLabel>Подпись поля</FieldLabel>
                 <Input
+                  className="input-row"
                   value={field.label}
                   onChange={(v) => updateField(field.key, { label: v })}
                   placeholder="Например, Длительность"
@@ -423,6 +425,7 @@ export function EventTypeForm() {
                 />
               )}
               <Input
+                className="input-row"
                 value={chartValueLabel}
                 onChange={setChartValueLabel}
                 placeholder="Подпись оси (например, Вес (кг))"

@@ -26,7 +26,7 @@ function Bar({ snackbar }: { snackbar: NonNullable<ReturnType<typeof getSnackbar
   return (
     // The message is spoken through utils/announce; the bar itself is not a
     // second live region (it would be read twice). A tap closes it.
-    <div className={`snackbar snackbar--${tone}`} onClick={() => closeSnackbar(id)}>
+    <div className={`snackbar snackbar--${tone}`} role="region" aria-label="Уведомление" onClick={() => closeSnackbar(id)}>
       {tone === 'success' && <Check className="snackbar__icon" size={18} strokeWidth={2.4} aria-hidden />}
       {tone === 'error' && <CircleAlert className="snackbar__icon" size={18} strokeWidth={2.2} aria-hidden />}
       <span className="snackbar__text">{message}</span>

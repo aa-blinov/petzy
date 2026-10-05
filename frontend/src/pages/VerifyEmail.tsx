@@ -45,7 +45,7 @@ export function VerifyEmail() {
         </p>
         {state !== 'checking' && (
           <p style={{ margin: 'var(--spacing-lg) 0 0' }}>
-            <Link to="/" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>Открыть Petzy</Link>
+            <Link to="/" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>Открыть Petzy</Link>
           </p>
         )}
       </div>
