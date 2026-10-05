@@ -209,6 +209,7 @@ from web.medical_card import medical_card_bp  # noqa: E402
 from web.medical_share import medical_share_bp  # noqa: E402
 from web.vaccines import vaccines_bp  # noqa: E402
 from web.medical_records import medical_records_bp  # noqa: E402
+from web.image_preview import image_preview_bp  # noqa: E402
 from web.builtin_event_types import backfill_litter_type, reorder_default_tiles, seed_builtin_event_types  # noqa: E402
 
 app.register_blueprint(auth_bp)
@@ -225,6 +226,7 @@ app.register_blueprint(medical_card_bp)
 app.register_blueprint(medical_share_bp)
 app.register_blueprint(vaccines_bp)
 app.register_blueprint(medical_records_bp)
+app.register_blueprint(image_preview_bp)
 
 # Build the indexes the application relies on. MongoDB makes
 # create_index a no-op when an identical index already exists, so

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { drawableImage, isHeicFile } from '../utils/drawableImage';
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -64,11 +65,25 @@ interface StagedFile {
 
 /** A file waiting to be saved with the record: a small picture for a photo, an icon for a PDF. */
 function StagedRow({ item, onRemove }: { item: StagedFile; onRemove: () => void }) {
-  const isImage = item.file.type.startsWith('image/');
-  const preview = useMemo(() => (isImage ? URL.createObjectURL(item.file) : null), [isImage, item.file]);
-  useEffect(() => () => {
-    if (preview) URL.revokeObjectURL(preview);
-  }, [preview]);
+  const isImage = item.file.type.startsWith('image/') || isHeicFile(item.file);
+  // A HEIC this browser cannot draw is converted by the server for the thumbnail; until it is, and if it cannot be, the file has an icon.
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isImage) return;
+    let live = true;
+    let url: string | null = null;
+    drawableImage(item.file)
+      .then((picture) => {
+        if (!live) return;
+        url = URL.createObjectURL(picture);
+        setPreview(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [isImage, item.file]);
   return (
     <li className="medrec__file">
       {preview ? <img src={preview} alt="" className="medrec__file-thumb" /> : <FileText size={28} strokeWidth={1.6} aria-hidden className="medrec__file-icon" />}
