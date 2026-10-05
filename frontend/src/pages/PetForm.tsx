@@ -203,7 +203,11 @@ export function PetForm() {
       }
     }
 
-    const daysCount = new Date(year, month + 1, 0).getDate();
+    // A pet is not born in the future: in the current month the wheel stops at today, so there is nothing
+    // to refuse afterwards. The same bound as the onboarding step and the same 50 years back.
+    const today = new Date();
+    const thisMonth = year === today.getFullYear() && month === today.getMonth();
+    const daysCount = thisMonth ? today.getDate() : new Date(year, month + 1, 0).getDate();
     const days = Array.from({ length: daysCount }, (_, i) => ({
       label: String(i + 1).padStart(2, '0'),
       value: String(i + 1),
@@ -270,7 +274,11 @@ export function PetForm() {
   };
 
   const onSubmit = async (values: PetFormData) => {
-    let invited = false;
+    // Who was invited, and whose access did not change. Kept outside the try below: the card
+    // and the access are two different things, and one refused invitation does not undo a card
+    // the server has already saved.
+    let invited: string[] = [];
+    let sharingFailed: { username: string; added: boolean; said?: string }[] = [];
     try {
       setLoading(true);
       const hasNewFile = fileList[0]?.file instanceof File;
@@ -301,19 +309,32 @@ export function PetForm() {
         const toAdd = localSharedWith.filter(u => !initialShared.includes(u));
         const toRemove = initialShared.filter(u => !localSharedWith.includes(u));
 
-        await Promise.all([
-          ...toAdd.map(username => petsService.sharePet(petId!, username)),
-          ...toRemove.map(username => petsService.unsharePet(petId!, username))
-        ]);
+        // Each person on their own: one refusal (the server already has their access, say) does
+        // not throw away the invitations that did go out, and is said by name afterwards.
+        const settled = await Promise.all([
+          ...toAdd.map((username) => ({ username, added: true, work: () => petsService.sharePet(petId as string, username) })),
+          ...toRemove.map((username) => ({ username, added: false, work: () => petsService.unsharePet(petId as string, username) })),
+        ].map(async ({ username, added, work }) => {
+          try {
+            await work();
+            return { username, added, ok: true };
+          } catch (err) {
+            console.error('Sharing error:', err);
+            // What the server said about it («Доступ уже предоставлен этому пользователю»),
+            // kept for the message below when there is a single refusal to explain.
+            return { username, added, ok: false, said: getApiErrorMessage(err, '') };
+          }
+        }));
+        invited = settled.filter((r) => r.added && r.ok).map((r) => r.username);
+        sharingFailed = settled.filter((r) => !r.ok).map(({ username, added, said }) => ({ username, added, said }));
 
         // Opened to the wrong person: take it back right away.
-        if (toAdd.length > 0) {
-          invited = true;
+        if (invited.length > 0) {
           const sharedPetId = petId;
           showUndo({
-            message: `Приглашение отправлено: ${toAdd.join(', ')}`,
+            message: `Приглашение отправлено: ${invited.join(', ')}`,
             onUndo: async () => {
-              await Promise.all(toAdd.map(username => petsService.unsharePet(sharedPetId, username)));
+              await Promise.all(invited.map(username => petsService.unsharePet(sharedPetId, username)));
               await queryClient.invalidateQueries({ queryKey: ['pets'] });
               await queryClient.invalidateQueries({ queryKey: ['pet', sharedPetId] });
             },
@@ -338,7 +359,33 @@ export function PetForm() {
       }
       // Leave at once; the toast lives on over the list.
       // An invitation has its own message with «Отменить»: a second one would take its place at once.
-      if (!invited) showToast.success('Питомец обновлён');
+      if (invited.length === 0) showToast.success('Питомец обновлён');
+      // The card is saved, so this is said about the access only: the person can invite the
+      // same person again on the next visit, and knows now why nothing happened.
+      if (sharingFailed.length === 1 && sharingFailed[0].said) {
+        // One refusal the server explains in its own words («Доступ уже предоставлен этому
+        // пользователю») says more than our own wording about it.
+        showToast.failure(`Карточка сохранена, ${sharingFailed[0].said}`);
+      } else if (sharingFailed.length > 0) {
+        const notSent = sharingFailed.filter((f) => f.added).map((f) => f.username);
+        const notClosed = sharingFailed.filter((f) => !f.added).map((f) => f.username);
+        const about: string[] = [];
+        if (notSent.length > 0) {
+          about.push(
+            notSent.length === 1
+              ? `приглашение для ${notSent[0]} не отправилось`
+              : `приглашения для ${notSent.join(', ')} не отправились`,
+          );
+        }
+        if (notClosed.length > 0) {
+          about.push(
+            notClosed.length === 1
+              ? `доступ для ${notClosed[0]} не изменился`
+              : `доступ для ${notClosed.join(', ')} не изменился`,
+          );
+        }
+        showToast.failure(`Карточка сохранена, ${about.join(', ')}`);
+      }
       goBack(navigate, '/pets');
     } catch (error) {
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
@@ -763,7 +810,7 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет смотреть и добавлять записи и данные для врача. Менять карточку питомца, плитки и доступ сможете только вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
+              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет смотреть и добавлять записи и данные для врача. Менять карточку питомца, события и доступ сможете только вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
