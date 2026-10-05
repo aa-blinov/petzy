@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Dialog, ImageViewer, PullToRefresh, SearchBar } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
 import { FileText, Pencil, Trash2, X } from 'lucide-react';
 
 import { usePet } from '../hooks/usePet';
@@ -32,6 +31,8 @@ import { matchesDocumentQuery } from '../utils/documentSearch';
 import { formatDate } from '../utils/medicalCardFormat';
 import './DocumentsList.css';
 import { LoadError } from '../components/LoadError';
+import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
+import { DocumentFab, DocumentSheet } from '../components/DocumentSheet';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
 
@@ -112,6 +113,9 @@ export function DocumentsList() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  // With many files, the sections are narrowed to one kind by a row of chips; with a few, every section is on the screen.
+  const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; document: PetDocument | null }>({
     visible: false,
     document: null,
@@ -166,6 +170,16 @@ export function DocumentsList() {
     return shown.filter((doc) => matchesDocumentQuery(doc, searchQuery));
   }, [documents, searchQuery, hiddenDocuments]);
 
+  // The day a file belongs to: the day of the visit or the shot that holds it, else the day it was added. Newest first.
+  const documentDay = (doc: PetDocument) => doc.medical_records?.[0]?.date ?? utcStampToLocal(doc.created_at).slice(0, 10);
+  const CHIPS_FROM = 10;
+  const filterable = documents.length > CHIPS_FROM;
+  const countsByCategory = useMemo(() => {
+    const counts = new Map<DocumentCategory, number>();
+    for (const doc of documents) if (!hiddenDocuments.has(doc._id)) counts.set(doc.category, (counts.get(doc.category) ?? 0) + 1);
+    return counts;
+  }, [documents, hiddenDocuments]);
+
   // Sections replace the old category filter — with the handful of
   // documents a pet typically has, always showing every category beats
   // hiding them behind a filter sheet the user has to open first.
@@ -173,7 +187,8 @@ export function DocumentsList() {
   // current search) are skipped rather than shown as empty sections.
   const groupedDocuments = useMemo(() => {
     const byCategory = new Map<DocumentCategory, PetDocument[]>();
-    for (const doc of searchedDocuments) {
+    for (const doc of [...searchedDocuments].sort((a, b) => documentDay(b).localeCompare(documentDay(a)))) {
+      if (filterable && categoryFilter && doc.category !== categoryFilter) continue;
       const list = byCategory.get(doc.category);
       if (list) list.push(doc);
       else byCategory.set(doc.category, [doc]);
@@ -181,7 +196,7 @@ export function DocumentsList() {
     return CATEGORY_ORDER
       .map((category) => [category, byCategory.get(category) ?? []] as const)
       .filter(([, docs]) => docs.length > 0);
-  }, [searchedDocuments]);
+  }, [searchedDocuments, categoryFilter, filterable]);
 
   // The file is not wiped at the tap: the card goes at once and «Отменить» waits a few seconds (as for a record); the server
   // is asked when that time is up, and a failure says so and brings the card back.
@@ -260,7 +275,7 @@ export function DocumentsList() {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container docs-page">
       <div className="max-width-container">
         <div
           className="safe-area-padding"
@@ -275,26 +290,6 @@ export function DocumentsList() {
           <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
             Документы
           </h1>
-          <button
-            type="button"
-            className="touch-target"
-            onClick={() => navigate('/documents/new')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--app-accent-deep)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <AddOutline style={{ fontSize: 20 }} />
-            Добавить
-          </button>
         </div>
 
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
@@ -306,6 +301,21 @@ export function DocumentsList() {
           />
         </div>
 
+        {filterable && (
+          <div className="safe-area-padding docs__chips">
+            <ChoiceChips label="Показать" flush>
+              <ChoiceChip pressed={categoryFilter === null} onClick={() => setCategoryFilter(null)}>
+                Все
+              </ChoiceChip>
+              {CATEGORY_ORDER.filter((c) => countsByCategory.has(c)).map((c) => (
+                <ChoiceChip key={c} pressed={categoryFilter === c} onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}>
+                  {DOCUMENT_CATEGORY_LABELS[c]} {countsByCategory.get(c)}
+                </ChoiceChip>
+              ))}
+            </ChoiceChips>
+          </div>
+        )}
+
         {isLoading ? (
           <SkeletonList count={3} render={() => <MedicationCardSkeleton />} />
         ) : isError && documents.length === 0 ? (
@@ -316,7 +326,7 @@ export function DocumentsList() {
             title="Здесь будут документы питомца"
             description="Справки о прививках, анализы, снимки МРТ и КТ, страховка в одном месте"
             actionLabel="Добавить документ"
-            onAction={() => navigate('/documents/new')}
+            onAction={() => setAddOpen(true)}
           />
         ) : searchedDocuments.length === 0 ? (
           <EmptyState
@@ -376,25 +386,37 @@ export function DocumentsList() {
                             onClick={() => handleOpen(doc)}
                           >
                             <div style={{ padding: 'var(--spacing-lg)', paddingRight: 48, display: 'flex', gap: 'var(--spacing-md)' }}>
-                              <div
-                                aria-hidden
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: 12,
-                                  background: badge.bg,
-                                  color: badge.fg,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  letterSpacing: '0.02em',
-                                }}
-                              >
-                                {badge.label}
-                              </div>
+                              {doc.content_type.startsWith('image/') && !doc.scan ? (
+                                // A photo is known by its picture: the server's own small version (cached, WebP), not the 10 MB original.
+                                <img
+                                  src={`${documentsService.getFileUrl(doc._id)}?w=128&h=128`}
+                                  alt=""
+                                  aria-hidden
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="docs__thumb"
+                                />
+                              ) : (
+                                <div
+                                  aria-hidden
+                                  style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 12,
+                                    background: badge.bg,
+                                    color: badge.fg,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    letterSpacing: '0.02em',
+                                  }}
+                                >
+                                  {badge.label}
+                                </div>
+                              )}
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
                                   <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{doc.title}</h3>
@@ -457,18 +479,6 @@ export function DocumentsList() {
                                 })()}
                                 <p
                                   style={{
-                                    margin: 'var(--spacing-2xs) 0 0',
-                                    fontSize: 'var(--text-sm)',
-                                    color: 'var(--app-text-secondary)',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                  }}
-                                >
-                                  {doc.original_filename}
-                                </p>
-                                <p
-                                  style={{
                                     margin: '4px 0 0',
                                     display: 'flex',
                                     flexWrap: 'wrap',
@@ -478,7 +488,7 @@ export function DocumentsList() {
                                     fontVariantNumeric: 'tabular-nums',
                                   }}
                                 >
-                                  <span>{formatRelativeDateTime(utcStampToLocal(doc.created_at))}</span>
+                                  <span>Добавлен {formatRelativeDateTime(utcStampToLocal(doc.created_at))}</span>
                                   {doc.file_size > 0 && <span>{formatFileSize(doc.file_size)}</span>}
                                 </p>
                                 {doc.username && doc.username !== currentUsername && (
@@ -698,6 +708,10 @@ export function DocumentsList() {
         </div>,
         document.body,
       )}
+
+      {/* The same round «+» as the feed's and the card's, at the bottom under the thumb. */}
+      <DocumentFab onOpen={() => setAddOpen(true)} />
+      <DocumentSheet visible={addOpen} onClose={() => setAddOpen(false)} />
 
       <Dialog
         visible={deleteDialog.visible}

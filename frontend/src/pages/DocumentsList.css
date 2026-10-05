@@ -14,3 +14,24 @@
     overflow-wrap: anywhere;
     cursor: pointer;
 }
+
+/* A photo's own picture in place of the format label: square, cropped from the top, where a sheet of paper has its heading. */
+.docs__thumb {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background: var(--app-accent-soft);
+    object-fit: cover;
+    object-position: top;
+}
+
+/* The row of chips that narrows the sections to one kind of file, shown when there are many. */
+.docs__chips {
+    margin-bottom: var(--spacing-md);
+}
+
+/* Room under the last row for the round «+», so that it does not stand over the last file. */
+.docs-page {
+    padding-bottom: calc(56px + var(--spacing-xl));
+}
