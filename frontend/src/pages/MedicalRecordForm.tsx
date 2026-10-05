@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DraggableSheetBody } from '../components/DraggableSheetBody';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -940,8 +941,8 @@ export function MedicalRecordForm() {
         }}
       />
 
-      <Popup visible={docsOpen} onMaskClick={() => setDocsOpen(false)} onClose={() => setDocsOpen(false)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75vh', overflow: 'auto' }}>
-        <div style={{ padding: 'var(--spacing-md)' }}>
+      <Popup visible={docsOpen} onMaskClick={() => setDocsOpen(false)} position="bottom" bodyStyle={{ background: 'transparent' }}>
+        <DraggableSheetBody visible={docsOpen} onClose={() => setDocsOpen(false)} maxHeight="75vh" label="Уже загруженные документы">
           <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)' }}>Уже загруженные документы</h2>
 
           {(documents.data ?? []).length > 0 && (
@@ -958,7 +959,7 @@ export function MedicalRecordForm() {
           <Button block color="primary" size="large" style={{ marginTop: 'var(--spacing-md)' }} onClick={() => setDocsOpen(false)}>
             Готово
           </Button>
-        </div>
+        </DraggableSheetBody>
       </Popup>
       {leaveDialog}
     </div>
