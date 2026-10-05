@@ -1464,6 +1464,19 @@ textarea:focus-visible,
     border-color: var(--app-accent) !important;
 }
 
+/* A bare Input outside a Form.Item (the event type form): a row of the same height and hairline as the rows of every other form,
+   so that it reads as a field and not as a grey line of text; the accent line under it takes the focus. */
+.adm-input.input-row {
+    min-height: var(--touch-min);
+    border-bottom: 1px solid var(--app-divider-color);
+    transition: box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.adm-input.input-row:focus-within {
+    box-shadow: inset 0 -2px 0 var(--app-accent);
+    border-bottom-color: transparent !important;
+}
+
 /* A form row says it has the cursor: the label turns accent (above) and a line under the row does too, so that
    keyboard focus is seen without boxing the field on every tap. */
 .adm-form-item:focus-within {
@@ -1909,6 +1922,7 @@ button.chip::after {
     align-items: center;
     gap: 2px;
     margin-left: -6px;
+    min-height: var(--touch-min);
     padding: 6px;
     border: none;
     background: transparent;
@@ -1940,12 +1954,12 @@ button.chip::after {
 
 /* A link standing on its own under a form («Забыли пароль?», «Войти»):
    the text is 15-18px tall, too small a target for a thumb. The padding
-   makes it about 40px to press; the negative margin keeps the line where
+   makes it 44px or more to press; the negative margin keeps the line where
    it was. */
 .tap-link {
     display: inline-block;
-    padding-block: 11px;
-    margin-block: -11px;
+    padding-block: 15px;
+    margin-block: -15px;
 }
 
 /* Text that can be as long as the server allows (a 100-character name, a

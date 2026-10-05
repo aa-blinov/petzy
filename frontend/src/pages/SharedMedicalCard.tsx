@@ -36,7 +36,7 @@ export function SharedMedicalCard() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <EmptyState icon={FileHeart} title="Ссылка не действует" description="Она закончилась или её отозвали. Попросите владельца питомца прислать новую" />
+          <EmptyState heading="h1" icon={FileHeart} title="Ссылка не действует" description="Она закончилась или её отозвали. Попросите владельца питомца прислать новую" />
         </div>
       </div>
     );

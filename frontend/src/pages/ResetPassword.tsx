@@ -55,7 +55,7 @@ export function ResetPassword() {
           Ссылка устарела или уже использована. Запросите новую, она придёт на ту же почту
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
-          <Link to="/forgot-password" style={linkStyle}>Запросить новую ссылку</Link>
+          <Link to="/forgot-password" className="tap-link" style={linkStyle}>Запросить новую ссылку</Link>
         </p>
       </AuthShell>
     );

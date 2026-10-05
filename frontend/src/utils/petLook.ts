@@ -46,6 +46,9 @@ export const PET_ACCENTS = [
   { key: 'slate', label: 'Графит', swatch: '#6B7A90' },
 ] as const;
 
+/** The brand copper as a choice of the same picker: no accent chosen. */
+export const PET_BRAND_ACCENT = { key: '', label: 'Терракот', swatch: '#C46A3F' } as const;
+
 /** The attribute that re-tints a subtree: absent for the brand copper (no colour chosen, or one the palette lost). */
 export function petAccentAttr(look?: PetLook | null): { 'data-pet-accent'?: string } {
   const accent = look?.accent;

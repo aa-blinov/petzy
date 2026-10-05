@@ -27,6 +27,8 @@ interface EmptyStateProps {
   children?: ReactNode;
   /** Tighter vertical rhythm for inline empty-states inside cards. */
   compact?: boolean;
+  /** `h1` where the state is the whole page and has no other heading (a link that no longer works). */
+  heading?: 'h1' | 'h2';
 }
 
 export function EmptyState({
@@ -37,6 +39,7 @@ export function EmptyState({
   onAction,
   children,
   compact = false,
+  heading: Heading = 'h2',
 }: EmptyStateProps) {
   return (
     <div
@@ -65,7 +68,7 @@ export function EmptyState({
         <Icon size={36} strokeWidth={1.6} style={{ display: 'block' }} />
       </div>
 
-      <h2
+      <Heading
         className="display-headline"
         style={{
           margin: 0,
@@ -75,7 +78,7 @@ export function EmptyState({
         }}
       >
         {title}
-      </h2>
+      </Heading>
 
       {description && (
         <p

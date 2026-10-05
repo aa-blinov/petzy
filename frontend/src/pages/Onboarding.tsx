@@ -36,6 +36,7 @@ import { hapticFeedback } from '../utils/haptic';
 import { showToast } from '../utils/toast';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PhotoCropModal } from '../components/PhotoCropModal';
+import { PET_ACCENTS } from '../utils/petLook';
 import { MORE_SPECIES, TILE_SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
 import './Onboarding.css';
 
@@ -713,9 +714,9 @@ function LookArt() {
           <span className="onb-card__meta">Свои для каждого питомца</span>
         </span>
         <span className="onb-avatars">
-          <span style={{ background: '#5E9A56' }} />
-          <span style={{ background: '#4A8CC7' }} />
-          <span style={{ background: '#D4577C' }} />
+          {PET_ACCENTS.filter((a) => ['sage', 'sky', 'rose'].includes(a.key)).map((a) => (
+            <span key={a.key} style={{ background: a.swatch }} />
+          ))}
         </span>
       </div>
       <div className="onb-card onb-float" style={floatDelay(300)}>
