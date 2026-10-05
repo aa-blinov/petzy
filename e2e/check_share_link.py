@@ -54,6 +54,21 @@ async def main():
             and await vet.get_by_role("button", name="Ссылка для врача").count() == 0,
         )
         check("it says until when", "Ссылка действует до" in t)
+        check("the pet's name is the title of the page", (await vet.locator("h1").all_inner_texts()) == ["Рекс"])
+        order = await vet.evaluate(
+            "(() => { const top = s => document.querySelector(s)?.getBoundingClientRect().top; return [top('.medcard__stamp'), top('.medcard__alert'), top('.medcard__important')]; })()"
+        )
+        check(
+            "the date and the end of the link and what is overdue come before the allergies",
+            all(v is not None for v in order) and order[0] < order[2] and order[1] < order[2],
+            str(order),
+        )
+        check(
+            "the one PDF button comes after what there is to read",
+            await vet.evaluate(
+                "(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.includes('Скачать PDF')); return b.getBoundingClientRect().top > document.querySelector('#medcard-vet-meds').getBoundingClientRect().top; })()"
+            ),
+        )
         check("no search engines", await vet.locator("meta[name=robots]").count() == 1)
         async with vet.expect_download(timeout=20000) as dl:
             await vet.get_by_role("button", name="Скачать PDF").first.click()

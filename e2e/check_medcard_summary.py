@@ -13,6 +13,29 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         rex = await login(pg, "demo", "Рекс")
         card = f"/pets/{rex}/medical-card"
+        # a filled-in card opens as the working mode every time, with the «+» and a switch that says «Записи»
+        await pg.goto(BASE + card)
+        await pg.wait_for_timeout(1800)
+        check(
+            "a complete card opens as «Записи» with the round plus",
+            await pg.locator(".app-fab").count() == 1
+            and await pg.locator(".medcard__mode").all_inner_texts() == ["Записи", "Врачу"],
+        )
+        await pg.goto(BASE + card + "?mode=vet")
+        await pg.wait_for_timeout(1500)
+        check(
+            "the reading mode shows the weight in the patient's lines, not as a row of the medicines",
+            "Вес " in await pg.locator(".medcard__patient").inner_text()
+            and await pg.locator("#medcard-vet-meds").get_by_text("Вес", exact=True).count() == 0,
+        )
+        check(
+            "the file and the link come after the allergies",
+            await pg.evaluate(
+                "document.querySelector('.medcard__important').getBoundingClientRect().top < document.querySelector('.medcard__topactions').getBoundingClientRect().top"
+            ),
+        )
+        await pg.goto(BASE + card)
+        await pg.wait_for_timeout(1500)
         await pg.goto(BASE + card + "?mode=fill")
         await pg.wait_for_timeout(2000)
         ty = await pg.evaluate("Math.round(document.querySelector('.medsum__tile').getBoundingClientRect().top)")

@@ -113,6 +113,14 @@ export function DatePickerField({
 
   return (
     <>
+    {/* The «Убрать» button is not inside the row that opens the picker (a button in a button cannot be told apart by a screen
+        reader, nor focused apart): it lies over the row's right edge, next to the arrow. */}
+    <div className="datefield">
+    {clearLabel && value && (
+      <button type="button" className="datefield__clear touch-target" aria-label={clearLabel} onClick={() => { onChange(''); onBlur?.(); }}>
+        Убрать
+      </button>
+    )}
     <Form.Item
       label={label}
       clickable
@@ -122,30 +130,6 @@ export function DatePickerField({
         setDraft([]);
         setVisible(true);
       }}
-      extra={
-        clearLabel && value ? (
-          <button
-            type="button"
-            aria-label={clearLabel}
-            onClick={(event) => {
-              event.stopPropagation();
-              onChange('');
-              onBlur?.();
-            }}
-            style={{
-              padding: '8px 0 8px 8px',
-              border: 'none',
-              background: 'none',
-              color: 'var(--app-accent-deep)',
-              fontFamily: 'inherit',
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-            }}
-          >
-            Убрать
-          </button>
-        ) : undefined
-      }
     >
       <PickerValue id={id} value={shown} placeholder={placeholder} />
       <Picker
@@ -168,6 +152,7 @@ export function DatePickerField({
         confirmText="Готово"
       />
     </Form.Item>
+    </div>
     {quick && (
       <Form.Item>
         <ChoiceChips label={`${label}: быстрый выбор`}>
