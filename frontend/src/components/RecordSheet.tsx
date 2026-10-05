@@ -1,13 +1,11 @@
 import { createElement, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Popup } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
 import { Bug, FileText, HeartPulse, Pill, Scale, Scissors, Stethoscope, Syringe, TriangleAlert, type LucideIcon } from 'lucide-react';
 
-import { useFabAway } from '../hooks/useFabAway';
 import { pastelColorMap } from '../utils/constants';
 import { DraggableSheetBody } from './DraggableSheetBody';
+import { Fab } from './Fab';
 import './RecordSheet.css';
 
 interface Choice {
@@ -88,16 +86,10 @@ export function RecordSheet({ visible, petId, petName, onClose, onChoose }: { vi
     as the feed's is, so that no page-level containing block moves it. */
 export function RecordFab({ petId, petName }: { petId: string; petName?: string }) {
   const [open, setOpen] = useState(false);
-  const away = useFabAway();
   const navigate = useNavigate();
   return (
     <>
-      {createPortal(
-        <button type="button" className={`app-fab${away ? ' app-fab--away' : ''}`} aria-label="Записать в медкарту" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-          <AddOutline fontSize={28} aria-hidden />
-        </button>,
-        document.body,
-      )}
+      <Fab label="Записать в медкарту" onClick={() => setOpen(true)} popup />
       <RecordSheet
         visible={open}
         petId={petId}

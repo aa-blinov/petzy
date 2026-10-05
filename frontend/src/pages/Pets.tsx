@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
 import { Pencil, Scale, Trash2, Cat, LogOut, FileHeart, Palette } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
@@ -20,6 +19,7 @@ import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
+import { Fab } from '../components/Fab';
 import { formatAmount } from '../utils/stock';
 import { PetDeleteSummary } from '../components/PetDeleteSummary';
 
@@ -56,7 +56,7 @@ export function Pets() {
   const leaving = !!deleteDialog.pet && !deleteDialog.pet.current_user_is_owner;
 
   return (
-    <div className="page-container">
+    <div className="page-container fab-page">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
           marginBottom: 'var(--spacing-lg)',
@@ -68,26 +68,6 @@ export function Pets() {
           <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
             Мои питомцы
           </h1>
-          <button
-            type="button"
-            className="touch-target"
-            onClick={handleAddPet}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--app-accent-deep)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <AddOutline style={{ fontSize: 20 }} />
-            Добавить
-          </button>
         </div>
 
         <div className="safe-area-padding">
@@ -142,6 +122,9 @@ export function Pets() {
           </PullToRefresh>
         )}
       </div>
+
+      {/* A pet is added from the bottom right, as everything else in the app. */}
+      <Fab label="Добавить питомца" onClick={handleAddPet} />
 
       <Dialog
         visible={deleteDialog.visible}

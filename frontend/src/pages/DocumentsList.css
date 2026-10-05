@@ -31,7 +31,3 @@
     margin-bottom: var(--spacing-md);
 }
 
-/* Room under the last row for the round «+», so that it does not stand over the last file. */
-.docs-page {
-    padding-bottom: calc(56px + var(--spacing-xl));
-}

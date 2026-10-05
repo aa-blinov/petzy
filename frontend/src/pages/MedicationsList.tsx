@@ -9,7 +9,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Tag, Dialog, Input, Popup, PullToRefresh, SearchBar } from 'antd-mobile';
-import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
+import { ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type IntakeInput, type Medication } from '../services/medications.service';
@@ -29,6 +29,7 @@ import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { IntakeTimePicker } from '../components/IntakeTimePicker';
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
+import { Fab } from '../components/Fab';
 import { minutesAgo, nowWhen, whenLabel, whenPhrase, yesterdayEvening, type IntakeWhen } from '../utils/intakeWhen';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import { getCurrentDate } from '../utils/dateUtils';
@@ -336,7 +337,7 @@ export function MedicationsList() {
     };
 
     return (
-        <div className="page-container">
+        <div className="page-container fab-page">
             <div className="max-width-container">
                 <div className="safe-area-padding" style={{
                     display: 'flex',
@@ -348,28 +349,6 @@ export function MedicationsList() {
                     <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
                         Лекарства
                     </h1>
-                    {medications.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => navigate('/medications/new')}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--app-accent-deep)',
-                                fontWeight: 600,
-                                fontSize: 'var(--text-sm)',
-                                cursor: 'pointer',
-                                padding: '8px 12px',
-                                minHeight: 'var(--touch-min)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                            }}
-                        >
-                            <AddOutline style={{ fontSize: 20 }} />
-                            Добавить
-                        </button>
-                    )}
                 </div>
 
                 {isLoading ? (
@@ -662,6 +641,9 @@ export function MedicationsList() {
                     </PullToRefresh>
                 )}
             </div>
+
+            {/* The same round «+» as the feed's, the card's and the documents': a medicine is added from the bottom right. */}
+            {medications.length > 0 && <Fab label="Добавить лекарство" onClick={() => navigate('/medications/new')} />}
 
             {/* A sheet from the bottom, as every other form of the app: the thumb reaches the one button that writes. */}
             <Popup
