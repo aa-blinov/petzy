@@ -156,7 +156,7 @@ class TestDataExport:
         create = client.post(
             "/api/event-types",
             json={
-                "label": "Игра",
+                "label": "Массаж",
                 "icon": "paw",
                 "color": "blue",
                 "fields": [{"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}],

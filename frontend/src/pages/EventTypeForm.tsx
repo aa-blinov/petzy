@@ -263,7 +263,7 @@ export function EventTypeForm() {
 
         <div className="safe-area-padding">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
-          <Input className="input-row" value={label} onChange={setLabel} placeholder="Например, Игра" clearable maxLength={100} />
+          <Input className="input-row" value={label} onChange={setLabel} placeholder="Например, Массаж" clearable maxLength={100} />
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>

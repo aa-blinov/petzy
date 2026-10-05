@@ -40,7 +40,7 @@ def family(mock_db, test_pet):
 def walk(client, regular_user_token):
     response = client.post(
         "/api/event-types",
-        json={"label": "Прогулка", "icon": "footprints", "color": "green", "fields": []},
+        json={"label": "Лазание", "icon": "footprints", "color": "green", "fields": []},
         headers=_auth(regular_user_token),
     )
     assert response.status_code == 201
@@ -69,7 +69,7 @@ def test_a_stranger_cannot_change_or_delete_it(client, mock_db, walk, stranger):
     deleted = client.delete(f"/api/event-types/{walk}", headers=_auth(stranger))
 
     assert renamed.status_code == 404 and deleted.status_code == 404
-    assert mock_db["event_types"].find_one({"key": walk})["label"] == "Прогулка"
+    assert mock_db["event_types"].find_one({"key": walk})["label"] == "Лазание"
 
 
 def test_family_sees_it_but_only_the_author_changes_it(client, mock_db, walk, family):
@@ -77,7 +77,7 @@ def test_family_sees_it_but_only_the_author_changes_it(client, mock_db, walk, fa
     deleted = client.delete(f"/api/event-types/{walk}", headers=_auth(family))
 
     assert renamed.status_code == 403 and deleted.status_code == 403
-    assert mock_db["event_types"].find_one({"key": walk})["label"] == "Прогулка"
+    assert mock_db["event_types"].find_one({"key": walk})["label"] == "Лазание"
 
 
 def test_the_author_changes_it(client, walk, regular_user_token):

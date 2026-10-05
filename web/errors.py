@@ -125,6 +125,9 @@ ERRORS: Dict[str, ErrorDef] = {
     "event_type_builtin_admin_only": ErrorDef(
         "event_type_builtin_admin_only", "Встроенный тип общий для всех, его меняет администратор", 403
     ),
+    "event_type_label_taken": ErrorDef(
+        "event_type_label_taken", "Тип события с таким названием уже есть. Назовите свой тип иначе", 422
+    ),
     "event_type_not_yours": ErrorDef("event_type_not_yours", "Этот тип создал другой пользователь", 403),
     "event_type_builtin_immutable": ErrorDef(
         "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422

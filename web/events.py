@@ -100,6 +100,21 @@ def _find_visible_type(key: str, username: str) -> Optional[dict]:
     return app.db[EVENT_TYPES_COLLECTION].find_one({"$and": [{"key": key}, _visible_types_query(username)]})
 
 
+def _same_label(text: str) -> str:
+    """What makes two names one: the case and the spaces do not count."""
+    return " ".join((text or "").split()).casefold()
+
+
+def _label_is_taken(label: str, username: str, own_key: Optional[str] = None) -> bool:
+    """A type with this name is already among the ones the user sees (built-in or the household's): two tiles of one name
+    cannot be told apart in the sheet that adds a record and in the filter of the history."""
+    wanted = _same_label(label)
+    return any(
+        doc["key"] != own_key and _same_label(doc.get("label", "")) == wanted
+        for doc in app.db[EVENT_TYPES_COLLECTION].find(_visible_types_query(username), {"key": 1, "label": 1})
+    )
+
+
 def _generate_event_type_key() -> str:
     """A stable, opaque id for a custom type — the label is free text (any
     language/characters) and only used for display, so the key is generated
@@ -140,6 +155,8 @@ def create_event_type():
     username, _ = get_current_user()
 
     data = request.context.body  # type: ignore[attr-defined]
+    if _label_is_taken(data.label, username):
+        return error_response("event_type_label_taken")
     doc = {
         "key": _generate_event_type_key(),
         "label": data.label,
@@ -183,6 +200,11 @@ def update_event_type(key):
     data = request.context.body  # type: ignore[attr-defined]
     update_data: dict[str, Any] = {}
     if data.label is not None:
+        # An old duplicate may be saved as it is (its colour changed, say): only a name that is new is checked.
+        if _same_label(data.label) != _same_label(existing.get("label", "")) and _label_is_taken(
+            data.label, username, key
+        ):
+            return error_response("event_type_label_taken")
         update_data["label"] = data.label
     if data.icon is not None:
         update_data["icon"] = data.icon
