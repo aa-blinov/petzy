@@ -51,7 +51,7 @@ export function MedicalLinks() {
       <div className="max-width-container">
         <div className="safe-area-padding medlinks__head">
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Ссылки на медкарту</h1>
-          <p className="medlinks__lead">Ссылки, по которым врач открывает карту без входа. Здесь видно все действующие и можно отозвать любую.</p>
+          <p className="medlinks__lead">Ссылки, по которым врач открывает карту без входа. Здесь видно все действующие и можно отозвать любую</p>
         </div>
 
         <div className="safe-area-padding medlinks__body">
@@ -70,7 +70,7 @@ export function MedicalLinks() {
             <EmptyState
               icon={Link2}
               title="Действующих ссылок нет"
-              description="Ссылку для врача делают в медкарте, в режиме «Врачу»: на день, неделю или месяц."
+              description="Ссылку для врача делают в медкарте, в режиме «Врачу»: на день, неделю или месяц"
               {...(selectedPetId ? { actionLabel: 'Открыть медкарту', onAction: () => navigate(`/pets/${selectedPetId}/medical-card?mode=vet`) } : {})}
             />
           )}
