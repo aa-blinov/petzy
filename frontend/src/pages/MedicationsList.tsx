@@ -8,7 +8,7 @@ import { PendingIntakesNotice } from '../components/PendingIntakesNotice';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Tag, Dialog, Input, Popup, PullToRefresh, SearchBar } from 'antd-mobile';
+import { Button, Card, Dialog, Input, Popup, PullToRefresh, SearchBar } from 'antd-mobile';
 import { ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
@@ -41,6 +41,23 @@ function pastSlotToday(med: Medication): string | null {
     if (!med.schedule.days.includes((now.getDay() + 6) % 7)) return null;
     const slot = med.open_slots_today ? med.open_slots_today[0] : [...med.schedule.times].sort()[med.intakes_today || 0];
     return slot && slot <= formatTime(now) ? slot : null;
+}
+
+/** «Сегодня 1 из 3, не отмечено в 06:00, дальше в 23:30»: what is done, what was missed (its time has gone and nothing closed it),
+ *  and what is still to come. The earliest open slot is not «дальше» when its hour is already behind. */
+function todayProgress(med: Medication): string {
+    const open = med.open_slots_today ?? [];
+    const total = med.schedule.times.length;
+    const now = formatTime(new Date());
+    const missed = open.filter((t) => t <= now);
+    const next = open.find((t) => t > now);
+    return [
+        `Сегодня ${total - open.length} из ${total}`,
+        missed.length > 0 ? `не отмечено в ${missed.join(', ')}` : '',
+        next ? `дальше в ${next}` : '',
+    ]
+        .filter(Boolean)
+        .join(', ');
 }
 
 /** Every dose of today's schedule is handled. A course with nothing scheduled today (a dose when needed) is never done. */
@@ -131,6 +148,7 @@ export function MedicationsList() {
         ago: null,
     });
     const [whenPickerVisible, setWhenPickerVisible] = useState(false);
+    const [justGiven, setJustGiven] = useState<string[]>([]);
 
     const [deleteDialog, setDeleteDialog] = useState<{
         visible: boolean;
@@ -235,8 +253,15 @@ export function MedicationsList() {
 
     // «Дали сейчас»: written at once with the course's own dose, the bar takes it back; the dialog is for the rest.
     const logNow = (med: Medication) => {
+        // The same tap twice (a finger that lands twice) must not write two doses: the button waits a moment, and a dose given
+        // on purpose again is a few seconds away (or goes through «Другое время или доза»).
+        if (justGiven.includes(med._id)) return;
+        setJustGiven((ids) => [...ids, med._id]);
+        window.setTimeout(() => setJustGiven((ids) => ids.filter((id) => id !== med._id)), 3000);
         hapticFeedback('light');
-        intakeMutation.mutate({ id: med._id, dose: med.default_dose || 1, when: nowWhen(), slot: null });
+        // The dose closes the slot whose time has come and nothing closed (as the dose widget on the feed does), not the one that is
+        // nearest in time: given late for the morning, it must not close the evening one and silence its reminder.
+        intakeMutation.mutate({ id: med._id, dose: med.default_dose || 1, when: nowWhen(), slot: pastSlotToday(med) });
     };
 
     const confirmLogIntake = () => {
@@ -441,7 +466,7 @@ export function MedicationsList() {
                                                     <FormFactorIcon factor={med.form_factor} />
                                                 </div>
                                                 <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h2>
-                                                {courseTag(med) && <Tag color="default">{courseTag(med)}</Tag>}
+                                                {courseTag(med) && <span className="course-tag">{courseTag(med)}</span>}
                                             </div>
                                             <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                                                 {med.strength ? `${med.strength}` : med.type}
@@ -475,8 +500,7 @@ export function MedicationsList() {
                                         {med.scheduled_today && med.open_slots_today && (
                                             <div style={{ marginBottom: 'var(--spacing-sm)' }}>
                                                 <span>
-                                                    Сегодня {med.schedule.times.length - med.open_slots_today.length} из {med.schedule.times.length}
-                                                    {med.open_slots_today.length > 0 ? `, дальше в ${med.open_slots_today[0]}` : ''}
+                                                    {todayProgress(med)}
                                                 </span>
                                             </div>
                                         )}
@@ -582,7 +606,7 @@ export function MedicationsList() {
                                                 fill="outline"
                                                 onClick={() => logNow(med)}
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
-                                                disabled={doneToday(med)}
+                                                disabled={doneToday(med) || justGiven.includes(med._id)}
                                                 aria-label={doneToday(med) ? `${med.name}: на сегодня всё` : `Дали сейчас: ${med.name}`}
                                             >
                                                 {doneToday(med) ? 'На сегодня всё' : `Дали сейчас (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}

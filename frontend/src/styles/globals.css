@@ -2406,3 +2406,14 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
 .feed-widgets:empty {
     display: none;
 }
+
+/* The label by a course's name («Архив», «Начнётся 08.10.2026»): a soft chip, as the app's other labels, not a dark grey pill. */
+.course-tag {
+    padding: 2px var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
