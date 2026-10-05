@@ -13,6 +13,8 @@
  *     (disabled rows get aria-disabled and stay out of the Tab order);
  *   - Enter or Space on a patched row clicks it, as on a real button;
  *   - form labels are linked to their fields (see linkLabel);
+ *   - an open sheet or dialog is a modal: the page behind it is hidden from a screen reader, Tab stays inside the sheet (and starts
+ *     in it when the person was using the keyboard), and the focus goes back to what opened it when it closes;
  *   - the clear «×» of a text field, a `<div>` with an aria-label and no role (an attribute ARIA forbids there), becomes a
  *     named button that stays out of the Tab order: whoever types can erase with the keyboard, so it is no second stop.
  */
@@ -72,8 +74,76 @@ function patchWithin(root: ParentNode) {
   root.querySelectorAll('.adm-form-item').forEach(linkLabel);
 }
 
+const MODAL = '.adm-popup, .adm-center-popup';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
+
+const isShown = (el: HTMLElement) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+const shownModals = () => Array.from(document.querySelectorAll<HTMLElement>(MODAL)).filter(isShown);
+const focusablesIn = (modal: HTMLElement) => Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(isShown);
+
+let usingKeyboard = false;
+let opener: HTMLElement | null = null;
+
+// Called as the page changes: the first sheet that opens hides the page behind it, the last one that closes shows it again.
+function syncModal() {
+  const root = document.getElementById('root');
+  if (!root) return;
+  const modals = shownModals();
+  if (modals.length > 0) {
+    if (root.getAttribute('aria-hidden') === 'true') return;
+    opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    root.setAttribute('aria-hidden', 'true');
+    if (usingKeyboard) {
+      const top = modals[modals.length - 1];
+      (focusablesIn(top)[0] ?? top).focus({ preventScroll: true });
+    }
+  } else if (root.hasAttribute('aria-hidden')) {
+    root.removeAttribute('aria-hidden');
+    if (usingKeyboard && opener && document.contains(opener)) opener.focus({ preventScroll: true });
+    opener = null;
+  }
+}
+
 export function installAntdA11y() {
   patchWithin(document);
+
+  let queued = false;
+  const queueModalSync = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      syncModal();
+    });
+  };
+  // A sheet is shown and hidden by its class and style, and added to and taken from the body.
+  new MutationObserver(queueModalSync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+  document.addEventListener('pointerdown', () => { usingKeyboard = false; }, true);
+  document.addEventListener('keydown', (e) => {
+    usingKeyboard = true;
+    if (e.key !== 'Tab') return;
+    const modals = shownModals();
+    if (modals.length === 0) return;
+    const top = modals[modals.length - 1];
+    const items = focusablesIn(top);
+    if (items.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!top.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    } else if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, true);
 
   new MutationObserver((mutations) => {
     for (const m of mutations) {
