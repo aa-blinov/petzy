@@ -67,3 +67,11 @@ class TestDocumentsTitledLikeNumbers:
         assert response.status_code == 201, response.get_json()
         doc = mock_db["documents"].find_one({"_id": ObjectId(response.get_json()["id"])})
         assert (doc["title"], doc["note"]) == (title, "0")
+
+
+@pytest.mark.health
+class TestNamesAreOneLine:
+    def test_a_line_break_or_a_run_of_spaces_in_a_pet_name_is_one_space(self, client, mock_db, regular_user_token):
+        response = _post_pet(client, regular_user_token, name="  Рыжий \r\n  кот  ")
+        assert response.status_code == 201, response.get_json()
+        assert mock_db["pets"].find_one({"name": "Рыжий кот"}) is not None
