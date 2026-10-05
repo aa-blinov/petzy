@@ -5,6 +5,7 @@ import { toDeviceClock } from '../utils/timezone';
 import { deleteMedicationWithUndo, medicationDeleteText } from '../utils/medicationDelete';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { PendingIntakesNotice } from '../components/PendingIntakesNotice';
+import { usePendingIntakes } from '../utils/offlineIntakes';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -149,6 +150,12 @@ export function MedicationsList() {
     });
     const [whenPickerVisible, setWhenPickerVisible] = useState(false);
     const [justGiven, setJustGiven] = useState<string[]>([]);
+    // A dose marked with no connection waits in the phone's queue: the card says so next to the
+    // course it belongs to, so the person sees that it was written down, and the buttons wait
+    // instead of offering a second mark of the same dose.
+    const pendingIntakes = usePendingIntakes();
+    const pendingMedicationIds = useMemo(() => new Set(pendingIntakes.map((i) => i.medicationId)), [pendingIntakes]);
+    const awaitingSend = (med: Medication) => pendingMedicationIds.has(med._id);
 
     const [deleteDialog, setDeleteDialog] = useState<{
         visible: boolean;
@@ -511,6 +518,12 @@ export function MedicationsList() {
                                             </div>
                                         )}
 
+                                        {awaitingSend(med) && (
+                                            <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                                                <span>Приём отмечен, но не отправлен. Отправим, когда появится связь</span>
+                                            </div>
+                                        )}
+
                                         {med.last_taken_at && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
                                                 <span>Последний приём: {formatRelativeTime(toDeviceClock(med.last_taken_at, med.last_taken_tz).replace(' ', 'T'))}</span>
@@ -606,10 +619,16 @@ export function MedicationsList() {
                                                 fill="outline"
                                                 onClick={() => logNow(med)}
                                                 loading={intakeMutation.isPending && intakeMutation.variables?.id === med._id}
-                                                disabled={doneToday(med) || justGiven.includes(med._id)}
-                                                aria-label={doneToday(med) ? `${med.name}: на сегодня всё` : `Дали сейчас: ${med.name}`}
+                                                disabled={doneToday(med) || justGiven.includes(med._id) || awaitingSend(med)}
+                                                aria-label={
+                                                    awaitingSend(med)
+                                                        ? `${med.name}: приём отмечен, но не отправлен`
+                                                        : doneToday(med)
+                                                            ? `${med.name}: на сегодня всё`
+                                                            : `Дали сейчас: ${med.name}`
+                                                }
                                             >
-                                                {doneToday(med) ? 'На сегодня всё' : `Дали сейчас (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
+                                                {awaitingSend(med) ? 'Не отправлено' : doneToday(med) ? 'На сегодня всё' : `Дали сейчас (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>
                                             {!doneToday(med) && (
                                                 // The common case is one tap; another time or another amount is a step aside.
@@ -617,6 +636,7 @@ export function MedicationsList() {
                                                     block
                                                     fill="none"
                                                     onClick={() => handleLogIntake(med)}
+                                                    disabled={awaitingSend(med)}
                                                     aria-label={`Другое время или доза: ${med.name}`}
                                                     style={{ marginTop: 'var(--spacing-sm)', color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
                                                 >

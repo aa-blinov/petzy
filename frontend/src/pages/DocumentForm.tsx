@@ -32,6 +32,7 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
 import { takePendingDocumentFile } from '../utils/pendingDocumentFile';
+import { drawableImage } from '../utils/drawableImage';
 
 const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -78,6 +79,9 @@ export function DocumentForm() {
   // for create only; editing never touches it (delete + re-upload to
   // replace, per the v1 scope), so it lives in its own bit of state.
   const [file, setFile] = useState<File | null>(null);
+  // A picture the browser can draw, so the chosen file is seen and not only named.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const previewToken = useRef(0);
   // The file lives outside react-hook-form, so its message is kept here
   // and merged into the same inline error flow as the schema fields.
   const [fileError, setFileError] = useState<string | undefined>();
@@ -88,6 +92,17 @@ export function DocumentForm() {
   // Leaving the screen mid-upload stops it; the unconfirmed slot is
   // swept on the server.
   useEffect(() => () => uploadAbort.current?.abort(), []);
+  // The preview is a temporary address of a blob this page made: it goes with the page.
+  useEffect(
+    () => () => {
+      previewToken.current++;
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
+    },
+    [],
+  );
 
   const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty } } = useForm<DocumentFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
@@ -203,6 +218,7 @@ export function DocumentForm() {
   };
 
   const pickFile = (picked: File | null) => {
+    setPreviewUrl(null);
     if (!picked) {
       setFile(null);
       return;
@@ -213,6 +229,23 @@ export function DocumentForm() {
     // Only scans come as archives, so an archive files itself there.
     if (!problem && isScanFilename(picked.name) && !isImaging) {
       setValue('category', 'imaging', { shouldValidate: true });
+    }
+    if (!problem && picked.type.startsWith('image/')) showPreview(picked);
+  };
+
+  // A phone's photo is a HEIC, which only Safari draws: the row would show a name and nothing else.
+  // The server sends it back as WebP for the preview alone, nothing is stored.
+  const showPreview = async (picked: File) => {
+    const token = ++previewToken.current;
+    try {
+      const blob = await drawableImage(picked);
+      if (previewToken.current !== token) return;
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return URL.createObjectURL(blob);
+      });
+    } catch {
+      /* no preview: the file's name is what the row shows */
     }
   };
 
@@ -423,7 +456,13 @@ export function DocumentForm() {
                     fontWeight: 500,
                   }}
                 >
-                  {file?.type.startsWith('image/') ? (
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt=""
+                      style={{ width: 44, height: 44, borderRadius: 'var(--radius-sm)', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                  ) : file?.type.startsWith('image/') ? (
                     <ImageIcon size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
                   ) : fileIsArchive ? (
                     <Archive size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />

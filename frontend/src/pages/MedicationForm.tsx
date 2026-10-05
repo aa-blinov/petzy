@@ -416,7 +416,13 @@ export function MedicationForm() {
                                     clickable
                                     arrow
                                     onClick={() => setNamePickerOpen(true)}
-                                    description={errors.name?.message ? <FieldError message={errors.name.message} /> : undefined}
+                                    description={
+                                        errors.name?.message ? (
+                                            <FieldError message={errors.name.message} />
+                                        ) : (
+                                            fieldNote({ hint: 'Впишите название в поиске шторки, если его нет в списке' })
+                                        )
+                                    }
                                 >
                                     <PickerValue value={field.value} placeholder="Выберите или впишите" />
                                 </Form.Item>
@@ -590,9 +596,15 @@ export function MedicationForm() {
                                     onChange={(mode) => {
                                         const needed = mode === 'as_needed';
                                         setValue('as_needed', needed, { shouldDirty: true });
-                                        if (!needed && (getValues('schedule.times') ?? []).length === 0) {
-                                            setValue('schedule.days', [], { shouldDirty: true });
+                                        if (needed) return;
+                                        // The days and times a course was written with stay in the form while
+                                        // the mode flips, so returning to a schedule fills in what is missing
+                                        // rather than starting from an empty week.
+                                        if ((getValues('schedule.times') ?? []).length === 0) {
                                             setValue('schedule.times', ['08:00'], { shouldDirty: true });
+                                        }
+                                        if ((getValues('schedule.days') ?? []).length === 0) {
+                                            setValue('schedule.days', [0, 1, 2, 3, 4, 5, 6], { shouldDirty: true });
                                         }
                                     }}
                                 />
