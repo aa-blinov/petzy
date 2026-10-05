@@ -1,6 +1,6 @@
 """When a medication course is running: one rule for everyone who asks.
 
-A course has a flag (``is_active``, the «Принимает сейчас» switch) and,
+A course has a flag (``is_active``, turned off by «Завершить курс» and on again by «Возобновить курс») and,
 optionally, dates (``started_on``, ``ended_on``, both ``YYYY-MM-DD`` of the
 owner's calendar). The list, the upcoming doses, the push reminders and the
 medical card all read them through here, so a course that ended yesterday
