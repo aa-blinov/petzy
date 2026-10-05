@@ -40,7 +40,7 @@ export function Settings() {
   const navigate = useNavigate();
   const { selectedPetId, getSelectedPet } = usePet();
   const [exportVisible, setExportVisible] = useState(false);
-  const { theme, setTheme, isDark } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { logout } = useAuth();
   const { isAdmin } = useAdmin();
   const { data: account } = useQuery({ queryKey: ACCOUNT_QUERY_KEY, queryFn: () => accountService.get() });
@@ -242,9 +242,6 @@ export function Settings() {
                 ]}
                 onChange={setTheme}
               />
-              {theme === 'system' && (
-                <div className="setting-row__description">Сейчас {isDark ? 'тёмная' : 'светлая'}, как на телефоне</div>
-              )}
             </div>
           </Group>
 
