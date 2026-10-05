@@ -13,6 +13,7 @@ import { useAuth } from '../hooks/useAuth';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { Fab } from '../components/Fab';
 import { formatRelativeDate } from '../utils/relativeTime';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -112,7 +113,7 @@ export function AdminPanel() {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container fab-page">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
           marginBottom: 'var(--spacing-lg)',
@@ -135,35 +136,10 @@ export function AdminPanel() {
           </div>
         )}
 
-        <div className="safe-area-padding" style={{
-          marginBottom: 'var(--spacing-lg)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           {/* Same .section-header as Settings, so the admin screen reads
               as part of the app rather than a bare CRUD table. */}
           <h2 className="section-header" style={{ fontSize: 'var(--text-lg)' }}>Пользователи</h2>
-          {/* Flat copper, like every other primary action in the app.
-              The brand gradient is reserved for the wordmark and the
-              single sign-in button on the login screen; using it here
-              made this the only gradient button inside the app shell. */}
-          <button
-            type="button"
-            onClick={handleNewUser}
-            style={{
-              background: 'var(--app-primary-fill)',
-              border: 'none',
-              borderRadius: '999px',
-              color: 'var(--app-text-on-dark)',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 600,
-              padding: '7px 16px',
-              cursor: 'pointer',
-            }}
-          >
-            + Добавить
-          </button>
         </div>
 
         {usersLoading ? (
@@ -175,6 +151,8 @@ export function AdminPanel() {
             icon={Users}
             title="Пользователей пока нет"
             description="Добавьте первого пользователя: у каждого будут свои питомцы и права"
+            actionLabel="Добавить пользователя"
+            onAction={handleNewUser}
           />
         ) : (
           /* Pull-to-refresh, same as the other lists — this was the
@@ -277,6 +255,9 @@ export function AdminPanel() {
           </PullToRefresh>
         )}
       </div>
+
+      {/* A user is added from the bottom right, as everything else in the app. */}
+      {users.length > 0 && <Fab label="Добавить пользователя" onClick={handleNewUser} />}
 
       <Dialog
         visible={deleteDialog.visible}
