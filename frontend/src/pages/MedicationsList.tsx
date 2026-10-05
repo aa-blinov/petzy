@@ -8,7 +8,7 @@ import { PendingIntakesNotice } from '../components/PendingIntakesNotice';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Tag, Dialog, Input, PullToRefresh, SearchBar, Selector } from 'antd-mobile';
+import { Button, Card, Tag, Dialog, Input, Popup, PullToRefresh, SearchBar } from 'antd-mobile';
 import { AddOutline, ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
@@ -28,6 +28,7 @@ import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { IntakeTimePicker } from '../components/IntakeTimePicker';
+import { DraggableSheetBody } from '../components/DraggableSheetBody';
 import { minutesAgo, nowWhen, whenLabel, whenPhrase, yesterdayEvening, type IntakeWhen } from '../utils/intakeWhen';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import { getCurrentDate } from '../utils/dateUtils';
@@ -117,6 +118,8 @@ export function MedicationsList() {
         choice: WhenChoice;
         slot: string | null;
         other: IntakeWhen | null;
+        // Which of the «a little while ago» chips was taken, so that it can be shown as chosen.
+        ago: string | null;
     }>({
         visible: false,
         medication: null,
@@ -124,6 +127,7 @@ export function MedicationsList() {
         choice: 'now',
         slot: null,
         other: null,
+        ago: null,
     });
     const [whenPickerVisible, setWhenPickerVisible] = useState(false);
 
@@ -212,6 +216,7 @@ export function MedicationsList() {
             choice: 'now',
             slot: pastSlotToday(med),
             other: null,
+            ago: null,
         });
     };
 
@@ -658,75 +663,49 @@ export function MedicationsList() {
                 )}
             </div>
 
-            <Dialog
+            {/* A sheet from the bottom, as every other form of the app: the thumb reaches the one button that writes. */}
+            <Popup
                 visible={logIntakeDialog.visible}
-                title={logIntakeDialog.medication ? `Отметить приём: ${logIntakeDialog.medication.name}` : 'Отметить приём'}
-                content={
-                    logIntakeDialog.medication && (
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ marginBottom: 'var(--spacing-lg)', fontSize: 'var(--text-sm)' }}>
-                                {logIntakeDialog.medication.name} {logIntakeDialog.medication.strength}
-                            </div>
-                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>
-                                Сколько дали?
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                onMaskClick={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}
+                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: '1', choice: 'now', slot: null, other: null, ago: null })}
+                position="bottom"
+                bodyStyle={{ background: 'transparent' }}
+            >
+                <DraggableSheetBody visible={logIntakeDialog.visible} onClose={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))} maxHeight="90vh" label="Отметить приём">
+                    {logIntakeDialog.medication && (
+                        <div className="intake">
+                            <h2 className="intake__title">Отметить приём</h2>
+                            <p className="intake__med">
+                                {logIntakeDialog.medication.name}
+                                {logIntakeDialog.medication.strength ? `, ${logIntakeDialog.medication.strength}` : ''}
+                            </p>
+
+                            <h3 className="intake__label">Сколько дали?</h3>
+                            <div className="intake__dose">
                                 <Input
                                     value={logIntakeDialog.dose}
                                     type="text"
                                     inputMode="decimal"
+                                    aria-label="Сколько дали"
                                     onChange={val => {
                                         if (isAmountDraft(val)) setLogIntakeDialog(prev => ({ ...prev, dose: val }));
                                     }}
-                                    style={{
-                                        '--text-align': 'center',
-                                        width: '80px',
-                                        fontSize: 'var(--text-lg)',
-                                        border: '1px solid var(--app-border-color)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        padding: 'var(--spacing-xs)'
-                                    }}
+                                    className="intake__dose-input"
                                 />
-                                <span style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}>
-                                    {logIntakeDialog.medication.dose_unit || 'шт.'}
-                                </span>
+                                <span className="intake__unit">{logIntakeDialog.medication.dose_unit || 'шт.'}</span>
                             </div>
-                            <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, margin: 'var(--spacing-lg) 0 var(--spacing-sm)' }}>
-                                Когда дали?
-                            </div>
-                            <Selector
-                                className="selector-chips"
-                                columns={logIntakeDialog.slot ? 3 : 2}
-                                showCheckMark={false}
-                                value={[logIntakeDialog.choice]}
-                                options={[
-                                    { label: 'Сейчас', value: 'now' },
-                                    ...(logIntakeDialog.slot ? [{ label: `В ${logIntakeDialog.slot}`, value: 'slot' as const }] : []),
-                                    {
-                                        label: logIntakeDialog.choice === 'other' && logIntakeDialog.other
-                                            ? whenLabel(logIntakeDialog.other)
-                                            : 'Другое время',
-                                        value: 'other' as const,
-                                    },
-                                ]}
-                                onChange={(val) => {
-                                    const next = val[0] as WhenChoice | undefined;
-                                    // A tap on the chosen «Другое время» opens the picker again.
-                                    if (next === 'other' || (!next && logIntakeDialog.choice === 'other')) {
-                                        setWhenPickerVisible(true);
-                                        return;
-                                    }
-                                    if (next) setLogIntakeDialog(prev => ({ ...prev, choice: next }));
-                                }}
-                                style={{
-                                    '--border-radius': 'var(--radius-sm)',
-                                    '--padding': '8px 4px',
-                                    '--gap': 'var(--spacing-xs)',
-                                    fontSize: 'var(--text-sm)',
-                                }}
-                            />
-                            {/* A dose given a little while ago is one tap, not a wheel of sixty minutes. */}
-                            <ChoiceChips label="Недавно">
+
+                            <h3 className="intake__label">Когда дали?</h3>
+                            {/* One question, one row of answers: now, the slot's time, a little while ago, or a time of one's own. */}
+                            <ChoiceChips label="Когда дали" flush>
+                                <ChoiceChip pressed={logIntakeDialog.choice === 'now'} onClick={() => setLogIntakeDialog(prev => ({ ...prev, choice: 'now', ago: null }))}>
+                                    Сейчас
+                                </ChoiceChip>
+                                {logIntakeDialog.slot && (
+                                    <ChoiceChip pressed={logIntakeDialog.choice === 'slot'} onClick={() => setLogIntakeDialog(prev => ({ ...prev, choice: 'slot', ago: null }))}>
+                                        {`В ${logIntakeDialog.slot}`}
+                                    </ChoiceChip>
+                                )}
                                 {[
                                     { label: '15 минут назад', when: () => minutesAgo(15) },
                                     { label: 'Час назад', when: () => minutesAgo(60) },
@@ -734,47 +713,44 @@ export function MedicationsList() {
                                 ].map((ago) => (
                                     <ChoiceChip
                                         key={ago.label}
-                                        pressed={false}
-                                        onClick={() => setLogIntakeDialog((prev) => ({ ...prev, choice: 'other', other: ago.when() }))}
+                                        pressed={logIntakeDialog.choice === 'other' && logIntakeDialog.ago === ago.label}
+                                        onClick={() => setLogIntakeDialog((prev) => ({ ...prev, choice: 'other', other: ago.when(), ago: ago.label }))}
                                     >
                                         {ago.label}
                                     </ChoiceChip>
                                 ))}
+                                <ChoiceChip pressed={logIntakeDialog.choice === 'other' && !logIntakeDialog.ago} onClick={() => setWhenPickerVisible(true)}>
+                                    {logIntakeDialog.choice === 'other' && !logIntakeDialog.ago && logIntakeDialog.other ? whenLabel(logIntakeDialog.other) : 'Выбрать время'}
+                                </ChoiceChip>
                             </ChoiceChips>
+
+                            <div className="intake__actions">
+                                <Button block color="primary" size="large" onClick={confirmLogIntake}>
+                                    Записать
+                                </Button>
+                                <Button block fill="none" onClick={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}>
+                                    Отмена
+                                </Button>
+                                {/* Last, and apart from «Записать»: a skip closes the dose and stops its reminder.
+                                    A course taken when needed has no dose to skip. */}
+                                {logIntakeDialog.medication.schedule.times.length > 0 && (
+                                    <div className="intake__skip">
+                                        <Button block fill="none" onClick={skipIntake} style={{ color: 'var(--app-text-secondary)' }}>
+                                            Пропустить приём
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    )
-                }
-                onClose={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}
-                afterClose={() => setLogIntakeDialog({ visible: false, medication: null, dose: '1', choice: 'now', slot: null, other: null })}
-                actions={[
-                    {
-                        key: 'confirm',
-                        text: 'Записать',
-                        bold: true,
-                        onClick: confirmLogIntake
-                    },
-                    {
-                        key: 'cancel',
-                        text: 'Отмена',
-                        onClick: () => setLogIntakeDialog(prev => ({ ...prev, visible: false }))
-                    },
-                    // Last, and apart from «Записать»: a skip closes the dose and stops its reminder.
-                    // A course taken when needed has no dose to skip.
-                    ...(logIntakeDialog.medication && logIntakeDialog.medication.schedule.times.length === 0
-                        ? []
-                        : [{
-                            key: 'skip',
-                            text: 'Пропустить приём',
-                            onClick: skipIntake
-                        }]),
-                ]}
-            />
+                    )}
+                </DraggableSheetBody>
+            </Popup>
 
             <IntakeTimePicker
                 visible={whenPickerVisible}
                 value={logIntakeDialog.other ?? nowWhen()}
                 onClose={() => setWhenPickerVisible(false)}
-                onConfirm={(when) => setLogIntakeDialog(prev => ({ ...prev, choice: 'other', other: when }))}
+                onConfirm={(when) => setLogIntakeDialog(prev => ({ ...prev, choice: 'other', other: when, ago: null }))}
             />
 
             <Dialog

@@ -2335,3 +2335,60 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
 .datefield:has(.datefield__clear) .adm-list-item-description {
     padding-right: 72px;
 }
+
+/* «Отметить приём»: the sheet that logs a dose at another time or in another amount. */
+.intake__title {
+    margin: 4px 4px 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    color: var(--app-text-primary);
+}
+
+.intake__med {
+    margin: var(--spacing-xs) 4px 0;
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.intake__label {
+    margin: var(--spacing-xl) 4px var(--spacing-sm);
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--app-text-primary);
+}
+
+.intake__dose {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 0 4px;
+}
+
+.intake__dose-input {
+    --text-align: left;
+    width: 96px;
+    min-height: var(--touch-min);
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--app-divider-color);
+    border-radius: var(--radius-md);
+    font-size: var(--text-lg);
+}
+
+.intake__unit {
+    font-size: var(--text-md);
+    font-weight: 500;
+}
+
+.intake__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xl);
+}
+
+/* A skip is not a way out of this sheet but a decision about the dose: set off by a line. */
+.intake__skip {
+    margin-top: var(--spacing-xs);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--app-divider-color);
+}
