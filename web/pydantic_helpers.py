@@ -82,3 +82,33 @@ def validate_request_data(
 
             logger.warning(f"Unexpected error validating {context}: {e}")
         return None, error_response("validation_error", str(e))
+
+
+def form_value(values: list):
+    """One field of a multipart form as the model should get it.
+
+    The library that validates the request read every single value as JSON (``json.loads``), so a pet named «7», a document
+    titled «2025» or a note of «true» or «null» arrived as a number, a boolean or nothing and was refused with a generic
+    message. Text stays text; only what is plainly an object or a list («{…}», «[…]», the tiles of a pet) is decoded.
+    """
+    if len(values) != 1:
+        return values
+    value = values[0]
+    if isinstance(value, str) and value.startswith(("{", "[")):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return value
+
+
+def parse_multi_dict_as_text(input) -> dict:
+    """``flask_pydantic_spec.utils.parse_multi_dict`` with text left as text (see ``form_value``)."""
+    return {key: form_value(values) for key, values in input.to_dict(flat=False).items()}
+
+
+def keep_form_text_as_text() -> None:
+    """Replace the multipart reader of the validation library in the one place that calls it."""
+    from flask_pydantic_spec import flask_backend
+
+    flask_backend.parse_multi_dict = parse_multi_dict_as_text
