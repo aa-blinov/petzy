@@ -1,31 +1,26 @@
 import type { MedicalKind, ParasiteTarget } from '../services/medicalRecords.service';
 
 /**
- * Names offered as chips under the title field, to tap instead of type. They
- * are suggestions, not a list to pick from: anything can still be typed. A
- * pet's own earlier titles come first (see `suggestionsFor`), so the second
- * rabies shot is one tap.
+ * What a visit was for and what a procedure was, as the groups of the sheet that opens from the title row. They are
+ * suggestions, not a list to pick from: the person can write their own reason, and the pet's earlier ones come first.
  */
-const COMMON: Record<MedicalKind, Record<string, string[]>> = {
-  vaccination: {
-    dog: ['Нобивак DHPPi', 'Нобивак Rabies', 'Эурикан DHPPi', 'Мультикан-8', 'Рабизин', 'Нобивак KC'],
-    cat: ['Нобивак Tricat Trio', 'Нобивак Rabies', 'Пуревакс RCP', 'Фелоцел', 'Рабизин'],
-    other: ['Бешенство', 'Комплексная прививка'],
-  },
-  parasite: {
-    dog: ['Дронтал Плюс', 'Бравекто', 'Нексгард', 'Симпарика', 'Мильбемакс'],
-    cat: ['Дронтал Плюс', 'Стронгхолд', 'Адвокат', 'Мильбемакс', 'Празицид'],
-    other: ['Дронтал Плюс', 'Мильбемакс'],
-  },
-  visit: {
-    other: ['Плановый осмотр', 'Вакцинация', 'Сдача анализов', 'Повторный приём', 'Травма'],
-  },
-  procedure: {
-    other: ['Стерилизация', 'Кастрация', 'Чистка зубов', 'УЗИ', 'Рентген', 'Удаление образования'],
-  },
+export const OCCASION_GROUPS: Record<'visit' | 'procedure', { key: string; label: string; items: string[] }[]> = {
+  visit: [
+    { key: 'planned', label: 'По плану', items: ['Плановый осмотр', 'Вакцинация', 'Повторный приём', 'Сдача анализов', 'Снятие швов'] },
+    {
+      key: 'worry',
+      label: 'Что-то беспокоит',
+      items: ['Травма', 'Не ест, вялость', 'Рвота, диарея', 'Хромота', 'Зуд, проблемы с кожей', 'Кашель, дыхание'],
+    },
+  ],
+  procedure: [
+    {
+      key: 'common',
+      label: 'Частое',
+      items: ['Стерилизация', 'Кастрация', 'Чистка зубов', 'УЗИ', 'Рентген', 'Удаление образования', 'Анализ крови', 'Капельница'],
+    },
+  ],
 };
-
-const MAX_CHIPS = 6;
 
 /** What a well-known treatment is for, so that the form can put «От чего» in itself. Only products with one plain purpose
     are listed (a combined one, or one used for several things, is left to the person); the form shows the choice as made
@@ -63,20 +58,6 @@ export function parasiteTargetOf(title: string): ParasiteTarget | null {
   const name = title.trim().toLowerCase();
   if (!name) return null;
   return TARGET_OF.find(([product]) => name.startsWith(product))?.[1] ?? null;
-}
-
-/** `own`: the titles this pet already has for the kind, newest first. */
-export function suggestionsFor(kind: MedicalKind, species: string | undefined, own: string[]): string[] {
-  const common = COMMON[kind][species ?? ''] ?? COMMON[kind].other ?? [];
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const title of [...own, ...common]) {
-    const key = title.trim().toLowerCase();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(title.trim());
-  }
-  return out.slice(0, MAX_CHIPS);
 }
 
 /** A date, moved on by months or years; the day stays in the month it lands in (31 Jan + 1 month is 28 or 29 Feb). */
