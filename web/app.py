@@ -132,6 +132,11 @@ api = FlaskPydanticSpec(
 )
 
 
+from web.pydantic_helpers import keep_form_text_as_text  # noqa: E402
+
+keep_form_text_as_text()
+
+
 @app.errorhandler(422)
 def handle_unprocessable_entity(err):
     """Handle Pydantic validation errors and return a consistent format."""
