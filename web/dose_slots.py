@@ -53,13 +53,23 @@ def group_by_day(intakes: Iterable[dict]) -> dict:
 
 def closed_slots(slot_times: list[str], intakes: list[dict]) -> set[str]:
     """The times (of ``slot_times``) that the day's intakes close."""
+    return set(slot_closers(slot_times, intakes))
+
+
+def slot_closers(slot_times: list[str], intakes: list[dict]) -> dict:
+    """slot time -> the intake that closed it, in the order the slots were taken.
+
+    Same rule as :func:`closed_slots`, but it also says who took each slot, so a
+    slot that is already handled can be answered with who and when instead of only
+    being counted.
+    """
     slots = sorted(set(slot_times))
-    closed: set[str] = set()
+    taken: dict = {}
     loose: list[dict] = []
     for intake in intakes:
         explicit = intake.get("slot_time")
-        if explicit in slots and explicit not in closed:
-            closed.add(explicit)
+        if explicit in slots and explicit not in taken:
+            taken[explicit] = intake
         else:
             loose.append(intake)
     # What carries no slot, in the order it happened: each closes the nearest slot nobody has.
@@ -68,10 +78,10 @@ def closed_slots(slot_times: list[str], intakes: list[dict]) -> set[str]:
         if not isinstance(moment, datetime):
             continue
         at = moment.hour * 60 + moment.minute
-        free = [(abs((minutes_of_day(t) or 0) - at), minutes_of_day(t) or 0, t) for t in slots if t not in closed]
+        free = [(abs((minutes_of_day(t) or 0) - at), minutes_of_day(t) or 0, t) for t in slots if t not in taken]
         if free:
-            closed.add(min(free)[2])
-    return closed
+            taken[min(free)[2]] = intake
+    return taken
 
 
 def open_slots(slot_times: list[str], intakes: list[dict]) -> list[str]:

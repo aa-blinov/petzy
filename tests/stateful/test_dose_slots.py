@@ -99,7 +99,13 @@ class TestTheSameDoseMarkedTwice:
         assert second.status_code == 409
         body = second.get_json()
         assert body["code"] == "duplicate_intake"
-        assert body["existing"] == {"date": "2026-10-02", "time": "10:51", "username": "testuser", "own": True}
+        assert body["existing"] == {
+            "date": "2026-10-02",
+            "time": "10:51",
+            "username": "testuser",
+            "own": True,
+            "slot": False,
+        }
         assert mock_db["medication_intakes"].count_documents({"medication_id": str(course)}) == 1
         assert mock_db["medications"].find_one({"_id": course})["inventory_current"] == 9.0
 
@@ -135,6 +141,96 @@ class TestTheSameDoseMarkedTwice:
         _log(client, regular_user_token, course, at(14, 30), slot_date="2026-10-02", slot_time="08:00")
         stored = mock_db["medication_intakes"].find_one({"medication_id": str(course)})
         assert (stored["slot_date"], stored["slot_time"]) == ("2026-10-02", "08:00")
+
+
+@pytest.mark.medications
+class TestASlotCannotBeClosedTwice:
+    """The clash is about the slot, not about the clock: two people an hour apart on the same
+    08:00 dose used to write it twice, because the guard only looked at how close the times were."""
+
+    def test_a_slot_given_hours_later_is_asked_about_as_the_slot(self, client, mock_db, regular_user_token, course):
+        assert (
+            _log(client, regular_user_token, course, at(8, 10), slot_date="2026-10-02", slot_time="08:00").status_code
+            == 201
+        )
+        second = _log(client, regular_user_token, course, at(11, 40), slot_date="2026-10-02", slot_time="08:00")
+        assert second.status_code == 409
+        body = second.get_json()
+        assert body["code"] == "duplicate_intake"
+        assert body["error"] == "Приём на 08:00 уже отмечен"
+        assert body["existing"] == {
+            "date": "2026-10-02",
+            "time": "08:00",
+            "username": "testuser",
+            "own": True,
+            "slot": True,
+        }
+        assert mock_db["medication_intakes"].count_documents({"medication_id": str(course)}) == 1
+        # The stock was not taken twice either.
+        assert mock_db["medications"].find_one({"_id": course})["inventory_current"] == 9.0
+
+    def test_the_other_slot_of_the_same_course_is_still_open(self, client, regular_user_token, course):
+        assert (
+            _log(client, regular_user_token, course, at(8, 10), slot_date="2026-10-02", slot_time="08:00").status_code
+            == 201
+        )
+        assert (
+            _log(client, regular_user_token, course, at(20, 5), slot_date="2026-10-02", slot_time="20:00").status_code
+            == 201
+        )
+
+    def test_a_slot_marked_by_somebody_else_names_that_person(self, client, mock_db, regular_user_token, course):
+        mock_db["medication_intakes"].insert_one(
+            {
+                "medication_id": str(course),
+                "date_time": at(8, 2),
+                "dose_taken": 1.0,
+                "username": "anna",
+                "slot_date": "2026-10-02",
+                "slot_time": "08:00",
+            }
+        )
+        body = _log(
+            client, regular_user_token, course, at(14, 30), slot_date="2026-10-02", slot_time="08:00"
+        ).get_json()
+        assert body["existing"]["username"] == "anna" and body["existing"]["own"] is False
+
+    def test_a_slot_closed_by_a_skip_is_closed_too(self, client, regular_user_token, course):
+        assert _log(client, regular_user_token, course, at(8, 1), skipped=True).status_code == 201
+        second = _log(client, regular_user_token, course, at(9, 40), slot_date="2026-10-02", slot_time="08:00")
+        assert second.status_code == 409 and second.get_json()["existing"]["slot"] is True
+
+    def test_a_slot_given_after_midnight_is_still_closed(self, client, mock_db, regular_user_token, course):
+        # The 2nd's 08:00 dose, given at ten past midnight on the 3rd (a shift that ends late). The
+        # slot belongs to the 2nd, so a mark for it is the same dose again however late it came.
+        first = _log(client, regular_user_token, course, at(0, 10, day=3), slot_date="2026-10-02", slot_time="08:00")
+        assert first.status_code == 201
+        stored = mock_db["medication_intakes"].find_one({"medication_id": str(course)})
+        assert (stored["slot_date"], stored["slot_time"]) == ("2026-10-02", "08:00")
+        assert stored["date_time"].strftime("%Y-%m-%d %H:%M") == "2026-10-03 00:10"
+        second = _log(client, regular_user_token, course, at(9, 50, day=3), slot_date="2026-10-02", slot_time="08:00")
+        assert second.status_code == 409
+        assert mock_db["medication_intakes"].count_documents({"medication_id": str(course)}) == 1
+
+    def test_force_writes_a_second_dose_for_the_same_slot(self, client, mock_db, regular_user_token, course):
+        _log(client, regular_user_token, course, at(8, 10), slot_date="2026-10-02", slot_time="08:00")
+        assert (
+            _log(
+                client, regular_user_token, course, at(11, 40), slot_date="2026-10-02", slot_time="08:00", force=True
+            ).status_code
+            == 201
+        )
+        assert mock_db["medication_intakes"].count_documents({"medication_id": str(course)}) == 2
+
+    def test_a_dose_without_a_slot_is_still_guarded_by_the_window(self, client, regular_user_token, course):
+        # The finger landing twice: no slot named, so only the time window stands behind it.
+        assert _log(client, regular_user_token, course, at(8, 10)).status_code == 201
+        second = _log(client, regular_user_token, course, at(8, 20))
+        assert second.status_code == 409 and second.get_json()["existing"]["slot"] is False
+
+    def test_a_dose_far_from_the_window_is_written_without_a_slot(self, client, regular_user_token, course):
+        assert _log(client, regular_user_token, course, at(8, 10)).status_code == 201
+        assert _log(client, regular_user_token, course, at(14, 30)).status_code == 201
 
 
 @pytest.mark.medications
