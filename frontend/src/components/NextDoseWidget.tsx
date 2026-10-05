@@ -259,14 +259,15 @@ export function NextDoseWidget() {
                 </div>
             )}
 
-            <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+            {/* The same three levels as the actions of a course on the Medicines screen: the main button, a tonal one for the step
+                aside, and under a hairline a quiet text button for the decision that closes the dose. */}
+            <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                 <Button
                     block
                     color="primary"
                     // Due: the main action. Later today: possible, but not
                     // what the card is asking for, so it doesn't shout.
                     fill={due ? 'solid' : 'outline'}
-                    shape="rounded"
                     onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'now' })}
                     loading={pendingKind === 'now'}
                     // Once the log request succeeds, the invalidated query
@@ -283,10 +284,8 @@ export function NextDoseWidget() {
                     // The slot has passed: whoever gave the dose on time and marks it only now puts it where it belongs.
                     <Button
                         fill="none"
-                        color="primary"
-                        size="small"
                         block
-                        style={{ minHeight: 44 }}
+                        style={{ color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
                         onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'scheduled' })}
                         loading={pendingKind === 'scheduled'}
                         disabled={busy}
@@ -297,17 +296,18 @@ export function NextDoseWidget() {
                 {due && (
                     // Apart from the buttons above and quiet: a skip closes the dose and stops its reminder, and a
                     // thumb in a hurry should not land on it.
-                    <Button
-                        fill="none"
-                        size="small"
-                        block
-                        style={{ minHeight: 44, marginTop: 'var(--spacing-md)', color: 'var(--app-text-secondary)' }}
-                        onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'skip' })}
-                        loading={pendingKind === 'skip'}
-                        disabled={busy}
-                    >
-                        Пропустить приём
-                    </Button>
+                    <div style={{ marginTop: 'var(--spacing-xs)', paddingTop: 'var(--spacing-xs)', borderTop: '1px solid var(--app-divider-color)' }}>
+                        <Button
+                            fill="none"
+                            block
+                            style={{ color: 'var(--app-text-secondary)' }}
+                            onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'skip' })}
+                            loading={pendingKind === 'skip'}
+                            disabled={busy}
+                        >
+                            Пропустить приём
+                        </Button>
+                    </div>
                 )}
             </div>
         </div>
