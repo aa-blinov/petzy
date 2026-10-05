@@ -2392,3 +2392,8 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
     padding-top: var(--spacing-xs);
     border-top: 1px solid var(--app-divider-color);
 }
+
+/* A screen with the round «+»: room under the last row, so that the button does not stand over it. */
+.fab-page {
+    padding-bottom: calc(56px + var(--spacing-xl));
+}

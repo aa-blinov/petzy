@@ -1,25 +1,17 @@
 import { createElement, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Popup } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
 import { Archive, Camera, FileUp, type LucideIcon } from 'lucide-react';
 
-import { useFabAway } from '../hooks/useFabAway';
+import { Fab } from './Fab';
 import { pastelColorMap } from '../utils/constants';
 import { setPendingDocumentFile } from '../utils/pendingDocumentFile';
 import { DraggableSheetBody } from './DraggableSheetBody';
 import './RecordSheet.css';
 
-/** The round «+» of the Documents list, the same as the feed's and the card's: in a portal, stepping aside on a scroll down. */
+/** The round «+» of the Documents list. */
 export function DocumentFab({ onOpen }: { onOpen: () => void }) {
-  const away = useFabAway();
-  return createPortal(
-    <button type="button" className={`app-fab${away ? ' app-fab--away' : ''}`} aria-label="Добавить документ" aria-haspopup="dialog" onClick={onOpen}>
-      <AddOutline fontSize={28} aria-hidden />
-    </button>,
-    document.body,
-  );
+  return <Fab label="Добавить документ" onClick={onOpen} popup />;
 }
 
 function Tile({ label, icon, color, onClick }: { label: string; icon: LucideIcon; color: string; onClick: () => void }) {

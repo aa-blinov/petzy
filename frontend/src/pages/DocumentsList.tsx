@@ -275,7 +275,7 @@ export function DocumentsList() {
   }
 
   return (
-    <div className="page-container docs-page">
+    <div className="page-container fab-page">
       <div className="max-width-container">
         <div
           className="safe-area-padding"
