@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { drawableImage } from '../utils/drawableImage';
 import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -442,10 +443,12 @@ export function PetForm() {
                 className="sr-only file-picker-input"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    setCropTarget({ src: URL.createObjectURL(file), filename: file.name });
-                  }
                   e.target.value = '';
+                  if (!file) return;
+                  // A HEIC that this browser cannot draw is made drawable first (utils/drawableImage).
+                  drawableImage(file, () => showToast.info('Готовим фото'))
+                    .then((picture) => setCropTarget({ src: URL.createObjectURL(picture), filename: file.name }))
+                    .catch(() => showToast.failure('Не удалось открыть фото. Попробуйте другой снимок'));
                 }}
               />
 

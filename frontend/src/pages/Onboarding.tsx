@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { drawableImage } from '../utils/drawableImage';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, DatePicker, Dialog, Input, Picker } from 'antd-mobile';
@@ -193,7 +194,9 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setCropTarget({ src: URL.createObjectURL(file), filename: file.name });
+    drawableImage(file, () => showToast.info('Готовим фото'))
+      .then((picture) => setCropTarget({ src: URL.createObjectURL(picture), filename: file.name }))
+      .catch(() => showToast.failure('Не удалось открыть фото. Попробуйте другой снимок'));
   };
 
   const createPet = async () => {
