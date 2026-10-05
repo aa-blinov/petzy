@@ -223,11 +223,17 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
                 label: opt.text,
                 value: opt.value,
               })) || [];
-              const selectedOption = options.find(opt => String(opt.value) === String(value)) || options[0];
+              // Only what is really chosen. Drawing the first option when the
+              // value is empty made the row look filled while the form kept an
+              // empty value, and the save then refused it («Заполните это поле»)
+              // under a row that showed an answer. A field with nothing chosen
+              // now says so; the form puts the first option into the value for
+              // a required choice, so the row shows it as chosen because it is.
+              const selectedOption = options.find(opt => String(opt.value) === String(value));
               return (
                 <>
                   <PickerValue id={field.name} value={selectedOption?.label} placeholder="Выберите..." />
-                  {value === defaultVal && (
+                  {value !== '' && value !== undefined && value === defaultVal && (
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'left' }}>
                       Значение по умолчанию
                     </div>
