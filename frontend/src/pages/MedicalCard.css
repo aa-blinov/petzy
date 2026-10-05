@@ -604,9 +604,19 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
 
 .medcard__topactions {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.medcard__topbuttons {
+    display: flex;
     flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.medcard__topbuttons > .adm-button {
+    flex: 1 1 11rem;
+    width: auto;
 }
 
 .medcard__hint {
@@ -614,12 +624,6 @@ html[data-prefers-color-scheme='dark'] .medcard__alert-text {
     font-size: var(--text-sm);
     line-height: 1.4;
     color: var(--app-text-secondary);
-}
-
-/* Beside the button of the top row the hint takes what is left, and wraps under it on a narrow phone. Only there: in a column
-   a flex basis is a height, and this one stood the hint 12rem tall. */
-.medcard__topactions .medcard__hint {
-    flex: 1 1 12rem;
 }
 
 .medcard__ready-box {
