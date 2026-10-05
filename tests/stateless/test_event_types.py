@@ -46,14 +46,14 @@ class TestListEventTypes:
 @pytest.mark.health_records
 class TestCreateEventType:
     def test_requires_authentication(self, client):
-        response = client.post("/api/event-types", json={"label": "Игра", "icon": "paw", "color": "blue"})
+        response = client.post("/api/event-types", json={"label": "Массаж", "icon": "paw", "color": "blue"})
         assert response.status_code == 401
 
     def test_create_success(self, client, mock_db, regular_user_token):
         response = client.post(
             "/api/event-types",
             json={
-                "label": "Игра",
+                "label": "Массаж",
                 "icon": "paw",
                 "color": "blue",
                 "fields": [{"name": "duration_min", "label": "Длительность (мин)", "type": "number", "required": True}],
@@ -65,7 +65,7 @@ class TestCreateEventType:
         data = response.get_json()
         assert data["key"].startswith("custom_")
         assert data["is_builtin"] is False
-        assert data["label"] == "Игра"
+        assert data["label"] == "Массаж"
 
         stored = mock_db["event_types"].find_one({"key": data["key"]})
         assert stored["created_by"] == "testuser"
@@ -143,6 +143,64 @@ class TestCreateEventType:
 
 
 @pytest.mark.health_records
+class TestWhatATypeMayBeCalledAndLookLike:
+    BODY = {"label": "Массаж", "icon": "paw", "color": "blue", "fields": [], "chart": {"kind": "count"}}
+
+    def _post(self, client, token, **patch):
+        return client.post(
+            "/api/event-types", json={**self.BODY, **patch}, headers={"Authorization": f"Bearer {token}"}
+        )
+
+    def test_a_name_of_spaces_is_refused_and_a_padded_one_is_trimmed(self, client, mock_db, regular_user_token):
+        assert self._post(client, regular_user_token, label="   ").status_code == 422
+        created = self._post(client, regular_user_token, label="  Массаж  ")
+        assert created.status_code == 201 and created.get_json()["label"] == "Массаж"
+
+    def test_a_name_that_is_taken_is_refused_whoever_took_it(self, client, mock_db, regular_user_token):
+        assert self._post(client, regular_user_token).status_code == 201
+        for same in ("Массаж", "  массаж ", "МАССАЖ"):
+            response = self._post(client, regular_user_token, label=same)
+            assert response.status_code == 422 and "уже есть" in response.get_json()["error"], same
+        # and a built-in's name too: two tiles of one name cannot be told apart
+        assert self._post(client, regular_user_token, label="кормление").status_code == 422
+
+    def test_renaming_into_a_taken_name_is_refused_but_saving_a_type_as_it_is_is_not(
+        self, client, mock_db, regular_user_token
+    ):
+        headers = {"Authorization": f"Bearer {regular_user_token}"}
+        first = self._post(client, regular_user_token).get_json()["key"]
+        second = self._post(client, regular_user_token, label="Выгул").get_json()["key"]
+        assert client.put(f"/api/event-types/{second}", json={"label": "массаж"}, headers=headers).status_code == 422
+        assert (
+            client.put(
+                f"/api/event-types/{second}", json={"label": "Выгул", "color": "red"}, headers=headers
+            ).status_code
+            == 200
+        )
+        assert client.put(f"/api/event-types/{first}", json={"label": "Массаж"}, headers=headers).status_code == 200
+
+    def test_a_colour_the_app_does_not_have_is_refused(self, client, mock_db, regular_user_token):
+        assert self._post(client, regular_user_token, label="Один", color="neon").status_code == 422
+        assert self._post(client, regular_user_token, label="Два", color="red; background:url(x)").status_code == 422
+        assert self._post(client, regular_user_token, label="Три", color="gray").status_code == 201
+
+    def test_an_icon_key_is_a_plain_key(self, client, mock_db, regular_user_token):
+        assert self._post(client, regular_user_token, label="Один", icon="<b>").status_code == 422
+        assert self._post(client, regular_user_token, label="Два", icon="a b").status_code == 422
+        assert self._post(client, regular_user_token, label="Три", icon="paw-print").status_code == 201
+
+    def test_a_chart_of_values_needs_a_number_field_of_the_type(self, client, mock_db, regular_user_token):
+        chart = {"kind": "value", "value_field": "dose", "value_label": "мл"}
+        text_field = {"name": "dose", "label": "Доза", "type": "text", "required": False}
+        number_field = {"name": "dose", "label": "Доза", "type": "number", "required": False}
+        assert self._post(client, regular_user_token, label="Один", chart=chart, fields=[]).status_code == 422
+        assert self._post(client, regular_user_token, label="Два", chart=chart, fields=[text_field]).status_code == 422
+        assert (
+            self._post(client, regular_user_token, label="Три", chart=chart, fields=[number_field]).status_code == 201
+        )
+
+
+@pytest.mark.health_records
 class TestUpdateEventType:
     def test_update_builtin_label(self, client, mock_db, auth_headers):
         """A builtin type is everyone's: an admin may rename it."""
@@ -175,7 +233,7 @@ class TestDeleteEventType:
     def _create_custom(self, client, token):
         response = client.post(
             "/api/event-types",
-            json={"label": "Игра", "icon": "paw", "color": "blue", "fields": [], "chart": {"kind": "count"}},
+            json={"label": "Массаж", "icon": "paw", "color": "blue", "fields": [], "chart": {"kind": "count"}},
             headers={"Authorization": f"Bearer {token}"},
         )
         return response.get_json()["key"]

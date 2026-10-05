@@ -1296,6 +1296,35 @@ class EventChartConfig(BaseModel):
         return v
 
 
+# The colours of a tile (TILE_COLORS in the client): another word is a style the app does not have, and the client takes the
+# value of a colour it does not know as the CSS of a swatch.
+EVENT_TYPE_COLORS = ("brown", "orange", "red", "green", "purple", "teal", "cyan", "yellow", "blue", "pink", "gray")
+_ICON_KEY = re.compile(r"^[a-z0-9_-]{1,50}$")
+
+
+def _tile_color(value):
+    if value is not None and value not in EVENT_TYPE_COLORS:
+        raise ValueError("Неизвестный цвет плитки")
+    return value
+
+
+def _icon_key(value):
+    if value is not None and not _ICON_KEY.match(value):
+        raise ValueError("Неверный ключ иконки")
+    return value
+
+
+def _label_without_spaces(value):
+    """A name is what is left without the spaces around it; «   » is no name."""
+    return value.strip() if isinstance(value, str) else value
+
+
+def _chart_names_a_number_field(chart: "EventChartConfig", fields: List["EventTypeField"]) -> None:
+    """A chart of values draws a number field the type has."""
+    if chart.kind == "value" and chart.value_field not in {f.name for f in fields if f.type == "number"}:
+        raise ValueError("Для графика значений нужно выбрать числовое поле типа")
+
+
 RESERVED_EVENT_FIELD_NAMES = {"pet_id", "date", "time", "comment", "type", "fields"}
 
 
@@ -1323,6 +1352,26 @@ class EventTypeCreate(BaseModel):
     def validate_fields(cls, v):
         return _validate_field_names(v)
 
+    @field_validator("label", mode="before")
+    @classmethod
+    def label_without_spaces(cls, v):
+        return _label_without_spaces(v)
+
+    @field_validator("color")
+    @classmethod
+    def known_color(cls, v):
+        return _tile_color(v)
+
+    @field_validator("icon")
+    @classmethod
+    def icon_key(cls, v):
+        return _icon_key(v)
+
+    @model_validator(mode="after")
+    def chart_has_its_field(self):
+        _chart_names_a_number_field(self.chart, self.fields)
+        return self
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -1349,6 +1398,28 @@ class EventTypeUpdate(BaseModel):
     @classmethod
     def validate_fields(cls, v):
         return v if v is None else _validate_field_names(v)
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def label_without_spaces(cls, v):
+        return _label_without_spaces(v)
+
+    @field_validator("color")
+    @classmethod
+    def known_color(cls, v):
+        return _tile_color(v)
+
+    @field_validator("icon")
+    @classmethod
+    def icon_key(cls, v):
+        return _icon_key(v)
+
+    @model_validator(mode="after")
+    def chart_has_its_field(self):
+        # Only when the same request carries both: a chart sent alone is checked against the fields already stored.
+        if self.chart is not None and self.fields is not None:
+            _chart_names_a_number_field(self.chart, self.fields)
+        return self
 
 
 class EventTypeItem(BaseModel):
