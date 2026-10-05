@@ -257,7 +257,12 @@ export function DocumentsList() {
       return;
     }
     const url = documentsService.getFileUrl(doc._id);
-    if (doc.content_type.startsWith('image/')) {
+    // Images are stored as WebP, which every browser draws. A HEIC that reached storage as itself
+    // (Pillow could not open it) is the exception: only Safari draws it, and a viewer waiting for
+    // an image that never renders has nothing to show. It opens like a PDF instead: the file's name
+    // and a way to open it in the browser.
+    const undrawable = /^image\/hei[cf]$/i.test(doc.content_type);
+    if (doc.content_type.startsWith('image/') && !undrawable) {
       setImageViewer({ visible: true, image: url });
     } else {
       setFileViewer({ visible: true, url, title: doc.title, id: doc._id });
