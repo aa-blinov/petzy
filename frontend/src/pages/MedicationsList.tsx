@@ -608,10 +608,9 @@ export function MedicationsList() {
                                                 <Button
                                                     block
                                                     fill="none"
-                                                    size="small"
                                                     onClick={() => handleLogIntake(med)}
                                                     aria-label={`Другое время или доза: ${med.name}`}
-                                                    style={{ marginTop: 'var(--spacing-xs)', color: 'var(--app-text-secondary)' }}
+                                                    style={{ marginTop: 'var(--spacing-sm)', color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
                                                 >
                                                     Другое время или доза
                                                 </Button>
@@ -622,10 +621,9 @@ export function MedicationsList() {
                                                 <Button
                                                     block
                                                     fill="none"
-                                                    size="small"
                                                     onClick={() => handleLogIntake(med)}
                                                     aria-label={`Записать дополнительный приём: ${med.name}`}
-                                                    style={{ marginTop: 'var(--spacing-xs)', color: 'var(--app-text-secondary)' }}
+                                                    style={{ marginTop: 'var(--spacing-sm)', color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
                                                 >
                                                     Записать дополнительный приём
                                                 </Button>
@@ -634,14 +632,13 @@ export function MedicationsList() {
                                     )}
                                     {(med.course_status ? med.course_status !== 'planned' : true) && (
                                         // Ended or going: the course is finished or taken up again from the list, not only from the bottom of its form.
-                                        <div style={{ marginTop: 'var(--spacing-xs)' }} onClick={(e) => e.stopPropagation()}>
+                                        <div style={{ marginTop: 'var(--spacing-md)', paddingTop: 'var(--spacing-xs)', borderTop: '1px solid var(--app-divider-color)' }} onClick={(e) => e.stopPropagation()}>
                                             <Button
                                                 block
                                                 fill="none"
-                                                size="small"
                                                 onClick={() => void toggleCourse(med)}
                                                 aria-label={`${(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить' : 'Завершить'} курс: ${med.name}`}
-                                                style={{ color: 'var(--app-text-secondary)' }}
+                                                style={{ color: 'var(--app-accent-deep)' }}
                                             >
                                                 {(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить курс' : 'Завершить курс'}
                                             </Button>
