@@ -362,7 +362,10 @@ export function MedicalRecordForm() {
       : kind === 'parasite'
         ? (['fleas_ticks', 'worms', 'both'] as ParasiteTarget[]).map((t) => ({ key: t, label: PARASITE_TARGET_LABELS[t], items: PARASITE_PRODUCTS.filter((p) => p.target === t).map((p) => p.name) }))
         : kind === 'visit' || kind === 'procedure'
-          ? OCCASION_GROUPS[kind]
+          ? // What the pet already has is in «Ранее у питомца» at the top: not offered a second time below it.
+            OCCASION_GROUPS[kind]
+              .map((g) => ({ ...g, items: g.items.filter((item) => !own.some((t) => t.trim().toLowerCase() === item.toLowerCase())) }))
+              .filter((g) => g.items.length > 0)
           : [];
   // The shot of the same protection that is on the card now: this one will replace it (the card reads a change of brand as the
   // repeat of the same vaccination, and the earlier entry stays in the history).

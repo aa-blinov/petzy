@@ -103,6 +103,16 @@ async def main():
             "уже записан" in t or "Если взвешивали" in t,
             t[t.find("Вес, кг") :][:140].replace(chr(10), " | "),
         )
+        # the reasons of a visit: chosen from a sheet, each offered once (what the pet has is not repeated below it)
+        await pg.locator(".adm-list-item[role=button]").first.click()
+        await pg.wait_for_timeout(800)
+        names = [n.strip() for n in await pg.locator(".prodpick__row").all_inner_texts()]
+        check(
+            "the reasons of a visit are offered once each",
+            len(names) == len({n.lower() for n in names}) and len(names) >= 8,
+            str(names),
+        )
+        await pg.keyboard.press("Escape")
         check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
         await pg.goto(BASE + card + "?mode=fill")
         await pg.wait_for_timeout(1500)
