@@ -53,6 +53,11 @@ events_bp = Blueprint("events", __name__)
 EVENTS_COLLECTION = "events"
 EVENT_TYPES_COLLECTION = "event_types"
 
+DUPLICATE_EVENT_WINDOW = timedelta(minutes=5)
+"""How long after saving a record the very same request is still the same record. A request whose
+answer never arrived says nothing about whether the record was written, so the person presses
+«Создать» again, and the diary must not answer that with a second entry."""
+
 
 # ---------------------------------------------------------------------------
 # Event type registry
@@ -103,6 +108,30 @@ def _find_visible_type(key: str, username: str) -> Optional[dict]:
 def _same_label(text: str) -> str:
     """What makes two names one: the case and the spaces do not count."""
     return " ".join((text or "").split()).casefold()
+
+
+# What a re-save of a field keeps when the payload says nothing about it: the range a number is checked against and
+# how far it may drift before it counts as a trend anomaly. A form that has no inputs for these sends them as absent,
+# and a plain overwrite dropped them: renaming a built-in type silently turned a weight capped at 100 into any float.
+NUMERIC_FIELD_SETTINGS = ("max", "step", "deviation_threshold")
+
+
+def _keep_numeric_settings(new_fields: list[dict], stored_fields: list[dict]) -> list[dict]:
+    """Carry over the stored bounds of the fields the update still has, by name.
+
+    Only what the payload leaves out is carried over, so a field that is
+    explicitly given a bound gets the one that was asked for.
+    """
+    stored = {f.get("name"): f for f in stored_fields or [] if f.get("name")}
+    kept: list[dict] = []
+    for field in new_fields:
+        previous = stored.get(field.get("name"))
+        if previous:
+            for setting in NUMERIC_FIELD_SETTINGS:
+                if field.get(setting) is None and previous.get(setting) is not None:
+                    field[setting] = previous[setting]
+        kept.append(field)
+    return kept
 
 
 def _label_is_taken(label: str, username: str, own_key: Optional[str] = None) -> bool:
@@ -211,7 +240,9 @@ def update_event_type(key):
     if data.color is not None:
         update_data["color"] = data.color
     if data.fields is not None:
-        update_data["fields"] = [f.model_dump() for f in data.fields]
+        update_data["fields"] = _keep_numeric_settings(
+            [f.model_dump() for f in data.fields], existing.get("fields", [])
+        )
     if data.chart is not None:
         update_data["chart"] = data.chart.model_dump()
 
@@ -235,6 +266,11 @@ def delete_event_type(key):
     Builtin types can't be deleted, and a custom type with existing events
     can't either — its history would otherwise lose its field labels and
     rendering.
+
+    ``?preview=true`` counts the records and deletes nothing: the question
+    «удалить тип вместе с записями?» is asked once, with the number in it.
+    Before, the first question knew nothing about the records and the
+    number only turned up in the second one, after the first was answered.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -247,6 +283,8 @@ def delete_event_type(key):
     if existing.get("created_by") != username:
         return error_response("event_type_not_yours")
     count = app.db[EVENTS_COLLECTION].count_documents({"type": key})
+    if request.args.get("preview") == "true":
+        return jsonify({"success": True, "message": "", "events_count": count}), 200
     with_events = request.args.get("with_events") == "true"
     if count > 0 and not with_events:
         # Says how many, so that the client can ask «delete the type with its N records?» instead of refusing flatly.
@@ -311,6 +349,28 @@ def _validate_event_fields(
             value = str(value)[:500]
         cleaned[name] = value
     return cleaned, None
+
+
+def _same_record_just_saved(pet_id: str, type_key: str, username: str, event_dt: datetime, comment: str, fields: dict):
+    """The same record this person just saved, or None to write a new one.
+
+    Everything the record says has to be the same: its pet, type, time, comment and fields. Only
+    this person's own records count, because two people of one household writing the same thing in
+    the same minute is something that really happened twice. Records saved before this field
+    existed have no ``created_at`` and are never treated as twins.
+    """
+    return app.db[EVENTS_COLLECTION].find_one(
+        {
+            "pet_id": pet_id,
+            "type": type_key,
+            "username": username,
+            "date_time": event_dt,
+            "comment": comment,
+            "fields": fields,
+            "created_at": {"$gte": datetime.now(timezone.utc) - DUPLICATE_EVENT_WINDOW},
+        },
+        sort=[("created_at", -1)],
+    )
 
 
 def _serialize_event(record: dict) -> dict:
@@ -380,6 +440,31 @@ def create_event():
     if dt_error:
         return dt_error[0], dt_error[1]
 
+    comment = data.comment or ""
+    # The same request sent twice (the answer to the first never came, so the person presses
+    # «Создать» again) is the one record, not two: the second request is answered with the
+    # record that is already there. The client treats this answer as a saved record.
+    twin = _same_record_just_saved(pet_id, data.type, username, event_dt, comment, cleaned_fields)
+    if twin:
+        app.logger.info(f"Event not written again: type={data.type}, pet_id={pet_id}, user={username}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "code": "duplicate_event",
+                    "error": f"Такая запись уже сохранена на {event_dt.strftime('%H:%M')}",
+                    "existing": {
+                        "id": str(twin["_id"]),
+                        "date": event_dt.strftime("%Y-%m-%d"),
+                        "time": event_dt.strftime("%H:%M"),
+                        "username": twin.get("username"),
+                        "own": True,
+                    },
+                }
+            ),
+            409,
+        )
+
     # Checked against history BEFORE inserting the new record — the value
     # being judged must never be part of its own baseline. Skipped
     # entirely (no history query at all) when push isn't configured on
@@ -407,8 +492,11 @@ def create_event():
         "type": data.type,
         "date_time": event_dt,
         "fields": cleaned_fields,
-        "comment": data.comment or "",
+        "comment": comment,
         "username": username,
+        # When the record was written down, apart from the time it happened at: it is what says
+        # whether a request that comes again is a repeat (see DUPLICATE_EVENT_WINDOW).
+        "created_at": datetime.now(timezone.utc),
     }
     # The zone the entered clock is in: an export moves the time onto the
     # exporter's clock. Absent for old records and clients that don't say.

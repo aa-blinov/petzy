@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useState, useMemo, useCallback } from 'react';
+import { Fragment, useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { isAxiosError } from 'axios';
 import { showToast } from '../utils/toast';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
@@ -7,7 +8,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Form } from 'antd-mobile';
@@ -25,6 +26,8 @@ import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
 import { FormField } from '../components/FormField';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { EmptyState } from '../components/EmptyState';
+import { PawPrint } from 'lucide-react';
 import { onInvalidSubmit } from '../utils/formErrors';
 
 /** Builds the field list + title for a registered event type. Date, time
@@ -52,6 +55,21 @@ const WHEN_CHOICES: { label: string; at: (now: Date) => Date }[] = [
   { label: '2 часа назад', at: (now) => new Date(now.getTime() - 2 * 60 * 60 * 1000) },
   { label: 'Вчера в это время', at: (now) => new Date(now.getTime() - 24 * 60 * 60 * 1000) },
 ];
+
+interface SavedRecord {
+  message: string;
+  id?: string;
+}
+
+/** The answer the server gives when the record the person is saving is already written
+ *  (web/events.py): the same request sent twice within a few minutes is one record, and the
+ *  second answer names the first one. Only that answer counts; any other refusal is a refusal. */
+function savedByResponse(err: unknown): SavedRecord | null {
+  if (!isAxiosError(err) || err.response?.status !== 409) return null;
+  const body = err.response.data as { code?: string; existing?: { id?: string } } | undefined;
+  if (body?.code !== 'duplicate_event' || !body.existing?.id) return null;
+  return { id: body.existing.id, message: 'Запись уже сохранена' };
+}
 
 export function HealthRecordForm() {
   const { type, id } = useParams<{ type: string; id?: string }>();
@@ -142,6 +160,12 @@ export function HealthRecordForm() {
 
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(isEditing);
+  // The record did not load: the form says so on itself and offers to try again, instead of
+  // throwing the person out to the feed.
+  const [loadError, setLoadError] = useState(false);
+  // A save that is already in flight: a second press while the first is unanswered is the same
+  // save, and must not become a second record.
+  const savingRef = useRef(false);
   // Who wrote the record down: a household of several people looks at this line to know whom to ask.
   const [recordedBy, setRecordedBy] = useState<string | null>(null);
 
@@ -272,10 +296,13 @@ export function HealthRecordForm() {
           }
           reset(normalizeData(data));
           setRecordedBy(data.username ?? null);
+          setLoadError(false);
         } catch (err) {
           console.error('Error loading record:', err);
-          showToast.failure('Не удалось загрузить запись');
-          navigate('/history');
+          // Said on the form itself, with a way back and a way to try again. Leaving at once
+          // threw the person out to History, where «Назад» opened this same form again, and
+          // that threw them out again.
+          setLoadError(true);
         } finally {
           setIsLoading(false);
         }
@@ -285,10 +312,76 @@ export function HealthRecordForm() {
       reset(defaultValues);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, type, id, location.state, normalizeData, reset, navigate, !!eventType]);
+  }, [isEditing, type, id, location.state, normalizeData, reset, !!eventType]);
+
+  // «Повторить» asks for the same record again: the effect above only runs when something about
+  // the route or the form changes, so the retry is what makes it run.
+  const retryLoad = () => {
+    setLoadError(false);
+    setIsLoading(true);
+    healthRecordsService
+      .get(id!)
+      .then((data) => {
+        reset(normalizeData(data));
+        setRecordedBy(data.username ?? null);
+      })
+      .catch((err) => {
+        console.error('Error loading record:', err);
+        setLoadError(true);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  /** Refreshes the lists the record appears in. Dashboard, History and PetSummaryCard each key
+   *  their queries differently ('timeline', 'history-timeline', 'stats', 'pet-summary') — none of
+   *  them start with 'history', so a plain invalidateQueries(['history']) silently matched
+   *  nothing and every view kept showing pre-submit data until its own staleTime lapsed. */
+  const refreshLists = (client: QueryClient) =>
+    client.invalidateQueries({
+      predicate: (query) => ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
+    });
+
+  /** The rest of a successful save, once the person has already left the form. */
+  const finishSave = async (data: Record<string, unknown>) => {
+    try {
+      await refreshLists(queryClient);
+
+      // What the person asked to remember (the pin under a field) goes to the pet: a pinned field
+      // takes the value typed now, an unpinned one that was remembered is forgotten. Nothing is
+      // sent when nothing changed.
+      if (!id && type && defaultableFields.length > 0) {
+        const settings = (getSelectedPet?.form_defaults ?? {}) as Record<string, Record<string, string>>;
+        const current = { ...(settings[type] ?? {}) };
+        const next = { ...current };
+        for (const field of defaultableFields) {
+          const typed = data[field.name];
+          const text = typed === undefined || typed === null ? '' : String(typed).trim();
+          if (isPinned(field.name) && text !== '') next[field.name] = text;
+          else if (isPinned(field.name) || next[field.name] !== undefined) delete next[field.name];
+        }
+        if (JSON.stringify(next) !== JSON.stringify(current)) {
+          const all = { ...settings };
+          if (Object.keys(next).length) all[type] = next;
+          else delete all[type];
+          const saved = await petsService.saveFormDefaults(selectedPetId as string, all as FormSettings);
+          queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === selectedPetId ? { ...p, form_defaults: saved } : p)));
+        }
+      }
+    } catch (err) {
+      // The record is written either way; only the tail of the save did not get through, and it
+      // is said on the screen the person is on now.
+      console.error('Error finishing save:', err);
+      showToast.failure('Запись сохранена, а значения по умолчанию не сохранились');
+    }
+  };
 
   const onSubmit = async (data: Record<string, unknown>) => {
     if (!selectedPetId || !type || !eventType) return;
+    // A second press while the first request is still unanswered is the same save: the server
+    // answers the repeat with the record it already has (see web/events.py), but there is no
+    // point in making it at all.
+    if (savingRef.current) return;
+    savingRef.current = true;
 
     try {
       const fieldsPayload: Record<string, unknown> = {};
@@ -305,44 +398,18 @@ export function HealthRecordForm() {
         fields: fieldsPayload,
       };
 
-      const response: { message: string; id?: string } = id
-        ? await healthRecordsService.update(id, payload)
-        : await healthRecordsService.create(type, payload);
-
-      // Dashboard, History and PetSummaryCard each key their queries
-      // differently ('timeline', 'history-timeline', 'stats', 'pet-summary')
-      // — none of them start with 'history', so a plain
-      // invalidateQueries(['history']) silently matched nothing and every
-      // view kept showing pre-submit data until its own staleTime lapsed.
-      await queryClient.invalidateQueries({
-        predicate: (query) =>
-          ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
-      });
-
-      // What the person asked to remember (the pin under a field) goes to the pet: a pinned field takes the value typed now, an
-      // unpinned one that was remembered is forgotten. Nothing is sent when nothing changed.
-      let rememberFailed = false;
-      if (!id && defaultableFields.length > 0) {
-        try {
-          const settings = (getSelectedPet?.form_defaults ?? {}) as Record<string, Record<string, string>>;
-          const current = { ...(settings[type] ?? {}) };
-          const next = { ...current };
-          for (const field of defaultableFields) {
-            const typed = data[field.name];
-            const text = typed === undefined || typed === null ? '' : String(typed).trim();
-            if (isPinned(field.name) && text !== '') next[field.name] = text;
-            else if (isPinned(field.name) || next[field.name] !== undefined) delete next[field.name];
-          }
-          if (JSON.stringify(next) !== JSON.stringify(current)) {
-            const all = { ...settings };
-            if (Object.keys(next).length) all[type] = next;
-            else delete all[type];
-            const saved = await petsService.saveFormDefaults(selectedPetId, all as FormSettings);
-            queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === selectedPetId ? { ...p, form_defaults: saved } : p)));
-          }
-        } catch {
-          rememberFailed = true;
-        }
+      let response: SavedRecord;
+      try {
+        response = id
+          ? await healthRecordsService.update(id, payload)
+          : await healthRecordsService.create(type, payload);
+      } catch (err) {
+        // The record did reach the server, its answer did not, and the person pressed
+        // «Создать» again: the server found the very same record and points at it. That is a
+        // saved record, not a refusal, so the form behaves as it does after a save.
+        const already = savedByResponse(err);
+        if (!id && already) response = already;
+        else throw err;
       }
 
       // A new record can be taken back from the bar that follows, not only by finding it in the feed and deleting it.
@@ -352,16 +419,12 @@ export function HealthRecordForm() {
           message: response.message,
           onUndo: async () => {
             await healthRecordsService.delete(createdId);
-            await queryClient.invalidateQueries({
-              predicate: (query) =>
-                ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
-            });
+            await refreshLists(queryClient);
           },
         });
       } else {
         showToast.success(response.message);
       }
-      if (rememberFailed) showToast.failure('Запись сохранена, а значения по умолчанию не сохранились');
       // Leave at once; the toast lives on over the screen we return to
       // (waiting for it to close kept a saved form on screen for two
       // seconds). Not a fixed destination: this form opens from the
@@ -372,10 +435,18 @@ export function HealthRecordForm() {
       // present.
       release();
       goBack(navigate, id ? '/history' : '/');
+
+      // Everything from here is not the save itself: the lists the person lands on get
+      // fresh data, and what they asked to remember goes to the pet. It used to run before
+      // leaving, so the «Создать» button kept spinning for as long as four lists and a pet
+      // update took, and a second press could come in the meantime.
+      void finishSave(data);
     } catch (error) {
       console.error('Error submitting form:', error);
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
       showToast.failure(errorMessage);
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -396,6 +467,28 @@ export function HealthRecordForm() {
       <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>
         <p>Неизвестный тип записи</p>
         <Button onClick={() => navigate('/')}>На главную</Button>
+      </div>
+    );
+  }
+
+  // The record could not be loaded. Said here, where the person is, with the two ways out: back
+  // to where the form was opened from, or one more try while the connection holds.
+  if (loadError) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={PawPrint}
+            title="Запись не загрузилась"
+            description="Ничего не пропало и не изменилось. Попробуйте ещё раз"
+            actionLabel="Повторить"
+            onAction={retryLoad}
+          >
+            <Button block size="large" onClick={() => goBack(navigate, '/history')}>
+              Назад
+            </Button>
+          </EmptyState>
+        </div>
       </div>
     );
   }
