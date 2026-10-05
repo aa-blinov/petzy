@@ -622,3 +622,54 @@ class TestServeDocumentFile:
             )
 
         assert response.status_code == 404
+
+
+@pytest.mark.documents
+class TestWhatCanBeFiled:
+    """A document with a kind the app does not draw, or with no title, is a file that is there and cannot be found."""
+
+    def _post(self, client, token, pet, **fields):
+        return client.post(
+            "/api/documents",
+            data={
+                "pet_id": str(pet["_id"]),
+                "category": "other",
+                "title": "Справка",
+                **fields,
+                "file": (io.BytesIO(_make_png_bytes()), "a.png", "image/png"),
+            },
+            headers={"Authorization": f"Bearer {token}"},
+            content_type="multipart/form-data",
+        )
+
+    def test_an_unknown_category_is_refused(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        response = self._post(client, regular_user_token, test_pet, category="porn")
+        assert response.status_code == 422
+        assert mock_db["documents"].count_documents({}) == 0
+
+    @pytest.mark.parametrize("category", ["vaccination", "lab_result", "conclusion", "imaging", "insurance", "other"])
+    def test_every_kind_the_app_draws_is_accepted(
+        self, client, mock_db, regular_user_token, test_pet, s3_storage, category
+    ):
+        assert self._post(client, regular_user_token, test_pet, category=category).status_code == 201
+
+    def test_a_title_of_spaces_is_refused_and_a_padded_one_is_trimmed(
+        self, client, mock_db, regular_user_token, test_pet, s3_storage
+    ):
+        assert self._post(client, regular_user_token, test_pet, title="   ").status_code == 422
+        assert self._post(client, regular_user_token, test_pet, title="  Справка  ").status_code == 201
+        assert mock_db["documents"].find_one({})["title"] == "Справка"
+
+    def test_the_same_holds_when_a_document_is_changed(self, client, mock_db, regular_user_token, test_pet, s3_storage):
+        created = self._post(client, regular_user_token, test_pet).get_json()["id"]
+        headers = {"Authorization": f"Bearer {regular_user_token}"}
+        assert client.put(f"/api/documents/{created}", json={"category": "porn"}, headers=headers).status_code == 422
+        assert client.put(f"/api/documents/{created}", json={"title": "   "}, headers=headers).status_code == 422
+        assert (
+            client.put(
+                f"/api/documents/{created}", json={"category": "insurance", "title": " Полис "}, headers=headers
+            ).status_code
+            == 200
+        )
+        doc = mock_db["documents"].find_one({"_id": ObjectId(created)})
+        assert (doc["category"], doc["title"]) == ("insurance", "Полис")

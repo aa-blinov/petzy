@@ -49,6 +49,8 @@ type DocumentFormData = z.infer<typeof documentSchema>;
 // The host proxy caps request bodies at 10 MB; bigger files are scans.
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const DOCUMENT_ACCEPT = 'image/*,application/pdf';
+/** The types the server takes (ALLOWED_CONTENT_TYPES in web/documents.py): a GIF or an SVG is an image the server refuses. */
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
 const SCAN_ACCEPT = SCAN_EXTENSIONS.join(',');
 const SCAN_FORMATS_HINT = 'ZIP, 7Z, RAR, TAR, GZ, DICOM и ISO';
 
@@ -185,6 +187,12 @@ export function DocumentForm() {
       if (!scansEnabled) return 'Архивы сейчас не принимаются. Загрузите фото или PDF';
       if (picked.size > maxScanBytes) return `Архив больше ${formatFileSize(maxScanBytes)}. Разделите его на части`;
       return undefined;
+    }
+    // A photo or a PDF: by its type, or by its name where the browser leaves the type empty (a HEIC from a phone). Anything else
+    // the server would refuse after the wait; a picker of the phone does not always keep to `accept`.
+    const named = /\.(jpe?g|png|webp|heic|heif|pdf)$/i.test(picked.name);
+    if (!(ACCEPTED_TYPES.includes(picked.type) || (!picked.type && named))) {
+      return `«${picked.name}»: подходят фото и PDF${scansEnabled ? ', а снимки МРТ и КТ принимаются архивом' : ''}`;
     }
     if (picked.size > MAX_DOCUMENT_BYTES) {
       return scansEnabled

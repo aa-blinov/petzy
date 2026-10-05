@@ -70,6 +70,20 @@ async def main():
         await pg.locator(".docs__source", has_text="Плановый осмотр").click()
         await pg.wait_for_timeout(1500)
         check("the line opens the record", "/medical-records/" in pg.url, pg.url.replace(BASE, ""))
+        # the form says at once what is not a photo or a PDF, and does not take it
+        note = "/private/tmp/check_documents_note.txt"
+        with open(note, "w", encoding="utf-8") as f:
+            f.write("not a photo")
+        await pg.goto(BASE + "/documents/new")
+        await pg.wait_for_timeout(1500)
+        await pg.locator("#document-file-input").set_input_files(note)
+        await pg.wait_for_timeout(500)
+        errors = [t.strip() for t in await pg.locator(".field-error").all_inner_texts()]
+        check(
+            "a text file is refused by the form with the reason",
+            any("подходят фото и PDF" in e for e in errors),
+            str(errors),
+        )
         check("no horizontal scroll", not await pg.evaluate("document.documentElement.scrollWidth > innerWidth"))
         await b.close()
     summary("documents as an archive")
