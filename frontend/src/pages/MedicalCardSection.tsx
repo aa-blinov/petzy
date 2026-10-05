@@ -1,12 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from 'antd-mobile';
+import { Popup, Skeleton } from 'antd-mobile';
 import { FileHeart } from 'lucide-react';
 
+import { DraggableSheetBody } from '../components/DraggableSheetBody';
 import { EmptyState } from '../components/EmptyState';
+import { Fab } from '../components/Fab';
 import { LoadError } from '../components/LoadError';
-import { RecordFab } from '../components/RecordSheet';
 import { usePet } from '../hooks/usePet';
 import { httpStatus } from '../services/api';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
@@ -205,6 +206,58 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
   }
 }
 
+/** What the round «+» of this section adds: only its own entries. The card keeps the full sheet, because there it is asked
+    which thing of the whole diary to write about, and on one part of the card half of that list is somebody else's. */
+const SECTION_ADDS: Record<CardSectionKey, { label: string; to: (petId: string) => string }[]> = {
+  risks: [{ label: 'Аллергии и состояния', to: (id) => `/pets/${id}/medical-profile?section=allergies` }],
+  meds: [{ label: 'Лекарство', to: () => '/medications/new' }],
+  prevention: [
+    { label: 'Прививка', to: (id) => `/pets/${id}/medical-records/new?kind=vaccination` },
+    { label: 'Обработка от паразитов', to: (id) => `/pets/${id}/medical-records/new?kind=parasite` },
+  ],
+  weight: [{ label: 'Замер веса', to: () => '/form/weight' }],
+  visits: [
+    { label: 'Визит', to: (id) => `/pets/${id}/medical-records/new?kind=visit` },
+    { label: 'Операция', to: (id) => `/pets/${id}/medical-records/new?kind=procedure` },
+  ],
+  documents: [{ label: 'Документ', to: () => '/documents/new' }],
+  clinic: [{ label: 'Клиника и врачи', to: (id) => `/pets/${id}/medical-profile?section=clinic` }],
+  life: [{ label: 'Питание и условия', to: (id) => `/pets/${id}/medical-profile?section=life` }],
+};
+
+/** The round «+» of one part of the card: where there is one thing to add it opens the screen, where there are two
+    it asks which, in the same sheet the card uses. */
+function SectionFab({ section, petId, navigate }: { section: CardSectionKey; petId: string; navigate: (to: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const adds = SECTION_ADDS[section];
+  if (adds.length === 1) return <Fab label={`Добавить: ${adds[0].label}`} onClick={() => navigate(adds[0].to(petId))} />;
+  return (
+    <>
+      <Fab label="Добавить" popup onClick={() => setOpen(true)} />
+      <Popup visible={open} onMaskClick={() => setOpen(false)} position="bottom" bodyStyle={{ background: 'transparent' }}>
+        <DraggableSheetBody visible={open} onClose={() => setOpen(false)} label="Что добавить">
+          <ul className="medcard__list">
+            {adds.map((add) => (
+              <li key={add.label} className="medcard__row" style={{ padding: 0 }}>
+                <button
+                  type="button"
+                  className="medcard__row-button medcard__todo-row"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate(add.to(petId));
+                  }}
+                >
+                  <span className="medcard__row-title">{add.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </DraggableSheetBody>
+      </Popup>
+    </>
+  );
+}
+
 export function MedicalCardSection() {
   const { id, section } = useParams<{ id: string; section: string }>();
   const navigate = useNavigate();
@@ -259,7 +312,7 @@ export function MedicalCardSection() {
           <SectionBody section={section} card={card} petId={id!} hidden={hidden} navigate={navigate} />
         </div>
       </div>
-      <RecordFab petId={id!} petName={card.pet.name} />
+      <SectionFab section={section} petId={id!} navigate={navigate} />
     </div>
   );
 }

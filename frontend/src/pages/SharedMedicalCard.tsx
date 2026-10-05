@@ -6,6 +6,7 @@ import { FileHeart } from 'lucide-react';
 
 import { EmptyState } from '../components/EmptyState';
 import { getApiErrorMessage } from '../utils/apiError';
+import { httpStatus } from '../services/api';
 import { medicalShareService } from '../services/medicalShare.service';
 import { showToast } from '../utils/toast';
 import { OverdueStrip, VetView } from './MedicalCard';
@@ -34,10 +35,24 @@ export function SharedMedicalCard() {
   }, []);
 
   if (query.isError) {
+    // Two things look the same from a phone: a link that stopped working and a connection that did not come through.
+    // Telling them apart matters: the first asks the owner for a new link, the second only asks to try again.
+    const dead = [403, 404].includes(httpStatus(query.error) ?? 0);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <EmptyState heading="h1" icon={FileHeart} title="Ссылка не действует" description="Она закончилась или её отозвали. Попросите владельца питомца прислать новую" />
+          {dead ? (
+            <EmptyState heading="h1" icon={FileHeart} title="Ссылка не действует" description="Она закончилась или её отозвали. Попросите владельца питомца прислать новую" />
+          ) : (
+            <EmptyState
+              heading="h1"
+              icon={FileHeart}
+              title="Не удалось загрузить карту"
+              description="Похоже, нет связи. Это не значит, что ссылка не действует: попробуйте ещё раз"
+              actionLabel="Повторить"
+              onAction={() => void query.refetch()}
+            />
+          )}
         </div>
       </div>
     );
@@ -91,6 +106,8 @@ export function SharedMedicalCard() {
               </>
             }
           />
+          {/* What this page is, once, at the end: a copy, with no way back into the app. */}
+          <p className="medcard__hint">Это копия медкарты питомца на момент отправки ссылки. Вернуться в приложение из неё нельзя</p>
         </div>
       </div>
     </div>

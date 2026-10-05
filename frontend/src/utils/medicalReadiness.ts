@@ -16,7 +16,7 @@ export interface ReadinessCheck {
 
 /** What a vet looks for first, and whether the card has it. One list for the card's own block
     and for the line after a save, so the two never count differently. */
-export function readinessChecks(card: MedicalCard, petId: string): ReadinessCheck[] {
+export function readinessChecks(card: MedicalCard, petId = ''): ReadinessCheck[] {
   const { profile } = card;
   return [
     {
@@ -60,6 +60,20 @@ export function readinessChecks(card: MedicalCard, petId: string): ReadinessChec
       to: '/form/weight',
     },
   ];
+}
+
+/** What a vet will not find on the card, in the order they ask: the same five checks the block «Для врача» counts,
+    read as words. The reading mode says them in one line, so an empty card says what is empty instead of
+    «не указана» five times over. */
+export function missingReadiness(card: MedicalCard): string[] {
+  return readinessChecks(card).filter((c) => !c.done).map((c) => c.label.toLowerCase());
+}
+
+/** «аллергии, прививки и вес»: one line that reads as a list, without «·» between the parts. */
+export function listWords(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} и ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')} и ${items[items.length - 1]}`;
 }
 
 /** «Прививка добавлена. Заполнено 3 из 5.» after a save: the owner sees the card is getting there.
