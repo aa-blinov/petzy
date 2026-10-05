@@ -3,8 +3,9 @@
 /* Adding files to a record: two buttons, then what is waiting to be saved. */
 .medrec__add-files {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-sm);
+    /* Side by side where both labels fit on one line, one under the other (12px apart) where not: on a phone. */
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: var(--spacing-md);
 }
 
 .medrec__add-hint {
@@ -110,5 +111,31 @@
     font: inherit;
     font-weight: 600;
     color: var(--app-accent-deep);
+    cursor: pointer;
+}
+
+/* The photos and documents of a record: a block of its own under the form, with the camera one tap away. */
+.medrec__docs {
+    margin-top: var(--spacing-xl);
+}
+
+.medrec__docs .section-header {
+    margin-bottom: var(--spacing-sm);
+}
+
+.medrec__docs .medrec__files {
+    margin-top: var(--spacing-md);
+}
+
+.medrec__link {
+    display: block;
+    margin: var(--spacing-sm) auto 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
     cursor: pointer;
 }
