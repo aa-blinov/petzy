@@ -894,10 +894,11 @@ class MedicalProfileOut(MedicalProfile):
 
 
 def _trimmed_name(value: Optional[str]) -> Optional[str]:
-    """A name is what is left without the spaces around it, and it cannot be nothing: «   » is not a pet."""
+    """A name is one line without the spaces around it (a line break or a run of spaces inside is one space), and it cannot
+    be nothing: «   » is not a pet."""
     if value is None:
         return None
-    value = value.strip()
+    value = " ".join(value.split())
     if not value:
         raise ValueError("Имя не может быть пустым")
     return value
@@ -1315,8 +1316,8 @@ def _icon_key(value):
 
 
 def _label_without_spaces(value):
-    """A name is what is left without the spaces around it; «   » is no name."""
-    return value.strip() if isinstance(value, str) else value
+    """A name is one line without the spaces around it; «   » is no name."""
+    return " ".join(value.split()) if isinstance(value, str) else value
 
 
 def _chart_names_a_number_field(chart: "EventChartConfig", fields: List["EventTypeField"]) -> None:
@@ -1842,8 +1843,8 @@ def _known_category(value):
 
 
 def _title_without_spaces(value):
-    """A title is what is left without the spaces around it; «   » is no title."""
-    return value.strip() if isinstance(value, str) else value
+    """A title is one line without the spaces around it; «   » is no title."""
+    return " ".join(value.split()) if isinstance(value, str) else value
 
 
 class DocumentCreate(PetIdQuery):
