@@ -15,6 +15,8 @@
  *   - form labels are linked to their fields (see linkLabel);
  *   - an open sheet or dialog is a modal: the page behind it is hidden from a screen reader, Tab stays inside the sheet (and starts
  *     in it when the person was using the keyboard), and the focus goes back to what opened it when it closes;
+ *   - the row menu (an ActionSheet) is a dialog named «Действия», and its «Отмена» is no `option` of a list that is not there
+ *     (the wrapper keeps no role: the button inside it is the control);
  *   - the clear «×» of a text field, a `<div>` with an aria-label and no role (an attribute ARIA forbids there), becomes a
  *     named button that stays out of the Tab order: whoever types can erase with the keyboard, so it is no second stop.
  */
@@ -65,7 +67,23 @@ function patchClear(el: Element) {
   el.setAttribute('tabindex', '-1');
 }
 
+// The menu of a row (Изменить, Удалить, Отмена): antd marks the wrapper of «Отмена» as an `option` with no listbox around it, which
+// holds a button, and draws the sheet outside every landmark.
+function patchActionSheet(sheet: Element) {
+  sheet.querySelectorAll('.adm-action-sheet-cancel[role="option"]').forEach((el) => {
+    el.removeAttribute('role');
+    el.removeAttribute('aria-label');
+  });
+  const body = sheet.querySelector('.adm-popup-body');
+  if (body && !body.hasAttribute('role')) {
+    body.setAttribute('role', 'dialog');
+    body.setAttribute('aria-label', 'Действия');
+  }
+}
+
 function patchWithin(root: ParentNode) {
+  if (root instanceof Element && root.matches('.adm-action-sheet-popup')) patchActionSheet(root);
+  root.querySelectorAll('.adm-action-sheet-popup').forEach(patchActionSheet);
   if (root instanceof Element && root.matches(CLEAR_SELECTOR)) patchClear(root);
   root.querySelectorAll(CLEAR_SELECTOR).forEach(patchClear);
   if (root instanceof Element && root.matches(ROW_SELECTOR)) patch(root);
@@ -74,7 +92,8 @@ function patchWithin(root: ParentNode) {
   root.querySelectorAll('.adm-form-item').forEach(linkLabel);
 }
 
-const MODAL = '.adm-popup, .adm-center-popup';
+// `.app-modal`: a full-screen layer of the app's own (the PDF viewer of the Documents), a dialog like a sheet is.
+const MODAL = '.adm-popup, .adm-center-popup, .app-modal';
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
 const isShown = (el: HTMLElement) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';

@@ -1759,10 +1759,20 @@ class UpcomingDosesResponse(BaseModel):
 # ============================================================================
 # Document Schemas
 # ============================================================================
-# `category` is a plain str, not a Literal/enum — matches EventListQuery.type
-# below, which is likewise unrestricted at the schema level. The allowed set
-# (vaccination/lab_result/insurance/other) is enforced by the frontend's own
-# fixed picker, not here.
+# `category` is a plain str in the schema (it is also the list filter), but a document can only be filed under a kind the app
+# knows: one it does not draw has no section on the Documents screen and would be a file that is there and cannot be found.
+DOCUMENT_CATEGORIES = ("vaccination", "lab_result", "conclusion", "imaging", "insurance", "other")
+
+
+def _known_category(value):
+    if value is not None and value not in DOCUMENT_CATEGORIES:
+        raise ValueError("Неизвестная категория документа")
+    return value
+
+
+def _title_without_spaces(value):
+    """A title is what is left without the spaces around it; «   » is no title."""
+    return value.strip() if isinstance(value, str) else value
 
 
 class DocumentCreate(PetIdQuery):
@@ -1772,6 +1782,16 @@ class DocumentCreate(PetIdQuery):
     expires_at: Optional[str] = Field(
         None, description="Срок действия (YYYY-MM-DD) для прививок, страховки и т.п., необязателен"
     )
+
+    @field_validator("category")
+    @classmethod
+    def known_category(cls, v):
+        return _known_category(v)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def title_without_spaces(cls, v):
+        return _title_without_spaces(v)
 
     @field_validator("expires_at")
     @classmethod
@@ -1804,6 +1824,12 @@ class ScanUploadComplete(BaseModel):
     """Turn an uploaded scan into a document."""
 
     title: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def title_without_spaces(cls, v):
+        return _title_without_spaces(v)
+
     note: Optional[str] = Field(None, max_length=500)
     expires_at: Optional[str] = Field(None, description="Срок действия (YYYY-MM-DD)")
 
@@ -1828,6 +1854,16 @@ class DocumentUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=100)
     note: Optional[str] = Field(None, max_length=500)
     expires_at: Optional[str] = Field(None, description="Срок действия (YYYY-MM-DD)")
+
+    @field_validator("category")
+    @classmethod
+    def known_category(cls, v):
+        return _known_category(v)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def title_without_spaces(cls, v):
+        return _title_without_spaces(v)
 
     @field_validator("expires_at")
     @classmethod

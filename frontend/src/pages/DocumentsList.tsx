@@ -176,7 +176,11 @@ export function DocumentsList() {
   const filterable = documents.length > CHIPS_FROM;
   const countsByCategory = useMemo(() => {
     const counts = new Map<DocumentCategory, number>();
-    for (const doc of documents) if (!hiddenDocuments.has(doc._id)) counts.set(doc.category, (counts.get(doc.category) ?? 0) + 1);
+    for (const doc of documents) {
+      if (hiddenDocuments.has(doc._id)) continue;
+      const category: DocumentCategory = doc.category in DOCUMENT_CATEGORY_LABELS ? doc.category : 'other';
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+    }
     return counts;
   }, [documents, hiddenDocuments]);
 
@@ -188,10 +192,12 @@ export function DocumentsList() {
   const groupedDocuments = useMemo(() => {
     const byCategory = new Map<DocumentCategory, PetDocument[]>();
     for (const doc of [...searchedDocuments].sort((a, b) => documentDay(b).localeCompare(documentDay(a)))) {
-      if (filterable && categoryFilter && doc.category !== categoryFilter) continue;
-      const list = byCategory.get(doc.category);
+      if (filterable && categoryFilter && (doc.category in DOCUMENT_CATEGORY_LABELS ? doc.category : 'other') !== categoryFilter) continue;
+      // A file of a kind this screen does not draw (an old record) is under «Другое», not nowhere.
+      const category: DocumentCategory = doc.category in DOCUMENT_CATEGORY_LABELS ? doc.category : 'other';
+      const list = byCategory.get(category);
       if (list) list.push(doc);
-      else byCategory.set(doc.category, [doc]);
+      else byCategory.set(category, [doc]);
     }
     return CATEGORY_ORDER
       .map((category) => [category, byCategory.get(category) ?? []] as const)
@@ -579,6 +585,10 @@ export function DocumentsList() {
 
       {fileViewer.visible && createPortal(
         <div
+          className="app-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={fileViewer.title}
           style={{
             position: 'fixed',
             inset: 0,
