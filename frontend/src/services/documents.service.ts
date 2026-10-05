@@ -69,6 +69,16 @@ export class ScanUploadError extends Error {
   }
 }
 
+/** A record of the medical card that holds a document: where the file came from, and what it can be found by. */
+export interface DocumentRecordRef {
+  id: string;
+  kind?: string | null;
+  title: string;
+  date?: string | null;
+  diagnosis?: string | null;
+  clinic?: string | null;
+}
+
 export interface PetDocument {
   _id: string;
   pet_id: string;
@@ -90,6 +100,8 @@ export interface PetDocument {
   medical_record_kinds?: string[];
   /** A record with a repeat date points at this document and reminds about it. */
   record_reminds?: boolean;
+  /** The records that hold this document, newest first. */
+  medical_records?: DocumentRecordRef[];
 }
 
 /** Attached to a vaccination or treatment record, so the document has become part of the card. */

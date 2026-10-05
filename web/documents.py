@@ -20,7 +20,7 @@ from web import storage
 from web.app import api
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
-from web.medical_records import document_links, repeating_document_ids
+from web.medical_records import document_links, document_records, repeating_document_ids
 from web.helpers import (
     PRIVATE_IMMUTABLE_CACHE,
     apply_pagination,
@@ -115,7 +115,9 @@ def _over_quota(owner: str, adding: int) -> bool:
 SCAN_CATEGORY = "imaging"
 
 
-def _serialize_document(doc: dict, links: Optional[dict] = None, reminded: Optional[set] = None) -> dict:
+def _serialize_document(
+    doc: dict, links: Optional[dict] = None, reminded: Optional[set] = None, records: Optional[dict] = None
+) -> dict:
     """Convert an internal Mongo document doc into the JSON-friendly shape.
 
     ``links``: which kinds of medical record point at each document (see
@@ -126,6 +128,8 @@ def _serialize_document(doc: dict, links: Optional[dict] = None, reminded: Optio
     doc["_id"] = str(doc["_id"])
     doc["medical_record_kinds"] = (links or {}).get(doc["_id"], [])
     doc["record_reminds"] = doc["_id"] in (reminded or set())
+    # Where the file came from: the records that hold it (a visit, a vaccination), for the line under it and for search.
+    doc["medical_records"] = (records or {}).get(doc["_id"], [])
     doc["pet_id"] = str(doc.get("pet_id", ""))
     # Where a file sits in the bucket is ours to know, not the client's.
     doc.pop("file_id", None)
@@ -399,7 +403,8 @@ def get_documents():
         paginated_query, _ = apply_pagination(base_query, page, page_size)
         links = document_links(pet_id)
         reminded = repeating_document_ids(pet_id)
-        documents = [_serialize_document(d, links, reminded) for d in paginated_query]
+        records = document_records(pet_id)
+        documents = [_serialize_document(d, links, reminded, records) for d in paginated_query]
 
         return jsonify({"documents": documents, "page": page, "page_size": page_size, "total": total})
     except Exception as e:
@@ -417,7 +422,11 @@ def get_document(id):
     """Fetch a single document's metadata by id."""
     try:
         return jsonify(
-            {"document": _serialize_document(g.record, document_links(g.pet_id), repeating_document_ids(g.pet_id))}
+            {
+                "document": _serialize_document(
+                    g.record, document_links(g.pet_id), repeating_document_ids(g.pet_id), document_records(g.pet_id)
+                )
+            }
         )
     except Exception as e:
         app.logger.error(f"Error fetching document: {e}")

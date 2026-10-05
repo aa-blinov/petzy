@@ -1771,6 +1771,15 @@ class DocumentListQuery(PetIdPaginationQuery):
     category: Optional[str] = Field(None, description="Фильтр по категории (без него все)")
 
 
+class DocumentRecordRef(BaseModel):
+    id: str
+    kind: Optional[str] = None
+    title: str = ""
+    date: Optional[str] = None
+    diagnosis: Optional[str] = None
+    clinic: Optional[str] = None
+
+
 class DocumentItem(BaseModel):
     id: str = Field(alias="_id")
     pet_id: str
@@ -1790,6 +1799,10 @@ class DocumentItem(BaseModel):
     record_reminds: bool = Field(
         default=False,
         description="Запись с датой повтора ссылается на документ: напоминает о сроке сама, срок документа не дублируется",
+    )
+    medical_records: List[DocumentRecordRef] = Field(
+        default_factory=list,
+        description="Записи медкарты, к которым прикреплён документ, новые первыми: откуда файл и по чему его искать",
     )
 
     model_config = ConfigDict(populate_by_name=True)
