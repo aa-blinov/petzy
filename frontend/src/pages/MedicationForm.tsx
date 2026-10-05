@@ -290,7 +290,6 @@ export function MedicationForm() {
         setValue('dose_unit', common.dose_unit, filled);
     };
 
-    const endedOn = useWatch({ control, name: 'ended_on' });
     const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
     useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!med, release });
 
@@ -315,6 +314,30 @@ export function MedicationForm() {
         },
         onError: (err: unknown) => {
             showToast.failure(getApiErrorMessage(err, 'Не удалось завершить курс'));
+        },
+    });
+
+    // «Возобновить курс»: the way back from a finished one, with the end date cleared, undoable from the bar.
+    const resumeCourse = useMutation({
+        mutationFn: async () => {
+            await medicationsService.update(id!, { is_active: true, ended_on: '' });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['medications'] });
+            queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+            release();
+            showUndo({
+                message: `Курс «${med?.name ?? 'лекарства'}» возобновлён`,
+                onUndo: async () => {
+                    await medicationsService.update(id!, { is_active: false, ended_on: med?.ended_on ?? getCurrentDate() });
+                    await queryClient.invalidateQueries({ queryKey: ['medications'] });
+                    await queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+                },
+            });
+            goBack(navigate, '/medications');
+        },
+        onError: (err: unknown) => {
+            showToast.failure(getApiErrorMessage(err, 'Не удалось возобновить курс'));
         },
     });
 
@@ -848,28 +871,6 @@ export function MedicationForm() {
                             )}
                         />
                         <Controller
-                            name="is_active"
-                            control={control}
-                            render={({ field }) => (
-                                <Form.Item
-                                    label="Принимает сейчас"
-                                    description="Выключите, когда курс закончится: он останется в медкарте как прошлый"
-                                    extra={
-                                        <Switch
-                                            aria-label="Принимает сейчас"
-                                            checked={field.value}
-                                            onChange={(on) => {
-                                                field.onChange(on);
-                                                // Switched back on with an end date already past: the date goes,
-                                                // or the course would stay ended.
-                                                if (on && endedOn && endedOn < getCurrentDate()) setValue('ended_on', '', { shouldDirty: true });
-                                            }}
-                                        />
-                                    }
-                                />
-                            )}
-                        />
-                        <Controller
                             name="comment"
                             control={control}
                             render={({ field }) => (
@@ -908,18 +909,32 @@ export function MedicationForm() {
                         >
                             Отмена
                         </Button>
-                        {isEditing && id && med && med.course_status !== 'ended' && (
-                            <Button
-                                block
-                                size="large"
-                                fill="outline"
-                                loading={finishCourse.isPending}
-                                disabled={finishCourse.isPending}
-                                onClick={() => finishCourse.mutate()}
-                                style={{ marginBottom: 'var(--spacing-md)' }}
-                            >
-                                Завершить курс
-                            </Button>
+                        {isEditing && id && med && (
+                            med.course_status !== 'ended' ? (
+                                <Button
+                                    block
+                                    size="large"
+                                    fill="outline"
+                                    loading={finishCourse.isPending}
+                                    disabled={finishCourse.isPending}
+                                    onClick={() => finishCourse.mutate()}
+                                    style={{ marginBottom: 'var(--spacing-md)' }}
+                                >
+                                    Завершить курс
+                                </Button>
+                            ) : (
+                                <Button
+                                    block
+                                    size="large"
+                                    fill="outline"
+                                    loading={resumeCourse.isPending}
+                                    disabled={resumeCourse.isPending}
+                                    onClick={() => resumeCourse.mutate()}
+                                    style={{ marginBottom: 'var(--spacing-md)' }}
+                                >
+                                    Возобновить курс
+                                </Button>
+                            )
                         )}
                         {isEditing && id && med && (
                             <FormDangerButton
