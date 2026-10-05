@@ -28,6 +28,9 @@ import { EmptyState } from '../components/EmptyState';
 import { deleteWithUndo, useHiddenRecords } from '../utils/deferredDelete';
 import { utcStampToLocal } from '../utils/dateUtils';
 import { NoPetState } from '../components/NoPetState';
+import { matchesDocumentQuery } from '../utils/documentSearch';
+import { formatDate } from '../utils/medicalCardFormat';
+import './DocumentsList.css';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
@@ -159,10 +162,8 @@ export function DocumentsList() {
   // A document deleted a moment ago, «Отменить» still on offer, is left out of the list.
   const hiddenDocuments = useHiddenRecords();
   const searchedDocuments = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
     const shown = documents.filter((doc) => !hiddenDocuments.has(doc._id));
-    if (!q) return shown;
-    return shown.filter((doc) => doc.title.toLowerCase().includes(q));
+    return shown.filter((doc) => matchesDocumentQuery(doc, searchQuery));
   }, [documents, searchQuery, hiddenDocuments]);
 
   // Sections replace the old category filter — with the handful of
@@ -298,7 +299,7 @@ export function DocumentsList() {
 
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
           <SearchBar
-            placeholder="Поиск по названию"
+            placeholder="Название, запись, диагноз, клиника"
             value={searchQuery}
             onChange={setSearchQuery}
             onClear={() => setSearchQuery('')}
@@ -397,30 +398,6 @@ export function DocumentsList() {
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
                                   <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{doc.title}</h3>
-                                  {inCard && (
-                                    <button
-                                      type="button"
-                                      className="touch-target"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(`/pets/${selectedPetId}/medical-card`);
-                                      }}
-                                      style={{
-                                        fontSize: 'var(--text-xs)',
-                                        fontWeight: 600,
-                                        color: 'var(--app-accent-deep)',
-                                        background: 'var(--app-accent-soft)',
-                                        padding: '2px 8px',
-                                        borderRadius: 'var(--radius-sm)',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        whiteSpace: 'nowrap',
-                                        fontFamily: 'inherit',
-                                      }}
-                                    >
-                                      В медкарте
-                                    </button>
-                                  )}
                                   {doc.category === 'vaccination' && !inCard && selectedPetId && (
                                     <button
                                       type="button"
@@ -461,6 +438,23 @@ export function DocumentsList() {
                                     </span>
                                   )}
                                 </div>
+                                {(doc.medical_records ?? []).length > 0 && selectedPetId && (() => {
+                                  // Where the file came from: the record that holds it, one tap to it. The newest is named; the rest are counted.
+                                  const [first, ...rest] = doc.medical_records ?? [];
+                                  return (
+                                    <button
+                                      type="button"
+                                      className="docs__source touch-target"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pets/${selectedPetId}/medical-records/${first.id}`);
+                                      }}
+                                    >
+                                      Из записи: {first.title}{first.date ? `, ${formatDate(first.date)}` : ''}
+                                      {rest.length > 0 ? ` и ещё ${rest.length}` : ''}
+                                    </button>
+                                  );
+                                })()}
                                 <p
                                   style={{
                                     margin: 'var(--spacing-2xs) 0 0',

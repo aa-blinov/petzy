@@ -1,0 +1,16 @@
+/* The line under a document's title that says which record holds the file: the way back to where it was taken. */
+.docs__source {
+    display: block;
+    max-width: 100%;
+    margin: var(--spacing-xs) 0 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}

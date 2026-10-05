@@ -172,6 +172,28 @@ def document_links(pet_id: str, db=None) -> dict[str, list[str]]:
     return links
 
 
+def document_records(pet_id: str) -> dict[str, list[dict]]:
+    """For each document some record points at: those records, newest first, with what a person searches by (the title, the
+    day, the diagnosis, the clinic), so that Documents can say where a file came from and be searched by it."""
+    refs: dict[str, list[dict]] = {}
+    cursor = app.db.medical_records.find(
+        {"pet_id": pet_id, "document_ids": {"$exists": True, "$ne": []}},
+        {"document_ids": 1, "kind": 1, "title": 1, "date": 1, "diagnosis": 1, "clinic": 1},
+    ).sort("date", -1)
+    for record in cursor:
+        ref = {
+            "id": str(record["_id"]),
+            "kind": record.get("kind"),
+            "title": record.get("title", ""),
+            "date": record.get("date"),
+            "diagnosis": record.get("diagnosis"),
+            "clinic": record.get("clinic"),
+        }
+        for doc_id in record.get("document_ids") or []:
+            refs.setdefault(doc_id, []).append(ref)
+    return refs
+
+
 def linked_document_ids(pet_id: str) -> set[str]:
     """Documents some record already points at (a certificate that has become a record)."""
     return set(document_links(pet_id))

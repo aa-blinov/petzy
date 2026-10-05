@@ -471,7 +471,7 @@ export function MedicalRecordForm() {
       }
       queryClient.invalidateQueries({ queryKey: ['medical-card', petId] });
       queryClient.invalidateQueries({ queryKey: ['medical-record', recordId] });
-      // The Documents list says «В медкарте» for what a record points at.
+      // The Documents list names the record that holds a file («Из записи: …»).
       queryClient.invalidateQueries({ queryKey: ['documents', petId] });
       if (isEditing) showToast.success('Запись сохранена');
       else {

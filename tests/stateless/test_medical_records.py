@@ -418,6 +418,47 @@ class TestDocumentsKnowTheirRecords:
             == []
         )
 
+    def test_a_document_says_which_records_hold_it_for_the_line_under_it_and_for_search(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        photo, free = self._doc(mock_db, test_pet, "Фото выписки"), self._doc(mock_db, test_pet, "Без записи")
+        _post(
+            client,
+            regular_user_token,
+            test_pet,
+            kind="visit",
+            title="Плановый осмотр",
+            date="2026-09-23",
+            diagnosis="Дисплазия",
+            clinic="Ортовет",
+            document_ids=[photo],
+        )
+        _post(
+            client,
+            regular_user_token,
+            test_pet,
+            kind="visit",
+            title="Контроль",
+            date="2026-10-02",
+            document_ids=[photo],
+        )
+        listing = client.get(f"/api/documents?pet_id={test_pet['_id']}", headers=_auth(regular_user_token)).get_json()[
+            "documents"
+        ]
+        by_title = {d["title"]: d["medical_records"] for d in listing}
+        assert [r["title"] for r in by_title["Фото выписки"]] == ["Контроль", "Плановый осмотр"]  # newest first
+        oldest = by_title["Фото выписки"][1]
+        assert (oldest["date"], oldest["diagnosis"], oldest["clinic"]) == ("2026-09-23", "Дисплазия", "Ортовет")
+        assert by_title["Без записи"] == []
+        single = client.get(f"/api/documents/{photo}", headers=_auth(regular_user_token)).get_json()["document"]
+        assert len(single["medical_records"]) == 2
+        assert (
+            client.get(f"/api/documents/{free}", headers=_auth(regular_user_token)).get_json()["document"][
+                "medical_records"
+            ]
+            == []
+        )
+
     def test_a_record_speaks_for_a_certificate_only_when_it_repeats(
         self, client, mock_db, regular_user_token, test_pet
     ):
