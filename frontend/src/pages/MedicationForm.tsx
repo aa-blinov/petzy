@@ -7,7 +7,6 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { Button, Form, Input, Switch, Selector, Picker } from 'antd-mobile';
-import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -156,7 +155,7 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
-    const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isSubmitted, isDirty } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+    const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
         // onInvalidSubmit scrolls to and focuses the first error in page order;
         // RHF's own focus picked the first registered ref instead.
         // Validated when a field is left, and after that as it changes: an error
@@ -173,7 +172,7 @@ export function MedicationForm() {
             dose_unit: '',
             default_dose: 1,
             schedule: {
-                // None chosen: the person says on which days, and «Каждый день» under them is one tap for the usual case.
+                // None chosen: the person says on which days.
                 days: [],
                 times: ['08:00'],
             },
@@ -619,14 +618,6 @@ export function MedicationForm() {
                                         />
                                     )}
                                 />
-                                <ChoiceChips label="Быстрый выбор дней">
-                                    <ChoiceChip
-                                        pressed={(watchedDays ?? []).length === 7}
-                                        onClick={() => setValue('schedule.days', (watchedDays ?? []).length === 7 ? [] : [0, 1, 2, 3, 4, 5, 6], { shouldDirty: true, shouldValidate: isSubmitted })}
-                                    >
-                                        Каждый день
-                                    </ChoiceChip>
-                                </ChoiceChips>
                                 {/* Right under the chips it is about, not at the
                                     bottom of the whole schedule block. */}
                                 {errors.schedule?.days?.message && <FieldError message={errors.schedule.days.message} />}
