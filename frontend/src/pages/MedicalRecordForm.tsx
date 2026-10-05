@@ -844,19 +844,59 @@ export function MedicalRecordForm() {
             </>
           )}
 
-          <Form.Item
-            label="Документы"
-            clickable
-            arrow
-            onClick={() => setDocsOpen(true)}
-            description="Сертификат, выписка, фото наклейки: выберите из загруженных или добавьте новые"
-          >
-            <PickerValue
-              value={[...chosenDocs.map((d) => d.title), ...staged.map((f) => f.file.name)].join(', ')}
-              placeholder="Не прикреплены"
-            />
-          </Form.Item>
         </Form>
+
+        {/* The photo of what the clinic gave (a discharge, a sticker, a certificate) is often the quickest way to record a visit:
+            the camera is one tap away here, not behind a row that opens a sheet. A file waits to be saved with the record. */}
+        <section className="safe-area-padding medrec__docs" aria-labelledby="medrec-docs">
+          <h2 id="medrec-docs" className="section-header">Фото и документы</h2>
+          <div className="medrec__add-files">
+            <Button fill="outline" color="primary" size="large" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => cameraInput.current?.click()}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <Camera size={18} strokeWidth={2.2} aria-hidden />
+                Сфотографировать
+              </span>
+            </Button>
+            <Button fill="outline" color="primary" size="large" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => fileInput.current?.click()}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <FileUp size={18} strokeWidth={2.2} aria-hidden />
+                Выбрать файл
+              </span>
+            </Button>
+          </div>
+          {/* Two inputs: one opens the camera, the other the gallery and files. */}
+          <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden aria-label="Сфотографировать" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
+          <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden aria-label="Выбрать файл" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
+          {staged.length === 0 && chosenDocs.length === 0 && (
+            <p className="medrec__add-hint">Фото или PDF до {formatFileSize(MAX_FILE_BYTES)}. Файл появится и в разделе «Документы», когда запись сохранится</p>
+          )}
+
+          {(staged.length > 0 || chosenDocs.length > 0) && (
+            <ul className="medrec__files">
+              {staged.map((item) => (
+                <StagedRow key={item.key} item={item} onRemove={() => setStaged((current) => current.filter((f) => f.key !== item.key))} />
+              ))}
+              {chosenDocs.map((d) => (
+                <li key={d._id} className="medrec__file">
+                  <FileText size={28} strokeWidth={1.6} aria-hidden className="medrec__file-icon" />
+                  <span className="medrec__file-name">
+                    {d.title}
+                    <span className="medrec__file-size">{DOCUMENT_CATEGORY_LABELS[d.category]}</span>
+                  </span>
+                  <button type="button" className="touch-target medrec__file-remove" aria-label={`Убрать документ ${d.title}`} onClick={() => setValue('document_ids', documentIds.filter((x) => x !== d._id), { shouldDirty: true })}>
+                    <X size={18} strokeWidth={2.2} aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {(documents.data ?? []).length > 0 && (
+            <button type="button" className="medrec__link touch-target" onClick={() => setDocsOpen(true)}>
+              Выбрать из загруженных
+            </button>
+          )}
+        </section>
 
         {/* A long form: the button stays in reach above the tab bar, not three screens down. */}
         <div className="form-sticky-action safe-area-padding">
@@ -920,41 +960,10 @@ export function MedicalRecordForm() {
 
       <Popup visible={docsOpen} onMaskClick={() => setDocsOpen(false)} onClose={() => setDocsOpen(false)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75vh', overflow: 'auto' }}>
         <div style={{ padding: 'var(--spacing-md)' }}>
-          <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)' }}>Документы к записи</h2>
-
-          <div className="medrec__add-files">
-            <Button fill="outline" color="primary" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => cameraInput.current?.click()}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                <Camera size={18} strokeWidth={2.2} aria-hidden />
-                Сфотографировать
-              </span>
-            </Button>
-            <Button fill="outline" color="primary" disabled={documentIds.length + staged.length >= MAX_DOCUMENTS} onClick={() => fileInput.current?.click()}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                <FileUp size={18} strokeWidth={2.2} aria-hidden />
-                Выбрать файл
-              </span>
-            </Button>
-          </div>
-          <p className="medrec__add-hint">Фото или PDF до {formatFileSize(MAX_FILE_BYTES)}. Файл появится и в разделе «Документы», когда вы сохраните запись</p>
-          {/* Two inputs: one opens the camera, the other the gallery and files. */}
-          <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden aria-label="Сфотографировать" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
-          <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden aria-label="Выбрать файл" onChange={(e) => { pickFiles(e.target.files); e.target.value = ''; }} />
-
-          {staged.length > 0 && (
-            <>
-              <h3 className="medrec__subhead">Будет добавлено</h3>
-              <ul className="medrec__files">
-                {staged.map((item) => (
-                  <StagedRow key={item.key} item={item} onRemove={() => setStaged((current) => current.filter((f) => f.key !== item.key))} />
-                ))}
-              </ul>
-            </>
-          )}
+          <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)' }}>Уже загруженные документы</h2>
 
           {(documents.data ?? []).length > 0 && (
             <>
-              <h3 className="medrec__subhead">Уже загруженные</h3>
               <CheckList multiple value={documentIds} onChange={(v) => setValue('document_ids', v as string[], { shouldDirty: true })}>
                 {(documents.data ?? []).map((d) => (
                   <CheckList.Item key={d._id} value={d._id} description={DOCUMENT_CATEGORY_LABELS[d.category]}>
