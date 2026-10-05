@@ -129,6 +129,58 @@ class TestSavingTheProfile:
 
 
 @pytest.mark.health
+class TestRepeatsAreMerged:
+    def test_an_allergen_written_twice_is_one_allergen_with_what_each_said(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        body = {
+            **FULL,
+            "allergies": [
+                {"substance": "Курица", "reaction": "зуд"},
+                {"substance": "  курица  ", "reaction": "Зуд"},
+                {"substance": "КУРИЦА", "reaction": "сыпь"},
+                {"substance": "Амоксициллин"},
+            ],
+        }
+        assert _put(client, regular_user_token, test_pet, body).status_code == 200
+        allergies = _card(client, regular_user_token, test_pet)["profile"]["allergies"]
+        assert [(a["substance"], a["reaction"]) for a in allergies] == [("Курица", "зуд, сыпь"), ("Амоксициллин", None)]
+
+    def test_a_condition_written_twice_is_one_with_the_earliest_year_and_both_notes(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        body = {
+            **FULL,
+            "conditions": [
+                {"name": "Гастрит", "since_year": 2024, "note": "осенью"},
+                {"name": "гастрит", "since_year": 2022, "note": "диета"},
+                {"name": "Дисплазия"},
+            ],
+        }
+        assert _put(client, regular_user_token, test_pet, body).status_code == 200
+        conditions = _card(client, regular_user_token, test_pet)["profile"]["conditions"]
+        assert [(c["name"], c["since_year"], c["note"]) for c in conditions] == [
+            ("Гастрит", 2022, "осенью; диета"),
+            ("Дисплазия", None, None),
+        ]
+
+    def test_the_joined_reaction_stays_within_its_length(self, client, mock_db, regular_user_token, test_pet):
+        body = {
+            **FULL,
+            "allergies": [{"substance": "Корм", "reaction": "а" * 150}, {"substance": "корм", "reaction": "б" * 150}],
+        }
+        assert _put(client, regular_user_token, test_pet, body).status_code == 200
+        reaction = _card(client, regular_user_token, test_pet)["profile"]["allergies"][0]["reaction"]
+        assert len(reaction) <= 200 and reaction.startswith("а" * 150)
+
+    def test_different_allergens_are_all_kept(self, client, mock_db, regular_user_token, test_pet):
+        body = {**FULL, "allergies": [{"substance": "Курица"}, {"substance": "Курица в соусе"}, {"substance": "Рыба"}]}
+        assert _put(client, regular_user_token, test_pet, body).status_code == 200
+        names = [a["substance"] for a in _card(client, regular_user_token, test_pet)["profile"]["allergies"]]
+        assert names == ["Курица", "Курица в соусе", "Рыба"]
+
+
+@pytest.mark.health
 class TestWhoMayEditIt:
     def _member(self, mock_db, pet, name="friend"):
         mock_db["users"].insert_one({"username": name, "is_active": True, "password_hash": "x"})

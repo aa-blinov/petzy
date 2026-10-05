@@ -761,6 +761,66 @@ class ClinicEntry(BaseModel):
         return _blank_to_none(v)
 
 
+def _same_text(value: str) -> str:
+    """What makes two spellings one: the case and the spaces do not count."""
+    return " ".join(value.split()).casefold()
+
+
+def _joined(parts: List[Optional[str]], separator: str, limit: int) -> Optional[str]:
+    """The distinct non-empty parts in order, cut to the field's length (never cut in the middle of the join's own text)."""
+    seen: set = set()
+    kept: List[str] = []
+    for part in parts:
+        if not part:
+            continue
+        key = _same_text(part)
+        if key and key not in seen:
+            seen.add(key)
+            kept.append(part)
+    text = separator.join(kept)
+    return text[:limit] or None
+
+
+def _merged_allergies(items: List["Allergy"]) -> List["Allergy"]:
+    order: List[str] = []
+    groups: dict = {}
+    for item in items:
+        key = _same_text(item.substance)
+        if key not in groups:
+            order.append(key)
+            groups[key] = []
+        groups[key].append(item)
+    out = []
+    for key in order:
+        group = groups[key]
+        first = group[0]
+        out.append(Allergy(substance=first.substance, reaction=_joined([a.reaction for a in group], ", ", 200)))
+    return out
+
+
+def _merged_conditions(items: List["Condition"]) -> List["Condition"]:
+    order: List[str] = []
+    groups: dict = {}
+    for item in items:
+        key = _same_text(item.name)
+        if key not in groups:
+            order.append(key)
+            groups[key] = []
+        groups[key].append(item)
+    out = []
+    for key in order:
+        group = groups[key]
+        years = [c.since_year for c in group if c.since_year]
+        out.append(
+            Condition(
+                name=group[0].name,
+                since_year=min(years) if years else None,
+                note=_joined([c.note for c in group], "; ", 300),
+            )
+        )
+    return out
+
+
 class MedicalProfile(BaseModel):
     """PUT /api/pets/<id>/medical-profile: the whole profile, replacing the old one."""
 
@@ -795,6 +855,14 @@ class MedicalProfile(BaseModel):
     @classmethod
     def blank_to_none(cls, v):
         return _blank_to_none(v)
+
+    @model_validator(mode="after")
+    def merge_repeats(self):
+        """The same allergen written twice («Курица» and «курица ») is one allergen, and the same condition one condition: what
+        each said is kept, joined, so that a vet reads a list with no repeats and loses nothing."""
+        self.allergies = _merged_allergies(self.allergies)
+        self.conditions = _merged_conditions(self.conditions)
+        return self
 
     @model_validator(mode="after")
     def allergies_or_none(self):
