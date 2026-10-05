@@ -632,11 +632,14 @@ export function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
           </div>
         ))}
       </div>
-      {clinic.phone && (
+      {clinic.phone && (clinic.phone.replace(/\D/g, '').length >= 5 ? (
         <a className="medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
           Позвонить {clinic.phone}
         </a>
-      )}
+      ) : (
+        // Not a number to dial («регистратура», a note): said as it was written, not a button that calls nobody.
+        <div className="medcard__row-sub">Телефон: {clinic.phone}</div>
+      ))}
     </li>
   );
 }
