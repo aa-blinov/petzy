@@ -124,7 +124,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                   )}
                   <span
                     style={{
-                      fontSize: '13px',
+                      fontSize: 'var(--text-sm)',
                       fontWeight: 600,
                       lineHeight: 1.25,
                       letterSpacing: '-0.01em',

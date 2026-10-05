@@ -228,7 +228,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
                 <>
                   <PickerValue id={field.name} value={selectedOption?.label} placeholder="Выберите..." />
                   {value === defaultVal && (
-                    <div style={{ fontSize: '12px', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'left' }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'left' }}>
                       Значение по умолчанию
                     </div>
                   )}

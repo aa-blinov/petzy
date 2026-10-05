@@ -52,7 +52,7 @@ function newDraftKey() {
  *  gets one of these instead. */
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--app-text-tertiary)', marginBottom: '4px' }}>
+    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--app-text-tertiary)', marginBottom: '4px' }}>
       {children}
     </div>
   );
@@ -316,7 +316,7 @@ export function EventTypeForm() {
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
             Поля {fields.length > 0 && `(${fields.length})`}
           </h2>
-          <p style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: '13px', color: 'var(--app-text-secondary)' }}>
+          <p style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Дата, время и комментарий добавляются автоматически. Здесь только то, что нужно именно этому типу
           </p>
 
@@ -327,7 +327,7 @@ export function EventTypeForm() {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   marginBottom: '12px',
                 }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--app-text-secondary)' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-secondary)' }}>
                     Поле {index + 1}
                   </span>
                   <button
@@ -376,10 +376,11 @@ export function EventTypeForm() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Switch
+                    aria-label={`Обязательное, поле ${index + 1}`}
                     checked={field.required}
                     onChange={(checked) => updateField(field.key, { required: checked })}
                   />
-                  <span style={{ fontSize: '14px', color: 'var(--app-text-primary)' }}>Обязательное</span>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-primary)' }}>Обязательное</span>
                 </div>
               </div>
             ))}
@@ -412,7 +413,7 @@ export function EventTypeForm() {
           {chartKind === 'value' && (
             <>
               {numberFields.length === 0 ? (
-                <p style={{ fontSize: '13px', color: 'var(--app-text-secondary)' }}>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                   Добавьте числовое поле выше, чтобы построить по нему график
                 </p>
               ) : (

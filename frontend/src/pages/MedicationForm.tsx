@@ -695,7 +695,7 @@ export function MedicationForm() {
                             render={({ field }) => (
                                 <Form.Item
                                     label="Включить"
-                                    extra={<Switch checked={field.value} onChange={field.onChange} />}
+                                    extra={<Switch aria-label="Учёт остатков" checked={field.value} onChange={field.onChange} />}
                                     description={field.value ? `Будем списывать по ${formatAmount(parseAmount(String(watchedDefaultDose)) || 1)} ${doseUnit} за приём` : undefined}
                                 />
                             )}
@@ -856,6 +856,7 @@ export function MedicationForm() {
                                     description="Выключите, когда курс закончится: он останется в медкарте как прошлый"
                                     extra={
                                         <Switch
+                                            aria-label="Принимает сейчас"
                                             checked={field.value}
                                             onChange={(on) => {
                                                 field.onChange(on);

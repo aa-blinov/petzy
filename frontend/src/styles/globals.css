@@ -199,6 +199,8 @@
     /* 20px */
     --text-xxl: 1.5rem;
     /* 24px */
+    --text-display: 1.75rem;
+    /* 28px: the title of a top-level screen (the pets, the medicines, the documents, the settings) */
 
     /* The smallest target for a finger: a control may be drawn smaller, it may not be pressed smaller. */
     --touch-min: 44px;

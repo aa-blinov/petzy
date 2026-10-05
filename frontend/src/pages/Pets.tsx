@@ -65,7 +65,7 @@ export function Pets() {
           alignItems: 'center',
           minHeight: '40px',
         }}>
-          <h1 className="display-headline" style={{ fontSize: '28px', margin: 0 }}>
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
             Мои питомцы
           </h1>
           <button
@@ -346,7 +346,7 @@ function PetCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  fontSize: '12px',
+                  fontSize: 'var(--text-xs)',
                   // A full pill next to the avatar's soft rounded-square
                   // photo read as two different shape languages in the
                   // same small card — this matches the avatar's corner
@@ -369,7 +369,7 @@ function PetCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  fontSize: '12px',
+                  fontSize: 'var(--text-xs)',
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
@@ -395,7 +395,7 @@ function PetCard({
                       display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    fontSize: '12px',
+                    fontSize: 'var(--text-xs)',
                     fontWeight: 600,
                     border: 'none',
                     cursor: 'pointer',
@@ -420,7 +420,7 @@ function PetCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  fontSize: '12px',
+                  fontSize: 'var(--text-xs)',
                   borderRadius: 'var(--radius-sm)',
                 }}
               >
@@ -435,7 +435,7 @@ function PetCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  fontSize: '12px',
+                  fontSize: 'var(--text-xs)',
                   borderRadius: 'var(--radius-sm)',
                 }}
               >

@@ -136,7 +136,7 @@ export function EventTypesSettings() {
                         <Icon size={18} strokeWidth={2} />
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, fontSize: '15px', color: 'var(--app-text-primary)' }}>
+                        <div style={{ fontWeight: 500, fontSize: 'var(--text-md)', color: 'var(--app-text-primary)' }}>
                           {eventType.label}
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>

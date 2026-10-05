@@ -375,6 +375,7 @@ export function MedicalProfileForm() {
                 description="Врач увидит «не выявлено», а не «не указаны»"
                 extra={
                   <Switch
+                    aria-label="Аллергий нет"
                     checked={field.value}
                     onChange={(on) => {
                       field.onChange(on);

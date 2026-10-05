@@ -9,6 +9,8 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { hapticFeedback } from '../utils/haptic';
 import { goBack } from '../utils/navigation';
+import { FieldError } from '../components/FieldError';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 /** The push subscription dies with the account on the server; drop this
     browser's copy too, so it doesn't sit there subscribed to nothing. */
@@ -59,6 +61,7 @@ export function AccountDelete() {
   const { username, logout } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [asked, setAsked] = useState(false);
   const [busy, setBusy] = useState(false);
   const { data: preview, isLoading, isError } = useQuery({
     queryKey: ['account', 'deletion'],
@@ -67,8 +70,9 @@ export function AccountDelete() {
   });
 
   const ask = () => {
+    setAsked(true);
     if (!password) {
-      showToast.failure('Введите пароль');
+      onInvalidSubmit({ password: { type: 'required', message: 'Введите пароль' } });
       return;
     }
     hapticFeedback('medium');
@@ -148,7 +152,7 @@ export function AccountDelete() {
 
         {preview?.can_delete && (
           <Form layout="vertical" mode="card" style={{ marginTop: 'var(--spacing-lg)' }}>
-            <Form.Item label="Пароль" description="Чтобы подтвердить, что это вы">
+            <Form.Item label="Пароль" description={asked && !password ? <FieldError message="Введите пароль" /> : 'Чтобы подтвердить, что это вы'}>
               <Input
                 id="delete-account-password"
                 type="password"
