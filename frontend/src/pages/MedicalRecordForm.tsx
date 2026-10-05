@@ -17,12 +17,14 @@ import {
   type ParasiteTarget,
 } from '../services/medicalRecords.service';
 import { documentsListQuery, documentsService, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
+import { httpStatus } from '../services/api';
 import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
 import { DatePickerField } from '../components/DatePickerField';
 import { FieldError } from '../components/FieldError';
 import { fieldNote } from '../components/FieldNote';
+import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PickerValue } from '../components/PickerValue';
@@ -42,9 +44,11 @@ import { addInterval, daysBetween, DEFAULT_REPEAT, PARASITE_PRODUCTS, parasiteTa
 import { showToast } from '../utils/toast';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
-import { Camera, FileUp, FileText, X } from 'lucide-react';
+import { Camera, FileUp, FileHeart, FileText, X } from 'lucide-react';
 import { DownOutline, UpOutline } from 'antd-mobile-icons';
 import './MedicalRecordForm.css';
+// The rows of the card itself: the kind picker and the «От чего» fallback read like the card they belong to.
+import './MedicalCard.css';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 
 /** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
@@ -206,8 +210,13 @@ export function MedicalRecordForm() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { pets } = usePet();
+  const { pets, selectedPetId, selectPet } = usePet();
   const pet = pets.find((p) => p._id === petId);
+  // The same as the card: the address of another pet makes that pet the chosen one, so the switcher at the top is not lying.
+  useEffect(() => {
+    const target = pets.find((p) => p._id === petId);
+    if (target && target._id !== selectedPetId) selectPet(target);
+  }, [petId, pets, selectedPetId, selectPet]);
   const isEditing = !!recordId;
   const cardPath = `/pets/${petId}/medical-card`;
 
@@ -534,25 +543,53 @@ export function MedicalRecordForm() {
     save.mutate(data);
   };
 
-  if (!petId || !kind) {
+  if (!petId) {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <LoadError what="запись" onRetry={() => (isEditing ? record.refetch() : navigate(cardPath, { replace: true }))} />
+          <LoadError what="запись" onRetry={() => navigate(cardPath, { replace: true })} />
         </div>
       </div>
     );
   }
-  if (record.isError || card.isError) {
+  if (card.isError || (isEditing && record.isError)) {
+    // A pet that is gone and a screen that did not load are different: one asks the person to go back to the list,
+    // the other to try once more. «Повторить» on a deleted pet never helps.
+    const gone = [403, 404].includes(httpStatus(card.error ?? record.error) ?? 0);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <LoadError what="запись" onRetry={() => Promise.all([record.refetch(), card.refetch()])} />
+          {gone ? (
+            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или закрыли вам доступ" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
+          ) : (
+            <LoadError what="запись" onRetry={() => Promise.all([record.refetch(), card.refetch()])} />
+          )}
         </div>
       </div>
     );
   }
   if (isEditing ? !record.data : !card.data) return <LoadingSpinner />;
+
+  /* Opened without saying what to write about (an old link, a bookmark): asking which kind of record this is, rather than a
+     form that failed to load with a retry that will fail again. */
+  if (!kind) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container safe-area-padding">
+          <EmptyState icon={FileText} title="Не выбрано, что записать" description="Выберите вид записи, и откроется форма" />
+          <ul className="medcard__list">
+            {KINDS.map((k) => (
+              <li key={k} className="medcard__row" style={{ padding: 0 }}>
+                <button type="button" className="medcard__row-button medcard__todo-row" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=${k}`, { replace: true })}>
+                  <span className="medcard__row-title">{MEDICAL_KIND_LABELS[k].one}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
 
   const chosenDocs = (documents.data ?? []).filter((d) => documentIds.includes(d._id));
 
@@ -601,26 +638,40 @@ export function MedicalRecordForm() {
             )}
           />
 
-          {kind === 'vaccination' && groupOptions.length > 0 && (
-            <PickerField
-              label="От чего"
-              value={protects ?? ''}
-              options={groupOptions.map((g) => ({ label: g.label, value: g.key }))}
-              placeholder="Не указано"
-              empty="Не указано"
-              description={
-                replaced
-                  ? `Заменит «${replaced.title}»: та же защита. Та запись останется в истории и больше не считается просроченной`
-                  : protects
-                    ? [groupOptions.find((g) => g.key === protects)?.detail, !protectsTouched && !isEditing ? 'Выбрано по названию. Можно изменить' : null].filter(Boolean).join('. ') || undefined
-                    : 'Нужно, чтобы смена марки не считалась новой прививкой. Если не знаете, оставьте пустым'
-              }
-              onChange={(v) => {
-                setProtectsTouched(true);
-                setValue('protects', v, { shouldDirty: true });
-              }}
-            />
-          )}
+          {/* The field is always here: it is what makes a change of brand the same vaccine. When the list has not come,
+              it says so and offers to fetch it again, instead of the field appearing out of nowhere later. */}
+          {kind === 'vaccination' &&
+            (groupOptions.length > 0 ? (
+              <PickerField
+                label="От чего"
+                value={protects ?? ''}
+                options={groupOptions.map((g) => ({ label: g.label, value: g.key }))}
+                placeholder="Не указано"
+                empty="Не указано"
+                description={
+                  replaced
+                    ? `Заменит «${replaced.title}»: та же защита. Та запись останется в истории и больше не считается просроченной`
+                    : protects
+                      ? [groupOptions.find((g) => g.key === protects)?.detail, !protectsTouched && !isEditing ? 'Выбрано по названию. Можно изменить' : null].filter(Boolean).join('. ') || undefined
+                      : 'Нужно, чтобы смена марки не считалась новой прививкой. Если не знаете, оставьте пустым'
+                }
+                onChange={(v) => {
+                  setProtectsTouched(true);
+                  setValue('protects', v, { shouldDirty: true });
+                }}
+              />
+            ) : (
+              <Form.Item label="От чего" description="Чтобы отметить защиту, укажите её в названии прививки">
+                <p className="medrec__add-hint">
+                  {catalogQuery.isError ? 'Список защит не загрузился. Можно указать защиту в названии прививки' : 'Загружаем список защит'}
+                </p>
+                {catalogQuery.isError && (
+                  <Button size="small" fill="outline" color="primary" onClick={() => void catalogQuery.refetch()}>
+                    Повторить
+                  </Button>
+                )}
+              </Form.Item>
+            ))}
 
           {kind === 'parasite' && (
             <Controller

@@ -7,12 +7,16 @@ import { z } from 'zod';
 import { isAxiosError } from 'axios';
 import { Button, Dialog, Form, Input, Switch } from 'antd-mobile';
 import { DeleteOutline } from 'antd-mobile-icons';
+import { FileHeart } from 'lucide-react';
 import { medicalCardService, type MedicalProfile } from '../services/medicalCard.service';
+import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { fieldNote } from '../components/FieldNote';
+import { httpStatus } from '../services/api';
+import { usePet } from '../hooks/usePet';
 import { useSessionDraft } from '../hooks/useSessionDraft';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -214,6 +218,12 @@ export function MedicalProfileForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const cardPath = `/pets/${id}/medical-card`;
+  const { pets, selectedPetId, selectPet } = usePet();
+  // The same as the card: the address of another pet makes that pet the chosen one, so the switcher at the top is not lying.
+  useEffect(() => {
+    const target = pets.find((p) => p._id === id);
+    if (target && target._id !== selectedPetId) selectPet(target);
+  }, [id, pets, selectedPetId, selectPet]);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -340,10 +350,17 @@ export function MedicalProfileForm() {
   };
 
   if (query.isError) {
+    // A pet that is gone and a screen that did not load are different: one asks the person to go back to the list,
+    // the other to try once more.
+    const gone = [403, 404].includes(httpStatus(query.error) ?? 0);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <LoadError what="данные для врача" onRetry={() => query.refetch()} />
+          {gone ? (
+            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или закрыли вам доступ" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
+          ) : (
+            <LoadError what="данные для врача" onRetry={() => query.refetch()} />
+          )}
         </div>
       </div>
     );

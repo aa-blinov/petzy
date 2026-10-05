@@ -9,7 +9,7 @@ import { MedicalSummary } from '../components/MedicalSummary';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
-import { readinessChecks } from '../utils/medicalReadiness';
+import { listWords, missingReadiness, readinessChecks } from '../utils/medicalReadiness';
 import { usePet } from '../hooks/usePet';
 import { LoadError } from '../components/LoadError';
 import { EmptyState } from '../components/EmptyState';
@@ -568,6 +568,12 @@ export function KindSection({ kind, card, petId, hidden, navigate }: { kind: Med
   );
 }
 
+/** The two ways to hand the card over are on the card from the start; on an empty one there is nothing to hand, and the
+    line under the heading says so instead of the block appearing out of nowhere later. */
+const EMPTY_HANDOVER = 'Карта почти пуста. Заполните её, и здесь появятся PDF и ссылка для врача';
+/** The file is worth having before the appointment, where the connection is often gone. */
+const PDF_HINT = 'Скачайте заранее: на приёме может не быть связи';
+
 type Mode = 'vet' | 'fill';
 function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
@@ -674,6 +680,9 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, a
   const visits = card.records.visit.filter((r) => !hidden.has(r._id)).slice(0, 3);
   // An operation does not wait for the full card: a vet asks about the neutering first.
   const procedures = card.records.procedure.filter((r) => !hidden.has(r._id)).slice(0, 3);
+  // A card opened by a link has no way back into the app, so the file is offered there and then, right under the date.
+  const byLink = !onShare;
+  const missing = missingReadiness(card);
   const handover = canPdf ? (
     <div className="medcard__topactions">
       <div className="medcard__topbuttons">
@@ -688,21 +697,29 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, a
           </Button>
         )}
       </div>
-      {onAll && <p className="medcard__hint">Скачайте заранее: на приёме может не быть связи</p>}
+      {(byLink || onAll) && <p className="medcard__hint">{PDF_HINT}</p>}
     </div>
   ) : onShare ? (
-    // A PDF of an empty card helps nobody: it is offered once two of the five are there, as in the whole card.
-    <p className="medcard__hint">Карта почти пуста. Заполните её в «Записях», и здесь появится PDF</p>
+    <p className="medcard__hint">{EMPTY_HANDOVER}</p>
   ) : null;
   return (
     <>
       <PatientLine pet={card.pet} weight={card.weight} named={named} />
       {afterPatient}
 
+      {/* On the page a vet opens by a link the file comes before everything that is read: it is what they take away with them. */}
+      {byLink && handover}
+
       <ImportantBlock card={card} onEdit={() => undefined} readOnly />
 
-      {/* The owner hands the card over, so the file and the link come right after what could harm, the first thing a vet reads.
-          A vet who opened the link reads first: the one button of the file comes after what there is to read. */}
+      {/* What the card does not have, in one line: a vet reads the empty parts as missing, not as «all is well». */}
+      {missing.length > 0 && (
+        <p className="medcard__empty" role="note">
+          Не заполнено: {listWords(missing)}
+        </p>
+      )}
+
+      {/* The owner hands the card over, so the file and the link come right after what could harm, the first thing a vet reads. */}
       {onShare && handover}
 
       <Section id="medcard-vet-meds" title="Лекарства">
@@ -811,8 +828,6 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, a
           </ul>
         </Section>
       )}
-
-      {!onShare && handover}
 
       {onAll && (
         <div className="medcard__actions">
@@ -934,12 +949,13 @@ export function MedicalCard() {
           </Section>
 
           {/* Two ways to hand the card over, below the tiles so that they stay high: the file, and a link that opens with no
-              sign-in. An empty card is not worth either, as in the reading view: they come with two of the five steps. */}
-          {doneCount >= 2 && (
-            <section aria-labelledby="medcard-forvet">
-              <div className="medcard__section-head">
-                <h2 id="medcard-forvet" className="medcard__section-title">Для врача</h2>
-              </div>
+              sign-in. The block is there from the start: on an empty card it says what is missing instead of appearing
+              out of nowhere later, when two of the five are done. */}
+          <section aria-labelledby="medcard-forvet">
+            <div className="medcard__section-head">
+              <h2 id="medcard-forvet" className="medcard__section-title">Для врача</h2>
+            </div>
+            {doneCount >= 2 ? (
               <div className="medcard__forvet">
                 <Button block fill="outline" color="primary" size="large" loading={saving} disabled={saving} onClick={downloadPdf}>
                   <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
@@ -950,8 +966,10 @@ export function MedicalCard() {
                   Ссылка для врача
                 </Button>
               </div>
-            </section>
-          )}
+            ) : (
+              <p className="medcard__empty">{EMPTY_HANDOVER}</p>
+            )}
+          </section>
 
             </>
           )}

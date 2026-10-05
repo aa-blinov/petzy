@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Form, TextArea } from 'antd-mobile';
+import { FileHeart } from 'lucide-react';
+
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type VisitCheck, type VisitPrep } from '../services/medicalCard.service';
+import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { fieldNote } from '../components/FieldNote';
+import { httpStatus } from '../services/api';
+import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
 import { goBack } from '../utils/navigation';
@@ -25,6 +30,12 @@ export function VisitPrepForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const cardPath = `/pets/${id}/medical-card`;
+  const { pets, selectedPetId, selectPet } = usePet();
+  // The same as the card: the address of another pet makes that pet the chosen one, so the switcher at the top is not lying.
+  useEffect(() => {
+    const target = pets.find((p) => p._id === id);
+    if (target && target._id !== selectedPetId) selectPet(target);
+  }, [id, pets, selectedPetId, selectPet]);
 
   const query = useQuery({
     queryKey: ['medical-card', id],
@@ -58,7 +69,8 @@ export function VisitPrepForm() {
     mutationFn: () => medicalCardService.saveVisitPrep(id!, { complaint: complaint.trim() || null, checks }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
-      showToast.success(empty ? 'Заметка к приёму убрана' : 'Записано к приёму');
+      // What happened to the note, said as it happened: only a note that was there can be taken away.
+      showToast.success(empty && saved ? 'Заметка к приёму убрана' : empty ? 'Заметка не заполнена' : 'Записано к приёму');
       release();
       goBack(navigate, cardPath);
     },
@@ -66,10 +78,17 @@ export function VisitPrepForm() {
   });
 
   if (query.isError) {
+    // A pet that is gone and a screen that did not load are different: one asks the person to go back to the list,
+    // the other to try once more.
+    const gone = [403, 404].includes(httpStatus(query.error) ?? 0);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <LoadError what="анкету к приёму" onRetry={() => query.refetch()} />
+          {gone ? (
+            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или закрыли вам доступ" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
+          ) : (
+            <LoadError what="анкету к приёму" onRetry={() => query.refetch()} />
+          )}
         </div>
       </div>
     );
