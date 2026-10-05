@@ -136,7 +136,7 @@ export function Navbar() {
           >
             <span
               style={{
-                fontSize: '15px',
+                fontSize: 'var(--text-md)',
                 fontWeight: 600,
                 color: 'var(--app-text-color)',
                 minWidth: 0,
@@ -170,7 +170,7 @@ export function Navbar() {
           >
             <div style={{ padding: 'var(--spacing-lg)' }}>
               <div style={{
-                fontSize: '18px',
+                fontSize: 'var(--text-lg)',
                 fontWeight: 600,
                 marginBottom: 'var(--spacing-lg)',
                 textAlign: 'center',
@@ -233,10 +233,10 @@ export function Navbar() {
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                        <span className="clamp-2" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
-                        <span className="truncate" style={{ fontSize: '12px', color: 'var(--app-text-secondary)' }}>{pet.breed || speciesLabel(pet.species) || 'Питомец'}</span>
+                        <span className="clamp-2" style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--app-text-color)' }}>{pet.name}</span>
+                        <span className="truncate" style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{pet.breed || speciesLabel(pet.species) || 'Питомец'}</span>
                         {alertText(alerts.get(pet._id)) && (
-                          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--app-danger-text)' }}>{alertText(alerts.get(pet._id))}</span>
+                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--app-danger-text)' }}>{alertText(alerts.get(pet._id))}</span>
                         )}
                       </div>
                     </div>
@@ -254,7 +254,7 @@ export function Navbar() {
                     setPickerVisible(false);
                     setPendingNavigate('/pets');
                   }}
-                  style={{ marginTop: '8px', fontSize: '15px' }}
+                  style={{ marginTop: '8px', fontSize: 'var(--text-md)' }}
                 >
                   Управление питомцами
                 </Button>

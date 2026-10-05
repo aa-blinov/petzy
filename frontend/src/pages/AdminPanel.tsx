@@ -102,7 +102,7 @@ export function AdminPanel() {
         color: 'var(--app-text-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: '20px', margin: 0 }}>Админ-панель</h1>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xl)', margin: 0 }}>Админ-панель</h1>
         </div>
         <div style={{ marginTop: '16px' }}>
           <Alert type="error" message="У вас нет прав доступа к админ-панели" />
@@ -234,7 +234,7 @@ export function AdminPanel() {
                   }}>
                     <span style={{
                       fontWeight: 600,
-                      fontSize: 16,
+                      fontSize: 'var(--text-md)',
                       fontFamily: 'var(--font-display)',
                       color: 'var(--app-text-primary)',
                     }}>
@@ -251,14 +251,14 @@ export function AdminPanel() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {user.full_name && (
-                      <span style={{ fontSize: 14, color: 'var(--app-text-primary)' }}>{user.full_name}</span>
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-primary)' }}>{user.full_name}</span>
                     )}
                     {user.email && (
-                      <span style={{ fontSize: 12, color: 'var(--app-text-secondary)' }}>{user.email}</span>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{user.email}</span>
                     )}
                     <div style={{ marginTop: 'var(--spacing-sm)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       {user.created_at && (
-                        <span style={{ fontSize: 12, color: 'var(--app-text-tertiary)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
                           {/* Raw "2026-09-20 07:40" was the only bare
                               timestamp in the UI; everything else speaks
                               in relative dates. */}

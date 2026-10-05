@@ -25,7 +25,7 @@ export function PetSwitcher() {
   return (
     <Card style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span style={{ fontSize: '14px', fontWeight: 500 }}>Животное:</span>
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Животное:</span>
         <Selector
           options={options}
           value={selectedPetId ? [selectedPetId] : []}

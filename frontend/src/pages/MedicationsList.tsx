@@ -340,7 +340,7 @@ export function MedicationsList() {
                     marginBottom: 'var(--spacing-lg)',
                     minHeight: '40px',
                 }}>
-                    <h1 className="display-headline" style={{ fontSize: '28px', margin: 0 }}>
+                    <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
                         Лекарства
                     </h1>
                     {medications.length > 0 && (

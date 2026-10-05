@@ -104,7 +104,7 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                     style={{
                       flex: 1,
                       minWidth: 0,
-                      fontSize: '13px',
+                      fontSize: 'var(--text-sm)',
                       fontWeight: 600,
                       lineHeight: 1.25,
                       letterSpacing: '-0.01em',

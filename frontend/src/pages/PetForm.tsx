@@ -499,7 +499,7 @@ export function PetForm() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '16px',
+                        fontSize: 'var(--text-md)',
                       }}
                       title="Заменить фото"
                       className="touch-target"
@@ -520,7 +520,7 @@ export function PetForm() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '16px',
+                        fontSize: 'var(--text-md)',
                         fontWeight: 'bold',
                       }}
                       aria-label="Удалить фото"
@@ -538,7 +538,7 @@ export function PetForm() {
                 <label htmlFor="pet-photo-input" className="photo-upload-zone">
                   <Camera size={32} strokeWidth={1.5} style={{ display: 'block', opacity: 0.6 }} />
                   <span style={{
-                    fontSize: '12px',
+                    fontSize: 'var(--text-xs)',
                     color: 'var(--adm-color-text-secondary)',
                     textAlign: 'center'
                   }}>

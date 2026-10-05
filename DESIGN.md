@@ -186,7 +186,9 @@ The same roles on a warm night: night-hearth page, night-card sheets, night-ink 
 
 ### Hierarchy
 - **Wordmark** (DynaPuff 700, 56px on sign-in, smaller in the top bar, -0.02em): the name, filled with the brand gradient. Nowhere else.
-- **Display** (600, 1.5rem, 1.2, -0.02em): the page title («Лекарства», «Удаление аккаунта»). One per screen.
+- **Display** (600, 1.5rem, 1.2, -0.02em): the page title («Лекарства», «Удаление аккаунта»). One per screen. The title of a top-level screen of the tab bar (the pets, the medicines, the documents, the settings) is one step larger, `--text-display` (1.75rem, 700).
+
+Sizes are written in rem tokens (`--text-xs` to `--text-display`), never in px: a pixel size does not follow the size the person set for their phone. The exceptions are the wordmark and the sizes of icons.
 - **Headline** (700, 1.25rem, 1.2, -0.01em): section headers inside a page («Сегодня», «Вчера», «Удалятся»).
 - **Title** (600, 1rem): a record's time, a medicine's name, a pet's name in lists.
 - **Body** (400, 1rem, 1.5): record values, form inputs (16px, so iOS never zooms a focused field), policy text (38rem measure).

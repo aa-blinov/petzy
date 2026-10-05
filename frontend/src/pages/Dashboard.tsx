@@ -234,7 +234,7 @@ export function Dashboard() {
                 color: 'var(--app-text-secondary)',
               }}>
                 {/* One way to add, the round «+», not two buttons for one action on one screen. */}
-                <p style={{ margin: 0, fontSize: '15px' }}>
+                <p style={{ margin: 0, fontSize: 'var(--text-md)' }}>
                   Лента пока пуста. Нажмите «+», чтобы записать первое событие
                 </p>
               </div>

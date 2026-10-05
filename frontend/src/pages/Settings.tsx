@@ -104,7 +104,7 @@ export function Settings() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <h1
             className="display-headline"
-            style={{ fontSize: '28px', margin: 0 }}
+            style={{ fontSize: 'var(--text-display)', margin: 0 }}
           >
             Настройки
           </h1>
@@ -181,6 +181,7 @@ export function Settings() {
               }
               control={
                 <Switch
+                  aria-label="Push-уведомления"
                   checked={pushState === 'on'}
                   disabled={pushState === null || pushState === 'unsupported' || pushState === 'denied' || pushBusy}
                   onChange={handlePushToggle}

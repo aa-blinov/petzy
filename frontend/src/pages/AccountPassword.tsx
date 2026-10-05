@@ -7,6 +7,7 @@ import { useTouched } from '../hooks/useTouched';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { goBack } from '../utils/navigation';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 /** Настройки → «Пароль». Other devices are signed out; this one stays in. */
 export function AccountPassword() {
@@ -23,7 +24,15 @@ export function AccountPassword() {
 
   const save = async () => {
     setSubmitted(true);
-    if (!current || nextError || repeatError) return;
+    if (!current || nextError || repeatError) {
+      // What a failed save does everywhere else: the first message in view, its field in focus, the count said aloud.
+      onInvalidSubmit({
+        ...(!current && { current: { type: 'required', message: 'Введите текущий пароль' } }),
+        ...(nextError && { next: { type: 'minLength', message: nextError } }),
+        ...(repeatError && { repeat: { type: 'validate', message: repeatError } }),
+      });
+      return;
+    }
     setBusy(true);
     try {
       await accountService.changePassword(current, next);

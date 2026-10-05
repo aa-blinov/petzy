@@ -31,7 +31,7 @@ export function LoadingSpinner({ fullscreen = true }: LoadingSpinnerProps) {
   return (
     <div style={containerStyle} role="status">
       <SpinLoading aria-hidden style={{ '--size': '40px', '--color': 'var(--adm-color-primary)' }} />
-      <p style={{ fontSize: '16px', color: 'var(--app-text-secondary)' }}>Загрузка...</p>
+      <p style={{ fontSize: 'var(--text-md)', color: 'var(--app-text-secondary)' }}>Загрузка...</p>
     </div>
   );
 }

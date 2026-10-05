@@ -180,11 +180,11 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span
                 className="display-headline"
-                style={{ fontSize: '15px', fontWeight: 600 }}
+                style={{ fontSize: 'var(--text-md)', fontWeight: 600 }}
               >
                 {config.displayName}
               </span>
-              <span style={{ fontSize: '13px', color: 'var(--app-text-secondary)' }}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                 {formatRelativeDateTime(item.date_time)}
               </span>
             </div>
@@ -206,7 +206,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
                   border: 'none',
                   padding: 0,
                   cursor: 'pointer',
-                  fontSize: '12px',
+                  fontSize: 'var(--text-xs)',
                   color: 'var(--app-text-secondary)',
                   font: 'inherit',
                 }}
@@ -223,7 +223,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
                 flexDirection: 'column',
                 gap: 'var(--spacing-2xs)',
                 color: 'var(--app-text-primary)',
-                fontSize: '14px',
+                fontSize: 'var(--text-sm)',
                 lineHeight: 1.45,
                 overflowWrap: 'anywhere',
               }}

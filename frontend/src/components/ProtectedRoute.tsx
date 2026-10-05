@@ -42,7 +42,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           textAlign: 'center',
         }}
       >
-        <p style={{ color: 'var(--app-text-secondary)', fontSize: 16, margin: 0 }}>
+        <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-md)', margin: 0 }}>
           Не удалось связаться с сервером
         </p>
         <Button color="primary" fill="outline" onClick={() => { void retryProbe(); }}>

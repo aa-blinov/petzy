@@ -7,6 +7,7 @@ import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { goBack } from '../utils/navigation';
+import { onInvalidSubmit } from '../utils/formErrors';
 
 const noteStyle = { margin: '0 var(--spacing-md) var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' } as const;
 
@@ -25,7 +26,10 @@ export function AccountEmail() {
 
   const save = async (next: string, kind: 'save' | 'remove') => {
     setAsked(true);
-    if (!password) return;
+    if (!password) {
+      onInvalidSubmit({ password: { type: 'required', message: 'Введите текущий пароль' } });
+      return;
+    }
     if (kind === 'remove') {
       const sure = await Dialog.confirm({
         content: 'Удалить почту? Без неё забытый пароль придётся сбрасывать через администратора',
