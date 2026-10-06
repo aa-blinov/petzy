@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
+import boto3
 import jwt
 import pytest
+from moto import mock_aws
 from mongomock import MongoClient
 
 from web.builtin_event_types import seed_builtin_event_types
@@ -38,10 +40,15 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 # Create mock database and patch before importing app
 _mock_client = MongoClient()
 _mock_db = _mock_client["test_db"]
-# Patch db and GridFS before importing app so ensure_default_admin uses mock_db
+# The import itself reaches for S3: web.app sets the bucket's CORS rules at startup, and it runs before any fixture. Without
+# the mock around this import that call went to the real amazonaws.com with the dummy key, failed, and botocore retried it
+# with pauses: a warning in every run, seconds of waiting, and a test suite that hangs on a machine without a network. The
+# mock ends with the import; the per-test fixture below takes over from there.
 with patch("web.db.db", _mock_db), patch("web.db.client", _mock_client), patch("gridfs.GridFS", MagicMock):
-    from web.app import app
-    from web.security import create_access_token
+    with mock_aws():
+        boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=os.environ["S3_BUCKET"])
+        from web.app import app
+        from web.security import create_access_token
 
 
 @pytest.fixture(autouse=True)
@@ -155,6 +162,21 @@ def admin_refresh_token(mock_db):
     )
 
     return token
+
+
+_PASSWORD_HASHES: dict[bytes, str] = {}
+
+
+def password_hash_for(password: bytes) -> str:
+    """A bcrypt hash for a user document a test puts into the database.
+
+    One hash per password, not one per test: bcrypt costs 0.18s, and nothing here
+    checks that two users with the same password got different salts. A test that
+    needs a fresh hash for a real security reason should say so and compute it.
+    """
+    if password not in _PASSWORD_HASHES:
+        _PASSWORD_HASHES[password] = bcrypt.hashpw(password, bcrypt.gensalt()).decode()
+    return _PASSWORD_HASHES[password]
 
 
 _TEST_PASSWORD_HASH = bcrypt.hashpw("user123".encode(), bcrypt.gensalt()).decode()

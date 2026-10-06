@@ -3,6 +3,7 @@
 import pytest
 from datetime import datetime, timezone
 import bcrypt
+from tests.conftest import password_hash_for
 
 
 @pytest.mark.admin
@@ -20,7 +21,7 @@ class TestUserManagement:
     def test_get_users_success(self, client, mock_db, auth_headers):
         """Test getting list of users as admin."""
         # Create a test user
-        password_hash = bcrypt.hashpw("test123".encode(), bcrypt.gensalt()).decode()
+        password_hash = password_hash_for(b"test123")
         from web.app import db
 
         db["users"].insert_one(
@@ -304,7 +305,7 @@ class TestGetUserPublicProfile:
     """
 
     def _create_second_user(self, mock_db, username="shareuser", full_name="Share User"):
-        password_hash = bcrypt.hashpw("pass123".encode(), bcrypt.gensalt()).decode()
+        password_hash = password_hash_for(b"pass123")
         mock_db["users"].insert_one(
             {
                 "username": username,

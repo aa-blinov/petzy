@@ -2,10 +2,10 @@
 
 from datetime import datetime, timezone
 
-import bcrypt
 import pytest
 
 from web.security import create_access_token
+from tests.conftest import password_hash_for
 
 
 def _auth(token):
@@ -16,7 +16,7 @@ def _user(mock_db, name):
     mock_db["users"].insert_one(
         {
             "username": name,
-            "password_hash": bcrypt.hashpw(b"x12345678", bcrypt.gensalt()).decode(),
+            "password_hash": password_hash_for(b"x12345678"),
             "created_at": datetime.now(timezone.utc),
             "is_active": True,
         }

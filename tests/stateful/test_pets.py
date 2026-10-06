@@ -3,6 +3,7 @@
 import pytest
 from datetime import datetime, timezone
 from bson import ObjectId
+from tests.conftest import password_hash_for
 
 
 @pytest.mark.pets
@@ -397,10 +398,9 @@ class TestPetManagement:
     def test_share_pet_success(self, client, mock_db, regular_user_token, test_pet, admin_pet):
         """Test sharing pet with another user."""
         # Create another user
-        import bcrypt
         from web.app import db
 
-        password_hash = bcrypt.hashpw("pass123".encode(), bcrypt.gensalt()).decode()
+        password_hash = password_hash_for(b"pass123")
         db["users"].insert_one(
             {
                 "username": "shareuser",
@@ -455,10 +455,9 @@ class TestPetManagement:
     def test_unshare_pet_success(self, client, mock_db, regular_user_token, test_pet):
         """Test removing access from user."""
         # First share the pet
-        import bcrypt
         from web.app import db
 
-        password_hash = bcrypt.hashpw("pass123".encode(), bcrypt.gensalt()).decode()
+        password_hash = password_hash_for(b"pass123")
         db["users"].insert_one(
             {
                 "username": "shareuser",

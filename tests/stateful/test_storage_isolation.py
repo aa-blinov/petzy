@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
-import bcrypt
 import pytest
 from bson import ObjectId
 
 from web import storage
 from web.security import create_access_token
+from tests.conftest import password_hash_for
 
 BUCKET = "petzy-test"
 
@@ -34,7 +34,7 @@ def _zip_bytes(size=64):
 def other_user(mock_db):
     user = {
         "username": "stranger",
-        "password_hash": bcrypt.hashpw(b"stranger123", bcrypt.gensalt()).decode(),
+        "password_hash": password_hash_for(b"stranger123"),
         "full_name": "Stranger",
         "created_at": datetime.now(timezone.utc),
         "is_active": True,
