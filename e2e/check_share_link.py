@@ -64,9 +64,9 @@ async def main():
             str(order),
         )
         check(
-            "the one PDF button comes after what there is to read",
+            "the one PDF button comes before the blocks that need a connection",
             await vet.evaluate(
-                "(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.includes('Скачать PDF')); return b.getBoundingClientRect().top > document.querySelector('#medcard-vet-meds').getBoundingClientRect().top; })()"
+                "(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.includes('Скачать PDF')); return b.getBoundingClientRect().top < document.querySelector('#medcard-vet-meds').getBoundingClientRect().top; })()"
             ),
         )
         check("no search engines", await vet.locator("meta[name=robots]").count() == 1)

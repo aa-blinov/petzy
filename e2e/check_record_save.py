@@ -48,8 +48,16 @@ async def main():
                     await route.continue_()
 
             await pg.route("**/api/events", lose_the_answer)
-            await pg.goto(BASE + "/form/weight")
+            # Opened the way a person opens it, from the feed's round «+». Opening the form by address instead makes
+            # the leave-at-once a step back in the browser's own history (another document), which reloads the page
+            # and drops everything the app had on screen, the bar included.
+            await pg.goto(BASE + "/")
             await pg.wait_for_timeout(2000)
+            await pg.locator(".app-fab").click()
+            await pg.wait_for_timeout(1000)
+            await pg.get_by_text("Вес", exact=True).first.click()
+            await pg.wait_for_timeout(1800)
+            check("the form of a weighing opened from the feed", "/form/weight" in pg.url, pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
             await pg.get_by_role("button", name="Создать").click()
             await pg.wait_for_timeout(2500)
@@ -100,11 +108,13 @@ async def main():
                 "Запись не загрузилась" in body,
                 (pg.url.replace(BASE, "") + " | " + body[:160].replace(chr(10), " | ")),
             )
+            # Two ways back on purpose: the navbar's and the one inside the notice, so a thumb that landed on the notice is
+            # not a dead end.
             check(
                 "with another try and a way back, and not thrown out to the feed",
                 pg.url.endswith(f"/form/weight/{record_id}")
                 and await pg.get_by_role("button", name="Повторить").count() == 1
-                and await pg.get_by_role("button", name="Назад").count() == 1,
+                and await pg.get_by_role("button", name="Назад").count() >= 1,
                 pg.url.replace(BASE, ""),
             )
 

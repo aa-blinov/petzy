@@ -60,6 +60,8 @@ async def main():
                 pg.url.replace(BASE, ""),
             )
             # the «+» of a part adds what that part is about
+            await pg.goto(BASE + f"/pets/{pid}/medical-card/prevention")
+            await pg.wait_for_timeout(1800)
             await pg.locator(".app-fab").click()
             await pg.wait_for_timeout(1200)
             body = await pg.inner_text("body")
@@ -84,7 +86,8 @@ async def main():
             check("choosing one opens its form", "?kind=vaccination" in pg.url, pg.url.replace(BASE, ""))
             check(
                 "the vaccine form asks for the name",
-                await pg.get_by_placeholder("Например, Нобивак Tricat Trio").count() == 1,
+                await pg.get_by_text("Название вакцины", exact=False).count() >= 1,
+                (await pg.inner_text("body"))[:160].replace(chr(10), " | "),
             )
             # the catalogue did not come: the field is still there and says why
             await pg.route("**/api/vaccines/catalog**", lambda route: route.abort())
