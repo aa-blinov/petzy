@@ -45,11 +45,21 @@ async def login(pg, user="demo", pet_prefix="Рекс"):
 
 
 async def api(pg, method, path, body=None):
-    return await pg.evaluate(
-        """async ([m, p, b]) => { const r = await fetch('/api' + p, {method: m, credentials: 'include', headers: b ? {'Content-Type': 'application/json'} : {}, body: b ? JSON.stringify(b) : undefined});
-        let j = null; try { j = await r.json(); } catch (e) {} return {status: r.status, json: j}; }""",
-        [method, path, body],
-    )
+    """The API from inside the page, with one retry on a dropped connection.
+
+    The stand runs a single gunicorn worker; when it was recycled mid-request the answer
+    came back as an nginx 502 with no body, and the check failed with a confusing error
+    about its own data. A retry answers that on its own, and a real failure still fails.
+    """
+    for attempt in (1, 2):
+        answer = await pg.evaluate(
+            """async ([m, p, b]) => { const r = await fetch('/api' + p, {method: m, credentials: 'include', headers: b ? {'Content-Type': 'application/json'} : {}, body: b ? JSON.stringify(b) : undefined});
+            let j = null; try { j = await r.json(); } catch (e) {} return {status: r.status, json: j}; }""",
+            [method, path, body],
+        )
+        if answer["json"] is not None or attempt == 2:
+            return answer
+        await pg.wait_for_timeout(500)
 
 
 async def wait_until(pg, done, timeout=15_000):
