@@ -16,7 +16,7 @@ import {
   type MedicalRecord,
   type ParasiteTarget,
 } from '../services/medicalRecords.service';
-import { documentsListQuery, documentsService, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
+import { documentLocalStamp, documentsListQuery, documentsService, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { httpStatus } from '../services/api';
 import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
@@ -33,7 +33,7 @@ import { PickerField } from '../components/PickerField';
 import { ProductPickerSheet, type ProductGroup } from '../components/ProductPickerSheet';
 import { catalogSpecies, inferProtects, useVaccineCatalog } from '../hooks/useVaccineCatalog';
 import { getApiErrorMessage } from '../utils/apiError';
-import { getCurrentDate, getCurrentTime, utcStampToLocal } from '../utils/dateUtils';
+import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -349,7 +349,9 @@ export function MedicalRecordForm() {
     } else if (sourceDoc) {
       copy.title = sourceDoc.title;
       copy.document_ids = [sourceDoc._id];
-      const filed = utcStampToLocal(sourceDoc.created_at).slice(0, 10);
+      // День, под которым числится документ, считается по его собственной зоне, а не по телефону:
+      // тот же документ у другого человека должен попасть в тот же день.
+      const filed = documentLocalStamp(sourceDoc).slice(0, 10);
       // A certificate that had already run out when it was filed says nothing about the day of the shot, and its
       // end is not a repeat to put in: the date is left for the person to enter, not guessed.
       if (sourceDoc.expires_at && sourceDoc.expires_at <= filed) {

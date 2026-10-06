@@ -7,6 +7,7 @@ else (PDF) is stored byte-for-byte with its original content type.
 """
 
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import quote
@@ -29,6 +30,7 @@ from web.helpers import (
     optimize_image,
     snap_thumbnail_size,
     store_file,
+    valid_tz,
     validate_pet_access,
     validate_pet_access_and_get,
 )
@@ -105,14 +107,85 @@ def storage_used_bytes(owner: str) -> int:
     return sum(row.get("total") or 0 for row in [*stored, *pending])
 
 
-def _over_quota(owner: str, adding: int) -> bool:
+def _over_quota(owner: str, adding: int, credit: int = 0) -> bool:
+    """Whether ``adding`` bytes would put the owner over the quota.
+
+    ``credit`` is the size of the file the upload replaces: it is already
+    counted in what the owner uses, so it comes off before the new size is
+    added, and a replacement isn't refused for a full bucket.
+    """
     if is_admin(owner):
         return False
-    return storage_used_bytes(owner) + adding > STORAGE_QUOTA_BYTES
+    return storage_used_bytes(owner) - credit + adding > STORAGE_QUOTA_BYTES
 
 
 # Where scan archives go; photos and PDFs of scans can sit there too.
 SCAN_CATEGORY = "imaging"
+
+# A client-made id for one upload attempt (32 hex characters, the shape
+# crypto.randomUUID() gives without its dashes). It rides along with the
+# request so «Остановить» can call for the removal of a file whose request
+# had already been answered when the button was pressed.
+UPLOAD_ID = re.compile(r"^[0-9a-f]{32}$")
+
+
+def clean_upload_id(value: Optional[str]) -> Optional[str]:
+    """The client's upload id if it has the expected shape, else None."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip().lower()
+    return value if UPLOAD_ID.match(value) else None
+
+
+def prepare_file(file_storage, owner: str, quota_credit: int = 0):
+    """Check an uploaded file and turn it into what is stored.
+
+    Returns ``(prepared, error_response)``: either the bytes to store with
+    the content type and the names behind them, or the answer to give back
+    (``prepared`` is then None). ``quota_credit`` is what the file replaces:
+    a replacement doesn't count twice against the owner's quota.
+    """
+    content_type = file_storage.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        return None, error_response("document_unsupported_type")
+
+    raw_bytes = file_storage.read()
+    if len(raw_bytes) > MAX_DOCUMENT_SIZE_BYTES:
+        return None, error_response("document_file_too_large")
+    if not _starts_like(raw_bytes[:16], content_type):
+        return None, error_response("document_content_mismatch")
+    if _over_quota(owner, len(raw_bytes), quota_credit):
+        return None, error_response("storage_quota_exceeded")
+    file_storage.seek(0)
+
+    original_filename = file_storage.filename
+
+    if content_type.startswith("image/"):
+        optimized_result = optimize_image(file_storage)
+        if optimized_result:
+            optimized_file, stored_content_type = optimized_result
+            stored_bytes = optimized_file.getvalue()
+            filename_stem = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
+            stored_filename = f"{filename_stem}.webp"
+        else:
+            stored_bytes = raw_bytes
+            stored_content_type = content_type
+            stored_filename = original_filename
+    else:
+        stored_bytes = raw_bytes
+        stored_content_type = content_type
+        stored_filename = original_filename
+
+    ext = "." + stored_filename.rsplit(".", 1)[-1].lower() if "." in stored_filename else ""
+    return (
+        {
+            "bytes": stored_bytes,
+            "content_type": stored_content_type,
+            "original_filename": original_filename,
+            "ext": ext,
+        },
+        None,
+    )
 
 
 def _serialize_document(
@@ -131,6 +204,9 @@ def _serialize_document(
     # Where the file came from: the records that hold it (a visit, a vaccination), for the line under it and for search.
     doc["medical_records"] = (records or {}).get(doc["_id"], [])
     doc["pet_id"] = str(doc.get("pet_id", ""))
+    # A document added before the field has no zone; the response says so
+    # explicitly rather than leaving the client to guess (DocumentItem.tz).
+    doc["tz"] = doc.get("tz")
     # Where a file sits in the bucket is ours to know, not the client's.
     doc.pop("file_id", None)
     if isinstance(doc.get("created_at"), datetime):
@@ -175,41 +251,13 @@ def create_document():
         if "file" not in request.files or not request.files["file"].filename:
             return error_response("document_file_required")
 
-        file_storage = request.files["file"]
-        content_type = file_storage.content_type or "application/octet-stream"
-        if content_type not in ALLOWED_CONTENT_TYPES:
-            return error_response("document_unsupported_type")
+        prepared, file_error = prepare_file(request.files["file"], pet["owner"])
+        if file_error:
+            return file_error
 
-        raw_bytes = file_storage.read()
-        if len(raw_bytes) > MAX_DOCUMENT_SIZE_BYTES:
-            return error_response("document_file_too_large")
-        if not _starts_like(raw_bytes[:16], content_type):
-            return error_response("document_content_mismatch")
-        if _over_quota(pet["owner"], len(raw_bytes)):
-            return error_response("storage_quota_exceeded")
-        file_storage.seek(0)
-
-        original_filename = file_storage.filename
-
-        if content_type.startswith("image/"):
-            optimized_result = optimize_image(file_storage)
-            if optimized_result:
-                optimized_file, stored_content_type = optimized_result
-                stored_bytes = optimized_file.getvalue()
-                filename_stem = original_filename.rsplit(".", 1)[0] if "." in original_filename else original_filename
-                stored_filename = f"{filename_stem}.webp"
-            else:
-                stored_bytes = raw_bytes
-                stored_content_type = content_type
-                stored_filename = original_filename
-        else:
-            stored_bytes = raw_bytes
-            stored_content_type = content_type
-            stored_filename = original_filename
-
-        ext = "." + stored_filename.rsplit(".", 1)[-1].lower() if "." in stored_filename else ""
-        # Under the pet owner's prefix, whoever attaches it.
-        file_id = store_file(pet["owner"], data.pet_id, "documents", stored_bytes, stored_content_type, ext)
+        file_id = store_file(
+            pet["owner"], data.pet_id, "documents", prepared["bytes"], prepared["content_type"], prepared["ext"]
+        )
 
         document_data = {
             "pet_id": data.pet_id,
@@ -219,11 +267,22 @@ def create_document():
             "note": data.note or "",
             "expires_at": data.expires_at,
             "file_id": file_id,
-            "original_filename": original_filename,
-            "content_type": stored_content_type,
-            "file_size": len(stored_bytes),
+            "original_filename": prepared["original_filename"],
+            "content_type": prepared["content_type"],
+            "file_size": len(prepared["bytes"]),
             "created_at": datetime.now(timezone.utc),
         }
+        # The zone the file was added in, so «Добавлен <дата>» reads the same
+        # everywhere. Absent for documents added before the field and for
+        # clients that don't say.
+        zone = valid_tz(data.tz)
+        if zone:
+            document_data["tz"] = zone
+        # Lets «Остановить» take back a file the server stored while the
+        # client was already walking away from the request.
+        upload_id = clean_upload_id(request.form.get("upload_id"))
+        if upload_id:
+            document_data["upload_id"] = upload_id
         result = app.db.documents.insert_one(document_data)
         app.logger.info(f"Document created: id={result.inserted_id}, pet_id={data.pet_id}, user={username}")
         return get_message("document_created", status=201, id=str(result.inserted_id))
@@ -443,7 +502,8 @@ def get_document(id):
 def update_document(id):
     """Update a document's metadata (category/title/note).
 
-    The file itself is immutable in v1 — delete and re-upload to replace it.
+    The file itself is replaced by its own route (PUT .../<id>/file), not
+    here: this one takes JSON, so it has nowhere to put a file.
     """
     try:
         document = g.record
@@ -461,6 +521,123 @@ def update_document(id):
         return get_message("document_updated")
     except Exception as e:
         app.logger.error(f"Error updating document: {e}")
+        return error_response("internal_error")
+
+
+@documents_bp.route("/api/documents/<id>/file", methods=["PUT"])
+@api.validate(
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse, HTTP_422=ErrorResponse),
+    tags=["documents"],
+)
+@require_record_access("documents")
+def replace_document_file(id):
+    """Put another file behind a document.
+
+    ``multipart/form-data`` with the file under ``file``, checked exactly as
+    at creation (type, size, first bytes, quota). The old file is removed
+    only once the new one is stored and the document says so: a rejected or
+    lost upload leaves the document with the file it had.
+
+    The document keeps its id, so what it is attached to in the medical card
+    (medical_record_kinds) stays as it was, and the new file gets its own
+    key, so the old thumbnail is thrown away with the old file and the ETag
+    of ``/file`` changes with it (storage.file_version hashes the key).
+    """
+    document = g.record
+    username = g.username
+    try:
+        pet, access_error = validate_pet_access_and_get(g.pet_id, username)
+        if access_error:
+            return access_error
+
+        if "file" not in request.files or not request.files["file"].filename:
+            return error_response("document_file_required")
+
+        # The file being replaced is still counted, so it is credited back.
+        prepared, file_error = prepare_file(request.files["file"], pet["owner"], int(document.get("file_size") or 0))
+        if file_error:
+            return file_error
+
+        file_id = store_file(
+            pet["owner"], document["pet_id"], "documents", prepared["bytes"], prepared["content_type"], prepared["ext"]
+        )
+
+        old_file_id = document.get("file_id")
+        # A scan archive was downloaded through a signed link; an ordinary
+        # file (photo or PDF) is served and previewed, so the flag goes.
+        app.db.documents.update_one(
+            {"_id": document["_id"]},
+            {
+                "$set": {
+                    "file_id": file_id,
+                    "original_filename": prepared["original_filename"],
+                    "content_type": prepared["content_type"],
+                    "file_size": len(prepared["bytes"]),
+                },
+                "$unset": {"scan": ""},
+            },
+        )
+
+        # The document already points at the new file: from here the old one
+        # is rubbish, and a failure to delete it must not fail the request.
+        try:
+            delete_stored_file(old_file_id)
+        except Exception as file_error:
+            app.logger.warning(f"Failed to delete replaced document file: file_id={old_file_id}, error={file_error}")
+
+        app.logger.info(f"Document file replaced: id={id}, pet_id={document['pet_id']}, user={username}")
+        return get_message("document_updated")
+    except storage.StorageNotConfigured:
+        return error_response("storage_not_configured")
+    except Exception as e:
+        app.logger.error(f"Error replacing document file: id={id}, error={e}")
+        return error_response("internal_error")
+
+
+@documents_bp.route("/api/documents/uploads/<upload_id>/cancel", methods=["POST"])
+@login_required
+@api.validate(resp=Response(HTTP_200=SuccessResponse), tags=["documents"])
+def cancel_document_upload(upload_id):
+    """Take back a file whose request the user stopped.
+
+    Pressing «Остановить» cuts the request, and a file the server never
+    received was never stored. But the answer may already have left the
+    server when the button is pressed, and then the document and its file
+    are there with nobody to show them to. The client sends the id of the
+    upload it stopped, and the document made by that one upload goes with
+    its file.
+
+    A replacement writes no upload id, so stopping one never takes the
+    document away: by then its file is the new one, and the form says so.
+    """
+    username = request.current_user
+    clean_id = clean_upload_id(upload_id)
+    # The client shows its own toast; this only says the call went through.
+    # The text stays here rather than in web/messages.py, which is not this
+    # file's to change.
+    done = jsonify({"success": True, "message": "Загрузка отменена"})
+    if not clean_id:
+        return done
+
+    document = app.db.documents.find_one({"upload_id": clean_id, "username": username})
+    if not document:
+        return done
+
+    try:
+        app.db.documents.delete_one({"_id": document["_id"]})
+        app.db.medical_records.update_many(
+            {"document_ids": str(document["_id"])}, {"$pull": {"document_ids": str(document["_id"])}}
+        )
+        try:
+            delete_stored_file(document["file_id"])
+        except Exception as file_error:
+            app.logger.warning(
+                f"Failed to delete cancelled upload file: file_id={document['file_id']}, error={file_error}"
+            )
+        app.logger.info(f"Cancelled document upload removed: id={document['_id']}, user={username}")
+        return done
+    except Exception as e:
+        app.logger.error(f"Error cancelling document upload: {e}")
         return error_response("internal_error")
 
 
