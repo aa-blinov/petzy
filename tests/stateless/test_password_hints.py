@@ -164,25 +164,46 @@ def test_the_first_request_says_the_letter_is_sent(client, outbox):
     assert len([letter for letter in outbox if letter["subject"] == "Petzy: новый пароль"]) == 1
 
 
-def test_asking_again_says_the_letter_is_already_on_its_way(client, outbox):
+def test_asking_again_by_the_confirmed_address_says_the_letter_is_already_on_its_way(client, outbox):
     _sign_up(client)
-    client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client))
+    client.post("/api/auth/password/forgot", json={"login": "vera@example.com"}, headers=_from(client))
     outbox.clear()
-    body = client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client)).get_json()
+    body = client.post(
+        "/api/auth/password/forgot", json={"login": "vera@example.com"}, headers=_from(client)
+    ).get_json()
     assert body["already_sent"] is True
     # And no second letter is promised: none was sent.
     assert outbox == []
 
 
-def test_the_answer_still_says_nothing_about_other_logins(client, outbox):
+def test_asking_again_by_the_login_says_only_that_the_letter_went(client, outbox):
+    # Someone who named the login has not proved they hold the mailbox, so the answer must not differ from the
+    # answer for a login nobody has.
+    _sign_up(client)
+    client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client))
+    outbox.clear()
+    body = client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client)).get_json()
+    assert body["already_sent"] is False
+    assert outbox == []
+
+
+def test_the_answer_says_nothing_about_which_logins_exist(client, outbox):
     _sign_up(client)
     client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client))
     answers = {
         login: client.post("/api/auth/password/forgot", json={"login": login}, headers=_from(client)).get_json()
         for login in ("vera", "nobody-here", "ghost@example.com")
     }
-    # The word is the same for everyone; only vera's account has a letter on its way.
+    # The whole answer is the same for a real login and for a made-up one: neither the word nor the flag.
     assert len({answer["message"] for answer in answers.values()}) == 1
-    assert answers["vera"]["already_sent"] is True
-    assert answers["nobody-here"]["already_sent"] is False
-    assert answers["ghost@example.com"]["already_sent"] is False
+    assert {answer["already_sent"] for answer in answers.values()} == {False}
+
+
+def test_asking_by_an_address_nobody_holds_says_nothing(client, outbox):
+    _sign_up(client)
+    client.post("/api/auth/password/forgot", json={"login": "vera@example.com"}, headers=_from(client))
+    outbox.clear()
+    body = client.post(
+        "/api/auth/password/forgot", json={"login": "stranger@example.com"}, headers=_from(client)
+    ).get_json()
+    assert body["already_sent"] is False

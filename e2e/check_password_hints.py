@@ -83,7 +83,10 @@ async def main():
             # The same letter twice: said plainly the second time, still offered.
             await pg.goto(BASE + "/forgot-password")
             await pg.wait_for_timeout(1200)
-            await pg.get_by_placeholder("vera или vera@example.com").fill(THROWAWAY["username"])
+            # По подтверждённой почте: только тому, кто назвал её, сервер и говорит, что письмо уже в пути.
+            # По логину ответ одинаков для существующего и несуществующего, иначе форма выдавала бы,
+            # у кого здесь есть аккаунт.
+            await pg.get_by_placeholder("vera или vera@example.com").fill(THROWAWAY["email"])
             await pg.get_by_role("button", name="Отправить ссылку").click()
             await pg.wait_for_timeout(1500)
             first = await pg.inner_text("body")
@@ -98,7 +101,7 @@ async def main():
             await pg.wait_for_timeout(1800)
             second = await pg.inner_text("body")
             check(
-                "the second ask says the letter is already on its way",
+                "asked by the confirmed address, the second ask says the letter is already on its way",
                 "уже отправляли недавно" in second,
                 second[:200].replace(chr(10), " | "),
             )
