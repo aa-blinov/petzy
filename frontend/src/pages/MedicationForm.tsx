@@ -296,7 +296,7 @@ export function MedicationForm() {
     };
 
     const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
-    useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!med, release });
+    useSessionDraft({ dirty: isDirty, petId: id ?? null, getValues, reset, ready: !isEditing || !!med, release });
 
     // «Завершить курс»: switched off as of today, and undoable from the bar.
     const finishCourse = useMutation({

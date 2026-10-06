@@ -196,7 +196,8 @@ export function PetForm() {
     }
   }, [pet, isEditing, reset]);
   // The typed fields come back after a session that ran out (the photo and the sharing do not).
-  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!pet, release });
+  // Нового питомца ещё нет: у такой формы своего питомца нет, и черновик адресован только пути /pets/new.
+  useSessionDraft({ dirty: isDirty, petId: pet?._id ?? null, getValues, reset, ready: !isEditing || !!pet, release });
 
   const dateColumns = useMemo(() => {
     let month = new Date().getMonth();
