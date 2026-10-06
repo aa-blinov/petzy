@@ -16,6 +16,8 @@ import { medicationsService, type MedicationCreate, COMMON_MEDICATIONS } from '.
 import { usePet } from '../hooks/usePet';
 import { Segmented } from '../components/Segmented';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { EmptyState } from '../components/EmptyState';
+import { Pill } from 'lucide-react';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -381,6 +383,26 @@ export function MedicationForm() {
 
     if (isEditing && isLoadingMed) return <LoadingSpinner />;
 
+    // The course is gone (deleted by someone else, or a link from an old
+    // message): the request answered and brought nothing, which is not the same
+    // as still loading. Drawing an empty form here asked to create a new course
+    // under the old course's screen.
+    if (isEditing && !!id && !!selectedPetId && !isLoadingMed && !med) {
+        return (
+            <div className="page-container">
+                <div className="max-width-container">
+                    <EmptyState
+                        icon={Pill}
+                        title="Такого лекарства нет"
+                        description="Его удалили или он не открыт вашему питомцу"
+                        actionLabel="К лекарствам"
+                        onAction={() => navigate('/medications', { replace: true })}
+                    />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="page-container">
             <div className="max-width-container">
@@ -518,7 +540,9 @@ export function MedicationForm() {
                                             <FieldError message={errors.default_dose.message} />
                                         ) : doseLooksLikeStrength ? (
                                             <span style={{ color: 'var(--app-warning-text)' }}>
-                                                {formatAmount(typedDose)} {watchedDoseUnit} за раз? Если это миллиграммы с упаковки, впишите их выше, а здесь укажите, сколько {PIECES_WORD[watchedDoseUnit ?? ''] ?? 'штук'} давать
+                                                {/* The other field by its own label: «выше» pointed at a direction, and
+                                                    the box field sits two rows up, not immediately above. */}
+                                                {formatAmount(typedDose)} {watchedDoseUnit} за раз? Если это миллиграммы с упаковки, впишите их в «На упаковке», а здесь укажите, сколько {PIECES_WORD[watchedDoseUnit ?? ''] ?? 'штук'} давать
                                             </span>
                                         ) : (
                                             'Сколько давать за раз. Для половины таблетки впишите 0,5'
@@ -806,7 +830,16 @@ export function MedicationForm() {
                                         <Form.Item
                                             label="Напомнить за"
                                             className="form-item--unit"
-                                            description={error?.message ? <FieldError message={error.message} /> : 'До того, как лекарство закончится'}
+                                            description={
+                                                error?.message ? (
+                                                    <FieldError message={error.message} />
+                                                ) : (
+                                                    // The 60-day ceiling is said here, not only in the error
+                                                    // that appears after the value is refused: a stock that
+                                                    // lasts a season is not what this field can warn about.
+                                                    'До того, как лекарство закончится, не больше 60 дней'
+                                                )
+                                            }
                                             extra={<span style={{ color: 'var(--app-text-secondary)' }}>{pluralRu(Number(field.value) || 0, 'день', 'дня', 'дней')}</span>}
                                         >
                                             <Input
@@ -920,7 +953,8 @@ export function MedicationForm() {
                             onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
                             style={{ borderRadius: 'var(--radius-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}
                         >
-                            {isEditing ? 'Сохранить' : 'Создать'}
+                            {/* «Добавить» for a new course, as on the document form («Сохранить» while editing). */}
+                            {isEditing ? 'Сохранить' : 'Добавить'}
                         </SpinnerButton>
                         <Button
                             block

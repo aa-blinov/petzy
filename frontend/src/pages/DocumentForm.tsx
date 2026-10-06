@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { Archive, Image as ImageIcon, Upload } from 'lucide-react';
 import {
   documentsService,
+  documentDeleteText,
   DOCUMENT_CATEGORY_LABELS,
   SCAN_EXTENSIONS,
   ScanUploadError,
@@ -322,7 +323,9 @@ export function DocumentForm() {
         showToast.failure('Загрузка остановлена');
         return;
       }
-      showToast.failure(getApiErrorMessage(err, 'Не удалось добавить документ'));
+      // The chosen file stays where it was, so the retry is one press of
+      // «Добавить» again and not another trip to the picker.
+      showToast.failure(`${getApiErrorMessage(err, 'Не удалось загрузить файл')}. Файл на месте, нажмите «Добавить» ещё раз`);
     },
     onSettled: () => {
       uploadAbort.current = null;
@@ -835,7 +838,7 @@ export function DocumentForm() {
               <FormDangerButton
                 label="Удалить документ"
                 confirmTitle="Удаление документа"
-                confirmContent={`Удалить документ «${document.title}»?${(document.medical_record_kinds?.length ?? 0) > 0 ? ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт' : ''} Файл будет стёрт насовсем`}
+                confirmContent={documentDeleteText(document)}
                 onConfirm={async () => {
                   try {
                     await documentsService.delete(id);

@@ -39,7 +39,7 @@ function minutesUntilDose(dose: UpcomingDose, now = new Date()): number {
 type IntakeKind = 'now' | 'scheduled' | 'skip';
 
 export function NextDoseWidget() {
-    const { selectedPetId } = usePet();
+    const { selectedPetId, selectedPetName } = usePet();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
@@ -86,10 +86,11 @@ export function NextDoseWidget() {
             // The slot the dose is for goes with it: «Принять сейчас» at 14:30 for the 08:00 dose closes the 08:00 one,
             // not the nearest, and a dose of last evening given after midnight closes that evening.
             const slot = { slot_date: dose.date, slot_time: dose.time };
-            if (kind === 'now') return logIntakeAsking(dose.medication_id, dose.name, { date: nowDate, time: nowTime, ...slot });
+            if (kind === 'now')
+              return logIntakeAsking(dose.medication_id, dose.name, { date: nowDate, time: nowTime, ...slot }, selectedPetName ?? undefined);
             const slotIsPast = `${dose.date} ${dose.time}` <= `${nowDate} ${nowTime}`;
             const at = slotIsPast ? { date: dose.date, time: dose.time } : { date: nowDate, time: nowTime };
-            return logIntakeAsking(dose.medication_id, dose.name, { ...at, ...slot, skipped: kind === 'skip' });
+            return logIntakeAsking(dose.medication_id, dose.name, { ...at, ...slot, skipped: kind === 'skip' }, selectedPetName ?? undefined);
         },
         onSuccess: ({ id, ran_out, queued }, { dose, kind }) => {
             if (queued) {

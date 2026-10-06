@@ -137,6 +137,14 @@ export function isInMedicalCard(doc: Pick<PetDocument, 'medical_record_kinds'>):
   return (doc.medical_record_kinds ?? []).some((k) => k === 'vaccination' || k === 'parasite');
 }
 
+/** What deleting a document asks, in one wording for both places that ask it:
+ *  the list's dialog and the form's. The list used a shorter text that said
+ *  nothing about the file itself being erased for good. */
+export function documentDeleteText(doc: Pick<PetDocument, 'title' | 'medical_record_kinds'>): string {
+  const attached = (doc.medical_record_kinds ?? []).length > 0;
+  return `Удалить документ «${doc.title}»?${attached ? ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт' : ''} Файл будет стёрт насовсем`;
+}
+
 /** The record has a repeat date and reminds about it itself, so the document's own expiry is not shown as a second,
  *  possibly stale, verdict. A record with no repeat date reminds about nothing: the document's date stays. */
 export function isCoveredByMedicalCard(doc: Pick<PetDocument, 'record_reminds'>): boolean {
