@@ -78,7 +78,7 @@ git config core.hooksPath .githooks
   `ruff check` + `ruff format --check` on staged `*.py` files: fast, per-commit checks.
 - `pre-push` runs `ruff check` + `ruff format --check` over the whole backend, the full backend
   test suite (`pytest tests/`), a full frontend lint (`npm run lint`) and every browser check
-  (`e2e/run.py`, all 37, about eight minutes). Slower, so it runs before push only. The browser
+  (`e2e/run.py`, all 38, about eight minutes). Slower, so it runs before push only. The browser
   checks need the local stand: if it is down the push stops and the hook prints how to start it,
   because a push that silently went without them is worse than one that waited. To push once
   without them: `PETZY_SKIP_E2E=1 git push`, and that skip belongs in the commit message. Never

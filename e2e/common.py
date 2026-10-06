@@ -45,21 +45,29 @@ async def login(pg, user="demo", pet_prefix="Рекс"):
 
 
 async def api(pg, method, path, body=None):
-    """The API from inside the page, with one retry on a dropped connection.
+    """The API from inside the page, with a retry on a dropped connection and on a page
+    that is changing under the question.
 
-    The stand runs a single gunicorn worker; when it was recycled mid-request the answer
-    came back as an nginx 502 with no body, and the check failed with a confusing error
-    about its own data. A retry answers that on its own, and a real failure still fails.
+    Two things used to end a check for a reason that had nothing to do with it. The stand
+    runs a single gunicorn worker; when it was recycled mid-request the answer came back
+    as an nginx 502 with no body, and the check fell over its own data. And a page that is
+    still changing (a route that redirects right away) takes the question away with it.
+    Both answer themselves on a second try; a real failure still fails.
     """
-    for attempt in (1, 2):
-        answer = await pg.evaluate(
-            """async ([m, p, b]) => { const r = await fetch('/api' + p, {method: m, credentials: 'include', headers: b ? {'Content-Type': 'application/json'} : {}, body: b ? JSON.stringify(b) : undefined});
-            let j = null; try { j = await r.json(); } catch (e) {} return {status: r.status, json: j}; }""",
-            [method, path, body],
-        )
-        if answer["json"] is not None or attempt == 2:
+    for attempt in (1, 2, 3):
+        try:
+            answer = await pg.evaluate(
+                """async ([m, p, b]) => { const r = await fetch('/api' + p, {method: m, credentials: 'include', headers: b ? {'Content-Type': 'application/json'} : {}, body: b ? JSON.stringify(b) : undefined});
+                let j = null; try { j = await r.json(); } catch (e) {} return {status: r.status, json: j}; }""",
+                [method, path, body],
+            )
+        except Exception:
+            await pg.wait_for_timeout(500)
+            continue
+        if answer["json"] is not None or attempt == 3:
             return answer
         await pg.wait_for_timeout(500)
+    return {"status": 0, "json": None}
 
 
 async def wait_until(pg, done, timeout=15_000):
