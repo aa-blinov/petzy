@@ -8,7 +8,7 @@ import { FileText, Pencil, Trash2, X } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { hapticFeedback } from '../utils/haptic';
-import { formatRelativeDateTime, parseRecordDate } from '../utils/relativeTime';
+import { formatRelativeDateTime, parseRecordDate, pluralRu } from '../utils/relativeTime';
 import { formatFileSize } from '../utils/fileSize';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -16,6 +16,7 @@ import { httpStatus } from '../services/api';
 import {
   documentsListQuery,
   documentsService,
+  documentDeleteText,
   documentLocalStamp,
   isCoveredByMedicalCard,
   isInMedicalCard,
@@ -176,13 +177,15 @@ export function DocumentsList() {
   const filterable = documents.length > CHIPS_FROM;
   const countsByCategory = useMemo(() => {
     const counts = new Map<DocumentCategory, number>();
-    for (const doc of documents) {
-      if (hiddenDocuments.has(doc._id)) continue;
+    // The counts are of what the chips actually narrow to: the same files the
+    // search left. Counting the whole list put «Страховка 4» on screen when
+    // the search had narrowed the list to one file.
+    for (const doc of searchedDocuments) {
       const category: DocumentCategory = doc.category in DOCUMENT_CATEGORY_LABELS ? doc.category : 'other';
       counts.set(category, (counts.get(category) ?? 0) + 1);
     }
     return counts;
-  }, [documents, hiddenDocuments]);
+  }, [searchedDocuments]);
 
   // Sections replace the old category filter — with the handful of
   // documents a pet typically has, always showing every category beats
@@ -369,7 +372,12 @@ export function DocumentsList() {
                       const badge = formatBadge(doc);
                       const inCard = isInMedicalCard(doc);
                       // The record's own reminder speaks for the document only when the record has a repeat date.
-                      const expiry = doc.expires_at && !isCoveredByMedicalCard(doc) ? describeExpiry(doc.expires_at) : null;
+                      const covered = doc.expires_at ? isCoveredByMedicalCard(doc) : false;
+                      const expiry = doc.expires_at && !covered ? describeExpiry(doc.expires_at) : null;
+                      // The badge is hidden when the record itself reminds (a second, possibly stale, verdict is
+                      // worse), but the date is still the document's: it says so in words, so a file that has
+                      // run out does not look current.
+                      const coveredExpiry = covered && doc.expires_at ? formatDate(doc.expires_at) : null;
                       return (
                         <SwipeableRow
                           key={doc._id}
@@ -484,10 +492,17 @@ export function DocumentsList() {
                                       }}
                                     >
                                       Из записи: {first.title}{first.date ? `, ${formatDate(first.date)}` : ''}
-                                      {rest.length > 0 ? ` и ещё ${rest.length}` : ''}
+                                      {/* The rest in words: «и ещё 2» read as a leftover count, «и ещё 2 записи»
+                                          as how many records hold this file. */}
+                                      {rest.length > 0 && ` и ещё ${rest.length} ${pluralRu(rest.length, 'запись', 'записи', 'записей')}`}
                                     </button>
                                   );
                                 })()}
+                                {coveredExpiry && (
+                                  <div style={{ marginTop: '4px', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>
+                                    Действует до {coveredExpiry}. Напомнит запись из медкарты
+                                  </div>
+                                )}
                                 <p
                                   style={{
                                     margin: '4px 0 0',
@@ -731,14 +746,7 @@ export function DocumentsList() {
       <Dialog
         visible={deleteDialog.visible}
         title="Удаление документа"
-        content={
-          deleteDialog.document && (
-            <span>
-              Удалить документ «{deleteDialog.document.title}»?
-              {(deleteDialog.document.medical_record_kinds?.length ?? 0) > 0 && ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт'}
-            </span>
-          )
-        }
+        content={deleteDialog.document && <span>{documentDeleteText(deleteDialog.document)}</span>}
         onClose={() => setDeleteDialog((prev) => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, document: null })}
         actions={[

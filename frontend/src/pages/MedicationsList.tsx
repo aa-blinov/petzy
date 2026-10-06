@@ -19,6 +19,7 @@ import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
+import { NoPetState } from '../components/NoPetState';
 import { PushOffNotice } from '../components/PushOffNotice';
 import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
@@ -92,8 +93,16 @@ function isAsNeeded(med: { as_needed?: boolean; schedule: { times: string[] } })
   return med.as_needed ?? med.schedule.times.length === 0;
 }
 
+/** Today's last dose was marked by someone else: who, in the same line as when.
+ *  Hidden for one's own mark and for a mark from an earlier day (that one has a
+ *  line of its own), the same convention as the course's author chip below. */
+function markedTodayByOther(med: Medication, currentUsername?: string | null): boolean {
+  if (!med.last_taken_by || !currentUsername || med.last_taken_by === currentUsername || !med.last_taken_at) return false;
+  return toDeviceClock(med.last_taken_at, med.last_taken_tz).slice(0, 10) === getCurrentDate();
+}
+
 export function MedicationsList() {
-    const { selectedPetId } = usePet();
+    const { selectedPetId, selectedPetName } = usePet();
     const { username: currentUsername } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -174,7 +183,12 @@ export function MedicationsList() {
         mutationFn: ({ id, dose, when, skipped, slot }: { id: string; dose?: number; when: IntakeWhen; skipped?: boolean; slot?: string | null }) => {
             // «По расписанию»: the slot picked is the one that closes, however late the dose is marked.
             const input: IntakeInput = { ...when, dose_taken: dose, skipped, ...(slot ? { slot_date: nowWhen().date, slot_time: slot } : {}) };
-            return logIntakeAsking(id, medications.find((m) => m._id === id)?.name ?? 'Лекарство', input);
+            return logIntakeAsking(
+              id,
+              medications.find((m) => m._id === id)?.name ?? 'Лекарство',
+              input,
+              selectedPetName ?? undefined,
+            );
         },
         onSuccess: ({ id, ran_out, queued }, { id: medId, skipped, when }) => {
             if (queued) {
@@ -302,7 +316,7 @@ export function MedicationsList() {
     };
 
     // «Пополнить»: add a bought pack without doing the sum in the edit form.
-    const [restock, setRestock] = useState<{ medication: Medication | null; amount: string }>({
+    const [restock, setRestock] = useState<{ medication: Medication | null; amount: string; error?: string }>({
         medication: null,
         amount: '',
     });
@@ -320,7 +334,7 @@ export function MedicationsList() {
     const openRestock = (med: Medication) => {
         hapticFeedback('light');
         // A pack size saved on the course is the likely amount.
-        setRestock({ medication: med, amount: med.inventory_total ? formatAmount(med.inventory_total) : '' });
+        setRestock({ medication: med, amount: med.inventory_total ? formatAmount(med.inventory_total) : '', error: undefined });
     };
     // The dose card's «Пополнить» arrives here with the course in the address.
     const [searchParams, setSearchParams] = useSearchParams();
@@ -339,13 +353,23 @@ export function MedicationsList() {
     const confirmRestock = () => {
         if (!restock.medication) return;
         const amount = parseAmount(restock.amount);
+        // Said under the field, in the dialog where the amount is typed: a toast after
+        // the press put the message away from the field it was about, and the dialog
+        // stayed open with nothing to explain why.
         if (!amount || amount <= 0) {
-            showToast.failure('Укажите, сколько купили');
+            setRestock((prev) => ({ ...prev, error: 'Укажите, сколько купили' }));
             return;
         }
         restockMutation.mutate({ id: restock.medication._id, amount });
         setRestock((prev) => ({ ...prev, medication: null }));
     };
+
+    // Without a pet there is nothing to show and nothing to add: the list says
+    // so, instead of the empty «Здесь будут лекарства питомца», which reads as
+    // if the pet already had none.
+    if (!selectedPetId) {
+        return <NoPetState what="Лекарства" />;
+    }
 
     const formatRelativeTime = (dateStr?: string) => {
         if (!dateStr) return null;
@@ -519,7 +543,10 @@ export function MedicationsList() {
 
                                         {isAsNeeded(med) && (med.intakes_today ?? 0) > 0 && (
                                             <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                                                <span>Сегодня давали: {med.intakes_today} {pluralRu(med.intakes_today ?? 0, 'раз', 'раза', 'раз')}</span>
+                                                <span>
+                                                    Сегодня давали: {med.intakes_today} {pluralRu(med.intakes_today ?? 0, 'раз', 'раза', 'раз')}
+                                                    {markedTodayByOther(med, currentUsername) && `, отметил(а) ${med.last_taken_by}`}
+                                                </span>
                                             </div>
                                         )}
 
@@ -531,7 +558,10 @@ export function MedicationsList() {
 
                                         {med.last_taken_at && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
-                                                <span>Последний приём: {formatRelativeTime(toDeviceClock(med.last_taken_at, med.last_taken_tz).replace(' ', 'T'))}</span>
+                                                <span>
+                                                    Последний приём: {formatRelativeTime(toDeviceClock(med.last_taken_at, med.last_taken_tz).replace(' ', 'T'))}
+                                                    {markedTodayByOther(med, currentUsername) && `, отметил(а) ${med.last_taken_by}`}
+                                                </span>
                                             </div>
                                         )}
 
@@ -803,14 +833,18 @@ export function MedicationsList() {
                                     inputMode="decimal"
                                     placeholder="0"
                                     autoFocus
+                                    aria-label="Сколько купили"
+                                    aria-invalid={!!restock.error}
+                                    aria-describedby={restock.error ? 'restock-amount-error' : undefined}
                                     onChange={(val) => {
-                                        if (isAmountDraft(val)) setRestock((prev) => ({ ...prev, amount: val }));
+                                        // A number being typed clears the message: it is about what was there a moment ago.
+                                        if (isAmountDraft(val)) setRestock((prev) => ({ ...prev, amount: val, error: undefined }));
                                     }}
                                     style={{
                                         '--text-align': 'center',
                                         width: '80px',
                                         fontSize: 'var(--text-lg)',
-                                        border: '1px solid var(--app-border-color)',
+                                        border: restock.error ? '1px solid var(--app-danger-text)' : '1px solid var(--app-border-color)',
                                         borderRadius: 'var(--radius-sm)',
                                         padding: 'var(--spacing-xs)'
                                     }}
@@ -819,6 +853,11 @@ export function MedicationsList() {
                                     {restock.medication.dose_unit || 'доз'}
                                 </span>
                             </div>
+                            {restock.error && (
+                                <div id="restock-amount-error" role="alert" style={{ marginTop: 'var(--spacing-xs)', fontSize: 'var(--text-sm)', color: 'var(--app-danger-text)' }}>
+                                    {restock.error}
+                                </div>
+                            )}
                         </div>
                     )
                 }
