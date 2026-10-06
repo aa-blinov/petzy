@@ -221,8 +221,16 @@ function PetCard({
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction} itemLabel={pet.name}>
       {/* Tap opens the edit form; swiping is the shortcut to edit or
-          delete. The photo opens on its own tap. */}
-      <div className="card-soft card-soft--interactive" style={{ padding: '16px', cursor: 'pointer' }} onClick={onEdit}>
+          delete. The photo opens on its own tap. A button, not a div with
+          a click: the card was unreachable with a keyboard and read as
+          plain text by a screen reader. */}
+      <button
+        type="button"
+        className="card-soft card-soft--interactive"
+        aria-label={`Изменить питомца ${pet.name}`}
+        style={{ padding: '16px', cursor: 'pointer', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left' }}
+        onClick={onEdit}
+      >
         <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
           {/* Square avatar — image if available, else species icon on
               its gradient tile. Same treatment as PetSummaryCard on the
@@ -442,7 +450,7 @@ function PetCard({
           </div>
           <span style={{ alignSelf: 'center' }}><CardChevron /></span>
         </div>
-      </div>
+      </button>
     </SwipeableRow>
   );
 }

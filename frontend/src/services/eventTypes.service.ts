@@ -72,4 +72,11 @@ export const eventTypesService = {
   async remove(key: string, withEvents = false): Promise<void> {
     await api.delete(`/event-types/${key}`, { params: withEvents ? { with_events: 'true' } : undefined });
   },
+
+  /** How many records the type has, without deleting anything: the question about removing a type is asked with
+   *  the number in it, not asked twice. */
+  async eventsCount(key: string): Promise<number> {
+    const response = await api.delete<{ events_count: number }>(`/event-types/${key}`, { params: { preview: 'true' } });
+    return response.data.events_count ?? 0;
+  },
 };

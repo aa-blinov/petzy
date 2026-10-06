@@ -227,7 +227,10 @@ export function Dashboard() {
               <NextDoseWidget />
             </div>
 
-            {isLoading ? (
+            {/* The feed's request waits for a chosen pet, so it is not loading while the list of pets is still
+                arriving and there is nothing chosen yet. That is not an empty feed, and «лента пока пуста»
+                said so to people whose pet was a second away. */}
+            {isLoading || !petsFetched ? (
               <DashboardSkeleton />
             ) : error ? (
               <LoadError what="ленту" onRetry={refetch} />
@@ -340,6 +343,15 @@ export function Dashboard() {
                     </div>
                   </AutoLoadMore>
                 )}
+
+                {/* One way out of the feed to everything it does not show: the feed is today and what is next,
+                    the History screen is everything and the charts. Settings had a row to it, so the only way
+                    there from the feed was a detour through Settings. */}
+                <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 'var(--spacing-xl)' }}>
+                  <Button fill="outline" color="primary" onClick={() => navigate('/history')}>
+                    Вся история
+                  </Button>
+                </div>
               </>
             )}
           </div>

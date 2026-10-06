@@ -246,6 +246,12 @@ def update_user(username):
 
         # `context` is injected by flask-pydantic-spec at runtime; static checker doesn't know this attribute.
         data = request.context.body  # type: ignore[attr-defined]
+        # Nobody switches himself off, whoever sends the request: deactivation ends every session of that
+        # account, and the admin list is then the one screen the person cannot open to undo it. The delete
+        # route has always refused the built-in admin; this is the same boundary on the update route, where
+        # it was missing — one request was enough to lock oneself out of it.
+        if data.is_active is False and username == getattr(request, "current_user", None):
+            return error_response("validation_error_admin_deactivation", "Нельзя деактивировать самого себя")
         update_data = {}
 
         if data.full_name is not None:
@@ -291,6 +297,11 @@ def delete_user(username):
     try:
         if username == ADMIN_USERNAME:
             return error_response("validation_error_admin_deactivation")
+        # Nobody deactivates himself, not only the built-in admin: the account the person is standing in
+        # loses its rights at once, and the admin list is then the one screen that person cannot open to
+        # undo it. The list has always hidden the swipe for your own row; the rule belonged here too.
+        if username == getattr(request, "current_user", None):
+            return error_response("validation_error_admin_deactivation", "Нельзя деактивировать самого себя")
 
         result = app.db["users"].update_one({"username": username}, {"$set": {"is_active": False}})
 

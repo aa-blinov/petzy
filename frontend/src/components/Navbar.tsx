@@ -65,8 +65,13 @@ export function Navbar() {
   // inside a form it silently repointed the record being edited at a
   // different animal. Settings has both reasons to carry it: it's a main
   // tab like the others, and one of its own rows (dashboard tile order)
-  // is itself per-pet.
-  const showPetSwitcher = isMainTab;
+  // is itself per-pet. So do the three settings screens that change one
+  // pet (its look, its events, its form defaults) and the History screen,
+  // which is that pet's records with no pet card under its header: the
+  // name is shown even for the only pet, the picker from the second one.
+  const PET_SCOPED_PATH = /^\/(history|pet-events|pet-look|form-defaults)$/;
+  const showPetSwitcher = isMainTab || PET_SCOPED_PATH.test(location.pathname);
+  const canSwitchPet = pets.length >= 2;
 
   const logo = (
     <div
@@ -98,21 +103,24 @@ export function Navbar() {
 
   const rightContent = !showPetSwitcher ? null : (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', height: '100%', minWidth: 0, maxWidth: '100%' }}>
-      {/* Single-pet households get nothing here. The name already sits
-          on the pet card right below, so a label in the navbar was a
-          duplicate of it — and with nothing to switch to, a selector
-          would be dead weight. The picker appears from the second pet
-          onwards, where the name finally carries information. */}
-      {pets.length >= 2 && (
+      {/* Single-pet households get nothing on the tabs — the name already sits on the pet card right
+          below, so a label there duplicated it. On the History screen there is no pet card, so the name
+          is shown even for the only pet, and the picker appears from the second pet onwards, where the name
+          finally carries information. */}
+      {selectedPetName && (canSwitchPet || PET_SCOPED_PATH.test(location.pathname)) && (
         <>
           <button
             type="button"
             className="tap-feedback touch-target"
-            onClick={() => {
-              hapticFeedback('light');
-              setPickerVisible(true);
-            }}
-            aria-label={`${selectedPetName}, сменить питомца${elsewhere ? ', у другого питомца есть просроченное' : ''}`}
+            onClick={
+              canSwitchPet
+                ? () => {
+                    hapticFeedback('light');
+                    setPickerVisible(true);
+                  }
+                : undefined
+            }
+            aria-label={canSwitchPet ? `${selectedPetName}, сменить питомца${elsewhere ? ', у другого питомца есть просроченное' : ''}` : selectedPetName}
             style={{
               position: 'relative',
               height: '36px',
@@ -147,7 +155,7 @@ export function Navbar() {
             >
               {selectedPetName}
             </span>
-            <DownOutline aria-hidden style={{ fontSize: '10px', color: 'var(--app-text-secondary)', flexShrink: 0 }} />
+            {canSwitchPet && <DownOutline aria-hidden style={{ fontSize: '10px', color: 'var(--app-text-secondary)', flexShrink: 0 }} />}
             {elsewhere && <span className="app-switcher-dot" aria-hidden />}
           </button>
 
