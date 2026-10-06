@@ -56,8 +56,9 @@ export interface MedicalProfile {
   conditions: MedicalCondition[];
   /** The clinics the pet is taken to, the first is the main one; each with its doctors. */
   clinics: MedicalClinic[];
-  /** The main clinic and its first doctor: the same as the first of `clinics`. */
-  clinic: { name?: string | null; vet?: string | null; phone?: string | null };
+  /** The single clinic of the older profile, the same as the first of `clinics`. The server keeps `clinics` as the
+   * truth and fills this itself, so a form does not send it. */
+  clinic?: { name?: string | null; vet?: string | null; phone?: string | null };
   updated_at?: string | null;
   /** Changes at every save: a form saved from an older one is refused (409), so nobody's entry is wiped unseen. */
   version?: string | null;

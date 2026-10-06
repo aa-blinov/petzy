@@ -26,6 +26,7 @@ import { showSnackbar } from '../utils/snackbar';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { getApiErrorMessage } from '../utils/apiError';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
+import './MedicalCard.css';
 
 const currentYear = new Date().getFullYear();
 
@@ -293,7 +294,7 @@ export function MedicalProfileForm() {
             doctors: c.doctors.map((d) => ({ name: d.name.trim(), specialty: d.specialty?.trim() || null })),
           }))
           .filter((c) => c.name || c.phone || c.doctors.length),
-        clinic: { name: null, vet: null, phone: null },
+        // The legacy single clinic is not sent: the server keeps `clinics` as the truth and fills the old field itself.
         base_version: baseVersion.current ?? "",
       }),
     onSuccess: () => {
@@ -562,6 +563,10 @@ export function MedicalProfileForm() {
               </Button>
             </Form.Item>
           )}
+          {/* The cap is the server's too: the button that would add a sixth one says nothing, so the limit is said here. */}
+          {clinics.fields.length >= MAX_CLINICS && (
+            <p className="medcard__empty">Больше пяти клиник добавить нельзя, лишние уберите</p>
+          )}
         </Form>
 
         {/* A long form: the save button stays in reach above the tab bar, not three screens down. */}
@@ -573,7 +578,7 @@ export function MedicalProfileForm() {
             Сохранить
           </SpinnerButton>
         </div>
-        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
+        <div className="safe-area-padding form-actions">
           <Button block size="large" onClick={() => goBack(navigate, cardPath)}>
             Отмена
           </Button>

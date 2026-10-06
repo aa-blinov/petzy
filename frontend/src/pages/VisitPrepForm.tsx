@@ -52,7 +52,11 @@ export function VisitPrepForm() {
   const [typed, setTyped] = useState<Typed | null>(null);
   const complaint = typed?.complaint ?? saved?.complaint ?? '';
   const checks: Checks = typed?.checks ?? saved?.checks ?? {};
-  const dirty = typed !== null;
+  // Changed means it says something the saved note does not: an answer taken back leaves the note as it was, and the
+  // question about leaving then has nothing to ask about.
+  const savedChecks: Checks = saved?.checks ?? {};
+  const changed = complaint.trim() !== (saved?.complaint ?? '').trim() || Object.keys(checks).some((key) => checks[key as VisitCheck] !== savedChecks[key as VisitCheck]) || Object.keys(savedChecks).some((key) => !(key in checks));
+  const dirty = typed !== null && changed;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
   useSessionDraft({ dirty, getValues: () => typed as Typed, reset: (values) => setTyped(values), ready: !!query.data, release });
 
@@ -175,7 +179,7 @@ export function VisitPrepForm() {
             {empty && saved ? 'Убрать заметку' : 'Сохранить'}
           </SpinnerButton>
         </div>
-        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
+        <div className="safe-area-padding form-actions">
           <Button block size="large" onClick={() => goBack(navigate, cardPath)}>
             Отмена
           </Button>

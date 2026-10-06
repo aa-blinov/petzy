@@ -29,7 +29,12 @@ export function MedicalLinks() {
       void queryClient.invalidateQueries({ queryKey: ['medical-shares', petId] });
       showToast.success('Ссылка отозвана');
     },
-    onError: (err: unknown) => showToast.failure(getApiErrorMessage(err, 'Не удалось отозвать ссылку')),
+    onError: (err: unknown, { petId }) => {
+      // The link may already be gone (another phone took it back, the server refused for another reason). Asking the list
+      // again takes the row away when it is really gone, so the same link can never be pushed at twice.
+      void queryClient.invalidateQueries({ queryKey: ['medical-shares', petId] });
+      showToast.failure(getApiErrorMessage(err, 'Не удалось отозвать ссылку'));
+    },
   });
 
   const ask = async (petId: string, shareId: string) => {

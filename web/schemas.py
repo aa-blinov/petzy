@@ -2473,7 +2473,12 @@ class MedicalCardData(BaseModel):
     vaccinations: List[MedicalCardVaccination]
     documents: List[MedicalCardDocument]
     generated_at: str = Field(description="Дата формирования, YYYY-MM-DD, по часовому поясу пользователя")
-    can_edit: bool = Field(description="Владелец ли текущий пользователь: править профиль питомца может только он")
+    # Правку медицинского профиля может любой, у кого есть доступ к питомцу: это общее знание семьи
+    # о животном, а не настройка владельца (см. put_medical_profile). Описание здесь прежде говорило
+    # обратное, и поле нигде не читалось.
+    can_edit: bool = Field(
+        description="Может ли текущий пользователь править анкету: да, если у него есть доступ к питомцу"
+    )
 
 
 class MedicalCardResponse(BaseModel):

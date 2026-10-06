@@ -313,10 +313,11 @@ export function MedicalRecordForm() {
     }
     if (!card.data || (fromId && !source) || ((docId || renewId) && !sourceDoc && documents.isPending)) return;
     filled.current = true;
-    // The clinic the pet was last taken to, else the one in its profile.
+    // The clinic the pet was last taken to, else the main one in its profile.
     const last = Object.values(card.data.records).flat().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.clinic || r.vet);
-    const clinic = last?.clinic ?? card.data.profile.clinic.name ?? '';
-    const vet = last?.vet ?? card.data.profile.clinic.vet ?? '';
+    const main = card.data.profile.clinics[0];
+    const clinic = last?.clinic ?? main?.name ?? card.data.profile.clinic?.name ?? '';
+    const vet = last?.vet ?? main?.doctors[0]?.name ?? card.data.profile.clinic?.vet ?? '';
     // A vaccination or a treatment is nearly always repeated: the usual interval is put in (a year, three months),
     // so that skipping the field does not switch the reminder off. It follows the date until it is touched, and is one tap from gone.
     // «Ещё одну» after a save brings the date and the clinic of the one just saved: a paper passport lists several shots
@@ -632,7 +633,9 @@ export function MedicalRecordForm() {
                           Назвать так же
                         </button>
                       </span>
-                    ) : undefined
+                    ) : (
+                      fieldNote({ value: title, max: 100 })
+                    )
                   }
                 >
                   <PickerValue value={field.value} placeholder={kind === 'vaccination' ? 'Выберите или впишите' : 'Выберите или впишите'} />
@@ -956,7 +959,7 @@ export function MedicalRecordForm() {
             {isEditing ? 'Сохранить' : 'Добавить'}
           </SpinnerButton>
         </div>
-        <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', margin: 'var(--spacing-md) 0 var(--spacing-xl)' }}>
+        <div className="safe-area-padding form-actions">
           {isEditing && repeating && (
             <Button block size="large" fill="outline" color="primary" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=${kind}&from=${recordId}`)}>
               {kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
