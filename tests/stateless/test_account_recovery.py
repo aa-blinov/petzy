@@ -227,3 +227,26 @@ def test_the_account_shows_the_email_state(client, outbox):
 def test_the_dev_outbox_is_closed_in_production(client, monkeypatch):
     monkeypatch.delenv("MAIL_OUTBOX", raising=False)
     assert client.get("/api/dev/outbox").status_code == 404
+
+
+def test_the_dev_limit_reset_is_closed_in_production(client, monkeypatch):
+    monkeypatch.delenv("MAIL_OUTBOX", raising=False)
+    assert client.post("/api/dev/reset-limits").status_code == 404
+
+
+def test_the_dev_limit_reset_gives_the_counters_back(client, outbox):
+    """The spent limit is real and stays real: only the counters move.
+
+    A limit counts per address and every run of a browser check comes from the same one, so
+    without this the second run starts spent and checks nothing at all.
+    """
+    address = _from(client)
+    payload = {"login": "vera@example.com"}
+    for _ in range(5):
+        assert client.post("/api/auth/password/forgot", json=payload, headers=address).status_code == 200
+    spent = client.post("/api/auth/password/forgot", json=payload, headers=address)
+    assert spent.status_code == 429
+    assert "Попробуйте" in spent.get_json()["error"]
+
+    assert client.post("/api/dev/reset-limits").status_code == 200
+    assert client.post("/api/auth/password/forgot", json=payload, headers=address).status_code == 200
