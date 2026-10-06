@@ -9,13 +9,21 @@ hour each) allow a few runs.
 """
 
 import asyncio
+import time
 import re
 
 from common import BASE, api, async_playwright, check, new_page, summary
 
 GUESSED = "password"  # in the server's list of the most guessed
 ORDINARY = "kotik-2026"
-THROWAWAY = {"username": "e2e-hint", "password": "e2e-hint-pass-77", "full_name": "Тест", "email": "e2e@example.com"}
+# Имя с каждым прогоном своё: сервер считает регистрации (пять в час), а аккаунт от прошлого прогона
+# остался бы без подтверждённой почты, и часть про письмо тогда проверяла бы не то, а отказ.
+THROWAWAY = {
+    "username": f"e2e-hint-{int(time.time())}",
+    "password": "e2e-hint-pass-77",
+    "full_name": "Тест",
+    "email": f"e2e-hint-{int(time.time())}@example.com",
+}
 
 
 def _token_of(letter_subject: str, letters: list) -> str:
@@ -33,7 +41,17 @@ async def main():
             await pg.wait_for_timeout(800)
             # The throwaway account the letter part needs.
             made = await api(pg, "POST", "/auth/register", {**THROWAWAY, "privacy_consent": True})
-            check("a throwaway account for the letter part is made", made["status"] == 201, str(made["json"])[:160])
+            made["created"] = made["status"] == 201
+            if made["status"] != 201:
+                # Стенд считает регистрации: пять в час на адрес, и за день набор успевает их израсходовать.
+                # Часть про письмо проверяет свежий аккаунт с подтверждённой почтой, а взять его нечем.
+                code = str(made["json"])
+                if made["status"] == 429 or (made["status"] == 422 and "занят" in code):
+                    print("SKIP the stand's registration limit is spent; the letter part needs a fresh account")
+                else:
+                    check("a throwaway account for the letter part is made", False, str(made["json"])[:160])
+                return summary("password hints")
+            check("a throwaway account for the letter part is made", True)
             if made["status"] != 201:
                 return
             letters = (await api(pg, "GET", "/dev/outbox"))["json"].get("letters", [])
@@ -123,8 +141,11 @@ async def main():
                 (await pg.inner_text("body"))[:160].replace(chr(10), " | "),
             )
         finally:
-            gone = await api(pg, "DELETE", "/me/account", {"password": THROWAWAY["password"]})
-            check("the throwaway account is deleted", gone["status"] == 200, str(gone["json"])[:160])
+            # Убирать нечего, если аккаунт не был создан: без него и без сессии запрос отвечает 401,
+            # и проверка падает на том, чего не делала.
+            if made["status"] == 201:
+                gone = await api(pg, "DELETE", "/me/account", {"password": THROWAWAY["password"]})
+                check("the throwaway account is deleted", gone["status"] == 200, str(gone["json"])[:160])
             await b.close()
     summary("password hints")
 

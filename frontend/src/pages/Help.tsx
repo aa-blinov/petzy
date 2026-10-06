@@ -4,7 +4,16 @@ import { ChevronDown } from 'lucide-react';
 import { HELP_FAQ, HELP_SCREENS, type HelpEntry } from '../content/help';
 import './Help.css';
 
-function Section({ title, entries, searching, words }: { title: string; entries: HelpEntry[]; searching: boolean; words: string[] }) {
+function Section({ title, entries, searching, words, opened, onToggle, wanted }: {
+  title: string;
+  entries: HelpEntry[];
+  searching: boolean;
+  words: string[];
+  opened: Record<string, boolean>;
+  onToggle: (id: string, open: boolean) => void;
+  /** The entry a link (/help#id) named: open on arrival. */
+  wanted: string;
+}) {
   if (entries.length === 0) return null;
   return (
     <section className="help-section">
@@ -14,7 +23,16 @@ function Section({ title, entries, searching, words }: { title: string; entries:
           // <details>: a native disclosure, keyboard and screen reader
           // ready, and openable from the URL hash (below).
           // While a search is on, what it found is open: the answer is the point, not one more tap to reach it.
-          <details key={`${entry.id}-${searching ? 'found' : 'all'}`} id={entry.id} className="help-item" open={searching || undefined}>
+          // The key is the entry itself, never the state of the search: a key
+          // that changed with the search remounted every entry, so clearing
+          // the line closed whatever the person had opened with their hands.
+          <details
+            key={entry.id}
+            id={entry.id}
+            className="help-item"
+            open={searching ? true : !!opened[entry.id] || entry.id === wanted}
+            onToggle={(event) => onToggle(entry.id, event.currentTarget.open)}
+          >
             <summary>
               <span><Highlighted text={entry.title} words={words} /></span>
               <ChevronDown size={18} strokeWidth={2.2} aria-hidden className="help-item__chevron" />
@@ -78,29 +96,37 @@ function Highlighted({ text, words }: { text: string; words: string[] }) {
 export function Help() {
   const { hash } = useLocation();
   const [query, setQuery] = useState('');
+  // Which entries the person opened by hand, so a search and its clearing
+  // leave them as they were.
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
   const needle = query.trim().toLowerCase().replace(/ё/g, 'е');
   // Any of the words is enough: requiring all of them found a question only
   // when it happened to repeat the whole phrase.
   const words = needle.split(/\s+/).filter(Boolean);
   const matches = (entry: HelpEntry) => !needle || words.some((word) => textOf(entry).includes(word));
-  const faq = HELP_FAQ.filter(matches);
-  const screens = HELP_SCREENS.filter(matches);
+  // A link to one entry (/help#documents) out of a search: the entry the link
+  // names is shown whatever the search line says, or the link leads nowhere
+  // without a word about it.
+  const wanted = hash ? decodeURIComponent(hash.slice(1)) : '';
+  const keep = (entry: HelpEntry) => matches(entry) || entry.id === wanted;
+  const faq = HELP_FAQ.filter(keep);
+  const screens = HELP_SCREENS.filter(keep);
+  const found = faq.length + screens.length;
 
-  // /help#documents opens that section and brings it into view.
+  // /help#documents opens that section and brings it into view. Which one is
+  // open comes from `wanted` and `opened`, so the effect only brings it into
+  // view and doesn't have to write state of its own.
   useEffect(() => {
-    if (!hash) return;
-    const target = document.getElementById(decodeURIComponent(hash.slice(1)));
-    if (target instanceof HTMLDetailsElement) {
-      target.open = true;
-      target.scrollIntoView({ block: 'start' });
-    }
-  }, [hash]);
+    if (!wanted) return;
+    const target = document.getElementById(wanted);
+    if (target instanceof HTMLDetailsElement) target.scrollIntoView({ block: 'start' });
+  }, [wanted]);
 
   return (
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 className="display-headline" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             Справка
           </h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
@@ -116,13 +142,41 @@ export function Help() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          {needle && faq.length + screens.length === 0 && (
+          {/* How much the search found, so an empty-looking list isn't read as
+              a broken screen. */}
+          {needle && found > 0 && (
+            <p className="help-empty" role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)' }}>
+              {`Найдено: ${found}`}
+            </p>
+          )}
+          {needle && found === 0 && (
             <p className="help-empty" role="status">
               Ничего не нашлось. Попробуйте другое слово, например «напоминание» или «врач»
             </p>
           )}
-          <Section title="Частые вопросы" entries={faq} searching={!!needle} words={words} />
-          <Section title="Экраны" entries={screens} searching={!!needle} words={words} />
+          {!needle && wanted && !HELP_FAQ.some((e) => e.id === wanted) && !HELP_SCREENS.some((e) => e.id === wanted) && (
+            <p className="help-empty" role="status">
+              Такого раздела в справке нет
+            </p>
+          )}
+          <Section
+            title="Частые вопросы"
+            entries={faq}
+            searching={!!needle}
+            words={words}
+            opened={opened}
+            onToggle={(id, open) => setOpened((current) => ({ ...current, [id]: open }))}
+            wanted={wanted}
+          />
+          <Section
+            title="Экраны"
+            entries={screens}
+            searching={!!needle}
+            words={words}
+            opened={opened}
+            onToggle={(id, open) => setOpened((current) => ({ ...current, [id]: open }))}
+            wanted={wanted}
+          />
         </div>
       </div>
     </div>

@@ -67,7 +67,7 @@ export function AccountDelete() {
   // The link broke after the answer was on its way: whether the account is
   // gone is unknown, and saying «не удалось удалить» would be a guess.
   const [cutOff, setCutOff] = useState(false);
-  const { data: preview, isLoading, isError } = useQuery({
+  const { data: preview, isLoading, isError, refetch } = useQuery({
     queryKey: ['account', 'deletion'],
     queryFn: () => accountService.deletionPreview(),
     staleTime: 0,
@@ -88,7 +88,11 @@ export function AccountDelete() {
     try {
       await accountService.deleteAccount(password);
       setConfirmVisible(false);
-      await forgetPushSubscription();
+      // Off the screen at once: the account is gone, and a form that is still
+      // asking for its password a second longer reads as if it weren't. The
+      // push unsubscribe is this browser's own tidying up and has no word to
+      // give anybody, so it is left to finish on its own.
+      void forgetPushSubscription();
       showToast.success('Аккаунт удалён', { duration: 3000 });
       await logout();
     } catch (err) {
@@ -126,9 +130,22 @@ export function AccountDelete() {
 
           {isLoading && <LoadingSpinner />}
           {isError && (
-            <p style={{ color: 'var(--app-text-secondary)' }}>
-              Не удалось узнать, что станет с питомцами. Попробуйте открыть страницу ещё раз
-            </p>
+            <>
+              <p style={{ color: 'var(--app-text-secondary)' }}>
+                Не удалось узнать, что станет с питомцами
+              </p>
+              {/* Asked to leave the screen and come back, with the reason
+                  already known: the question is one answer away. */}
+              <Button
+                block
+                color="primary"
+                fill="outline"
+                style={{ marginTop: 'var(--spacing-sm)' }}
+                onClick={() => { void refetch(); }}
+              >
+                Повторить
+              </Button>
+            </>
           )}
 
           {cutOff && (

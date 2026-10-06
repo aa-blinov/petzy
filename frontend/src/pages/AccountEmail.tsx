@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Dialog, Form, Input } from 'antd-mobile';
+import { isAxiosError } from 'axios';
 import { FieldError } from '../components/FieldError';
+import { fieldNote } from '../components/FieldNote';
 import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -21,15 +23,25 @@ export function AccountEmail() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'resend' | 'remove' | null>(null);
   const [asked, setAsked] = useState(false);
+  // What the server refused: said under the field that caused it, the toast
+  // stays as its echo. A toast alone is gone by the time the eye goes back
+  // to the form, and the field itself was left unmarked.
+  const [saveError, setSaveError] = useState<{ field: 'email' | 'password'; text: string } | null>(null);
 
   const current = account?.email || account?.pending_email || '';
-  const value = email ?? current;
+  // An emptied field means «leave the address as it is», not «remove it»:
+  // removal is the separate button below. So the current address comes back
+  // into the field rather than the field quietly losing it.
+  const value = email === '' ? current : (email ?? current);
+  const saveEmailError = saveError?.field === 'email' ? saveError.text : null;
+  const savePasswordError = saveError?.field === 'password' ? saveError.text : null;
   // What was typed and not saved: the question before leaving, like every other form.
-  const dirty = !!password || (email !== null && email.trim() !== current);
+  const dirty = !!password || (email !== null && email !== '' && email.trim() !== current);
   const { dialog: leaveDialog } = useUnsavedChangesGuard(dirty);
 
   const save = async (next: string, kind: 'save' | 'remove') => {
     setAsked(true);
+    setSaveError(null);
     if (!password) {
       onInvalidSubmit({ password: { type: 'required', message: 'Введите текущий пароль' } });
       return;
@@ -53,6 +65,13 @@ export function AccountEmail() {
         !next ? 'Почта удалена' : updated.pending_email ? `Письмо отправлено на ${updated.pending_email}` : 'Почта не изменилась',
       );
     } catch (err) {
+      // A refused current password is that field's mistake; anything else is
+      // about the address itself.
+      const refusedPassword = isAxiosError<{ code?: string }>(err) && err.response?.data?.code === 'account_wrong_password';
+      setSaveError({
+        field: refusedPassword ? 'password' : 'email',
+        text: getApiErrorMessage(err, 'Не удалось сохранить почту'),
+      });
       showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить почту'));
     } finally {
       setBusy(null);
@@ -117,10 +136,17 @@ export function AccountEmail() {
               </div>
             )}
             <Form layout="vertical" mode="card">
-              <Form.Item label="Адрес почты">
+              <Form.Item label="Адрес почты" description={fieldNote({ error: saveEmailError ?? undefined, value, max: 254 })}>
                 <Input type="email" value={value} onChange={setEmail} placeholder="name@example.com" clearable maxLength={254} autoComplete="email" />
               </Form.Item>
-              <Form.Item label="Текущий пароль" description={asked && !password ? <FieldError message="Введите текущий пароль" /> : 'Почтой можно вернуть доступ к аккаунту, поэтому менять её можно только с паролем'}>
+              <Form.Item
+                label="Текущий пароль"
+                description={savePasswordError
+                  ? <FieldError message={savePasswordError} />
+                  : asked && !password
+                    ? <FieldError message="Введите текущий пароль" />
+                    : 'Почтой можно вернуть доступ к аккаунту, поэтому менять её можно только с паролем'}
+              >
                 <Input type="password" value={password} onChange={setPassword} placeholder="Пароль от Petzy" autoComplete="current-password" />
               </Form.Item>
             </Form>
@@ -128,11 +154,12 @@ export function AccountEmail() {
               <Button block color="primary" size="large" data-enter-submit loading={busy === 'save'} disabled={!!busy || !value.trim()} onClick={() => save(value.trim(), 'save')}>
                 Сохранить и подтвердить
               </Button>
-              {current && (
-                <Button block fill="none" color="danger" loading={busy === 'remove'} disabled={!!busy} onClick={() => save('', 'remove')}>
-                  Удалить почту
-                </Button>
-              )}
+              {/* Shown even when no address is set: the server takes the request
+                  either way, and a button that comes and goes with the state
+                  makes the screen ask itself whether there is anything to remove. */}
+              <Button block fill="none" color="danger" loading={busy === 'remove'} disabled={!!busy} onClick={() => save('', 'remove')}>
+                Удалить почту
+              </Button>
               <Button block fill="none" onClick={() => goBack(navigate, '/settings')}>
                 Назад
               </Button>
