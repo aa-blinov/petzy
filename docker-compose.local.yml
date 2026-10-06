@@ -30,8 +30,12 @@ x-local-env: &local-env
   S3_PREFIX: ""
   MAIL_OUTBOX: memory
   APP_BASE_URL: http://localhost:3000
-  # One worker: the in-memory outbox lives in one process.
+  # One worker: the in-memory outbox lives in one process. That worker is also the
+  # whole backend, so it is not recycled every thousand requests: a recycle drops the
+  # request in flight and nginx answers 502, which is how a browser check used to fail
+  # for a reason that had nothing to do with what it checks.
   GUNICORN_WORKERS: "1"
+  GUNICORN_MAX_REQUESTS: "0"
   REGISTRATION_ENABLED: "true"
   # With a SENTRY_DSN in .env, local errors are tagged apart from production's.
   SENTRY_ENVIRONMENT: local

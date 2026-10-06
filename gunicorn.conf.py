@@ -64,5 +64,9 @@ tmp_upload_dir = None
 
 # Performance
 preload_app = True
-max_requests = 1000
-max_requests_jitter = 50
+# Recycling a worker leaks whatever it cannot hand back; the request in flight when
+# it happens is answered by nginx with 502. On the stand there is a single worker
+# (the outbox lives in its memory), so a recycle takes the whole backend down for a
+# moment — which is why the stand keeps it high: GUNICORN_MAX_REQUESTS.
+max_requests = int(os.getenv("GUNICORN_MAX_REQUESTS", 1000))
+max_requests_jitter = int(os.getenv("GUNICORN_MAX_REQUESTS_JITTER", 50))
