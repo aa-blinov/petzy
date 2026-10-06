@@ -32,6 +32,35 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+/** What each icon is called in Russian: what a screen reader says when the icon picker offers it, and what a person
+ *  would look for («Глаза», «Уши»). The key stays the one the registry stores. */
+export const ICON_LABELS: Record<string, string> = {
+  utensils: 'Кормление',
+  scale: 'Вес',
+  wind: 'Дыхание',
+  toilet: 'Туалет',
+  shovel: 'Наполнитель',
+  eye: 'Глаза',
+  toothbrush: 'Зубы',
+  ear: 'Уши',
+  pill: 'Таблетка',
+  paw: 'Лапа',
+  heart: 'Сердце',
+  zap: 'Энергия',
+  moon: 'Ночь',
+  sun: 'День',
+  droplet: 'Капли',
+  bone: 'Кость',
+  syringe: 'Укол',
+  thermometer: 'Термометр',
+  camera: 'Камера',
+  gift: 'Подарок',
+  star: 'Звезда',
+  smile: 'Улыбка',
+  bell: 'Напоминание',
+  calendar: 'Календарь',
+};
+
 export const ICON_REGISTRY: Record<string, LucideIcon> = {
   utensils: Utensils,
   scale: Scale,
@@ -67,6 +96,6 @@ export function getEventIcon(key: string): LucideIcon {
 }
 
 /** Options for an icon-picker grid, in a stable, curated order. */
-export const ICON_OPTIONS: { key: string; Icon: LucideIcon }[] = Object.entries(ICON_REGISTRY).map(
-  ([key, Icon]) => ({ key, Icon })
+export const ICON_OPTIONS: { key: string; Icon: LucideIcon; label: string }[] = Object.entries(ICON_REGISTRY).map(
+  ([key, Icon]) => ({ key, Icon, label: ICON_LABELS[key] ?? key })
 );
