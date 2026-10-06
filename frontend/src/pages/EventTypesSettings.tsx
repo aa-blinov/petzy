@@ -9,7 +9,6 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAxiosError } from 'axios';
 import { Button, Dialog } from 'antd-mobile';
 import { Plus, Trash2, Sparkles } from 'lucide-react';
 
@@ -21,48 +20,51 @@ import { eventTypesService } from '../services/eventTypes.service';
 import { pastelColorMap } from '../utils/constants';
 import { getEventIcon } from '../utils/iconRegistry';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAdmin } from '../hooks/useAdmin';
 import { useAuth } from '../hooks/useAuth';
 
 export function EventTypesSettings() {
   const navigate = useNavigate();
-  const { eventTypes, isLoading } = useEventTypes();
+  const { eventTypes, isLoading, error, refetch } = useEventTypes();
   const invalidate = useInvalidateEventTypes();
+  const [askingKey, setAskingKey] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
-  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  // What the person is about to be asked about, with how many records the type has: the number is counted before the
+  // question, not discovered in a refusal after it.
+  const [pending, setPending] = useState<{ key: string; count: number } | null>(null);
   const { isAdmin } = useAdmin();
   const { username: currentUsername } = useAuth();
   // The family's own types first. The built-in ones are the catalogue, added to a pet in its events; only an administrator
   // changes them, so for everyone else a list of thirty rows to look at and not touch is only noise.
   const listed = [...eventTypes.filter((t) => !t.is_builtin), ...(isAdmin ? eventTypes.filter((t) => t.is_builtin) : [])];
 
-  const handleDelete = async (key: string) => {
-    setDeletingKey(key);
+  const askDelete = async (key: string) => {
+    if (askingKey) return;
+    setAskingKey(key);
     try {
-      try {
-        await eventTypesService.remove(key);
-      } catch (error) {
-        // The type has records: the server says how many, and the person decides, instead of a flat refusal.
-        const count = isAxiosError(error) ? (error.response?.data as { events_count?: number } | undefined)?.events_count : undefined;
-        if (!count) throw error;
-        const sure = await Dialog.confirm({
-          title: 'У типа есть записи',
-          content: `Записей этого типа: ${count}. Удалить тип вместе с ними? Вернуть их будет нельзя`,
-          confirmText: 'Удалить тип и записи',
-          cancelText: 'Оставить',
-        });
-        if (!sure) return;
-        await eventTypesService.remove(key, true);
-      }
+      const count = await eventTypesService.eventsCount(key);
+      setPending({ key, count });
+    } catch (countError) {
+      showToast.failure(getApiErrorMessage(countError, 'Не удалось узнать, сколько записей у типа'));
+    } finally {
+      setAskingKey(null);
+    }
+  };
+
+  const handleDelete = async (target: { key: string; count: number }) => {
+    setDeletingKey(target.key);
+    try {
+      await eventTypesService.remove(target.key, target.count > 0);
       invalidate();
       showToast.success('Тип события удалён');
-    } catch (error) {
-      const message = getApiErrorMessage(error, 'Не удалось удалить тип события');
+    } catch (deleteError) {
+      const message = getApiErrorMessage(deleteError, 'Не удалось удалить тип события');
       showToast.failure(message);
     } finally {
       setDeletingKey(null);
-      setConfirmKey(null);
+      setPending(null);
     }
   };
 
@@ -80,6 +82,9 @@ export function EventTypesSettings() {
 
         {isLoading ? (
           <LoadingSpinner fullscreen={false} />
+        ) : error ? (
+          // «У вас ничего нет» after a failed request is a lie the person acts on: they start creating types again.
+          <LoadError what="типы событий" onRetry={() => refetch()} compact />
         ) : listed.length === 0 ? (
           <EmptyState
             icon={Sparkles}
@@ -151,8 +156,8 @@ export function EventTypesSettings() {
                           type="button"
                           className="touch-target"
                           aria-label={`Удалить ${eventType.label}`}
-                          onClick={() => setConfirmKey(eventType.key)}
-                          disabled={deletingKey === eventType.key}
+                          onClick={() => void askDelete(eventType.key)}
+                          disabled={askingKey === eventType.key || deletingKey === eventType.key}
                           style={{ background: 'transparent', border: 'none', color: 'var(--app-danger-text)', cursor: 'pointer', padding: 6, display: 'flex' }}
                         >
                           <Trash2 size={17} strokeWidth={2} />
@@ -181,15 +186,23 @@ export function EventTypesSettings() {
       </div>
 
       <Dialog
-        visible={!!confirmKey}
+        visible={!!pending}
         title="Удаление типа события"
-        content="Тип и его настройки будут удалены. Это действие необратимо"
+        content={pending && pending.count > 0
+          ? `У типа ${pending.count} ${pluralRu(pending.count, 'запись', 'записи', 'записей')}. Они удалятся вместе с ним, вернуть их будет нельзя`
+          : 'У этого типа нет записей, он будет удалён'}
         closeOnAction
-        onClose={() => setConfirmKey(null)}
+        onClose={() => setPending(null)}
         actions={[
           [
-            { key: 'confirm', text: 'Удалить', bold: true, danger: true, onClick: () => { if (confirmKey) handleDelete(confirmKey); } },
-            { key: 'cancel', text: 'Отмена', onClick: () => setConfirmKey(null) },
+            {
+              key: 'confirm',
+              text: pending && pending.count > 0 ? 'Удалить тип и записи' : 'Удалить',
+              bold: true,
+              danger: true,
+              onClick: () => { if (pending) handleDelete(pending); },
+            },
+            { key: 'cancel', text: 'Оставить', onClick: () => setPending(null) },
           ],
         ]}
       />

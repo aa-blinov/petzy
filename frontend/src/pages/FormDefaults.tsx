@@ -44,6 +44,8 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
   const settings = useMemo<FormSettings>(() => pet.form_defaults ?? {}, [pet.form_defaults]);
   const [editing, setEditing] = useState<Row | null>(null);
   const [text, setText] = useState('');
+  /** What the field was opened with: the panel's close button asks before dropping anything else. */
+  const [openedText, setOpenedText] = useState('');
   const [saving, setSaving] = useState(false);
 
   const groups = useMemo(() => {
@@ -84,8 +86,25 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
   };
 
   const open = (row: Row) => {
+    if (saving) return;
     setEditing(row);
-    setText(row.def?.type === 'number' ? row.value.replace('.', ',') : row.value);
+    const start = row.def?.type === 'number' ? row.value.replace('.', ',') : row.value;
+    setText(start);
+    setOpenedText(start);
+  };
+
+  /** Closing the panel with something typed in asks first: a tap on the background used to drop it in silence. */
+  const closeEditing = async () => {
+    if (text === openedText) {
+      setEditing(null);
+      return;
+    }
+    const sure = await Dialog.confirm({
+      content: 'Введённое значение не сохранится',
+      confirmText: 'Закрыть',
+      cancelText: 'Остаться',
+    });
+    if (sure) setEditing(null);
   };
 
   const saveText = async () => {
@@ -119,14 +138,14 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запомнить для этого питомца». Здесь их можно поправить или забыть. Там, где есть выбор из вариантов, без запомненного значения выбран первый
+            Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запомнить для этого питомца». Здесь их можно поправить или забыть. У обязательного поля с вариантами, когда значение не запомнено, выбран первый вариант
           </p>
         </div>
 
         <div style={{ padding: '0 var(--spacing-md)' }}>
           {groups.length === 0 ? (
             <div className="card-soft" style={{ padding: '16px', color: 'var(--app-text-secondary)', fontSize: 'var(--text-md)', lineHeight: 1.5 }}>
-              Пока ничего не запомнено, и новые записи этого питомца открываются пустыми
+              Пока ничего не запомнено, и новые записи этого питомца открываются пустыми. У обязательных полей с вариантами выбран первый вариант
             </div>
           ) : (
             groups.map((g) => (
@@ -141,11 +160,18 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
                         type="button"
                         className="tap-feedback"
                         onClick={() => open(row)}
-                        disabled={!row.def}
+                        disabled={!row.def || saving}
                         style={{ flex: 1, minWidth: 0, minHeight: 'var(--touch-min)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-2xs)', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', font: 'inherit', cursor: row.def ? 'pointer' : 'default', color: 'var(--app-text-primary)' }}
                       >
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{row.label}</span>
                         <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, overflowWrap: 'anywhere' }}>{shown(row)}</span>
+                        {/* A field that is no longer in the type keeps its value, and there is nothing to edit it
+                            with: said here, so the inert button and the latin name need no guessing. */}
+                        {!row.def && (
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>
+                            Поля больше нет в этом виде записи, значение можно только забыть
+                          </span>
+                        )}
                       </button>
                       <button
                         type="button"
@@ -169,6 +195,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
               type="button"
               className="tap-feedback"
               onClick={() => void forgetAll()}
+              disabled={saving}
               style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-danger-text, var(--app-danger-color))', cursor: 'pointer' }}
             >
               Забыть всё для этого питомца
@@ -191,10 +218,24 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
           confirmText="Готово"
         />
       )}
-      <Popup visible={!!editing && !isSelect} onMaskClick={() => setEditing(null)} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
-        <label htmlFor="default-value" style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', marginBottom: 8 }}>
-          {editing ? `${editing.typeLabel}: ${editing.label}` : ''}
-        </label>
+      <Popup visible={!!editing && !isSelect} bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)' }}>
+          <label
+            htmlFor="default-value"
+            style={{ flex: 1, minWidth: 0, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', paddingTop: 12 }}
+          >
+            {editing ? `${editing.typeLabel}: ${editing.label}` : ''}
+          </label>
+          <button
+            type="button"
+            className="tap-feedback"
+            aria-label="Закрыть без сохранения"
+            onClick={() => void closeEditing()}
+            style={{ width: 'var(--touch-min)', height: 'var(--touch-min)', flexShrink: 0, margin: 'calc(var(--touch-min) / -2) -8px -8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--app-text-secondary)', cursor: 'pointer' }}
+          >
+            <X size={18} strokeWidth={2.2} aria-hidden />
+          </button>
+        </div>
         <Input
           id="default-value"
           value={text}
