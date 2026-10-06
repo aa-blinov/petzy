@@ -26,9 +26,18 @@ THROWAWAY = {
 }
 
 
-def _token_of(letter_subject: str, letters: list) -> str:
-    letter = next(one for one in letters if one["subject"] == letter_subject)
-    return re.search(r"token=([\w-]+)", letter["text"]).group(1)
+def _token_of(letter_subject: str, letters: list, to: str) -> str:
+    """The token from the letter addressed to this account, newest first.
+
+    The outbox keeps every letter the stand has sent, so taking the first with
+    the right subject can hand back a token from somebody else's account from an
+    earlier run: the link then does not work and the check fails for a reason that
+    has nothing to do with the rule.
+    """
+    mine = [one for one in letters if one["subject"] == letter_subject and one.get("to") == to]
+    if not mine:
+        raise AssertionError(f"нет письма «{letter_subject}» для {to}")
+    return re.search(r"token=([\w-]+)", mine[-1]["text"]).group(1)
 
 
 async def main():
@@ -55,7 +64,12 @@ async def main():
             if made["status"] != 201:
                 return
             letters = (await api(pg, "GET", "/dev/outbox"))["json"].get("letters", [])
-            await api(pg, "POST", "/auth/email/verify", {"token": _token_of("Petzy: подтвердите почту", letters)})
+            await api(
+                pg,
+                "POST",
+                "/auth/email/verify",
+                {"token": _token_of("Petzy: подтвердите почту", letters, THROWAWAY["email"])},
+            )
 
             # A link that cannot work: said at once, no form, a way out.
             await pg.goto(BASE + "/reset-password?token=definitely-not-a-real-token")
@@ -132,7 +146,7 @@ async def main():
 
             # The check on opening must not burn the link: the form shows.
             letters = (await api(pg, "GET", "/dev/outbox"))["json"].get("letters", [])
-            token = _token_of("Petzy: новый пароль", letters)
+            token = _token_of("Petzy: новый пароль", letters, THROWAWAY["email"])
             await pg.goto(BASE + f"/reset-password?token={token}")
             await pg.wait_for_timeout(2000)
             check(
