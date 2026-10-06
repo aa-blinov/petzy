@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Checkbox, Form, Input } from 'antd-mobile';
@@ -15,9 +15,28 @@ import { passwordProblem } from '../utils/authForms';
  *  the mistake shows under the field rather than after a round trip. */
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 
+/** What the field says when the server keeps the password in its list of the
+ *  most guessed ones. The list never comes to the screen, only this. */
+const COMMON_PASSWORD_NOTE = 'Это один из самых частых паролей, придумайте другой';
+
+/** How long the typing has to pause before the server is asked about the
+ *  password: long enough not to go out on every letter, short enough to
+ *  answer while the person is still at the field. */
+const COMMON_CHECK_AFTER_MS = 600;
+
 const labelStyle = { color: 'var(--app-text-primary)', fontWeight: 500 } as const;
 const legalLinkStyle = { color: 'var(--app-accent-deep)', fontWeight: 500 } as const;
 const hintStyle = { fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', lineHeight: 1.4 } as const;
+
+/** The last value of `value`, once it has stopped changing. */
+function useSettled(value: string, delay: number): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return settled;
+}
 
 export function Register() {
   const { register, username: storedUsername } = useAuth();
@@ -33,6 +52,19 @@ export function Register() {
   const [isLoading, setIsLoading] = useState(false);
 
   const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
+  const passwordRuleError = passwordProblem(password, username);
+  // The most guessed passwords are a list on the server, so the form asks
+  // about this one password, after a pause in typing. A failed ask says
+  // nothing: the rule that refuses it is still there on the server.
+  const settledPassword = useSettled(password, COMMON_CHECK_AFTER_MS);
+  const commonCheck = useQuery({
+    queryKey: ['common-password', settledPassword],
+    queryFn: () => authService.isCommonPassword(settledPassword),
+    enabled: settledPassword === password && !!password && !passwordRuleError,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const commonPassword = commonCheck.data === true;
   // Whether an address is asked for is the server's word, but it can't be
   // known for a moment: sending before it arrives meant a form with no mail
   // field answered 422. The field shows right away and goes only if the
@@ -57,7 +89,7 @@ export function Register() {
       : !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim())
         ? 'Проверьте адрес почты'
         : null;
-  const passwordError = passwordProblem(password, username);
+  const passwordError = commonPassword ? COMMON_PASSWORD_NOTE : passwordRuleError;
   const repeatError = repeat !== password ? 'Пароли не совпадают' : null;
   const consentError = consent ? null : 'Без согласия аккаунт не создать';
 
@@ -207,7 +239,11 @@ export function Register() {
         )}
         <Form.Item
           label={<span style={labelStyle}>Пароль</span>}
-          description={below('password', passwordError, 'Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа')}
+          // The server's answer about a guessed password shows right away:
+          // it isn't a guess, the list is the server's.
+          description={commonPassword
+            ? <FieldError message={COMMON_PASSWORD_NOTE} />
+            : below('password', passwordError, 'Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа')}
         >
           <Input
             type="password"

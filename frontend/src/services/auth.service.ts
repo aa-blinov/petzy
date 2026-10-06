@@ -40,6 +40,13 @@ export interface RegistrationStatus {
   mail_enabled: boolean;
 }
 
+export interface ForgotPasswordResult {
+  /** The same words for every login, whether or not the account exists. */
+  message: string;
+  /** The letter was asked for moments ago: no second one is on its way. */
+  already_sent: boolean;
+}
+
 export const authService = {
   /** Creates the account; the session cookies come with the answer. */
   async register(data: RegisterRequest): Promise<void> {
@@ -51,10 +58,24 @@ export const authService = {
     return response.data;
   },
 
-  /** Always the same answer, whether or not the account exists. */
-  async forgotPassword(login: string): Promise<string> {
-    const response = await api.post<{ message: string }>('/auth/password/forgot', { login });
-    return response.data.message;
+  /** The same answer, whether or not the account exists. */
+  async forgotPassword(login: string): Promise<ForgotPasswordResult> {
+    const response = await api.post<ForgotPasswordResult>('/auth/password/forgot', { login });
+    return response.data;
+  },
+
+  /** Whether the letter's link still works, asked before the form is shown.
+   *  Only reads the link: it stays usable afterwards. */
+  async checkResetLink(token: string): Promise<boolean> {
+    const response = await api.get<{ valid: boolean }>('/auth/password/reset/check', { params: { token } });
+    return response.data.valid;
+  },
+
+  /** Whether the server keeps this password in its list of the most guessed
+   *  ones. The list itself stays there: only the answer comes back. */
+  async isCommonPassword(password: string): Promise<boolean> {
+    const response = await api.post<{ common: boolean }>('/auth/password/common', { password });
+    return response.data.common;
   },
 
   /** Sets the new password and signs in; returns the account's login. */

@@ -39,6 +39,8 @@ from web.schemas import (
     AuthSessionResponse,
     RegisterRequest,
     RegistrationStatusResponse,
+    PasswordCommonCheckResponse,
+    UserPasswordResetRequest,
     SuccessResponse,
     ErrorResponse,
 )
@@ -229,6 +231,26 @@ def api_register():
             logger.error(f"Verification letter not sent at sign-up: user={username}, error={e}")
     logger.info(f"Account registered: user={username}, ip={request.remote_addr}")
     return signed_in_response("auth_registered", username, status=201)
+
+
+@auth_bp.route("/api/auth/password/common", methods=["POST"])
+@limiter.limit("60 per hour")
+# UserPasswordResetRequest is the schemas.py model with a single password
+# field; a dedicated one (PasswordCommonCheckRequest) belongs there too.
+@api.validate(
+    body=Request(UserPasswordResetRequest),
+    resp=Response(HTTP_200=PasswordCommonCheckResponse),
+    tags=["auth"],
+)
+def password_is_common():
+    """Whether this password is one of the most guessed ones.
+
+    So the form can say so under the field, before the person presses
+    anything. The list never leaves the server: only yes or no goes to the
+    screen, about a password that hasn't been sent anywhere yet.
+    """
+    data = request.context.body  # type: ignore[attr-defined]
+    return jsonify({"common": data.password.lower() in COMMON_PASSWORDS})
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])

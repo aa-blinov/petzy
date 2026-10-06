@@ -8,6 +8,7 @@ the author taken off: the login can be registered again by someone else,
 and their name mustn't end up on the old records.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from bson import ObjectId
@@ -21,6 +22,21 @@ from web.app import logger
 AUTHORED_COLLECTIONS = ("events", "medication_intakes", "medications", "documents", "medical_records", "medical_shares")
 # The user's own rows elsewhere: sessions, links in letters, devices.
 PERSONAL_COLLECTIONS = ("refresh_tokens", "account_tokens", "push_subscriptions")
+
+
+def was_deleted(username: str) -> bool:
+    """Whether this login belonged to an account that was deleted for good.
+
+    The first DELETE went through and its answer was lost on the way (a closed
+    tab, a dead connection), so the person pressed the button again. All that is
+    kept is the login itself and when it went: nothing about the account, and
+    no password hash to check a wrong guess against. A login that has been
+    registered again belongs to the new person, so the account has to be gone
+    for this to answer.
+    """
+    if app.db.users.find_one({"username": username}, {"_id": 1}):
+        return False
+    return app.db.deleted_accounts.find_one({"username": username}, {"_id": 1}) is not None
 
 
 def _heir(pet: dict) -> Optional[str]:
@@ -172,6 +188,14 @@ def delete_account(username: str) -> dict:
     for name in PERSONAL_COLLECTIONS:
         app.db[name].delete_many({"username": username})
     app.db.users.delete_one({"username": username})
+    # A repeat of this DELETE answers as if it had just been done (see
+    # was_deleted). Not one of PERSONAL_COLLECTIONS: it holds no data of the
+    # account, only that this login is free again.
+    app.db.deleted_accounts.update_one(
+        {"username": username},
+        {"$set": {"username": username, "deleted_at": datetime.now(timezone.utc)}},
+        upsert=True,
+    )
 
     # Last, so a failure here leaves stray files and not a half-deleted account.
     if storage.storage_configured():
