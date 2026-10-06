@@ -601,9 +601,56 @@ class UserResponseWrapper(BaseModel):
 
 
 class UserListResponse(BaseModel):
-    """List of users response."""
+    """List of users response.
+
+    With a page and a total: the list is a growing table of accounts, not a
+    short one, and until this it printed every row at once.
+    """
 
     users: List[UserResponse]
+    total: int = 0
+    page: int = 1
+    per_page: int = 0
+
+
+class PasswordForgotResponse(SuccessResponse):
+    """Answer to «I forgot the password».
+
+    ``already_sent`` says the letter was asked for moments ago and a second one is
+    not on its way: the screen used to say «sent» every time, and the person waited
+    for a letter that would not come.
+    """
+
+    already_sent: bool = False
+
+
+class PasswordResetCheckResponse(BaseModel):
+    """Whether a password reset link is still usable, asked before showing the form."""
+
+    valid: bool = False
+
+
+class PasswordCommonCheckRequest(BaseModel):
+    """A password to ask about before it is sent anywhere.
+
+    No minimum length on purpose: the answer is «is this one of the common
+    ones», and a short password deserves that answer rather than a complaint
+    about its length.
+    """
+
+    password: str = Field(..., max_length=200, description="Пароль, который проверяется на частоту")
+
+    model_config = ConfigDict(json_schema_extra={"example": {"password": "password123"}})
+
+
+class PasswordCommonCheckResponse(BaseModel):
+    """Whether a password is in the server's list of common ones.
+
+    The list itself stays on the server: it is asked about a password that has not
+    been sent anywhere yet, and the answer is what goes to the screen.
+    """
+
+    common: bool = False
 
 
 class UserPasswordResetRequest(BaseModel):
@@ -620,6 +667,15 @@ class UserPasswordResetRequest(BaseModel):
     )
 
 
+class SharedPetRef(BaseModel):
+    """A pet both people can see, as it is given in a person's card: the id opens its medical card."""
+
+    id: str
+    name: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class UserPublicProfile(BaseModel):
     """The subset of a user's profile visible to a co-owner they share a
     pet with — not the full admin UserResponse (no email, no is_active)."""
@@ -627,7 +683,9 @@ class UserPublicProfile(BaseModel):
     username: str
     full_name: Optional[str] = None
     created_at: str
-    shared_pets: List[str] = Field(default_factory=list, description="Имена питомцев, доступных обоим")
+    shared_pets: List["SharedPetRef"] = Field(
+        default_factory=list, description="Питомцы, доступные обоим: идентификатор и имя, чтобы имя открывало медкарту"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -635,7 +693,7 @@ class UserPublicProfile(BaseModel):
                 "username": "user2",
                 "full_name": "Мария Петрова",
                 "created_at": "2024-01-15 14:30",
-                "shared_pets": ["Рекс"],
+                "shared_pets": [{"id": "…", "name": "Рекс"}],
             }
         }
     )
@@ -1642,6 +1700,12 @@ class MedicationCreate(PetIdQuery):
     dose_unit: Optional[str] = Field(None, max_length=20, description="tablet, ml, etc")
     default_dose: float = Field(1.0, ge=0, le=10_000, description="Default amount to subtract from inventory")
     schedule: MedicationSchedule
+    # «По необходимости» хранится отдельно, а не выводится из пустого расписания: у курса
+    # без напоминаний может быть расписание, и раньше оно молча пропадало вместе с режимом.
+    # None, а не False: клиент, который этого поля не знает (установленное приложение прежней
+    # версии), его не присылает, и такой курс должен читаться по старому правилу «нет времени =
+    # по необходимости», а не стать «расписанием без времени».
+    as_needed: Optional[bool] = None
     inventory_enabled: bool = False
     inventory_total: Optional[float] = Field(None, ge=0, le=1_000_000)
     inventory_current: Optional[float] = Field(None, ge=0, le=1_000_000)
@@ -1680,6 +1744,7 @@ class MedicationUpdate(BaseModel):
     dose_unit: Optional[str] = Field(None, max_length=20)
     default_dose: Optional[float] = Field(None, ge=0, le=10_000)
     schedule: Optional[MedicationSchedule] = None
+    as_needed: Optional[bool] = None
     inventory_enabled: Optional[bool] = None
     inventory_total: Optional[float] = Field(None, ge=0, le=1_000_000)
     inventory_current: Optional[float] = Field(None, ge=0, le=1_000_000)
@@ -1719,6 +1784,8 @@ class MedicationItem(BaseModel):
     dose_unit: Optional[str] = None
     default_dose: float = 1.0
     schedule: MedicationSchedule
+    # Отсутствует у курсов, созданных до этого поля: у них режим выводился из расписания.
+    as_needed: bool = False
     inventory_enabled: bool
     inventory_total: Optional[float] = None
     inventory_current: Optional[float] = None
@@ -1848,6 +1915,11 @@ def _title_without_spaces(value):
 
 
 class DocumentCreate(PetIdQuery):
+    # IANA-имя зоны, в которой документ был загружен. Без него «Добавлен <дата>»
+    # считалась по зоне того, кто смотрит, и два человека видели разное время
+    # одного файла. Старые документы поля не имеют: у них зоны неизвестно, и
+    # для них время по-прежнему показывается по зоне смотрящего.
+    tz: Optional[str] = Field(None, max_length=64, description="IANA-имя часового пояса, в котором документ загружен")
     category: str = Field(..., description="Категория документа")
     title: str = Field(..., min_length=1, max_length=100)
     note: Optional[str] = Field(None, max_length=500)
@@ -1960,6 +2032,8 @@ class DocumentItem(BaseModel):
     id: str = Field(alias="_id")
     pet_id: str
     username: str
+    # Зона документа, а не зона смотрящего; у документов до этого поля её нет.
+    tz: Optional[str] = None
     category: str
     title: str
     note: Optional[str] = None
@@ -2277,6 +2351,14 @@ VISIT_CHECKS = ("appetite", "thirst", "stool", "urine", "vomiting", "cough", "ac
 class VisitPrep(BaseModel):
     """PUT /api/pets/<id>/visit-prep: what to tell the vet at the next appointment. Empty clears it."""
 
+    # The version the form was opened from: two phones editing the note used to leave
+    # whoever pressed last as the only truth, silently. A stale version answers 409 and
+    # brings the other person's text along, as the vet profile's base_version does.
+    base_version: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="Версия заметки, из которой открыта форма. Если с тех пор её сохранил кто-то другой, ответ 409",
+    )
     complaint: Optional[str] = Field(None, max_length=500, description="Что беспокоит")
     checks: Dict[str, str] = Field(
         default_factory=dict,
@@ -2301,6 +2383,7 @@ class VisitPrep(BaseModel):
 
 class VisitPrepOut(VisitPrep):
     updated_at: Optional[str] = None
+    version: str = ""
 
 
 class VisitPrepResponse(BaseModel):
@@ -2443,6 +2526,10 @@ class SharedMedicalCardResponse(BaseModel):
 
     card: MedicalCardData
     expires_at: str
+    # Whose card this is, and only for the person who owns it or has access: with it the page offers a way back to the
+    # app, without it the link stays a copy. Without a session this is null, so a vet opening the link learns nothing
+    # about who they got it from.
+    pet_id: Optional[str] = Field(None, description="Питомец этой карты, если у открывшего есть сессия и доступ")
 
 
 class VaccineGroupItem(BaseModel):
