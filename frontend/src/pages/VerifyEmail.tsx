@@ -71,7 +71,7 @@ const ask = useCallback(
   const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 };
 
   return (
-    <AuthShell>
+    <AuthShell title="Подтверждение почты">
       <div style={{ textAlign: 'center' }}>
         {state === 'checking' && <SpinLoading style={{ margin: '0 auto var(--spacing-md)' }} />}
         <p style={{ margin: 0, lineHeight: 1.5, color: 'var(--app-text-primary)' }} role="status">

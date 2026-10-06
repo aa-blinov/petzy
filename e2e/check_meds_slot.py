@@ -170,8 +170,10 @@ async def main():
                 await button.count() == 1 and await button.is_disabled(),
             )
             check("no horizontal scroll", not await pg.evaluate("document.documentElement.scrollWidth > innerWidth"))
-            await ctx.set_offline(False)
         finally:
+            # The connection comes back before the cleanup: a course left behind on the demo pet shows up on the feed of the
+            # next check as a real dose, and the run then fails for a reason that has nothing to do with it.
+            await ctx.set_offline(False)
             await pg.evaluate("localStorage.removeItem('petzy:pendingIntakes')")
             for i in ids:
                 await api(pg, "DELETE", f"/medications/{i}")
