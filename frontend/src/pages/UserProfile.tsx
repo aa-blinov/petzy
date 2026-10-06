@@ -24,7 +24,7 @@ function memberSince(createdAt: string): string {
 export function UserProfile() {
   const { username } = useParams<{ username: string }>();
 
-  const { data: profile, isLoading, error } = useQuery({
+  const { data: profile, isLoading, error, refetch } = useQuery({
     queryKey: ['user-profile', username],
     queryFn: () => usersService.getPublicProfile(username!),
     enabled: !!username,
@@ -40,17 +40,21 @@ export function UserProfile() {
     // doesn't share a pet with them — the backend deliberately doesn't
     // distinguish the two (see web/users.py), so neither does this.
     const status = isAxiosError(error) ? error.response?.status : undefined;
+    const notFound = status === 404;
     return (
       <div className="page-container">
         <div className="max-width-container">
           <EmptyState
             icon={UserRound}
+            heading="h1"
             title="Профиль недоступен"
             description={
-              status === 404
+              notFound
                 ? 'Такого пользователя нет, или у вас нет общего питомца с ним'
-                : 'Не удалось загрузить профиль. Попробуйте ещё раз'
+                : 'Не удалось загрузить профиль. Сервер не ответил'
             }
+            // A failed request had a «попробуйте ещё раз» with nothing to press.
+            {...(notFound ? {} : { actionLabel: 'Повторить', onAction: () => { void refetch(); } })}
           />
         </div>
       </div>

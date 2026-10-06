@@ -11,8 +11,10 @@ import { scrollToTop } from '../utils/scroll';
 const MEDICAL_PATH = /^\/pets\/[^/]+\/(medical-|visit-prep)/;
 
 /** The screens that open from Settings and are part of it: the Settings tab stays lit on them, so the person knows where
-    they are. The medical card's own screens (/pets/<id>/medical-...) are the other tab's and are not in this list. */
-const SETTINGS_PATH = /^\/(settings(\/|$)|form-defaults|tiles-settings|pet-events|pet-look|event-types|help|pets(\/new|\/[^/]+\/edit)?$|users\/)/;
+    they are. That includes the History screen (a Settings row is the way in, and the feed links to it) and the admin
+    panel (a Settings row of its own). The medical card's own screens (/pets/<id>/medical-...) are the other tab's and are
+    not in this list. */
+const SETTINGS_PATH = /^\/(settings(\/|$)|form-defaults|tiles-settings|pet-events|pet-look|event-types|help|history|admin(\/|$)|pets(\/new|\/[^/]+\/edit)?$|users\/)/;
 
 const tabs = [
   { key: 'feed', to: '/', title: 'Лента', Icon: BookOpen },

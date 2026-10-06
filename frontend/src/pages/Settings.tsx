@@ -17,6 +17,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   getPushSubscriptionState,
+  needsHomeScreenForPush,
   subscribeToPush,
   unsubscribeFromPush,
   type PushSupportState,
@@ -38,13 +39,25 @@ function Group({ title, first = false, children }: { title: string; first?: bool
 
 export function Settings() {
   const navigate = useNavigate();
-  const { selectedPetId, getSelectedPet } = usePet();
+  const { selectedPetId, getSelectedPet, isLoading: petsLoading } = usePet();
   const [exportVisible, setExportVisible] = useState(false);
   const { theme, setTheme } = useTheme();
   const { logout } = useAuth();
   const { isAdmin } = useAdmin();
   const { data: account } = useQuery({ queryKey: ACCOUNT_QUERY_KEY, queryFn: () => accountService.get() });
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+
+  // A row that acts on one pet says what it can do only when that pet is known. While the roster loads the
+  // row says nothing at all (there is nothing true to say yet), and when there is no pet the row leads to
+  // the pet list instead of a toast: a toast «сначала выберите питомца» was read by people who had pets
+  // but whose roster had not arrived yet, and it said nothing about where to go.
+  const petRowText = (text: string) => (selectedPetId ? text : petsLoading ? ' ' : 'Сначала добавьте питомца');
+  const petRow = (ready: () => void) =>
+    selectedPetId
+      ? { chevron: true, onClick: ready }
+      : petsLoading
+        ? {}
+        : { chevron: true, onClick: () => navigate('/pets') };
 
   // null while the initial serviceWorker.ready + getSubscription() check
   // is in flight — the row renders once that resolves, since flashing
@@ -151,9 +164,8 @@ export function Settings() {
             <SettingsRow
               icon={<HeartPulse size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Данные для врача"
-              description="Аллергии, чип, клиники и питание выбранного питомца"
-              chevron
-              onClick={() => (selectedPetId ? navigate(`/pets/${selectedPetId}/medical-profile`) : showToast.info('Сначала выберите питомца'))}
+              description={petRowText('Аллергии, чип, клиники и питание выбранного питомца')}
+              {...petRow(() => navigate(`/pets/${selectedPetId}/medical-profile`))}
             />
             <SettingsRow
               icon={<Link2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -164,17 +176,21 @@ export function Settings() {
             />
           </Group>
 
-          {/* The row itself only ever shows a switch: "unsupported"/"denied" states disable it with an explanatory description
-              instead of hiding the row, so a user on an unsupported browser understands why it is not available. */}
+          {/* The row itself only ever shows a switch: the states where it cannot be turned on disable it and
+              say, in the row, both why and what to do about it. On iPhone push works in an app added to the
+              home screen, so plain Safari is not «браузер не поддерживает» (the same wording is in
+              components/PushOffNotice.tsx). */}
           <Group title="Уведомления">
             <SettingsRow
               icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Push-уведомления"
               description={
                 pushState === 'unsupported'
-                  ? 'Этот браузер не поддерживает push-уведомления'
+                  ? needsHomeScreenForPush()
+                    ? 'На iPhone напоминания работают, когда Petzy добавлен на экран «Домой». Добавьте его оттуда и включите напоминания здесь'
+                    : 'Этот браузер не поддерживает push-уведомления. Напоминания о приёмах придут в другое приложение, если оно установлено'
                   : pushState === 'denied'
-                    ? 'Заблокированы в настройках браузера'
+                    ? 'Заблокированы в настройках браузера. Разрешите уведомления для Petzy в настройках браузера или телефона'
                     : pushState === 'on'
                       ? 'Напоминания включены на этом устройстве: лекарства, прививки и обработки, документы, необычные показатели'
                       : 'Лекарства, прививки и обработки, документы, необычные показатели'
@@ -202,9 +218,8 @@ export function Settings() {
             <SettingsRow
               icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Экспорт записей"
-              description="Скачать записи питомца таблицей"
-              chevron
-              onClick={() => (selectedPetId ? setExportVisible(true) : showToast.info('Сначала выберите питомца'))}
+              description={petRowText('Скачать записи питомца таблицей')}
+              {...petRow(() => setExportVisible(true))}
             />
           </Group>
 

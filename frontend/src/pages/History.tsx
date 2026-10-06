@@ -24,6 +24,8 @@ import { isTileShown } from '../utils/tilesConfig';
 import { buildTiles } from '../utils/tilesConfig';
 import { healthRecordsService, type TimelineResponse, type HealthRecord } from '../services/healthRecords.service';
 import { SkeletonList } from '../components/Skeletons';
+import { Fab } from '../components/Fab';
+import { QuickAddSheet } from '../components/QuickAddSheet';
 import { hapticFeedback } from '../utils/haptic';
 
 /** Format a YYYY-MM-DD dateStr as a friendly Russian relative or absolute label. */
@@ -48,7 +50,7 @@ function formatDateHeader(dateStr: string): string {
 const FILTER_ALL = 'all';
 
 export function History() {
-    const { selectedPetId } = usePet();
+    const { selectedPetId, isLoading: petsLoading } = usePet();
     const { tilesSettings } = usePetTilesSettings(selectedPetId);
     const { eventTypes } = useEventTypes();
     const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
@@ -56,6 +58,9 @@ export function History() {
     const [filterType, setFilterType] = useState<string>(() => new URLSearchParams(window.location.search).get('type') || FILTER_ALL);
     const [exportVisible, setExportVisible] = useState(false);
     const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+    // «Записать» from the history screen itself: the round «+» every list has (components/Fab), and the same
+    // quick-add sheet the feed opens, so a record can be added from here too.
+    const [addVisible, setAddVisible] = useState(false);
 
     // Build filter options from every registered type. "Все" first, then
     // each type — shown as a grid of tiles in HistoryFilterSheet, same
@@ -162,6 +167,12 @@ export function History() {
         setFilterType(id);
     };
 
+    // The list of pets decides whether there is anything to show. While it loads there is no chosen pet yet
+    // and no answer either, and «сначала добавьте питомца» said that to people whose pets were on the way.
+    if (petsLoading) {
+        return <LoadingSpinner fullscreen={false} />;
+    }
+
     if (!selectedPetId) {
         return <NoPetState what="История" />;
     }
@@ -181,6 +192,8 @@ export function History() {
                     icon={Notebook}
                     title={filterType === FILTER_ALL ? 'Записей пока нет' : `${activeFilterOption.label}: записей пока нет`}
                     description={filterType === FILTER_ALL ? 'Кормления, вес, лекарства и прививки появятся здесь, как только вы их добавите' : 'Они появятся здесь, как только вы их добавите. Другие записи видны, если выбрать «Все»'}
+                    actionLabel="Записать событие"
+                    onAction={() => setAddVisible(true)}
                 />
             );
         }
@@ -242,7 +255,7 @@ export function History() {
     })();
 
     return (
-        <div className="page-container">
+        <div className="page-container fab-page">
             <div className="max-width-container">
                 {/* Header — one row, not three.
                    This screen used to stack a title row, the filter rail
@@ -369,6 +382,11 @@ export function History() {
                 // silently pre-selecting feeding.
                 defaultType={filterType === FILTER_ALL ? ALL_TYPES : filterType}
             />
+
+            {/* The round «+» the feed has, so a record can be written from the history itself instead of only
+                from the feed. Same sheet, same quick-add grid. */}
+            <Fab label="Добавить запись" onClick={() => setAddVisible(true)} popup />
+            <QuickAddSheet visible={addVisible} onClose={() => setAddVisible(false)} />
         </div>
     );
 }

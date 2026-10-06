@@ -33,6 +33,7 @@ import { defaultTilesFor, getSpecies } from '../utils/species';
 import { getEventIcon } from '../utils/iconRegistry';
 import { pastelColorMap } from '../utils/constants';
 import { showToast } from '../utils/toast';
+import { showSnackbar } from '../utils/snackbar';
 
 function Row({ type, onRemove }: { type: EventType; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: type.key });
@@ -124,7 +125,21 @@ export function PetEvents() {
     showToast.success(`Добавлено: ${typesByKey.get(key)?.label ?? key}`);
   };
 
-  const remove = (key: string) => saveSettings({ order: withRest(shownKeys), visible: { ...tilesSettings.visible, [key]: false } });
+  // Taking an event off the «+» is undone the same way adding it is, with a bar and «Вернуть»: one tap on the
+  // cross used to take it away for good, and the only way back was searching the whole catalogue for it.
+  const remove = (key: string) => {
+    const label = typesByKey.get(key)?.label ?? key;
+    const without = { order: withRest(shownKeys), visible: { ...tilesSettings.visible, [key]: false } };
+    saveSettings(without);
+    showSnackbar({
+      message: `Убрано из «+»: ${label}`,
+      tone: 'success',
+      action: {
+        label: 'Вернуть',
+        run: () => saveSettings({ order: withRest([...shownKeys, key]), visible: { ...tilesSettings.visible, [key]: true } }),
+      },
+    });
+  };
 
   const resetToKind = async () => {
     const sure = await Dialog.confirm({
@@ -132,7 +147,15 @@ export function PetEvents() {
       confirmText: 'Вернуть',
       cancelText: 'Оставить',
     });
-    if (sure) saveSettings(defaultTilesFor(getSelectedPet?.species));
+    if (!sure) return;
+    // The person's own events keep the place they had: returning the set for this kind of animal is about the
+    // built-in ones, and it used to push a custom event they had taken off the «+» back into it.
+    const defaults = defaultTilesFor(getSelectedPet?.species);
+    const ownKeys = Object.keys(tilesSettings.visible).filter((k) => !(k in defaults.visible));
+    saveSettings({
+      order: [...defaults.order, ...ownKeys.filter((k) => tilesSettings.visible[k])],
+      visible: { ...defaults.visible, ...Object.fromEntries(ownKeys.map((k) => [k, tilesSettings.visible[k]])) },
+    });
   };
 
   return (

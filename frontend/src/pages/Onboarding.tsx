@@ -158,9 +158,10 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   };
 
   const isIntro = INTRO_STEPS.includes(step);
-  // Once the pet exists, stepping back into the name form would only
-  // offer to create a second one.
-  const canGoBack = index > 0 && step !== 'done' && !(createdPet && step === 'notify');
+  // Once the pet exists there is no going back: every step before the one the pet was created on ends in
+  // «Добавить питомца», and the person lands on the name step again and creates a second pet. This used to
+  // be blocked on the notifications step only, so «Назад» on the iPhone step did exactly that.
+  const canGoBack = index > 0 && step !== 'done' && !createdPet;
 
   // Horizontal swipe between intro slides, like every carousel onboarding.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -420,7 +421,8 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
             visible={datePickerVisible}
             onClose={() => setDatePickerVisible(false)}
             precision="day"
-            min={new Date(new Date().getFullYear() - 30, 0, 1)}
+            // The same 50 years the pet's own form offers, so the two wheels of the same date have one bound.
+            min={new Date(new Date().getFullYear() - 50, 0, 1)}
             max={new Date()}
             defaultValue={new Date(new Date().getFullYear() - 1, new Date().getMonth(), new Date().getDate())}
             renderLabel={(type, value) => (type === 'month' ? MONTHS_NOMINATIVE[value - 1] : String(value))}

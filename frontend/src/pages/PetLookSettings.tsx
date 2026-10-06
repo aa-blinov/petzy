@@ -33,6 +33,7 @@ import {
 import { setPetLookPreview } from '../utils/petLookPreview';
 import { rovingKeyDown, rovingTabIndex } from '../utils/roving';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
 
 /** Columns of option tiles: four on a phone, fewer when the text is large, so a label is never cut. */
@@ -319,10 +320,14 @@ function PetLookFor({ pet }: { pet: Pet }) {
     setFrame(v.look.frame);
   };
 
+  // «Сбросить оформление» resets the whole look, the caption and the framing of the photo included: the
+  // button said «оформление» and left the two things it had just saved standing.
   const reset = () => {
+    setTagline('');
     setAccent('');
     setFont('');
     setFrame('');
+    setCrops({});
     setBackdrop('');
     setScene('');
   };
@@ -340,7 +345,9 @@ function PetLookFor({ pet }: { pet: Pet }) {
       queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, look } : p)));
       showToast.success('Оформление сохранено');
       release();
-      navigate('/settings');
+      // Back the way it was opened, like every other form here: this screen is a step pushed onto Settings,
+      // so jumping to /settings left its own address in history and the second «Назад» opened it again.
+      goBack(navigate, '/settings');
     } catch {
       showToast.failure('Не удалось сохранить оформление');
     } finally {
@@ -575,7 +582,9 @@ function PetLookFor({ pet }: { pet: Pet }) {
             )}
           </section>
 
-          <div style={{ paddingBottom: 'var(--spacing-md)' }}>
+          {/* The list of frames is long: the button that closes the form stays within reach instead of
+              being under the last row. The same .form-sticky-action the other forms use. */}
+          <div className="form-sticky-action">
             <SpinnerButton type="button" block loading={saving} onClick={save}>
               Сохранить
             </SpinnerButton>

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { Button, Form, Input } from 'antd-mobile';
+import { ShieldAlert, UserRound } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,16 +17,41 @@ import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { useAuth } from '../hooks/useAuth';
+import { useAdmin } from '../hooks/useAdmin';
+import { EmptyState } from '../components/EmptyState';
 
-// A new user needs a password; an edit leaves it blank to keep the old
-// one. This was a toast in onSubmit, shown only once every other field
-// passed.
-const buildUserSchema = (isEditing: boolean) => z.object({
-  username: z.string().min(1, 'Введите логин'),
-  password: isEditing ? z.string().optional() : z.string().min(1, 'Придумайте пароль'),
-  full_name: z.string().optional(),
-  email: z.string().email('Проверьте email, например name@mail.ru').optional().or(z.literal('')),
-});
+// The server's own rule (web/auth.py USERNAME_RE), checked here first so the mistake shows under the field
+// rather than after a round trip. The same rule as at registration: a login is what people share pets by.
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
+
+/** The password rules the server applies (web/auth.py password_problem), in one line under the field. A
+    password of one letter passed this form and was refused by the server, with no word about why. */
+const PASSWORD_RULES = 'Не короче 8 символов, не из трёх одинаковых, не простой и не равный логину';
+
+function passwordProblem(password: string, username: string): string | null {
+  if (password.length < 8) return 'Пароль не короче 8 символов';
+  if (password.toLowerCase() === username.toLowerCase()) return 'Пароль не может совпадать с логином';
+  if (new Set(password).size < 3) return 'Пароль не может состоять из трёх одинаковых символов';
+  return null;
+}
+
+// A new user needs a password; an edit leaves it blank to keep the old one.
+const buildUserSchema = (isEditing: boolean) => z
+  .object({
+    username: z
+      .string()
+      .min(1, 'Введите логин')
+      .regex(USERNAME_RE, 'От 3 до 30 символов: латинские буквы, цифры, точка, дефис или подчёркивание, начиная с буквы или цифры'),
+    password: z.string().optional(),
+    full_name: z.string().optional(),
+    email: z.string().email('Проверьте email, например name@mail.ru').optional().or(z.literal('')),
+  })
+  .superRefine((data, ctx) => {
+    const password = data.password ?? '';
+    if (isEditing && !password.trim()) return; // the old password stays
+    const problem = passwordProblem(password, data.username);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['password'], message: isEditing ? problem : 'Придумайте пароль' });
+  });
 
 type UserFormData = z.infer<ReturnType<typeof buildUserSchema>>;
 
@@ -35,6 +61,9 @@ export function UserForm() {
   const isEditing = !!username;
   const queryClient = useQueryClient();
   const { username: currentUsername } = useAuth();
+  // This screen manages accounts, so it is for admins only. The router opens it for anyone signed in, and
+  // the server refuses every request with a bare error code; here the person is told why and sent back.
+  const { isAdmin, isLoading: adminLoading } = useAdmin();
 
   const { control, handleSubmit, reset, formState: { isSubmitting, isDirty } } = useForm<UserFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
@@ -147,8 +176,44 @@ export function UserForm() {
     }
   };
 
-  if (isEditing && isLoadingUser) {
+  if (adminLoading || (isEditing && isLoadingUser)) {
     return <LoadingSpinner />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={ShieldAlert}
+            heading="h1"
+            title="Здесь нужны права администратора"
+            description="Учётными записями управляет администратор"
+            actionLabel="Назад в настройки"
+            onAction={() => navigate('/settings')}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Editing a person who is not in the list (a stale link, a name typed into the address): the form used to
+  // open empty, and saving it sent the name and mail of nobody.
+  if (isEditing && !user) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={UserRound}
+            heading="h1"
+            title="Такого пользователя нет"
+            description="Возможно, его удалили или в адресе опечатка"
+            actionLabel="Назад к пользователям"
+            onAction={() => navigate('/admin')}
+          />
+        </div>
+      </div>
+    );
   }
 
   const isLoading = isSubmitting || createUserMutation.isPending || updateUserMutation.isPending;
@@ -180,7 +245,19 @@ export function UserForm() {
                 name="username"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <Form.Item label="Логин" required description={error?.message ? <FieldError message={error.message} /> : undefined}>
+                  <Form.Item
+                    label="Логин"
+                    required
+                    description={
+                      error?.message ? (
+                        <FieldError message={error.message} />
+                      ) : (
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>
+                          От 3 до 30 символов: латинские буквы, цифры, точка, дефис или подчёркивание, начиная с буквы или цифры
+                        </span>
+                      )
+                    }
+                  >
                     <Input
                       {...field}
                       id="username"
@@ -212,7 +289,15 @@ export function UserForm() {
                   <Form.Item
                     label={isEditing ? "Новый пароль" : "Пароль"}
                     required={!isEditing}
-                    description={error?.message ? <FieldError message={error.message} /> : undefined}
+                    description={
+                      error?.message ? (
+                        <FieldError message={error.message} />
+                      ) : isEditing && username !== currentUsername ? (
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>
+                          {PASSWORD_RULES}. После смены пароля человеку придётся войти заново
+                        </span>
+                      ) : undefined
+                    }
                   >
                     <Input
                       {...field}

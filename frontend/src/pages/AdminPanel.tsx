@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, PullToRefresh } from 'antd-mobile';
-import { Pencil, UserX, UserCheck, Users } from 'lucide-react';
+import { Pencil, ShieldAlert, UserX, UserCheck, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
 import { Alert } from '../components/Alert';
@@ -13,9 +13,13 @@ import { useAuth } from '../hooks/useAuth';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { Fab } from '../components/Fab';
 import { formatRelativeDate } from '../utils/relativeTime';
 import { getApiErrorMessage } from '../utils/apiError';
+
+/** The admin list carries the whole user document, so whether the email was confirmed is on it. */
+type AdminUser = User & { email_verified?: boolean };
 
 export function AdminPanel() {
   const navigate = useNavigate();
@@ -26,7 +30,9 @@ export function AdminPanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const { data: users = [], isLoading: usersLoading, refetch } = useQuery({
+  // A failed request is not an empty list: «Пользователей пока нет» after a failed fetch told the owner
+  // that everyone had been deleted, and offered to add them again. Loading, error and empty are three states.
+  const { data: users = [], isLoading: usersLoading, isError: usersFailed, refetch } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersService.getUsers(),
     enabled: isAdmin,
@@ -91,22 +97,21 @@ export function AdminPanel() {
     return <LoadingSpinner />;
   }
 
+  // Not an admin: the same thing every other screen says when there is nothing to do here, with the way back
+  // into the settings this screen was opened from. A red bar at the top of an empty page left the person
+  // guessing where to go.
   if (!isAdmin) {
     return (
-      <div style={{
-        minHeight: 'var(--app-vh)',
-        margin: '0 auto',
-        paddingTop: '60px',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-        paddingLeft: 'max(16px, env(safe-area-inset-left))',
-        paddingRight: 'max(16px, env(safe-area-inset-right))',
-        color: 'var(--app-text-color)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xl)', margin: 0 }}>Админ-панель</h1>
-        </div>
-        <div style={{ marginTop: '16px' }}>
-          <Alert type="error" message="У вас нет прав доступа к админ-панели" />
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={ShieldAlert}
+            heading="h1"
+            title="Здесь нужны права администратора"
+            description="Учётными записями управляет администратор. Ваши питомцы, записи и настройки остаются на своих экранах"
+            actionLabel="Назад в настройки"
+            onAction={() => navigate('/settings')}
+          />
         </div>
       </div>
     );
@@ -146,11 +151,15 @@ export function AdminPanel() {
           /* Skeletons, like every other list in the app. This was the
              one list that flashed a spinner on a cold fetch. */
           <SkeletonList count={3} />
+        ) : usersFailed ? (
+          <LoadError what="пользователей" onRetry={refetch} />
         ) : users.length === 0 ? (
           <EmptyState
             icon={Users}
             title="Пользователей пока нет"
-            description="Добавьте первого пользователя: у каждого будут свои питомцы и права"
+            // A user created here is an ordinary one: the admin flag is not something this screen hands out,
+            // so promising «и права» promised something it cannot give.
+            description="Добавьте первого пользователя: у него будут свои питомцы, прав администратора не будет"
             actionLabel="Добавить пользователя"
             onAction={handleNewUser}
           />
@@ -170,7 +179,7 @@ export function AdminPanel() {
               gap: 'var(--spacing-md)',
               marginTop: 'var(--spacing-sm)',
             }}>
-              {users.map((user) => {
+              {(users as AdminUser[]).map((user) => {
                 const isInactive = user.is_active === false;
                 return (
                 <SwipeableRow
@@ -196,11 +205,14 @@ export function AdminPanel() {
                   disabled={deactivateMutation.isPending || activateMutation.isPending}
                 >
                 {/* Tap opens the edit form (which also (de)activates);
-                    swipe is the shortcut. */}
-                <div
+                    swipe is the shortcut. A button, not a div with a click: a keyboard or a screen reader
+                    could not open the card at all before. */}
+                <button
+                  type="button"
                   className="card-soft card-soft--interactive"
+                  aria-label={`Изменить пользователя ${user.full_name || user.username}`}
                   onClick={() => handleEdit(user)}
-                  style={{ padding: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+                  style={{ padding: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit' }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
@@ -234,6 +246,16 @@ export function AdminPanel() {
                     {user.email && (
                       <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{user.email}</span>
                     )}
+                    {/* An email set by someone else is never confirmed: only its owner can confirm it, from their
+                        own screen. Said here, because otherwise the admin sees a mail and assumes it works. */}
+                    {user.email && user.email_verified === false && (
+                      <span
+                        className="chip"
+                        style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-deep)', alignSelf: 'flex-start' }}
+                      >
+                        Не подтверждена
+                      </span>
+                    )}
                     <div style={{ marginTop: 'var(--spacing-sm)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       {user.created_at && (
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-tertiary)' }}>
@@ -247,7 +269,7 @@ export function AdminPanel() {
                   </div>
                   </div>
                   <CardChevron />
-                </div>
+                </button>
                 </SwipeableRow>
                 );
               })}
