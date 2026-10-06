@@ -4,8 +4,11 @@ under the field, and the letter that is already on its way.
 Nothing here touches the demo account. The letter part needs an account with a
 confirmed address, so the check makes a throwaway one («e2e-hint»), confirms
 it from the local outbox and deletes it at the end. That costs one sign-up and
-two «forgot» requests from this address, so the stand's own limits (five an
-hour each) allow a few runs.
+two «forgot» requests, and a limit counts per address while every check on the
+stand comes from the same one, so the run begins by putting the counters back
+to zero (POST /api/dev/reset-limits, the local stand only). Without that the
+first run of the hour spent the limits and every later one either skipped or
+failed for a reason that had nothing to do with the hints.
 """
 
 import asyncio
@@ -40,6 +43,22 @@ def _token_of(letter_subject: str, letters: list, to: str) -> str:
     return re.search(r"token=([\w-]+)", mine[-1]["text"]).group(1)
 
 
+async def _wait_until(pg, done, timeout: int = 15000) -> str:
+    """The page text once `done(text)` holds, or after the wait is up.
+
+    A fixed pause reads a slow answer as a refusal, and that is how a busy stand turned this
+    check into one that failed for a reason it never said.
+    """
+    deadline = time.monotonic() + timeout / 1000
+    body = await pg.inner_text("body")
+    while time.monotonic() < deadline:
+        if done(body):
+            return body
+        await pg.wait_for_timeout(200)
+        body = await pg.inner_text("body")
+    return body
+
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel="chrome")
@@ -48,6 +67,14 @@ async def main():
             # The origin the API calls are made from. Nobody signs in here.
             await pg.goto(BASE + "/login")
             await pg.wait_for_timeout(800)
+            # A limit counts per address, and every check on the stand comes from the same one:
+            # five letters and five sign-ups an hour are spent by the first run, and the next one
+            # starts on a spent limit and checks nothing at all. The counters are put back to zero
+            # so every run starts from the same place. On a stand without this endpoint the checks
+            # below still run, they just depend on how much of the hour is left.
+            reset = await api(pg, "POST", "/dev/reset-limits")
+            if reset["status"] != 200:
+                print("NOTE this stand has no /api/dev/reset-limits: the hourly limits are not reset between runs")
             # The throwaway account the letter part needs.
             made = await api(pg, "POST", "/auth/register", {**THROWAWAY, "privacy_consent": True})
             made["created"] = made["status"] == 201
@@ -95,8 +122,7 @@ async def main():
             await pg.wait_for_timeout(1500)
             field = pg.get_by_placeholder("Придумайте пароль")
             await field.fill(GUESSED)
-            await pg.wait_for_timeout(1800)
-            text = await pg.inner_text("body")
+            text = await _wait_until(pg, lambda t: "Это один из самых частых паролей" in t)
             check(
                 f"typing «{GUESSED}» says under the field that it is a guessed one",
                 "Это один из самых частых паролей" in text,
@@ -104,8 +130,7 @@ async def main():
             )
             await pg.screenshot(path="register_common.png")
             await field.fill(ORDINARY)
-            await pg.wait_for_timeout(1800)
-            text = await pg.inner_text("body")
+            text = await _wait_until(pg, lambda t: "Это один из самых частых паролей" not in t)
             check(
                 "an ordinary password clears the hint",
                 "Это один из самых частых паролей" not in text,
@@ -114,17 +139,18 @@ async def main():
 
             # The same letter twice: said plainly the second time, still offered.
             await pg.goto(BASE + "/forgot-password")
-            await pg.wait_for_timeout(1200)
             # По подтверждённой почте: только тому, кто назвал её, сервер и говорит, что письмо уже в пути.
             # По логину ответ одинаков для существующего и несуществующего, иначе форма выдавала бы,
             # у кого здесь есть аккаунт.
             await pg.get_by_placeholder("vera или vera@example.com").fill(THROWAWAY["email"])
             await pg.get_by_role("button", name="Отправить ссылку").click()
-            await pg.wait_for_timeout(1500)
-            first = await pg.inner_text("body")
-            # Писем на адрес просят пять в час, а счёт идёт по адресу сети: в полном наборе к этой минуте
-            # норма уже исчерпана другими проверками. Тогда сервер прямо говорит, что попробуют позже,
-            # и это тоже проверяется: молчаливый отказ был бы хуже.
+            # Ждём экрана, а не секунды: пауза вслепую читает медленный ответ как отказ.
+            first = await _wait_until(pg, lambda t: "Проверьте почту" in t or "Слишком много попыток" in t)
+            # Писем на адрес просят пять в час, а счёт идёт по адресу сети. На стенде с
+            # /api/dev/reset-limits сюда не попасть: счётчики только что обнулены. Ветка
+            # остаётся для стенда без этого эндпоинта, где норма к этой минуте могла кончиться
+            # другими проверками. Тогда сервер прямо говорит, что попробуют позже, и это тоже
+            # проверяется: молчаливый отказ был бы хуже.
             if "Слишком много попыток" in first:
                 check(
                     "the stand's hourly limit is spent, and the screen says so plainly",
@@ -133,10 +159,15 @@ async def main():
                 )
                 print("SKIP the letter pair: the stand spent its five letters an hour ago")
                 return summary("password hints")
-            check("the first ask says the letter is sent", "отправили на неё ссылку" in first, first[:160])
-            await pg.get_by_role("button", name="Отправить ещё раз").click()
-            await pg.wait_for_timeout(1800)
-            second = await pg.inner_text("body")
+            check(
+                "the first ask says the letter is sent",
+                "отправили на неё ссылку" in first,
+                first[:160].replace(chr(10), " | "),
+            )
+            again = pg.get_by_role("button", name="Отправить ещё раз")
+            await again.click()
+            second = await _wait_until(pg, lambda t: "уже отправляли недавно" in t or "Слишком много попыток" in t)
+            offered = await again.count() == 1 and await again.is_enabled()
             check(
                 "asked by the confirmed address, the second ask says the letter is already on its way",
                 "уже отправляли недавно" in second,
@@ -144,8 +175,8 @@ async def main():
             )
             check(
                 "and asking again stays possible, not a refusal",
-                await pg.get_by_role("button", name="Отправить ещё раз").count() == 1,
-                second[:160],
+                offered,
+                f"{second[:120]} | кнопка доступна: {offered}",
             )
             await pg.screenshot(path="forgot_again.png")
 

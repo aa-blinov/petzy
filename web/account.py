@@ -521,3 +521,19 @@ def dev_outbox():
     if not mail._outbox_mode():
         return error_response("not_found")
     return jsonify({"letters": mail.OUTBOX[-20:]})
+
+
+@account_bp.route("/api/dev/reset-limits", methods=["POST"])
+def dev_reset_limits():
+    """The counters of the rate limits put back to zero, for local runs only: 404 otherwise.
+
+    A limit counts per address, and on the stand every browser check comes from the same one:
+    five password letters and five sign-ups an hour are spent by the first run, and the second
+    one starts on a spent limit and checks nothing. With this every run starts from the same
+    place. Gated the way /api/dev/outbox is gated (both mean "this is the local stand"), so the
+    endpoint answers 404 in production and no one can drop a real person's counters.
+    """
+    if not mail._outbox_mode():
+        return error_response("not_found")
+    limiter.reset()
+    return jsonify({"message": "Счётчики ограничений обнулены", "success": True})
