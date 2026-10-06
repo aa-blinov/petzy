@@ -35,7 +35,8 @@ file (`CLAUDE.md` is a symlink): edit `AGENTS.md`.
 Backend, from the repo root (the virtualenv is `.venv`):
 
 ```bash
-.venv/bin/python -m pytest tests -q --no-cov       # full suite, about 5 minutes
+.venv/bin/python -m pytest tests -q --no-cov       # full suite, about 100 seconds
+.venv/bin/python -m pytest tests -q --no-cov -n auto   # the same in parallel, about 25 seconds
 .venv/bin/ruff check . && .venv/bin/ruff format .  # line length 120
 ```
 
