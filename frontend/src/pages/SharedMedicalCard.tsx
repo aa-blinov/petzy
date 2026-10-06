@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from 'antd-mobile';
+import { Button, Skeleton } from 'antd-mobile';
 import { FileHeart } from 'lucide-react';
 
 import { EmptyState } from '../components/EmptyState';
@@ -18,9 +18,15 @@ const NO_NAVIGATE = () => undefined;
 /**
  * What a vet opens by the link the owner made: the card as the reading mode shows it, and its PDF, with no sign-in and nothing to
  * change. A link that has ended or was taken back says so and tells whom to ask. The page is not offered to search engines.
+ *
+ * The person who made the link is often the owner, and they open it on their own phone to show it to a vet. The copy itself
+ * stays a copy (no header, no tabs, nothing to change), but the server names the pet when the visitor is signed in and may
+ * see it, and then the page offers the way back into the app. Without a session there is no button: the link opens the card
+ * and nothing else.
  */
 export function SharedMedicalCard() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const query = useQuery({ queryKey: ['shared-medical-card', token], queryFn: () => medicalShareService.open(token!), enabled: !!token, retry: false, staleTime: 0, gcTime: 0 });
 
@@ -106,8 +112,19 @@ export function SharedMedicalCard() {
               </>
             }
           />
-          {/* What this page is, once, at the end: a copy, with no way back into the app. */}
-          <p className="medcard__hint">Это копия медкарты питомца на момент отправки ссылки. Вернуться в приложение из неё нельзя</p>
+          {/* What this page is, once, at the end: a copy. The way back into the app is only for the person who has a session. */}
+          <p className="medcard__hint">
+            {shared.pet_id
+              ? 'Это копия медкарты питомца на момент отправки ссылки. В приложении она живая: там пишут и смотрят'
+              : 'Это копия медкарты питомца на момент отправки ссылки. Вернуться в приложение из неё нельзя'}
+          </p>
+          {shared.pet_id && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
+              <Button block size="large" style={{ minHeight: 'var(--touch-min)' }} onClick={() => navigate(`/pets/${shared.pet_id}/medical-card`)}>
+                Медицинская карта
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

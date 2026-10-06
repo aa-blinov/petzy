@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Form, TextArea } from 'antd-mobile';
+import { Button, Dialog, Form, TextArea } from 'antd-mobile';
+import { isAxiosError } from 'axios';
 import { FileHeart } from 'lucide-react';
 
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type VisitCheck, type VisitPrep } from '../services/medicalCard.service';
@@ -21,6 +22,7 @@ import './MedicalRecordForm.css';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 
 type Checks = VisitPrep['checks'];
+type Typed = { complaint: string; checks: Checks };
 
 /** «К приёму»: what to tell the vet next time. The complaint, and for each thing a vet asks about (appetite, thirst,
     stool, …) «как обычно» or «изменилось»; a thing left alone was not answered. It waits on the pet until a visit is
@@ -47,12 +49,21 @@ export function VisitPrepForm() {
   const saved = query.data?.visit_prep ?? null;
 
   // What was typed on this screen; until something is, what is saved is shown.
-  const [typed, setTyped] = useState<{ complaint: string; checks: Checks } | null>(null);
+  const [typed, setTyped] = useState<Typed | null>(null);
   const complaint = typed?.complaint ?? saved?.complaint ?? '';
   const checks: Checks = typed?.checks ?? saved?.checks ?? {};
   const dirty = typed !== null;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
-  useSessionDraft({ dirty, getValues: () => typed as { complaint: string; checks: Checks }, reset: (values) => setTyped(values), ready: !!query.data, release });
+  useSessionDraft({ dirty, getValues: () => typed as Typed, reset: (values) => setTyped(values), ready: !!query.data, release });
+
+  // The version the form was made from: the server refuses a save from an older one (someone else saved since).
+  const baseVersion = useRef<string | null>(null);
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (!query.data || loaded.current) return;
+    loaded.current = true;
+    baseVersion.current = saved?.version ?? null;
+  }, [query.data, saved]);
 
   const setComplaint = (value: string) => setTyped({ complaint: value, checks });
   const setCheck = (key: VisitCheck, value: 'normal' | 'changed') => {
@@ -66,7 +77,7 @@ export function VisitPrepForm() {
   const empty = !complaint.trim() && Object.keys(checks).length === 0;
 
   const save = useMutation({
-    mutationFn: () => medicalCardService.saveVisitPrep(id!, { complaint: complaint.trim() || null, checks }),
+    mutationFn: () => medicalCardService.saveVisitPrep(id!, { complaint: complaint.trim() || null, checks, base_version: baseVersion.current ?? '' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
       // What happened to the note, said as it happened: only a note that was there can be taken away.
@@ -74,8 +85,35 @@ export function VisitPrepForm() {
       release();
       goBack(navigate, cardPath);
     },
-    onError: (err: unknown) => showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить')),
+    onError: (err: unknown) => {
+      // 409 with the note as it is now: say so and let the person look at it, instead of saving over it.
+      const current = isAxiosError(err) && err.response?.status === 409 ? (err.response.data as { visit_prep?: VisitPrep | null } | undefined)?.visit_prep : undefined;
+      if (current !== undefined) {
+        void resolveConflict(current);
+        return;
+      }
+      showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить'));
+    },
   });
+
+  // Someone else saved the note while this form was open. Saving over it would wipe what they wrote: say so,
+  // and let the person take their copy, or knowingly keep their own version.
+  const resolveConflict = async (current: VisitPrep | null) => {
+    const showCurrent = await Dialog.confirm({
+      title: 'Заметку изменили в другом месте',
+      content: 'Пока вы её правили, её сохранили с другого устройства или в другой форме. Показать, что там сейчас? Ваши правки в этой форме тогда не сохранятся',
+      confirmText: 'Показать актуальную',
+      cancelText: 'Сохранить мою',
+    });
+    baseVersion.current = current?.version ?? null;
+    if (showCurrent) {
+      setTyped(null);
+      queryClient.invalidateQueries({ queryKey: ['medical-card', id] });
+      showToast.info(current ? 'Показали актуальную заметку. Внесите правки ещё раз' : 'Заметку убрали в другом месте');
+    } else {
+      save.mutate();
+    }
+  };
 
   if (query.isError) {
     // A pet that is gone and a screen that did not load are different: one asks the person to go back to the list,

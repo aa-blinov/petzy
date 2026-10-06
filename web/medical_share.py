@@ -22,7 +22,7 @@ from flask_pydantic_spec import Request, Response
 import web.app as app  # db, logger
 from web.app import api, limiter
 from web.errors import error_response
-from web.helpers import get_pet_and_validate
+from web.helpers import check_pet_access, get_pet_and_validate
 from web.medical_card import _today, build_medical_card
 from web.schemas import (
     ErrorResponse,
@@ -33,7 +33,7 @@ from web.schemas import (
     MedicalSharesResponse,
     SharedMedicalCardResponse,
 )
-from web.security import get_current_user, login_required
+from web.security import get_current_user, get_token_from_request, is_active_user, login_required, verify_token
 
 medical_share_bp = Blueprint("medical_share", __name__)
 
@@ -164,6 +164,23 @@ def _private(response):
     return response
 
 
+def _signed_in_user() -> Optional[str]:
+    """The account behind this request, or None.
+
+    The link is opened by a vet with no account, so the session is asked for quietly here
+    instead of through ``login_required``: the page is the same copy either way, and only
+    a signed-in person who may see the pet is offered a way back into the app.
+    """
+    token = get_token_from_request()
+    if not token:
+        return None
+    payload = verify_token(token, "access")
+    if not payload:
+        return None
+    username = payload.get("username")
+    return username if username and is_active_user(username, payload.get("iat")) else None
+
+
 @medical_share_bp.route("/api/shared/medical-card/<token>", methods=["GET"])
 @limiter.limit(PUBLIC_LIMIT)
 @api.validate(
@@ -172,13 +189,22 @@ def _private(response):
     tags=["pets"],
 )
 def get_shared_card(token):
-    """The card by a link: no sign-in, read-only, only while the link works."""
+    """The card by a link: no sign-in, read-only, only while the link works.
+
+    ``pet_id`` comes only to someone who is signed in and may see the pet: the owner opens
+    their own link to show it to a vet, and without a way back the app would be a dead end.
+    A vet gets no id and no door.
+    """
     pet, share = _shared_pet(token)
     if not pet:
         return error_response("not_found")
     today = _today(request.context.query.tz)  # type: ignore[attr-defined]
     card = build_medical_card(pet, "", today)
-    return _private(jsonify({"card": card, "expires_at": share["expires_at"].isoformat() + "Z"}))
+    body = {"card": card, "expires_at": share["expires_at"].isoformat() + "Z"}
+    username = _signed_in_user()
+    if username and check_pet_access(str(pet["_id"]), username):
+        body["pet_id"] = str(pet["_id"])
+    return _private(jsonify(body))
 
 
 @medical_share_bp.route("/api/shared/medical-card/<token>/pdf", methods=["GET"])

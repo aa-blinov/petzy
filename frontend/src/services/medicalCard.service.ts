@@ -98,6 +98,8 @@ export interface VisitPrep {
   /** «normal»: as usual, «changed»: not as usual; a check that is not there was not answered. */
   checks: Partial<Record<VisitCheck, 'normal' | 'changed'>>;
   updated_at?: string | null;
+  /** Changes on every save: the server refuses a note made from an older one. */
+  version?: string;
 }
 
 export interface MedicalCard {
@@ -160,7 +162,10 @@ export const medicalCardService = {
     return response.data.card;
   },
 
-  async saveVisitPrep(petId: string, prep: { complaint: string | null; checks: VisitPrep['checks'] }): Promise<VisitPrep | null> {
+  async saveVisitPrep(
+    petId: string,
+    prep: { complaint: string | null; checks: VisitPrep['checks']; base_version?: string | null },
+  ): Promise<VisitPrep | null> {
     const response = await api.put<{ visit_prep: VisitPrep | null }>(`/pets/${petId}/visit-prep`, prep);
     return response.data.visit_prep;
   },
