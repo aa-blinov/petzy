@@ -13,7 +13,9 @@ export function LoadingSpinner({ fullscreen = true }: LoadingSpinnerProps) {
     minHeight: '100dvh',
     width: '100%',
     gap: '16px',
-    backgroundColor: 'var(--app-page-background)',
+    // The same background the screen behind it has, so waiting for a screen that is
+    // still being fetched does not replace the pet's colour with the plain one.
+    backgroundColor: 'var(--pet-scene-bg, var(--app-page-background))',
     position: 'fixed',
     top: 0,
     left: 0,
