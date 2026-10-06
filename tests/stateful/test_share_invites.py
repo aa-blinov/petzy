@@ -103,3 +103,39 @@ def test_an_invite_does_not_put_you_in_the_senders_circle(client, regular_user_t
         t["key"] for t in client.get("/api/event-types", headers=_auth(regular_user_token)).get_json()["event_types"]
     ]
     assert "anna_walk" not in keys
+
+
+def test_a_refused_invitation_keeps_the_others(client, mock_db, regular_user_token, test_pet, anna):
+    """One refusal out of three must not take the other two with it, and must say whose it was.
+
+    What the client keys on is the refusal's code, not only its words: «уже есть
+    доступ» is not something to retry, while «пользователь отключён» is a
+    different thing to tell the person.
+    """
+    pet_id = str(test_pet["_id"])
+    mock_db["users"].insert_one({"username": "boris", "password_hash": "x", "is_active": True})
+    mock_db["users"].insert_one({"username": "family", "password_hash": "x", "is_active": True})
+    # anna is already a member: inviting her again is refused.
+    mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["anna"]}})
+
+    refused = _invite(client, regular_user_token, pet_id, "anna")
+    assert refused.status_code == 422
+    assert refused.get_json()["code"] == "validation_error_already_shared"
+
+    # The two that follow still go out.
+    assert _invite(client, regular_user_token, pet_id, "family").status_code == 200
+    assert _invite(client, regular_user_token, pet_id, "boris").status_code == 200
+
+    pet = mock_db["pets"].find_one({"_id": test_pet["_id"]})
+    assert sorted(pet["share_invites"]) == ["boris", "family"]
+
+
+def test_a_standing_invitation_is_refused_with_a_code_the_client_can_tell(
+    client, mock_db, regular_user_token, test_pet, anna
+):
+    pet_id = str(test_pet["_id"])
+    mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"share_invites": ["anna"]}})
+
+    refused = _invite(client, regular_user_token, pet_id, "anna")
+    assert refused.status_code == 422
+    assert refused.get_json()["code"] == "share_already_invited"

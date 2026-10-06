@@ -29,14 +29,51 @@ from web.errors import error_response
 
 users_bp = Blueprint("users", __name__)
 
+# One page of the admin account list. Small enough to read through and
+# scroll further, so a big table of accounts does not arrive in one answer.
+USERS_PER_PAGE = 20
+
 
 @users_bp.route("/api/users", methods=["GET"])
 @login_required
 @admin_required
 @api.validate(resp=Response(HTTP_200=UserListResponse), tags=["users"])
 def get_users():
-    """Get list of all users (admin only)."""
-    users = list(app.db["users"].find({}).sort("created_at", -1))
+    """One page of the account list, newest first, with a search by login or name (admin only).
+
+    The search runs over every account whatever is typed into it, which is
+    why both this route and the search sit behind @admin_required: see
+    search_users() for the account lookup every signed-in person may run,
+    deliberately narrowed to their own circle.
+    """
+    users, total, page, per_page = users_page(request.args.get("q", "").strip(), request.args.get("page"))
+    return jsonify({"users": users, "total": total, "page": page, "per_page": per_page})
+
+
+def _page_number(raw_page) -> int:
+    """A 1-based page number, whatever came in the query string."""
+    try:
+        return max(1, int(raw_page)) if raw_page else 1
+    except (TypeError, ValueError):
+        return 1
+
+
+def users_page(query: str, raw_page, per_page: int = USERS_PER_PAGE):
+    """A page of accounts, newest first, and how many the search found in all.
+
+    Returns (users, total, page, per_page): the client needs the total to
+    say how many there are and to refuse a page past the end.
+    """
+    page = _page_number(raw_page)
+
+    mongo_query: dict = {}
+    if query:
+        # re.escape: the query is text to look for, not a pattern to run.
+        pattern = {"$regex": re.escape(query), "$options": "i"}
+        mongo_query["$or"] = [{"username": pattern}, {"full_name": pattern}]
+
+    total = app.db["users"].count_documents(mongo_query)
+    users = list(app.db["users"].find(mongo_query).sort("created_at", -1).skip((page - 1) * per_page).limit(per_page))
 
     for user in users:
         user["_id"] = str(user["_id"])
@@ -44,7 +81,7 @@ def get_users():
         if isinstance(user.get("created_at"), datetime):
             user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
 
-    return jsonify({"users": users})
+    return users, total, page, per_page
 
 
 @users_bp.route("/api/users/search", methods=["GET"])
@@ -125,7 +162,11 @@ def get_user_public_profile(username):
     if not target:
         return error_response("user_not_found")
 
-    common_pets: list[str] = []
+    # id and name, not the name alone: on the person's card each pet's name
+    # opens its medical card. Access to that card is still the card's own
+    # check on the server (require_pet_access), so a name that came from
+    # somewhere else opens nothing extra.
+    common_pets: list[dict] = []
     if requester != username and not is_admin(requester):
         pets_cursor = app.db["pets"].find(
             {
@@ -136,14 +177,14 @@ def get_user_public_profile(username):
             },
             {"name": 1},
         )
-        common_pets = [p["name"] for p in pets_cursor]
+        common_pets = [{"id": str(p["_id"]), "name": p["name"]} for p in pets_cursor]
         if not common_pets:
             return error_response("user_not_found")
     else:
         # Self, or an admin looking someone up — no sharing requirement,
         # but still worth surfacing the pets in common for an admin.
         pets_cursor = app.db["pets"].find({"$or": [{"owner": username}, {"shared_with": username}]}, {"name": 1})
-        common_pets = [p["name"] for p in pets_cursor]
+        common_pets = [{"id": str(p["_id"]), "name": p["name"]} for p in pets_cursor]
 
     created_at = target.get("created_at")
     if isinstance(created_at, datetime):

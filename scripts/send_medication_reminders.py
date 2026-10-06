@@ -40,7 +40,7 @@ import web.app  # noqa: F401
 from web.courses import course_covers
 from web.medical_records import SOON_DAYS, record_states, repeating_document_ids
 from web.dose_slots import open_slots
-from web.medications import UPCOMING_LOOKAHEAD_DAYS, load_day_intakes
+from web.medications import UPCOMING_LOOKAHEAD_DAYS, is_as_needed, load_day_intakes
 from web.push_delivery import send_push_to_subscriptions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -232,6 +232,11 @@ def find_due_medication_reminders(
         day_intakes = load_day_intakes(db, pet_med_ids, today_start, window_end)
 
         for med in medications:
+            # «По необходимости» с расписанием: расписание показывается в карте, но приём не назначен,
+            # и напоминать о нём нечего. Раньше режим выводился из пустого расписания, и это было верно;
+            # с признаком курс может иметь и расписание, и «по необходимости» одновременно.
+            if is_as_needed(med):
+                continue
             schedule = med.get("schedule", {})
             if weekday not in schedule.get("days", []):
                 continue

@@ -352,7 +352,8 @@ class TestGetUserPublicProfile:
         assert data["username"] == "shareuser"
         assert data["full_name"] == "Share User"
         assert data["created_at"] == "2024-01-15 14:30"
-        assert data["shared_pets"] == [test_pet["name"]]
+        # id and name, so the name can open the pet's medical card.
+        assert data["shared_pets"] == [{"id": str(test_pet["_id"]), "name": test_pet["name"]}]
 
         # ...and the shared user can view the owner's profile back.
         response = client.get(
@@ -360,7 +361,7 @@ class TestGetUserPublicProfile:
             headers={"Authorization": f"Bearer {other_token}"},
         )
         assert response.status_code == 200
-        assert response.get_json()["shared_pets"] == [test_pet["name"]]
+        assert response.get_json()["shared_pets"] == [{"id": str(test_pet["_id"]), "name": test_pet["name"]}]
 
     def test_can_always_view_own_profile(self, client, regular_user_token, regular_user):
         response = client.get(
