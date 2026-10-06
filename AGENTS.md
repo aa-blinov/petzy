@@ -83,6 +83,11 @@ git config core.hooksPath .githooks
   because a push that silently went without them is worse than one that waited. To push once
   without them: `PETZY_SKIP_E2E=1 git push`, and that skip belongs in the commit message. Never
   `--no-verify`: fix the cause.
+- Git opens the SSH connection **before** it runs `pre-push`, so a hook this long leaves the
+  connection idle for many minutes and it dies: the push then ends with code 141 (SIGPIPE),
+  no error and no ref update. The hook had already printed `ALL PASS`, which is what makes it
+  look like the push worked. Keep the connection alive once per clone:
+  `git config core.sshCommand "ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=80"`.
 
 Backend code is formatted with `ruff format` (line length 120, see `pyproject.toml`); the hooks
 and CI's `Ruff` job both enforce it.
