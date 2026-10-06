@@ -9,6 +9,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { FieldError } from '../components/FieldError';
 import { useTouched } from '../hooks/useTouched';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { passwordProblem } from '../utils/authForms';
 
 /** The server's own rule (web/auth.py USERNAME_RE), checked here first so
@@ -50,6 +51,11 @@ export function Register() {
   const [submitted, setSubmitted] = useState(false);
   const { touch, shows } = useTouched(submitted);
   const [isLoading, setIsLoading] = useState(false);
+  // Five typed fields are five words of effort, and leaving the screen used
+  // to throw them away without a word, unlike every other form here.
+  const { dialog: leaveDialog, release: releaseLeave } = useUnsavedChangesGuard(
+    !!username || !!fullName || !!email || !!password || !!repeat,
+  );
 
   const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
   const passwordRuleError = passwordProblem(password, username);
@@ -107,7 +113,9 @@ export function Register() {
         privacy_consent: consent,
       });
       // A new account has no pets yet: the feed sends it to an invitation
-      // waiting for it, or to onboarding.
+      // waiting for it, or to onboarding. The account exists now, so the
+      // way out no longer asks.
+      releaseLeave();
       navigate('/', { replace: true });
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось создать аккаунт. Проверьте соединение'));
@@ -268,8 +276,12 @@ export function Register() {
             autoComplete="new-password"
           />
         </Form.Item>
-        <Form.Item description={(submitted && consentError ? <FieldError message={consentError} /> : undefined)}>
-          {/* The texts open in a new tab: following them here would lose the form. */}
+        <Form.Item
+          description={(submitted && consentError ? <FieldError message={consentError} /> : undefined)}
+        >
+          {/* The texts open in a new tab: following them here would lose the form.
+              Said out loud as well as shown, so a screen reader hears where the
+              link goes before it is followed. */}
           <Checkbox
             checked={consent}
             onChange={setConsent}
@@ -278,17 +290,35 @@ export function Register() {
           >
             <span style={{ color: 'var(--app-text-primary)' }}>
               Даю{' '}
-              <a href="/consent" target="_blank" rel="noopener" onClick={e => e.stopPropagation()} style={legalLinkStyle}>
+              <a
+                href="/consent"
+                target="_blank"
+                rel="noopener"
+                onClick={e => e.stopPropagation()}
+                style={legalLinkStyle}
+                aria-label="согласие на обработку персональных данных, откроется в новой вкладке"
+              >
                 согласие на обработку персональных данных
               </a>{' '}
               на условиях{' '}
-              <a href="/privacy" target="_blank" rel="noopener" onClick={e => e.stopPropagation()} style={legalLinkStyle}>
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener"
+                onClick={e => e.stopPropagation()}
+                style={legalLinkStyle}
+                aria-label="политики конфиденциальности, откроется в новой вкладке"
+              >
                 политики конфиденциальности
               </a>
+              <span style={{ display: 'block', color: 'var(--app-text-secondary)', fontSize: 'var(--text-xs)', marginTop: 2 }}>
+                Тексты откроются в новой вкладке
+              </span>
             </span>
           </Checkbox>
         </Form.Item>
       </Form>
+      {leaveDialog}
     </AuthShell>
   );
 }

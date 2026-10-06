@@ -14,6 +14,11 @@ import { passwordProblem } from '../utils/authForms';
 
 const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 } as const;
 
+/** What the server takes (web/schemas.py PasswordResetRequest) and what its
+ *  password rule allows (72 bytes, web/auth.py password_problem). Typing past
+ *  it used to be silently accepted and then refused after the round trip. */
+const PASSWORD_MAX = 72;
+
 /** The link from «Petzy: новый пароль»: set a new password and go in. */
 export function ResetPassword() {
   const [params] = useSearchParams();
@@ -64,7 +69,9 @@ export function ResetPassword() {
   if (linkDead) {
     return (
       <AuthShell title="Новый пароль">
-        <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
+        {/* role="status": the screen changes without a page load, and a screen
+            reader is otherwise left with the word it was on. */}
+        <p role="status" style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
           Ссылка не сработала: она устарела или уже использована
         </p>
         <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
@@ -116,13 +123,13 @@ export function ResetPassword() {
             ? <FieldError message={passwordError} />
             : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа</span>}
         >
-          <Input type="password" value={password} onChange={setPassword} onBlur={touch('password')} placeholder="Новый пароль" clearable autoComplete="new-password" disabled={isLoading} />
+          <Input type="password" value={password} onChange={setPassword} onBlur={touch('password')} placeholder="Новый пароль" clearable autoComplete="new-password" disabled={isLoading} maxLength={PASSWORD_MAX} />
         </Form.Item>
         <Form.Item
           label={<span style={{ fontWeight: 500 }}>Ещё раз</span>}
           description={shows('repeat') && repeatError ? <FieldError message={repeatError} /> : undefined}
         >
-          <Input type="password" value={repeat} onChange={setRepeat} onBlur={touch('repeat')} placeholder="Повторите пароль" clearable autoComplete="new-password" disabled={isLoading} />
+          <Input type="password" value={repeat} onChange={setRepeat} onBlur={touch('repeat')} placeholder="Повторите пароль" clearable autoComplete="new-password" disabled={isLoading} maxLength={PASSWORD_MAX} />
         </Form.Item>
       </Form>
     </AuthShell>

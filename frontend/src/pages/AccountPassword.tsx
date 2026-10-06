@@ -9,7 +9,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { goBack } from '../utils/navigation';
 import { onInvalidSubmit } from '../utils/formErrors';
-import { passwordProblem } from '../utils/authForms';
+import { passwordProblem, retryNote, useRetryLock } from '../utils/authForms';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 
 /** Настройки → «Пароль». Other devices are signed out; this one stays in. */
@@ -22,6 +22,12 @@ export function AccountPassword() {
   const [wrongCurrent, setWrongCurrent] = useState(false);
   const { touch, shows } = useTouched(submitted);
   const [busy, setBusy] = useState(false);
+  // The server allows ten password changes an hour. A refused one used to be
+  // a bare toast with no word about waiting, and the next attempt would be
+  // refused too, so the wait is said and the button is closed for it, the way
+  // the sign-in screen does.
+  const { left: retryLeft, lock: lockAfterRefusal } = useRetryLock();
+  const locked = retryLeft > 0;
   // Three typed passwords are three words of effort: the question before
   // leaving, the way every other form here does it.
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(!!current || !!next || !!repeat);
@@ -47,12 +53,14 @@ export function AccountPassword() {
       });
       return;
     }
+    if (locked) return;
     setBusy(true);
     try {
       await accountService.changePassword(current, next);
       showToast.success('Пароль изменён. На других устройствах нужно будет войти заново', { duration: 3500 });
       leave(true);
     } catch (err) {
+      lockAfterRefusal(err);
       // Only a refused current password is that; a dead connection isn't.
       if (isAxiosError<{ code?: string }>(err) && err.response?.data?.code === 'account_wrong_password') {
         setWrongCurrent(true);
@@ -94,9 +102,14 @@ export function AccountPassword() {
           )}
         </Form>
         <div className="safe-area-padding form-actions">
-          <Button block color="primary" size="large" data-enter-submit loading={busy} disabled={busy} onClick={save}>
-            Сменить пароль
+          <Button block color="primary" size="large" data-enter-submit loading={busy} disabled={busy || locked} onClick={save}>
+            {locked ? `Ещё ${retryLeft} с` : 'Сменить пароль'}
           </Button>
+          {retryNote(retryLeft) && (
+            <p role="status" style={{ margin: 0, fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+              {retryNote(retryLeft)}
+            </p>
+          )}
           <Button block fill="none" onClick={() => leave()}>
             Отмена
           </Button>

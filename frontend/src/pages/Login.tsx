@@ -7,12 +7,16 @@ import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Form } from 'antd-mobile';
 import { isAxiosError } from 'axios';
 import { AuthShell } from '../components/AuthShell';
+import { FieldError } from '../components/FieldError';
+import { useTouched } from '../hooks/useTouched';
 import { retryNote, useRetryLock } from '../utils/authForms';
 
 export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const { touch, shows } = useTouched(submitted);
   // useSession() forces isAuthenticated to false on this page (the login
   // screen must not fire the authenticated session probe), so it can't
   // tell us whether the visitor is actually already signed in. `username`
@@ -39,15 +43,15 @@ export function Login() {
     return <Navigate to={target} replace />;
   }
 
+  // An empty field is said under the field, not in a toast that is gone by
+  // the time the eye goes back to the form (the rule on the sign-up and the
+  // reset screens).
+  const usernameError = username.trim() ? null : 'Введите логин';
+  const passwordError = password ? null : 'Введите пароль';
+
   const handleSubmit = async () => {
-    if (!username.trim()) {
-      showToast.failure('Введите логин');
-      return;
-    }
-    if (!password) {
-      showToast.failure('Введите пароль');
-      return;
-    }
+    setSubmitted(true);
+    if (usernameError || passwordError) return;
 
     setIsLoading(true);
     try {
@@ -149,11 +153,13 @@ export function Login() {
                 </span>
               }
               name="username"
+              description={shows('username') && usernameError ? <FieldError message={usernameError} /> : undefined}
             >
               <Input
                 placeholder="Введите логин"
                 value={username}
                 onChange={(val) => setUsername(val)}
+                onBlur={touch('username')}
                 disabled={isLoading}
                 clearable
                 autoComplete="username"
@@ -166,12 +172,14 @@ export function Login() {
                 </span>
               }
               name="password"
+              description={shows('password') && passwordError ? <FieldError message={passwordError} /> : undefined}
             >
               <Input
                 type="password"
                 placeholder="Введите пароль"
                 value={password}
                 onChange={(val) => setPassword(val)}
+                onBlur={touch('password')}
                 disabled={isLoading}
                 clearable
                 autoComplete="current-password"

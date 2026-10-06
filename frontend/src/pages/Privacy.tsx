@@ -31,12 +31,51 @@ function abroadFrom(home: string, info?: LegalInfo) {
 const RU_LAW = 'Федеральный закон от 27.07.2006 № 152-ФЗ «О персональных данных»';
 const KZ_LAW = 'Закон Республики Казахстан от 21.05.2013 № 94-V «О персональных данных и их защите»';
 
-/** A version is its date, with «.2» and so on for a second wording that day. */
+/** The policy's own sections, in the order they come. A document of ten
+ *  sections read top to bottom on a phone means a lot of scrolling to find one
+ *  clause, so the names are listed at the top and each heading carries the id
+ *  the list points at. */
+const POLICY_SECTIONS = [
+  ['operator', 'Кто обрабатывает данные'],
+  ['data', 'Какие данные хранятся'],
+  ['why', 'Зачем'],
+  ['basis', 'Основание'],
+  ['where', 'Где хранятся данные и кто их видит'],
+  ['how-long', 'Сколько хранятся'],
+  ['rights', 'Ваши права'],
+  ['cookies', 'Cookies и хранилище браузера'],
+  ['security', 'Как данные защищены'],
+  ['changes', 'Изменения'],
+] as const;
+
+function SectionList() {
+  return (
+    <nav aria-label="Разделы политики" style={{ margin: '0 0 var(--spacing-lg)' }}>
+      <p style={{ margin: '0 0 var(--spacing-xs)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+        Разделы
+      </p>
+      <ul style={{ margin: 0 }}>
+        {POLICY_SECTIONS.map(([id, title]) => (
+          <li key={id}>
+            <a href={`#${id}`}>{title}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** A version is its date, with a number for a later wording of the same day:
+ *  «2026-09-28.3» is the third wording of 28 September, and the number was
+ *  being dropped from the page, so two different texts both read «28 сентября
+ *  2026» and a person could not tell which one they were reading. */
 function formatVersion(version: string) {
   const date = new Date(`${version.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime())
+  const day = Number.isNaN(date.getTime())
     ? version
     : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  const suffix = version.slice(10).replace(/^\./, '').trim();
+  return suffix ? `${day}, редакция ${suffix}` : day;
 }
 
 /** «до 3 дней», «до 1 дня», «до 21 дня». */
@@ -117,7 +156,9 @@ export function PrivacyPolicy() {
             двух стран различаются, это написано отдельно.
           </p>
 
-          <h2>Кто обрабатывает данные</h2>
+          <SectionList />
+
+          <h2 id="operator">Кто обрабатывает данные</h2>
           <p>
             Оператор персональных данных: {info?.operator || NOT_SET}.
             {info?.contact_email && (
@@ -127,7 +168,7 @@ export function PrivacyPolicy() {
             )}
           </p>
 
-          <h2>Какие данные хранятся</h2>
+          <h2 id="data">Какие данные хранятся</h2>
           <ul>
             <li>Логин и пароль. Пароль хранится только в виде хеша, прочитать его нельзя.</li>
             <li>Имя и адрес почты, если вы их указали.</li>
@@ -140,7 +181,7 @@ export function PrivacyPolicy() {
             <li>IP-адрес и сведения о браузере: в журналах сервера и в отчётах об ошибках.</li>
           </ul>
 
-          <h2>Зачем</h2>
+          <h2 id="why">Зачем</h2>
           <ul>
             <li>Чтобы вы вели дневник и видели его с любого устройства.</li>
             <li>Чтобы входить в аккаунт и защищать его: ограничивать число попыток входа, завершать сеансы после смены пароля.</li>
@@ -151,7 +192,7 @@ export function PrivacyPolicy() {
           </ul>
           <p>Рекламы в Petzy нет. Данные не продаются и не используются для рассылок или аналитики.</p>
 
-          <h2>Основание</h2>
+          <h2 id="basis">Основание</h2>
           <p>
             Ваше <Link to="/consent">согласие на обработку персональных данных</Link>, которое вы даёте при регистрации.
           </p>
@@ -160,7 +201,7 @@ export function PrivacyPolicy() {
             <li>В Казахстане: {KZ_LAW}.</li>
           </ul>
 
-          <h2>Где хранятся данные и кто их видит</h2>
+          <h2 id="where">Где хранятся данные и кто их видит</h2>
           <ul>
             <li>База данных и само приложение работают на сервере. Страна, где он стоит: {info?.server_location || NOT_SET}.</li>
             <li>Фото, документы и резервные копии базы лежат в хранилище Backblaze B2 в Нидерландах.</li>
@@ -182,7 +223,7 @@ export function PrivacyPolicy() {
           </ul>
           <p>Больше данные никому не передаются, если этого не требует закон.</p>
 
-          <h2>Сколько хранятся</h2>
+          <h2 id="how-long">Сколько хранятся</h2>
           <ul>
             <li>Пока существует ваш аккаунт.</li>
             <li>
@@ -192,7 +233,7 @@ export function PrivacyPolicy() {
             <li>Журналы сервера и отчёты об ошибках хранятся ограниченное время и удаляются автоматически.</li>
           </ul>
 
-          <h2>Ваши права</h2>
+          <h2 id="rights">Ваши права</h2>
           <ul>
             <li>Посмотреть свои данные: всё записанное видно в приложении, историю можно выгрузить в файл.</li>
             <li>Исправить их: записи и почту можно изменить в приложении, имя по вашему письму поменяет оператор.</li>
@@ -217,20 +258,20 @@ export function PrivacyPolicy() {
             <li>в Казахстане: в уполномоченный орган в сфере защиты персональных данных или в суд.</li>
           </ul>
 
-          <h2>Cookies и хранилище браузера</h2>
+          <h2 id="cookies">Cookies и хранилище браузера</h2>
           <p>
             Petzy ставит две cookie, без которых нельзя войти: access_token и refresh_token. Скрипты на странице их не
             видят. В хранилище браузера лежат настройки вроде темы и выбранного питомца. Рекламных и аналитических cookies
             нет.
           </p>
 
-          <h2>Как данные защищены</h2>
+          <h2 id="security">Как данные защищены</h2>
           <p>
             Соединение зашифровано (HTTPS). Файлы открываются по ссылкам, которые работают несколько минут. Питомца видят
             только владелец и те, кого он пригласил.
           </p>
 
-          <h2>Изменения</h2>
+          <h2 id="changes">Изменения</h2>
           <p>
             Новая редакция появляется на этой странице с новой датой. Если меняется что-то существенное, приложение
             попросит согласиться заново.
