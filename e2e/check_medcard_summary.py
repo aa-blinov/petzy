@@ -4,7 +4,7 @@ Needs the local stack and the demo data (docker compose -p petzy-local ... up, s
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
 
 
 async def main():
@@ -15,14 +15,14 @@ async def main():
         card = f"/pets/{rex}/medical-card"
         # a filled-in card opens as the working mode every time, with the «+» and a switch that says «Записи»
         await pg.goto(BASE + card)
-        await pg.wait_for_timeout(1800)
+        await pg.locator(".medcard__mode").first.wait_for(timeout=10000)
         check(
             "a complete card opens as «Записи» with the round plus",
             await pg.locator(".app-fab").count() == 1
             and await pg.locator(".medcard__mode").all_inner_texts() == ["Записи", "Врачу"],
         )
         await pg.goto(BASE + card + "?mode=vet")
-        await pg.wait_for_timeout(1500)
+        await pg.locator(".medcard__patient").wait_for(timeout=10000)
         check(
             "the reading mode shows the weight in the patient's lines, not as a row of the medicines",
             "Вес " in await pg.locator(".medcard__patient").inner_text()
@@ -34,10 +34,8 @@ async def main():
                 "document.querySelector('.medcard__important').getBoundingClientRect().top < document.querySelector('.medcard__topactions').getBoundingClientRect().top"
             ),
         )
-        await pg.goto(BASE + card)
-        await pg.wait_for_timeout(1500)
         await pg.goto(BASE + card + "?mode=fill")
-        await pg.wait_for_timeout(2000)
+        await pg.locator(".medsum__tile").first.wait_for(timeout=10000)
         ty = await pg.evaluate("Math.round(document.querySelector('.medsum__tile').getBoundingClientRect().top)")
         vis = await pg.evaluate(
             "[...document.querySelectorAll('.medsum__tile')].filter(t => t.getBoundingClientRect().bottom <= innerHeight - 56).length"
@@ -63,14 +61,14 @@ async def main():
         tiles = await pg.locator(".medsum__tile").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
         check("the first tile is «Здоровье и аллергии»", tiles[0].startswith("Здоровье и аллергии"), tiles[0])
         await pg.locator(".medsum__tile").first.click()
-        await pg.wait_for_timeout(1500)
+        await pg.wait_for_timeout(600)
         check("its screen has the same title", "Здоровье и аллергии" in (await pg.inner_text("h1")))
         await pg.get_by_role("button", name="Изменить").first.click()
-        await pg.wait_for_timeout(1500)
+        await pg.wait_for_url(lambda url: "section=allergies" in url, timeout=10000)
         check("«Изменить» opens the profile at the allergies", "section=allergies" in pg.url, pg.url.replace(BASE, ""))
         # the round plus steps aside on a scroll down and returns on a scroll up
         await pg.goto(BASE + card + "/prevention")
-        await pg.wait_for_timeout(1500)
+        await pg.locator(".app-fab").first.wait_for(timeout=10000)
         check("the round plus is there at the top", await pg.locator(".app-fab:not(.app-fab--away)").count() == 1)
         await pg.mouse.wheel(0, 500)
         await pg.wait_for_timeout(500)
@@ -85,19 +83,19 @@ async def main():
         items = recs if isinstance(recs, list) else recs.get("items") or recs.get("records") or []
         vac = next(r for r in items if r.get("kind") == "vaccination")
         await pg.goto(BASE + f"/pets/{rex}/medical-records/{vac['_id']}")
-        await pg.wait_for_timeout(1800)
+        await pg.get_by_role("button", name="Записать повторную прививку").wait_for(timeout=10000)
         check(
             "an existing vaccination offers «Записать повторную прививку»",
             await pg.get_by_role("button", name="Записать повторную прививку").count() == 1,
         )
         await pg.get_by_role("button", name="Записать повторную прививку").click()
-        await pg.wait_for_timeout(1500)
+        # Адрес меняется раньше заголовка, поэтому ждём заголовок, а не адрес.
+        await wait_until(pg, lambda t: "Повторная прививка" in t)
         check("it opens the same-again form", "from=" in pg.url and "Повторная прививка" in await pg.inner_text("h1"))
         # duplicate weight note
         await pg.evaluate("new Date().toISOString().slice(0, 10)")
         await pg.goto(BASE + f"/pets/{rex}/medical-records/new?kind=visit")
-        await pg.wait_for_timeout(1800)
-        t = await pg.inner_text("body")
+        t = await wait_until(pg, lambda text: "Вес, кг" in text)
         check(
             "a visit today with a weight already today says so under the weight field",
             "уже записан" in t or "Если взвешивали" in t,
@@ -105,7 +103,7 @@ async def main():
         )
         # the reasons of a visit: chosen from a sheet, each offered once (what the pet has is not repeated below it)
         await pg.locator(".adm-list-item[role=button]").first.click()
-        await pg.wait_for_timeout(800)
+        await pg.locator(".prodpick__row").first.wait_for(timeout=10000)
         names = [n.strip() for n in await pg.locator(".prodpick__row").all_inner_texts()]
         check(
             "the reasons of a visit are offered once each",
@@ -115,7 +113,7 @@ async def main():
         await pg.keyboard.press("Escape")
         check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
         await pg.goto(BASE + card + "?mode=fill")
-        await pg.wait_for_timeout(1500)
+        await pg.locator(".medsum__tile").first.wait_for(timeout=10000)
         await pg.screenshot(path="c1_summary.png")
         await b.close()
     summary("first batch")
