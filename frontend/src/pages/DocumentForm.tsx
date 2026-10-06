@@ -276,7 +276,7 @@ export function DocumentForm() {
     }
   }, [document, reset]);
   // The typed fields come back after a session that ran out; the chosen file has to be chosen again.
-  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !isEditing || !!document, release });
+  useSessionDraft({ dirty: isDirty, petId: id ?? null, getValues, reset, ready: !isEditing || !!document, release });
 
   const createMutation = useMutation({
     mutationFn: (data: DocumentFormData) => {

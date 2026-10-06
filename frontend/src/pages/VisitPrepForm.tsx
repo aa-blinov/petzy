@@ -58,7 +58,14 @@ export function VisitPrepForm() {
   const changed = complaint.trim() !== (saved?.complaint ?? '').trim() || Object.keys(checks).some((key) => checks[key as VisitCheck] !== savedChecks[key as VisitCheck]) || Object.keys(savedChecks).some((key) => !(key in checks));
   const dirty = typed !== null && changed;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
-  useSessionDraft({ dirty, getValues: () => typed as Typed, reset: (values) => setTyped(values), ready: !!query.data, release });
+  useSessionDraft({
+    dirty,
+    petId: id ?? null,
+    getValues: () => typed as Typed,
+    reset: (values) => setTyped(values),
+    ready: !!query.data,
+    release,
+  });
 
   // The version the form was made from: the server refuses a save from an older one (someone else saved since).
   const baseVersion = useRef<string | null>(null);

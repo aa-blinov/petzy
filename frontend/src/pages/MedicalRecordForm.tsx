@@ -244,7 +244,14 @@ export function MedicalRecordForm() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || staged.length > 0);
-  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!kind && (isEditing ? !!record.data : !!card.data), release });
+  useSessionDraft({
+    dirty: isDirty,
+    petId: petId ?? null,
+    getValues,
+    reset,
+    ready: !!kind && (isEditing ? !!record.data : !!card.data),
+    release,
+  });
   const date = useWatch({ control, name: 'date' });
   const weightThatDay = kind === 'visit' ? card.data?.weight?.series.find((point) => point.date === date)?.value : undefined;
   const nextDue = useWatch({ control, name: 'next_due' });

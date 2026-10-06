@@ -243,7 +243,14 @@ export function HealthRecordForm() {
     reset
   } = methods;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
-  useSessionDraft({ dirty: isDirty, getValues: methods.getValues, reset: methods.reset, ready: !!eventType && !isLoading, release });
+  useSessionDraft({
+    dirty: isDirty,
+    petId: getSelectedPet?._id ?? null,
+    getValues: methods.getValues,
+    reset: methods.reset,
+    ready: !!eventType && !isLoading,
+    release,
+  });
 
   // Maps an API record (date_time + nested fields) onto the form's flat
   // field names — the mirror image of onSubmit's payload building below.

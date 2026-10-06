@@ -271,7 +271,7 @@ export function MedicalProfileForm() {
     baseVersion.current = profile.version ?? null;
     reset(profileToForm(profile));
   }, [query.data, reset, section, allergies, conditions]);
-  useSessionDraft({ dirty: isDirty, getValues, reset, ready: !!query.data?.profile, release });
+  useSessionDraft({ dirty: isDirty, petId: id ?? null, getValues, reset, ready: !!query.data?.profile, release });
 
   const save = useMutation({
     mutationFn: (data: ProfileForm) =>
