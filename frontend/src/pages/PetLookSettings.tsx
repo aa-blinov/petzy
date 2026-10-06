@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,6 +32,7 @@ import {
 } from '../utils/petLook';
 import { setPetLookPreview } from '../utils/petLookPreview';
 import { rovingKeyDown, rovingTabIndex } from '../utils/roving';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { goBack } from '../utils/navigation';
 import { showToast } from '../utils/toast';
@@ -274,7 +275,16 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const mountedRef = useRef(true);
   const pinRef = useRef<HTMLDivElement | null>(null);
 
-  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops, backdrop, scene };
+  // A crop belongs to the frame it was made for. Frames come and go (an old look, a renamed
+  // one), and every crop left behind is stored and sent again for a frame nobody can choose.
+  const liveCrops = useMemo(
+    () => Object.fromEntries(Object.entries(crops).filter(([key]) => PET_FRAMES.some((f) => f.key === key))),
+    [crops],
+  );
+  const draft: PetLook = { tagline: tagline.trim(), accent, font, frame, crops: liveCrops, backdrop, scene };
+  // The counter says what will be saved: the line is stored trimmed, so a space at the end
+  // is not a character of the pet's caption.
+  const taglineLength = draft.tagline?.length ?? 0;
   const hex = petAccentHex(draft);
 
   // The options show the name in each face, so they are fetched when that tab is opened and not before (about 320 KB).
@@ -348,8 +358,9 @@ function PetLookFor({ pet }: { pet: Pet }) {
       // Back the way it was opened, like every other form here: this screen is a step pushed onto Settings,
       // so jumping to /settings left its own address in history and the second «Назад» opened it again.
       goBack(navigate, '/settings');
-    } catch {
-      showToast.failure('Не удалось сохранить оформление');
+    } catch (err) {
+      // The server's own words: «подпись не может быть длиннее» says more than «не удалось».
+      showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить оформление'));
     } finally {
       if (mountedRef.current) setSaving(false);
     }
@@ -455,7 +466,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                   }}
                 />
                 <div style={{ marginTop: 'var(--spacing-xs)', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', textAlign: 'right' }}>
-                  {tagline.length} из {PET_TAGLINE_MAX}
+                  {taglineLength} из {PET_TAGLINE_MAX}
                 </div>
 
                 <div id="pet-font-label" style={labelStyle}>
