@@ -1,4 +1,5 @@
 import api from './api';
+import { utcStampToLocal } from '../utils/dateUtils';
 
 export type DocumentCategory = 'vaccination' | 'lab_result' | 'conclusion' | 'imaging' | 'insurance' | 'other';
 
@@ -69,6 +70,29 @@ export class ScanUploadError extends Error {
   }
 }
 
+/** Whether a request ended because the user pressed «Остановить», not because it failed. */
+export function isUploadCancelled(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === 'AbortError') return true;
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'ERR_CANCELED';
+}
+
+/** An id for one upload attempt, 32 hex characters: the shape the server
+ *  accepts on `upload_id`. It lets «Остановить» name the upload it cut, so
+ *  a file the server had already stored can be taken back. */
+function uploadId(): string {
+  const raw = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : '';
+  const fallback = `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+  return (raw || fallback).replace(/-/g, '').toLowerCase().padEnd(32, '0').slice(0, 32);
+}
+
+/** How much of the body has gone (0..1). axios reports it through the XHR
+ *  upload progress event, the same one the signed-PUT upload uses. */
+function uploadFraction(e: { loaded?: number; total?: number; bytes?: number }): number {
+  const total = e.total ?? e.bytes;
+  if (!total) return 0;
+  return Math.min(1, (e.loaded ?? 0) / total);
+}
+
 /** A record of the medical card that holds a document: where the file came from, and what it can be found by. */
 export interface DocumentRecordRef {
   id: string;
@@ -95,6 +119,10 @@ export interface PetDocument {
   file_size: number;
   /** A scan archive: downloaded, not previewed. */
   scan?: boolean;
+  /** The zone the file was added in, as an IANA name. Absent for documents
+   *  added before the field: their zone is unknown, so their time is read
+   *  on the clock of whoever is looking. */
+  tz?: string | null;
   created_at: string;
   /** The kinds of medical-card record that point at this document (vaccination, visit...). */
   medical_record_kinds?: string[];
@@ -115,13 +143,62 @@ export function isCoveredByMedicalCard(doc: Pick<PetDocument, 'record_reminds'>)
   return doc.record_reminds === true;
 }
 
+/** Formatters per zone: one object each, built once — the list asks for the
+ *  same zone once per document, and building a formatter is not free. */
+const zoneFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function zoneFormatter(zone: string): Intl.DateTimeFormat | null {
+  const cached = zoneFormatters.get(zone);
+  if (cached) return cached;
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    zoneFormatters.set(zone, formatter);
+    return formatter;
+  } catch {
+    return null;
+  }
+}
+
+/** The wall clock of a document's own zone, as «YYYY-MM-DD HH:MM»: what
+ *  «Добавлен <дата>» is built from. The server stamps the moment in UTC, so
+ *  a document with a zone is read on that zone's clock and every reader sees
+ *  the same time. A document from before the field has no zone — there the
+ *  time stays on the clock of whoever is looking, which is all that is known
+ *  about it. */
+export function documentLocalStamp(doc: Pick<PetDocument, 'created_at' | 'tz'>): string {
+  if (doc.tz) {
+    const iso = doc.created_at.replace(' ', 'T');
+    const moment = new Date(iso.length === 16 ? `${iso}:00Z` : `${iso}Z`);
+    const formatter = Number.isNaN(moment.getTime()) ? null : zoneFormatter(doc.tz);
+    if (formatter) {
+      const parts = formatter.formatToParts(moment);
+      const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+      const stamp = `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(stamp)) return stamp;
+    }
+  }
+  return utcStampToLocal(doc.created_at);
+}
+
 export interface DocumentCreateInput {
   pet_id: string;
   category: DocumentCategory;
   title: string;
   note?: string;
   expires_at?: string;
+  /** The zone the file is added in, so «Добавлен <дата>» reads the same for everyone. */
+  tz?: string;
   file: File;
+  onProgress?: (fraction: number) => void;
+  signal?: AbortSignal;
 }
 
 export interface DocumentUpdateInput {
@@ -151,18 +228,57 @@ export const documentsService = {
     return response.data.document;
   },
 
+  /** Upload a photo or a PDF. The same progress and «Остановить» as a scan
+   *  archive: a file of up to 10 MB on a phone connection is worth a counter,
+   *  and a stopped upload asks the server to drop what it may have stored. */
   async create(data: DocumentCreateInput): Promise<string> {
+    const id = uploadId();
     const formData = new FormData();
     formData.append('pet_id', data.pet_id);
     formData.append('category', data.category);
     formData.append('title', data.title);
     if (data.note) formData.append('note', data.note);
     if (data.expires_at) formData.append('expires_at', data.expires_at);
+    if (data.tz) formData.append('tz', data.tz);
+    formData.append('upload_id', id);
     formData.append('file', data.file);
 
     // A file of up to 10 MB on a phone connection: given longer than an ordinary request.
-    const response = await api.post<{ message: string; id: string }>('/documents', formData, { timeout: 120_000 });
-    return response.data.id;
+    try {
+      const response = await api.post<{ message: string; id: string }>('/documents', formData, {
+        timeout: 120_000,
+        signal: data.signal,
+        onUploadProgress: (e) => data.onProgress?.(uploadFraction(e)),
+      });
+      return response.data.id;
+    } catch (err) {
+      // The request was cut, but the server may have answered and stored the
+      // file before the answer reached us: name the upload so it can be taken back.
+      if (isUploadCancelled(err)) await documentsService.cancelUpload(id);
+      throw err;
+    }
+  },
+
+  /** Put another file behind a document: the old one is removed by the server
+   *  only once the new one is there and the document says so. */
+  async replaceFile(id: string, file: File, onProgress?: (f: number) => void, signal?: AbortSignal): Promise<void> {
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.put(`/documents/${id}/file`, formData, {
+      timeout: 120_000,
+      signal,
+      onUploadProgress: (e) => onProgress?.(uploadFraction(e)),
+    });
+  },
+
+  /** Ask the server to drop the document a stopped upload made, with its file.
+   *  Nothing to remove (the request never arrived) is a success too. */
+  async cancelUpload(uploadId: string): Promise<void> {
+    try {
+      await api.post(`/documents/uploads/${uploadId}/cancel`);
+    } catch {
+      // The upload was stopped on purpose; a failed clean-up must not add a second message.
+    }
   },
 
   async getStorageStatus(): Promise<StorageStatus> {

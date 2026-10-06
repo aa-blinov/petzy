@@ -16,6 +16,7 @@ import { httpStatus } from '../services/api';
 import {
   documentsListQuery,
   documentsService,
+  documentLocalStamp,
   isCoveredByMedicalCard,
   isInMedicalCard,
   DOCUMENT_CATEGORY_LABELS,
@@ -25,7 +26,6 @@ import {
 import { SwipeableRow } from '../components/SwipeableRow';
 import { EmptyState } from '../components/EmptyState';
 import { deleteWithUndo, useHiddenRecords } from '../utils/deferredDelete';
-import { utcStampToLocal } from '../utils/dateUtils';
 import { NoPetState } from '../components/NoPetState';
 import { matchesDocumentQuery } from '../utils/documentSearch';
 import { formatDate } from '../utils/medicalCardFormat';
@@ -171,7 +171,7 @@ export function DocumentsList() {
   }, [documents, searchQuery, hiddenDocuments]);
 
   // The day a file belongs to: the day of the visit or the shot that holds it, else the day it was added. Newest first.
-  const documentDay = (doc: PetDocument) => doc.medical_records?.[0]?.date ?? utcStampToLocal(doc.created_at).slice(0, 10);
+  const documentDay = (doc: PetDocument) => doc.medical_records?.[0]?.date ?? documentLocalStamp(doc).slice(0, 10);
   const CHIPS_FROM = 10;
   const filterable = documents.length > CHIPS_FROM;
   const countsByCategory = useMemo(() => {
@@ -499,7 +499,7 @@ export function DocumentsList() {
                                     fontVariantNumeric: 'tabular-nums',
                                   }}
                                 >
-                                  <span>Добавлен {formatRelativeDateTime(utcStampToLocal(doc.created_at))}</span>
+                                  <span>Добавлен {formatRelativeDateTime(documentLocalStamp(doc))}</span>
                                   {doc.file_size > 0 && <span>{formatFileSize(doc.file_size)}</span>}
                                 </p>
                                 {doc.username && doc.username !== currentUsername && (
