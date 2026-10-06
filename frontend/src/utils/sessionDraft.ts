@@ -22,7 +22,10 @@ export function stashDraftsBeforeSignOut(): void {
     const values = provider();
     if (values === undefined) continue;
     try {
-      sessionStorage.setItem(KEY, JSON.stringify({ path: window.location.pathname + window.location.search, values }));
+      // Только путь, без адреса целиком: черновик принадлежит экрану, а не его строке запроса.
+      // Раньше адрес с параметром (например ?returnTo= после истёкшей сессии) не совпадал при возврате,
+      // и набранное терялось.
+      sessionStorage.setItem(KEY, JSON.stringify({ path: window.location.pathname, values }));
     } catch {
       /* sessionStorage may be unavailable: the form is then lost as before */
     }
@@ -36,7 +39,9 @@ export function takeDraft<T>(): T | null {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return null;
     const draft = JSON.parse(raw) as { path?: string; values?: T };
-    if (draft.path !== window.location.pathname + window.location.search || !draft.values) return null;
+    // Старый черновик мог быть записан с адресом целиком: сверяем только путь, чтобы он не потерялся.
+    const path = (draft.path ?? '').split('?')[0];
+    if (path !== window.location.pathname || !draft.values) return null;
     sessionStorage.removeItem(KEY);
     return draft.values;
   } catch {

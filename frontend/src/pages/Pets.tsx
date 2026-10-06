@@ -22,6 +22,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { Fab } from '../components/Fab';
 import { formatAmount } from '../utils/stock';
 import { PetDeleteSummary } from '../components/PetDeleteSummary';
+import { useHiddenRecords } from '../utils/deferredDelete';
 
 export function Pets() {
   const navigate = useNavigate();
@@ -37,6 +38,12 @@ export function Pets() {
   });
 
   const queryClient = useQueryClient();
+
+  // A pet deleted a moment ago is already out of the list while «Отменить»
+  // is still on offer. With it was the last one, the empty state would come
+  // up under the bar and answer «no pets» about a deletion nobody has agreed
+  // to yet, so the empty state waits until the bar is gone.
+  const hiddenRecords = useHiddenRecords();
 
   const handleEditPet = (pet: Pet) => navigate(`/pets/${pet._id}/edit`);
   const handleAddPet = () => navigate('/pets/new');
@@ -60,9 +67,6 @@ export function Pets() {
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
           marginBottom: 'var(--spacing-lg)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           minHeight: '40px',
         }}>
           <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
@@ -86,7 +90,7 @@ export function Pets() {
           </div>
         ) : isError ? (
           <LoadError what="питомцев" onRetry={refetchPets} />
-        ) : pets.length === 0 ? (
+        ) : pets.length === 0 && hiddenRecords.size === 0 ? (
           <EmptyState
             icon={Cat}
             title="Здесь будут ваши питомцы"

@@ -57,9 +57,10 @@ export function DashboardSkeleton() {
     // skeleton-list: same 300 ms wait as SkeletonList, so a quick load never flashes it.
     <div role="status" className="skeleton-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <span className="sr-only">Загрузка</span>
-      {/* Pet hero skeleton */}
+      {/* Pet hero skeleton. 112px is the real card's photo (PetSummaryCard), so the list doesn't
+          jump the moment the pet arrives. */}
       <div className="card-soft" style={{ overflow: 'hidden' }}>
-        <div className="skeleton" style={{ width: '100%', height: 180, borderRadius: 0 }} />
+        <div className="skeleton" style={{ width: '100%', height: 112, borderRadius: 0 }} />
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="skeleton" style={{ height: 14, width: '30%' }} />
           <div style={{ display: 'flex', gap: 8 }}>

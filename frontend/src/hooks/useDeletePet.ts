@@ -59,6 +59,11 @@ export function useLeavePet() {
         },
       },
       onDismiss: async (reason) => {
+        // A bar another message took over is not a decision either: the access is
+        // only given up when the offer is read and closed. Same rule as the queue
+        // of deletions in utils/deferredDelete.ts, or leaving shared access would
+        // go through silently whenever another message comes along.
+        if (reason === 'replaced') return;
         if (reason === 'action') {
           // The list is put back as it was: nothing was ever sent.
           queryClient.setQueryData(['pets'], pets);

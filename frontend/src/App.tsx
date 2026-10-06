@@ -420,7 +420,11 @@ function AppRoutes() {
                 path="/medications"
                 element={
                   <ProtectedRoute>
-                    <MedicationsList />
+                    {/* Без питомца список лекарств не о чем: пустое состояние страницы говорило бы «лекарств нет»,
+                        а это совсем другое, и вкладка «Документы» на том же месте отличает одно от другого. */}
+                    <RequirePet what="Лекарства">
+                      <MedicationsList />
+                    </RequirePet>
                   </ProtectedRoute>
                 }
               />

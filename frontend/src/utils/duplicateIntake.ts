@@ -28,12 +28,17 @@ export function duplicateOf(err: unknown): DuplicateIntake | null {
 }
 
 /** Logs a dose; when it is the same one already marked, says who marked it and when, and records another only if asked to. */
-export async function logIntakeAsking(medicationId: string, name: string, input: IntakeInput): Promise<{ id: string; ran_out: boolean; queued?: boolean }> {
+export async function logIntakeAsking(
+  medicationId: string,
+  name: string,
+  input: IntakeInput,
+  petName?: string,
+): Promise<{ id: string; ran_out: boolean; queued?: boolean }> {
   try {
     return await medicationsService.logIntake(medicationId, input);
   } catch (err) {
     if (isOffline(err)) {
-      enqueueIntake(medicationId, name, input);
+      enqueueIntake(medicationId, name, input, petName);
       return { id: '', ran_out: false, queued: true };
     }
     const existing = duplicateOf(err);
