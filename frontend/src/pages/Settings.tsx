@@ -170,7 +170,7 @@ export function Settings() {
             <SettingsRow
               icon={<Link2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Ссылки на медкарту"
-              description="Кому вы дали доступ к карте: посмотреть и отозвать"
+              description="Общие ссылки на медкарты: открыть и отозвать может любой, у кого есть доступ к питомцу"
               chevron
               onClick={() => navigate('/settings/medical-links')}
             />

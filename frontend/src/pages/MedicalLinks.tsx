@@ -52,7 +52,7 @@ export function MedicalLinks() {
       <div className="max-width-container">
         <div className="safe-area-padding medlinks__head">
           <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Ссылки на медкарту</h1>
-          <p className="medlinks__lead">Ссылки, по которым врач открывает карту без входа. Здесь видно все действующие и можно отозвать любую</p>
+          <p className="medlinks__lead">Общие ссылки на медкарты: по такой ссылке карту открывает любой, у кого она есть, без входа в приложение. Здесь видно все действующие, и отозвать любую может любой, у кого есть доступ к питомцу</p>
           <p className="medlinks__note" data-testid="medlinks-count">
             {loading ? 'Считаем действующие ссылки' : `Действующих ссылок: ${total}`}
           </p>

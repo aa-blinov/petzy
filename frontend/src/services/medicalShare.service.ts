@@ -32,8 +32,8 @@ export const medicalShareService = {
     await api.delete(`/pets/${petId}/medical-card/shares/${shareId}`);
   },
   /** What the vet opens: the card and when the link ends. No sign-in. */
-  async open(token: string): Promise<{ card: MedicalCard; expires_at: string }> {
-    const response = await api.get<{ card: MedicalCard; expires_at: string }>(`/shared/medical-card/${encodeURIComponent(token)}`, { params: { tz: deviceTimeZone() } });
+  async open(token: string): Promise<{ card: MedicalCard; expires_at: string; pet_id?: string }> {
+    const response = await api.get<{ card: MedicalCard; expires_at: string; pet_id?: string }>(`/shared/medical-card/${encodeURIComponent(token)}`, { params: { tz: deviceTimeZone() } });
     return response.data;
   },
   async downloadPdf(token: string, petName: string): Promise<boolean> {

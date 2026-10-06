@@ -22,7 +22,7 @@ from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
 from web.helpers import get_pet_and_validate, valid_tz
-from web.medications import has_overdue_dose
+from web.medications import has_overdue_dose, is_as_needed
 from web.medical_records import linked_document_ids, normalize_title, pet_records, record_states
 from web.schemas import (
     MEDICAL_KINDS,
@@ -228,7 +228,9 @@ def _courses(pet_id: str, today: date, past_limit: Optional[int] = PAST_COURSES)
             "type": med.get("type") or None,
             "strength": med.get("strength") or None,
             "dose_text": f"{_number(dose)} {unit}".strip() if dose else None,
-            "schedule_text": schedule_text(med.get("schedule") or {}),
+            # «По необходимости» с расписанием: в карте показываем, что приём назначают по надобности,
+            # а не «Ежедневно в 08:00». У курсов до признака режим жил в расписании, и там текст прежний.
+            "schedule_text": ("По необходимости" if is_as_needed(med) else schedule_text(med.get("schedule") or {})),
             "comment": med.get("comment") or None,
             "purpose": med.get("purpose") or None,
             "prescribed_by": med.get("prescribed_by") or None,
@@ -507,11 +509,29 @@ def put_medical_profile(pet_id):
     return jsonify({"profile": profile})
 
 
+def _visit_prep_conflict(pet: dict):
+    """409 with the note as it is now, so the client can show it and let the person choose.
+
+    The same answer the vet profile gives when two forms were made from one copy
+    (see ``put_medical_profile``).
+    """
+    response, status = error_response("conflict", "Заметку изменили в другом месте, пока вы её правили")
+    body = response.get_json()
+    body["visit_prep"] = _visit_prep(pet)
+    return jsonify(body), status
+
+
 @medical_card_bp.route("/api/pets/<pet_id>/visit-prep", methods=["PUT"])
 @login_required
 @api.validate(
     body=Request(VisitPrep),
-    resp=Response(HTTP_200=VisitPrepResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(
+        HTTP_200=VisitPrepResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_422=ErrorResponse,
+    ),
     tags=["pets"],
 )
 def put_visit_prep(pet_id):
@@ -519,6 +539,10 @@ def put_visit_prep(pet_id):
 
     Anyone with access to the pet may write it, like the profile. Empty clears it, and
     the visit form does that once the visit is recorded.
+
+    The note carries a version like the vet profile does: two phones editing it used to
+    leave whoever pressed last as the only truth, silently. A save made from an older
+    copy is refused and the other person's note comes back with it.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
@@ -526,10 +550,25 @@ def put_visit_prep(pet_id):
         return access_error[0], access_error[1]
 
     data = request.context.body  # type: ignore[attr-defined]
+    # «» is a form made from a note that had no version yet (never saved, or saved before versions existed).
+    stored_version = (pet.get("visit_prep") or {}).get("version")
+    if data.base_version is not None and data.base_version != (stored_version or ""):
+        return _visit_prep_conflict(pet)
+
+    # Taken only if nobody saved between the read above and now: two saves in the same instant do not both win.
+    guard = (
+        {"_id": pet["_id"], "visit_prep.version": stored_version} if stored_version is not None else {"_id": pet["_id"]}
+    )
     if not data.complaint and not data.checks:
-        app.db.pets.update_one({"_id": pet["_id"]}, {"$unset": {"visit_prep": ""}})
+        result = app.db.pets.update_one(guard, {"$unset": {"visit_prep": ""}})
+    else:
+        prep = data.model_dump(exclude={"base_version"})
+        prep["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        prep["version"] = uuid.uuid4().hex
+        result = app.db.pets.update_one(guard, {"$set": {"visit_prep": prep}})
+    if stored_version is not None and result.matched_count == 0:
+        return _visit_prep_conflict(app.db.pets.find_one({"_id": pet["_id"]}) or pet)
+    if not data.complaint and not data.checks:
         return jsonify({"visit_prep": None})
-    prep = data.model_dump()
-    prep["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-    app.db.pets.update_one({"_id": pet["_id"]}, {"$set": {"visit_prep": prep}})
+    app.logger.info(f"Visit prep updated: pet_id={pet_id}, user={username}")
     return jsonify({"visit_prep": prep})
