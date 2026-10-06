@@ -6,6 +6,7 @@ import { authService } from '../services/auth.service';
 import { AuthShell } from '../components/AuthShell';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { retryNote, useRetryLock } from '../utils/authForms';
 
 const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 } as const;
 
@@ -15,6 +16,14 @@ export function ForgotPassword() {
   const [sent, setSent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
+  // A 429 says the address has five requests an hour: the form counts the
+  // wait down instead of letting the next one be refused unseen.
+  const { left: retryLeft, lock: lockAfterRefusal } = useRetryLock();
+  const locked = retryLeft > 0;
+  // Recovery needs mail: without it the request would go nowhere, so the
+  // form waits for that word instead of being sent blind.
+  const mailOff = !!status.data && !status.data.mail_enabled;
+  const canAsk = status.isSuccess && !mailOff && !locked;
 
   const submit = async () => {
     if (!login.trim()) {
@@ -25,15 +34,16 @@ export function ForgotPassword() {
     try {
       setSent(await authService.forgotPassword(login.trim()));
     } catch (err) {
+      lockAfterRefusal(err);
       showToast.failure(getApiErrorMessage(err, 'Не удалось отправить запрос. Проверьте соединение'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (status.data && !status.data.mail_enabled) {
+  if (mailOff) {
     return (
-      <AuthShell>
+      <AuthShell title="Новый пароль">
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
           Восстановление по почте пока не работает. Напишите администратору Petzy, он задаст новый пароль
         </p>
@@ -46,13 +56,30 @@ export function ForgotPassword() {
 
   if (sent) {
     return (
-      <AuthShell>
-        <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-lg)', textAlign: 'center' }}>Проверьте почту</h2>
+      <AuthShell title="Проверьте почту">
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>{sent}</p>
         <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
           Ссылка работает один час. Письма нет? Загляните в «Спам». Если почту к аккаунту не привязывали, напишите администратору Petzy
         </p>
-        <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
+        <div style={{ marginTop: 'var(--spacing-lg)' }}>
+          <Button
+            block
+            size="large"
+            fill="outline"
+            color="primary"
+            disabled={isLoading || !canAsk}
+            loading={isLoading}
+            onClick={submit}
+          >
+            Отправить ещё раз
+          </Button>
+          {locked && (
+            <p role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+              {retryNote(retryLeft)}
+            </p>
+          )}
+        </div>
+        <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center' }}>
           <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
         </p>
       </AuthShell>
@@ -60,8 +87,7 @@ export function ForgotPassword() {
   }
 
   return (
-    <AuthShell>
-      <h2 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--text-lg)', textAlign: 'center' }}>Новый пароль</h2>
+    <AuthShell title="Новый пароль">
       <p style={{ margin: '0 0 var(--spacing-md)', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
         Пришлём ссылку на почту, которую вы подтвердили в аккаунте
       </p>
@@ -70,17 +96,32 @@ export function ForgotPassword() {
         onFinish={submit}
         footer={
           <>
-            <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading}
+            <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading || !canAsk}
               style={{ background: 'var(--app-cta-gradient)', border: 'none' }}>
               Отправить ссылку
             </Button>
+            {!status.isSuccess && !status.isError && (
+              <p role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+                Проверяем, работает ли восстановление по почте
+              </p>
+            )}
+            {(locked || status.isError) && (
+              <p role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+                {locked
+                  ? retryNote(retryLeft)
+                  : 'Не удалось узнать, работает ли восстановление по почте. Проверьте соединение и попробуйте ещё раз'}
+              </p>
+            )}
             <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)' }}>
               <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
             </p>
           </>
         }
       >
-        <Form.Item label={<span style={{ fontWeight: 500 }}>Логин или почта</span>}>
+        <Form.Item
+          label={<span style={{ fontWeight: 500 }}>Логин или почта</span>}
+          description={<span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Письмо придёт на подтверждённый адрес аккаунта</span>}
+        >
           <Input value={login} onChange={setLogin} placeholder="vera или vera@example.com" clearable autoComplete="username" disabled={isLoading} />
         </Form.Item>
       </Form>

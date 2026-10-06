@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Dialog, Form, Input } from 'antd-mobile';
+import { isAxiosError } from 'axios';
 import { accountService, type DeletionPet } from '../services/account.service';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -63,6 +64,9 @@ export function AccountDelete() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [asked, setAsked] = useState(false);
   const [busy, setBusy] = useState(false);
+  // The link broke after the answer was on its way: whether the account is
+  // gone is unknown, and saying «не удалось удалить» would be a guess.
+  const [cutOff, setCutOff] = useState(false);
   const { data: preview, isLoading, isError } = useQuery({
     queryKey: ['account', 'deletion'],
     queryFn: () => accountService.deletionPreview(),
@@ -89,13 +93,28 @@ export function AccountDelete() {
       await logout();
     } catch (err) {
       setConfirmVisible(false);
-      showToast.failure(getApiErrorMessage(err, 'Не удалось удалить аккаунт'));
+      if (isAxiosError(err) && !err.response) {
+        // The request left and no answer came back: the deletion may well
+        // have happened. The way out is to try to sign in, not to press
+        // «удалить» once more.
+        setCutOff(true);
+        showToast.failure('Связь прервалась. Проверьте, удалился ли аккаунт: войдите заново', { duration: 5000 });
+      } else {
+        showToast.failure(getApiErrorMessage(err, 'Не удалось удалить аккаунт'));
+      }
     } finally {
       setBusy(false);
     }
   };
 
   const keepsRecords = !!preview && (preview.transferred.length > 0 || preview.left.length > 0);
+  // What the confirmation says, in the words of the plan above it: pets
+  // gone with their records, pets handed over, access ended.
+  const summary = preview
+    ? `Удалятся: ${preview.deleted.length ? preview.deleted.map(p => `«${p.name}»`).join(', ') : 'ничьи питомцы'}, вместе с записями, лекарствами и документами. ` +
+      (preview.transferred.length ? `Перейдут другим: ${preview.transferred.map(p => `«${p.name}»`).join(', ')}. ` : '') +
+      (preview.left.length ? `Пропадёт доступ к ${preview.left.length} питомцам других людей.` : '')
+    : '';
 
   return (
     <div className="page-container">
@@ -110,6 +129,18 @@ export function AccountDelete() {
             <p style={{ color: 'var(--app-text-secondary)' }}>
               Не удалось узнать, что станет с питомцами. Попробуйте открыть страницу ещё раз
             </p>
+          )}
+
+          {cutOff && (
+            <div style={{ marginTop: 'var(--spacing-md)' }}>
+              <p style={{ color: 'var(--app-text-color)', margin: '0 0 var(--spacing-sm)' }}>
+                Связь оборвалась в момент удаления, так что аккаунт, возможно, уже удалён. Попробуйте войти: если не выйдет,
+                напишите администратору Petzy
+              </p>
+              <Button block color="primary" size="large" onClick={() => navigate('/login')}>
+                Войти
+              </Button>
+            </div>
           )}
 
           {preview && !preview.can_delete && (
@@ -182,7 +213,7 @@ export function AccountDelete() {
       <Dialog
         visible={confirmVisible}
         title="Удалить аккаунт?"
-        content="Это нельзя отменить"
+        content={summary || 'Это нельзя отменить'}
         onClose={() => setConfirmVisible(false)}
         getContainer={() => document.body}
         actions={[

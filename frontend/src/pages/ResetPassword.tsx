@@ -9,6 +9,7 @@ import { FieldError } from '../components/FieldError';
 import { useTouched } from '../hooks/useTouched';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { passwordProblem } from '../utils/authForms';
 
 const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 } as const;
 
@@ -25,7 +26,7 @@ export function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [linkDead, setLinkDead] = useState(!token);
 
-  const passwordError = password.length < 8 ? 'Не короче 8 символов' : null;
+  const passwordError = passwordProblem(password);
   const repeatError = repeat !== password ? 'Пароли не совпадают' : null;
 
   const submit = async () => {
@@ -50,7 +51,7 @@ export function ResetPassword() {
 
   if (linkDead) {
     return (
-      <AuthShell>
+      <AuthShell title="Новый пароль">
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
           Ссылка устарела или уже использована. Запросите новую, она придёт на ту же почту
         </p>
@@ -62,21 +63,30 @@ export function ResetPassword() {
   }
 
   return (
-    <AuthShell>
-      <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-lg)', textAlign: 'center' }}>Придумайте новый пароль</h2>
+    <AuthShell title="Новый пароль">
+      <p style={{ margin: '0 0 var(--spacing-md)', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+        После смены пароля на других устройствах придётся войти заново
+      </p>
       <Form
         layout="vertical"
         onFinish={submit}
         footer={
-          <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading}
-            style={{ background: 'var(--app-cta-gradient)', border: 'none' }}>
-            Сохранить и войти
-          </Button>
+          <>
+            <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading}
+              style={{ background: 'var(--app-cta-gradient)', border: 'none' }}>
+              Сохранить и войти
+            </Button>
+            <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)' }}>
+              <Link to="/login" className="tap-link" style={linkStyle}>Вернуться ко входу</Link>
+            </p>
+          </>
         }
       >
         <Form.Item
           label={<span style={{ fontWeight: 500 }}>Новый пароль</span>}
-          description={shows('password') && passwordError ? <FieldError message={passwordError} /> : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов</span>}
+          description={shows('password') && passwordError
+            ? <FieldError message={passwordError} />
+            : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа</span>}
         >
           <Input type="password" value={password} onChange={setPassword} onBlur={touch('password')} placeholder="Новый пароль" clearable autoComplete="new-password" disabled={isLoading} />
         </Form.Item>
