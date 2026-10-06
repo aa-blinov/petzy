@@ -113,6 +113,8 @@ def ensure_indexes() -> None:
                           purge_at TTL      (auto-prune after 90 days)
       image_thumbnails    source_file_id    (drop a file's variants with it)
       document_uploads    created_at        (sweep abandoned scan uploads)
+      deleted_accounts   username unique  (a repeat delete after a broken answer
+                                           answers instead of «wrong password»)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -153,6 +155,7 @@ def ensure_indexes() -> None:
         (db.image_thumbnails, [("source_file_id", ASCENDING)], "image_thumbnails_source"),
         # Scan upload slots, swept by created_at (web/storage.py).
         (db.document_uploads, [("created_at", ASCENDING)], "document_uploads_created"),
+        (db.deleted_accounts, [("username", ASCENDING)], "deleted_accounts_username", {"unique": True}),
         (db.users, [("username", ASCENDING)], "users_username_unique", {"unique": True}),
         # Links from letters (web/account.py): looked up by hash, gone when expired.
         (db.account_tokens, [("token_hash", ASCENDING)], "account_tokens_hash_unique", {"unique": True}),
