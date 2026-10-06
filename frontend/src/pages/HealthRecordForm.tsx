@@ -76,6 +76,9 @@ export function HealthRecordForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { selectedPetId, selectedPetName, getSelectedPet } = usePet();
+  // The pet's own name, from the roster; the saved one is only a fallback for the moment
+  // before the roster arrives (usePet keeps `selectedPetName` in localStorage).
+  const petName = getSelectedPet?.name || selectedPetName;
   const queryClient = useQueryClient();
   const { eventTypesByKey, isLoading: eventTypesLoading } = useEventTypes();
 
@@ -507,12 +510,24 @@ export function HealthRecordForm() {
             {id ? `${eventType.label}: правка` : `Записать: ${eventType.label}`}
           </h1>
         </div>
-        {/* Whose record: with several pets, a form that does not say is a form that may be for the wrong one. */}
-        {selectedPetName && (
-          <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
-            Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
-            {isEditing && recordedBy && <><br />Записал(а): <strong style={{ color: 'var(--app-text-primary)' }}>{recordedBy}</strong></>}
-          </p>
+        {/* Whose record: with several pets, a form that does not say is a form that may be for the wrong one.
+            The name is the pet's own, not the saved one: `selectedPetName` comes from localStorage
+            and is empty when the app was opened with a chosen pet but no saved name (a fresh install,
+            storage cleared), which hid the line entirely. The two lines are independent: who wrote the
+            record down is worth knowing even when the pet's name is not to hand. */}
+        {(petName || (isEditing && recordedBy)) && (
+          <div className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)' }}>
+            {petName && (
+              <p style={{ margin: 0 }}>
+                Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{petName}</strong>
+              </p>
+            )}
+            {isEditing && recordedBy && (
+              <p style={{ margin: petName ? 'var(--spacing-2xs)' : 0 }}>
+                Записал(а): <strong style={{ color: 'var(--app-text-primary)' }}>{recordedBy}</strong>
+              </p>
+            )}
+          </div>
         )}
 
         <div>

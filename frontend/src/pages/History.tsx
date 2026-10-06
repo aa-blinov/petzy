@@ -1,12 +1,13 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { uniqueById } from '../utils/uniqueById';
+import { useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Button, PullToRefresh } from 'antd-mobile';
 import { Download, Notebook, ChevronDown, Rows3 } from 'lucide-react';
 import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
-import { HistoryItem } from '../components/HistoryItem';
+import { HistoryItem, SwipeHint } from '../components/HistoryItem';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -55,7 +56,14 @@ export function History() {
     const { eventTypes } = useEventTypes();
     const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
     // «История веса» from a visit's form arrives with ?type=weight.
-    const [filterType, setFilterType] = useState<string>(() => new URLSearchParams(window.location.search).get('type') || FILTER_ALL);
+    //
+    // The chosen type lives in the address, not only in state: a reload, a
+    // «Назад» from a record's form and a shared link all land on the same
+    // filtered screen. Before, the parameter was read once at mount and never
+    // written, so the screen and the address disagreed the moment the filter
+    // changed, and reloading dropped the filter.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const filterType = searchParams.get('type') || FILTER_ALL;
     const [exportVisible, setExportVisible] = useState(false);
     const [filterSheetVisible, setFilterSheetVisible] = useState(false);
     // «Записать» from the history screen itself: the round «+» every list has (components/Fab), and the same
@@ -138,6 +146,10 @@ export function History() {
         },
         initialPageParam: 1,
         enabled: !!selectedPetId,
+        // What another person wrote while the app was in the background is there when it comes back to the front.
+        // The feed already refetches on focus (Dashboard); the shared default is off (App.tsx), so without this
+        // the same app left History open showed yesterday's list until it was pulled down by hand.
+        refetchOnWindowFocus: true,
     });
 
     // Already filtered server-side by `filterType` — kept as its own name
@@ -164,7 +176,17 @@ export function History() {
 
     const handleFilterChange = (id: string) => {
         hapticFeedback('light');
-        setFilterType(id);
+        setSearchParams(
+            prev => {
+                const next = new URLSearchParams(prev);
+                // «Все» is the absence of a filter, so the address stays clean.
+                if (id === FILTER_ALL) next.delete('type');
+                else next.set('type', id);
+                return next;
+            },
+            // A filter is not a step back: «Назад» from it should leave the screen, not undo it.
+            { replace: true },
+        );
     };
 
     // The list of pets decides whether there is anything to show. While it loads there is no chosen pet yet
@@ -200,6 +222,9 @@ export function History() {
 
         return (
             <>
+                {/* The same rows, the same swipes and the same one-time hint as the feed: this
+                    screen is the other half of the same list, not a different kind of one. */}
+                <SwipeHint />
                 {groupedItems.map(([dateStr, itemsForDate]) => (
                     <div key={dateStr} style={{ marginBottom: 'var(--spacing-lg)' }}>
                         <h2
@@ -220,7 +245,6 @@ export function History() {
                                         item={item}
                                         config={config}
                                         type={type}
-                                        activeTab={type}
                                     />
                                 );
                             })}
@@ -261,10 +285,9 @@ export function History() {
                    This screen used to stack a title row, the filter rail
                    and a third row holding just the list/chart pill, so
                    three bands of chrome pushed the records below the
-                   fold. Export is icon-only (it is an occasional action,
-                   and the tab is already labelled "История", so "История
-                   записей" was saying it twice). The old list/chart
-                   toggle is gone too — trends are no longer a mode you
+                   fold. Export sits in the title row with its label beside the icon
+                   (an icon alone left the meaning to be guessed at). The old
+                   list/chart toggle is gone too — trends are no longer a mode you
                    switch into instead of the list, they're their own
                    section shown above it (see below). */}
                 <div className="safe-area-padding" style={{
@@ -282,8 +305,6 @@ export function History() {
                         type="button"
                         onClick={() => setExportVisible(true)}
                         className="touch-target"
-                        aria-label="Экспорт"
-                        title="Экспорт"
                         style={{
                             background: 'transparent',
                             border: 'none',
@@ -292,9 +313,16 @@ export function History() {
                             padding: 10,
                             display: 'flex',
                             alignItems: 'center',
+                            gap: 'var(--spacing-xs)',
+                            font: 'inherit',
+                            fontSize: 'var(--text-sm)',
+                            fontWeight: 600,
                         }}
                     >
                         <Download size={20} strokeWidth={2} style={{ display: 'block' }} />
+                        {/* The word beside the icon: an icon alone left the meaning to be guessed at,
+                            and this is the only way off this screen with the records. */}
+                        Экспорт
                     </button>
                 </div>
                 {/* Лента is today and what's next; this is everything. Without

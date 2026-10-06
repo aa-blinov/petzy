@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { showToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
@@ -23,10 +23,9 @@ interface HistoryItemProps {
   item: HistoryItemType;
   config: EventDisplayConfig;
   type: string;
-  activeTab: string;
-}
+  }
 
-export const HistoryItem = memo(function HistoryItem({ item, config, type, activeTab }: HistoryItemProps) {
+export const HistoryItem = memo(function HistoryItem({ item, config, type }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { username: currentUsername } = useAuth();
@@ -57,7 +56,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
 
   const handleEdit = () => {
     // Pass item data via state to avoid extra API call.
-    navigate(`/form/${type}/${item._id}?tab=${activeTab}`, { state: { recordData: item } });
+    // No `?tab=` in the address: the form is one screen for every type and never read it, and a
+    // parameter nothing reads only breaks the draft's own address match (utils/sessionDraft.ts).
+    navigate(`/form/${type}/${item._id}`, { state: { recordData: item } });
   };
 
   // A dose is deleted at once, so the stock, the dose card and the slot are right straight away; «Отменить» writes the same
@@ -275,3 +276,76 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, activ
     </>
   );
 });
+
+/** Said once, on the first record of any list of them: how a record is changed or deleted without opening it. */
+const SWIPE_HINT_KEY = 'petzy:swipeHintSeen';
+
+/**
+ * The swipe hint, said once for the whole app.
+ *
+ * The swipes are one code path (HistoryItem) drawn on both the feed and the
+ * History screen, so the hint belongs to both: it used to live only on the
+ * feed, and someone who started on «История» was never told. One key, so
+ * reading it once is enough everywhere.
+ */
+export function SwipeHint() {
+    const [seen, setSeen] = useState(() => {
+        try {
+            return localStorage.getItem(SWIPE_HINT_KEY) === '1';
+        } catch {
+            return true;
+        }
+    });
+
+    const dismiss = useCallback(() => {
+        setSeen(true);
+        try {
+            localStorage.setItem(SWIPE_HINT_KEY, '1');
+        } catch {
+            /* seen for this visit only */
+        }
+    }, []);
+
+    if (seen) return null;
+
+    return (
+        <div
+            role="note"
+            style={{
+                margin: '0 0 var(--spacing-md)',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--app-accent-soft)',
+                color: 'var(--app-accent-deep)',
+                fontSize: 'var(--text-sm)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 'var(--spacing-sm) var(--spacing-md)',
+            }}
+        >
+            <span style={{ flex: '1 1 14em' }}>Смахните запись влево, чтобы удалить, вправо, чтобы изменить</span>
+            {/* A button that looks like one: a bare bold word at the end of a sentence read as part of the sentence. */}
+            <button
+                type="button"
+                className="touch-target"
+                style={{
+                    flexShrink: 0,
+                    minHeight: 'var(--touch-min)',
+                    padding: '0 18px',
+                    border: '1.5px solid currentColor',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'transparent',
+                    font: 'inherit',
+                    fontWeight: 600,
+                    color: 'inherit',
+                    cursor: 'pointer',
+                }}
+                onClick={dismiss}
+            >
+                Понятно
+            </button>
+        </div>
+    );
+}

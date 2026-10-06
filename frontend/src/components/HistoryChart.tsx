@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LoadingSpinner } from './LoadingSpinner';
 import { EmptyState } from './EmptyState';
+import { LoadError } from './LoadError';
 import { ChartNoAxesColumn } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -90,6 +91,67 @@ function formatBucketTooltipLabel(start: Date, granularity: Granularity): string
 /** «4,8», as on the axis and everywhere else in the app. */
 const formatValue = (value: ValueType | undefined) => (typeof value === 'number' ? value.toLocaleString('ru-RU') : value);
 
+/** The range tabs in words, for the summary: the label a person would use. */
+const PERIOD_WORDS: Record<string, string> = {
+    '30': 'месяц',
+    '90': '3 месяца',
+    '180': 'полгода',
+    '3650': 'всё время',
+};
+
+/** «Вес (кг)» is a name and a unit; «Количество» is a name alone. */
+function splitValueLabel(label: string): { name: string; unit: string } {
+    const m = /^(.*?)\s*\(([^)]+)\)$/.exec(label.trim());
+    return m ? { name: m[1].trim(), unit: m[2].trim() } : { name: label.trim(), unit: '' };
+}
+
+/** A number with the unit beside it: «12,4 кг», or «12» when the type has no unit. */
+function withUnit(value: number, decimals: number, unit: string): string {
+    const text = value.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return unit ? `${text} ${unit}` : text;
+}
+
+/**
+ * The chart in words: what it says, read at arm's length.
+ *
+ * A picture of a trend is not a reading of one: a value is only as
+ * meaningful next to its unit, the date it was taken and how much it moved,
+ * and a screen reader gets nothing at all from a set of rectangles. So the
+ * first and last reading, the change and the unit are all spelled out here,
+ * once, under the chart — «За месяц: с 12,4 кг 1 сент. до 12,6 кг 30 сент.,
+ * плюс 0,2 кг» — and a count chart says how many and where they piled up.
+ */
+function chartSummary(
+    points: ChartPoint[],
+    isValueChart: boolean,
+    valueLabel: string,
+    days: string,
+): string | null {
+    if (points.length === 0) return null;
+    const period = PERIOD_WORDS[days] ?? 'период';
+    const first = points[0];
+    const last = points[points.length - 1];
+
+    if (!isValueChart) {
+        const total = points.reduce((sum, point) => sum + point.value, 0);
+        const busiest = points.reduce((top, point) => (point.value > top.value ? point : top), first);
+        const head = `За ${period}: всего ${withUnit(total, 0, '')}`;
+        return points.length === 1 || busiest.value === total
+            ? head
+            : `${head}, больше всего ${withUnit(busiest.value, 0, '')} в один день, ${busiest.label}`;
+    }
+
+    const { unit } = splitValueLabel(valueLabel);
+    const decimals = Math.max(0, -Math.floor(Math.log10(Math.max(Math.abs(last.value - first.value), 0.1))));
+    const shown = Math.min(decimals, 2);
+    if (points.length === 1) {
+        return `За ${period}: ${withUnit(first.value, shown, unit)}, ${first.label}`;
+    }
+    const step = Number((last.value - first.value).toFixed(shown));
+    const change = step === 0 ? 'без изменений' : step > 0 ? `плюс ${withUnit(step, shown, unit)}` : `минус ${withUnit(-step, shown, unit)}`;
+    return `За ${period}: с ${withUnit(first.value, shown, unit)} ${first.label} до ${withUnit(last.value, shown, unit)} ${last.label}, ${change}`;
+}
+
 interface ChartPoint {
     key: string;
     label: string;
@@ -103,7 +165,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
     const [days, setDays] = useState('30');
     const { eventTypesByKey } = useEventTypes();
 
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error, refetch } = useQuery({
         queryKey: ['stats', type, petId, days],
         queryFn: () => healthRecordsService.getStats(type, petId, parseInt(days, 10)),
     });
@@ -164,17 +226,21 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
     );
     const valueLabel = chart?.kind === 'value' ? (chart.value_label || 'Значение') : 'Количество';
 
+    // Only when there is something to read: an empty period has no first, last or change.
+    const summary = useMemo(
+        () => (chartData.length > 0 ? chartSummary(chartData, isValueChart, valueLabel, days) : null),
+        [chartData, isValueChart, valueLabel, days],
+    );
+
     const renderContent = () => {
         if (isLoading) {
             return <LoadingSpinner fullscreen={false} />;
         }
 
         if (error || !data) {
-            return (
-                <p style={{ color: 'var(--app-danger-text)', textAlign: 'center', padding: '32px 0' }}>
-                    Не удалось загрузить данные для графика
-                </p>
-            );
+            // The same failure state as the list under it, with the same «Повторить»: a bare red
+            // line left a screen-reader user and anyone without a thumb on «потянуть» with no way on.
+            return <LoadError what="график" onRetry={refetch} compact />;
         }
 
         if (chartData.length === 0) {
@@ -321,7 +387,14 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 // highlight too many. The tooltip alone is enough.
                                 activeBar={false}
                                 radius={[4, 4, 0, 0]}
-                                barSize={20}
+                                // The bar is pressed with a finger, and the fixed 20px column
+                                // it had was a target nobody could reliably hit. The width is
+                                // left to the band instead: a handful of bars then fill most of
+                                // their slot and are easy to press, and a month of daily bars
+                                // still get the whole band rather than a thin strip inside it.
+                                // Where even the band is narrower than a fingertip, the text
+                                // summary under the chart is the way to read the value exactly.
+                                barSize="80%"
                             />
                         </BarChart>
                     )}
@@ -343,6 +416,21 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
             </CapsuleTabs>
 
             {renderContent()}
+
+            {/* The chart said in words. Under it and not inside it: it is the answer,
+                the picture above it is the way to see the shape at a glance. */}
+            {summary && (
+                <p
+                    style={{
+                        margin: 'var(--spacing-sm) 0 0',
+                        fontSize: 'var(--text-sm)',
+                        lineHeight: 1.45,
+                        color: 'var(--app-text-secondary)',
+                    }}
+                >
+                    {summary}
+                </p>
+            )}
         </div>
     );
 }
