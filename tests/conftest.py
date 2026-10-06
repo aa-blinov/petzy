@@ -157,10 +157,13 @@ def admin_refresh_token(mock_db):
     return token
 
 
+_TEST_PASSWORD_HASH = bcrypt.hashpw("user123".encode(), bcrypt.gensalt()).decode()
+
+
 @pytest.fixture
 def regular_user(mock_db):
     """Create a regular test user."""
-    password_hash = bcrypt.hashpw("user123".encode(), bcrypt.gensalt()).decode()
+    password_hash = _TEST_PASSWORD_HASH
     user_data = {
         "username": "testuser",
         "password_hash": password_hash,
