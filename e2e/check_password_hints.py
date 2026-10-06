@@ -128,6 +128,17 @@ async def main():
                 # reached; that is the rule working, not a failure of it.
                 print("SKIP the letter part: the stand has spent its five requests for a letter today")
                 return summary("password hints")
+            # Писем на адрес просят пять в час, а счёт идёт по адресу сети: в полном наборе к этой минуте
+            # норма уже исчерпана другими проверками. Тогда сервер прямо говорит, что попробуют позже,
+            # и это тоже проверяется: молчаливый отказ был бы хуже.
+            if "Слишком много попыток" in first:
+                check(
+                    "the stand's hourly limit is spent, and the screen says so plainly",
+                    "Попробуйте через час" in first or "попробуйте через час" in first,
+                    first[:160].replace(chr(10), " | "),
+                )
+                print("SKIP the letter pair: the stand spent its five letters an hour ago")
+                return summary("password hints")
             check("the first ask says the letter is sent", "отправили на неё ссылку" in first, first[:160])
             await pg.get_by_role("button", name="Отправить ещё раз").click()
             await pg.wait_for_timeout(1800)
