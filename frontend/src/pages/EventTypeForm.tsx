@@ -17,6 +17,8 @@ import { Trash2, Plus } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useEventTypes, useInvalidateEventTypes } from '../hooks/useEventTypes';
+import { useAdmin } from '../hooks/useAdmin';
+import { useAuth } from '../hooks/useAuth';
 import { eventTypesService, type EventTypeField } from '../services/eventTypes.service';
 import { TILE_COLORS, TILE_COLOR_LABELS, pastelColorMap, type TileColor } from '../utils/constants';
 import { ICON_OPTIONS } from '../utils/iconRegistry';
@@ -96,6 +98,15 @@ export function EventTypeForm() {
   const { eventTypesByKey, isLoading: eventTypesLoading, error: eventTypesError, refetch: refetchEventTypes } = useEventTypes();
   const invalidate = useInvalidateEventTypes();
   const existing = key ? eventTypesByKey[key] : undefined;
+
+  // The right to change a type, checked the same way the list checks it (EventTypesSettings): a built-in type is
+  // the same for everybody, so an admin's to change; a custom one is its author's. The form used to open in
+  // full for anyone who had the address, and the refusal came only on «Сохранить», after a form of someone
+  // else's type had been filled in.
+  const { isAdmin } = useAdmin();
+  const { username: currentUsername } = useAuth();
+  const canEdit = !isEditing
+    || (existing ? (existing.is_builtin ? isAdmin : existing.created_by === currentUsername) : false);
 
   const [label, setLabel] = useState('');
   const [icon, setIcon] = useState('paw');
@@ -214,6 +225,7 @@ export function EventTypeForm() {
   };
 
   const handleSave = async () => {
+    if (!canEdit) return;
     // Each problem is kept against the field it belongs to, so it can be shown there: names are already
     // de-duplicated by slugifyFieldName, so the backend's own uniqueness check never catches a repeated label, but
     // two fields sharing one are indistinguishable everywhere they're actually shown.
@@ -323,7 +335,9 @@ export function EventTypeForm() {
     return (
       <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>
         <p>Тип события не найден</p>
-        <Button onClick={() => goBack(navigate, '/event-types')}>Назад</Button>
+        {/* Straight to the list, not back through history: this screen was opened from a link, so «назад»
+            led wherever the person came from, which may be a screen this one has nothing to do with. */}
+        <Button onClick={() => navigate('/event-types')}>К типам событий</Button>
       </div>
     );
   }
@@ -335,8 +349,29 @@ export function EventTypeForm() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать тип' : 'Новый тип события'}
           </h1>
+          {/* Someone else's type: the form below is there to read, not to fill in. Without this the person
+              filled in a whole form of a type they don't own and only found out on «Сохранить». */}
+          {isEditing && !canEdit && existing && (
+            <div className="card-soft" style={{ padding: 'var(--spacing-md)', marginTop: 'var(--spacing-md)' }}>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                {existing.is_builtin
+                  ? 'Встроенный тип, меняет его администратор'
+                  : `Этот тип создал(а) ${existing.created_by}, менять его может только он`}
+              </div>
+              {/* What an admin's change to a built-in type means: it is the same type for every account in
+                  Petzy, not this person's copy of it. */}
+              {existing.is_builtin && canEdit && (
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>
+                  Изменение увидят все, кто пользуется Petzy
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* A fieldset is what makes the whole form read-only: one property instead of a `disabled` on every
+            input, switch and picker, and it survives the next field added to the form. */}
+        <fieldset disabled={!canEdit} style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
         <div className="safe-area-padding">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
           <Input
@@ -348,7 +383,8 @@ export function EventTypeForm() {
             maxLength={100}
             aria-invalid={!!labelError}
           />
-          <FieldError message={labelError ?? undefined} />
+          {/* The name is shared by everybody who has this type, so the limit is said rather than met silently. */}
+          {fieldNote({ error: labelError ?? undefined, value: label, max: 100 })}
         </div>
 
         <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
@@ -438,6 +474,7 @@ export function EventTypeForm() {
                   aria-invalid={!!fieldErrors[field.key]?.label}
                 />
                 <FieldError message={fieldErrors[field.key]?.label} />
+                {fieldNote({ value: field.label, max: 100 })}
 
                 <FieldLabel>Тип поля</FieldLabel>
                 <Selector
@@ -539,9 +576,12 @@ export function EventTypeForm() {
                 placeholder="Подпись оси (например, Вес (кг))"
                 maxLength={50}
               />
+              {fieldNote({ value: chartValueLabel, max: 50 })}
             </>
           )}
         </div>
+
+        </fieldset>
 
         <div className="safe-area-padding" style={{
           paddingTop: 'var(--spacing-xl)',
@@ -550,18 +590,28 @@ export function EventTypeForm() {
           flexDirection: 'column',
           gap: 'var(--spacing-md)',
         }}>
-          <Button
-            block
-            color="primary"
-            size="large"
-            loading={isSaving}
-            onClick={handleSave}
-          >
-            {isEditing ? 'Сохранить' : 'Создать'}
-          </Button>
-          <Button block size="large" onClick={() => goBack(navigate, '/event-types')}>
-            Отмена
-          </Button>
+          {/* No «Сохранить» on a type that isn't this person's: a button that always refuses is worse than
+              no button, and the notice at the top already says who does change it. */}
+          {canEdit ? (
+            <Button
+              block
+              color="primary"
+              size="large"
+              loading={isSaving}
+              onClick={handleSave}
+            >
+              {isEditing ? 'Сохранить' : 'Создать'}
+            </Button>
+          ) : (
+            <Button block size="large" onClick={() => navigate('/event-types')}>
+              К типам событий
+            </Button>
+          )}
+          {canEdit && (
+            <Button block size="large" onClick={() => goBack(navigate, '/event-types')}>
+              Отмена
+            </Button>
+          )}
         </div>
       </div>
       {leaveDialog}
