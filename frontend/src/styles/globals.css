@@ -243,12 +243,25 @@
 }
 
 /* Utility classes for layouts */
+
+/* The background a screen is painted with, and it is <main> rather than the screen
+   itself. A screen sits inside .route-transition, the wrapper that fades in from
+   opacity: 0 on every change of screen (tabs, forms, going back), so a background
+   painted inside it let the plain page colour show through those 160 ms: a pet with
+   a colour of its own saw it blink on every transition. Outside the fade the colour
+   is simply already there when the content arrives. The value itself is put on
+   <body> as --pet-scene-bg (components/PetLookTheme.tsx). */
+main#main-content {
+    min-height: var(--app-vh);
+    background: var(--pet-scene-bg, var(--app-page-background));
+}
+
 .page-container {
     min-height: var(--app-vh);
     padding-top: var(--page-padding-top);
     padding-bottom: var(--page-padding-bottom);
-    /* The selected pet's scene when it has one (components/PetLookTheme.tsx), the plain page otherwise. */
-    background: var(--pet-scene-bg, var(--app-page-background));
+    /* No background of its own: <main> above paints the screen, so the fade does
+       not take the pet's colour with it. */
     color: var(--app-text-color);
     /* No entry animation here: this used to say
        `animation: fadeIn 250ms …`, but no `fadeIn` keyframes exist in
