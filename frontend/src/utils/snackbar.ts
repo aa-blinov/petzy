@@ -112,6 +112,19 @@ export function closeSnackbar(id: number) {
   dismiss(id, 'closed');
 }
 
+/** Change the message of the bar that is on screen (the same id). The time
+    it had left starts again: this is a new thing to read, not the one that
+    was nearly over. Does nothing once the bar has ended. */
+export function updateSnackbar(id: number, patch: { message: string }): void {
+  if (!current || current.id !== id) return;
+  current = { ...current, ...patch };
+  clearTimer();
+  emit();
+  announce(current.message, current.tone === 'error' ? 'assertive' : 'polite');
+  const ms = durationFor(current, current.tone);
+  if (ms > 0) timer = setTimeout(() => dismiss(id, 'timeout'), ms);
+}
+
 export function subscribeSnackbar(listener: () => void): () => void {
   listeners.add(listener);
   return () => {

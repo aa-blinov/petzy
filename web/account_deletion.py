@@ -20,8 +20,12 @@ from web.app import logger
 
 # The records that carry the login of whoever made them.
 AUTHORED_COLLECTIONS = ("events", "medication_intakes", "medications", "documents", "medical_records", "medical_shares")
-# The user's own rows elsewhere: sessions, links in letters, devices.
-PERSONAL_COLLECTIONS = ("refresh_tokens", "account_tokens", "push_subscriptions")
+# The user's own rows elsewhere: sessions, links in letters, devices, and the
+# slots of scans that were being uploaded when the account went. A slot is
+# cleaned with its pet (web/pets.py) or when the pet is handed over (below),
+# but a scan of somebody else's pet the user merely had access to is left
+# with nobody able to finish it, and its link stops working at once.
+PERSONAL_COLLECTIONS = ("refresh_tokens", "account_tokens", "push_subscriptions", "document_uploads")
 
 
 def was_deleted(username: str) -> bool:

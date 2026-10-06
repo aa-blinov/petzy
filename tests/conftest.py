@@ -52,6 +52,23 @@ with patch("web.db.db", _mock_db), patch("web.db.client", _mock_client), patch("
 
 
 @pytest.fixture(autouse=True)
+def clean_rate_limits():
+    """Start every test with the request counters at zero.
+
+    The limiter counts per process and its memory store is shared by every test in it, so a test
+    that makes several deletion requests used to push the next one over a limit that has nothing
+    to do with it, and the failure landed on whichever test ran after. Deletion itself is not
+    rate-limited in production for a reason; the count here is an artefact of running many tests
+    in one process.
+    """
+    from web.app import limiter
+
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
+@pytest.fixture(autouse=True)
 def s3_storage():
     """A fresh, empty in-memory bucket for every test."""
     import boto3
