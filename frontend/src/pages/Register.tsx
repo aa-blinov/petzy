@@ -9,6 +9,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { FieldError } from '../components/FieldError';
 import { useTouched } from '../hooks/useTouched';
+import { passwordProblem } from '../utils/authForms';
 
 /** The server's own rule (web/auth.py USERNAME_RE), checked here first so
  *  the mistake shows under the field rather than after a round trip. */
@@ -32,6 +33,12 @@ export function Register() {
   const [isLoading, setIsLoading] = useState(false);
 
   const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
+  // Whether an address is asked for is the server's word, but it can't be
+  // known for a moment: sending before it arrives meant a form with no mail
+  // field answered 422. The field shows right away and goes only if the
+  // server says letters are off; until the answer comes the form waits.
+  const statusKnown = status.isSuccess;
+  const askEmail = status.data?.mail_enabled !== false;
 
   // Already signed in on this device (see Login for the same check).
   if (storedUsername) return <Navigate to="/" replace />;
@@ -43,8 +50,6 @@ export function Register() {
         ? 'От 3 до 30 символов: латинские буквы, цифры, точка, дефис или подчёркивание, начиная с буквы или цифры'
         : null;
   const nameError = fullName.trim() ? null : 'Напишите имя';
-  // Asked only while mail works: without it there's nothing to recover with.
-  const askEmail = !!status.data?.mail_enabled;
   const emailError = !askEmail
     ? null
     : !email.trim()
@@ -52,13 +57,14 @@ export function Register() {
       : !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim())
         ? 'Проверьте адрес почты'
         : null;
-  const passwordError = password.length < 8 ? 'Не короче 8 символов' : null;
+  const passwordError = passwordProblem(password, username);
   const repeatError = repeat !== password ? 'Пароли не совпадают' : null;
   const consentError = consent ? null : 'Без согласия аккаунт не создать';
 
   const handleSubmit = async () => {
     setSubmitted(true);
     if (usernameError || nameError || emailError || passwordError || repeatError || consentError) return;
+    if (!statusKnown) return;
     setIsLoading(true);
     try {
       await register({
@@ -80,7 +86,7 @@ export function Register() {
 
   if (status.data?.open === false) {
     return (
-      <AuthShell>
+      <AuthShell title="Новый аккаунт">
         <p style={{ margin: 0, textAlign: 'center', color: 'var(--app-text-primary)', lineHeight: 1.5 }}>
           Регистрация сейчас закрыта. Попросите администратора Petzy создать вам аккаунт
         </p>
@@ -98,10 +104,17 @@ export function Register() {
     shows(name) && error ? <FieldError message={error} /> : hint ? <span style={hintStyle}>{hint}</span> : undefined;
 
   return (
-    <AuthShell>
-      <h2 style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-lg)', textAlign: 'center', color: 'var(--app-text-primary)' }}>
-        Новый аккаунт
-      </h2>
+    <AuthShell title="Новый аккаунт">
+      {!statusKnown && !status.isError && (
+        <p style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+          Проверяем, можно ли сейчас создать аккаунт
+        </p>
+      )}
+      {status.isError && (
+        <p style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+          Не удалось узнать, можно ли создать аккаунт. Проверьте соединение и попробуйте ещё раз
+        </p>
+      )}
       <Form
         layout="vertical"
         onFinish={handleSubmit}
@@ -112,13 +125,29 @@ export function Register() {
               block
               size="large"
               loading={isLoading}
-              disabled={isLoading}
+              disabled={isLoading || !statusKnown || status.isError}
               type="submit"
               data-enter-submit
               style={{ marginTop: 8, background: 'var(--app-cta-gradient)', border: 'none' }}
             >
               Создать аккаунт
             </Button>
+            {status.isError && (
+              <Button
+                block
+                size="large"
+                fill="outline"
+                color="primary"
+                type="button"
+                disabled={isLoading}
+                onClick={() => {
+                  void status.refetch();
+                }}
+                style={{ marginTop: 'var(--spacing-md)' }}
+              >
+                Повторить
+              </Button>
+            )}
             <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center', color: 'var(--app-text-secondary)' }}>
               Уже есть аккаунт?{' '}
               <Link to="/login" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
@@ -176,7 +205,10 @@ export function Register() {
             />
           </Form.Item>
         )}
-        <Form.Item label={<span style={labelStyle}>Пароль</span>} description={below('password', passwordError, 'Не короче 8 символов')}>
+        <Form.Item
+          label={<span style={labelStyle}>Пароль</span>}
+          description={below('password', passwordError, 'Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа')}
+        >
           <Input
             type="password"
             placeholder="Придумайте пароль"

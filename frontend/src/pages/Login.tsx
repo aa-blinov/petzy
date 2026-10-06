@@ -3,12 +3,11 @@ import { showToast } from '../utils/toast';
 import { returnPath } from '../utils/returnTo';
 import { getApiErrorMessage } from '../utils/apiError';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { authService } from '../services/auth.service';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Form } from 'antd-mobile';
 import { isAxiosError } from 'axios';
 import { AuthShell } from '../components/AuthShell';
+import { retryNote, useRetryLock } from '../utils/authForms';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -30,12 +29,11 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const target = returnPath(location.state);
-  // Offered only while sign-up is open (REGISTRATION_ENABLED).
-  const { data: status } = useQuery({
-    queryKey: ['registration-status'],
-    queryFn: () => authService.registrationStatus(),
-    retry: false,
-  });
+  // A 429 locks the form for as long as the server says: the button is
+  // closed rather than counting a refusal nobody can see.
+  const { left: retryLeft, lock: lockAfterRefusal } = useRetryLock();
+  const locked = retryLeft > 0;
+  const retryText = retryNote(retryLeft);
 
   if (storedUsername) {
     return <Navigate to={target} replace />;
@@ -67,7 +65,10 @@ export function Login() {
         const data = err.response?.data;
         if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные';
         else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль';
-        else if (status === 429) errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже';
+        else if (status === 429) {
+          lockAfterRefusal(err);
+          errorMessage = data?.error || data?.message || 'Слишком много попыток. Попробуйте позже';
+        }
         // The same words for the same trouble as everywhere in the app (utils/apiError.ts).
         else if (!err.response) errorMessage = getApiErrorMessage(err, errorMessage);
         else errorMessage = data?.error || data?.message || err.message || errorMessage;
@@ -83,7 +84,7 @@ export function Login() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell title="Вход">
           {target !== '/' && (
             <p role="status" style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
               Войдите, и вы вернётесь на тот же экран, где были
@@ -99,7 +100,7 @@ export function Login() {
                 block
                 size="large"
                 loading={isLoading}
-                disabled={isLoading}
+                disabled={isLoading || locked}
                 type="submit"
                 data-enter-submit
                 style={{
@@ -110,24 +111,29 @@ export function Login() {
                   border: 'none',
                 }}
               >
-                {isLoading ? 'Вход...' : 'Войти'}
+                {isLoading ? 'Вход...' : locked ? `Ещё ${retryLeft} с` : 'Войти'}
               </Button>
-              {/* Someone who has never used Petzy lands here first: the way
-                  in for them is a button, not small print under the form. */}
-              {status?.open && (
-                <Button
-                  block
-                  size="large"
-                  fill="outline"
-                  color="primary"
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => navigate('/register')}
-                  style={{ marginTop: 'var(--spacing-md)' }}
-                >
-                  Создать аккаунт
-                </Button>
+              {retryText && (
+                <p role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
+                  {retryText}
+                </p>
               )}
+              {/* Someone who has never used Petzy lands here first: the way
+                  in for them is a button, not small print under the form.
+                  Sign-up may be closed — /register says so itself, better
+                  than a button that silently isn't there. */}
+              <Button
+                block
+                size="large"
+                fill="outline"
+                color="primary"
+                type="button"
+                disabled={isLoading}
+                onClick={() => navigate('/register')}
+                style={{ marginTop: 'var(--spacing-md)' }}
+              >
+                Создать аккаунт
+              </Button>
               <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
                 <Link to="/forgot-password" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
                   Забыли пароль?

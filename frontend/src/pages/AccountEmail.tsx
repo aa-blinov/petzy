@@ -8,6 +8,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { goBack } from '../utils/navigation';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 
 const noteStyle = { margin: '0 var(--spacing-md) var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' } as const;
 
@@ -15,7 +16,7 @@ const noteStyle = { margin: '0 var(--spacing-md) var(--spacing-md)', fontSize: '
 export function AccountEmail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: account } = useQuery({ queryKey: ACCOUNT_QUERY_KEY, queryFn: () => accountService.get() });
+  const { data: account, isLoading, isError, refetch } = useQuery({ queryKey: ACCOUNT_QUERY_KEY, queryFn: () => accountService.get() });
   const [email, setEmail] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'resend' | 'remove' | null>(null);
@@ -23,6 +24,9 @@ export function AccountEmail() {
 
   const current = account?.email || account?.pending_email || '';
   const value = email ?? current;
+  // What was typed and not saved: the question before leaving, like every other form.
+  const dirty = !!password || (email !== null && email.trim() !== current);
+  const { dialog: leaveDialog } = useUnsavedChangesGuard(dirty);
 
   const save = async (next: string, kind: 'save' | 'remove') => {
     setAsked(true);
@@ -74,7 +78,27 @@ export function AccountEmail() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Почта</h1>
         </div>
 
-        {account && !account.mail_enabled ? (
+        {/* Three states, not one: while the state of the address is still
+            coming, saying «Отправка писем пока не настроена» was a claim
+            nobody had made yet. */}
+        {isLoading && (
+          <p role="status" style={noteStyle}>Смотрим, какая почта указана</p>
+        )}
+
+        {isError && (
+          <p style={noteStyle}>Не удалось узнать, какая почта указана. Проверьте соединение</p>
+        )}
+        {isError && (
+          <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
+            <Button fill="outline" color="primary" block onClick={() => {
+              void refetch();
+            }}>
+              Повторить
+            </Button>
+          </div>
+        )}
+
+        {account && !isError && !account.mail_enabled ? (
           <p style={noteStyle}>Отправка писем пока не настроена. Пока её нет, забытый пароль сбрасывает администратор Petzy</p>
         ) : (
           <>
@@ -116,6 +140,7 @@ export function AccountEmail() {
           </>
         )}
       </div>
+      {leaveDialog}
     </div>
   );
 }
