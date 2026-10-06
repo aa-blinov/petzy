@@ -7,7 +7,7 @@ Needs the local stack and the demo data. Works on its own test pet «Тест-М
 import asyncio
 import time
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
 
 COURSE = "Т-проверка напомнить"
 # Аккаунт без питомцев, только чтобы увидеть экран без питомца: у демо-владельца
@@ -47,13 +47,11 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1200)
         await pg.get_by_role("button", name="Собака").click()
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
-        await pg.wait_for_timeout(2200)
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(800)
+        await pg.wait_for_timeout(300)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             await api(pg, "POST", f"/pets/{pid}/share", {"username": "demo"})
@@ -80,12 +78,10 @@ async def main():
 
             # ---- «Пополнить»: пустое поле говорит под собой, а не тостом после нажатия.
             await pg.goto(BASE + "/medications")
-            await pg.wait_for_timeout(2000)
             card = pg.locator(".card-soft", has_text=COURSE).first
             await card.get_by_role("button", name="Пополнить").click()
-            await pg.wait_for_timeout(700)
             await pg.locator(".adm-dialog").get_by_text("Добавить", exact=True).click()
-            await pg.wait_for_timeout(600)
+            await wait_until(pg, lambda t: "Укажите, сколько купили" in t)
             check(
                 "an empty amount is said under the field, and the dialog stays open",
                 await pg.get_by_text("Укажите, сколько купили").count() == 1
@@ -93,11 +89,10 @@ async def main():
                 (await pg.inner_text("body"))[-160:].replace(chr(10), " | "),
             )
             await pg.locator(".adm-dialog").get_by_text("Отмена", exact=True).click()
-            await pg.wait_for_timeout(500)
 
             # ---- «Напомнить за»: потолок в 60 дней назван под полем, а не только в ошибке.
             await pg.goto(BASE + f"/medications/{med}/edit")
-            await pg.wait_for_timeout(2000)
+            await wait_until(pg, lambda t: "не больше 60 дней" in t)
             check(
                 "the stock reminder field says its 60-day ceiling before it is reached",
                 "не больше 60 дней" in await pg.inner_text("body"),
@@ -108,7 +103,7 @@ async def main():
             )
             # The warning is only there once the dose looks like the strength, so it has to be provoked.
             await pg.get_by_label("За один приём").fill("10")
-            await pg.wait_for_timeout(500)
+            await wait_until(pg, lambda t: "впишите их в «На упаковке»" in t)
             check(
                 "the dose hint names the box field, not a direction on the page",
                 "впишите их в «На упаковке»" in await pg.inner_text("body"),
@@ -118,7 +113,7 @@ async def main():
 
             # ---- Курса нет: не пустая новая форма, а «Такого лекарства нет».
             await pg.goto(BASE + "/medications/000000000000000000000000/edit")
-            await pg.wait_for_timeout(2200)
+            await wait_until(pg, lambda t: "Такого лекарства нет" in t)
             check(
                 "an edit of a course that is gone says so, with a way back to the list",
                 await pg.get_by_text("Такого лекарства нет").count() == 1
@@ -130,7 +125,7 @@ async def main():
 
             # ---- Новое лекарство: кнопка «Добавить», как в форме документа.
             await pg.goto(BASE + "/medications/new")
-            await pg.wait_for_timeout(2000)
+            await pg.get_by_role("button", name="Добавить", exact=True).wait_for(timeout=10000)
             check(
                 "a new course is added with «Добавить», as a document is",
                 await pg.get_by_role("button", name="Добавить", exact=True).count() == 1
@@ -153,7 +148,8 @@ async def main():
             )
             doc = (await api(pg, "GET", f"/documents?pet_id={pid}"))["json"]["documents"][0]
             await pg.goto(BASE + "/documents")
-            await pg.wait_for_timeout(2000)
+            # Ждём именно строку: пустой список мигает как готовый, а приходит он позже.
+            await pg.get_by_text("Т-проверка прививка").first.wait_for(timeout=10000)
             # Delete sits behind the row's actions menu, as a swipe-only row is unreachable by keyboard otherwise.
             await pg.get_by_role("button", name="Действия: Т-проверка прививка").click()
             await pg.wait_for_timeout(700)
@@ -166,9 +162,8 @@ async def main():
                 asked.replace(chr(10), " | "),
             )
             await pg.locator(".adm-dialog").get_by_text("Отмена", exact=True).click()
-            await pg.wait_for_timeout(500)
             await pg.goto(BASE + f"/documents/{doc['_id']}/edit")
-            await pg.wait_for_timeout(2000)
+            await pg.get_by_role("button", name="Сохранить", exact=True).wait_for(timeout=10000)
             check(
                 "the form's own button says «Сохранить» while editing a document",
                 await pg.get_by_role("button", name="Сохранить", exact=True).count() == 1,
@@ -193,7 +188,7 @@ async def main():
                 )
                 check(f"the record of kind {kind} was made", made_rec["status"] == 201, str(made_rec["status"]))
             await pg.goto(BASE + "/documents")
-            await pg.wait_for_timeout(2000)
+            await wait_until(pg, lambda t: "Т-проверка прививка" in t)
             card = pg.get_by_text("Т-проверка прививка").first.locator(
                 "xpath=ancestor::*[contains(@class,'adm-card')][1]"
             )
@@ -225,8 +220,7 @@ async def main():
             else:
                 check("the throwaway account without a pet was made", made == 201, str(made))
                 await pg2.goto(BASE + "/medications")
-                await pg2.wait_for_timeout(2500)
-                body = await pg2.inner_text("body")
+                body = await wait_until(pg2, lambda t: "Сначала добавьте питомца" in t)
                 check(
                     "the list without a pet asks for a pet, not for a first medicine",
                     await pg2.get_by_text("Сначала добавьте питомца").count() == 1
