@@ -7,7 +7,7 @@ import { FileHeart } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { getApiErrorMessage } from '../utils/apiError';
 import { httpStatus } from '../services/api';
-import { medicalShareService } from '../services/medicalShare.service';
+import { formatShareEnd, medicalShareService } from '../services/medicalShare.service';
 import { showToast } from '../utils/toast';
 import { OverdueStrip, VetView } from './MedicalCard';
 import './MedicalCard.css';
@@ -68,6 +68,7 @@ export function SharedMedicalCard() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding" aria-busy="true">
+          <p className="medcard__hint">Загружаем медкарту</p>
           <Skeleton.Title animated />
           <Skeleton.Paragraph lineCount={6} animated />
         </div>
@@ -87,7 +88,7 @@ export function SharedMedicalCard() {
       setSaving(false);
     }
   };
-  const ends = new Date(shared.expires_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const ends = formatShareEnd(shared.expires_at);
 
   const made = new Date(`${card.generated_at.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
 
@@ -125,6 +126,10 @@ export function SharedMedicalCard() {
               </Button>
             </div>
           )}
+          {/* Once, at the very bottom, in the visitor's own words: what the page is and where it must not go. */}
+          <p className="medcard__hint" data-testid="share-private">
+            Это личные данные питомца. Не пересылайте ссылку
+          </p>
         </div>
       </div>
     </div>

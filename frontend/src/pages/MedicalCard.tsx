@@ -412,10 +412,13 @@ export function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: 
           <b>{first.title}</b>: {first.text}
           {others.length > 0 ? `. И ещё ${others.length}` : ''}
         </p>
-        {canAct && (
+        {canAct ? (
           <Button block size="large" color="danger" fill="outline" onClick={() => navigate(to)}>
             {label}
           </Button>
+        ) : (
+          // A copy a vet reads: there is nothing to press here, so the strip says who can put it right.
+          <p className="medcard__alert-text">Обновить сможет тот, у кого есть доступ к питомцу, в приложении</p>
         )}
       </div>
     </div>
@@ -848,9 +851,9 @@ export function MedicalCard() {
   const hidden = useHiddenRecords();
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  // A link may ask for a mode (the feed sends a card with something overdue to the whole card, where it can be put right).
+  // A link may ask for the reading mode (the links screen sends «Открыть медкарту» that way); the working mode is the default.
   const linkMode = useSearchParams()[0].get('mode');
-  const [chosen, setChosen] = useState<Mode | null>(linkMode === 'fill' || linkMode === 'vet' ? linkMode : null);
+  const [chosen, setChosen] = useState<Mode | null>(linkMode === 'vet' ? 'vet' : null);
   // A card opened by an address of another pet (a link, a notification) makes that pet the chosen one: the bar, the
   // tab and the switcher then say whose card this is.
   const { pets, selectedPetId, selectPet } = usePet();

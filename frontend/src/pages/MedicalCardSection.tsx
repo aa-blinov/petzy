@@ -225,11 +225,16 @@ const SECTION_ADDS: Record<CardSectionKey, { label: string; to: (petId: string) 
   life: [{ label: 'Питание и условия', to: (id) => `/pets/${id}/medical-profile?section=life` }],
 };
 
+/** Where the block of the section already carries its own «Добавить», «Записать вес» or «Указать», the round «+» only
+    repeats that door. It stays where the block has no door of its own, and where it asks between two kinds. */
+const SECTION_OPENS_ITSELF: ReadonlySet<CardSectionKey> = new Set(['risks', 'meds', 'weight', 'clinic', 'life']);
+
 /** The round «+» of one part of the card: where there is one thing to add it opens the screen, where there are two
     it asks which, in the same sheet the card uses. */
 function SectionFab({ section, petId, navigate }: { section: CardSectionKey; petId: string; navigate: (to: string) => void }) {
   const [open, setOpen] = useState(false);
   const adds = SECTION_ADDS[section];
+  if (SECTION_OPENS_ITSELF.has(section)) return null;
   if (adds.length === 1) return <Fab label={`Добавить: ${adds[0].label}`} onClick={() => navigate(adds[0].to(petId))} />;
   return (
     <>
@@ -308,6 +313,12 @@ export function MedicalCardSection() {
           <div className="medcard__header">
             <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{TITLES[section]}</h1>
             <p className="medcard__hint">{card.pet.name}</p>
+            {/* No switcher in the bar here: the way to another pet is the list, said once under the name. */}
+            {pets.length > 1 && (
+              <button type="button" className="medcard__link touch-target" onClick={() => navigate('/pets')}>
+                Все питомцы
+              </button>
+            )}
           </div>
           <SectionBody section={section} card={card} petId={id!} hidden={hidden} navigate={navigate} />
         </div>
