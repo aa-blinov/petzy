@@ -1,8 +1,14 @@
 #!/bin/sh
-# Runs the full backend test suite and a full frontend lint before
-# allowing a push — catches regressions and drift the fast per-commit
-# staged-files-only checks can't (e.g. a file that changed across
+# Runs the full backend test suite, a full frontend lint and the browser
+# checks before allowing a push — catches regressions and drift the fast
+# per-commit staged-files-only checks can't (e.g. a file that changed across
 # several commits, or a --no-verify commit).
+#
+# The browser checks need the local stand up and take about half an hour, so
+# they run last and only when the stand answers. If it is down the push stops
+# with the command to start it: a push that silently went without them is worse
+# than one that waited. PETZY_SKIP_E2E=1 skips them for a single push, and that
+# skip belongs in the commit message.
 # Enabled via: git config core.hooksPath .githooks (one-time per clone).
 
 status=0
@@ -37,9 +43,31 @@ echo "Running full frontend lint before push..."
 )
 [ $? -ne 0 ] && status=1
 
+# Browser checks: the stand first, then every check against it.
+if [ "$PETZY_SKIP_E2E" = "1" ]; then
+    echo ""
+    echo "PETZY_SKIP_E2E=1 — browser checks skipped for this push (say so in the commit)."
+else
+    BASE="${PETZY_E2E_BASE:-http://localhost:3000}"
+    echo ""
+    echo "Checking that the local stand answers at $BASE..."
+    if ! $PYTHON -c "import sys, urllib.request; urllib.request.urlopen('$BASE/', timeout=5)" 2>/dev/null; then
+        echo "The stand is not up. Start it, then push again:"
+        echo "  docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml up -d --build web frontend"
+        echo "  .venv/bin/python scripts/seed_demo.py"
+        echo "Or push once without the browser checks: PETZY_SKIP_E2E=1 git push"
+        status=1
+    else
+        echo "Running browser checks before push (about half an hour)..."
+        $PYTHON e2e/run.py
+        [ $? -ne 0 ] && status=1
+    fi
+fi
+
 if [ $status -ne 0 ]; then
     echo ""
-    echo "Checks failed — fix them or run 'git push --no-verify' to skip (not recommended)."
+    echo "Checks failed — fix them. To push without the browser checks once:"
+    echo "  PETZY_SKIP_E2E=1 git push   (and say so in the commit message)"
     exit 1
 fi
 
