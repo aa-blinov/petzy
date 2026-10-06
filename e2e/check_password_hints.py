@@ -122,12 +122,6 @@ async def main():
             await pg.get_by_role("button", name="Отправить ссылку").click()
             await pg.wait_for_timeout(1500)
             first = await pg.inner_text("body")
-            if "Слишком много попыток" in first:
-                # The stand allows five requests for a letter per hour per address, and every run of this check
-                # spends some of them. On a stand that has already been asked today, the letter part cannot be
-                # reached; that is the rule working, not a failure of it.
-                print("SKIP the letter part: the stand has spent its five requests for a letter today")
-                return summary("password hints")
             # Писем на адрес просят пять в час, а счёт идёт по адресу сети: в полном наборе к этой минуте
             # норма уже исчерпана другими проверками. Тогда сервер прямо говорит, что попробуют позже,
             # и это тоже проверяется: молчаливый отказ был бы хуже.
