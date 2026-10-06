@@ -56,13 +56,16 @@ async def main():
         # A reset link without a token is a dead one, and it says so at once.
         await pg.goto(BASE + "/reset-password")
         await pg.wait_for_timeout(1200)
+        # The owner decided (docs/ux/_decisions.md): the link is checked when the page opens, and a spent one says so
+        # right away with a way to ask for a new letter instead of a form that cannot work.
         check(
             "a reset link without a token says so at once",
-            await pg.get_by_text("Ссылка устарела или уже использована").count() == 1,
+            await pg.get_by_text("Ссылка не сработала: она устарела или уже использована").count() == 1,
         )
+        check("and the form is not offered", await pg.get_by_label("Новый пароль").count() == 0)
         check(
-            "and offers a new one",
-            await pg.get_by_role("link", name="Запросить новую ссылку").count() == 1,
+            "and offers a new letter",
+            await pg.get_by_role("link", name="Отправить новое письмо").count() == 1,
         )
 
         # Recovery asks for the confirmed address by name, next to the field.

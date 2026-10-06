@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Form, Input } from 'antd-mobile';
 import { authService } from '../services/auth.service';
+import type { ForgotPasswordResult } from '../services/auth.service';
 import { AuthShell } from '../components/AuthShell';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -13,7 +14,7 @@ const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 } as const;
 /** «Забыли пароль?»: a link to set a new one, sent to the confirmed email. */
 export function ForgotPassword() {
   const [login, setLogin] = useState('');
-  const [sent, setSent] = useState<string | null>(null);
+  const [sent, setSent] = useState<ForgotPasswordResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const status = useQuery({ queryKey: ['registration-status'], queryFn: () => authService.registrationStatus() });
   // A 429 says the address has five requests an hour: the form counts the
@@ -57,7 +58,12 @@ export function ForgotPassword() {
   if (sent) {
     return (
       <AuthShell title="Проверьте почту">
-        <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>{sent}</p>
+        {/* The server says whether a letter is already on its way: the screen
+            used to say «sent» every time, and the person waited for a second
+            letter that was never going to come. */}
+        <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
+          {sent.already_sent ? 'Письмо уже отправляли недавно, ещё одно придёт позже' : sent.message}
+        </p>
         <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
           Ссылка работает один час. Письма нет? Загляните в «Спам». Если почту к аккаунту не привязывали, напишите администратору Petzy
         </p>

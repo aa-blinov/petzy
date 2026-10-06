@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Form, Input } from 'antd-mobile';
 import { isAxiosError } from 'axios';
 import { authService } from '../services/auth.service';
@@ -24,7 +25,18 @@ export function ResetPassword() {
   const [submitted, setSubmitted] = useState(false);
   const { touch, shows } = useTouched(submitted);
   const [isLoading, setIsLoading] = useState(false);
-  const [linkDead, setLinkDead] = useState(!token);
+  const [linkSpent, setLinkSpent] = useState(!token);
+  // Asked once when the screen opens, so a link that expired or was already
+  // used is said at once instead of after a password has been picked. The
+  // check only reads the link, so a working one goes on to the form.
+  const linkCheck = useQuery({
+    queryKey: ['reset-link', token],
+    queryFn: () => authService.checkResetLink(token),
+    enabled: !!token,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const linkDead = linkSpent || linkCheck.data === false;
 
   const passwordError = passwordProblem(password);
   const repeatError = repeat !== password ? 'Пароли не совпадают' : null;
@@ -40,7 +52,7 @@ export function ResetPassword() {
       navigate('/', { replace: true });
     } catch (err) {
       if (isAxiosError<{ code?: string }>(err) && err.response?.data?.code === 'account_link_invalid') {
-        setLinkDead(true);
+        setLinkSpent(true);
       } else {
         showToast.failure(getApiErrorMessage(err, 'Не удалось сменить пароль. Проверьте соединение'));
       }
@@ -53,10 +65,26 @@ export function ResetPassword() {
     return (
       <AuthShell title="Новый пароль">
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
-          Ссылка устарела или уже использована. Запросите новую, она придёт на ту же почту
+          Ссылка не сработала: она устарела или уже использована
+        </p>
+        <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+          Пришлём новую на ту же почту, что и в прошлый раз
         </p>
         <p style={{ margin: 'var(--spacing-lg) 0 0', textAlign: 'center' }}>
-          <Link to="/forgot-password" className="tap-link" style={linkStyle}>Запросить новую ссылку</Link>
+          <Link to="/forgot-password" className="tap-link" style={linkStyle}>Отправить новое письмо</Link>
+        </p>
+      </AuthShell>
+    );
+  }
+
+  // While the check is in flight the form is not shown yet: it would only
+  // disappear a moment later if the link has expired. A failed check leaves
+  // the form alone, so a bad connection doesn't lock anyone out of resetting.
+  if (token && linkCheck.isPending) {
+    return (
+      <AuthShell title="Новый пароль">
+        <p role="status" style={{ margin: 0, textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+          Проверяем ссылку
         </p>
       </AuthShell>
     );

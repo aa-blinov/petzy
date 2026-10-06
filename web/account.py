@@ -9,6 +9,8 @@ import hashlib
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
+from functools import wraps
+from typing import Optional
 
 import bcrypt
 from flask import Blueprint, jsonify, request
@@ -21,7 +23,7 @@ from web.auth import password_problem, signed_in_response
 from web.errors import error_response
 from web.legal import consent_needed
 from web.messages import get_message
-from web.account_deletion import delete_account, deletion_plan, plan_summary
+from web.account_deletion import delete_account, deletion_plan, plan_summary, was_deleted
 from web.schemas import (
     AccountDeleteRequest,
     AccountDeletionPreviewResponse,
@@ -32,10 +34,19 @@ from web.schemas import (
     ErrorResponse,
     PasswordChangeRequest,
     PasswordForgotRequest,
+    PasswordForgotResponse,
+    PasswordResetCheckResponse,
     PasswordResetRequest,
     SuccessResponse,
 )
-from web.security import is_admin, login_required, revoke_user_sessions, verify_user_credentials
+from web.security import (
+    get_token_from_request,
+    is_admin,
+    login_required,
+    revoke_user_sessions,
+    verify_token,
+    verify_user_credentials,
+)
 
 account_bp = Blueprint("account", __name__)
 
@@ -78,6 +89,19 @@ def _take_token(token: str, purpose: str):
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     return record if expires_at > datetime.now(timezone.utc) else None
+
+
+def _link_is_live(record: Optional[dict]) -> bool:
+    """Whether a token's record still works: in time, and for an account that
+    is there and can sign in."""
+    if not record:
+        return False
+    expires_at = record["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        return False
+    return app.db.users.find_one({"username": record["username"], "is_active": {"$ne": False}}, {"_id": 1}) is not None
 
 
 def _email_taken(email: str, username: str) -> bool:
@@ -251,12 +275,15 @@ def verify_email():
 
 @account_bp.route("/api/auth/password/forgot", methods=["POST"])
 @limiter.limit("5 per hour")
-@api.validate(body=Request(PasswordForgotRequest), resp=Response(HTTP_200=SuccessResponse), tags=["account"])
+@api.validate(body=Request(PasswordForgotRequest), resp=Response(HTTP_200=PasswordForgotResponse), tags=["account"])
 def forgot_password():
     """Send a reset link to the account's confirmed email.
 
     The answer is the same whether the login exists, has an email, or not:
-    this form mustn't tell anyone which logins or addresses are real.
+    this form mustn't tell anyone which logins or addresses are real. The one
+    thing it does add is ``already_sent``: the letter was asked for moments
+    ago and no second one is on its way, and saying «sent» again would leave
+    the person waiting for a letter that isn't coming.
     """
     data = request.context.body  # type: ignore[attr-defined]
     login = data.login.strip()
@@ -267,6 +294,7 @@ def forgot_password():
     else:
         user = app.db.users.find_one({"username": login}) or app.db.users.find_one({"username": login.lower()})
 
+    already_sent = False
     if user and user.get("is_active", True) and user.get("email_verified") and user.get("email"):
         recent = app.db.account_tokens.find_one(
             {
@@ -275,7 +303,9 @@ def forgot_password():
                 "created_at": {"$gt": datetime.now(timezone.utc) - RESET_RESEND_AFTER},
             }
         )
-        if not recent and mail.mail_configured():
+        if recent:
+            already_sent = True
+        elif mail.mail_configured():
             token = _new_token(user["username"], "reset", RESET_TTL)
             try:
                 mail.send_mail(
@@ -291,7 +321,21 @@ def forgot_password():
                 logger.info(f"Password reset link sent: user={user['username']}")
             except Exception as e:
                 logger.error(f"Password reset letter not sent: user={user['username']}, error={e}")
-    return get_message("account_reset_requested")
+    return get_message("account_reset_requested", already_sent=already_sent)
+
+
+@account_bp.route("/api/auth/password/reset/check", methods=["GET"])
+@limiter.limit("30 per hour")
+@api.validate(resp=Response(HTTP_200=PasswordResetCheckResponse), tags=["account"])
+def check_reset_link():
+    """Whether the letter's link can still set a new password.
+
+    Asked when the screen opens, so a link that expired or was already spent
+    is said at once instead of after the person picks a password. The token is
+    only read here: the form still needs it.
+    """
+    record = app.db.account_tokens.find_one({"token_hash": _hash(request.args.get("token") or ""), "purpose": "reset"})
+    return jsonify({"valid": _link_is_live(record)})
 
 
 @account_bp.route("/api/auth/password/reset", methods=["POST"])
@@ -382,9 +426,33 @@ def deletion_preview():
     return jsonify({"can_delete": not is_admin(username), **plan_summary(deletion_plan(username))})
 
 
+def login_or_already_deleted(view):
+    """``@login_required``, with the one answer a signed-out request may get.
+
+    ``@login_required`` refuses the token of an account that is not there any
+    more, which is right for every other route. Here that absence is the very
+    thing the request is about: the DELETE went through and its answer was
+    lost on the way (a closed tab, a dead connection), so pressing the button
+    again is the same request and answers the same way. Nothing of any other
+    account is read or touched to give it.
+    """
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        token = get_token_from_request()
+        payload = verify_token(token, "access") if token else None
+        username = payload.get("username") if payload else None
+        if username and was_deleted(username):
+            logger.info(f"Account deletion repeated: user={username}")
+            return _deleted_answer()
+        return login_required(view)(*args, **kwargs)
+
+    return wrapper
+
+
 @account_bp.route("/api/me/account", methods=["DELETE"])
 @limiter.limit("10 per hour")
-@login_required
+@login_or_already_deleted
 @api.validate(
     body=Request(AccountDeleteRequest),
     resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
@@ -429,6 +497,13 @@ def delete_own_account():
             f"Все записи, лекарства и документы остались на месте.",
         )
 
+    return _deleted_answer()
+
+
+def _deleted_answer():
+    """The answer a finished deletion gives, word for word: the repeat must
+    not be tellable from the first one, and there are no cookies left to
+    clear a second time."""
     response, status = get_message("account_deleted")
     response.set_cookie("access_token", "", max_age=0)
     response.set_cookie("refresh_token", "", max_age=0)
