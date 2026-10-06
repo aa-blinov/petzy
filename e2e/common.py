@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -49,6 +50,23 @@ async def api(pg, method, path, body=None):
         let j = null; try { j = await r.json(); } catch (e) {} return {status: r.status, json: j}; }""",
         [method, path, body],
     )
+
+
+async def wait_until(pg, done, timeout=15_000):
+    """The page text once `done(text)` holds, or after the wait is up.
+
+    A flat pause is a guess: too short and a slow answer is read as a refusal,
+    too long and the whole suite pays for the slowest screen on every check.
+    Waiting for the word the check is about is both faster and steadier.
+    """
+    deadline = time.monotonic() + timeout / 1000
+    body = await pg.inner_text("body")
+    while time.monotonic() < deadline:
+        if done(body):
+            return body
+        await pg.wait_for_timeout(150)
+        body = await pg.inner_text("body")
+    return body
 
 
 def check(name, ok, detail=""):
