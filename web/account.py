@@ -279,15 +279,18 @@ def verify_email():
 def forgot_password():
     """Send a reset link to the account's confirmed email.
 
-    The answer is the same whether the login exists, has an email, or not:
-    this form mustn't tell anyone which logins or addresses are real. The one
-    thing it does add is ``already_sent``: the letter was asked for moments
-    ago and no second one is on its way, and saying «sent» again would leave
-    the person waiting for a letter that isn't coming.
+    The answer must not tell anyone which logins or addresses are real. So
+    ``already_sent» («the letter was asked for moments ago, no second one is on
+    its way») is said only to the person who already proved they hold the
+    mailbox: they typed the confirmed address itself. Asked by a login, even a
+    real one, the answer is the plain «sent» — otherwise two requests for a
+    made-up login and for a real one would differ, and the form would become a
+    way to find out who has an account here.
     """
     data = request.context.body  # type: ignore[attr-defined]
     login = data.login.strip()
-    if "@" in login:
+    asked_by_email = "@" in login
+    if asked_by_email:
         user = app.db.users.find_one(
             {"email_verified": True, "email": {"$regex": f"^{re.escape(login)}$", "$options": "i"}}
         )
@@ -304,7 +307,9 @@ def forgot_password():
             }
         )
         if recent:
-            already_sent = True
+            # Само письмо не отправляется повторно в любом случае; говорить об этом можно только тому,
+            # кто назвал подтверждённую почту, иначе ответ отличит существующий логин от несуществующего.
+            already_sent = asked_by_email
         elif mail.mail_configured():
             token = _new_token(user["username"], "reset", RESET_TTL)
             try:
