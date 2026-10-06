@@ -5,7 +5,7 @@ apart from a connection that did not come through."""
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
 
 PET = "Тест-М"
 
@@ -22,8 +22,7 @@ async def main():
         try:
             card = f"/pets/{pid}/medical-card"
             await pg.goto(BASE + card + "?mode=fill")
-            await pg.wait_for_timeout(2200)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Карта почти пуста" in t)
             check(
                 "an empty card keeps the «Для врача» block and says what it needs",
                 "Для врача" in body and "Карта почти пуста" in body,
@@ -34,8 +33,7 @@ async def main():
                 await pg.get_by_role("button", name="Скачать PDF").count() == 0,
             )
             await pg.goto(BASE + card + "?mode=vet")
-            await pg.wait_for_timeout(2000)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Не заполнено:" in t)
             check(
                 "the reading mode names what is empty in one line",
                 "Не заполнено:" in body and "аллергии" in body and "прививки" in body and "вес" in body,
@@ -50,10 +48,8 @@ async def main():
             )
             # the documents tile is a part of the card, not a jump out of it
             await pg.goto(BASE + card + "?mode=fill")
-            await pg.wait_for_timeout(2000)
             await pg.locator(".medsum__tile").filter(has_text="Документы").first.click()
-            await pg.wait_for_timeout(1800)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Все документы" in t)
             check(
                 "«Документы» opens its part of the card, with the way to all documents on it",
                 pg.url.endswith("/medical-card/documents") and "Все документы" in body,
@@ -61,10 +57,8 @@ async def main():
             )
             # the «+» of a part adds what that part is about
             await pg.goto(BASE + f"/pets/{pid}/medical-card/prevention")
-            await pg.wait_for_timeout(1800)
             await pg.locator(".app-fab").click()
-            await pg.wait_for_timeout(1200)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Прививка" in t)
             check(
                 "the «+» of «Профилактика» offers the vaccine and the parasite treatment and nothing else",
                 "Прививка" in body and "Обработка от паразитов" in body and "Визит" not in body,
@@ -72,8 +66,7 @@ async def main():
             )
             # a record opened without a kind asks which kind
             await pg.goto(BASE + f"/pets/{pid}/medical-records/new")
-            await pg.wait_for_timeout(2200)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Не выбрано, что записать" in t)
             check(
                 "a record without a kind asks which one instead of failing to load",
                 "Не выбрано, что записать" in body and "Не удалось загрузить" not in body,
@@ -82,7 +75,7 @@ async def main():
             for kind in ("Прививка", "Обработка от паразитов", "Визит", "Операция"):
                 check(f"it offers {kind}", kind in body)
             await pg.get_by_text("Прививка", exact=True).first.click()
-            await pg.wait_for_timeout(2000)
+            await wait_until(pg, lambda t: "Название вакцины" in t)
             check("choosing one opens its form", "?kind=vaccination" in pg.url, pg.url.replace(BASE, ""))
             check(
                 "the vaccine form asks for the name",
@@ -92,8 +85,7 @@ async def main():
             # the catalogue did not come: the field is still there and says why
             await pg.route("**/api/vaccines/catalog**", lambda route: route.abort())
             await pg.goto(BASE + f"/pets/{pid}/medical-records/new?kind=vaccination")
-            await pg.wait_for_timeout(2500)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Список защит не загрузился" in t)
             check(
                 "without the catalogue «От чего» is still on the form and offers to try again",
                 "От чего" in body
@@ -106,8 +98,7 @@ async def main():
             share = await api(pg, "POST", f"/pets/{pid}/medical-card/shares", {"days": 7})
             share_id = share["json"]["share"]["id"]
             await pg.goto(BASE + "/settings/medical-links")
-            await pg.wait_for_timeout(2200)
-            body = await pg.inner_text("body")
+            body = await wait_until(pg, lambda t: "Действующих ссылок" in t)
             check(
                 "the links screen counts the live links",
                 "Действующих ссылок: 1" in body and "Занято 1 из 10 ссылок" in body,
@@ -117,8 +108,7 @@ async def main():
             url = BASE + share["json"]["path"]
             ctx2, vet = await new_page(b, width=390, height=844, sw=False)
             await vet.goto(url)
-            await vet.wait_for_timeout(2500)
-            body = await vet.inner_text("body")
+            body = await wait_until(vet, lambda t: "Это копия медкарты" in t)
             check("a vet with no account sees the pet", PET in body, body[:120].replace(chr(10), " | "))
             check(
                 "it says this is a copy with no way back",
@@ -135,8 +125,7 @@ async def main():
             # no connection: not the same as a link that stopped working
             await vet.route("**/api/shared/medical-card/**", lambda route: route.abort())
             await vet.reload()
-            await vet.wait_for_timeout(2500)
-            body = await vet.inner_text("body")
+            body = await wait_until(vet, lambda t: "Не удалось загрузить карту" in t)
             check(
                 "a lost connection asks to try again and does not blame the link",
                 "Не удалось загрузить карту" in body
@@ -149,8 +138,7 @@ async def main():
             await api(pg, "DELETE", f"/pets/{pid}/medical-card/shares/{share_id}")
             share_id = None
             await vet.reload()
-            await vet.wait_for_timeout(2500)
-            body = await vet.inner_text("body")
+            body = await wait_until(vet, lambda t: "Ссылка не действует" in t or "Не удалось загрузить карту" in t)
             check(
                 "a link that does not work says so and asks for a new one",
                 "Ссылка не действует" in body and "Не удалось загрузить карту" not in body,
