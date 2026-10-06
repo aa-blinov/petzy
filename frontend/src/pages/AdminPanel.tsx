@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Dialog, PullToRefresh } from 'antd-mobile';
+import { Dialog, PullToRefresh, SearchBar, Button } from 'antd-mobile';
 import { Pencil, ShieldAlert, UserX, UserCheck, Users } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { usersService, type User } from '../services/users.service';
+import { adminService, ADMIN_USERS_PER_PAGE } from '../services/admin.service';
 import { Alert } from '../components/Alert';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SkeletonList } from '../components/Skeletons';
@@ -32,11 +33,36 @@ export function AdminPanel() {
 
   // A failed request is not an empty list: «Пользователей пока нет» after a failed fetch told the owner
   // that everyone had been deleted, and offered to add them again. Loading, error and empty are three states.
-  const { data: users = [], isLoading: usersLoading, isError: usersFailed, refetch } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersService.getUsers(),
+  // One page at a time, newest first: the list used to arrive whole, which grows with every account.
+  const [search, setSearch] = useState('');
+  // What the list is fetched by: typing should not fire a request per letter.
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedSearch(search.trim());
+      // A new question starts again from the first page: the answer to the old one may sit elsewhere.
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const {
+    data: usersPage,
+    isLoading: usersLoading,
+    isError: usersFailed,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ['users', appliedSearch, page],
+    queryFn: () => adminService.getUsers({ page, query: appliedSearch }),
     enabled: isAdmin,
   });
+
+  const users = usersPage?.users ?? [];
+  const total = usersPage?.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / ADMIN_USERS_PER_PAGE));
 
 
   // The endpoint only ever deactivates (soft delete — `is_active: false`),
@@ -147,12 +173,33 @@ export function AdminPanel() {
           <h2 className="section-header" style={{ fontSize: 'var(--text-lg)' }}>Пользователи</h2>
         </div>
 
+        {/* The search is admin-only by nature: it runs over every account in the app,
+            by whatever is typed into it. Hence it is here and nowhere else. */}
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-sm)' }}>
+          <SearchBar
+            placeholder="Логин или имя"
+            value={search}
+            onChange={setSearch}
+            aria-label="Поиск пользователей по логину или имени"
+          />
+        </div>
+
         {usersLoading ? (
           /* Skeletons, like every other list in the app. This was the
              one list that flashed a spinner on a cold fetch. */
           <SkeletonList count={3} />
         ) : usersFailed ? (
           <LoadError what="пользователей" onRetry={refetch} />
+        ) : users.length === 0 && appliedSearch ? (
+          /* A search that found nothing is not an app with no users in it: the two
+             answers are different, and the wrong one invites adding a duplicate. */
+          <EmptyState
+            icon={Users}
+            title="Никого не нашлось"
+            description={`По запросу «${appliedSearch}» нет ни логина, ни имени`}
+            actionLabel="Очистить поиск"
+            onAction={() => setSearch('')}
+          />
         ) : users.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -273,6 +320,40 @@ export function AdminPanel() {
                 </SwipeableRow>
                 );
               })}
+
+              {/* Pages, only when there is more than one to be on. The count is of the search when one is typed,
+                  so «найдено 3» is not read as the size of the whole list. */}
+              {lastPage > 1 && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 'var(--spacing-sm)',
+                  marginTop: 'var(--spacing-sm)',
+                }}>
+                  <Button
+                    size="small"
+                    fill="outline"
+                    color="primary"
+                    disabled={page <= 1 || isFetching}
+                    onClick={() => { hapticFeedback('light'); setPage((p) => Math.max(1, p - 1)); }}
+                  >
+                    Назад
+                  </Button>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                    {appliedSearch ? 'Найдено' : 'Всего'} {total}, стр. {page} из {lastPage}
+                  </span>
+                  <Button
+                    size="small"
+                    fill="outline"
+                    color="primary"
+                    disabled={page >= lastPage || isFetching}
+                    onClick={() => { hapticFeedback('light'); setPage((p) => p + 1); }}
+                  >
+                    Вперёд
+                  </Button>
+                </div>
+              )}
             </div>
           </PullToRefresh>
         )}

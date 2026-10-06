@@ -87,6 +87,11 @@ function coursePeriod(med: Medication): string | null {
     return null;
 }
 
+/** «По необходимости» как он хранится, а для курсов до признака как он записывался: пустое расписание. */
+function isAsNeeded(med: { as_needed?: boolean; schedule: { times: string[] } }): boolean {
+  return med.as_needed ?? med.schedule.times.length === 0;
+}
+
 export function MedicationsList() {
     const { selectedPetId } = usePet();
     const { username: currentUsername } = useAuth();
@@ -487,7 +492,7 @@ export function MedicationsList() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
                                             <ClockCircleOutline />
                                             <span>
-                                                {med.schedule.times.length === 0
+                                                {isAsNeeded(med)
                                                     ? 'По необходимости'
                                                     : `${med.schedule.days.length === 7 ? 'Ежедневно' : 'В выбранные дни'} в ${med.schedule.times.join(', ')}`}
                                             </span>
@@ -512,7 +517,7 @@ export function MedicationsList() {
                                             </div>
                                         )}
 
-                                        {med.schedule.times.length === 0 && (med.intakes_today ?? 0) > 0 && (
+                                        {isAsNeeded(med) && (med.intakes_today ?? 0) > 0 && (
                                             <div style={{ marginBottom: 'var(--spacing-sm)' }}>
                                                 <span>Сегодня давали: {med.intakes_today} {pluralRu(med.intakes_today ?? 0, 'раз', 'раза', 'раз')}</span>
                                             </div>

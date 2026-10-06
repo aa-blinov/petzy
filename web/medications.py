@@ -60,6 +60,23 @@ DEFAULT_WARNING_DAYS = 3
 GIVEN_ONLY = {"skipped": {"$ne": True}}
 
 
+def is_as_needed(med: dict) -> bool:
+    """Whether this course is «по необходимости», as it is stored or as it was written before.
+
+    A course made before the flag kept its mode in the schedule: no times meant
+    «по необходимости». Those are read that way still, so an old course keeps
+    the doses it has always had (and keeps not being reminded about); only a
+    course with a real schedule is due at its times.
+
+    A course with the flag may keep a schedule: it is stored and shown in the
+    card, but nothing is reminded about it.
+    """
+    flag = med.get("as_needed")
+    if flag is None:
+        return not ((med.get("schedule") or {}).get("times") or [])
+    return bool(flag)
+
+
 def daily_use(med: dict) -> float:
     """How much of the stock the schedule uses per day, on average."""
     schedule = med.get("schedule") or {}
@@ -119,6 +136,9 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
     day_intakes = load_day_intakes(db, [str(m["_id"]) for m in medications], start, today_start + timedelta(days=1))
     grace = timedelta(minutes=OVERDUE_DOSE_GRACE_MINUTES)
     for med in medications:
+        if is_as_needed(med):
+            # «По необходимости» is never due at a time, whatever it keeps in its schedule.
+            continue
         schedule = med.get("schedule") or {}
         times = schedule.get("times") or []
         for day_start in (start, today_start):
@@ -151,6 +171,11 @@ def add_medication():
         username = g.username
 
         medication_data = data.model_dump()
+        # Признак «по необходимости» не подставляем, если клиент его не прислал: так пишет
+        # установленное приложение прежней версии, и его курс «по необходимости» без времени
+        # должен остаться таким, а не стать расписанием без времени.
+        if medication_data.get("as_needed") is None:
+            medication_data.pop("as_needed", None)
         medication_data["username"] = username
         medication_data["created_at"] = datetime.now(timezone.utc)
 
@@ -244,8 +269,13 @@ def get_medications():
             doc["intakes_today"] = today_counts.get(med_id_str, 0)
             today_key = today_start.strftime("%Y-%m-%d")
             schedule = doc.get("schedule") or {}
+            # The flag, resolved for a course made before it existed, so the client
+            # never has to tell «по необходимости» from an empty schedule itself.
+            as_needed = is_as_needed(doc)
+            doc["as_needed"] = as_needed
             due_today = (
                 doc.get("is_active", True)
+                and not as_needed
                 and today_start.weekday() in schedule.get("days", [])
                 and course_covers(doc, today_key)
             )
@@ -280,6 +310,7 @@ def get_medication(id):
     try:
         record = g.record
         record["_id"] = str(record["_id"])
+        record["as_needed"] = is_as_needed(record)
         # Mirror the enrichment the list endpoint provides so consumers
         # don't see a stripped shape when switching from list→detail.
         pet_id = record.get("pet_id")
@@ -518,7 +549,12 @@ def log_intake(id):
         # 08:00 dose are caught too, and only that slot. Without a slot there is nothing but the
         # time window, which stands for the finger that lands twice. A course with no schedule (a
         # dose when needed) can be given again at any time, and a skip is not a dose.
-        if not skipped and not data.force and (medication.get("schedule") or {}).get("times"):
+        if (
+            not skipped
+            and not data.force
+            and not is_as_needed(medication)
+            and (medication.get("schedule") or {}).get("times")
+        ):
             existing = _already_handled(id, medication, data, event_dt, username)
             if existing:
                 return (
@@ -831,6 +867,8 @@ def get_upcoming_doses():
         y_start = today_start - timedelta(days=1)
         y_key = y_start.strftime("%Y-%m-%d")
         for med in medications:
+            if is_as_needed(med):
+                continue
             schedule = med.get("schedule", {})
             if (current_day - 1) % 7 not in schedule.get("days", []) or not schedule.get("times"):
                 continue
@@ -875,6 +913,10 @@ def get_upcoming_doses():
                 sched_days = schedule.get("days", [])
                 sched_times = sorted(schedule.get("times", []))
 
+                # «По необходимости» is given when it is given, not at a time: whatever
+                # schedule it keeps is not something to be reminded about.
+                if is_as_needed(med):
+                    continue
                 if weekday not in sched_days or not sched_times:
                     continue
                 # A course that hasn't begun or has ended isn't offered that day.

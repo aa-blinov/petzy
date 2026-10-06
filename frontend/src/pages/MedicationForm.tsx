@@ -45,7 +45,7 @@ const medicationSchema = z.object({
         times: z.array(z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Выберите время')),
     }),
     // «По необходимости»: no days and no times, a dose is marked when it is given.
-    as_needed: z.boolean().optional(),
+    as_needed: z.boolean(),
     inventory_enabled: z.boolean(),
     // Pack size: what «Пополнить» offers to add. Not a cap on the stock,
     // which can hold more than one pack.
@@ -235,7 +235,9 @@ export function MedicationForm() {
                 name: med.name,
                 type: med.type,
                 form_factor: med.form_factor || 'other',
-                as_needed: med.schedule.times.length === 0,
+                // The mode is a stored sign, not the emptiness of the schedule. A course
+                // written before the sign came (the backend resolves those) still reads right.
+                as_needed: med.as_needed ?? med.schedule.times.length === 0,
                 strength: med.strength || '',
                 dose_unit: med.dose_unit || med.unit || '',
                 // Shown the Russian way («0,5»); the schema reads either.
@@ -344,10 +346,11 @@ export function MedicationForm() {
 
     const mutation = useMutation({
         mutationFn: async (data: MedicationFormData) => {
-            const { as_needed: asNeeded, ...fields } = data;
             const payload: MedicationCreate = {
-                ...fields,
-                schedule: asNeeded ? { days: [], times: [] } : data.schedule,
+                ...data,
+                // Days and times are saved as chosen, in either mode: switching the
+                // mode on and back does not make the person enter them again.
+                schedule: data.schedule,
                 pet_id: selectedPetId!,
                 inventory_total: data.inventory_total ?? undefined,
                 inventory_current: data.inventory_current ?? undefined,
@@ -611,7 +614,7 @@ export function MedicationForm() {
                             </div>
                             {asNeeded ? (
                                 <div style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', lineHeight: 1.5 }}>
-                                    Без расписания и напоминаний. Приём отмечается кнопкой «Дали сейчас» на карточке, когда лекарство дали
+                                    Без напоминаний. Приём отмечается кнопкой «Дали сейчас» на карточке, когда лекарство дали
                                 </div>
                             ) : (
                             <>

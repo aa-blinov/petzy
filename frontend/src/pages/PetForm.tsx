@@ -3,6 +3,7 @@ import { drawableImage } from '../utils/drawableImage';
 import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
+import { isAxiosError } from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { usePet } from '../hooks/usePet';
@@ -117,9 +118,16 @@ export function PetForm() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<{ username: string }[]>([]);
+  // The search found this person and the pet already reaches them: they are in
+  // the list below, so the empty line says which it is.
+  const [alreadyReached, setAlreadyReached] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
   const [localSharedWith, setLocalSharedWith] = useState<string[]>([]);
+  // People the server has said need no invitation from us (they already have the
+  // access, or a standing one). A ref, not state: it is only read when the search
+  // results arrive, and it must not itself count as an unsaved change.
+  const alreadyThereRef = useRef<string[]>([]);
 
   const birthDateValue = watch('birth_date');
   // Fields that depend on the species and gender: what «Порода» is called,
@@ -233,6 +241,7 @@ export function PetForm() {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     if (val.trim().length < 2) {
       setSearchResults([]);
+      setAlreadyReached(false);
       setSearchedTerm('');
       return;
     }
@@ -241,7 +250,20 @@ export function PetForm() {
       try {
         const results = await usersService.searchUsers(val.trim());
         const currentUsername = localStorage.getItem('username');
-        setSearchResults(results.filter(u => u.username !== currentUsername && !localSharedWith.includes(u.username)));
+        // Not offered anyone the pet already reaches: a member, a standing
+        // invitation, somebody already added in this visit, or somebody the
+        // server has just said needs no invitation from us at all.
+        const unreachable = new Set([
+          ...(pet?.shared_with || []),
+          ...(pet?.share_invites || []),
+          ...localSharedWith,
+          ...alreadyThereRef.current,
+        ]);
+        setSearchResults(results.filter(u => u.username !== currentUsername && !unreachable.has(u.username)));
+        // Somebody who was found and then put away is not somebody who does not
+        // exist: an empty list here would say «не найден» of a person standing
+        // right there in the list below.
+        setAlreadyReached(results.some(u => unreachable.has(u.username)));
         setSearchedTerm(val);
       } catch (error) {
         console.error('Search error:', error);
@@ -278,7 +300,13 @@ export function PetForm() {
     // and the access are two different things, and one refused invitation does not undo a card
     // the server has already saved.
     let invited: string[] = [];
-    let sharingFailed: { username: string; added: boolean; said?: string }[] = [];
+    // One refusal out of several: who it was, whether it was an invitation or a
+    // closed access, and what the server said about it.
+    let sharingFailed: { username: string; added: boolean; said?: string; code?: string }[] = [];
+    // People the server says need no invitation from us: they already have the
+    // access, or a standing one. They leave the list, so the next visit does not
+    // offer them the very same thing again.
+    let alreadyThere: string[] = [];
     try {
       setLoading(true);
       const hasNewFile = fileList[0]?.file instanceof File;
@@ -322,11 +350,22 @@ export function PetForm() {
             console.error('Sharing error:', err);
             // What the server said about it («Доступ уже предоставлен этому пользователю»),
             // kept for the message below when there is a single refusal to explain.
-            return { username, added, ok: false, said: getApiErrorMessage(err, '') };
+            // Its code too: «уже есть доступ» and «приглашение уже отправлено» are not
+            // failures to argue with, the person simply needs no invitation, so they
+            // leave the list instead of being offered again on the next visit.
+            const code = isAxiosError<{ code?: string }>(err) ? err.response?.data?.code : undefined;
+            return { username, added, ok: false, said: getApiErrorMessage(err, ''), code };
           }
         }));
         invited = settled.filter((r) => r.added && r.ok).map((r) => r.username);
-        sharingFailed = settled.filter((r) => !r.ok).map(({ username, added, said }) => ({ username, added, said }));
+        sharingFailed = settled.filter((r) => !r.ok).map(({ username, added, said, code }) => ({ username, added, said, code }));
+        alreadyThere = sharingFailed
+          .filter((f) => f.added && (f.code === 'validation_error_already_shared' || f.code === 'share_already_invited'))
+          .map((f) => f.username);
+        if (alreadyThere.length > 0) {
+          alreadyThereRef.current = [...new Set([...alreadyThereRef.current, ...alreadyThere])];
+          setLocalSharedWith(prev => prev.filter(u => !alreadyThere.includes(u)));
+        }
 
         // Opened to the wrong person: take it back right away.
         if (invited.length > 0) {
@@ -360,13 +399,19 @@ export function PetForm() {
       // Leave at once; the toast lives on over the list.
       // An invitation has its own message with «Отменить»: a second one would take its place at once.
       if (invited.length === 0) showToast.success('Питомец обновлён');
-      // The card is saved, so this is said about the access only: the person can invite the
-      // same person again on the next visit, and knows now why nothing happened.
-      if (sharingFailed.length === 1 && sharingFailed[0].said) {
-        // One refusal the server explains in its own words («Доступ уже предоставлен этому
-        // пользователю») says more than our own wording about it.
-        showToast.failure(`Карточка сохранена, ${sharingFailed[0].said}`);
+
+      // Who the server says already has the access is not a refusal to report, and
+      // naming them is what tells the person why nobody needs an invitation.
+      if (alreadyThere.length > 0) {
+        showToast.failure(
+          alreadyThere.length === 1
+            ? `У ${alreadyThere[0]} уже есть доступ`
+            : `Доступ уже есть у ${alreadyThere.join(', ')}`,
+        );
       } else if (sharingFailed.length > 0) {
+        // The card is saved, so this is said about the access only. Every refusal is
+        // named: one unnamed «что-то не отправилось» leaves the person guessing whose
+        // invitation it was and whether to send it again.
         const notSent = sharingFailed.filter((f) => f.added).map((f) => f.username);
         const notClosed = sharingFailed.filter((f) => !f.added).map((f) => f.username);
         const about: string[] = [];
@@ -384,7 +429,13 @@ export function PetForm() {
               : `доступ для ${notClosed.join(', ')} не изменился`,
           );
         }
-        showToast.failure(`Карточка сохранена, ${about.join(', ')}`);
+        // One refusal with a reason of its own («Пользователь отключён») says more in the
+        // server's own words, with the name in front of it: who, and why.
+        const only = sharingFailed.length === 1 ? sharingFailed[0] : null;
+        const aboutOne = only
+          ? `${only.added ? 'приглашение' : 'доступ'} для ${only.username} ${only.added ? 'не отправилось' : 'не изменился'}${only.said ? `: ${only.said}` : ''}`
+          : about.join(', ');
+        showToast.failure(`Карточка сохранена, ${aboutOne}`);
       }
       goBack(navigate, '/pets');
     } catch (error) {
@@ -827,7 +878,9 @@ export function PetForm() {
                 {/* Only an exact login matches (web/users.py), so say when none does. */}
                 {!searchLoading && searchedTerm === searchTerm && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
                   <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                    Пользователь с таким логином не найден
+                    {alreadyReached
+                      ? 'У этого человека уже есть доступ'
+                      : 'Пользователь с таким логином не найден'}
                   </div>
                 )}
                 {!searchLoading && searchResults.length > 0 && (

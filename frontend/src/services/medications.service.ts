@@ -19,6 +19,10 @@ export interface Medication {
     dosage?: string; // legacy
     unit?: string; // legacy
     schedule: MedicationSchedule;
+    /** «По необходимости»: a dose is marked when it is given, not at a time.
+     *  Absent on a course stored before the flag, when the mode was the empty
+     *  schedule; the backend resolves those and always sends the flag. */
+    as_needed?: boolean;
     inventory_enabled: boolean;
     inventory_total?: number;
     inventory_current?: number;
@@ -63,6 +67,9 @@ export interface MedicationCreate {
     dosage?: string;
     unit?: string;
     schedule: MedicationSchedule;
+    /** The mode is chosen, not derived: a course «по необходимости» keeps its
+     *  days and times and is not reminded about. */
+    as_needed?: boolean;
     inventory_enabled?: boolean;
     inventory_total?: number;
     inventory_current?: number;

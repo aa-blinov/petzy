@@ -69,8 +69,8 @@ async def main():
             await pg.locator(".segmented__item", has_text="По необходимости").click()
             await pg.wait_for_timeout(1200)
             check(
-                "the mode is written as «без расписания»",
-                "Без расписания и напоминаний" in await pg.locator("body").inner_text(),
+                "the mode is written as a sign of its own, not an empty schedule",
+                "Без напоминаний" in await pg.locator("body").inner_text(),
             )
             await pg.locator(".segmented__item", has_text="По расписанию").click()
             await pg.wait_for_timeout(1200)
