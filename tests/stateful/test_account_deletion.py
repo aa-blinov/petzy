@@ -6,11 +6,11 @@ Runs against moto's in-memory bucket (conftest.s3_storage).
 import io
 from datetime import datetime, timezone
 
-import bcrypt
 import pytest
 from bson import ObjectId
 
 from web.security import create_access_token
+from tests.conftest import password_hash_for
 
 BUCKET = "petzy-test"
 PASSWORD = "user123"  # conftest's regular_user
@@ -32,7 +32,7 @@ def _add_user(mock_db, username, active=True):
     mock_db["users"].insert_one(
         {
             "username": username,
-            "password_hash": bcrypt.hashpw(b"secret-pass", bcrypt.gensalt()).decode(),
+            "password_hash": password_hash_for(b"secret-pass"),
             "is_active": active,
             "email": f"{username}@example.com",
             "email_verified": True,
