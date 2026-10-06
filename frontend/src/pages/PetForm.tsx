@@ -136,14 +136,18 @@ export function PetForm() {
   const genderValue = useWatch({ control, name: 'gender' });
   const species = getSpecies(speciesValue);
 
+  // One pet by its own address, not the whole roster and a search through it: opening the form
+  // used to pull every pet the person has. The roster is the cache this is seeded from, so the
+  // form opens filled at once and the request by address is what refreshes it.
   const { data: pet, isLoading: isLoadingPet } = useQuery({
-    queryKey: ['pets', id],
-    queryFn: async () => {
-      if (!id) return null;
-      const pets = await petsService.getPets();
-      return pets.find(p => p._id === id) || null;
-    },
+    queryKey: ['pet', id],
+    queryFn: async () => (id ? await petsService.getPet(id) : null),
     enabled: isEditing && !!id,
+    initialData: () => {
+      if (!id) return undefined;
+      const cached = queryClient.getQueryData<Pet[]>(['pets'])?.find((p) => p._id === id);
+      return cached ?? undefined;
+    },
   });
   // Someone it is shared with sees the card but cannot change it (the server refuses): so the screen does not offer to.
   const readOnly = isEditing && !!pet && !pet.current_user_is_owner;
@@ -758,7 +762,7 @@ export function PetForm() {
                     onClick={() => setGenderPickerVisible(true)}
                   >
                     <span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
-                      {selectedLabel || 'Не выбран'}
+                      {selectedLabel || 'Не указан'}
                     </span>
                     <Picker
                       columns={[GENDER_OPTIONS]}
@@ -977,22 +981,25 @@ export function PetForm() {
             ))}
           </Form>
           )}
+        </div>
 
-          {isEditing && id && pet && (
-            // One place for the pet's events: its own screen. This row takes the person there for this pet.
-            <Form layout="horizontal" mode="card">
-              <Form.Item
-                label="События питомца"
-                description="Какие записи предлагает «+» и в каком порядке"
-                clickable
-                arrow
-                onClick={() => {
-                  selectPet(pet);
-                  navigate('/pet-events');
-                }}
-              />
-            </Form>
-          )}
+        {/* Outside the wrapper above: the row into the pet's events and the buttons are the
+            way out for someone the pet is shared with, and a dimmed card may not take a tap. */}
+        {isEditing && id && pet && (
+          // One place for the pet's events: its own screen. This row takes the person there for this pet.
+          <Form layout="horizontal" mode="card">
+            <Form.Item
+              label="События питомца"
+              description="Какие записи предлагает «+» и в каком порядке"
+              clickable
+              arrow
+              onClick={() => {
+                selectPet(pet);
+                navigate('/pet-events');
+              }}
+            />
+          </Form>
+        )}
 
 
 
@@ -1052,7 +1059,6 @@ export function PetForm() {
               />
             )}
           </div>
-        </div>
       </div>
       <ImageViewer
         image={imageViewer.image || ''}

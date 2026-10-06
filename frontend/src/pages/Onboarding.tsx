@@ -58,6 +58,20 @@ const toIsoDate = (d: Date) =>
 
 const floatDelay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
+/** What the name step was given, kept across a reload so the typed name is not typed twice. */
+function readStepDraft(): { name: string; birthDate: string; species: SpeciesKey | null } {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('petzy:onboardingName') ?? '{}');
+    return {
+      name: typeof saved.name === 'string' ? saved.name : '',
+      birthDate: typeof saved.birthDate === 'string' ? saved.birthDate : '',
+      species: typeof saved.species === 'string' ? (saved.species as SpeciesKey) : null,
+    };
+  } catch {
+    return { name: '', birthDate: '', species: null };
+  }
+}
+
 /** Waits for the pet roster before deciding which flow this is: a user who
  *  already has pets only gets the intro slides (a replay), a brand-new one
  *  goes on to add their first pet. Decided once, up front — the roster
@@ -123,10 +137,12 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   }, [index]);
   const step = steps[Math.min(index, steps.length - 1)];
 
-  const [species, setSpecies] = useState<SpeciesKey | null>(null);
+  const [species, setSpecies] = useState<SpeciesKey | null>(() => readStepDraft().species);
   const [morePickerVisible, setMorePickerVisible] = useState(false);
-  const [name, setName] = useState('');
-  const [birthDate, setBirthDate] = useState('');
+  // The name step's own answers come back after a reload, as the slide the person was on does.
+  // The photo does not: a picked file cannot be written to storage, so it is asked again.
+  const [name, setName] = useState(() => readStepDraft().name);
+  const [birthDate, setBirthDate] = useState(() => readStepDraft().birthDate);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -137,6 +153,24 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   const [enablingPush, setEnablingPush] = useState(false);
 
   useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
+
+  // The name and the day of birth are kept while they are typed, and forgotten the moment
+  // the pet exists: a draft that outlives its purpose puts the next pet's name in the field.
+  useEffect(() => {
+    if (!name && !birthDate && !species) return;
+    try {
+      sessionStorage.setItem('petzy:onboardingName', JSON.stringify({ name, birthDate, species }));
+    } catch {
+      /* the draft is not remembered: the name is asked again */
+    }
+  }, [name, birthDate, species]);
+  const forgetStepDraft = () => {
+    try {
+      sessionStorage.removeItem('petzy:onboardingName');
+    } catch {
+      /* nothing stored to forget */
+    }
+  };
 
   const go = (target: number) => {
     const clamped = Math.max(0, Math.min(target, steps.length - 1));
@@ -202,7 +236,13 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
 
   const createPet = async () => {
     const trimmed = name.trim();
-    if (!trimmed || saving) return;
+    // Enter on an empty field used to do nothing at all, which reads as a key that is broken.
+    // The same words the pet's own form uses under its name field.
+    if (!trimmed) {
+      showToast.info('Введите имя питомца');
+      return;
+    }
+    if (saving) return;
     setSaving(true);
     try {
       const pet = await petsService.createPet({
@@ -215,6 +255,9 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       });
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
       selectPet(pet);
+      setName('');
+      setBirthDate('');
+      forgetStepDraft();
       setCreatedPet(pet);
       hapticFeedback('medium');
       next();

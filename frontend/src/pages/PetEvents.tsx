@@ -27,6 +27,8 @@ import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { EmptyState } from '../components/EmptyState';
 import { EventCatalogSheet } from '../components/EventCatalogSheet';
+import { LoadError } from '../components/LoadError';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { EventType } from '../services/eventTypes.service';
 import { buildTiles, byTileOrder, isTileShown } from '../utils/tilesConfig';
 import { defaultTilesFor, getSpecies } from '../utils/species';
@@ -82,7 +84,7 @@ function Row({ type, onRemove }: { type: EventType; onRemove: () => void }) {
 
 export function PetEvents() {
   const navigate = useNavigate();
-  const { selectedPetId, getSelectedPet } = usePet();
+  const { selectedPetId, getSelectedPet, isLoading: petsLoading, isError: petsError, refetchPets } = usePet();
   const { eventTypes } = useEventTypes();
   const { tilesSettings, saveSettings } = usePetTilesSettings(selectedPetId);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -165,12 +167,18 @@ export function PetEvents() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>События питомца</h1>
           {getSelectedPet && (
             <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-              Питомец: {getSelectedPet.name}. Что предлагается в окне «+» и в каком порядке. Потяните за ручку, чтобы поменять порядок. Изменения сохраняются сразу
+              Питомец: {getSelectedPet.name}. Какие записи предлагает «+» и в каком порядке
             </p>
           )}
         </div>
 
-        {!selectedPetId ? (
+        {/* The pet's own settings come with the roster: «Пока ничего» must not be said about a
+            pet whose events are still on the way, nor about a request that failed. */}
+        {petsLoading ? (
+          <LoadingSpinner />
+        ) : petsError ? (
+          <LoadError what="события питомца" onRetry={() => void refetchPets()} />
+        ) : !selectedPetId ? (
           <EmptyState icon={LayoutGrid} title="Сначала выберите питомца" description="События настраиваются отдельно для каждого питомца" actionLabel="К питомцам" onAction={() => navigate('/pets')} />
         ) : (
           <div style={{ padding: '0 var(--spacing-md)' }}>
