@@ -94,14 +94,13 @@ async def main():
                 "an icon is named in Russian for a screen reader",
                 await pg.get_by_role("button", name="Глаза").count() == 1,
             )
-            await pg.get_by_role("button", name="Удалить поле").first.click()
-            await pg.wait_for_timeout(700)
-            form = await pg.inner_text("body")
-            # The only number field of the built-in weight type is gone, so the chart has nothing to stand on: the
-            # form says so instead of quietly standing on another field.
+            # The demo account is not an administrator, and a built-in type may only be edited by one: the screen says
+            # so instead of showing a form that would fail on save. The field-deletion checks below run on the demo's
+            # own type, which it may edit.
             check(
-                "removing the field the chart was on says the chart has to be pointed again",
-                "Добавьте числовое поле выше" in form or "Поле для графика ушло" in form,
+                "a built-in type is read-only for a user who may not edit it",
+                await pg.evaluate("() => !!document.querySelector('fieldset[disabled]')")
+                and "Изменение увидят все" not in form,
                 form[-160:].replace(chr(10), " | "),
             )
             # With another number field left the form names the loss instead: the chart is waiting for a choice.

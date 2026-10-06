@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { goBack } from '../utils/navigation';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { Button, Form, Input } from 'antd-mobile';
@@ -16,6 +17,7 @@ import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
+import { LoadError } from '../components/LoadError';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { EmptyState } from '../components/EmptyState';
@@ -81,15 +83,14 @@ export function UserForm() {
     }
   });
 
-  // Fetch user data if editing
-  const { data: user, isLoading: isLoadingUser } = useQuery({
-    queryKey: ['users', username],
-    queryFn: async () => {
-      if (!username) return null;
-      const users = await usersService.getUsers();
-      return users.find(u => u.username === username) || null;
-    },
+  // Fetch the one account being edited. It used to fetch the whole list and pick the person out of it: on a long
+  // list the person was simply not in the answer (the admin list is now paged), and the screen said «Такого
+  // пользователя нет» about someone who exists.
+  const { data: user, isLoading: isLoadingUser, isError: userFailed, error: userError, refetch: refetchUser } = useQuery({
+    queryKey: ['user', username],
+    queryFn: () => usersService.getUser(username!),
     enabled: isEditing && !!username,
+    retry: false,
   });
 
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
@@ -199,6 +200,30 @@ export function UserForm() {
 
   // Editing a person who is not in the list (a stale link, a name typed into the address): the form used to
   // open empty, and saving it sent the name and mail of nobody.
+  if (isEditing && userFailed) {
+    const status = isAxiosError(userError) ? userError.response?.status : undefined;
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          {status === 404 ? (
+            <EmptyState
+              icon={UserRound}
+              heading="h1"
+              title="Такого пользователя нет"
+              description="Возможно, его удалили или в адресе опечатка"
+              actionLabel="Назад к пользователям"
+              onAction={() => navigate('/admin')}
+            />
+          ) : (
+            // A failed request is not the same as a person who isn't there: «Такого пользователя нет» after a
+            // dropped connection invites creating a second account with the same login.
+            <LoadError what="пользователя" onRetry={() => void refetchUser()} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (isEditing && !user) {
     return (
       <div className="page-container">
@@ -219,19 +244,18 @@ export function UserForm() {
   const isLoading = isSubmitting || createUserMutation.isPending || updateUserMutation.isPending;
 
   return (
-    <div style={{
-      minHeight: 'var(--app-vh)', paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-      backgroundColor: 'var(--app-page-background)', color: 'var(--app-text-color)'
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
-          <h1 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+    <div className="page-container">
+      <div className="max-width-container">
+        <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', margin: 0 }}>
             {isEditing ? 'Редактировать пользователя' : 'Создать пользователя'}
           </h1>
         </div>
 
-        <div>
+        {/* A real form around the fields: Enter in any of them submits, as it does on every other form in the
+            app. The fields used to sit outside one, behind a hidden submit button nothing could reach. */}
+        <form onSubmit={handleSubmit(onSubmit, onInvalidSubmit)}>
+          <div className="safe-area-padding">
           <Form
             layout="horizontal"
             mode="card"
@@ -348,38 +372,28 @@ export function UserForm() {
             />
           </Form>
 
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            marginTop: '24px',
-            paddingBottom: '24px',
-            marginLeft: '12px',
-            marginRight: '12px'
-          }}>
-            <button
-              style={{ display: 'none' }}
-              type="submit"
-              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
-            />
-            <SpinnerButton
-              loading={isLoading}
-              onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
-              style={{ borderRadius: '12px', fontWeight: 600 }}
-            >
+          <div className="form-actions">
+            <SpinnerButton loading={isLoading}>
               {isEditing ? 'Сохранить' : 'Создать'}
             </SpinnerButton>
             <Button
               block
               size="large"
+              type="button"
               onClick={() => goBack(navigate, '/admin')}
             >
               Отмена
             </Button>
-            {/* Users are never deleted, only deactivated (and back). Not
-                your own account: the server refuses, and it would lock
-                you out. */}
-            {isEditing && user && user.username !== currentUsername && (user.is_active === false ? (
+          </div>
+          </div>
+        </form>
+
+        {/* Users are never deleted, only deactivated (and back), and not your own account: the server refuses,
+            and it would lock you out. It sat under «Сохранить» and «Отмена», so turning the account off looked
+            like one more thing this form saves. It is apart, with its own question. */}
+        {isEditing && user && user.username !== currentUsername && (
+          <div className="safe-area-padding">
+            {user.is_active === false ? (
               <Button
                 block
                 size="large"
@@ -387,19 +401,19 @@ export function UserForm() {
                 loading={setActive.isPending}
                 onClick={() => setActive.mutate(true)}
                 style={{ color: 'var(--app-success-text)' }}
-            >
+              >
                 Активировать
               </Button>
             ) : (
               <FormDangerButton
                 label="Деактивировать"
                 confirmTitle="Деактивация пользователя"
-                confirmContent={`Пользователь «${user.username}» потеряет доступ к аккаунту. Его можно будет активировать обратно в любой момент`}
+                confirmContent={`Пользователь «${user.username}» потеряет доступ к аккаунту и выйдет из него на всех устройствах, где сейчас открыт. Его можно будет активировать обратно в любой момент`}
                 onConfirm={() => setActive.mutateAsync(false)}
               />
-            ))}
+            )}
           </div>
-        </div>
+        )}
       </div>
       {leaveDialog}
     </div>

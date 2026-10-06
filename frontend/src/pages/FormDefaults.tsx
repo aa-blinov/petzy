@@ -10,6 +10,7 @@ import { usePet } from '../hooks/usePet';
 import { NoPetState } from '../components/NoPetState';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { showToast } from '../utils/toast';
+import { getApiErrorMessage } from '../utils/apiError';
 
 /** One remembered value, found again in the type it belongs to (it may be gone: a type or a field deleted since). */
 interface Row {
@@ -40,7 +41,7 @@ export function FormDefaults() {
 
 function FormDefaultsFor({ pet }: { pet: Pet }) {
   const queryClient = useQueryClient();
-  const { eventTypesByKey } = useEventTypes();
+  const { eventTypes, eventTypesByKey } = useEventTypes();
   const settings = useMemo<FormSettings>(() => pet.form_defaults ?? {}, [pet.form_defaults]);
   const [editing, setEditing] = useState<Row | null>(null);
   const [text, setText] = useState('');
@@ -48,9 +49,16 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
   const [openedText, setOpenedText] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // The sections follow the list of types the person already sees elsewhere in the app (EventTypesSettings puts
+  // the family's own types first), and a type that is gone from the registry goes last. They used to follow the
+  // order of the keys in the saved object, which is the order values happened to be remembered in: the same
+  // pet showed its sections in another order after the first edit.
   const groups = useMemo(() => {
     const out: { typeKey: string; label: string; rows: Row[] }[] = [];
-    for (const [typeKey, values] of Object.entries(settings)) {
+    const keys = [...eventTypes.map((t) => t.key), ...Object.keys(settings).filter((k) => !eventTypesByKey[k])];
+    for (const typeKey of keys) {
+      const values = settings[typeKey];
+      if (!values) continue;
       const type = eventTypesByKey[typeKey];
       const rows: Row[] = Object.entries(values).map(([field, value]) => {
         const def = type?.fields.find((f) => f.name === field);
@@ -59,7 +67,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
       if (rows.length) out.push({ typeKey, label: type?.label ?? 'Удалённый вид записи', rows });
     }
     return out;
-  }, [settings, eventTypesByKey]);
+  }, [settings, eventTypesByKey, eventTypes]);
 
   // The whole set is sent each time and replaces the old one: a change is a copy of what is there with one value changed.
   const persist = async (next: FormSettings, done: string) => {
@@ -69,8 +77,10 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
       queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, form_defaults: saved } : p)));
       showToast.success(done);
       return true;
-    } catch {
-      showToast.failure('Не удалось сохранить');
+    } catch (error) {
+      // What the server refused is said, as the account rows say it: «Не удалось сохранить» on its own left
+      // the person with nothing to act on (a field the server won't take, an account without access).
+      showToast.failure(getApiErrorMessage(error, 'Не удалось сохранить'));
       return false;
     } finally {
       setSaving(false);
@@ -123,7 +133,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
 
   const forgetAll = async () => {
     const confirmed = await Dialog.confirm({
-      content: 'Забыть все значения по умолчанию этого питомца? Новые записи будут открываться пустыми',
+      content: 'Забыть все значения по умолчанию этого питомца? Это коснётся всех, у кого есть к нему доступ. Новые записи будут открываться пустыми',
       confirmText: 'Забыть',
       cancelText: 'Оставить',
     });
@@ -136,7 +146,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', margin: 0 }}>Значения по умолчанию</h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
             Питомец: {pet.name}. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запомнить для этого питомца». Здесь их можно поправить или забыть. У обязательного поля с вариантами, когда значение не запомнено, выбран первый вариант
           </p>
@@ -208,6 +218,9 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
       {editing && isSelect && (
         <Picker
           visible
+          // The wheel says nothing about what it is choosing: a field's choices came up under no heading at
+          // all, so the person picked a value before knowing whose it was.
+          title={editing ? `${editing.typeLabel}: ${editing.label}` : ''}
           columns={[(editing.def?.options ?? []).map((o) => ({ label: o.text, value: o.value }))]}
           value={[editing.value]}
           onClose={() => setEditing(null)}

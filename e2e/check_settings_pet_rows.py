@@ -15,10 +15,11 @@ async def main():
             await pg.goto(BASE + "/settings")
             await pg.wait_for_timeout(1800)
             body = await pg.inner_text("body")
+            # Про сам питомца, а не про его отсутствие: подписи переписаны в словах о деле,
+            # поэтому проверяем смысл, а не прежнюю формулировку.
             check(
                 "the pet's rows say what they do, not «сначала выберите питомца»",
-                "Аллергии, чип, клиники и питание выбранного питомца" in body
-                and "Скачать записи питомца таблицей" in body,
+                "Всё, что врач спросит о выбранном питомце" in body and "Скачать записи питомца таблицей" in body,
                 body[:200].replace(chr(10), " | "),
             )
             check("no toast about a missing pet on a screen that has one", "Сначала выберите питомца" not in body)

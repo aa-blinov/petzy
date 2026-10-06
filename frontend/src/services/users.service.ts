@@ -23,10 +23,9 @@ export interface UserUpdate {
   is_active?: boolean;
 }
 
-export interface UserListResponse {
-  users: User[];
-}
-
+/** The whole account list, as a shape. The list itself is paged and admin-only: admin.service.getUsers.
+ *  Nothing should read it as «every account» — one page is not the list, and the person edited on the user
+ *  form used to be looked up in it, so anyone past the first page was «не найден». */
 export interface UserResponse {
   user: User;
 }
@@ -41,11 +40,6 @@ export interface UserPublicProfile {
 }
 
 export const usersService = {
-  async getUsers(): Promise<User[]> {
-    const response = await api.get<UserListResponse>('/users');
-    return response.data.users;
-  },
-
   async searchUsers(query: string): Promise<{ username: string }[]> {
     const response = await api.get<{ users: { username: string }[] }>(`/users/search?q=${encodeURIComponent(query)}`);
     return response.data.users;
@@ -61,9 +55,10 @@ export const usersService = {
     return response.data.user;
   },
 
-  async updateUser(username: string, data: UserUpdate): Promise<User> {
-    const response = await api.put<{ message: string; user: User }>(`/users/${username}`, data);
-    return response.data.user;
+  /** The server's own words about what it did, plus the account when it was sent back. */
+  async updateUser(username: string, data: UserUpdate): Promise<{ message: string; user?: User }> {
+    const response = await api.put<{ message: string; user?: User }>(`/users/${username}`, data);
+    return response.data;
   },
 
   async deleteUser(username: string): Promise<{ message: string }> {

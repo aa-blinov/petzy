@@ -20,6 +20,7 @@ import { eventTypesService } from '../services/eventTypes.service';
 import { pastelColorMap } from '../utils/constants';
 import { getEventIcon } from '../utils/iconRegistry';
 import { EmptyState } from '../components/EmptyState';
+import { CardChevron } from '../components/CardChevron';
 import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAdmin } from '../hooks/useAdmin';
@@ -39,6 +40,10 @@ export function EventTypesSettings() {
   // The family's own types first. The built-in ones are the catalogue, added to a pet in its events; only an administrator
   // changes them, so for everyone else a list of thirty rows to look at and not touch is only noise.
   const listed = [...eventTypes.filter((t) => !t.is_builtin), ...(isAdmin ? eventTypes.filter((t) => t.is_builtin) : [])];
+
+  // The empty state carries its own «Создать тип события», as every other list in the app does. With the button
+  // under it as well, the screen offered the same action twice, which reads as two different things to do.
+  const empty = !isLoading && !error && listed.length === 0;
 
   const askDelete = async (key: string) => {
     if (askingKey) return;
@@ -76,7 +81,10 @@ export function EventTypesSettings() {
             Типы событий
           </h1>
           <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем. Готовые события добавляются в «События питомца»
+            Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем.{' '}
+            {isAdmin
+              ? 'Встроенные типы в списке ниже, меняет их администратор'
+              : 'Встроенных типов здесь нет, добавляются они питомцу в «События питомца»'}
           </p>
         </div>
 
@@ -121,8 +129,12 @@ export function EventTypesSettings() {
                   >
                     <button
                       type="button"
-                      disabled={!editable}
-                      onClick={() => navigate(`/event-types/${eventType.key}/edit`)}
+                      // aria-disabled, not disabled: a disabled button cannot be reached by Tab and is read as
+                      // nothing at all, so neither the type nor the reason it can't be opened is ever said.
+                      // The reason is the second line of the row, and this button reads it out with the name.
+                      aria-disabled={!editable}
+                      aria-label={editable ? `Изменить тип ${eventType.label}` : undefined}
+                      onClick={() => { if (editable) navigate(`/event-types/${eventType.key}/edit`); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0,
                         background: 'transparent', border: 'none', textAlign: 'left',
@@ -140,11 +152,11 @@ export function EventTypesSettings() {
                       >
                         <Icon size={18} strokeWidth={2} />
                       </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, fontSize: 'var(--text-md)', color: 'var(--app-text-primary)' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 500, fontSize: 'var(--text-md)', color: 'var(--app-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {eventType.label}
                         </div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: 'var(--spacing-2xs)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {subtitle}
                         </div>
                       </div>
@@ -163,7 +175,7 @@ export function EventTypesSettings() {
                           <Trash2 size={17} strokeWidth={2} />
                         </button>
                       )}
-                      {editable && <span aria-hidden style={{ color: 'var(--app-text-tertiary)', fontSize: 20 }}>›</span>}
+                      {editable && <CardChevron />}
                     </div>
                   </div>
                 );
@@ -172,17 +184,19 @@ export function EventTypesSettings() {
           </div>
         )}
 
-        <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-md)', paddingBottom: 'var(--spacing-lg)' }}>
-          <Button
-            block
-            color="primary"
-            size="large"
-            onClick={() => navigate('/event-types/new')}
-          >
-            <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-            Создать тип события
-          </Button>
-        </div>
+        {!empty && (
+          <div className="safe-area-padding" style={{ paddingTop: 'var(--spacing-md)', paddingBottom: 'var(--spacing-lg)' }}>
+            <Button
+              block
+              color="primary"
+              size="large"
+              onClick={() => navigate('/event-types/new')}
+            >
+              <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+              Создать тип события
+            </Button>
+          </div>
+        )}
       </div>
 
       <Dialog

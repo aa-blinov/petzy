@@ -64,7 +64,9 @@ export function UserProfile() {
     const status = isAxiosError(error) ? error.response?.status : undefined;
     const notFound = status === 404;
     return (
-      <div className="page-container">
+      // role="alert": the state arrived without anything saying it. A screen reader on this page read nothing
+      // at all and the person had no idea the profile hadn't loaded.
+      <div className="page-container" role="alert">
         <div className="max-width-container">
           <EmptyState
             icon={UserRound}

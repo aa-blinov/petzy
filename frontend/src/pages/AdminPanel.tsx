@@ -84,9 +84,11 @@ export function AdminPanel() {
 
   const activateMutation = useMutation({
     mutationFn: (username: string) => usersService.updateUser(username, { is_active: true }),
-    onSuccess: () => {
+    // Both directions say what the server said: deactivation used to show the server's «Пользователь деактивирован»
+    // while activation showed a word typed on this screen, so two rows about one thing spoke differently.
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSuccess('Пользователь активирован');
+      setSuccess(data.message);
       setTimeout(() => setSuccess(null), 3000);
     },
     onError: (err: unknown) => {
@@ -366,7 +368,9 @@ export function AdminPanel() {
         visible={deleteDialog.visible}
         title="Деактивация пользователя"
         content={deleteDialog.username
-          ? `Пользователь «${deleteDialog.username}» потеряет доступ к аккаунту. Его можно будет активировать обратно в любой момент`
+          // The server ends every open session of that account (revoke_user_sessions), so the question says so:
+          // otherwise a person is told «потеряет доступ» and their phone keeps working until the token expires.
+          ? `Пользователь «${deleteDialog.username}» потеряет доступ к аккаунту и выйдет из него на всех устройствах, где сейчас открыт. Его можно будет активировать обратно в любой момент`
           : ''}
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, username: null })}

@@ -2,9 +2,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Bell, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, UserRound, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { accountService, ACCOUNT_QUERY_KEY } from '../services/account.service';
+import { accountService, ACCOUNT_QUERY_KEY, type Account } from '../services/account.service';
 
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -42,10 +42,19 @@ export function Settings() {
   const { selectedPetId, getSelectedPet, isLoading: petsLoading } = usePet();
   const [exportVisible, setExportVisible] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, username } = useAuth();
   const { isAdmin } = useAdmin();
-  const { data: account } = useQuery({ queryKey: ACCOUNT_QUERY_KEY, queryFn: () => accountService.get() });
+  const { data: account, isLoading: accountLoading, isError: accountFailed } = useQuery({
+    queryKey: ACCOUNT_QUERY_KEY,
+    queryFn: () => accountService.get(),
+  });
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+
+  // A row about the account says what it knows, and says that it doesn't know yet. While the request is in
+  // flight the description was a single space: an empty line under a label, which reads as a screen that
+  // failed to load rather than one still loading.
+  const accountText = (ready: (account: Account) => string) =>
+    accountFailed ? 'Не удалось загрузить' : !account || accountLoading ? 'Загружаем' : ready(account);
 
   // A row that acts on one pet says what it can do only when that pet is known. While the roster loads the
   // row says nothing at all (there is nothing true to say yet), and when there is no pet the row leads to
@@ -157,6 +166,15 @@ export function Settings() {
               }
               {...(getSelectedPet && getSelectedPet.current_user_is_owner === false ? {} : { chevron: true, onClick: () => navigate('/pet-events') })}
             />
+            {/* What a new form of this pet starts with: of everything on this screen, the only thing that is
+                not the pet itself, but the pet's own values, so it sits with the pet. */}
+            <SettingsRow
+              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Значения по умолчанию"
+              description="Что запомнено для выбранного питомца: поправить или забыть"
+              chevron
+              onClick={() => navigate('/form-defaults')}
+            />
           </Group>
 
           {/* The medical card's own settings: what a vet asks (the profile of the selected pet) and the links given to a vet. */}
@@ -164,7 +182,7 @@ export function Settings() {
             <SettingsRow
               icon={<HeartPulse size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Данные для врача"
-              description={petRowText('Аллергии, чип, клиники и питание выбранного питомца')}
+              description={petRowText('Всё, что врач спросит о выбранном питомце')}
               {...petRow(() => navigate(`/pets/${selectedPetId}/medical-profile`))}
             />
             <SettingsRow
@@ -223,16 +241,9 @@ export function Settings() {
             />
           </Group>
 
-          {/* How a record is entered: what the «+» offers and what a new form starts with (both for the selected pet), and the
-              types of record themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. */}
+          {/* The types of record themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. They
+              are the household's, not one pet's: they are added to a pet in «События питомца». */}
           <Group title="Новые записи">
-            <SettingsRow
-              icon={<SlidersHorizontal size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Значения по умолчанию"
-              description="Что запомнено для выбранного питомца: поправить или забыть"
-              chevron
-              onClick={() => navigate('/form-defaults')}
-            />
             <SettingsRow
               icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Типы событий"
@@ -257,6 +268,9 @@ export function Settings() {
                 ]}
                 onChange={setTheme}
               />
+              {/* The theme lives in this browser, not in the account: a person signed in on a second device
+                  would otherwise look for the setting there and not find it. */}
+              <div className="setting-row__description">Сохраняется на этом устройстве</div>
             </div>
           </Group>
 
@@ -265,24 +279,31 @@ export function Settings() {
             <SettingsRow
               icon={<Mail size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Почта"
-              description={
-                !account
-                  ? ' '
-                  : account.pending_email
-                    ? `${account.email_verified && account.email ? `Подтверждена: ${account.email} ` : ''}Ждёт подтверждения: ${account.pending_email}`
-                    : account.email_verified
-                      ? account.email
-                      : 'Не указана. Нужна, чтобы восстановить пароль'
-              }
+              description={accountText((a) =>
+                a.pending_email
+                  ? `${a.email_verified && a.email ? `Подтверждена: ${a.email} ` : ''}Ждёт подтверждения: ${a.pending_email}`
+                  : a.email_verified
+                    ? a.email
+                    : 'Не указана. Нужна, чтобы восстановить пароль'
+              )}
               chevron
               onClick={() => navigate('/settings/email')}
             />
             <SettingsRow
               icon={<KeyRound size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Пароль"
-              description={account ? `Логин: ${account.username}` : ' '}
+              description={accountText((a) => `Логин: ${a.username}`)}
               chevron
               onClick={() => navigate('/settings/password')}
+            />
+            {/* The profile is not only something you look at when someone else opens it: it is the answer to
+                «кто я у человека, с которым делюсь питомцем». */}
+            <SettingsRow
+              icon={<UserRound size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Мой профиль"
+              description="Как вас видят те, с кем вы делитесь питомцем"
+              chevron
+              onClick={() => navigate(`/users/${username}`)}
             />
           </Group>
 
@@ -332,7 +353,7 @@ export function Settings() {
               description="На этом устройстве"
               onClick={() => setLogoutDialogVisible(true)}
             />
-            {!isAdmin && (
+            {!isAdmin ? (
               <SettingsRow
                 icon={<Trash2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
                 label="Удалить аккаунт"
@@ -340,6 +361,14 @@ export function Settings() {
                 danger
                 chevron
                 onClick={() => navigate('/settings/delete-account')}
+              />
+            ) : (
+              // The admin's account is never deletable, so the row is not hidden from them: it is shown without a
+              // chevron, with the reason in place of what it would have said.
+              <SettingsRow
+                icon={<Trash2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
+                label="Удалить аккаунт"
+                description="Учётную запись администратора удалить нельзя"
               />
             )}
           </Group>
