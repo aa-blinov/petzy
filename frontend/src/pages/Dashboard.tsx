@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, PullToRefresh } from 'antd-mobile';
-import { PawPrint } from 'lucide-react';
+import { PawPrint, Notebook } from 'lucide-react';
 
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
 import { useEventTypes } from '../hooks/useEventTypes';
@@ -11,7 +11,7 @@ import { useSession } from '../hooks/useSession';
 import { hadPets, isOnboardingDismissed, rememberHavingPets } from '../utils/onboarding';
 import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
-import { HistoryItem } from '../components/HistoryItem';
+import { HistoryItem, SwipeHint } from '../components/HistoryItem';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { uniqueById } from '../utils/uniqueById';
 import { Fab } from '../components/Fab';
@@ -44,9 +44,6 @@ function AutoLoadMore({ onVisible, disabled, children }: { onVisible: () => void
   return <div ref={ref}>{children}</div>;
 }
 
-/** Said once, on the first record: how a record is changed or deleted without opening it. */
-const SWIPE_HINT_KEY = 'petzy:swipeHintSeen';
-
 export function Dashboard() {
   const navigate = useNavigate();
   const { selectedPetId, getSelectedPet, pets, isFetched: petsFetched, isError: petsFailed, refetchPets } = usePet();
@@ -55,13 +52,6 @@ export function Dashboard() {
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
-  const [swipeHintSeen, setSwipeHintSeen] = useState(() => {
-    try {
-      return localStorage.getItem(SWIPE_HINT_KEY) === '1';
-    } catch {
-      return true;
-    }
-  });
   const invites = usePetInvites();
   useEffect(() => {
     if (pets.length > 0) rememberHavingPets(username);
@@ -235,65 +225,19 @@ export function Dashboard() {
             ) : error ? (
               <LoadError what="ленту" onRetry={refetch} />
             ) : allItems.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '32px 16px',
-                color: 'var(--app-text-secondary)',
-              }}>
-                {/* One way to add, the round «+», not two buttons for one action on one screen. */}
-                <p style={{ margin: 0, fontSize: 'var(--text-md)' }}>
-                  Лента пока пуста. Нажмите «+», чтобы записать первое событие
-                </p>
-              </div>
+              <EmptyState
+                icon={Notebook}
+                title="Лента пока пуста"
+                description="Кормления, вес, лекарства и прививки появятся здесь, как только вы их добавите"
+                // The round «+» is right there and does the same thing. The button is here anyway:
+                // an empty state that only says what to do elsewhere leaves someone who does not
+                // see the corner (or cannot press it) with nothing to press.
+                actionLabel="Записать событие"
+                onAction={() => setActionSheetVisible(true)}
+              />
             ) : (
               <>
-                {!swipeHintSeen && (
-                  <div
-                    role="note"
-                    style={{
-                      margin: '0 0 12px',
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'var(--app-accent-soft)',
-                      color: 'var(--app-accent-deep)',
-                      fontSize: 'var(--text-sm)',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px 12px',
-                    }}
-                  >
-                    <span style={{ flex: '1 1 14em' }}>Смахните запись влево, чтобы удалить, вправо, чтобы изменить</span>
-                    {/* A button that looks like one: a bare bold word at the end of a sentence read as part of the sentence. */}
-                    <button
-                      type="button"
-                      className="touch-target"
-                      style={{
-                        flexShrink: 0,
-                        minHeight: 'var(--touch-min)',
-                        padding: '0 18px',
-                        border: '1.5px solid currentColor',
-                        borderRadius: 'var(--radius-md)',
-                        background: 'transparent',
-                        font: 'inherit',
-                        fontWeight: 600,
-                        color: 'inherit',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => {
-                        setSwipeHintSeen(true);
-                        try {
-                          localStorage.setItem(SWIPE_HINT_KEY, '1');
-                        } catch {
-                          /* seen for this visit only */
-                        }
-                      }}
-                    >
-                      Понятно
-                    </button>
-                  </div>
-                )}
+                <SwipeHint />
                 {Object.entries(groupedItems).map(([dateStr, itemsForDate]) => (
                   <div key={dateStr} style={{ marginBottom: '16px' }}>
                     {/* Date separator */}
@@ -320,7 +264,6 @@ export function Dashboard() {
                             item={item}
                             config={config}
                             type={type}
-                            activeTab={type}
                           />
                         );
                       })}
