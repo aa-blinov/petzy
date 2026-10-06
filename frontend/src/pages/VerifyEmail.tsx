@@ -5,14 +5,16 @@ import { isAxiosError } from 'axios';
 import { authService } from '../services/auth.service';
 import { AuthShell } from '../components/AuthShell';
 
-type State = 'checking' | 'done' | 'dead' | 'taken' | 'failed';
+type State = 'checking' | 'done' | 'dead' | 'spent' | 'taken' | 'failed' | 'refused';
 
 /** The link from «Petzy: подтвердите почту». Works without being signed
  *  in: the letter may be opened on another device. */
 export function VerifyEmail() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
-  const [state, setState] = useState<State>(token ? 'checking' : 'dead');
+  // A link with nothing in it was never a link: saying «устарела» about it
+  // sends a person looking for a letter that was never opened.
+  const [state, setState] = useState<State>(token ? 'checking' : 'spent');
   const once = useRef(false);
 
   // What the link says once the server has looked at it.
@@ -21,6 +23,8 @@ const ask = useCallback(
       authService.verifyEmail(token).then(
         () => 'done' as State,
         (err) => {
+          const status = isAxiosError(err) ? err.response?.status : undefined;
+          if (status === 429) return 'refused' as State;
           const code = isAxiosError<{ code?: string }>(err) ? err.response?.data?.code : undefined;
           return code === 'account_link_invalid' ? 'dead' : code === 'account_email_taken' ? 'taken' : 'failed';
         },
@@ -44,9 +48,17 @@ const ask = useCallback(
   const text: Record<State, string> = {
     checking: 'Подтверждаем почту…',
     done: 'Почта подтверждена. Если забудете пароль, ссылка для нового придёт на неё',
-    dead: 'Ссылка устарела или уже использована. Отправить новое письмо можно в Настройках, в разделе «Почта»',
+    // How long the link lives is said with the reason it failed, so a person
+    // who opens the letter tomorrow understands why it worked today and
+    // doesn't today.
+    dead: 'Ссылка устарела или уже использована. Она работает сутки. Отправить новое письмо можно в Настройках, в разделе «Почта»',
+    spent: 'В ссылке нет кода подтверждения. Откройте её из письма целиком, а не из переписки, или отправьте письмо ещё раз в Настройках, в разделе «Почта»',
     taken: 'Эта почта уже подтверждена в другом аккаунте Petzy. Укажите другую в Настройках',
     failed: 'Не удалось подтвердить почту. Проверьте соединение и попробуйте ещё раз',
+    // The server allows thirty confirmations an hour. That is not a dead
+    // connection, and saying so sends the person to switch off Wi-Fi for
+    // nothing.
+    refused: 'Слишком много попыток подтверждения с этого адреса. Попробуйте позже',
   };
 
   // The words name the way out, so each state offers it: the letter is often opened on a device
@@ -54,8 +66,19 @@ const ask = useCallback(
   // instead of the settings section the sentence told them about.
   const links: Record<State, { to: string; label: string }[]> = {
     checking: [],
-    done: [{ to: '/', label: 'Открыть Petzy' }],
+    done: [
+      { to: '/', label: 'Открыть Petzy' },
+      // The address was just confirmed: the section that shows it, and the
+      // one place a letter can be asked for again, is one tap away instead of
+      // a hunt through the settings.
+      { to: '/settings/email', label: 'Настройки, Почта' },
+    ],
     dead: [
+      { to: '/', label: 'Открыть Petzy' },
+      { to: '/settings/email', label: 'Настройки, Почта' },
+      { to: '/login', label: 'Войти' },
+    ],
+    spent: [
       { to: '/', label: 'Открыть Petzy' },
       { to: '/settings/email', label: 'Настройки, Почта' },
       { to: '/login', label: 'Войти' },
@@ -66,6 +89,7 @@ const ask = useCallback(
       { to: '/login', label: 'Войти' },
     ],
     failed: [{ to: '/', label: 'Открыть Petzy' }],
+    refused: [{ to: '/', label: 'Открыть Petzy' }],
   };
 
   const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 };
