@@ -98,12 +98,23 @@ def summary(title):
 
 
 async def swipe_wheel(pg, ctx, column, items, up=True):
-    """Turn a wheel of antd Picker by touch, as a finger does: `items` items up (or down)."""
+    """Turn a wheel of antd Picker by touch, as a finger does: `items` items up (or down).
+
+    The finger lands in the middle of the picker's visible band, in the column asked for — not in
+    the middle of the wheel element. The wheel is translated so that the chosen item sits in the
+    middle, so its own box reaches up above the band; its centre then lands on the sheet's header
+    instead of on a row, and the swipe does nothing at all without an error. That is why it worked
+    for a chosen item high in the list and quietly failed from the middle down: a time of ten
+    o'clock in the evening, a date late in the month. The item's height comes from the chosen item,
+    which is the one guaranteed to be in view.
+    """
     cdp = await ctx.new_cdp_session(pg)
-    wheel = pg.locator(".adm-picker-view-column-wheel").nth(column)
-    box = await wheel.bounding_box()
-    h = (await pg.locator(".adm-picker-view-column-item").first.bounding_box())["height"]
-    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    view = pg.locator(".adm-picker-view").first
+    band = await view.bounding_box()
+    column_box = await pg.locator(".adm-picker-view-column").nth(column).bounding_box()
+    chosen = pg.locator(".adm-picker-view-column").nth(column).locator(".adm-picker-view-column-item-active").first
+    h = (await chosen.bounding_box())["height"]
+    x, y = column_box["x"] + column_box["width"] / 2, band["y"] + band["height"] / 2
     sign = -1 if up else 1
     await cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
     steps = 10

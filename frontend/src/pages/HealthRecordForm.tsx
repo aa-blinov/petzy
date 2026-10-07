@@ -11,7 +11,7 @@ import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Form } from 'antd-mobile';
+import { Button, Form, Switch } from 'antd-mobile';
 import { usePet } from '../hooks/usePet';
 import { useEventTypes } from '../hooks/useEventTypes';
 import type { EventType } from '../services/eventTypes.service';
@@ -519,7 +519,7 @@ export function HealthRecordForm() {
     );
   }
 
-  return (
+    return (
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
@@ -598,18 +598,32 @@ export function HealthRecordForm() {
                   {field.name === filledFromDefaults[filledFromDefaults.length - 1]?.name && (
                     // Under the last field that came filled, so that a value already there is not a surprise: where it came from and where to change it.
                     <p style={{ margin: '0 var(--spacing-md) var(--spacing-sm)', fontSize: 'var(--text-xs)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-                      Подставлено из значений по умолчанию питомца: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, снимите «Запоминается» под полем
+                      Подставлено из значений по умолчанию питомца: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, выключите «Запоминать» под полем
                     </p>
                   )}
                   {defaultableNames.has(field.name) && (
                     // Remembered for this pet: the next record of this kind starts with what is typed here, and another pet has its own.
-                    <div className="choice-block">
-                      <ChoiceChips label="Запоминание">
-                        <ChoiceChip pressed={isPinned(field.name)} onClick={() => setPinChanged((prev) => ({ ...prev, [field.name]: !isPinned(field.name) }))}>
-                          {isPinned(field.name) ? 'Запоминается для этого питомца' : 'Запомнить для этого питомца'}
-                        </ChoiceChip>
-                      </ChoiceChips>
-                    </div>
+                    // A switch, not one of the chips above: this is a setting that stays, not an answer to the field. A chip said the
+                    // opposite of itself when pressed («Запомнить» became «Запомняется», a longer word), so the target grew under the
+                    // thumb that was already on it, and the row below re-wrapped.
+                    <Form.Item
+                      // No description under it: in a horizontal form it lands between the label and the switch
+                      // and squeezes itself into a narrow strip. «Запоминать» beside a switch says itself, and the help
+                      // page explains what it does.
+                      label="Запоминать"
+                      extra={
+                        // The same reason as on ChoiceChip: the form opens with the first field holding the focus,
+                        // and leaving it puts a message about that field under it, which pushes this row down
+                        // before the finger is up. The tap would land on the row that used to be there.
+                        <div onMouseDown={(event) => event.preventDefault()}>
+                          <Switch
+                            aria-label="Запоминать"
+                            checked={isPinned(field.name)}
+                            onChange={() => setPinChanged((prev) => ({ ...prev, [field.name]: !isPinned(field.name) }))}
+                          />
+                        </div>
+                      }
+                    />
                   )}
                   {!isEditing && field.type === 'number' && (recentValues[field.name]?.length ?? 0) > 0 && (
                     // What was given or weighed last time is one tap, not typed from the start again.
