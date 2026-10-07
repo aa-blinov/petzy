@@ -7,7 +7,7 @@ import { deleteWithUndo } from '../utils/deferredDelete';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -236,6 +236,22 @@ export function HealthRecordForm() {
     resolver: zodResolver(schema),
     defaultValues
   });
+
+  // Which quick choice was pressed, and what it wrote. The chip is drawn pressed only while the
+  // fields still hold exactly that: change the time by hand afterwards and no chip is pressed
+  // again, which is the truth. The moment a chip wrote is remembered instead of recomputed from
+  // the clock, because «two hours ago» is a moving target: recomputed a minute into filling the
+  // form it would unmark itself under the finger that had just pressed it.
+  const [whenChoice, setWhenChoice] = useState<{ label: string; date: string; time: string } | null>(null);
+  const values = useWatch({ control: methods.control }) as Record<string, unknown>;
+  const whenIs = (label: string) =>
+    whenChoice?.label === label && whenChoice.date === values?.date && whenChoice.time === values?.time;
+  /** A «as before» chip is pressed while its value is still the one in the field. A Russian pad
+   *  writes «12,4» where the record holds «12.4», so both sides are read as one number. */
+  const recentIs = (field: string, value: string) => {
+    const inField = String(values?.[field] ?? '').replace(',', '.').trim();
+    return inField !== '' && inField === value.replace(',', '.').trim();
+  };
 
   const {
     handleSubmit,
@@ -554,11 +570,14 @@ export function HealthRecordForm() {
                     {WHEN_CHOICES.map((choice) => (
                       <ChoiceChip
                         key={choice.label}
-                        pressed={false}
+                        pressed={whenIs(choice.label)}
                         onClick={() => {
                           const at = choice.at(new Date());
-                          methods.setValue('date', formatDate(at), { shouldDirty: true, shouldValidate: true });
-                          methods.setValue('time', formatTime(at), { shouldDirty: true, shouldValidate: true });
+                          const date = formatDate(at);
+                          const time = formatTime(at);
+                          setWhenChoice({ label: choice.label, date, time });
+                          methods.setValue('date', date, { shouldDirty: true, shouldValidate: true });
+                          methods.setValue('time', time, { shouldDirty: true, shouldValidate: true });
                         }}
                       >
                         {choice.label}
@@ -598,7 +617,7 @@ export function HealthRecordForm() {
                       <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }} aria-hidden>Как раньше</span>
                       <ChoiceChips label="Как раньше">
                         {recentValues[field.name].map((value) => (
-                          <ChoiceChip key={value} pressed={false} onClick={() => methods.setValue(field.name, value, { shouldDirty: true, shouldValidate: true })}>
+                          <ChoiceChip key={value} pressed={recentIs(field.name, value)} onClick={() => methods.setValue(field.name, value, { shouldDirty: true, shouldValidate: true })}>
                             {value.replace('.', ',')}
                           </ChoiceChip>
                         ))}
