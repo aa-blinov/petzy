@@ -15,8 +15,10 @@ import { isAxiosError } from 'axios';
 export function passwordProblem(password: string, username = ''): string | null {
   if (!password) return null;
   if (password.length < 8) return 'Не короче 8 символов';
-  // bcrypt hashes the first 72 bytes only, the rest is silently cut off.
-  if (new TextEncoder().encode(password).length > 72) return 'Не длиннее 72 байт';
+  // bcrypt hashes the first 72 bytes only, the rest is silently cut off. The bound is in
+  // bytes and stays that way for the check; what the person is told is the server's own
+  // wording, because "72 байта" is a fact about the hash, not about a password they chose.
+  if (new TextEncoder().encode(password).length > 72) return 'Пароль слишком длинный';
   if (username && password.toLowerCase() === username.toLowerCase()) {
     return 'Пароль не должен совпадать с логином';
   }

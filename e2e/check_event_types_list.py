@@ -53,6 +53,17 @@ async def main():
             await pg.goto(BASE + "/event-types/weight/edit")
             await pg.wait_for_timeout(1500)
             form = await pg.inner_text("body")
+            # Every field of this form is visible and labelled by eye, but the labels were plain
+            # text: a screen reader named nothing. Each control answers by its own name now.
+            named = await pg.evaluate(
+                """() => [...document.querySelectorAll('main input, main textarea')]
+                  .filter((el) => el.offsetParent !== null)
+                  .filter((el) => {
+                    const byId = el.id && document.querySelector(`label[for="${el.id}"]`);
+                    return !(byId || el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.closest('label'));
+                  }).length"""
+            )
+            check("у каждого поля формы типа события есть имя для скринридера", named == 0, f"без имени: {named}")
             check("сказано, что встроенный тип меняет администратор", "меняет его администратор" in form)
             check(
                 "у чужого типа нет кнопки сохранения",

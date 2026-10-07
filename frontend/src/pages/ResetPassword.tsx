@@ -121,7 +121,7 @@ export function ResetPassword() {
           label={<span style={{ fontWeight: 500 }}>Новый пароль</span>}
           description={shows('password') && passwordError
             ? <FieldError message={passwordError} />
-            : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа</span>}
+            : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>Не короче 8 символов, хотя бы три разных</span>}
         >
           <Input type="password" value={password} onChange={setPassword} onBlur={touch('password')} placeholder="Новый пароль" clearable autoComplete="new-password" disabled={isLoading} maxLength={PASSWORD_MAX} />
         </Form.Item>

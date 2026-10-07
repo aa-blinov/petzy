@@ -108,7 +108,7 @@ async def main():
         )
         check(
             "and spells the rules out",
-            await pg.get_by_text("не длиннее 72 байт").count() >= 1,
+            await pg.get_by_text("Не короче 8 символов, хотя бы три разных и не логин").count() >= 1,
         )
         await pg.get_by_placeholder("Новый пароль", exact=True).fill("Тест-М-123")
         await pg.get_by_placeholder("Повторите новый пароль").fill("Тест-М-123")

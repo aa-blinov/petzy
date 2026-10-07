@@ -72,11 +72,16 @@ function newDraftKey() {
 /** A real label above a control — a bare placeholder reads as empty, not
  *  as "here's what this is", so every input in the field-builder card
  *  gets one of these instead. */
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--app-text-tertiary)', marginBottom: '4px' }}>
+function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+  const look = { fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--app-text-tertiary)', marginBottom: '4px' } as const;
+  // A control that takes no id (the selector) is named by its own aria-label, and its label
+  // stays a caption above it. Everything else is a real label pointing at the control.
+  return htmlFor ? (
+    <label htmlFor={htmlFor} style={look}>
       {children}
-    </div>
+    </label>
+  ) : (
+    <div style={look}>{children}</div>
   );
 }
 
@@ -373,8 +378,15 @@ export function EventTypeForm() {
             input, switch and picker, and it survives the next field added to the form. */}
         <fieldset disabled={!canEdit} style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
         <div className="safe-area-padding form-section">
-          <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
+          <label
+            htmlFor="event-type-label"
+            className="section-header"
+            style={{ marginBottom: 'var(--spacing-sm)', display: 'block' }}
+          >
+            Название
+          </label>
           <Input
+            id="event-type-label"
             className="input-row"
             value={label}
             onChange={(v) => { setLabel(v); setLabelError(null); }}
@@ -465,8 +477,9 @@ export function EventTypeForm() {
                   </button>
                 </div>
 
-                <FieldLabel>Подпись поля</FieldLabel>
+                <FieldLabel htmlFor={`field-label-${field.key}`}>Подпись поля</FieldLabel>
                 <Input
+                  id={`field-label-${field.key}`}
                   className="input-row"
                   value={field.label}
                   onChange={(v) => updateField(field.key, { label: v })}
@@ -480,6 +493,7 @@ export function EventTypeForm() {
 
                 <FieldLabel>Тип поля</FieldLabel>
                 <Selector
+                  aria-label={`Тип поля ${index + 1}`}
                   options={FIELD_TYPE_OPTIONS}
                   value={[field.type]}
                   onChange={(v) => updateField(field.key, { type: (v[0] as FieldType) ?? 'text' })}
@@ -489,8 +503,9 @@ export function EventTypeForm() {
 
                 {field.type === 'select' && (
                   <>
-                    <FieldLabel>Варианты, по одному на строку</FieldLabel>
+                    <FieldLabel htmlFor={`field-options-${field.key}`}>Варианты, по одному на строку</FieldLabel>
                     <TextArea
+                      id={`field-options-${field.key}`}
                       value={field.optionsText}
                       onChange={(v) => updateField(field.key, { optionsText: v })}
                       placeholder={'Мало\nСредне\nМного'}
@@ -571,7 +586,9 @@ export function EventTypeForm() {
                 </>
               )}
               <FieldError message={chartError ?? undefined} />
+              <FieldLabel htmlFor="event-type-chart-axis">Подпись оси</FieldLabel>
               <Input
+                id="event-type-chart-axis"
                 className="input-row"
                 value={chartValueLabel}
                 onChange={setChartValueLabel}

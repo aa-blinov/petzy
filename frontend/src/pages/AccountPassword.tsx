@@ -84,7 +84,7 @@ export function AccountPassword() {
           <Form.Item label="Текущий пароль" description={shows('current') && !current ? <FieldError message="Введите текущий пароль" /> : undefined}>
             <Input type="password" value={current} onChange={setCurrent} onBlur={touch('current')} autoComplete="current-password" placeholder="Текущий пароль" />
           </Form.Item>
-          <Form.Item label="Новый пароль" description={shows('next') && nextError ? <FieldError message={nextError} /> : 'Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа, не совпадает с логином'}>
+          <Form.Item label="Новый пароль" description={shows('next') && nextError ? <FieldError message={nextError} /> : 'Не короче 8 символов, хотя бы три разных и не логин'}>
             <Input type="password" value={next} onChange={setNext} onBlur={touch('next')} autoComplete="new-password" placeholder="Новый пароль" />
           </Form.Item>
           <Form.Item label="Новый пароль ещё раз" description={shows('repeat') && repeatError ? <FieldError message={repeatError} /> : undefined}>

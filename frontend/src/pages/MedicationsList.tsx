@@ -504,10 +504,18 @@ export function MedicationsList() {
                                                 <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h2>
                                                 {courseTag(med) && <span className="course-tag">{courseTag(med)}</span>}
                                             </div>
-                                            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                                                {med.strength ? `${med.strength}` : med.type}
-                                                <span style={{ margin: `0 var(--spacing-xs)`, color: 'var(--app-divider-color)' }}>|</span>
-                                                По {formatAmount(med.default_dose || 1)} {med.dose_unit || 'шт.'}
+                                            {/* The strength and the dose stand side by side with a gap. The pipe that was here
+                                                joined two facts with a glyph, which is what a gap is for. */}
+                                            <p style={{
+                                                margin: 0,
+                                                display: 'flex',
+                                                alignItems: 'baseline',
+                                                gap: 'var(--spacing-sm)',
+                                                fontSize: 'var(--text-sm)',
+                                                color: 'var(--app-text-secondary)',
+                                            }}>
+                                                <span>{med.strength ? `${med.strength}` : med.type}</span>
+                                                <span>По {formatAmount(med.default_dose || 1)} {med.dose_unit || 'шт.'}</span>
                                             </p>
                                         </div>
                                     </div>
