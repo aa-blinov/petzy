@@ -22,7 +22,7 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import apply_pagination, parse_event_datetime_safe, valid_tz
+from web.helpers import apply_pagination, parse_event_datetime_safe, ru_dose_unit, valid_tz
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -784,8 +784,9 @@ def get_history_timeline():
             med = meds.get(record.get("medication_id"))
             if med:
                 record["medication_name"] = med.get("name", "Unknown")
-                # «1 таб», not a bare «1», on the feed.
-                record["dose_unit"] = med.get("dose_unit") or ""
+                # «1 таб», not a bare «1», on the feed. A unit from a script or an older
+                # client is read in Russian here; the course keeps what was written.
+                record["dose_unit"] = ru_dose_unit(med.get("dose_unit"))
             all_records.append(record)
 
     all_records.sort(key=lambda x: x.get("date_time", ""), reverse=True)
