@@ -372,7 +372,7 @@ export function EventTypeForm() {
         {/* A fieldset is what makes the whole form read-only: one property instead of a `disabled` on every
             input, switch and picker, and it survives the next field added to the form. */}
         <fieldset disabled={!canEdit} style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
-        <div className="safe-area-padding">
+        <div className="safe-area-padding form-section">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Название</h2>
           <Input
             className="input-row"
@@ -387,7 +387,7 @@ export function EventTypeForm() {
           {fieldNote({ error: labelError ?? undefined, value: label, max: 100 })}
         </div>
 
-        <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding form-section">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Иконка</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: '8px' }}>
             {ICON_OPTIONS.map(({ key: iconKey, Icon, label: iconLabel }) => (
@@ -412,7 +412,7 @@ export function EventTypeForm() {
           </div>
         </div>
 
-        <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding form-section">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Цвет</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
             {Object.values(TILE_COLORS).map((c) => (
@@ -434,7 +434,7 @@ export function EventTypeForm() {
           </div>
         </div>
 
-        <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding form-section">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
             Поля {fields.length > 0 && `(${fields.length})`}
           </h2>
@@ -534,7 +534,7 @@ export function EventTypeForm() {
           </Button>
         </div>
 
-        <div className="safe-area-padding" style={{ marginTop: 'var(--spacing-lg)' }}>
+        <div className="safe-area-padding form-section">
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>График в истории</h2>
           <Selector
             options={[

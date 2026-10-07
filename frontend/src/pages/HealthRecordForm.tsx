@@ -614,7 +614,7 @@ export function HealthRecordForm() {
                     // thumb that was already on it, and the row below re-wrapped.
                     // A block of its own, not a row of the form: the label column here is 7em, and any label of two words
                     // breaks onto a second line and takes the row from 48px to 70px. It also has room to say what the switch does.
-                    <div className="choice-block">
+                    <div className="choice-block choice-block--remember">
                       <div className="remember-row">
                         <span className="remember-row__label">Запоминать значения</span>
                         <div onMouseDown={(event) => event.preventDefault()}>
