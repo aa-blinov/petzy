@@ -1,7 +1,8 @@
 """The small rules of the card's parts and of the note to the vet:
 
 - a part of the card where the block already has its own «Записать вес» or «Указать» does not carry the round «+» again;
-  the part that asks between two kinds still does;
+- «Профилактика» and «Визиты» ask between two kinds and keep the round «+», so their blocks carry no door of their own:
+  two ways to the same record on one screen is one too many, and the card itself keeps its «+»;
 - the part names the pet and offers the way to the list of pets when there is more than one;
 - the five-clinic cap is said instead of the «+ Добавить клинику» button simply disappearing;
 - an answer to «К приёму» that was taken back is not a change, so leaving asks nothing.
@@ -15,12 +16,20 @@ from common import BASE, api, async_playwright, check, login, new_page, summary
 
 CLINICS = [{"name": f"Клиника {i}", "phone": "+7 701 000 00 00", "doctors": []} for i in range(1, 6)]
 
+# The block's own «Добавить», and not the round «+»: on the parts that ask between two kinds the «+» is
+# signed «Добавить» too, so counting by accessible name would count the very button that is meant to stay.
+BLOCK_DOORS = """() => [...document.querySelectorAll('main button')]
+  .filter((b) => !b.classList.contains('app-fab') && b.textContent.trim() === 'Добавить').length"""
+
 
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel="chrome")
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
+        # The pet with records in them: the rule is about a block that has something to put a door on, and
+        # an empty block draws none, so the scratch pet of this check would pass it without trying.
+        rex = await pg.evaluate("JSON.parse(localStorage.getItem('selectedPetId'))")
         pid = None
         try:
             await pg.goto(BASE + "/pets/new")
@@ -50,10 +59,25 @@ async def main():
             await pg.wait_for_timeout(1500)
             check("it opens the list of pets", pg.url.endswith("/pets"), pg.url.replace(BASE, ""))
 
-            # a part that asks between two kinds keeps the round «+»
-            await pg.goto(BASE + f"/pets/{pid}/medical-card/prevention")
+            # One way to add on a part: the round «+». The blocks used to carry a «Добавить» of their own, and
+            # «Визиты» a list «Ещё можно добавить», all of them opening the same forms the «+» opens. Two ways
+            # to one record on one screen: the person reads which of them is the way, and guesses.
+            for part, label in (("prevention", "Профилактика"), ("visits", "Визиты")):
+                await pg.goto(BASE + f"/pets/{rex}/medical-card/{part}")
+                await pg.wait_for_timeout(2000)
+                check(f"«{label}» keeps the round «+»", await pg.locator(".app-fab").count() == 1)
+                check(
+                    f"«{label}»: its blocks carry no second «Добавить»",
+                    await pg.evaluate(BLOCK_DOORS) == 0,
+                    f"{await pg.evaluate(BLOCK_DOORS)} шт., "
+                    + (await pg.inner_text("main"))[:100].replace(chr(10), " | "),
+                )
+
+            # The card itself keeps its «+» too: it is the only way from there to an allergy, a medicine, a
+            # weight or a document, so removing it would take the card out of the business of being filled.
+            await pg.goto(BASE + f"/pets/{rex}/medical-card")
             await pg.wait_for_timeout(2000)
-            check("«Профилактика» keeps the round «+»", await pg.locator(".app-fab").count() == 1)
+            check("the card keeps the round «+» in the mode that edits", await pg.locator(".app-fab").count() == 1)
 
             # the clinic cap is said, not silently enforced
             saved = await api(

@@ -89,18 +89,15 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
         <>
           <KindSection kind="visit" card={card} petId={petId} hidden={hidden} navigate={navigate} />
           <KindSection kind="procedure" card={card} petId={petId} hidden={hidden} navigate={navigate} />
+          {/* What is missing is said, and where to put it is the one door of this screen, the round «+» below. The list of
+              missing kinds used to be a block of buttons of its own: the same two forms as the sheet under «+», one screen
+              over. */}
           {empty.length > 0 && (
-            <Section id="medcard-optional" title={empty.length > 1 ? 'Ещё можно добавить' : MEDICAL_KIND_LABELS[empty[0]].section}>
-              <ul className="medcard__list">
-                {empty.map((kind) => (
-                  <li key={kind} className="medcard__row" style={{ padding: 0 }}>
-                    <button type="button" className="medcard__row-button medcard__todo-row" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=${kind}`)}>
-                      <span className="medcard__row-title">{MEDICAL_KIND_LABELS[kind].section}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </Section>
+            <p className="medcard__empty">
+              {empty.length > 1
+                ? 'Визитов и операций пока нет. «+» внизу откроет запись'
+                : `${MEDICAL_KIND_LABELS[empty[0]].section} пока нет. «+» внизу откроет запись`}
+            </p>
           )}
         </>
       );
@@ -226,7 +223,8 @@ const SECTION_ADDS: Record<CardSectionKey, { label: string; to: (petId: string) 
 };
 
 /** Where the block of the section already carries its own «Добавить», «Записать вес» or «Указать», the round «+» only
-    repeats that door. It stays where the block has no door of its own, and where it asks between two kinds. */
+    repeats that door. It stays where the block has no door of its own, and where it asks between two kinds. «Профилактика»
+    and «Визиты» ask between two kinds, and their blocks carry no door at all, so one «+» opens the whole screen. */
 const SECTION_OPENS_ITSELF: ReadonlySet<CardSectionKey> = new Set(['risks', 'meds', 'weight', 'clinic', 'life']);
 
 /** The round «+» of one part of the card: where there is one thing to add it opens the screen, where there are two

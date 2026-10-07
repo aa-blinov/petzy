@@ -272,6 +272,8 @@ Soft and composed: one primary per screen.
 ### The round «+»
 One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). What its sheet offers depends on the screen: the feed's is the diary of events («Добавить запись»), the medical card's, in the mode that edits, is «Что записать?» (a vaccination, a treatment, a visit, an allergy, a medicine, a weight, a document). The reading mode of the card has none, because nothing is added there.
 
+**One door per screen.** A screen carries the round «+» only where its blocks carry no door of their own: a block with its own «Добавить», «Записать вес» or «Указать» next to what it adds does not get one as well. A part of the card that asks between two kinds keeps the «+» (it is the only way in) and its blocks carry no door, so a person reads one way to add rather than guessing between two. The card itself keeps its «+» because it is the only way from there to an allergy, a medicine, a weight or a document.
+
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.
 - **Target:** at least 44px (the `--touch-min` token) to press even when the chip is drawn smaller.

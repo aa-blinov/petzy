@@ -10,6 +10,11 @@ from common import BASE, api, async_playwright, check, login, new_page, summary,
 
 PET = "Тест-М"
 
+# The block's own «Добавить», and not the round «+»: on the parts that ask between two kinds the «+» is
+# signed «Добавить» too, so counting by accessible name would count the very button that is meant to stay.
+BLOCK_DOORS = """() => [...document.querySelectorAll('main button')]
+  .filter((b) => !b.classList.contains('app-fab') && b.textContent.trim() === 'Добавить').length"""
+
 
 async def main():
     async with async_playwright() as p:
@@ -65,6 +70,22 @@ async def main():
                 "Прививка" in body and "Обработка от паразитов" in body and "Визит" not in body,
                 body[-160:].replace(chr(10), " | "),
             )
+            # An empty part says what is missing and where to put it, rather than a list of doors beside
+            # the «+»: with no records of its own the «+» below is the way in.
+            for part, missing in (
+                ("prevention", "Прививок и обработок пока нет"),
+                ("visits", "Визитов и операций пока нет"),
+            ):
+                await pg.goto(BASE + f"/pets/{pid}/medical-card/{part}")
+                body = await wait_until(pg, lambda t: "пока нет" in t)
+                check(
+                    f"an empty «{part}» points at the «+» and adds no door of its own",
+                    missing in body
+                    and "«+» внизу" in body
+                    and await pg.evaluate(BLOCK_DOORS) == 0
+                    and await pg.locator(".app-fab").count() == 1,
+                    body[:160].replace(chr(10), " | "),
+                )
             # a record opened without a kind asks which kind
             await pg.goto(BASE + f"/pets/{pid}/medical-records/new")
             body = await wait_until(pg, lambda t: "Не выбрано, что записать" in t)
