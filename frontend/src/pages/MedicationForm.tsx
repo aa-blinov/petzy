@@ -407,7 +407,7 @@ export function MedicationForm() {
         <div className="page-container">
             <div className="max-width-container">
                 <div className="safe-area-padding" style={{
-                    marginBottom: 'var(--spacing-lg)',
+                    marginBottom: selectedPetName ? 0 : 'var(--spacing-lg)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -417,8 +417,11 @@ export function MedicationForm() {
                         {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
                     </h1>
                 </div>
+                {/* The pet's name is the line the title is about, so it sits 4px under it (the
+                    spacing table's title and the line it is about) and carries the room before
+                    the form. The title block's own margin is that room only when there is no line. */}
                 {selectedPetName && (
-                    <p className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
+                    <p className="safe-area-padding" style={{ margin: 'var(--spacing-xs) 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
                         Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
                     </p>
                 )}

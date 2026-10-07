@@ -80,7 +80,7 @@ export function EventTypesSettings() {
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             Типы событий
           </h1>
-          <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+          <p style={{ margin: 'var(--spacing-xs) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем.{' '}
             {isAdmin
               ? 'Встроенные типы в списке ниже, меняет их администратор'

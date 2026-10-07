@@ -129,7 +129,7 @@ export function Help() {
           <h1 className="display-headline" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             Справка
           </h1>
-          <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+          <p style={{ margin: 'var(--spacing-xs) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Ответы на частые вопросы и как устроены основные экраны
           </p>
         </div>
