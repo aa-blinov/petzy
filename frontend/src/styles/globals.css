@@ -206,6 +206,11 @@
     --touch-min: 44px;
     /* The main action of a screen or a sheet (a large button); a button inside a card or a row is --touch-min tall. */
     --btn-height: 48px;
+    /* One height for a form row that holds a single field. Left to the control, the row was
+       47.5px with a switch, 49px with a text input and 50.5px with a picker, so the hairlines
+       between the fields of one card stepped by up to 3px down the form. 51px is the tallest of
+       the three, rounded up: a taller control is untouched, a shorter one grows and centres. */
+    --form-row-height: 51px;
 
     --line-height-tight: 1.2;
     --line-height-normal: 1.5;
@@ -430,6 +435,10 @@ main#main-content {
     --border-inner: solid 1px var(--app-divider-color) !important;
     --border-top: none !important;
     --border-bottom: none !important;
+    /* One height for the row, so the hairlines between the fields of a card fall on one
+       rhythm whatever the control inside is. A row with a note or a textarea keeps the
+       height its content asks for. */
+    min-height: var(--form-row-height);
 }
 
 /* Section headers (Form.Header → .adm-list-header) need the same

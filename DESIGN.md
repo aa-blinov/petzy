@@ -204,6 +204,8 @@ Sizes are written in rem tokens (`--text-xs` to `--text-display`), never in px: 
 
 One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (2, 4, 8, 12, 16, 24, 32px, the `--spacing-*` tokens); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. Each kind of gap has one value, listed under Spacing rules. The page reserves room for the fixed top bar (64px) and the bottom bar.
 
+A form row that holds one field is one height (`--form-row-height`, 51px) whatever control is in it, a switch, a text input or a picker, so the hairlines between the fields of a card keep one rhythm; a row with a note, a textarea or a group of choices is as tall as its content asks for.
+
 Responsive behaviour is contextual rather than stretched:
 - **Phone, portrait** (the design's home): top bar, one column, bottom tab bar of five sections; below 360px the tab labels tighten to 10px. The «Медкарта» tab carries a red dot, ringed in the bar's ground and read aloud as «есть просроченное», while a vaccination or a treatment of the chosen pet is overdue: the one signal that reaches every screen. With several pets the pet switcher carries the same dot when a pet that is not chosen has something overdue, and the picker says which one and what, in words, under its name. Red stays for overdue only.
 - **Phone, landscape** (height 500px or less): a 48px top bar and a 40px tab bar with labels beside their icons; content and tabs keep clear of the notch.

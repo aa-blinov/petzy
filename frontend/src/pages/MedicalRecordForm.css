@@ -90,7 +90,8 @@
 }
 
 .medrec__pet {
-    margin: 2px 0 0;
+    /* 4px, the gap the spacing table gives a title and the line it is about. */
+    margin: var(--spacing-xs) 0 0;
     font-size: var(--text-md);
     color: var(--app-text-secondary);
 }

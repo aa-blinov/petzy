@@ -475,7 +475,7 @@ export function PetForm() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
-          marginBottom: 'var(--spacing-lg)',
+          marginBottom: readOnly ? 0 : 'var(--spacing-lg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -486,8 +486,10 @@ export function PetForm() {
           </h1>
         </div>
 
+        {/* 4px under the title: this note is the line the title is about, and it carries the
+            room before the form. The title block's own margin is that room only without it. */}
         {readOnly && (
-          <p className="safe-area-padding" role="note" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
+          <p className="safe-area-padding" role="note" style={{ margin: 'var(--spacing-xs) 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
             Карточку питомца меняет владелец. Вам можно смотреть её и добавлять записи, а когда питомец больше не нужен, выйти из доступа
           </p>
         )}

@@ -438,7 +438,9 @@ export function EventTypeForm() {
           <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>
             Поля {fields.length > 0 && `(${fields.length})`}
           </h2>
-          <p style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+          {/* No room under this text: the button below carries it (12px), so the pair is one gap and
+              not two summed (8px here plus 12px there made 20px, off the spacing ladder). */}
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Дата, время и комментарий добавляются автоматически. Здесь только то, что нужно именно этому типу
           </p>
 

@@ -371,7 +371,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
-          <p style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+          <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
             Питомец: {pet.name}. Оформление видят все, у кого есть доступ к питомцу, а менять его можете только вы
           </p>
         </div>

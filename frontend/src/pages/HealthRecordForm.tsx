@@ -519,11 +519,16 @@ export function HealthRecordForm() {
     );
   }
 
-    return (
+  // The line under the title belongs to it (4px, the gap the spacing table gives a title and
+  // the line it is about). The header block's own bottom margin is the room before whatever
+  // comes after the pair, so when the line is there the margin sits on the line instead.
+  const hasByline = Boolean(petName || (isEditing && recordedBy));
+
+  return (
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{
-          marginBottom: 'var(--spacing-lg)',
+          marginBottom: hasByline ? 0 : 'var(--spacing-lg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -538,8 +543,8 @@ export function HealthRecordForm() {
             and is empty when the app was opened with a chosen pet but no saved name (a fresh install,
             storage cleared), which hid the line entirely. The two lines are independent: who wrote the
             record down is worth knowing even when the pet's name is not to hand. */}
-        {(petName || (isEditing && recordedBy)) && (
-          <div className="safe-area-padding" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)' }}>
+        {hasByline && (
+          <div className="safe-area-padding" style={{ margin: 'var(--spacing-xs) 0 var(--spacing-md)', color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)' }}>
             {petName && (
               <p style={{ margin: 0 }}>
                 Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{petName}</strong>
