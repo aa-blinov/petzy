@@ -70,7 +70,7 @@ graph TD
 | «Отменить» возвращает запись, лекарство, документ, питомца и приём | `content/help.ts:53` | `deleteWithUndo` (`utils/deferredDelete.ts:63`), `showUndo` (`utils/undo.ts:22`), `useDeletePet` (`hooks/useDeletePet.ts:5`) | Есть |
 | «Удалить запись» внизу формы | `content/help.ts:31` | `pages/HealthRecordForm.tsx:540`, `pages/MedicalRecordForm.tsx:932` | Есть |
 | «Пропустить приём» на Ленте и в списке лекарств | `content/help.ts:46` | `pages/MedicationsList.tsx:745`, `components/NextDoseWidget.tsx:308` | Есть |
-| «Запомнить для этого питомца» под полем | `content/help.ts:194` | `pages/HealthRecordForm.tsx:461` | Есть |
+| «Запоминать» под полем | `content/help.ts:194` | `pages/HealthRecordForm.tsx:461` | Есть |
 | Отклонение больше чем на 15%, у кормления 35% | `content/help.ts:117` | `web/trend_alerts.py:31`, `web/builtin_event_types.py:45` | Есть |
 | Нужно хотя бы три прошлые записи | `content/help.ts:117` | `MIN_HISTORY_FOR_BASELINE = 3` (`web/trend_alerts.py:19`) | Есть |
 | «Напомнить за» по умолчанию 3 дня | `content/help.ts:124` | `inventory_warning_days: 3` (`pages/MedicationForm.tsx:180`) | Есть |

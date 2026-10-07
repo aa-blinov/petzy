@@ -73,6 +73,39 @@ async def main():
 
         try:
             await open_weight_form(pg)
+
+            # The «запоминать» switch, tapped on the form as it opens. The weight field holds the focus
+            # then, and it is empty: leaving it says what is still missing, that line appears under the
+            # field, and everything below moves down before the finger is up. Without a guard on the press
+            # the tap lands on the row that used to be there and the switch never moves.
+            sw = pg.locator('[role="switch"][aria-label="Запоминать"]')
+            await sw.scroll_into_view_if_needed()
+            await pg.wait_for_timeout(400)
+            await sw.click()
+            await pg.wait_for_timeout(400)
+            check(
+                "the «запоминать» switch takes the tap on the form as it opens, focus and all",
+                await sw.get_attribute("aria-checked") == "true",
+                await sw.get_attribute("aria-checked"),
+            )
+            size_on = await sw.bounding_box()
+            await sw.click()
+            await pg.wait_for_timeout(400)
+            size_off = await sw.bounding_box()
+            check(
+                "and takes it back, at the same size both ways",
+                await sw.get_attribute("aria-checked") == "false"
+                and abs(size_on["width"] - size_off["width"]) < 1
+                and abs(size_on["height"] - size_off["height"]) < 1,
+                f"включён {round(size_on['width'])}x{round(size_on['height'])}, выключен {round(size_off['width'])}x{round(size_off['height'])}",
+            )
+
+            # The weight is in now, so nothing appears or disappears under the finger for the rest:
+            # an empty field with the focus says what is still missing when it is left, and that line
+            # moves everything below it.
+            await pg.fill("#weight", "12,4")
+            await pg.wait_for_timeout(300)
+
             body = await pg.inner_text("body")
             check(
                 "the quick row of times is on a new record",
