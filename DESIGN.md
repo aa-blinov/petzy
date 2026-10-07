@@ -204,7 +204,7 @@ Sizes are written in rem tokens (`--text-xs` to `--text-display`), never in px: 
 
 One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (2, 4, 8, 12, 16, 24, 32px, the `--spacing-*` tokens); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. Each kind of gap has one value, listed under Spacing rules. The page reserves room for the fixed top bar (64px) and the bottom bar.
 
-A form row that holds one field is one height (`--form-row-height`, 51px) whatever control is in it, a switch, a text input or a picker, so the hairlines between the fields of a card keep one rhythm; a row with a note, a textarea or a group of choices is as tall as its content asks for.
+A form row that holds one field is one height (`--form-row-height`, 51px) whatever control is in it, a switch, a text input or a picker, so the hairlines between the fields of a card keep one rhythm; a row with a note, a textarea or a group of choices is as tall as its content asks for. Blocks are separated by those hairlines rather than by space alone (see Dividers).
 
 Responsive behaviour is contextual rather than stretched:
 - **Phone, portrait** (the design's home): top bar, one column, bottom tab bar of five sections; below 360px the tab labels tighten to 10px. The «Медкарта» tab carries a red dot, ringed in the bar's ground and read aloud as «есть просроченное», while a vaccination or a treatment of the chosen pet is overdue: the one signal that reaches every screen. With several pets the pet switcher carries the same dot when a pet that is not chosen has something overdue, and the picker says which one and what, in words, under its name. Red stays for overdue only.
@@ -224,6 +224,7 @@ One value per kind of gap, taken from the `--spacing-*` tokens, never a raw pixe
 | A row of choice buttons and the field under it | 8px (`sm`): the chip's own border lands on the row's divider without it |
 | A section header and its content | 8px (`sm`) |
 | One section and the next | 24px (`xl`) |
+| A block and the block above it | a hairline (see Dividers), then 12px (`md`) of air under it |
 | The last field and the button that closes the form | 24px (`xl`): `.form-sticky-action`, `.form-actions` |
 | A title and the one-line caption under it | 2px (`2xs`) |
 | A screen's title and the pet or the line it is about | 4px (`xs`) |
@@ -283,9 +284,16 @@ One way to add on the screens that fill a diary: the round copper button bottom 
 - **Internal Padding:** 16px; 12px between cards.
 
 ### Inputs / Fields
-- **Style:** antd-mobile form rows inside a sheet: driftwood label on the left, the value in espresso-ink at 16px, oat dividers between rows, hints below in secondary type.
+- **Style:** antd-mobile form rows inside a sheet: driftwood label on the left, the value in espresso-ink at 16px, an oat divider above each row, hints below in secondary type.
 - **Pickers:** a row that opens a picker (date, time, form, category) shows its value as text with a chevron; the whole row is one button.
 - **Error:** a red message under the field, announced to screen readers; the field keeps what was typed.
+
+### Dividers
+- **A line separates blocks, everywhere.** A field, a section, a row of choice buttons, the «Запоминать значения» switch: each block is told apart from the one above by one hairline, not by space alone. A form built outside antd-mobile's `Form` gets the same line between its blocks (`.form-section`).
+- **One length per screen.** Every divider is as long as every other one, drawn across the content column. A line that starts at a label is a second length of the same rule on one screen, and the eye reads the screen as lines being here and there.
+- **No line where there is nothing to separate.** The first block of a group, and the row right under a section header, whose card already has a line above it.
+- **Below the line:** 12px (`md`) before the first text of the block, the same distance a field has.
+- **Colour:** `--app-divider-color`, the oat hairline, which reads as one line in either theme.
 
 ### Navigation
 - **Top bar:** milk-card, 64px: the wordmark or a back arrow on the left, the pet picker on the right.

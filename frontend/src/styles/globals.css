@@ -428,17 +428,58 @@ main#main-content {
        hairline between them. Without one, a label and its value, 90px
        apart in the two-column layout, had nothing tying them together,
        least of all when the value was an empty grey placeholder, and a
-       tappable row (it opens a picker) had no visible edge. antd-mobile
-       draws --border-inner on the row's content, so the line starts at
-       the label, not the card's edge, and never above a group's first
-       row. */
-    --border-inner: solid 1px var(--app-divider-color) !important;
+       tappable row (it opens a picker) had no visible edge.
+
+       The line is the row's own top border, so it runs the whole width of the card like
+       the section line above it. antd-mobile draws `--border-inner` on the row's *content*
+       instead, and that line starts at the label: two lengths of the same rule on one
+       screen, and the eye read it as lines being here and there. `--border-top` is not it —
+       the list body consumes that one — hence a plain property here. */
+    --border-inner: none !important;
     --border-top: none !important;
     --border-bottom: none !important;
+    border-top: 1px solid var(--app-divider-color);
     /* One height for the row, so the hairlines between the fields of a card fall on one
        rhythm whatever the control inside is. A row with a note or a textarea keeps the
        height its content asks for. */
     min-height: var(--form-row-height);
+}
+
+/* Nothing to separate at the top of a group: the first thing in the card, and the row right
+   under a section header, whose card line is already above it. A field may bring its own
+   wrapper (a date field does), and that row is the first child of *its* wrapper rather than
+   of the card, so the wrapper's row is given no line either. */
+.adm-form .adm-list-body-inner > :first-child,
+.adm-form .adm-list-body-inner > :first-child > .adm-list-item,
+.adm-form .adm-list-header + *,
+.adm-form .adm-list-header + * > .adm-list-item {
+    border-top: none;
+}
+
+/* The blocks that are not fields — a row of choice buttons, the «Запоминать значения»
+   switch — are blocks too, so the line separates them like everything else. Without it they
+   had no edge of their own and read as a stray part of the field above.
+
+   The side margins become padding, or the line would be 24px shorter than the one above a
+   field: same indent for the text, full width for the line. */
+.adm-form .choice-block {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+    /* 12px below the line, the same distance a field's label has from the line above it. */
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--app-divider-color);
+}
+
+.adm-form .choice-block:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+/* The switch row is a 44px row with its label in the middle, so it brings that room itself. */
+.adm-form .choice-block--remember {
+    padding-top: 0;
 }
 
 /* Section headers (Form.Header → .adm-list-header) need the same
@@ -472,6 +513,32 @@ main#main-content {
     margin-top: var(--spacing-lg) !important;
     padding-top: var(--spacing-md) !important;
     border-top: 1px solid var(--app-divider-color) !important;
+}
+
+/* The same line between blocks that are not antd cards (the event type form, whose fields are
+   a plain fieldset). Without it those blocks were told apart by space alone, so the rule read
+   one way here and another way in every other form.
+
+   The line is a pseudo-element rather than a border because the block keeps the screen's own
+   indent: a border would run edge to edge, 32px longer than the line in a form. Inset by the
+   same padding it is as long as the one above a field, and 12px below it the same distance a
+   field has from its line. */
+.form-section {
+    position: relative;
+}
+
+.form-section + .form-section {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+}
+
+.form-section + .form-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: var(--layout-padding-left);
+    right: var(--layout-padding-right);
+    border-top: 1px solid var(--app-divider-color);
 }
 
 /* Give every form the safe-area-aware horizontal indent the rest of
