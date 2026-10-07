@@ -4,6 +4,7 @@ catalogue did not come. The links screen counts what is taken. A page opened by 
 apart from a connection that did not come through."""
 
 import asyncio
+import re
 
 from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
 
@@ -94,6 +95,18 @@ async def main():
                 body[:200].replace(chr(10), " | "),
             )
             await pg.unroute("**/api/vaccines/catalog**")
+            # The links screen counts over every pet of the account, so an earlier run's link, or one
+            # made by hand, would fail a run that has nothing to do with either. The count is read
+            # first and has to grow by one, and this pet's own links are cleared so that its own
+            # line says one.
+            for old in (await api(pg, "GET", f"/pets/{pid}/medical-card/shares"))["json"]["shares"]:
+                await api(pg, "DELETE", f"/pets/{pid}/medical-card/shares/{old['id']}")
+            await pg.goto(BASE + "/settings/medical-links")
+            was = int(
+                re.search(
+                    r"Действующих ссылок: (\d+)", await wait_until(pg, lambda t: "Действующих ссылок" in t)
+                ).group(1)
+            )
             # the links screen counts what is taken of what there may be
             share = await api(pg, "POST", f"/pets/{pid}/medical-card/shares", {"days": 7})
             share_id = share["json"]["share"]["id"]
@@ -101,7 +114,7 @@ async def main():
             body = await wait_until(pg, lambda t: "Действующих ссылок" in t)
             check(
                 "the links screen counts the live links",
-                "Действующих ссылок: 1" in body and "Занято 1 из 10 ссылок" in body,
+                f"Действующих ссылок: {was + 1}" in body and "Занято 1 из 10 ссылок" in body,
                 [line for line in body.split(chr(10)) if "ссылок" in line][:3],
             )
             # a page opened by a link: what it is, and where the file is
