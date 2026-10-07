@@ -390,7 +390,7 @@ export function MedicalProfileForm() {
               <Form.Item
                 layout="horizontal"
                 label="Аллергий нет"
-                description="Врач увидит «не выявлено», а не «не указаны»"
+                description="Включите, если аллергий нет: врач увидит «не выявлено», а не «не указаны»"
                 extra={
                   <Switch
                     aria-label="Аллергий нет"

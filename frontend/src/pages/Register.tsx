@@ -251,7 +251,7 @@ export function Register() {
           // it isn't a guess, the list is the server's.
           description={commonPassword
             ? <FieldError message={COMMON_PASSWORD_NOTE} />
-            : below('password', passwordError, 'Не короче 8 символов, не длиннее 72 байт, хотя бы три разных символа')}
+            : below('password', passwordError, 'Не короче 8 символов, хотя бы три разных')}
         >
           <Input
             type="password"

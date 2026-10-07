@@ -137,6 +137,14 @@ async def main():
         # The password screen: the rules are said, and leaving asks.
         await pg.goto(BASE + "/settings/password")
         await pg.wait_for_timeout(1500)
+        # The bound bcrypt keeps is in bytes, but that is a fact about the hash, not about a
+        # password: the rules under the field are said the way the server says them.
+        rules = await pg.inner_text("body")
+        check(
+            "the password rules are said without the hash's own words",
+            "байт" not in rules and "Не короче 8 символов" in rules,
+            [line for line in rules.split(chr(10)) if "символ" in line][:2],
+        )
         await pg.get_by_placeholder("Новый пароль", exact=True).fill("коротк")
         await pg.wait_for_timeout(400)
         check(

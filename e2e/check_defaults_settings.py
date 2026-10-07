@@ -38,6 +38,13 @@ async def main():
             # nothing remembered: the header and the empty state must agree about a field with choices
             await pg.goto(BASE + "/form-defaults")
             body = await wait_until(pg, lambda t: "У обязательных полей с вариантами выбран первый вариант" in t)
+            # The screen sends the person to a switch under the field, so it has to call it by the
+            # name that is on it: the label was shortened, and the text here still knew the old one.
+            check(
+                "the way to remember a value names the switch as it is on the form",
+                "«Запоминать значения»" in body and "«Запомнить для этого питомца»" not in body,
+                [line for line in body.split(chr(10)) if "Запомн" in line][:2],
+            )
             check(
                 "the empty state tells the same thing as the text above it",
                 "У обязательных полей с вариантами выбран первый вариант" in body
