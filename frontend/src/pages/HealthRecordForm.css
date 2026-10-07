@@ -1,0 +1,25 @@
+/* The record form's own pieces. The stylesheet comes with the page, so a form opened on its own
+   (a reload, a link) looks the same. */
+
+/* «Запоминать значения» with its switch, under the last field whose value can be remembered.
+
+   A block of its own rather than a row of the horizontal form: the label column of that form is
+   7em (107px at 320px), and every label of two words breaks onto a second line there and takes the
+   row from 48px to 70px. It also had nowhere to say what the switch does — a description in a
+   horizontal form lands between the label and the switch and squeezes itself into a narrow strip.
+   Out here the label and the note have the full width, like the neighbouring blocks «Когда было»
+   and «Как раньше», which leave the same grid because they are not fields either. */
+.remember-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    /* The same 44px a row of the form gives a finger. */
+    min-height: var(--touch-min);
+}
+
+.remember-row__label {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--app-text-color);
+}

@@ -78,9 +78,51 @@ async def main():
             # then, and it is empty: leaving it says what is still missing, that line appears under the
             # field, and everything below moves down before the finger is up. Without a guard on the press
             # the tap lands on the row that used to be there and the switch never moves.
-            sw = pg.locator('[role="switch"][aria-label="Запоминать"]')
+            sw = pg.locator('[role="switch"][aria-label="Запоминать значения"]')
             await sw.scroll_into_view_if_needed()
             await pg.wait_for_timeout(400)
+
+            # The switch sits in a block of its own, so both its name and what it does have the
+            # full width and stay on one line each. In a row of the horizontal form the label
+            # column is 7em (107px at 320px) and any name of two words breaks onto a second line.
+            block_lines = await pg.evaluate(
+                """() => {
+                  const sw = document.querySelector('[role="switch"][aria-label="Запоминать значения"]');
+                  const block = sw && sw.closest('.choice-block');
+                  if (!block) return null;
+                  const lines = (el) => {
+                    const r = document.createRange();
+                    r.selectNodeContents(el);
+                    const rects = [...r.getClientRects()].filter((x) => x.width > 1 && x.height > 1);
+                    return new Set(rects.map((x) => Math.round(x.top))).size;
+                  };
+                  const label = block.querySelector('.remember-row__label');
+                  const note = block.querySelector('.choice-block__hint');
+                  return {
+                    label: label ? label.textContent.trim() : null,
+                    labelLines: label ? lines(label) : 0,
+                    note: note ? note.textContent.trim() : null,
+                    noteLines: note ? lines(note) : 0,
+                    switchH: Math.round(sw.getBoundingClientRect().height),
+                    rowH: Math.round(block.querySelector('.remember-row').getBoundingClientRect().height),
+                  };
+                }"""
+            )
+            check(
+                "the switch names itself and says what it does, both in one line",
+                block_lines is not None
+                and block_lines["label"] == "Запоминать значения"
+                and block_lines["note"] == "Подставлять в следующие записи этого вида"
+                and block_lines["labelLines"] == 1
+                and block_lines["noteLines"] == 1,
+                block_lines,
+            )
+            check(
+                "and its row is a thumb tall in both positions",
+                block_lines is not None and block_lines["rowH"] >= 44 and block_lines["switchH"] > 0,
+                f"ряд {block_lines['rowH'] if block_lines else '?'}px, переключатель {block_lines['switchH'] if block_lines else '?'}px",
+            )
+
             await sw.click()
             await pg.wait_for_timeout(400)
             check(

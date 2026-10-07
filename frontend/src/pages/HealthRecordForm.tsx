@@ -29,6 +29,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { PawPrint } from 'lucide-react';
 import { onInvalidSubmit } from '../utils/formErrors';
+import './HealthRecordForm.css';
 
 /** Builds the field list + title for a registered event type. Date, time
  *  and comment aren't part of `eventType.fields` — every type gets them
@@ -603,7 +604,7 @@ export function HealthRecordForm() {
                   {field.name === filledFromDefaults[filledFromDefaults.length - 1]?.name && (
                     // Under the last field that came filled, so that a value already there is not a surprise: where it came from and where to change it.
                     <p style={{ margin: '0 var(--spacing-md) var(--spacing-sm)', fontSize: 'var(--text-xs)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-                      Подставлено из значений по умолчанию питомца: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, выключите «Запоминать» под полем
+                      Подставлено из значений по умолчанию питомца: {filledFromDefaults.map((f) => f.label.toLowerCase()).join(', ')}. Чтобы убрать, выключите «Запоминать значения» под полем
                     </p>
                   )}
                   {defaultableNames.has(field.name) && (
@@ -611,24 +612,24 @@ export function HealthRecordForm() {
                     // A switch, not one of the chips above: this is a setting that stays, not an answer to the field. A chip said the
                     // opposite of itself when pressed («Запомнить» became «Запомняется», a longer word), so the target grew under the
                     // thumb that was already on it, and the row below re-wrapped.
-                    <Form.Item
-                      // No description under it: in a horizontal form it lands between the label and the switch
-                      // and squeezes itself into a narrow strip. «Запоминать» beside a switch says itself, and the help
-                      // page explains what it does.
-                      label="Запоминать"
-                      extra={
-                        // The same reason as on ChoiceChip: the form opens with the first field holding the focus,
-                        // and leaving it puts a message about that field under it, which pushes this row down
-                        // before the finger is up. The tap would land on the row that used to be there.
+                    // A block of its own, not a row of the form: the label column here is 7em, and any label of two words
+                    // breaks onto a second line and takes the row from 48px to 70px. It also has room to say what the switch does.
+                    <div className="choice-block">
+                      <div className="remember-row">
+                        <span className="remember-row__label">Запоминать значения</span>
                         <div onMouseDown={(event) => event.preventDefault()}>
+                          {/* The same reason as on ChoiceChip: the form opens with the first field holding the focus,
+                              and leaving it puts a message about that field under it, which pushes this row down
+                              before the finger is up. The tap would land on the row that used to be there. */}
                           <Switch
-                            aria-label="Запоминать"
+                            aria-label="Запоминать значения"
                             checked={isPinned(field.name)}
                             onChange={() => setPinChanged((prev) => ({ ...prev, [field.name]: !isPinned(field.name) }))}
                           />
                         </div>
-                      }
-                    />
+                      </div>
+                      <span className="choice-block__hint">Подставлять в следующие записи этого вида</span>
+                    </div>
                   )}
                   {!isEditing && field.type === 'number' && (recentValues[field.name]?.length ?? 0) > 0 && (
                     // What was given or weighed last time is one tap, not typed from the start again.
