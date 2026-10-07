@@ -488,3 +488,78 @@ def delete_stored_file(ref: str) -> None:
         return
     app.db.image_thumbnails.delete_many({"source_file_id": ref})
     app.fs.delete(ObjectId(ref))
+
+
+# What a dose is counted in, as the app writes it. A course may also arrive with a unit from a
+# script or an older client: the form offers «таб», «капс», «кап», «мл», «шт», and anything else is
+# kept as it came — the server accepts any string, and a unit nobody recognises is better shown as
+# it was than guessed at.
+_DOSE_UNITS = {
+    # pieces
+    "tablet": "таб",
+    "tablets": "таб",
+    "tab": "таб",
+    "tabs": "таб",
+    "таблетка": "таб",
+    "таблетки": "таб",
+    "таблеток": "таб",
+    "capsule": "капс",
+    "capsules": "капс",
+    "cap": "капс",
+    "caps": "капс",
+    "капсула": "капс",
+    "капсулы": "капс",
+    "капсул": "капс",
+    "drop": "кап",
+    "drops": "кап",
+    "капля": "кап",
+    "капли": "кап",
+    "капель": "кап",
+    "piece": "шт",
+    "pieces": "шт",
+    "pc": "шт",
+    "pcs": "шт",
+    "штука": "шт",
+    "штуки": "шт",
+    "штук": "шт",
+    # volume
+    "ml": "мл",
+    "milliliter": "мл",
+    "milliliters": "мл",
+    "millilitre": "мл",
+    "millilitres": "мл",
+    "миллилитр": "мл",
+    "миллилитра": "мл",
+    "миллилитров": "мл",
+    # mass
+    "mg": "мг",
+    "milligram": "мг",
+    "milligrams": "мг",
+    "миллиграмм": "мг",
+    "миллиграмма": "мг",
+    "g": "г",
+    "gram": "г",
+    "grams": "г",
+    "грамм": "г",
+    "грамма": "г",
+    "kg": "кг",
+    "kilogram": "кг",
+    "kilograms": "кг",
+    "килограмм": "кг",
+    "килограмма": "кг",
+    "mg/ml": "мг/мл",
+}
+
+
+def ru_dose_unit(value) -> str:
+    """A dose unit as the app writes it: «tablet» becomes «таб», «2 ML» becomes «мл».
+
+    Only the whole trimmed unit is matched, so «мг/мл» and «г» never turn into each other, and an
+    unrecognised unit comes back exactly as it was. Called where a dose is shown to a person (the
+    medication screens, the feed, the medical card and its PDF), never where it is stored: the
+    course keeps what its owner or a script wrote, and only the reading of it is in Russian.
+    """
+    if not isinstance(value, str):
+        return ""
+    unit = value.strip()
+    return _DOSE_UNITS.get(unit.lower(), unit)

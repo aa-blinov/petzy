@@ -21,7 +21,7 @@ import web.app as app  # db, logger
 from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
-from web.helpers import get_pet_and_validate, valid_tz
+from web.helpers import get_pet_and_validate, ru_dose_unit, valid_tz
 from web.medications import has_overdue_dose, is_as_needed
 from web.medical_records import linked_document_ids, normalize_title, pet_records, record_states
 from web.schemas import (
@@ -220,7 +220,9 @@ def _courses(pet_id: str, today: date, past_limit: Optional[int] = PAST_COURSES)
         stat = stats.get(str(med["_id"]), {"given": 0, "skipped": 0, "first": None, "last": None})
         started = _as_date_str(med.get("started_on")) or stat["first"] or _as_date_str(med.get("created_at"))
         ended = _as_date_str(med.get("ended_on")) or (stat["last"] if status == ENDED else None)
-        unit = med.get("dose_unit") or ""
+        # «1 таб» even when the course was written with «tablet». The PDF prints the same
+        # text, so both languages stay out of the same place.
+        unit = ru_dose_unit(med.get("dose_unit"))
         dose = med.get("default_dose")
         item = {
             "id": str(med["_id"]),

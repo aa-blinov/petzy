@@ -139,7 +139,7 @@ export function MedicationForm() {
     const { id } = useParams<{ id: string }>();
     const isEditing = !!id;
     const navigate = useNavigate();
-    const { selectedPetId, selectedPetName } = usePet();
+    const { pets, selectedPetId, selectedPetName, selectPet, isFetched: petsFetched } = usePet();
     const queryClient = useQueryClient();
     const [typePickerVisible, setTypePickerVisible] = useState(false);
     const [showCustomType, setShowCustomType] = useState(false);
@@ -221,15 +221,26 @@ export function MedicationForm() {
         return days < 1 ? 'Хватит меньше чем на день' : `Хватит примерно на ${days} ${pluralRu(days, 'день', 'дня', 'дней')}`;
     })();
 
-    const { data: med, isLoading: isLoadingMed } = useQuery({
+    // The course by its own address, not by looking for it in the chosen pet's list: that list
+    // never holds a course of another pet, so opening a link to it answered «Такого лекарства
+    // нет, его удалили или он не открыт вашему питомцу» while the course was right there and
+    // access to it was fine. The server answers 404 for this request only when the course is
+    // really gone or is not the caller's to see, so what is left on screen here is the truth.
+    const { data: med, isLoading: isLoadingMed, isError: medError } = useQuery({
         queryKey: ['medication', id],
-        queryFn: async () => {
-            if (!id || !selectedPetId) return null;
-            const meds = await medicationsService.getList(selectedPetId);
-            return meds.find(m => m._id === id) || null;
-        },
-        enabled: isEditing && !!id && !!selectedPetId,
+        queryFn: () => medicationsService.getById(id!),
+        enabled: isEditing && !!id,
+        retry: false,
     });
+
+    // The course belongs to a pet, and the address names that pet: it becomes the chosen one, as
+    // it does on the medical card. Until it is chosen this form would save the course under
+    // whichever pet happened to be selected, so the form waits below rather than drawing.
+    const coursePetId = med?.pet_id;
+    const coursePet = coursePetId ? pets.find((p) => p._id === coursePetId) : undefined;
+    useEffect(() => {
+        if (coursePet && coursePet._id !== selectedPetId) selectPet(coursePet);
+    }, [coursePet, selectedPetId, selectPet]);
 
     useEffect(() => {
         if (med) {
@@ -383,11 +394,19 @@ export function MedicationForm() {
 
     if (isEditing && isLoadingMed) return <LoadingSpinner />;
 
-    // The course is gone (deleted by someone else, or a link from an old
-    // message): the request answered and brought nothing, which is not the same
-    // as still loading. Drawing an empty form here asked to create a new course
-    // under the old course's screen.
-    if (isEditing && !!id && !!selectedPetId && !isLoadingMed && !med) {
+    // The course belongs to another pet and that pet is not the chosen one yet. Drawing the form
+    // now would show the wrong pet's name and save the course under it, so the screen waits for
+    // the switch above instead. `isFetched` keeps it waiting while the roster is still on its way;
+    // once it has arrived and holds no such pet, the course is gone after all.
+    const waitingForItsPet = isEditing && !!med && !!coursePetId && coursePetId !== selectedPetId
+        && (!!coursePet || !petsFetched);
+    if (waitingForItsPet) return <LoadingSpinner />;
+
+    // The course is gone (deleted by someone else, closed from under us, or a link from an old
+    // message): the request answered and refused. That is now the only way to get here, so the
+    // words are true. Before, the form looked for the course in the chosen pet's list and said
+    // this about any course of another pet.
+    if (isEditing && !!id && !isLoadingMed && (medError || !med)) {
         return (
             <div className="page-container">
                 <div className="max-width-container">

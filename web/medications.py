@@ -21,6 +21,7 @@ from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
     apply_pagination,
+    ru_dose_unit,
     valid_tz,
 )
 from web.schemas import (
@@ -286,6 +287,9 @@ def get_medications():
                 else []
             )
             doc["course_status"] = course_status(doc, today_key)
+            # «По 1 таб» even when the course was written with «tablet»: the list is read by a
+            # person, and the stored value is left as it was written.
+            doc["dose_unit"] = ru_dose_unit(doc.get("dose_unit") or doc.get("unit"))
             _add_stock_status(doc)
 
         return jsonify({"medications": meds})
@@ -329,6 +333,9 @@ def get_medication(id):
             record["intakes_today"] = app.db.medication_intakes.count_documents(
                 {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
             )
+        # The same reading as in the list, so a course does not change its unit between the two
+        # screens it is opened from.
+        record["dose_unit"] = ru_dose_unit(record.get("dose_unit") or record.get("unit"))
         _add_stock_status(record)
         return jsonify({"medication": record})
     except Exception as e:

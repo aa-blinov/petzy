@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { NotFound } from './components/NotFound';
 import { reloadIfUpdated } from './utils/swUpdate';
 import { setSentryUser } from './utils/observability';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -570,7 +571,7 @@ function AppRoutes() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </RouteTransition>
         </Suspense>
