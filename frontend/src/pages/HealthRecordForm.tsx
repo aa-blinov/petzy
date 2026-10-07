@@ -563,8 +563,8 @@ export function HealthRecordForm() {
               } as React.CSSProperties}
             >
               {!isEditing && (
-                <div style={{ padding: '0 var(--spacing-md)' }}>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }} aria-hidden>Когда было</span>
+                <div className="choice-block">
+                  <span className="choice-block__hint" aria-hidden>Когда было</span>
                   {/* Written down afterwards: the common «when» is one tap, not two wheels turned by a finger. */}
                   <ChoiceChips label="Когда">
                     {WHEN_CHOICES.map((choice) => (
@@ -603,7 +603,7 @@ export function HealthRecordForm() {
                   )}
                   {defaultableNames.has(field.name) && (
                     // Remembered for this pet: the next record of this kind starts with what is typed here, and another pet has its own.
-                    <div style={{ padding: '0 var(--spacing-md)' }}>
+                    <div className="choice-block">
                       <ChoiceChips label="Запоминание">
                         <ChoiceChip pressed={isPinned(field.name)} onClick={() => setPinChanged((prev) => ({ ...prev, [field.name]: !isPinned(field.name) }))}>
                           {isPinned(field.name) ? 'Запоминается для этого питомца' : 'Запомнить для этого питомца'}
@@ -613,8 +613,8 @@ export function HealthRecordForm() {
                   )}
                   {!isEditing && field.type === 'number' && (recentValues[field.name]?.length ?? 0) > 0 && (
                     // What was given or weighed last time is one tap, not typed from the start again.
-                    <div style={{ padding: '0 var(--spacing-md)' }}>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }} aria-hidden>Как раньше</span>
+                    <div className="choice-block">
+                      <span className="choice-block__hint" aria-hidden>Как раньше</span>
                       <ChoiceChips label="Как раньше">
                         {recentValues[field.name].map((value) => (
                           <ChoiceChip key={value} pressed={recentIs(field.name, value)} onClick={() => methods.setValue(field.name, value, { shouldDirty: true, shouldValidate: true })}>

@@ -4,11 +4,25 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: var(--spacing-sm);
+    /* Room on both sides. Below it matters as much as above: a row with room only above lands on
+       the divider of the field below it, and the chip's own border reads as part of that line. */
+    margin: var(--spacing-sm) 0;
 }
 
 .choice-chips--flush {
-    margin-top: 0;
+    margin: 0;
+}
+
+/* A block of chips under a field, with the words that name it. The room above the words matters as
+   much as the room below the chips: without it they sit on the field's own underline. */
+.choice-block {
+    margin: var(--spacing-sm) var(--spacing-md) 0;
+}
+
+.choice-block__hint {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--app-text-secondary);
 }
 
 .choice-chip {
