@@ -219,6 +219,7 @@ One value per kind of gap, taken from the `--spacing-*` tokens, never a raw pixe
 | A button and a text-only button under it («Готово», «Вернуть набор») | 8px (`sm`); the text button's 44px target gives it the rest |
 | Cards, rows or tiles in a list | 12px (`md`) |
 | Chips, tiles or an icon and its label in a row | 8px (`sm`) |
+| A row of choice buttons and the field under it | 8px (`sm`): the chip's own border lands on the row's divider without it |
 | A section header and its content | 8px (`sm`) |
 | One section and the next | 24px (`xl`) |
 | The last field and the button that closes the form | 24px (`xl`): `.form-sticky-action`, `.form-actions` |
