@@ -469,7 +469,9 @@ function ReadinessBlock({ card, petId, navigate }: { card: Card; petId: string; 
   );
 }
 
-/** The records of one kind. The card brings the latest ten; «Показать все» asks for the rest. */
+/** The records of one kind. The card brings the latest ten; «Показать все» asks for the rest.
+    No door of its own: the round «+» on this screen already opens the very form a «Добавить» here would,
+    and two ways to the same record on one screen is one too many. */
 export function KindSection({ kind, card, petId, hidden, navigate }: { kind: MedicalKind; card: Card; petId: string; hidden: ReadonlySet<string>; navigate: (to: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
@@ -509,11 +511,7 @@ export function KindSection({ kind, card, petId, hidden, navigate }: { kind: Med
   // An empty kind says nothing here: the block of missing items, or the group of what can be added, already does.
   if (rows.length === 0 && legacy.length === 0 && !expanded) return null;
   return (
-    <Section
-      id={`medcard-${kind}`}
-      title={MEDICAL_KIND_LABELS[kind].section}
-      action={{ label: 'Добавить', onClick: () => navigate(`/pets/${petId}/medical-records/new?kind=${kind}`) }}
-    >
+    <Section id={`medcard-${kind}`} title={MEDICAL_KIND_LABELS[kind].section}>
       {rows.length === 0 && legacy.length === 0 ? (
         <p className="medcard__empty">{EMPTY_TEXT[kind]}</p>
       ) : (
