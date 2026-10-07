@@ -10,6 +10,7 @@ so between them the runner asks the stand to put the counters back to zero
 endpoint still needs the pause.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -18,9 +19,16 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from seed_demo import DEMO_PASSWORD  # noqa: E402
+
 here = Path(__file__).resolve().parent
 BASE = os.environ.get("PETZY_E2E_BASE", "http://localhost:3000")
 only = sys.argv[1] if len(sys.argv) > 1 else ""
+
+# The names the checks make their throwaway pets under (check_weight, check_record_save and the
+# rest). Anything else on the stand was put there by a person and is none of the runner's business.
+SCRATCH = ("Тест-М", "Тест-М-2", "Тест-К")
 
 
 def _reset_limits() -> bool:
@@ -33,10 +41,51 @@ def _reset_limits() -> bool:
         return False
 
 
+def _clean_scratch() -> list[str]:
+    """The throwaway pets a check left behind, removed before anything runs.
+
+    Most checks make their own «Тест-М» and then take the first pet of that name off the server,
+    so one leftover is enough: every run after it measures a pet from an earlier run and leaves
+    its own behind instead. That stale pet has already failed a run of check_card_gaps twice,
+    for a reason that had nothing to do with the check. Returns what it removed, for the log.
+
+    The sign-in is over HTTP with the returned token rather than through the browser: the runner
+    is already outside one, and the stand's five sign-ins a minute are the checks' to spend."""
+    token = None
+
+    def call(method: str, path: str, body=None):
+        nonlocal token
+        data = json.dumps(body).encode() if body is not None else None
+        headers = {"Content-Type": "application/json"} if data else {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        request = urllib.request.Request(BASE + "/api" + path, data=data, headers=headers, method=method)
+        with urllib.request.urlopen(request, timeout=15) as answer:
+            got = json.loads(answer.read() or b"{}")
+            if isinstance(got, dict) and got.get("access_token"):
+                token = got["access_token"]
+            return got
+
+    try:
+        call("POST", "/auth/login", {"username": "demo", "password": DEMO_PASSWORD})
+        pets = call("GET", "/pets").get("pets", [])
+    except (urllib.error.URLError, OSError, ValueError):
+        return []  # the stand is not up yet: the checks will say so themselves, with a better message
+    removed = []
+    for pet in pets:
+        if pet.get("name") in SCRATCH:
+            call("DELETE", f"/pets/{pet['_id']}")
+            removed.append(pet["name"])
+    return removed
+
+
 failed = []
 took = []
 checks = [p for p in sorted(here.glob("check_*.py")) if only in p.name]
 can_reset = _reset_limits()
+leftover = _clean_scratch()
+if leftover:
+    print("== убраны питомцы, оставшиеся от прошлого прогона: " + ", ".join(leftover), flush=True)
 started_all = time.monotonic()
 for i, path in enumerate(checks):
     if i:
