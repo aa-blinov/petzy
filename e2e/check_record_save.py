@@ -67,6 +67,13 @@ async def main():
                 "/form/weight" in pg.url and ("Сервер не ответил" in body or "Нет связи" in body),
                 (pg.url.replace(BASE, "") + " | " + body[:120].replace(chr(10), " | ")),
             )
+            # Nothing tells the person to wait: the server may answer at once, and pressing again
+            # is safe, the server answers that the record is already written.
+            check(
+                "the refusal promises no wait it cannot keep",
+                "через минуту" not in body,
+                [line for line in body.split(chr(10)) if "Сервер не ответил" in line][:2],
+            )
             check(
                 "the record is written on the server, the person was only not told",
                 len(await records(pg, pid, "weight")) == 1,
