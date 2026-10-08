@@ -8,7 +8,11 @@ interface ApiErrorPayload {
 
 /** Shown when the request never reached the server. */
 export const OFFLINE_MESSAGE = 'Нет связи с интернетом. Ничего не сохранилось, попробуйте ещё раз, когда связь появится';
-export const NO_ANSWER_MESSAGE = 'Сервер не ответил. Попробуйте ещё раз через минуту';
+// The same refusal as the one LoadError says («Сервер не ответил. Ваши записи на месте,
+// попробуйте ещё раз»), and without a wait nobody promised: the server may answer on the second
+// press, and the duplicate guard makes that press safe. Saying "через минуту" told the person to
+// wait for a moment the app knows nothing about.
+export const NO_ANSWER_MESSAGE = 'Сервер не ответил. Попробуйте ещё раз';
 
 /** Extracts the backend's `{ error }`/`{ message }`/`{ detail }` body from
  * a failed axios request. A request that got no answer at all (offline,
