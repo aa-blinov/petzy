@@ -5,7 +5,7 @@ Needs the local stack and the demo data. Makes a pet of its own and removes it."
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, new_page, summary
+from common import BASE, api, async_playwright, check, new_page, summary, wait_until
 from seed_demo import DEMO_PASSWORD
 
 
@@ -32,6 +32,20 @@ async def main():
             # The co-owner accepts, so the pet really is one both of them reach.
             await api(pg, "POST", f"/pets/{pet_id}/share", {"username": "family"})
             await api(other, "POST", f"/pets/{pet_id}/invite/accept")
+            # Enough of the card for the «Для врача» block to draw its two buttons: on an empty
+            # card it says what is missing instead, and "no link button" would pass for free.
+            await api(
+                pg,
+                "POST",
+                "/events",
+                {"pet_id": pet_id, "date": "2026-10-01", "time": "10:00", "type": "weight", "fields": {"weight": 12.4}},
+            )
+            await api(
+                pg,
+                "POST",
+                "/medical-records",
+                {"pet_id": pet_id, "date": "2026-09-01", "kind": "vaccination", "title": "Нобивак"},
+            )
 
             profile = await api(other, "GET", "/users/demo/profile")
             pets = profile["json"]["shared_pets"]
@@ -52,6 +66,28 @@ async def main():
                 "which opens the card",
                 other.url.endswith(f"/pets/{pet_id}/medical-card") and "Тест-М" in await other.inner_text("body"),
                 other.url.replace(BASE, ""),
+            )
+            # The card is already open to the co-owner here, so the file is theirs to take. The
+            # link is not: it opens the card to anyone with the address, without a sign-in.
+            coowner_view = await other.inner_text("body")
+            check(
+                "the co-owner sees the block that hands the card over",
+                "Скачать PDF" in coowner_view,
+                [line for line in coowner_view.split(chr(10)) if "Для врача" in line][:2],
+            )
+            check(
+                "but is not offered the link itself",
+                "Ссылка для врача" not in coowner_view,
+                [line for line in coowner_view.split(chr(10)) if "Ссылка" in line][:2],
+            )
+            # The owner still gets both doors.
+            await pg.goto(BASE + f"/pets/{pet_id}/medical-card")
+            await wait_until(pg, lambda t: "Для врача" in t, timeout=10_000)
+            check(
+                "the owner still has both",
+                await pg.get_by_role("button", name="Скачать PDF").count() == 1
+                and await pg.get_by_role("button", name="Ссылка для врача").count() == 1,
+                (await pg.inner_text("body"))[-160:].replace(chr(10), " | "),
             )
             check("no horizontal scroll", not await other.evaluate("document.documentElement.scrollWidth > innerWidth"))
 
