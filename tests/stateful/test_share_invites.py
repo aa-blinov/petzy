@@ -63,6 +63,27 @@ def test_the_owner_can_take_an_invite_back(client, mock_db, regular_user_token, 
     assert client.post(f"/api/pets/{pet_id}/invite/accept", headers=_auth(anna)).status_code == 404
 
 
+def test_a_link_to_the_card_is_the_owner_s_to_give(client, regular_user_token, test_pet, anna):
+    """A co-owner reads the card already; the link hands it to anyone with the address, so it is
+    the owner's alone. Revoking stays open to either of them: that is the safety valve."""
+    pet_id = str(test_pet["_id"])
+    _invite(client, regular_user_token, pet_id)
+    client.post(f"/api/pets/{pet_id}/invite/accept", headers=_auth(anna))
+    made = client.post(f"/api/pets/{pet_id}/medical-card/shares", json={"days": 7}, headers=_auth(regular_user_token))
+    assert made.status_code == 201
+    refused = client.post(f"/api/pets/{pet_id}/medical-card/shares", json={"days": 7}, headers=_auth(anna))
+    assert refused.status_code == 403, refused.get_json()
+    # The one the owner made is in reach of both, and so is taking it down.
+    shares = client.get(f"/api/pets/{pet_id}/medical-card/shares", headers=_auth(anna)).get_json()["shares"]
+    assert [s["id"] for s in shares] == [made.get_json()["share"]["id"]]
+    assert (
+        client.delete(
+            f"/api/pets/{pet_id}/medical-card/shares/{made.get_json()['share']['id']}", headers=_auth(anna)
+        ).status_code
+        == 200
+    )
+
+
 def test_a_member_can_leave(client, regular_user_token, test_pet, anna):
     pet_id = str(test_pet["_id"])
     _invite(client, regular_user_token, pet_id)

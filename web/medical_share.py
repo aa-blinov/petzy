@@ -74,9 +74,14 @@ def _active(now: datetime) -> dict:
     tags=["pets"],
 )
 def create_share(pet_id):
-    """Make a link to the card for a vet. The secret is in the answer once and is not kept."""
+    """Make a link to the card for a vet. The secret is in the answer once and is not kept.
+
+    Only the owner makes one: a link opens the card to anyone who has the address, with no
+    sign-in, so letting a co-owner mint one would hand out the pet beyond the owner's choice --
+    the same reason inviting another person to the pet is the owner's alone. Revoking a link
+    stays open to anyone with access: that is the safety valve."""
     username, _ = get_current_user()
-    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
+    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
     if access_error:
         return access_error[0], access_error[1]
     now = _now()

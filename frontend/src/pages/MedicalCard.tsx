@@ -674,7 +674,7 @@ function PatientLine({ pet, weight, named = true }: { pet: Card['pet']; weight: 
   );
 }
 
-export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, afterPatient, named = true }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; /** The way back to the records: only where there are some (not on the page a vet opens by a link). */ onAll?: () => void; /** A link to the card for a vet: only the owner's side offers it. */ onShare?: () => void; /** Under the patient line: what the page of a link says about its date and its end, and what is overdue. */ afterPatient?: ReactNode; /** Without the pet's name in the first line, where the page already carries it as its title. */ named?: boolean }) {
+export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, canShare = true, afterPatient, named = true }: { card: Card; hidden: ReadonlySet<string>; saving: boolean; canPdf: boolean; onPdf: () => void; /** The way back to the records: only where there are some (not on the page a vet opens by a link). */ onAll?: () => void; /** A link to the card for a vet: only the owner's side offers it. */ onShare?: () => void; /** The owner's door to hand the card over. A co-owner reads the card here already, so only the link is closed to them. */ canShare?: boolean; /** Under the patient line: what the page of a link says about its date and its end, and what is overdue. */ afterPatient?: ReactNode; /** Without the pet's name in the first line, where the page already carries it as its title. */ named?: boolean }) {
   const due = (['vaccination', 'parasite'] as const)
     .flatMap((kind) => card.records[kind].filter((r) => !r.superseded && !hidden.has(r._id)))
     .sort((a, b) => urgencyRank(a) - urgencyRank(b));
@@ -691,7 +691,7 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, a
           <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
           Скачать PDF
         </Button>
-        {onShare && (
+        {onShare && canShare && (
           <Button block fill="outline" color="primary" size="large" onClick={onShare}>
             <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
             Ссылка для врача
@@ -927,7 +927,7 @@ export function MedicalCard() {
           <OverdueStrip card={card} petId={id!} navigate={navigate} canAct={mode === 'fill'} hidden={hidden} />
 
           {mode === 'vet' ? (
-            <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} onShare={() => setShareOpen(true)} />
+            <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} onShare={() => setShareOpen(true)} canShare={card.can_edit} />
           ) : (
             <>
           <ReadinessBlock card={card} petId={id!} navigate={navigate} />
@@ -962,10 +962,15 @@ export function MedicalCard() {
                   <Download size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
                   Скачать PDF
                 </Button>
-                <Button block fill="outline" color="primary" size="large" onClick={() => setShareOpen(true)}>
-                  <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-                  Ссылка для врача
-                </Button>
+                {/* The link opens the card to anyone with the address, with no sign-in: the owner's
+                    door to give, not the co-owner's. The file stays, since the card is already
+                    readable here. */}
+                {card.can_edit && (
+                  <Button block fill="outline" color="primary" size="large" onClick={() => setShareOpen(true)}>
+                    <Link2 size={18} strokeWidth={2.2} aria-hidden style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
+                    Ссылка для врача
+                  </Button>
+                )}
               </div>
             ) : (
               <p className="medcard__empty">{EMPTY_HANDOVER}</p>
