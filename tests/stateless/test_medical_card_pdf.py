@@ -628,3 +628,55 @@ class TestWhatTheCritiqueFound:
         assert len(pages) == 2
         assert "Вес" not in pages[0].extract_text()
         assert "Последний замер" in pages[1].extract_text()
+
+
+@pytest.mark.health
+class TestAPageBreakThatKeepsItsPromise:
+    """Two things a card does with its edges: a name too wide for the page, and a record too tall
+    for what is left of it. Both used to be drawn anyway, and the paper showed the difference: the
+    name lost everything past the right margin, a record lost its other half to the next page."""
+
+    LONG_NAME = "Тест-М Барсик Тестов Тестов Тестов Тестов Тестов Тестов"
+
+    def test_a_name_wider_than_the_page_wraps_instead_of_running_off_it(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"name": self.LONG_NAME}})
+        page = _first_page(client, regular_user_token, test_pet)
+        # One line would mean it was drawn past the edge, where the vet does not see it.
+        assert not any(self.LONG_NAME in line for line in page.splitlines()), page[:200]
+        assert _flat(self.LONG_NAME) in _flat(page)  # and nothing of the name is lost
+
+    def test_a_short_name_stays_on_one_line_as_before(self, client, mock_db, regular_user_token, test_pet):
+        page = _first_page(client, regular_user_token, test_pet)
+        assert any(test_pet["name"] in line for line in page.splitlines()), page[:120]
+
+    def test_a_record_moves_to_the_next_page_whole(self):
+        from web.medical_card_pdf import _Card
+
+        pdf = _Card("Тест", "2026-10-05")
+        pdf.add_page()
+        pdf.set_y(pdf.h - 30)  # room for a line, not for a title of two lines and the date under it
+        title = "Вакцина от инфекционного перитонита кошек, инактивированная"
+        pdf.entry(
+            title, "Просрочено на 221 день", bold_left=True, detail="Прививка, сделано 01.03.2025, срок 01.03.2026"
+        )
+        pages = PdfReader(io.BytesIO(bytes(pdf.output()))).pages
+        assert len(pages) == 2
+        assert "инфекционного" not in pages[0].extract_text()  # nothing of the record stayed behind
+        assert title in _flat(pages[1].extract_text())  # the whole title is on one page
+        assert "Просрочено на 221 день" in pages[1].extract_text()  # and its date came with it
+
+    def test_a_block_taller_than_a_page_is_still_drawn(self):
+        """Nothing can hold a record taller than the paper together: it breaks rather than vanish."""
+        from web.medical_card_pdf import _Card
+
+        pdf = _Card("Тест", "2026-10-05")
+        pdf.add_page()
+        pdf.set_y(pdf.h - 30)
+        long_detail = "Заметка: " + "подробно и долго. " * 400
+        pdf.entry("Рабизин", "Следующая 01.03.2027", bold_left=True, detail=long_detail)
+        pages = PdfReader(io.BytesIO(bytes(pdf.output()))).pages
+        assert len(pages) == 3
+        assert "Рабизин" in pages[0].extract_text()  # it starts where it was going to
+        assert "подробно и долго" in pages[1].extract_text()  # and carries on overleaf

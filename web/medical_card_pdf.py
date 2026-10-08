@@ -59,6 +59,12 @@ DOCUMENT_CATEGORIES = {
 TIMELINE_COLUMNS = (22, 26, 130)
 RECENT_WEIGHTS = 6
 RECENT_YEARS = 4
+# The two line heights of a record: the title with its value, and the muted line under it.
+ENTRY_LINE, DETAIL_LINE, ENTRY_GAP = 5.5, 5.0, 1.5
+# The air a value on the right keeps from the text beside it. Two millimetres were what the columns
+# happened to leave, so a title that filled its column ran into the date next to it, and the gap
+# from row to row was never the same.
+STAMP_GAP = 6.0
 
 
 def _date(iso: str | None) -> str:
@@ -139,19 +145,64 @@ class _Card(FPDF):
 
     def row(self, left: str, right: str = "", right_color=INK, bold_left: bool = False):
         """One entry: text on the left, a short value on the right."""
-        right_w = self.get_string_width(right) + 2 if right else 0
+        right_w = self._stamp_width(right)
         self.set_font("DejaVu", "B" if bold_left else "", BODY_SIZE)
         self.set_text_color(*INK)
         start_y = self.get_y()
         # The text may take several lines; what follows starts below the last.
-        self.multi_cell(self.width - right_w - 2, 5.5, left, align="L", new_x=XPos.LEFT, new_y=YPos.NEXT)
+        self.multi_cell(self.width - right_w - 2, ENTRY_LINE, left, align="L", new_x=XPos.LEFT, new_y=YPos.NEXT)
         end_y = self.get_y()
         if right:
             self.set_xy(self.w - self.r_margin - right_w, start_y)
             self.set_font("DejaVu", "", BODY_SIZE)
             self.set_text_color(*right_color)
-            self.cell(right_w, 5.5, right, align="R")
-        self.set_xy(self.l_margin, max(end_y, start_y + 5.5))
+            self.cell(right_w, ENTRY_LINE, right, align="R")
+        self.set_xy(self.l_margin, max(end_y, start_y + ENTRY_LINE))
+
+    def lines_taken(self, text: str, width: float, size: int, bold: bool = False) -> int:
+        """How many lines that text takes in that width, measured without drawing anything."""
+        self.set_font("DejaVu", "B" if bold else "", size)
+        return len(self.multi_cell(width, DETAIL_LINE, text, dry_run=True, output="LINES"))
+
+    def _stamp_width(self, right: str) -> float:
+        """The column a value on the right takes: its own width and the air it keeps."""
+        if not right:
+            return 0
+        self.set_font("DejaVu", "", BODY_SIZE)
+        return self.get_string_width(right) + STAMP_GAP
+
+    def keep(self, height: float) -> None:
+        """Moves a block to the next page rather than letting the break cut it.
+
+        A record torn in half reads as two records: the title at the foot of one page and its date
+        at the head of the next, with a page of nothing between them. A block taller than a page
+        whole is left to break: nothing could hold it.
+        """
+        room = self.h - self.b_margin - self.get_y()
+        page = self.h - self.t_margin - self.b_margin
+        if room < height < page:
+            self.add_page()
+
+    def entry(
+        self,
+        left: str,
+        right: str = "",
+        right_color=INK,
+        bold_left: bool = False,
+        detail: str = "",
+        gap: float = ENTRY_GAP,
+    ):
+        """One record whole: the title with its value on the right, the muted line under it, and the
+        page break that comes before all of it or not at all."""
+        right_w = self._stamp_width(right)
+        height = self.lines_taken(left, self.width - right_w - 2, BODY_SIZE, bold_left) * ENTRY_LINE
+        if detail:
+            height += self.lines_taken(detail, self.width, META_SIZE) * DETAIL_LINE
+        self.keep(height + gap)
+        self.row(left, right, right_color, bold_left)
+        if detail:
+            self.muted(detail)
+        self.ln(gap)
 
 
 def _clinics(profile: dict) -> list[dict]:
@@ -190,7 +241,12 @@ def draw_header(pdf: _Card, card: dict) -> None:
 
     pdf.set_font("DejaVu", "B", NAME_SIZE)
     pdf.set_text_color(*INK)
-    pdf.cell(0, 11, pet["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    if pdf.get_string_width(pet["name"]) <= pdf.width:
+        pdf.cell(0, 11, pet["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    else:
+        # A name wider than the page used to be drawn in one line and lost everything past the
+        # right edge, so the card said one thing and showed another. It wraps instead.
+        pdf.multi_cell(0, 8, pet["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     facts = [pet.get("species"), _lower_first(pet["breed"]) if pet.get("breed") else None]
     if pet.get("birth_date"):
@@ -274,14 +330,11 @@ def _life_section(pdf: _Card, profile: dict) -> None:
 def draw_course(pdf: _Card, c: dict, compact: bool = False) -> None:
     """One medication course in two lines: the name with its dates, then everything else it needs said.
     Compact (a big pet on many medicines): one line, the name with its dose and schedule."""
-    if pdf.get_y() > pdf.h - 32:  # the name never stays on one page and its line on the next
-        pdf.add_page()
     name = c["name"] + (f", {c['strength']}" if c.get("strength") else "")
     if compact:
         said = ", ".join(x for x in (c.get("dose_text"), c.get("schedule_text")) if x)
-        pdf.row(f"{name}: {said}" if said else name, _period(c), MUTED, bold_left=False)
+        pdf.entry(f"{name}: {said}" if said else name, _period(c), MUTED)
         return
-    pdf.row(name, _period(c), MUTED, bold_left=True)
     dose, schedule = c.get("dose_text"), c.get("schedule_text")
     bits = [
         ", ".join(
@@ -298,8 +351,13 @@ def draw_course(pdf: _Card, c: dict, compact: bool = False) -> None:
     if c.get("comment"):
         bits.append(c["comment"])
     # A sentence each, ended once: «Назначил Каримов Д.» already has its full stop.
-    pdf.muted(" ".join(b[0].upper() + b[1:] + ("" if b.endswith(".") else ".") for b in bits if b))
-    pdf.ln(1.5)
+    pdf.entry(
+        name,
+        _period(c),
+        MUTED,
+        bold_left=True,
+        detail=" ".join(b[0].upper() + b[1:] + ("" if b.endswith(".") else ".") for b in bits if b),
+    )
 
 
 def _record_details(r: dict, home: dict) -> str:
@@ -463,15 +521,17 @@ def _events_section(pdf: _Card, summary: list[dict]) -> None:
         return  # nothing the owner noted about the health: no section is better than a section that says so
     pdf.section("Наблюдения владельца")
     for row in summary:
-        if pdf.get_y() > pdf.h - 34:  # a title and its line of numbers stay on one page
-            pdf.add_page()
-        pdf.row(row["label"], f"всего {row['total']}", bold_left=True)
         years = list(row["years"].items())
         recent, older = years[-RECENT_YEARS:], years[:-RECENT_YEARS]
         by_year = ", ".join(f"{y}: {n}" for y, n in recent)
         earlier = f"раньше {sum(n for _, n in older)}, " if older else ""
-        pdf.muted(f"С {_date(row['first'])} по {_date(row['last'])}. По годам: {earlier}{by_year}.")
-        pdf.ln(1)
+        pdf.entry(
+            row["label"],
+            f"всего {row['total']}",
+            bold_left=True,
+            detail=f"С {_date(row['first'])} по {_date(row['last'])}. По годам: {earlier}{by_year}.",
+            gap=1,
+        )
 
 
 def _documents_section(pdf: _Card, documents: list[dict]) -> None:
@@ -482,7 +542,7 @@ def _documents_section(pdf: _Card, documents: list[dict]) -> None:
     for d in documents:
         kind = DOCUMENT_CATEGORIES.get(d["category"], "Документ")
         until = f", до {_date(d['expires_at'])}" if d.get("expires_at") else ""
-        pdf.row(d["title"], f"{kind}{until}, {_date(d['added'])}", MUTED)
+        pdf.entry(d["title"], f"{kind}{until}, {_date(d['added'])}", MUTED)
 
 
 def _due_items(card: dict) -> list[tuple[int, str, str, str, tuple]]:
@@ -542,9 +602,7 @@ def _due_section(pdf: _Card, card: dict) -> None:
         pdf.muted("Просроченного и близкого по сроку нет.")
         return
     for _days, title, what, right, color in items:
-        pdf.row(title, right, color, bold_left=True)
-        pdf.muted(what)
-        pdf.ln(1.5)
+        pdf.entry(title, right, color, bold_left=True, detail=what)
 
 
 STANDING_LIMIT = 8
@@ -570,13 +628,12 @@ def _standing_section(pdf: _Card, card: dict) -> None:
         return
     pdf.section("Прививки и обработки в силе")
     for r in items[:STANDING_LIMIT]:
-        pdf.row(
+        pdf.entry(
             r["title"],
             f"Следующая {_date(r['next_due'])}" if r.get("next_due") else "Повтор не назначен",
             bold_left=True,
+            detail=f"{KIND_LABELS.get(r['kind'], r['kind'])}, сделано {_date(r['date'])}",
         )
-        pdf.muted(f"{KIND_LABELS.get(r['kind'], r['kind'])}, сделано {_date(r['date'])}")
-        pdf.ln(1.5)
     if len(items) > STANDING_LIMIT:
         pdf.muted(f"Ещё {len(items) - STANDING_LIMIT} в хронологии.")
 
