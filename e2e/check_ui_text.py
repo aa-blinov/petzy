@@ -42,7 +42,12 @@ async def main() -> None:
         made = await api(pg, "POST", "/pets", {"name": PET, "species": "собака", "birth_date": "2020-01-01"})
         pid = made["json"]["pet"]["_id"]
         try:
-            await api(pg, "POST", f"/pets/{pid}/medical-records", {"kind": "vaccination", "title": "Нобивак DHPPi"})
+            await api(
+                pg,
+                "POST",
+                "/medical-records",
+                {"pet_id": pid, "date": "2026-05-29", "kind": "vaccination", "title": "Нобивак DHPPi"},
+            )
             await api(
                 pg,
                 "POST",
