@@ -107,7 +107,7 @@ async def main():
             await api(pg, "PUT", f"/pets/{pid}/visit-prep", {"complaint": "Кашляет", "checks": {}})
             await pg.goto(BASE + f"/pets/{pid}/medical-card")
             await pg.wait_for_timeout(2000)
-            await pg.get_by_role("button", name="Изменить").first.click()
+            await pg.locator('section:has(h2:text-is("К приёму"))').get_by_role("button", name="Изменить").first.click()
             await pg.wait_for_timeout(2000)
             check("the note opens from the card", pg.url.endswith(f"/pets/{pid}/visit-prep"), pg.url.replace(BASE, ""))
             await pg.get_by_role("button", name="Как обычно").first.click()
