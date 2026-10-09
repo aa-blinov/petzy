@@ -129,7 +129,7 @@ export function MedicalSummary({ card, petId, hidden, navigate }: { card: Card; 
     <section className="medsum" aria-label="Разделы медкарты">
       <ul className="medsum__grid">
         {tiles.map((tile) => (
-          <li key={tile.key} className="medsum__item">
+          <li key={tile.key} className={tile.quick ? 'medsum__item medsum__item--quick' : undefined}>
             <button
               type="button"
               className="medsum__tile tap-feedback"

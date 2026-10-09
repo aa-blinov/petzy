@@ -83,6 +83,11 @@
     position: relative;
 }
 
+/* The tile keeps its text clear of the door: the bottom of the tile is left for it, so the value never runs under it. */
+.medsum__item--quick > .medsum__tile {
+    padding-bottom: 48px;
+}
+
 .medsum__quick {
     position: absolute;
     right: var(--spacing-md);
