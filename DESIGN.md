@@ -132,6 +132,11 @@ components:
 
 ## Overview
 
+**Material 3, with the copper seed.** The app follows Material 3 (M3) in its tokens, shapes, elevation, navigation and
+states. The brand stays: ginger copper is the seed of the primary tonal palette (`--app-primary-text`, `--app-primary-fill`,
+`--app-accent-soft` as primary-container), and the wordmark is the one display face. The sections below that still
+describe the earlier «Warm Notebook» (flat sheets, 12px buttons) are superseded where they conflict with this paragraph.
+
 **Creative North Star: "The Warm Notebook"**
 
 Petzy is a diary someone keeps for the animal they live with: feedings, weight, medicines, the vet's papers. The system reads like that diary kept well. Cream paper (cream-paper) holds milk-white sheets (milk-card). Everything important is written in one ginger copper ink, the colour of a ginger cat (ginger-cat), and nothing on the page competes with it. People open the app on an ordinary morning to tick off a dose, and on a bad night when the pet is ill; the mood holds for both: calm and caring, never loud.
@@ -240,7 +245,9 @@ Allowed to stay off the ladder, because the label or a fixed neighbour sets them
 
 ## Elevation & Depth
 
-Paper on a table. Sheets lie flat: a hairline oat border plus a barely-there warm shadow (0 2px 8px at 6% brown), and they never lift, move or change shadow on press; pressing dims instead. Real elevation is reserved for what floats above the page: the add button (a copper glow, 0 4px 16px at 45%), pickers, dialogs and sheets (0 6px 24px at 10%). In the dark theme the brown shadows would vanish on charcoal, so they become black at higher opacity.
+Material 3 levels, in the warm shadow colour. Cards sit at level 1 (a hairline oat border and `--app-shadow`); they do not lift
+on press. Floating layers take level 3 (`--app-shadow-strong`): pickers, dialogs and sheets. The round add button keeps its
+copper glow. In the dark theme the shadows become black at higher opacity, as before.
 
 ### Shadow Vocabulary
 - **Sheet** (`box-shadow: 0 2px 8px rgba(60, 40, 20, 0.06)`): cards and the top bar.
@@ -249,17 +256,22 @@ Paper on a table. Sheets lie flat: a hairline oat border plus a barely-there war
 - **Copper glow** (`box-shadow: 0 4px 16px rgba(173, 88, 48, 0.45)`): the add button only.
 
 ### Named Rules
-**The Flat Sheet Rule.** A card never animates its elevation. Feedback on press is a dim or a 0.98 scale, never a lift.
+**The State Layer Rule (M3).** A pressed control takes a 12% wash of its content colour (buttons) and a 0.98 scale; a card
+never animates its elevation on press. Feedback is a state layer, never a lift.
 
 ## Shapes
 
-Softly rounded, never pill-shaped except where the shape is the meaning. The ladder is 4, 8, 12, 16, 24px: sheets 16px, buttons and inputs 12px, chips and small icon tiles 8px, record pills 14px, the add button and avatars round. Borders are 1px oat hairlines; there are no coloured side borders. Photos are cropped to their frame with the face kept high (object position centre 20%).
+M3 shape scale: extra-small 4px, small 8px, medium 12px, large 16px, extra-large 28px (`--radius-xs` … `--radius-xl`).
+Cards are large (16px), dialogs and sheets extra-large (28px), buttons are full pills (`--radius-pill`), chips are pills, the
+add button and avatars round. Record pills stay 14px. Borders are 1px oat hairlines; there are no coloured side borders. Photos are cropped to their frame with the face kept high (object position centre 20%).
 
 ## Components
 
 ### Buttons
-Soft and composed: one primary per screen.
-- **Shape:** gently rounded (12px), on every button; a chip is a pill and the add button is round, because there the shape is the meaning.
+M3 buttons: one primary per screen.
+- **Shape:** a full pill (`--radius-pill`) on every button; a chip is a pill and the add button is round.
+- **Label:** weight 500 (medium), not 600.
+- **Press:** a 12% state layer and a 0.98 scale.
 - **Size:** two, picked by `size`, never by hand. **Large** (`size="large"`, 48px, the `--btn-height` token) is the main action of a screen or a sheet and the button stacked with it («Создать» and «Отмена», «Записать» and «Оформить карточку»). The **usual** size (44px, `--touch-min`) is for a button inside a card or a row («Дали сейчас», «Загрузить ещё»). The small and mini ones keep their look and get an invisible 44px area to touch. Plain `<button>`s that stand in for a large one (`SpinnerButton`, the sheet buttons) use the same `--btn-height`.
 - **Label:** body size (16px), weight 600, on every size but the small and mini ones, which keep their own size.
 - **Primary:** ginger-deep fill, white text, full width at 48px for the main action of a form or screen («Создать», «Принять сейчас»). The sign-in and sign-up buttons use the deepened brand gradient instead.
@@ -267,12 +279,18 @@ Soft and composed: one primary per screen.
 - **Neutral outline:** an oat outline with ink text for the way out («Отмена», «Отклонить»): it takes no colour, so a copper outline always means a step forward.
 - **Text:** plain ginger-deep text for header actions («+ Добавить»).
 - **Danger:** red text for destructive actions at the foot of a form; a solid red button only where deletion is the screen's purpose (dark text on it in the dark theme).
-- **Press:** 0.98 scale and a slight dim; no hover lift. A visible focus ring for the keyboard.
+- **Press:** 0.98 scale and the 12% state layer; no hover lift. A visible focus ring for the keyboard.
 
 ### The round «+»
 One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). What its sheet offers depends on the screen: the feed's is the diary of events («Добавить запись»), the medical card's, in the mode that edits, is «Что записать?» (a vaccination, a treatment, a visit, an allergy, a medicine, a weight, a document). The reading mode of the card has none, because nothing is added there.
 
 **One door per screen.** A screen carries the round «+» only where its blocks carry no door of their own: a block with its own «Добавить», «Записать вес» or «Указать» next to what it adds does not get one as well. A part of the card that asks between two kinds keeps the «+» (it is the only way in) and its blocks carry no door, so a person reads one way to add rather than guessing between two. The card itself keeps its «+» because it is the only way from there to an allergy, a medicine, a weight or a document.
+
+### Dialogs and sheets
+M3 dialogs and sheets: the extra-large corner (28px), the floating shadow (level 3), the title in the large size.
+
+### Fields
+A focused field takes the accent on its label and a copper underline (the same indicator the rest of the form uses).
 
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.
@@ -299,7 +317,7 @@ One way to add on the screens that fill a diary: the round copper button bottom 
 
 ### Navigation
 - **Top bar:** milk-card, 64px: the wordmark or a back arrow on the left, the pet picker on the right.
-- **Tab bar:** five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card is the tab of the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
+- **Tab bar (M3 navigation bar):** the current item sits on an active indicator, a pill of primary-container (`--app-accent-soft`) behind its icon. Five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card is the tab of the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
 
 ### Record pill
 The signature of the feed: a 44px tile with a 14px radius in the record type's pastel (tile-orange for weight, tile-brown for feeding, tile-purple for medicines…) with the type's icon in espresso-ink, left of the record's time and values. The pastel names the type; it never signals state.
@@ -324,7 +342,7 @@ One page of one pet, in two modes under the title «Медкарта» (the pet 
 ### Don't:
 - **Don't** put ginger-cat (#C46A3F) under white text or use it as text on cream.
 - **Don't** add a second brand colour or use a record pastel to mark an action or state.
-- **Don't** lift, move or re-shadow a card on press.
+- **Don't** lift, move or re-shadow a card on press; use the state layer.
 - **Don't** use DynaPuff for anything but the «Petzy» wordmark, or gradient text anywhere else.
 - **Don't** join facts with a middle dot («·»); separate them with layout or a comma.
 - **Don't** use pure grey neutrals, pure black text or a pure white page.
