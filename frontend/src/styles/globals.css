@@ -199,10 +199,12 @@
     /* 14px */
     --text-md: 1rem;
     /* 16px */
-    --text-lg: 1.125rem;
-    /* 18px */
-    --text-xl: 1.25rem;
-    /* 20px */
+    /* Material 3 title-large: 22px (was 18px). Headings and the names of sheets and dialogs. */
+    --text-lg: 1.375rem;
+    /* 22px */
+    /* Material 3 headline-small: 24px (was 20px). The pet's name on the full card. */
+    --text-xl: 1.5rem;
+    /* 24px */
     --text-xxl: 1.5rem;
     /* 24px */
     --text-display: 1.75rem;
