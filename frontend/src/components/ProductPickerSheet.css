@@ -26,7 +26,7 @@
     background: none;
     color: var(--app-accent-deep);
     font: inherit;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
 }
 
@@ -40,7 +40,7 @@
     gap: var(--spacing-2xs);
     margin: 0 4px var(--spacing-sm);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--app-text-secondary);
 }
 
@@ -82,5 +82,5 @@
     border: 1px dashed var(--app-border-color);
     border-radius: var(--radius-md);
     color: var(--app-accent-deep);
-    font-weight: 600;
+    font-weight: 500;
 }

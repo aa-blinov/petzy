@@ -73,7 +73,7 @@ function newDraftKey() {
  *  as "here's what this is", so every input in the field-builder card
  *  gets one of these instead. */
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
-  const look = { fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--app-text-tertiary)', marginBottom: '4px' } as const;
+  const look = { fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--app-text-tertiary)', marginBottom: '4px' } as const;
   // A control that takes no id (the selector) is named by its own aria-label, and its label
   // stays a caption above it. Everything else is a real label pointing at the control.
   return htmlFor ? (
@@ -351,7 +351,7 @@ export function EventTypeForm() {
     <div className="page-container" ref={pageRef}>
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>
             {isEditing ? 'Редактировать тип' : 'Новый тип события'}
           </h1>
           {/* Someone else's type: the form below is there to read, not to fill in. Without this the person
@@ -463,7 +463,7 @@ export function EventTypeForm() {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   marginBottom: '12px',
                 }}>
-                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-secondary)' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-text-secondary)' }}>
                     Поле {index + 1}
                   </span>
                   <button

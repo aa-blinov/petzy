@@ -104,7 +104,7 @@ export function EventCatalogSheet({
 
         {groups.map((group) => (
           <section key={group.key} aria-label={group.title} style={{ marginBottom: 'var(--spacing-md)' }}>
-            <h3 style={{ margin: '0 4px var(--spacing-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)' }}>
+            <h3 style={{ margin: '0 4px var(--spacing-sm)', fontSize: 'var(--text-xs)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)' }}>
               {group.title}
             </h3>
             <div className="card-soft" style={{ overflow: 'hidden' }}>
@@ -139,7 +139,7 @@ export function EventCatalogSheet({
                       {createElement(getEventIcon(type.icon), { size: 20, strokeWidth: 2 })}
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontWeight: 600, overflowWrap: 'anywhere' }}>{type.label}</span>
+                      <span style={{ display: 'block', fontWeight: 500, overflowWrap: 'anywhere' }}>{type.label}</span>
                       <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', overflowWrap: 'anywhere' }}>{asks(type)}</span>
                     </span>
                     <Plus size={20} strokeWidth={2.2} aria-hidden style={{ color: 'var(--app-accent-deep)', flexShrink: 0 }} />
@@ -157,7 +157,7 @@ export function EventCatalogSheet({
             onClose();
             navigate('/event-types/new');
           }}
-          style={{ width: '100%', minHeight: 'var(--touch-min)', margin: '0 0 var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+          style={{ width: '100%', minHeight: 'var(--touch-min)', margin: '0 0 var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-md)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
         >
           Создать своё событие
         </button>

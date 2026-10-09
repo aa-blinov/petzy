@@ -432,7 +432,7 @@ export function MedicationForm() {
                     alignItems: 'center',
                     minHeight: '40px',
                 }}>
-                    <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
+                    <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 500 }}>
                         {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
                     </h1>
                 </div>
@@ -973,7 +973,7 @@ export function MedicationForm() {
                         <SpinnerButton
                             loading={mutation.isPending || isSubmitting}
                             onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
-                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}
+                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
                         >
                             {/* «Добавить» for a new course, as on the document form («Сохранить» while editing). */}
                             {isEditing ? 'Сохранить' : 'Добавить'}

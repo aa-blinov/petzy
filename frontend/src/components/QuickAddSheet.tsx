@@ -72,7 +72,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
             <button
               type="button"
               className="touch-target"
-              style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+              style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
               onClick={() => {
                 onClose();
                 navigate('/pet-events');
@@ -125,7 +125,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                   <span
                     style={{
                       fontSize: 'var(--text-sm)',
-                      fontWeight: 600,
+                      fontWeight: 500,
                       lineHeight: 1.25,
                       letterSpacing: '-0.01em',
                       overflow: 'hidden',
@@ -155,7 +155,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
               onClose();
               navigate('/pet-events');
             }}
-            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
           >
             Другие события
           </button>

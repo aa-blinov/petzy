@@ -156,7 +156,7 @@ export function NextDoseWidget() {
         const scheduled = (courses.data ?? []).filter((m) => (m.course_status ? m.course_status === 'active' : m.is_active) && m.scheduled_today);
         if (scheduled.length === 0 || scheduled.some((m) => (m.open_slots_today?.length ?? 0) > 0)) return null;
         return (
-            <div className="card-soft" role="status" style={{ marginBottom: 'var(--spacing-lg)', padding: 'var(--spacing-md) var(--spacing-lg)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--app-success-text)', fontWeight: 600 }}>
+            <div className="card-soft" role="status" style={{ marginBottom: 'var(--spacing-lg)', padding: 'var(--spacing-md) var(--spacing-lg)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--app-success-text)', fontWeight: 500 }}>
                 <Check size={18} strokeWidth={2.4} aria-hidden style={{ flexShrink: 0 }} />
                 Все приёмы на сегодня отмечены
             </div>
@@ -253,7 +253,7 @@ export function NextDoseWidget() {
                         type="button"
                         className="touch-target"
                         onClick={() => navigate(`/medications?restock=${nextDose.medication_id}`)}
-                        style={{ border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', fontWeight: 600, textDecoration: 'underline', padding: 'var(--spacing-xs)' }}
+                        style={{ border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', fontWeight: 500, textDecoration: 'underline', padding: 'var(--spacing-xs)' }}
                     >
                         Пополнить
                     </button>

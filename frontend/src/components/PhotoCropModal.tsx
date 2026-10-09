@@ -123,7 +123,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
               border: 'none',
               background: 'rgba(255, 255, 255, 0.12)',
               color: 'var(--app-text-on-dark)',
-              fontWeight: 600,
+              fontWeight: 500,
               fontSize: 'var(--text-md)',
               cursor: isSaving ? 'not-allowed' : 'pointer',
             }}
@@ -146,7 +146,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
               border: 'none',
               background: 'var(--app-primary-fill)',
               color: 'var(--app-text-on-dark)',
-              fontWeight: 600,
+              fontWeight: 500,
               fontSize: 'var(--text-md)',
               cursor: isSaving || !croppedAreaPixels ? 'not-allowed' : 'pointer',
               opacity: isSaving ? 0.7 : 1,

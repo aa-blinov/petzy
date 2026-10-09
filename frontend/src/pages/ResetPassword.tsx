@@ -12,7 +12,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { passwordProblem } from '../utils/authForms';
 
-const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 } as const;
+const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 500 } as const;
 
 /** What the server takes (web/schemas.py PasswordResetRequest) and what its
  *  password rule allows (72 bytes, web/auth.py password_problem). Typing past

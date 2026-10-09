@@ -501,7 +501,7 @@ export function MedicationsList() {
                                                 >
                                                     <FormFactorIcon factor={med.form_factor} />
                                                 </div>
-                                                <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{med.name}</h2>
+                                                <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 500 }}>{med.name}</h2>
                                                 {courseTag(med) && <span className="course-tag">{courseTag(med)}</span>}
                                             </div>
                                             {/* The strength and the dose stand side by side with a gap. The pipe that was here
@@ -630,7 +630,7 @@ export function MedicationsList() {
                                                     }}
                                                 >
                                                     <div style={{ minWidth: 0 }}>
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 'var(--spacing-sm)', fontSize: 'var(--text-sm)', fontWeight: 600, color: toneColor }}>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 'var(--spacing-sm)', fontSize: 'var(--text-sm)', fontWeight: 500, color: toneColor }}>
                                                             <span>{stock.amount}</span>
                                                             {stock.flag && <span>{stock.flag}</span>}
                                                         </div>
@@ -831,7 +831,7 @@ export function MedicationsList() {
                             <div style={{ marginBottom: 'var(--spacing-lg)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                                 {restock.medication.name}: сейчас {formatAmount(Math.max(0, restock.medication.inventory_current ?? 0))} {restock.medication.dose_unit || 'доз'}
                             </div>
-                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 500, marginBottom: 'var(--spacing-lg)' }}>
                                 Сколько купили?
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>

@@ -17,7 +17,7 @@
     color: var(--app-text-primary);
     font-family: inherit;
     font-size: var(--text-xs);
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
 }
 
