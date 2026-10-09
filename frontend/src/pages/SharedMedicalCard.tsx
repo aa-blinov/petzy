@@ -97,7 +97,7 @@ export function SharedMedicalCard() {
       <div className="max-width-container safe-area-padding">
         <div className="medcard medcard--reading">
           {/* The patient is the title: a page opened from a message names who it is about before anything else. */}
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{card.pet.name}</h1>
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>{card.pet.name}</h1>
           <VetView
             card={card}
             hidden={NO_HIDDEN}

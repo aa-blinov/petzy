@@ -316,7 +316,7 @@ export function History() {
                             gap: 'var(--spacing-xs)',
                             font: 'inherit',
                             fontSize: 'var(--text-sm)',
-                            fontWeight: 600,
+                            fontWeight: 500,
                         }}
                     >
                         <Download size={20} strokeWidth={2} style={{ display: 'block' }} />

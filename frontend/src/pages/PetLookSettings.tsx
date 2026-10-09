@@ -41,7 +41,7 @@ import { showToast } from '../utils/toast';
 const OPTION_GRID = 'repeat(auto-fill, minmax(max(5rem, 22%), 1fr))';
 
 
-const labelStyle: CSSProperties = { fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', margin: '16px 0 8px' };
+const labelStyle: CSSProperties = { fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-text-primary)', margin: '16px 0 8px' };
 const optionBase: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -76,7 +76,7 @@ function OwnerOnly({ name }: { name: string }) {
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
-        <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
+        <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>Оформление питомца</h1>
         <p style={{ margin: 'var(--spacing-md) 0', fontSize: 'var(--text-md)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
           Питомец: {name}. Оформление меняет только владелец, вы видите его таким, каким его выбрали
         </p>
@@ -242,7 +242,7 @@ function TabStrip({ value, onChange }: { value: TabKey; onChange: (key: TabKey) 
               color: on ? 'var(--app-accent-deep)' : 'var(--app-text-secondary)',
               fontFamily: 'inherit',
               fontSize: 'var(--text-md)',
-              fontWeight: 600,
+              fontWeight: 500,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
@@ -370,7 +370,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>Оформление питомца</h1>
           <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
             Питомец: {pet.name}. Оформление видят все, у кого есть доступ к питомцу, а менять его можете только вы
           </p>
@@ -406,7 +406,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                         color: 'var(--app-text-primary)',
                         fontFamily: 'inherit',
                         fontSize: 'var(--text-sm)',
-                        fontWeight: 600,
+                        fontWeight: 500,
                         cursor: 'pointer',
                       }}
                     >
@@ -419,7 +419,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                   type="button"
                   className="tap-feedback"
                   onClick={reset}
-                  style={{ marginTop: '4px', minHeight: 'var(--touch-min)', padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+                  style={{ marginTop: '4px', minHeight: 'var(--touch-min)', padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
                 >
                   Сбросить оформление
                 </button>
@@ -518,7 +518,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
               <>
                 {PET_FRAME_GROUPS.map((g) => (
                   <div key={g.key} role="radiogroup" aria-label={`Рамка: ${g.label}`} onKeyDown={rovingKeyDown} style={{ marginBottom: '12px' }}>
-                    <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: 'var(--spacing-xs) var(--spacing-xs) var(--spacing-sm)' }}>
+                    <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: 'var(--spacing-xs) var(--spacing-xs) var(--spacing-sm)' }}>
                       {g.label}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: OPTION_GRID, gap: '8px' }}>
@@ -569,7 +569,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                       color: 'var(--app-text-primary)',
                       fontFamily: 'inherit',
                       fontSize: 'var(--text-md)',
-                      fontWeight: 600,
+                      fontWeight: 500,
                       cursor: 'pointer',
                     }}
                   >

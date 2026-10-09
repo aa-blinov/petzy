@@ -94,7 +94,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
           alignItems: 'center', 
           marginBottom: '16px' 
         }}>
-          <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>Экспорт: {pets.find((p) => p._id === petId)?.name ?? 'данные питомца'}</h3>
+          <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 500 }}>Экспорт: {pets.find((p) => p._id === petId)?.name ?? 'данные питомца'}</h3>
           <Button fill="none" size="small" onClick={onClose}>Закрыть</Button>
         </div>
 

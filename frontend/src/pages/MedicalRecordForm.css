@@ -110,7 +110,7 @@
     padding: 0;
     min-height: var(--touch-min);
     font: inherit;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--app-accent-deep);
     cursor: pointer;
 }
@@ -137,6 +137,6 @@
     color: var(--app-accent-deep);
     font: inherit;
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
 }

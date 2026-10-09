@@ -81,7 +81,7 @@ export function AuthShell({ title, children }: { title?: string; children: React
               style={{
                 margin: '0 0 var(--spacing-md)',
                 fontSize: 'var(--text-lg)',
-                fontWeight: 600,
+                fontWeight: 500,
                 lineHeight: 1.3,
                 textAlign: 'center',
                 color: 'var(--app-text-primary)',

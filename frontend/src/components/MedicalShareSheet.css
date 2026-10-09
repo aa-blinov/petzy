@@ -52,7 +52,7 @@
 .shsheet__list-title {
     margin: 0 4px var(--spacing-sm);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--app-text-secondary);
 }
 

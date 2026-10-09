@@ -11,7 +11,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { retryNote, useRetryLock } from '../utils/authForms';
 
-const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 } as const;
+const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 500 } as const;
 
 /** «Забыли пароль?»: a link to set a new one, sent to the confirmed email. */
 export function ForgotPassword() {

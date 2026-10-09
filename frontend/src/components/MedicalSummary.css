@@ -30,13 +30,13 @@
     align-items: center;
     gap: var(--spacing-xs);
     font-size: var(--text-xs);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--app-text-secondary);
 }
 
 .medsum__value {
     font-size: var(--text-md);
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.25;
     overflow-wrap: break-word;
     min-width: 0;
@@ -52,7 +52,7 @@
     padding: 1px var(--spacing-sm);
     border-radius: 999px;
     font-size: var(--text-xs);
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .medsum__note--none {
@@ -98,7 +98,7 @@
     background: none;
     font: inherit;
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--app-accent-deep);
     cursor: pointer;
 }

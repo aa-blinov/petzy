@@ -438,7 +438,7 @@ export function DocumentsList() {
                               )}
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
-                                  <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>{doc.title}</h3>
+                                  <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 500 }}>{doc.title}</h3>
                                   {doc.category === 'vaccination' && !inCard && selectedPetId && (
                                     <button
                                       type="button"
@@ -449,7 +449,7 @@ export function DocumentsList() {
                                       }}
                                       style={{
                                         fontSize: 'var(--text-xs)',
-                                        fontWeight: 600,
+                                        fontWeight: 500,
                                         color: 'var(--app-accent-deep)',
                                         background: 'var(--app-accent-soft)',
                                         padding: '2px 8px',
@@ -467,7 +467,7 @@ export function DocumentsList() {
                                     <span
                                       style={{
                                         fontSize: 'var(--text-xs)',
-                                        fontWeight: 600,
+                                        fontWeight: 500,
                                         color: expiry.color,
                                         background: expiry.bg,
                                         padding: '2px 8px',
@@ -640,7 +640,7 @@ export function DocumentsList() {
               style={{
                 margin: 0,
                 fontSize: 'var(--text-md)',
-                fontWeight: 600,
+                fontWeight: 500,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -670,7 +670,7 @@ export function DocumentsList() {
                   color: 'var(--app-accent-deep)',
                   fontFamily: 'inherit',
                   fontSize: 'var(--text-sm)',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                 }}
               >
@@ -728,7 +728,7 @@ export function DocumentsList() {
                 paddingBottom: 'calc(env(safe-area-inset-bottom) + var(--spacing-md))',
                 color: 'var(--app-accent-deep)',
                 fontSize: 'var(--text-sm)',
-                fontWeight: 600,
+                fontWeight: 500,
                 textDecoration: 'none',
               }}
             >

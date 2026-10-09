@@ -481,7 +481,7 @@ export function PetForm() {
           alignItems: 'center',
           minHeight: '40px'
         }}>
-          <h1 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>
             {isEditing ? 'Редактировать питомца' : 'Добавить питомца'}
           </h1>
         </div>
@@ -1023,7 +1023,7 @@ export function PetForm() {
                 <SpinnerButton
                   loading={loading}
                   onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
-                  style={{ borderRadius: 'var(--radius-md)', fontWeight: 600 }}
+                  style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
                 >
                   {isEditing ? 'Сохранить' : 'Добавить'}
                 </SpinnerButton>

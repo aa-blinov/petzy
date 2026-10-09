@@ -167,7 +167,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
             <div
               style={{
                 fontSize: "var(--text-sm)",
-                fontWeight: 600,
+                fontWeight: 500,
                 color: "var(--app-accent-deep)",
                 overflowWrap: "anywhere",
               }}
@@ -212,7 +212,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
                 background: "none",
                 font: "inherit",
                 fontSize: "var(--text-sm)",
-                fontWeight: 600,
+                fontWeight: 500,
                 color: "var(--app-accent-deep)",
                 cursor: "pointer",
               }}

@@ -181,7 +181,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span
                 className="display-headline"
-                style={{ fontSize: 'var(--text-md)', fontWeight: 600 }}
+                style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}
               >
                 {config.displayName}
               </span>
@@ -247,7 +247,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
         title={item.skipped ? 'Пропущенный приём' : 'Приём лекарства'}
         content={
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontWeight: 600 }}>{String(item.medication_name || 'Лекарство')}</div>
+            <div style={{ fontWeight: 500 }}>{String(item.medication_name || 'Лекарство')}</div>
             <div style={{ marginTop: 4 }}>{whenLabel(intakeWhen)}</div>
             <div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
               Если время неверное, поправьте его. Отметили по ошибке? Удалите
@@ -338,7 +338,7 @@ export function SwipeHint() {
                     borderRadius: 'var(--radius-md)',
                     background: 'transparent',
                     font: 'inherit',
-                    fontWeight: 600,
+                    fontWeight: 500,
                     color: 'inherit',
                     cursor: 'pointer',
                 }}

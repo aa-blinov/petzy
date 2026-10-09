@@ -107,7 +107,7 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
       {/* On a wide screen the editor is a column, not a window the size of the monitor. */}
       <div style={{ width: '100%', maxWidth: '560px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <style>{windowShapeCss(frame)}</style>
-      <div style={{ color: 'var(--app-text-on-dark)', padding: '12px 16px', fontWeight: 600, fontSize: 'var(--text-md)' }}>
+      <div style={{ color: 'var(--app-text-on-dark)', padding: '12px 16px', fontWeight: 500, fontSize: 'var(--text-md)' }}>
         Кадр для рамки «{label}»
       </div>
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
@@ -221,7 +221,7 @@ function buttonStyle(background: string) {
     border: 'none',
     background,
     color: 'var(--app-text-on-dark)',
-    fontWeight: 600,
+    fontWeight: 500,
     fontSize: 'var(--text-md)',
     fontFamily: 'inherit',
     cursor: 'pointer',

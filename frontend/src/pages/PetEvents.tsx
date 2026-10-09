@@ -68,7 +68,7 @@ function Row({ type, onRemove }: { type: EventType; onRemove: () => void }) {
         {/* A fixed set of module-level icons: createElement, not a component made during render (see PetImage). */}
         {createElement(getEventIcon(type.icon), { size: 18, strokeWidth: 2 })}
       </span>
-      <span style={{ flex: 1, minWidth: 0, padding: '0 12px', fontWeight: 600, overflowWrap: 'anywhere' }}>{type.label}</span>
+      <span style={{ flex: 1, minWidth: 0, padding: '0 12px', fontWeight: 500, overflowWrap: 'anywhere' }}>{type.label}</span>
       <button
         type="button"
         className="tap-feedback"
@@ -164,7 +164,7 @@ export function PetEvents() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>События питомца</h1>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>События питомца</h1>
           {getSelectedPet && (
             <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
               Питомец: {getSelectedPet.name}. Какие записи предлагает «+» и в каком порядке
@@ -211,7 +211,7 @@ export function PetEvents() {
                 type="button"
                 className="tap-feedback"
                 onClick={() => setCatalogOpen(true)}
-                style={{ width: '100%', minHeight: 'var(--btn-height)', marginTop: 'var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 600, cursor: 'pointer' }}
+                style={{ width: '100%', minHeight: 'var(--btn-height)', marginTop: 'var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 500, cursor: 'pointer' }}
               >
                 <Plus size={18} strokeWidth={2.4} aria-hidden />
                 Добавить событие
@@ -221,7 +221,7 @@ export function PetEvents() {
                 type="button"
                 className="tap-feedback"
                 onClick={() => void resetToKind()}
-                style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-secondary)', cursor: 'pointer' }}
+                style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-text-secondary)', cursor: 'pointer' }}
               >
                 Вернуть набор для {species.forWhom}
               </button>

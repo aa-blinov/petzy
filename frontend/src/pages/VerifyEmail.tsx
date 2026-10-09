@@ -92,7 +92,7 @@ const ask = useCallback(
     refused: [{ to: '/', label: 'Открыть Petzy' }],
   };
 
-  const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 600 };
+  const linkStyle = { color: 'var(--app-accent-deep)', fontWeight: 500 };
 
   return (
     <AuthShell title="Подтверждение почты">

@@ -174,7 +174,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
                         style={{ flex: 1, minWidth: 0, minHeight: 'var(--touch-min)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--spacing-2xs)', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', font: 'inherit', cursor: row.def ? 'pointer' : 'default', color: 'var(--app-text-primary)' }}
                       >
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>{row.label}</span>
-                        <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, overflowWrap: 'anywhere' }}>{shown(row)}</span>
+                        <span style={{ fontSize: 'var(--text-md)', fontWeight: 500, overflowWrap: 'anywhere' }}>{shown(row)}</span>
                         {/* A field that is no longer in the type keeps its value, and there is nothing to edit it
                             with: said here, so the inert button and the latin name need no guessing. */}
                         {!row.def && (
@@ -206,7 +206,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
               className="tap-feedback"
               onClick={() => void forgetAll()}
               disabled={saving}
-              style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-danger-text, var(--app-danger-color))', cursor: 'pointer' }}
+              style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-xl)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-danger-text, var(--app-danger-color))', cursor: 'pointer' }}
             >
               Забыть всё для этого питомца
             </button>
@@ -235,7 +235,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)' }}>
           <label
             htmlFor="default-value"
-            style={{ flex: 1, minWidth: 0, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-primary)', paddingTop: 12 }}
+            style={{ flex: 1, minWidth: 0, fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-text-primary)', paddingTop: 12 }}
           >
             {editing ? `${editing.typeLabel}: ${editing.label}` : ''}
           </label>

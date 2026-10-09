@@ -18,7 +18,7 @@
 .recsheet__group-title {
     margin: 0 4px var(--spacing-sm);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--app-text-secondary);
 }
 
@@ -41,7 +41,7 @@
     color: var(--app-text-on-tile);
     font-family: inherit;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.25;
     text-align: left;
     cursor: pointer;

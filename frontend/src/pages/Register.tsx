@@ -131,7 +131,7 @@ export function Register() {
           Регистрация сейчас закрыта. Попросите администратора Petzy создать вам аккаунт
         </p>
         <div style={{ textAlign: 'center', marginTop: 'var(--spacing-lg)' }}>
-          <Link to="/login" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
+          <Link to="/login" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 500 }}>
             Войти
           </Link>
         </div>
@@ -190,7 +190,7 @@ export function Register() {
             )}
             <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--text-sm)', textAlign: 'center', color: 'var(--app-text-secondary)' }}>
               Уже есть аккаунт?{' '}
-              <Link to="/login" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 600 }}>
+              <Link to="/login" className="tap-link" style={{ color: 'var(--app-accent-deep)', fontWeight: 500 }}>
                 Войти
               </Link>
             </p>

@@ -73,7 +73,7 @@ export function EmptyState({
         style={{
           margin: 0,
           fontSize: 'var(--text-lg)',
-          fontWeight: 600,
+          fontWeight: 500,
           color: 'var(--app-text-primary)',
         }}
       >
@@ -107,7 +107,7 @@ export function EmptyState({
             borderRadius: 'var(--radius-md)',
             padding: '12px 20px',
             fontSize: 'var(--text-md)',
-            fontWeight: 600,
+            fontWeight: 500,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
