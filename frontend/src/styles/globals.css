@@ -189,6 +189,8 @@
     /* Material 3 extra-large shape. */
     --radius-xl: 28px;
     --radius-round: 50%;
+    /* Material 3 full shape: buttons are pills. */
+    --radius-pill: 999px;
 
     /* Typography Scale (rem for accessibility) */
     --text-xs: 0.75rem;
@@ -1212,15 +1214,18 @@ a,
     color: var(--app-accent-deep);
 }
 
+/* Material 3 buttons: a full pill (the shape is the meaning of the action) and the label at medium weight. Chips and the round
+   add button keep their own shape. */
 .adm-button {
-    --border-radius: var(--app-border-radius) !important;
+    --border-radius: var(--radius-pill) !important;
 }
 
 /* One button system. The usual size is a thumb tall (44px, inside a card or a row), the large one is the screen's main
    action (48px, --btn-height); both set the label in the body size at weight 600. The mini and small ones keep their look
    and get an invisible 44px area to touch (see .touch-target below). */
 .adm-button {
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }
 
 .adm-button:not(.adm-button-mini):not(.adm-button-small) {
