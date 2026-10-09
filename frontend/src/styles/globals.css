@@ -1027,6 +1027,30 @@ select {
     transform: scale(1.12);
 }
 
+/* Material 3 navigation bar: the current item sits on an active indicator, a pill of primary-container behind its icon.
+   The icon wrapper is its own stacking context, so the pill paints behind the icon and under the unread dot. */
+.app-tab-bar__icon {
+    isolation: isolate;
+}
+
+.app-tab-bar__icon::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: -4px;
+    left: 50%;
+    width: 56px;
+    height: 32px;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    transform: translateX(-50%);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.app-tab-bar__item--active .app-tab-bar__icon::before {
+    background: var(--app-accent-soft);
+}
+
 .app-tab-bar__title {
     font-size: 11px;
     line-height: 15px;
@@ -1214,6 +1238,15 @@ a,
     color: var(--app-accent-deep);
 }
 
+/* Material 3 state layer: a pressed button takes a 12% wash of its own content colour, not a lift. */
+.adm-button:active {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.12));
+}
+
+html[data-prefers-color-scheme='dark'] .adm-button:active {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12));
+}
+
 /* Material 3 buttons: a full pill (the shape is the meaning of the action) and the label at medium weight. Chips and the round
    add button keep their own shape. */
 .adm-button {
@@ -1333,6 +1366,11 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 .adm-form-item-child-inner {
     justify-content: flex-start !important;
     align-items: center !important;
+}
+
+/* Material 3 dialogs: the extra-large corner (--radius-xl, 28px) on the floating layer. */
+.adm-dialog {
+    --border-radius: var(--radius-xl) !important;
 }
 
 /* Dialog content text size */
