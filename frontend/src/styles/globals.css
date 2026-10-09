@@ -24,7 +24,8 @@
 
     /* Single accent (warm copper) + soft tint for backgrounds */
     --app-accent: #C46A3F;
-    --app-accent-soft: #FBEFE5;
+    /* Material 3 primary-container (tone 90 of the copper seed): the tinted fill behind selected and active things. */
+    --app-accent-soft: #FFDBCB;
 
     /* Motion design tokens — single source of truth for durations,
        easings, and stagger so the whole UI feels uniform.
@@ -93,15 +94,17 @@
     --app-violet-soft: rgba(191, 90, 242, 0.14);
 
     /* Layout Colors (warm cream background, warm off-white cards) */
-    --app-page-background: #FAF6EF;
-    --app-card-background: #FEFCF6;
+    /* Material 3 surface and surface-container-low, warm-tinted from the copper seed. */
+    --app-page-background: #FFF8F3;
+    --app-card-background: #FFFBF7;
     --app-border-color: #EFE9DD;
     --app-divider-color: #E5DFD0;
 
     /* Specific UI Elements */
-    --app-shadow: 0 2px 8px rgba(60, 40, 20, 0.06);
-    --app-shadow-light: 0 1px 3px rgba(60, 40, 20, 0.04);
-    --app-shadow-strong: 0 6px 24px rgba(60, 40, 20, 0.10);
+    /* Material 3 elevation levels 1, 1 and 3, in the warm shadow colour. */
+    --app-shadow: 0 1px 2px rgba(60, 40, 20, 0.30), 0 1px 3px 1px rgba(60, 40, 20, 0.15);
+    --app-shadow-light: 0 1px 2px rgba(60, 40, 20, 0.30);
+    --app-shadow-strong: 0 4px 8px 3px rgba(60, 40, 20, 0.15), 0 1px 3px rgba(60, 40, 20, 0.30);
 
     /* Fixed Colors (won't change in dark mode) */
     --color-white: #FFFFFF;
@@ -183,7 +186,8 @@
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
-    --radius-xl: 24px;
+    /* Material 3 extra-large shape. */
+    --radius-xl: 28px;
     --radius-round: 50%;
 
     /* Typography Scale (rem for accessibility) */
@@ -683,13 +687,14 @@ button.setting-row:active {
 }
 
 html[data-prefers-color-scheme='dark'] {
-    --app-page-background: #1A1714;
-    --app-card-background: #252220;
+    /* Material 3 dark surface and surface-container, warm-tinted. */
+    --app-page-background: #151210;
+    --app-card-background: #221E1B;
     --app-text-primary: #F5EFE3;
     --app-text-secondary: #B5AB99;
     --app-text-tertiary: #8E8472;
     --app-accent: #E8946A;
-    --app-accent-soft: #3A2A1F;
+    --app-accent-soft: #5A3420;
     --app-accent-deep: #F5C9A8;
     /* Darkened for accessibility, same as secondary for now to ensure pass */
     --app-border-color: #3A342E;
