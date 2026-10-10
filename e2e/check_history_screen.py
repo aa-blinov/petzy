@@ -3,6 +3,7 @@
 Needs the local stack. Makes its own pet «Тест-М» with three weights of its own and removes it."""
 
 import asyncio
+from datetime import date, timedelta
 
 from common import BASE, api, async_playwright, check, login, new_page, summary
 
@@ -22,8 +23,11 @@ async def main():
                 " localStorage.setItem('selectedPetName', JSON.stringify(n)); }",
                 [pid, PET],
             )
-            # Three weights inside the last month, so the trend chart has a first, a last and a change.
-            for day, weight in ((1, 12.0), (10, 12.4), (20, 12.6)):
+            # Three weights inside the last month, so the trend chart has a first, a last and a change. They are placed
+            # relative to today: fixed dates fall out of «за месяц» as the calendar moves on.
+            today = date.today()
+            for ago, weight in ((25, 12.0), (15, 12.4), (5, 12.6)):
+                day_text = (today - timedelta(days=ago)).isoformat()
                 r = await api(
                     pg,
                     "POST",
@@ -31,7 +35,7 @@ async def main():
                     {
                         "pet_id": pid,
                         "type": "weight",
-                        "date": f"2026-09-{day:02d}",
+                        "date": day_text,
                         "time": "09:00",
                         "fields": {"weight": weight},
                     },
@@ -54,10 +58,10 @@ async def main():
             )
             check(
                 "the chart says its first and last reading with the unit, in one line of its own",
-                "За месяц:" in summary_line and "12,4 кг" in summary_line and "12,6 кг" in summary_line,
+                "За месяц:" in summary_line and "12,0 кг" in summary_line and "12,6 кг" in summary_line,
                 summary_line,
             )
-            check("and says how much it moved", "плюс 0,2 кг" in summary_line, summary_line)
+            check("and says how much it moved", "плюс 0,6 кг" in summary_line, summary_line)
 
             # Changing the filter writes it back to the address, and reloading keeps it.
             await pg.get_by_role("button", name="Показать записи", exact=False).count()

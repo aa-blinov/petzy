@@ -174,7 +174,9 @@ async def main():
             # and writes the wrong time is not an answer.
             shown = (await pg.locator("#time").inner_text()).strip()
             now = await pg.evaluate("() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }")
-            off = abs(minutes(shown) - (now - 120)) if minutes(shown) is not None else 999
+            # The clock is round the day: 22:03 and 00:03 are two hours apart, not twenty-two.
+            gap = ((minutes(shown) - (now - 120)) % 1440) if minutes(shown) is not None else 999
+            off = min(gap, 1440 - gap)
             check(
                 "and the time in the form is the one it claims to be",
                 off <= 1,
