@@ -1252,6 +1252,26 @@ html[data-prefers-color-scheme='dark'] .adm-button:active {
     background-image: linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12));
 }
 
+/* One outline for every button: each one has a 1px border, the filled ones in their own fill, the outlined ones in their
+   colour, and the text-only ones (fill none) in the oat hairline (copper for the primary, red for the danger). antd-mobile
+   takes the border off its text buttons; this brings it back, so a button reads as a button in every screen. */
+.adm-button {
+    --border-width: 1px !important;
+    --border-style: solid !important;
+}
+
+.adm-button.adm-button-fill-none {
+    --border-color: var(--app-border-color) !important;
+}
+
+.adm-button-primary.adm-button-fill-none {
+    --border-color: var(--app-primary-text) !important;
+}
+
+.adm-button-danger.adm-button-fill-none {
+    --border-color: var(--app-danger-text) !important;
+}
+
 /* One button shape everywhere: the 12px corner (--radius-md) of the button ladder, not a capsule. Chips and the round add
    button keep their own shape. */
 .adm-button {

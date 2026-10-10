@@ -62,7 +62,7 @@ export function SpinnerButton({
         padding: '0 20px',
         background: isPrimary ? 'var(--app-primary-fill)' : 'transparent',
         color: isPrimary ? 'var(--app-on-primary-fill)' : 'var(--app-primary-text)',
-        border: isPrimary ? 'none' : '1px solid var(--app-primary-text)',
+        border: isPrimary ? '1px solid var(--app-primary-fill)' : '1px solid var(--app-primary-text)',
         borderRadius: 'var(--radius-md)',
         fontSize: 'var(--text-md)',
         fontWeight: 500,
