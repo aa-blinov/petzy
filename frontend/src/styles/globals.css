@@ -99,6 +99,8 @@
     --app-card-background: #FFFBF7;
     --app-border-color: #EFE9DD;
     --app-divider-color: #E5DFD0;
+    /* Material 3 surface-container-highest: the fill of a text field. */
+    --app-field-fill: #F3EAE2;
 
     /* Specific UI Elements */
     /* Material 3 elevation levels 1, 1 and 3, in the warm shadow colour. */
@@ -703,6 +705,7 @@ html[data-prefers-color-scheme='dark'] {
     /* Darkened for accessibility, same as secondary for now to ensure pass */
     --app-border-color: #3A342E;
     --app-divider-color: #2E2925;
+    --app-field-fill: #302A26;
     --app-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     /* The brown light-theme shadows vanish on charcoal. */
     --app-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.35);
@@ -2556,3 +2559,17 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
     font-weight: 500;
     white-space: nowrap;
 }
+
+/* Material 3 filled text fields: every form row (the element antd-mobile gives .adm-form-item, which is a list item itself)
+   holds a fill, and its bottom edge is the 1px outline line. Rows are separated by the gap of their fills, not by hairlines.
+   The focused row takes the 2px primary indicator (see .adm-form-item:focus-within above). */
+.adm-form-item.adm-list-item {
+    --border-inner: none !important;
+    --border-top: none !important;
+    --border-bottom: none !important;
+    background: var(--app-field-fill) !important;
+    border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+    box-shadow: inset 0 -1px 0 var(--app-text-secondary);
+    margin-bottom: var(--spacing-2xs);
+}
+
