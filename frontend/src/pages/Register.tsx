@@ -168,7 +168,7 @@ export function Register() {
               disabled={isLoading || !statusKnown || status.isError}
               type="submit"
               data-enter-submit
-              style={{ marginTop: 8, background: 'var(--app-cta-gradient)', border: 'none' }}
+              style={{ marginTop: 8, background: 'var(--app-cta-gradient)', border: '1px solid var(--app-primary-fill)' }}
             >
               Создать аккаунт
             </Button>

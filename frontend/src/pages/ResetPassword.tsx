@@ -108,7 +108,7 @@ export function ResetPassword() {
         footer={
           <>
             <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading}
-              style={{ background: 'var(--app-cta-gradient)', border: 'none' }}>
+              style={{ background: 'var(--app-cta-gradient)', border: '1px solid var(--app-primary-fill)' }}>
               Сохранить и войти
             </Button>
             <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)' }}>
