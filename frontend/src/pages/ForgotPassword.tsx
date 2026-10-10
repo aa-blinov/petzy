@@ -109,7 +109,7 @@ export function ForgotPassword() {
         footer={
           <>
             <Button block color="primary" size="large" type="submit" data-enter-submit loading={isLoading} disabled={isLoading || !canAsk}
-              style={{ background: 'var(--app-cta-gradient)', border: 'none' }}>
+              style={{ background: 'var(--app-cta-gradient)', border: '1px solid var(--app-primary-fill)' }}>
               Отправить ссылку
             </Button>
             {!status.isSuccess && !status.isError && (

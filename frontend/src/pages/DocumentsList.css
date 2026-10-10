@@ -3,8 +3,9 @@
     display: block;
     max-width: 100%;
     margin: var(--spacing-xs) 0 0;
-    padding: 0;
-    border: none;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: 1px solid var(--app-primary-text);
+    border-radius: var(--radius-md);
     background: none;
     color: var(--app-accent-deep);
     font: inherit;

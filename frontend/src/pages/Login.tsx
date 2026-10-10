@@ -112,7 +112,7 @@ export function Login() {
                   // The brand gradient, deepened so the white label reads
                   // (the wordmark above keeps the lighter original).
                   background: 'var(--app-cta-gradient)',
-                  border: 'none',
+                  border: '1px solid var(--app-primary-fill)',
                 }}
               >
                 {isLoading ? 'Вход...' : locked ? `Ещё ${retryLeft} с` : 'Войти'}

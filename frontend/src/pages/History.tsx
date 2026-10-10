@@ -307,10 +307,11 @@ export function History() {
                         className="touch-target"
                         style={{
                             background: 'transparent',
-                            border: 'none',
+                            border: '1px solid var(--app-primary-text)',
+                            borderRadius: 'var(--radius-md)',
                             color: 'var(--app-accent-deep)',
                             cursor: 'pointer',
-                            padding: 10,
+                            padding: '10px 12px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 'var(--spacing-xs)',

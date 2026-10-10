@@ -103,7 +103,7 @@ export function EmptyState({
             marginTop: 'var(--spacing-lg)',
             background: 'var(--app-primary-fill)',
             color: 'var(--app-on-primary-fill)',
-            border: 'none',
+            border: '1px solid var(--app-primary-fill)',
             borderRadius: 'var(--radius-md)',
             padding: '12px 20px',
             fontSize: 'var(--text-md)',
