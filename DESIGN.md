@@ -270,6 +270,7 @@ add button and avatars round. Record pills stay 14px. Borders are 1px oat hairli
 ### Buttons
 M3 buttons: one primary per screen.
 - **Shape:** a full pill (`--radius-pill`) on every button; a chip is a pill and the add button is round.
+- **Outline:** every button has a 1px border. A filled button's border is its fill; an outlined one takes its colour; a text-only one (fill none) takes the oat hairline, copper for the primary, red for the danger.
 - **Label:** weight 500 (medium), not 600.
 - **Press:** a 12% state layer and a 0.98 scale.
 - **Size:** two, picked by `size`, never by hand. **Large** (`size="large"`, 48px, the `--btn-height` token) is the main action of a screen or a sheet and the button stacked with it («Создать» and «Отмена», «Записать» and «Оформить карточку»). The **usual** size (44px, `--touch-min`) is for a button inside a card or a row («Дали сейчас», «Загрузить ещё»). The small and mini ones keep their look and get an invisible 44px area to touch. Plain `<button>`s that stand in for a large one (`SpinnerButton`, the sheet buttons) use the same `--btn-height`.
