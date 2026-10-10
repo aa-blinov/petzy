@@ -1252,10 +1252,10 @@ html[data-prefers-color-scheme='dark'] .adm-button:active {
     background-image: linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12));
 }
 
-/* Material 3 buttons: a full pill (the shape is the meaning of the action) and the label at medium weight. Chips and the round
-   add button keep their own shape. */
+/* One button shape everywhere: the 12px corner (--radius-md) of the button ladder, not a capsule. Chips and the round add
+   button keep their own shape. */
 .adm-button {
-    --border-radius: var(--radius-pill) !important;
+    --border-radius: var(--radius-md) !important;
 }
 
 /* One button system. The usual size is a thumb tall (44px, inside a card or a row), the large one is the screen's main
