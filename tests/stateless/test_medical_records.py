@@ -1,6 +1,6 @@
 """Medical records: vaccinations, parasite treatments, vet visits, procedures."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from bson import ObjectId
@@ -8,7 +8,8 @@ from bson import ObjectId
 from web.medical_records import due_status, normalize_title, record_states
 from web.security import create_access_token
 
-TODAY = date.today()
+# The server takes «today» in UTC when the request names no zone, so the test counts the same day.
+TODAY = datetime.now(timezone.utc).date()
 
 
 def iso(days: int) -> str:
