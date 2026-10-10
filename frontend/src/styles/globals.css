@@ -2593,3 +2593,32 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
     margin-bottom: var(--spacing-2xs);
 }
 
+/* Every action of the app is an outlined button, not a bare text link: the header actions of a section, the actions of a row,
+   the quick door of a tile, the link under a sheet. The copper outline is the primary, the oat outline the quiet one (the
+   «Больше не делаем» and the other secondary actions). Navigation links on the sign-in screens stay plain text. */
+.medcard__link,
+.medcard__row-action,
+.medcard__row-button,
+.medsum__quick,
+.medrec__link,
+.prodpick__link,
+.onb__text-btn,
+.record-push-note__button,
+.medlinks__retry {
+    border: 1px solid var(--app-primary-text) !important;
+    border-radius: var(--radius-md) !important;
+    background: transparent !important;
+    padding: 0 var(--spacing-md) !important;
+    margin: 0 !important;
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.medcard__link--quiet,
+.medcard__row-action--quiet {
+    border-color: var(--app-border-color) !important;
+    color: var(--app-text-secondary) !important;
+}
+
