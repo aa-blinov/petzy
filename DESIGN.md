@@ -290,7 +290,10 @@ One way to add on the screens that fill a diary: the round copper button bottom 
 M3 dialogs and sheets: the extra-large corner (28px), the floating shadow (level 3), the title in the large size.
 
 ### Fields
-A focused field takes the accent on its label and a copper underline (the same indicator the rest of the form uses).
+Material 3 filled text fields. Every form row (`.adm-form-item`) holds a fill (`--app-field-fill`, surface-container-highest),
+with a 4px top corner and the 1px outline line (`--app-text-secondary`) on its bottom edge. The focused row takes the 2px
+primary indicator and its label the accent. Rows are told apart by the gap of their fills, and the hairline between them is
+gone. The label sits above the value, as before.
 
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.
@@ -309,7 +312,7 @@ A focused field takes the accent on its label and a copper underline (the same i
 - **Error:** a red message under the field, announced to screen readers; the field keeps what was typed.
 
 ### Dividers
-- **A line separates blocks, everywhere.** A field, a section, a row of choice buttons, the «Запоминать значения» switch: each block is told apart from the one above by one hairline, not by space alone. A form built outside antd-mobile's `Form` gets the same line between its blocks (`.form-section`).
+- **Separation (M3).** A field is separated by its fill, not by a hairline. Sections keep one hairline between their header and content. A row of choice buttons and the «Запоминать значения» switch are not fields and stay plain, with a hairline above them when they follow a field.
 - **One length per screen.** Every divider is as long as every other one, drawn across the content column. A line that starts at a label is a second length of the same rule on one screen, and the eye reads the screen as lines being here and there.
 - **No line where there is nothing to separate.** The first block of a group, and the row right under a section header, whose card already has a line above it.
 - **Below the line:** 12px (`md`) before the first text of the block, the same distance a field has.
