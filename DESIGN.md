@@ -278,7 +278,7 @@ M3 buttons: one primary per screen.
 - **Primary:** ginger-deep fill, white text, full width at 48px for the main action of a form or screen («Создать», «Принять сейчас»). The sign-in and sign-up buttons use the deepened brand gradient instead.
 - **Outline:** a copper outline with ginger-deep text for secondary actions in a card («Отметить приём», «Пополнить»).
 - **Neutral outline:** an oat outline with ink text for the way out («Отмена», «Отклонить»): it takes no colour, so a copper outline always means a step forward.
-- **Text:** plain ginger-deep text for header actions («+ Добавить»).
+- **Text:** a navigation link on the sign-in screens only (plain ginger-deep text). Every action, header or row, is an outlined button (see Outline).
 - **Danger:** red text for destructive actions at the foot of a form; a solid red button only where deletion is the screen's purpose (dark text on it in the dark theme).
 - **Press:** 0.98 scale and the 12% state layer; no hover lift. A visible focus ring for the keyboard.
 
