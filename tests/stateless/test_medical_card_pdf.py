@@ -2,7 +2,7 @@
 
 import io
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import unquote
 
 import pytest
@@ -596,7 +596,8 @@ class TestWhatTheCritiqueFound:
     """The overdue in days, the dose read as plainly as the name, the weight on one page."""
 
     def test_overdue_is_said_in_days_with_the_date_under_it(self, client, mock_db, regular_user_token, test_pet):
-        due = (datetime.now() - timedelta(days=37)).strftime("%Y-%m-%d")
+        # The PDF counts «today» in UTC when the request names no zone: the due date is counted from the same day.
+        due = (datetime.now(timezone.utc) - timedelta(days=37)).strftime("%Y-%m-%d")
         _record(mock_db, test_pet, title="Рабизин", day="2025-01-10", next_due=due)
         page = _flat(_first_page(client, regular_user_token, test_pet))
         assert "Просрочено на 37 дней" in page
