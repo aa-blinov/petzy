@@ -108,7 +108,7 @@ export function SharedMedicalCard() {
               <>
                 {/* How old the data is, and until when the page lives, where a vet sees it with what is overdue. */}
                 <p className="medcard__stamp medcard__stamp--top">Собрано из записей питомца на {made}. Ссылка действует до {ends}</p>
-                <OverdueStrip card={card} canAct={false} hidden={NO_HIDDEN} />
+                <OverdueStrip card={card} canAct={false} shared hidden={NO_HIDDEN} />
               </>
             }
           />
