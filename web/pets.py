@@ -116,7 +116,12 @@ def convert_objectid_to_str(obj):
 @login_required
 @api.validate(resp=Response(HTTP_200=PetListResponse), tags=["pets"])
 def get_pets():
-    """Get list of all pets accessible to current user."""
+    """Get list of all pets accessible to current user.
+
+    Newest first. Each entry says whether the signed-in person owns the pet, and
+    that flag decides what may be changed from here. Who was invited is the owner's
+    business: it goes to the owner and to nobody else.
+    """
     # @login_required already guarantees request.current_user is set —
     # get_current_user() here can never actually return an error.
     username, _ = get_current_user()
@@ -169,7 +174,12 @@ def get_pets():
     tags=["pets"],
 )
 def create_pet():
-    """Create a new pet."""
+    """Create a new pet.
+
+    The caller becomes the owner and the pet starts shared with nobody. A photo
+    sent in the same request is converted to WebP and kept as it is. A birth date
+    in the future is refused.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username = request.current_user
@@ -262,7 +272,12 @@ def create_pet():
     tags=["pets"],
 )
 def get_pet(pet_id):
-    """Get pet information."""
+    """Get pet information.
+
+    Readable by everyone the pet is shared with. A pet the signed-in person has
+    nothing to do with answers exactly like a missing one, so an address cannot be
+    used to find out whether somebody else's pet exists.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username, _ = get_current_user()
@@ -312,7 +327,12 @@ def get_pet(pet_id):
     tags=["pets"],
 )
 def update_pet(pet_id):
-    """Update pet information."""
+    """Update pet information.
+
+    The owner only. Anyone the pet is shared with may read it but is told that the
+    action is the owner's. Fields left out keep their value, and ``remove_photo``
+    drops the photo without touching the rest.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username, _ = get_current_user()
@@ -490,7 +510,12 @@ def share_pet(pet_id):
     tags=["pets"],
 )
 def unshare_pet(pet_id, share_username):
-    """Remove access from user (owner only)."""
+    """Remove access from user (owner only).
+
+    Takes back the access and, if the invitation was never answered, the invitation with
+    it. Nothing is deleted: the person keeps their own account and nothing of the pet
+    goes with them. Only the owner can do this, and only for a pet they own.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username, _ = get_current_user()
@@ -516,7 +541,11 @@ def unshare_pet(pet_id, share_username):
 @login_required
 @api.validate(resp=Response(HTTP_200=PetInviteListResponse), tags=["pets"])
 def list_pet_invites():
-    """Pets someone has invited the signed-in user to."""
+    """Pets someone has invited the signed-in user to.
+
+    Name, species and owner, nothing more. A pet its owner has not invited is
+    neither in this list nor found by its id, so the invitation is the only way in.
+    """
     username = request.current_user
     invites = [
         {
@@ -550,7 +579,13 @@ def _answer_invite(pet_id, accept: bool):
 @login_required
 @api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse), tags=["pets"])
 def accept_pet_invite(pet_id):
-    """Accept an invitation: the pet appears in the user's list."""
+    """Accept an invitation: the pet appears in the user's list.
+
+    The invitation is spent either way, so accepting twice answers like an
+    invitation that was never there. Access starts at once, with the same rights
+    every member has: the records can be read and added to, the pet cannot be
+    deleted or handed on.
+    """
     return _answer_invite(pet_id, accept=True)
 
 
@@ -558,7 +593,11 @@ def accept_pet_invite(pet_id):
 @login_required
 @api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse), tags=["pets"])
 def decline_pet_invite(pet_id):
-    """Decline an invitation."""
+    """Decline an invitation.
+
+    The pet stays with its owner and nothing is deleted. The owner may invite again
+    later; declining does not close that.
+    """
     return _answer_invite(pet_id, accept=False)
 
 
@@ -570,8 +609,11 @@ def decline_pet_invite(pet_id):
     tags=["pets"],
 )
 def put_pet_form_defaults(pet_id):
-    """What a new record's form starts with for this pet. Anyone who can add its records can set it (not owner-only:
-    the food in the bowl is known to whoever feeds the pet)."""
+    """What a new record's form starts with for this pet.
+
+    Anyone who can add its records can set it, owner or not: the food in the
+    bowl is known to whoever feeds the pet.
+    """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username)
     if access_error:
@@ -589,8 +631,11 @@ def put_pet_form_defaults(pet_id):
     tags=["pets"],
 )
 def put_pet_look(pet_id):
-    """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop. The owner's to set: the family sees
-    it, but a sitter or a vet with access does not restyle someone else's pet. Empty clears."""
+    """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop.
+
+    The owner's to set: the family sees it, but a sitter or a vet with access
+    does not restyle someone else's pet. Empty clears.
+    """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
     if access_error:
@@ -619,7 +664,12 @@ def put_pet_look(pet_id):
 @login_required
 @api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse), tags=["pets"])
 def leave_pet(pet_id):
-    """Stop seeing a pet someone shared: only its owner could end a share before."""
+    """Stop seeing a pet someone shared: only its owner could end a share before.
+
+    Nothing is deleted. The pet, its records and its files stay with the owner; only
+    this person's access goes. A pet the caller owns cannot be left, and asking about
+    a pet they were never shared with answers the same way.
+    """
     username = request.current_user
     try:
         pet_oid = ObjectId(pet_id)
@@ -645,7 +695,14 @@ def leave_pet(pet_id):
     tags=["pets"],
 )
 def delete_pet(pet_id):
-    """Delete pet and all related records (cascading delete)."""
+    """Delete pet and all related records (cascading delete).
+
+    The owner only, and there is no undo. Everything the pet accumulated goes with
+    it: every record, every medication course with its intakes, every document and
+    the file behind it, the medical card and any links to it.
+    ``GET /api/pets/{pet_id}/deletion-impact`` counts all of that beforehand, and
+    the app asks before calling this.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username, _ = get_current_user()
@@ -669,7 +726,11 @@ def delete_pet(pet_id):
 @login_required
 @api.validate(resp=Response(HTTP_403=ErrorResponse, HTTP_404=ErrorResponse), tags=["pets"])
 def pet_deletion_impact(pet_id):
-    """What deleting the pet would take with it: the numbers the confirmation names."""
+    """What deleting the pet would take with it: the numbers the confirmation names.
+
+    Records, medication courses, documents and medical card entries, counted and
+    nothing else. The owner only, the same people who may delete the pet.
+    """
     try:
         username, _ = get_current_user()
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
@@ -829,7 +890,12 @@ def purge_pet(pet: dict) -> bool:
     tags=["pets"],
 )
 def get_pet_photo(pet_id):
-    """Get pet photo file with optional resizing."""
+    """Get pet photo file with optional resizing.
+
+    Readable by everyone the pet is shared with. ``?w=`` and ``?h=`` give a smaller
+    copy for a list that has no reason to pull the original; without them the stored
+    photo goes out as it is, a WebP.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username = request.current_user

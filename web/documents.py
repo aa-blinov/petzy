@@ -297,7 +297,10 @@ def create_document():
 @login_required
 @api.validate(resp=Response(HTTP_200=StorageStatus), tags=["documents"])
 def storage_status():
-    """Whether scans (large archives in object storage) can be uploaded."""
+    """Whether scans (large archives in object storage) can be uploaded.
+
+    Says whether the storage is set up at all and how large an upload may be, so the form can offer the right door instead of failing at the end.
+    """
     return jsonify({"scans_enabled": storage.storage_configured(), "max_scan_bytes": storage.MAX_SCAN_BYTES})
 
 
@@ -381,7 +384,10 @@ def create_scan_upload():
     tags=["documents"],
 )
 def complete_scan_upload(upload_id):
-    """Check the uploaded object and turn it into a document."""
+    """Check the uploaded object and turn it into a document.
+
+    The last step of uploading a large scan: the object is checked to be really there and really what was sent, and only then does the document appear. A part that did not arrive leaves nothing behind.
+    """
     if not storage.storage_configured():
         return error_response("storage_not_configured")
     data = request.context.body  # type: ignore[attr-defined]
@@ -446,7 +452,10 @@ def complete_scan_upload(upload_id):
 )
 @require_pet_access
 def get_documents():
-    """List documents for a pet, optionally filtered by category."""
+    """List documents for a pet, optionally filtered by category.
+
+    Newest first. Each document says what it is attached to: records of the medical card, files of the medicine courses, or nothing yet.
+    """
     try:
         query_params = request.context.query  # type: ignore[attr-defined]
         pet_id = g.pet_id
@@ -478,7 +487,10 @@ def get_documents():
 )
 @require_record_access("documents")
 def get_document(id):
-    """Fetch a single document's metadata by id."""
+    """Fetch a single document's metadata by id.
+
+    The metadata and what links to it, not the file itself. A document of a pet the caller cannot see answers like a missing one.
+    """
     try:
         return jsonify(
             {
@@ -648,7 +660,10 @@ def cancel_document_upload(upload_id):
 )
 @require_record_access("documents")
 def delete_document(id):
-    """Delete a document and its underlying file."""
+    """Delete a document and its underlying file.
+
+    The file goes from storage with it. A medical record that pointed at this file stops pointing at anything rather than at a file that is no longer there.
+    """
     try:
         document = g.record
         app.db.documents.delete_one({"_id": document["_id"]})

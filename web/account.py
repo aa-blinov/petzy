@@ -165,7 +165,10 @@ def _account(user: dict) -> dict:
 @login_required
 @api.validate(resp=Response(HTTP_200=AccountResponse), tags=["account"])
 def get_account():
-    """The signed-in user's login, name and email state."""
+    """The signed-in user's login, name and email state.
+
+    Whether the address is confirmed and whether the current privacy policy has been agreed to, which is what the app asks about before anything else.
+    """
     user = app.db.users.find_one({"username": request.current_user}) or {"username": request.current_user}
     return jsonify(_account(user))
 
@@ -179,9 +182,11 @@ def get_account():
     tags=["account"],
 )
 def change_email():
-    """Set, change or remove the recovery email. Needs the current password:
-    whoever controls the email controls the account, so a borrowed phone
-    with an open session mustn't be enough to change it."""
+    """Set, change or remove the recovery email.
+
+    Needs the current password: whoever controls the email controls the account,
+    so a borrowed phone with an open session mustn't be enough to change it.
+    """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]
     if not verify_user_credentials(username, data.password):
@@ -219,7 +224,10 @@ def change_email():
 @login_required
 @api.validate(resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_503=ErrorResponse), tags=["account"])
 def resend_verification():
-    """Send the confirmation letter for the pending address again."""
+    """Send the confirmation letter for the pending address again.
+
+    For an address that was typed but not confirmed. The letter goes only to the new address, and while it is unconfirmed the old one stays the working one.
+    """
     username = request.current_user
     user = app.db.users.find_one({"username": username}) or {}
     pending = user.get("pending_email")
@@ -243,8 +251,11 @@ def resend_verification():
     tags=["account"],
 )
 def verify_email():
-    """The link from the letter. No session needed: it may be opened on
-    another device than the one the address was typed on."""
+    """Confirm an email address from the link in the letter.
+
+    No session needed: the link may be opened on another device than the one
+    the address was typed on.
+    """
     data = request.context.body  # type: ignore[attr-defined]
     record = _take_token(data.token, "verify_email")
     if not record:
@@ -352,7 +363,10 @@ def check_reset_link():
 )
 def reset_password():
     """Set a new password from the letter's link and sign in with it.
-    Every other session of the account ends."""
+
+    Every other session of the account ends. The link is checked before it is
+    spent, so a password the server refuses does not burn it.
+    """
     data = request.context.body  # type: ignore[attr-defined]
     # Checked against the link's account before the link is spent, so a
     # too-short password doesn't burn it.
@@ -396,8 +410,10 @@ def reset_password():
     tags=["account"],
 )
 def change_password():
-    """Change the password knowing the current one. Other sessions end; this
-    one continues with fresh cookies."""
+    """Change the password knowing the current one.
+
+    Other sessions end; this one continues with fresh cookies.
+    """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]
     if not verify_user_credentials(username, data.current_password):
@@ -426,7 +442,10 @@ def change_password():
 @login_required
 @api.validate(resp=Response(HTTP_200=AccountDeletionPreviewResponse), tags=["account"])
 def deletion_preview():
-    """What deleting the account would do: pets deleted, handed over, left."""
+    """What deleting the account would do: pets deleted, handed over, left.
+
+    Read it before calling ``DELETE /api/me/account``. Pets owned alone are deleted with their records and files, pets shared with somebody else are handed over, and pets whose owner is gone go to the next in line. Nothing here changes anything on its own.
+    """
     username = request.current_user
     return jsonify({"can_delete": not is_admin(username), **plan_summary(deletion_plan(username))})
 

@@ -103,7 +103,10 @@ def effective_protects(record: dict) -> Optional[str]:
 @login_required
 @api.validate(resp=Response(HTTP_200=VaccineCatalogResponse, HTTP_401=ErrorResponse), tags=["medical-records"])
 def get_catalog():
-    """The vaccines the form offers to search, each with what it protects against."""
+    """The vaccines the form offers to search, each with what it protects against.
+
+    The catalogue the name field searches, so a vaccine can be picked instead of typed. What each vaccine covers is here as well, which is how changing brand is recognised as the same protection.
+    """
     response = jsonify(
         {
             "groups": [

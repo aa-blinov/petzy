@@ -142,7 +142,10 @@ def signed_in_response(message_key: str, signed_in_as: str, status: int = 200, *
 @auth_bp.route("/api/auth/registration", methods=["GET"])
 @api.validate(resp=Response(HTTP_200=RegistrationStatusResponse), tags=["auth"])
 def registration_status():
-    """Whether the sign-up form should be offered."""
+    """Whether the sign-up form should be offered.
+
+    Says nothing about which addresses exist: open registration answers true here and the 422 with the reason comes later, on the form itself.
+    """
     from web import mail
 
     return jsonify({"open": registration_open(), "mail_enabled": mail.mail_configured()})
@@ -168,7 +171,10 @@ def registration_status():
     tags=["auth"],
 )
 def api_register():
-    """Create an account and sign it in."""
+    """Create an account and sign it in.
+
+    Registration may be closed, in which case the form says so before anything is sent. Consent to the policy is required and its version is stored with the account. Five accounts an hour from one address.
+    """
     if not registration_open():
         return error_response("registration_closed")
     data = request.context.body  # type: ignore[attr-defined]
@@ -264,7 +270,10 @@ def password_is_common():
     tags=["auth"],
 )
 def api_login():
-    """API endpoint for login - returns JWT tokens."""
+    """API endpoint for login - returns JWT tokens.
+
+    A request without an ``Origin`` header, which is what a native app sends, gets ``access_token`` and ``refresh_token`` in the body. A browser always sends ``Origin`` and is signed in with httpOnly cookies instead. Five attempts a minute from one address.
+    """
     # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
     data = request.context.body  # type: ignore[attr-defined]
     username = data.username.strip()
@@ -292,7 +301,10 @@ def api_login():
     tags=["auth"],
 )
 def api_refresh():
-    """Refresh access token using refresh token."""
+    """Refresh access token using refresh token.
+
+    Returns a new pair, and the refresh token in the answer replaces the old one. The previous access token works for about half a minute more, for requests already on their way; a refresh token presented after that is treated as stolen and signs this device out everywhere.
+    """
     # Try to get refresh_token from body (validated by @api.validate) or cookies
     refresh_token = None
     if hasattr(request, "context") and hasattr(request.context, "body") and request.context.body:  # type: ignore[attr-defined]
@@ -394,7 +406,10 @@ def api_session():
     tags=["auth"],
 )
 def check_admin():
-    """Check if current user is admin (returns 200 with isAdmin flag, no 403)."""
+    """Check if current user is admin (returns 200 with isAdmin flag, no 403).
+
+    Always answers, admin or not, so the app can hide the admin screens without guessing and without the sign-in screen treating a 403 as a broken session.
+    """
     try:
         # @login_required already guarantees request.current_user is set.
         username, _ = get_current_user()

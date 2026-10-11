@@ -166,7 +166,10 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
 )
 @require_pet_access
 def add_medication():
-    """Create a new medication course."""
+    """Create a new medication course.
+
+    The course, not the dose. A schedule is days of the week and times of day; a medicine given by occasion is added with no schedule at all, and then it has no reminders. If the stock is being counted, the first pack sets it.
+    """
     try:
         data = request.context.body  # type: ignore[attr-defined]
         username = g.username
@@ -196,7 +199,10 @@ def add_medication():
 )
 @require_pet_access
 def get_medications():
-    """List medication courses for a pet."""
+    """List medication courses for a pet.
+
+    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. ``client_date`` is the device's today, and the stock and the next dose are read against it.
+    """
     try:
         query_params = request.context.query
         pet_id = g.pet_id
@@ -351,7 +357,10 @@ def get_medication(id):
 )
 @require_record_access("medications")
 def update_medication(id):
-    """Update a medication course."""
+    """Update a medication course.
+
+    Fields left out keep their value. Turning a schedule on or off says nothing about what has already been taken: the intakes keep the slots they closed.
+    """
     try:
         medication = g.record
         medication_id = medication["_id"]
@@ -393,7 +402,10 @@ def update_medication(id):
 )
 @require_record_access("medications")
 def delete_medication(id):
-    """Delete a medication course and all related intakes atomically."""
+    """Delete a medication course and all related intakes atomically.
+
+    Both or neither: a course whose intakes stayed behind would leave doses belonging to nothing. The intakes go from the medical card too. There is no undo, so the app asks first.
+    """
     try:
         medication = g.record
         medication_id = medication["_id"]
@@ -520,7 +532,10 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
 )
 @require_record_access("medications")
 def log_intake(id):
-    """Log a medication intake."""
+    """Log a medication intake.
+
+    Closes one slot of the course, and the slot travels with it: marking at 14:30 closes the 08:00 dose it was given late for, not the nearest one. A slot already closed, by anybody in the household, is not written twice: the answer says who closed it and when, and asks whether a second one is really wanted. The stock is drawn down here and the reminder for that slot stops.
+    """
     try:
         medication = g.record
         medication_id = medication["_id"]
@@ -680,7 +695,10 @@ def log_intake(id):
 )
 @require_record_access("medications")
 def restock_medication(id):
-    """Add a bought pack to the stock (and start tracking it if it wasn't)."""
+    """Add a bought pack to the stock (and start tracking it if it wasn't).
+
+    Counting starts here if it was off, and then the amount is the first pack rather than a top-up. No dose is recorded, so no reminder moves.
+    """
     try:
         medication = g.record
         amount = request.context.body.amount  # type: ignore[attr-defined]
@@ -710,7 +728,10 @@ def restock_medication(id):
 )
 @require_pet_access
 def get_medication_intakes():
-    """Get list of medication intakes with pagination."""
+    """Get list of medication intakes with pagination.
+
+    Every marked dose of a pet, newest first, narrowed by date or by course if asked. Each intake keeps the slot it closed, which is what lets a later mark notice that the same dose was already taken.
+    """
     try:
         query_params = request.context.query  # type: ignore[attr-defined]
         pet_id = g.pet_id
@@ -750,9 +771,10 @@ def get_medication_intakes():
 )
 @require_record_access("medication_intakes")
 def update_intake(id):
-    """Move an intake to when the dose was really given (marked late, or
-    by mistake at the wrong time). Only the time: the dose and the stock
-    it took stay as they were."""
+    """Move an intake to when the dose was really given, marked late or at the wrong time.
+
+    Only the time moves. The dose and the stock it took stay as they were.
+    """
     try:
         intake = g.record
         data = request.context.body  # type: ignore[attr-defined]
@@ -788,7 +810,10 @@ def update_intake(id):
 )
 @require_record_access("medication_intakes")
 def delete_intake(id):
-    """Delete a medication intake record."""
+    """Delete a medication intake record.
+
+    For a mark made by mistake. The dose goes back to the stock it took, and its reminders are back on.
+    """
     try:
         intake = g.record
         intake_id = intake["_id"]
@@ -819,7 +844,10 @@ def delete_intake(id):
 )
 @require_pet_access
 def get_upcoming_doses():
-    """Get the next doses for the dashboard."""
+    """Get the next doses for the dashboard.
+
+    What the feed shows above the records: the nearest dose, and both when two fall in the same minute. ``client_date`` is the device's today, so the row does not turn over before the phone does.
+    """
     try:
         query_params = request.context.query
         pet_id = g.pet_id

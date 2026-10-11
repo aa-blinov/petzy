@@ -394,7 +394,13 @@ def _card_for(pet_id: str):
     tags=["pets"],
 )
 def get_medical_card(pet_id):
-    """The pet's medical card: profile, weight, medications, vaccinations, recent results."""
+    """The pet's medical card: profile, weight, medications, vaccinations, recent results.
+
+    Read only: nothing here is edited, the card is put together on the spot out of
+    what the pet already has. Anyone the pet is shared with may read it. The answer
+    is marked no-store, and so is the PDF, because a card carries the owner's notes
+    about their animal.
+    """
     card, error = _card_for(pet_id)
     if error:
         return error[0], error[1]
@@ -413,7 +419,12 @@ def get_medical_card(pet_id):
     tags=["pets"],
 )
 def get_medical_alerts(pet_id):
-    """What is overdue on the pet's card: the dot on the «Медкарта» tab, without the whole card."""
+    """What is overdue on the pet's card: the dot on the «Медкарта» tab, without the whole card.
+
+    Three booleans: a repeat is late, a repeat is close, a dose went unmarked. The
+    card's own rules decide the first two, so a newer record of the same name counts
+    and an older one does not. Cheap enough to ask about every pet in the switcher.
+    """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
     if access_error:
@@ -432,7 +443,12 @@ def get_medical_alerts(pet_id):
     tags=["pets"],
 )
 def get_medical_card_pdf(pet_id):
-    """The medical card as a PDF, to hand to a vet: page one is «now», the pages after are the whole history."""
+    """The medical card as a PDF, to hand to a vet: page one is «now», the pages after are the whole history.
+
+    Page one is the consultation: who the pet is, allergies, what is late, what is
+    being taken now. The rest is the history. The file name carries the pet's name
+    and the date, so two cards in a phone's downloads do not look alike.
+    """
     from web.medical_card_full import build_full_card
     from web.medical_card_pdf import render_medical_card_pdf
 

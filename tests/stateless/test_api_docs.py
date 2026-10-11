@@ -69,6 +69,34 @@ def test_a_limited_route_says_429_with_the_limit(client):
         assert rate_limited["description"].startswith("Ограничение: "), rate_limited
 
 
+def test_every_operation_explains_itself(client):
+    """A one-line summary tells a reader the call exists, not what it does.
+
+    Only 36 of the 101 operations said anything more than their summary: what
+    the call changes, who may make it, what it refuses. The rest is what an
+    integrator reads before deciding how to use the API.
+    """
+    spec = client.get("/api/openapi.json").get_json()
+    thin = [f"{m.upper()} {p}" for p, m, o in _operations(spec) if len(o.get("description", "")) < 40]
+    assert not thin, thin
+
+
+def test_a_description_is_a_sentence_and_not_a_scrap(client):
+    """A docstring whose first sentence wraps onto the next line loses its subject.
+
+    The first source line becomes the summary and the rest becomes the
+    description, so the published text opened with «one continues with fresh
+    cookies.» and three more like it. A description starts with a capital.
+    """
+    spec = client.get("/api/openapi.json").get_json()
+    scraps = [
+        f"{m.upper()} {p}: {o['description'][:60]}"
+        for p, m, o in _operations(spec)
+        if o.get("description") and o["description"][:1].islower()
+    ]
+    assert not scraps, scraps
+
+
 def test_every_operation_can_be_named_and_grouped(client):
     """operationId is what a generator calls the method, so it has to be there and unique."""
     spec = client.get("/api/openapi.json").get_json()

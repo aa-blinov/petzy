@@ -88,15 +88,16 @@ def users_page(query: str, raw_page, per_page: int = USERS_PER_PAGE):
 @login_required
 @api.validate(resp=Response(HTTP_200=UserSearchResponse), tags=["users"])
 def search_users():
-    """Who to share a pet with: people you already share pets with, and
-    anyone by their exact login.
+    """Who to share a pet with: people you already share pets with.
+
+    Suggestions come only from your own circle, people you share a pet with
+    either way round, whose logins you already see on those pets. Anyone else
+    is found by typing the whole login, case-insensitive, the way other apps
+    share by email.
 
     This used to be a substring search over every account, which any
     logged-in user could run (an empty query listed twenty): a way to see
-    the people of every other household. Suggestions now come only from
-    your own circle, people you share a pet with either way round, whose
-    logins you already see on those pets; anyone else is found by typing
-    the whole login (case-insensitive), the way other apps share by email.
+    the people of every other household.
     """
     query = request.args.get("q", "").strip()
     if len(query) < 2:
@@ -127,7 +128,10 @@ def search_users():
 @login_required
 @api.validate(resp=Response(HTTP_200=FormDefaults), tags=["users"])
 def get_form_defaults():
-    """The signed-in user's form defaults («Настройки форм»)."""
+    """The signed-in user's form defaults («Настройки форм»).
+
+    What a new record's form starts with: the last values used, per pet. Empty for anything never filled in.
+    """
     user = app.db["users"].find_one({"username": request.current_user}, {"form_defaults": 1}) or {}
     return jsonify({"form_defaults": user.get("form_defaults") or {}})
 
@@ -136,7 +140,10 @@ def get_form_defaults():
 @login_required
 @api.validate(body=Request(FormDefaults), resp=Response(HTTP_200=FormDefaults), tags=["users"])
 def put_form_defaults():
-    """Replace the signed-in user's form defaults, for all of their devices."""
+    """Replace the signed-in user's form defaults, for all of their devices.
+
+    Replaces the whole set, not one field. Whatever the app remembers while filling a form is written here too, and reaches the person's other devices on their next request.
+    """
     form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
     app.db["users"].update_one({"username": request.current_user}, {"$set": {"form_defaults": form_defaults}})
     return jsonify({"form_defaults": form_defaults})
@@ -209,7 +216,10 @@ def get_user_public_profile(username):
     tags=["users"],
 )
 def create_user():
-    """Create a new user (admin only)."""
+    """Create a new user (admin only).
+
+    For an account made by hand rather than by the person themselves.
+    """
     try:
         # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
         data = request.context.body  # type: ignore[attr-defined]
@@ -257,7 +267,11 @@ def create_user():
     tags=["users"],
 )
 def get_user(username):
-    """Get user information (admin only)."""
+    """Get user information (admin only).
+
+    Only an administrator reaches this. For anybody else it is 403, and the account it
+    would have named stays unnamed.
+    """
     user = app.db["users"].find_one({"username": username})
     if not user:
         return error_response("user_not_found")
@@ -279,7 +293,10 @@ def get_user(username):
     tags=["users"],
 )
 def update_user(username):
-    """Update user information (admin only)."""
+    """Update user information (admin only).
+
+    Name, address and role. A password set here starts a session on every device that person is signed in on.
+    """
     try:
         user = app.db["users"].find_one({"username": username})
         if not user:
@@ -334,7 +351,10 @@ def update_user(username):
     tags=["users"],
 )
 def delete_user(username):
-    """Deactivate user (admin only)."""
+    """Deactivate user (admin only).
+
+    The account stops working at once and stays in the database with its records. Nobody deactivates themselves, and the built-in administrator cannot be switched off.
+    """
     try:
         if username == ADMIN_USERNAME:
             return error_response("validation_error_admin_deactivation")
@@ -370,7 +390,10 @@ def delete_user(username):
     tags=["users"],
 )
 def reset_user_password(username):
-    """Reset user password (admin only)."""
+    """Reset user password (admin only).
+
+    For an account that lost its password. Every session that person had ends, on every device.
+    """
     try:
         data = request.context.body  # type: ignore[attr-defined]
         new_password = data.password

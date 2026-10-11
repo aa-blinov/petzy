@@ -250,7 +250,10 @@ def _stored(data: dict, kind: str) -> dict:
 )
 @require_pet_access
 def create_medical_record():
-    """Add a vaccination, treatment, visit or procedure to a pet's medical card."""
+    """Add a vaccination, treatment, visit or procedure to a pet's medical card.
+
+    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached.
+    """
     data = request.context.body  # type: ignore[attr-defined]
     fields = data.model_dump()
     if not _own_documents(g.pet_id, fields["document_ids"]):
@@ -277,7 +280,10 @@ def create_medical_record():
 )
 @require_pet_access
 def list_medical_records():
-    """A pet's medical records, newest first, each with its status."""
+    """A pet's medical records, newest first, each with its status.
+
+    Vaccinations, parasite treatments, visits and procedures, with what each one's repeat date says today: late, close, in time, or no repeat asked for. A newer record of the same name is the one that counts; the older one stays in the list as history. ``tz`` decides which day 'today' is.
+    """
     query = request.context.query  # type: ignore[attr-defined]
     if query.kind and query.kind not in MEDICAL_KINDS:
         return error_response("validation_error", "Неизвестный вид записи")
@@ -294,7 +300,10 @@ def list_medical_records():
 )
 @require_record_access("medical_records")
 def get_medical_record(id):
-    """One record."""
+    """One record.
+
+    As the card reads it, with the same status. A record of a pet the caller cannot see answers like a missing one.
+    """
     mine = [r for r in pet_records(g.pet_id, _today(request.args.get("tz"))) if r["_id"] == id]
     return jsonify({"record": mine[0]})
 
@@ -307,7 +316,10 @@ def get_medical_record(id):
 )
 @require_record_access("medical_records")
 def update_medical_record(id):
-    """Replace a record's contents; its pet and kind stay."""
+    """Replace a record's contents; its pet and kind stay.
+
+    Everything in the record can change except which pet it belongs to and what kind of thing it is. A new repeat date on a vaccination puts the card's answer back to in time.
+    """
     data = request.context.body  # type: ignore[attr-defined]
     kind = g.record["kind"]
     fields = data.model_dump()
@@ -327,7 +339,10 @@ def update_medical_record(id):
 )
 @require_record_access("medical_records")
 def delete_medical_record(id):
-    """Delete a record."""
+    """Delete a record.
+
+    It leaves the card, the PDF and the overdue dot at once. Documents attached to it are not deleted with it: they belong to the pet, not to the record.
+    """
     app.db.medical_records.delete_one({"_id": g.record["_id"]})
     app.logger.info(f"Medical record deleted: id={id}, pet_id={g.pet_id}, user={g.username}")
     return jsonify({"message": "Запись удалена", "success": True})
