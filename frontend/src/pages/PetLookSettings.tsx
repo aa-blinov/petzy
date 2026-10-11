@@ -400,7 +400,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                         gap: '8px',
                         minHeight: 'var(--touch-min)',
                         padding: '0 14px',
-                        borderRadius: '999px',
+                        borderRadius: 'var(--radius-md)',
                         border: '1px solid var(--app-border-color)',
                         background: 'var(--app-page-background)',
                         color: 'var(--app-text-primary)',

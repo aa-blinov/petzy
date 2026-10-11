@@ -145,7 +145,7 @@ export function EventTypesSettings() {
                       <div
                         aria-hidden
                         style={{
-                          width: 32, height: 32, borderRadius: '8px', flexShrink: 0,
+                          width: 32, height: 32, borderRadius: 'var(--radius-md)', flexShrink: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           background: bg, color: 'var(--app-text-on-tile)',
                         }}
