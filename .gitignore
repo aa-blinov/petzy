@@ -207,3 +207,19 @@ backups/
 # Playwright flicker-detection artifacts (debug only, never committed)
 screenshots/flicker/
 .e2e-newest.archive.gz
+
+# Screenshots left by one-off check scripts in e2e/check_*.py (they write
+# relative to the cwd, so they land either in the repo root or in e2e/).
+# The README screenshots in screenshots/ are versioned, these are not.
+/*.png
+/e2e/*.png
+screenshots/swipe/
+
+# Local state of the tools used while working on the frontend.
+# design.json is versioned as the sidecar of DESIGN.md, the critique
+# notes are written on every run.
+.claude/
+.impeccable/critique/
+
+# Finder
+.DS_Store
