@@ -1,7 +1,7 @@
 """The small rules of the card's parts and of the note to the vet:
 
 - a part of the card where the block already has its own «Записать вес» or «Указать» does not carry the round «+» again;
-- «Профилактика» and «Визиты» ask between two kinds and keep the round «+», so their blocks carry no door of their own:
+- «Прививки и обработки» and «Визиты» ask between two kinds and keep the round «+», so their blocks carry no door of their own:
   two ways to the same record on one screen is one too many, and the card itself keeps its «+»;
 - the part names the pet and offers the way to the list of pets when there is more than one;
 - the five-clinic cap is said instead of the «+ Добавить клинику» button simply disappearing;
@@ -62,7 +62,7 @@ async def main():
             # One way to add on a part: the round «+». The blocks used to carry a «Добавить» of their own, and
             # «Визиты» a list «Ещё можно добавить», all of them opening the same forms the «+» opens. Two ways
             # to one record on one screen: the person reads which of them is the way, and guesses.
-            for part, label in (("prevention", "Профилактика"), ("visits", "Визиты")):
+            for part, label in (("prevention", "Прививки и обработки"), ("visits", "Визиты")):
                 await pg.goto(BASE + f"/pets/{rex}/medical-card/{part}")
                 await pg.wait_for_timeout(2000)
                 check(f"«{label}» keeps the round «+»", await pg.locator(".app-fab").count() == 1)

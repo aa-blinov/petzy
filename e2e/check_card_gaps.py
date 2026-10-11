@@ -66,7 +66,7 @@ async def main():
             await pg.locator(".app-fab").click()
             body = await wait_until(pg, lambda t: "Прививка" in t)
             check(
-                "the «+» of «Профилактика» offers the vaccine and the parasite treatment and nothing else",
+                "the «+» of «Прививки и обработки» offers the vaccine and the parasite treatment and nothing else",
                 "Прививка" in body and "Обработка от паразитов" in body and "Визит" not in body,
                 body[-160:].replace(chr(10), " | "),
             )
