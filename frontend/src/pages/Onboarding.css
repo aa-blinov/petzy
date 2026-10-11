@@ -303,7 +303,7 @@
     align-items: center;
     gap: 6px;
     padding: 6px 10px;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     background: var(--app-accent-soft);
     color: var(--app-accent-deep);
     font-family: var(--font-display);
@@ -322,7 +322,7 @@
     width: 100%;
     max-width: 310px;
     padding: 12px 14px;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--app-card-background) 88%, transparent);
     border: 1px solid var(--app-border-color);
     box-shadow: 0 14px 34px -14px rgba(60, 40, 20, 0.35);
@@ -390,7 +390,7 @@
     height: 58px;
     display: grid;
     place-items: center;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     color: #fff;
     box-shadow: 0 12px 26px -10px rgba(60, 40, 20, 0.45);
 }
@@ -529,7 +529,7 @@
     gap: 8px;
     padding: 10px 16px;
     border: 1px dashed var(--app-border-color);
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--app-text-secondary);
     font-family: var(--font-display);

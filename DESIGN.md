@@ -261,15 +261,16 @@ never animates its elevation on press. Feedback is a state layer, never a lift.
 
 ## Shapes
 
-M3 shape scale: extra-small 4px, small 8px, medium 12px, large 16px, extra-large 28px (`--radius-xs` … `--radius-xl`).
-Cards are large (16px), dialogs and sheets extra-large (28px), buttons are full pills (`--radius-pill`), chips are pills, the
-add button and avatars round. Record pills stay 14px. Borders are 1px oat hairlines; there are no coloured side borders. Photos are cropped to their frame with the face kept high (object position centre 20%).
+One rectangle for the whole app: every control, card, tile, chip, segment, field, dialog and sheet has the same 12px corner
+(`--radius-md`; the tokens `--radius-xs` … `--radius-xl` and `--radius-pill` all hold it, so one value sets the app). The only round
+shapes are the ones that are circles by nature: the round add button, avatars, colour swatches and the swipe row's menu
+(`--radius-round`). Nothing is a capsule. Borders are 1px oat hairlines; there are no coloured side borders. Photos are cropped to their frame with the face kept high (object position centre 20%).
 
 ## Components
 
 ### Buttons
 M3 buttons: one primary per screen.
-- **Shape:** a full pill (`--radius-pill`) on every button; a chip is a pill and the add button is round.
+- **Shape:** the common 12px corner (`--radius-md`), the same as every other rectangle; the add button is round.
 - **Outline:** every button has a 1px border. A filled button's border is its fill; an outlined one takes its colour; a text-only one (fill none) takes the oat hairline, copper for the primary, red for the danger.
 - **Label:** weight 500 (medium), not 600.
 - **Press:** a 12% state layer and a 0.98 scale.
@@ -288,7 +289,7 @@ One way to add on the screens that fill a diary: the round copper button bottom 
 **One door per screen.** A screen carries the round «+» only where its blocks carry no door of their own: a block with its own «Добавить», «Записать вес» or «Указать» next to what it adds does not get one as well. A part of the card that asks between two kinds keeps the «+» (it is the only way in) and its blocks carry no door, so a person reads one way to add rather than guessing between two. The card itself keeps its «+» because it is the only way from there to an allergy, a medicine, a weight or a document.
 
 ### Dialogs and sheets
-M3 dialogs and sheets: the extra-large corner (28px), the floating shadow (level 3), the title in the large size.
+Dialogs and sheets: the common 12px corner, the floating shadow (level 3), the title in the large size.
 
 ### Fields
 Material 3 filled text fields. Every form row (`.adm-form-item`) holds a fill (`--app-field-fill`, surface-container-highest),
@@ -302,7 +303,7 @@ gone. The label sits above the value, as before.
 - **In code:** `ChoiceChips` (a labelled group) and `ChoiceChip` (a choice with `pressed`) in `components/ChoiceChips.tsx`; the stylesheet comes with the component. The record form, the profile and «К приёму» use them: a choice row is not drawn by hand again. They are pills (a choice is a shape-is-the-meaning case), selected on the apricot wash.
 
 ### Cards / Containers
-- **Corner Style:** 16px.
+- **Corner Style:** 12px, as every rectangle.
 - **Background:** milk-card on cream-paper.
 - **Shadow Strategy:** the Sheet shadow and an oat hairline (see Elevation).
 - **Internal Padding:** 16px; 12px between cards.
@@ -324,7 +325,7 @@ gone. The label sits above the value, as before.
 - **Tab bar (M3 navigation bar):** the current item sits on an active indicator, a pill of primary-container (`--app-accent-soft`) behind its icon. Five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card is the tab of the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
 
 ### Record pill
-The signature of the feed: a 44px tile with a 14px radius in the record type's pastel (tile-orange for weight, tile-brown for feeding, tile-purple for medicines…) with the type's icon in espresso-ink, left of the record's time and values. The pastel names the type; it never signals state.
+The signature of the feed: a 44px tile with the common 12px corner in the record type's pastel (tile-orange for weight, tile-brown for feeding, tile-purple for medicines…) with the type's icon in espresso-ink, left of the record's time and values. The pastel names the type; it never signals state.
 
 ### Pet card
 The top of the feed: the pet's photo (or a species gradient with its outline icon), the name as a title, age, breed and sex as one wrapped meta line, a copper weight chip, and one bordered row into the medical card (the title «Медкарта» and a line under it that turns red when something is overdue). The last feeding and weight are not on the card: the feed under it says them.
@@ -336,7 +337,7 @@ One page of one pet, in two modes under the title «Медкарта» (the pet 
 
 ### Do:
 - **Do** keep copper as the only accent; use ginger-deep (#AD5830) for copper text and fills under white type.
-- **Do** build screens as one column of milk-card sheets on cream-paper, 16px radius, 16px padding.
+- **Do** build screens as one column of milk-card sheets on cream-paper, 12px corners, 16px padding.
 - **Do** take radii and spacing from the one ladder (radii 4/8/12/16/24, spacing 2/4/8/12/16/24/32), give each kind of gap its one value from Spacing rules, and nest radii concentrically.
 - **Do** give every colour a dark-theme counterpart by role, with dark text on the dark theme's light fills.
 - **Do** write numbers the Russian way with the unit beside them («29,1 кг»).

@@ -564,7 +564,7 @@ export function PetForm() {
                     position: 'relative',
                     width: '120px',
                     height: '120px',
-                    borderRadius: '16px',
+                    borderRadius: 'var(--radius-md)',
                     overflow: 'hidden',
                     boxShadow: 'var(--app-shadow)',
                   }}
@@ -894,7 +894,7 @@ export function PetForm() {
                   <div style={{
                     marginTop: '4px',
                     border: '1px solid var(--app-border-color)',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     maxHeight: '200px',
                     overflowY: 'auto',
                     backgroundColor: 'var(--app-page-background)'

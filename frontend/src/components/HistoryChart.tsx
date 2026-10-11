@@ -323,7 +323,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',
-                                    borderRadius: '8px',
+                                    borderRadius: 'var(--radius-md)',
                                     color: 'var(--app-text-color)'
                                 }}
                                 itemStyle={{ color: 'var(--app-primary-color)' }}
@@ -374,7 +374,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 contentStyle={{
                                     backgroundColor: 'var(--app-card-background)',
                                     border: '1px solid var(--app-border-color)',
-                                    borderRadius: '8px',
+                                    borderRadius: 'var(--radius-md)',
                                     color: 'var(--app-text-color)'
                                 }}
                             />

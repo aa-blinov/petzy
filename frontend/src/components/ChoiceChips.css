@@ -28,7 +28,7 @@
 .choice-chip {
     padding: 8px 12px;
     border: 1px solid var(--app-border-color);
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--app-text-color);
     font: inherit;
