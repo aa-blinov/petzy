@@ -2371,7 +2371,8 @@ html.keyboard-open body:has(.app-fab) .snackbar {
     z-index: 5;
     margin-top: var(--spacing-xl);
     padding-block: var(--spacing-sm);
-    background: linear-gradient(to bottom, transparent, var(--app-page-background) 24%);
+    /* The same ground as the screen behind it, the pet's scene when it has one: a bar of the plain page colour showed as a dark band. */
+    background: linear-gradient(to bottom, transparent, var(--pet-scene-bg, var(--app-page-background)) 24%);
 }
 
 html.keyboard-open .form-sticky-action {
@@ -2623,5 +2624,21 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
 .medcard__row-action--quiet {
     border-color: var(--app-border-color) !important;
     color: var(--app-text-secondary) !important;
+}
+
+/* The buttons of a dialog («Выйти», «Остаться»): hairlines of the oat divider between them, no square accent frame. Keyboard focus
+   shows as a soft tint inside the button rather than a square outline on the rounded dialog. */
+.adm-dialog-button-group,
+.adm-dialog-button {
+    border-color: var(--app-divider-color) !important;
+}
+
+.adm-dialog-button:focus,
+.adm-dialog-button:focus-visible {
+    outline: none !important;
+}
+
+.adm-dialog-button:focus-visible {
+    background: var(--app-black-05) !important;
 }
 

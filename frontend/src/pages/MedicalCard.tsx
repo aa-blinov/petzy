@@ -392,18 +392,12 @@ function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
   return items.sort((a, b) => a.days - b.days);
 }
 
-/** The one line that matters most, under the mode switch in both modes: what is overdue and, where the card can be
-    edited, the way to put it right. */
-export function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: Card; petId: string; navigate: (to: string) => void; canAct: boolean; hidden: ReadonlySet<string> }) {
+/** The one line that matters most, under the mode switch in both modes: what is overdue and where it is put right. The put-right
+    action is in the section that holds the record («Профилактика»), not on the card: the card shows, the section acts. */
+export function OverdueStrip({ card, canAct, hidden }: { card: Card; canAct: boolean; hidden: ReadonlySet<string> }) {
   const items = overdueItems(card, hidden);
   if (items.length === 0) return null;
   const [first, ...others] = items;
-  const to = first.recordId
-    ? `/pets/${petId}/medical-records/new?kind=${first.kind}&from=${first.recordId}`
-    : first.certId
-      ? `/pets/${petId}/medical-records/new?kind=vaccination&renew=${first.certId}`
-      : `/pets/${petId}/medical-records/new?kind=vaccination`;
-  const label = first.kind === 'parasite' ? 'Записать повторную обработку' : first.recordId ? 'Записать повторную прививку' : 'Записать прививку';
   return (
     <div className="medcard__alert" role="status">
       <AlertTriangle size={20} strokeWidth={2.2} aria-hidden className="medcard__alert-icon" />
@@ -413,9 +407,7 @@ export function OverdueStrip({ card, petId, navigate, canAct, hidden }: { card: 
           {others.length > 0 ? `. И ещё ${others.length}` : ''}
         </p>
         {canAct ? (
-          <Button block size="large" color="danger" fill="outline" onClick={() => navigate(to)}>
-            {label}
-          </Button>
+          <p className="medcard__alert-text">Записать повторно можно в разделе «Профилактика»</p>
         ) : (
           // A copy a vet reads: there is nothing to press here, so the strip says who can put it right.
           <p className="medcard__alert-text">Обновить сможет тот, у кого есть доступ к питомцу, в приложении</p>
@@ -924,7 +916,7 @@ export function MedicalCard() {
 
           <ModeSwitch mode={mode} onChange={chooseMode} />
 
-          <OverdueStrip card={card} petId={id!} navigate={navigate} canAct={mode === 'fill'} hidden={hidden} />
+          <OverdueStrip card={card} canAct={mode === 'fill'} hidden={hidden} />
 
           {mode === 'vet' ? (
             <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} onShare={() => setShareOpen(true)} canShare={card.can_edit} />

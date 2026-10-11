@@ -1,5 +1,6 @@
-"""The summary's quick doors: «Записать» beside the weight and «Изменить» beside the allergies open the form or the edit in one tap,
-and they are buttons of their own, not inside the tile."""
+"""The card's tiles only open their parts: no action sits on a tile or in the overdue strip. The actions live in the sections.
+
+Needs the local stack and the demo data (docker compose -p petzy-local ... up, scripts/seed_demo.py)."""
 
 import asyncio
 
@@ -15,27 +16,31 @@ async def main():
         await pg.goto(BASE + card)
         await pg.locator(".medsum__tile").first.wait_for(timeout=15000)
         await pg.wait_for_timeout(500)
-        nested = await pg.locator(".medsum__tile .medsum__quick").count()
-        check("the quick door is not inside the tile", nested == 0, f"{nested} nested")
-        weight_quick = (
-            pg.locator(".medsum__item").filter(has_text="Вес").get_by_role("button", name="Записать", exact=True)
+        check("no tile carries a second button", await pg.locator(".medsum__item button").count() == 0)
+        check(
+            "no «Записать» or «Изменить» button on the card",
+            await pg.get_by_role("button", name="Записать", exact=True).count() == 0
+            and await pg.get_by_role("button", name="Изменить", exact=True).count() == 0,
         )
-        check("the weight tile has «Записать» beside it", await weight_quick.count() == 1)
-        await weight_quick.click()
-        await pg.wait_for_url(lambda u: "/form/weight" in u, timeout=15000)
-        check("«Записать» opens the weight form in one tap", "/form/weight" in pg.url)
-        await pg.goto(BASE + card)
-        await pg.locator(".medsum__tile").first.wait_for(timeout=15000)
-        await pg.wait_for_timeout(500)
-        allergy_quick = (
-            pg.locator(".medsum__item").filter(has_text="Здоровье").get_by_role("button", name="Изменить", exact=True)
+        check(
+            "the overdue strip is text: no button, and it says where the repeat is written",
+            await pg.locator(".medcard__alert button").count() == 0
+            and "Профилактика" in await pg.locator(".medcard__alert").inner_text(),
         )
-        check("the health tile has «Изменить» beside it", await allergy_quick.count() == 1)
-        await allergy_quick.click()
-        await pg.wait_for_url(lambda u: "section=allergies" in u, timeout=15000)
-        check("«Изменить» opens the allergies in the profile in one tap", "section=allergies" in pg.url)
+        await pg.get_by_role("button", name="Вес: 29,3 кг, 04.10.2026").click()
+        await pg.wait_for_timeout(800)
+        check(
+            "the weight is recorded inside its section",
+            await pg.get_by_role("button", name="Записать вес", exact=True).count() == 1,
+        )
+        await pg.goto(BASE + card + "/risks")
+        await pg.wait_for_timeout(800)
+        check(
+            "the allergies are changed inside their section",
+            await pg.get_by_role("button", name="Изменить", exact=True).count() >= 1,
+        )
         await b.close()
-    summary("medcard quick doors")
+    summary("medcard actions in the sections")
 
 
 asyncio.run(main())

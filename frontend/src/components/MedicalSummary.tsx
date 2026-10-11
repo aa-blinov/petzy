@@ -13,8 +13,6 @@ interface Tile {
   icon: LucideIcon;
   value: string;
   note?: { text: string; tone: Tone };
-  /** A second door on the tile, beside it (not inside it): goes straight to the form or the edit, one tap. */
-  quick?: { label: string; to: (petId: string) => string };
 }
 
 const formatDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('ru-RU');
@@ -65,7 +63,6 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
       icon: ShieldAlert,
       value: risks.length ? risks.join(', ') : 'Не заполнено',
       note: risksFilled ? undefined : { text: 'Врач спросит первым', tone: 'warn' },
-      quick: { label: 'Изменить', to: (petId) => `/pets/${petId}/medical-profile?section=allergies` },
     },
     {
       key: 'meds',
@@ -86,7 +83,6 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
       icon: Scale,
       value: card.weight ? `${card.weight.latest.value.toLocaleString('ru-RU')} кг` : 'Не записан',
       note: card.weight ? { text: formatDate(card.weight.latest.date), tone: 'none' } : undefined,
-      quick: { label: 'Записать', to: () => '/form/weight' },
     },
     {
       key: 'visits',
@@ -129,7 +125,7 @@ export function MedicalSummary({ card, petId, hidden, navigate }: { card: Card; 
     <section className="medsum" aria-label="Разделы медкарты">
       <ul className="medsum__grid">
         {tiles.map((tile) => (
-          <li key={tile.key} className={tile.quick ? 'medsum__item medsum__item--quick' : undefined}>
+          <li key={tile.key}>
             <button
               type="button"
               className="medsum__tile tap-feedback"
@@ -143,11 +139,6 @@ export function MedicalSummary({ card, petId, hidden, navigate }: { card: Card; 
               <span className="medsum__value">{tile.value}</span>
               {tile.note && <span className={`medsum__note medsum__note--${tile.note.tone}`}>{tile.note.text}</span>}
             </button>
-            {tile.quick && (
-              <button type="button" className="medsum__quick" onClick={() => navigate(tile.quick!.to(petId))}>
-                {tile.quick.label}
-              </button>
-            )}
           </li>
         ))}
       </ul>
