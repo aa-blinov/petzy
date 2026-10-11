@@ -25,12 +25,14 @@
     color: var(--app-text-secondary);
 }
 
+/* A choice has to read as something to press: its outline is the secondary ink (3:1 or better against the field, WCAG
+   1.4.11), its label the primary ink. Pressed, it fills with the accent tint and a check mark, so the state is not colour alone. */
 .choice-chip {
     padding: 8px 12px;
-    border: 1px solid var(--app-border-color);
+    border: 1px solid var(--app-text-secondary);
     border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--app-text-color);
+    background: var(--app-card-background);
+    color: var(--app-text-primary);
     font: inherit;
     font-size: var(--text-sm);
     cursor: pointer;
@@ -41,7 +43,8 @@
 
 .choice-chip[aria-pressed='true'] {
     background: var(--app-accent-soft);
-    border-color: var(--app-accent);
+    border: 2px solid var(--app-accent-deep);
+    padding: 7px 11px;
     color: var(--app-accent-deep);
     font-weight: 500;
 }
