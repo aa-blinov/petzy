@@ -187,9 +187,9 @@
 }
 
 .onb__cta.adm-button {
-    height: 54px;
+    height: var(--btn-height);
     border: 1px solid var(--app-primary-fill);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     background: var(--app-cta-gradient);
     color: var(--app-on-primary-fill);
     font-family: var(--font-display);
