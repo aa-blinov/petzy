@@ -62,7 +62,8 @@
        the placeholder colour, which was a near-invisible 1.2:1. */
     --app-text-primary: #1F1B16;
     --app-text-secondary: #6F675D;
-    --app-text-tertiary: #786E62;
+    /* Passes 4.5:1 on the form field fill too (it was 4.2). */
+    --app-text-tertiary: #665E53;
     --app-text-placeholder: var(--app-text-tertiary);
     /* White on what is dark in both themes: the photo viewer and crop overlays, a species tile, a primary fill. */
     --app-text-on-dark: #FFFFFF;
@@ -73,7 +74,8 @@
        their own deeper values so white on copper reads at 5:1. */
     --app-primary-fill: #AD5830;
     --app-on-primary-fill: #FFFFFF;
-    --app-primary-text: #AD5830;
+    /* Text and outlines in copper: the deeper tone reads 4.5:1+ on the field fill (the fill tone, #AD5830, is 4.2). */
+    --app-primary-text: #9F4F2A;
     /* Icon colour on the accent / status pills behind swipe rows. */
     --app-on-accent: #FFFFFF;
     /* Brand gradient, deepened, for the buttons that carry white text. */
@@ -719,7 +721,8 @@ html[data-prefers-color-scheme='dark'] {
     --app-primary-color: #E8946A;
     --app-primary-text: #E8946A;
     --app-on-accent: #1F1B16;
-    --app-text-tertiary: #9A907E;
+    /* Passes 4.5:1 on the form field fill in the dark theme (it was 4.5 on the page, 4.0 on the field). */
+    --app-text-tertiary: #A59B88;
 
     --app-danger-text: #FF7A70;
     --app-warning-text: #FFB340;
@@ -1263,7 +1266,12 @@ html[data-prefers-color-scheme='dark'] .adm-button:active {
 }
 
 .adm-button.adm-button-fill-none {
-    --border-color: var(--app-border-color) !important;
+    --border-color: var(--app-text-secondary) !important;
+}
+
+/* The neutral outline («Отмена», «Назад»): its line is the secondary ink too, so it is seen as a button (3:1 against the field). */
+.adm-button-default {
+    --border-color: var(--app-text-secondary) !important;
 }
 
 .adm-button-primary.adm-button-fill-none {
@@ -2640,5 +2648,12 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
 
 .adm-dialog-button:focus-visible {
     background: var(--app-black-05) !important;
+}
+
+/* The quiet actions of a card row («Больше не делаем», «История») keep the quieter text, but their outline is the secondary ink, so
+   they are still seen as buttons. */
+.medcard__link--quiet,
+.medcard__row-action--quiet {
+    border-color: var(--app-text-secondary) !important;
 }
 
