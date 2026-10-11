@@ -240,6 +240,44 @@ def finish_spec(spec: dict) -> dict:
                 "application/zip": {"schema": _BINARY},
             },
         }
+    # The picture a browser cannot draw, made drawable. Nothing here is a pydantic model: the file comes from the
+    # form and the answer is the file, so the generator leaves the route out and it is written in by hand.
+    preview = op("post", "/api/images/preview")
+    if not preview:
+        paths["/api/images/preview"] = {"post": {}}
+        preview = paths["/api/images/preview"]["post"]
+    preview["tags"] = ["documents"]
+    preview["operationId"] = "previewImage"
+    preview["summary"] = "A picture the browser cannot draw, as WebP, without storing it."
+    preview["description"] = (
+        "Фото, которое браузер не рисует (HEIC с телефона: Safari показывает, Chrome нет), приходит сюда "
+        "и уходит картинкой WebP до 1600 px, которую уже видно в форме. Ничего не сохраняется: при "
+        "сохранении формы отправляется исходный файл, и тогда он переводится на сервере. PDF не принимается. "
+        "Ограничение 120 запросов в час на человека."
+    )
+    preview["parameters"] = []
+    preview["requestBody"] = {
+        "required": True,
+        "content": _multipart(
+            {"file": {**_BINARY, "description": "JPEG, PNG, WebP или HEIC, до 10 МБ"}},
+            ["file"],
+        ),
+    }
+    preview["responses"] = {
+        "200": {"description": "Картинка WebP до 1600 px", "content": {"image/webp": {"schema": _BINARY}}},
+        "401": {
+            "description": "Нет токена",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
+        },
+        "422": {
+            "description": "Файл не подходит: нет поля file, тип не тот, не тот формат или слишком большой",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
+        },
+        "429": {
+            "description": "Больше 120 запросов в час",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
+        },
+    }
     return spec
 
 
