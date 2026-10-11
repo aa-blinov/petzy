@@ -1877,11 +1877,10 @@ class EventItem(BaseModel):
     username: str
     comment: Optional[str] = None
     fields: dict[str, Any] = Field(default_factory=dict)
-    # The serializer hands the Mongo document through as it is, so this is whatever the driver
-    # produced: a UTC date in HTTP form, «Sun, 11 Oct 2026 12:18:21 GMT», not the
-    # «YYYY-MM-DD HH:MM» the rest of the API uses. Optional because records written before the
-    # field existed do not have it.
-    created_at: Optional[str] = Field(default=None, description="Когда запись создана, UTC, HTTP-дата")
+    # Optional because records written before the field existed do not have it. Sent in the
+    # project's date format like everything else around it; it used to reach the client as a
+    # web-server date, «Sun, 11 Oct 2026 12:18:21 GMT», next to a date_time in «YYYY-MM-DD HH:MM».
+    created_at: Optional[str] = Field(default=None, description="Когда запись создана, UTC, «YYYY-MM-DD HH:MM»")
     model_config = ConfigDict(
         json_schema_extra={
             "example": {

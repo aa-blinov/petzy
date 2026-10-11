@@ -387,6 +387,11 @@ def _serialize_event(record: dict) -> dict:
     record["fields"] = record.get("fields", {})
     if isinstance(record.get("date_time"), datetime):
         record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+    # Left as a datetime, this reached the client as «Sat, 03 Oct 2026 07:52:49 GMT», a
+    # web-server date nobody else in the API speaks, next to date_time in the project's own
+    # format and next to documents and pets, which already format it.
+    if isinstance(record.get("created_at"), datetime):
+        record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
     return record
 
 
@@ -810,6 +815,8 @@ def get_history_timeline():
             record["record_type"] = "medications"
             if isinstance(record.get("date_time"), datetime):
                 record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+            if isinstance(record.get("created_at"), datetime):
+                record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
             med = meds.get(record.get("medication_id"))
             if med:
                 record["medication_name"] = med.get("name", "Unknown")

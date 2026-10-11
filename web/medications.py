@@ -259,6 +259,10 @@ def get_medications():
         # Process results
         for doc in meds:
             doc["_id"] = str(doc["_id"])
+            # The project's date format, the same documents and pets already send, rather
+            # than the web-server date a raw datetime turns into.
+            if isinstance(doc.get("created_at"), datetime):
+                doc["created_at"] = doc["created_at"].strftime("%Y-%m-%d %H:%M")
             med_id_str = doc["_id"]
 
             last_intake = last_intakes.get(med_id_str)
@@ -756,6 +760,8 @@ def get_medication_intakes():
             i["medication_name"] = meds.get(i["medication_id"], "Unknown")
             if isinstance(i.get("date_time"), datetime):
                 i["date_time"] = i["date_time"].strftime("%Y-%m-%d %H:%M")
+            if isinstance(i.get("created_at"), datetime):
+                i["created_at"] = i["created_at"].strftime("%Y-%m-%d %H:%M")
 
         return jsonify({"intakes": intakes, "page": page, "page_size": page_size, "total": total})
     except Exception as e:
