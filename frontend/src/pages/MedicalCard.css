@@ -291,7 +291,8 @@
 .medcard__row--stack {
     flex-direction: column;
     align-items: stretch;
-    gap: 0;
+    /* The record's own line and each action beneath it: a clear gap, the outlined actions are not touching. */
+    gap: var(--spacing-sm);
 }
 
 .medcard__row-top {
