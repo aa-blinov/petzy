@@ -143,6 +143,7 @@ PUBLIC = {
     ("post", "/api/auth/email/verify"),
     ("post", "/api/auth/password/common"),
     ("get", "/api/legal"),
+    ("get", "/api/version"),
     ("get", "/api/shared/medical-card/{token}"),
     ("get", "/api/shared/medical-card/{token}/pdf"),
 }

@@ -39,6 +39,9 @@ services:
     environment:
       # Explicitly pass logging configuration
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Which commit this build is, for /api/version. Written into .env by
+      # the deploy; empty on a laptop, which the endpoint admits to.
+      - PETZY_BUILD_SHA=${PETZY_BUILD_SHA:-}
     command: "gunicorn -c gunicorn.conf.py web.app:app"
     ports:
       # Loopback only. Published on all interfaces, gunicorn was reachable
