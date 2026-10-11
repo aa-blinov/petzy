@@ -13,7 +13,6 @@ import { OverdueStrip, VetView } from './MedicalCard';
 import './MedicalCard.css';
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
-const NO_NAVIGATE = () => undefined;
 
 /**
  * What a vet opens by the link the owner made: the card as the reading mode shows it, and its PDF, with no sign-in and nothing to
@@ -109,7 +108,7 @@ export function SharedMedicalCard() {
               <>
                 {/* How old the data is, and until when the page lives, where a vet sees it with what is overdue. */}
                 <p className="medcard__stamp medcard__stamp--top">Собрано из записей питомца на {made}. Ссылка действует до {ends}</p>
-                <OverdueStrip card={card} petId="" navigate={NO_NAVIGATE} canAct={false} hidden={NO_HIDDEN} />
+                <OverdueStrip card={card} canAct={false} hidden={NO_HIDDEN} />
               </>
             }
           />

@@ -77,28 +77,3 @@
     color: var(--app-success-text);
 }
 
-/* The second door of a tile («Записать» beside the weight, «Изменить» beside the allergies): a sibling of the tile, not inside
-   it, so both stay buttons. Same accent link as the rest of the card, placed on the tile's bottom edge. */
-.medsum__item {
-    position: relative;
-}
-
-/* The tile keeps its text clear of the door: the bottom of the tile is left for it, so the value never runs under it. */
-.medsum__item--quick > .medsum__tile {
-    padding-bottom: 48px;
-}
-
-.medsum__quick {
-    position: absolute;
-    right: var(--spacing-md);
-    bottom: var(--spacing-xs);
-    min-height: var(--touch-min);
-    padding: 0 var(--spacing-xs);
-    border: none;
-    background: none;
-    font: inherit;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--app-accent-deep);
-    cursor: pointer;
-}
