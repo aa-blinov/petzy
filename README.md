@@ -37,6 +37,8 @@
 | **События питомца** | **Каталог событий** | **Значения по умолчанию** |
 | ![Оформление питомца](screenshots/pet_look.png) | ![Админ-панель](screenshots/admin_panel.png) | |
 | **Оформление питомца** | **Админ-панель** | |
+| ![Медкарта](screenshots/medical_card.png) | ![Медкарта: Врачу](screenshots/medical_card_vet.png) | ![Профилактика](screenshots/medical_card_prevention.png) |
+| **Медкарта** | **Медкарта: «Врачу»** | **Профилактика** |
 
 ## API
 

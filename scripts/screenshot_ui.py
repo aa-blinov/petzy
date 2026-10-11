@@ -52,8 +52,9 @@ SCREENS = [
     ("health_form", "/form/feeding"),
     ("medication_form", "/medications/new"),
     # Settings sub-pages
-    ("tiles_settings", "/tiles-settings"),
+    ("pet_events", "/pet-events"),
     ("form_defaults", "/form-defaults"),
+    ("pet_look", "/pet-look"),
 ]
 
 # Captured signed in as the admin, in a context of their own.
@@ -96,6 +97,36 @@ def main() -> int:
         page.fill('input[placeholder="Введите пароль"]', PASSWORD)
         page.click('button[type="submit"]')
         page.wait_for_url(lambda url: not url.endswith("/login"), timeout=10_000)
+        # The demo owner's showcase pet, Рекс: the pet the app opens on is chosen here, not left to the account's first pet.
+        # The app writes its own choice when the home page mounts, so the choice is made once that has settled.
+        page.wait_for_timeout(1500)
+        rex_id = page.evaluate(
+            """async () => {
+                const pets = (await (await fetch('/api/pets', {credentials: 'include'})).json()).pets;
+                const rex = pets.find((p) => p.name === 'Рекс');
+                if (rex) {
+                    localStorage.setItem('selectedPetId', JSON.stringify(rex._id));
+                    localStorage.setItem('selectedPetName', JSON.stringify(rex.name));
+                }
+                return rex ? rex._id : null;
+            }"""
+        )
+
+        # The medical card of the same pet: its working mode, the vet's reading mode, and one section of it.
+        if rex_id:
+            card = f"/pets/{rex_id}/medical-card"
+            page.goto(f"{FRONTEND}{card}", wait_until="networkidle")
+            page.wait_for_timeout(1200)
+            page.screenshot(path=str(OUTPUT_DIR / "medical_card.png"), full_page=False)
+            print("  captured medical_card")
+            page.get_by_role("button", name="Врачу", exact=True).click()
+            page.wait_for_timeout(1000)
+            page.screenshot(path=str(OUTPUT_DIR / "medical_card_vet.png"), full_page=False)
+            print("  captured medical_card_vet")
+            page.goto(f"{FRONTEND}{card}/prevention", wait_until="networkidle")
+            page.wait_for_timeout(1000)
+            page.screenshot(path=str(OUTPUT_DIR / "medical_card_prevention.png"), full_page=False)
+            print("  captured medical_card_prevention")
 
         # Capture each screen.
         for name, path in SCREENS:
@@ -104,6 +135,14 @@ def main() -> int:
             page.wait_for_timeout(800)
             page.screenshot(path=str(OUTPUT_DIR / f"{name}.png"), full_page=False)
             print(f"  captured {name} ({path})")
+
+        # The event catalogue: the sheet the pet-events screen opens to add an event kind.
+        page.goto(f"{FRONTEND}/pet-events", wait_until="networkidle")
+        page.wait_for_timeout(800)
+        page.get_by_role("button", name="Добавить событие").click()
+        page.wait_for_timeout(1500)
+        page.screenshot(path=str(OUTPUT_DIR / "event_catalog.png"), full_page=False)
+        print("  captured event_catalog (pet events sheet)")
 
         # Bonus: capture the QuickAdd bottom sheet by tapping the FAB.
         page.goto(f"{FRONTEND}/", wait_until="networkidle")
