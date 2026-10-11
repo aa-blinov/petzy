@@ -13,7 +13,7 @@ BASE = os.environ.get("PETZY_E2E_BASE", "http://localhost:3000")
 _fails = []
 
 
-async def new_page(browser, dark=False, width=390, height=844, sw=True):
+async def new_page(browser, dark=False, width=390, height=844, sw=True, init=None):
     ctx = await browser.new_context(
         viewport={"width": width, "height": height},
         has_touch=True,
@@ -22,6 +22,12 @@ async def new_page(browser, dark=False, width=390, height=844, sw=True):
         color_scheme="dark" if dark else "light",
         service_workers="allow" if sw else "block",
     )
+    # JavaScript to put in place before the app's own code runs, for a browser state the
+    # stand cannot be talked into (a permission the headless one refuses to grant, a slow
+    # service worker). It also installs anything that has to watch the page from its first
+    # frame, which is too early to be done over the protocol afterwards.
+    if init:
+        await ctx.add_init_script(init)
     pg = await ctx.new_page()
     return ctx, pg
 
