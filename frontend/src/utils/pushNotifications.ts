@@ -42,14 +42,50 @@ export function needsHomeScreenForPush(): boolean {
 
 /** Current state for the Settings toggle — doesn't touch the network
  *  beyond what the browser itself already knows (no VAPID-key fetch),
- *  so it's cheap enough to call on every mount. */
+ *  so it's cheap enough to call on every mount.
+ *
+ *  It is remembered as it is read. Asking is not free: the `off` state
+ *  costs `await navigator.serviceWorker.ready`, which takes seconds
+ *  while the worker installs or activates, and every deploy makes a new
+ *  one. A screen that drew nothing until this answered had put its
+ *  banner under a list that was already on screen, and every card below
+ *  it moved down at once. The answer changes only when the person
+ *  changes it, in browser settings or in ours. */
 export async function getPushSubscriptionState(): Promise<PushSupportState> {
+  const state = await readPushState();
+  rememberPushState(state);
+  return state;
+}
+
+async function readPushState(): Promise<PushSupportState> {
   if (!isPushSupported()) return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
 
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
   return subscription ? 'on' : 'off';
+}
+
+const PUSH_STATE_KEY = 'petzy:push-state';
+
+/** What this browser last answered, read synchronously so a screen can draw the right thing
+ *  on its first frame instead of waiting for the worker. Null when nothing is known yet. */
+export function rememberedPushState(): PushSupportState | null {
+  try {
+    const stored = localStorage.getItem(PUSH_STATE_KEY);
+    return stored === 'on' || stored === 'off' || stored === 'denied' || stored === 'unsupported' ? stored : null;
+  } catch {
+    return null; // private mode: nothing is remembered, the check still runs
+  }
+}
+
+/** Keep it for the next screen and the next time the app is opened. */
+export function rememberPushState(state: PushSupportState): void {
+  try {
+    localStorage.setItem(PUSH_STATE_KEY, state);
+  } catch {
+    /* private mode or full storage: the state is read fresh every time */
+  }
 }
 
 /** Requests permission (if not already decided), subscribes this

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BellOff } from 'lucide-react';
 import { Button } from 'antd-mobile';
-import { getPushSubscriptionState, needsHomeScreenForPush, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
+import { getPushSubscriptionState, needsHomeScreenForPush, rememberPushState, rememberedPushState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
 import { showToast } from '../utils/toast';
 
 /**
@@ -10,7 +10,10 @@ import { showToast } from '../utils/toast';
  * hear it is a missed dose. Nothing is shown when push works here.
  */
 export function PushOffNotice() {
-  const [state, setState] = useState<PushSupportState | null>(null);
+  // What this browser answered last time, so the notice is on screen with the list instead of
+  // arriving under it: the answer costs `await navigator.serviceWorker.ready`, which is seconds
+  // while the worker installs or activates, and every card below would move down at once.
+  const [state, setState] = useState<PushSupportState | null>(rememberedPushState);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let live = true;
@@ -27,6 +30,7 @@ export function PushOffNotice() {
     setBusy(true);
     try {
       await subscribeToPush();
+      rememberPushState('on');
       setState('on');
       showToast.success('Напоминания включены на этом телефоне');
     } catch (err) {
