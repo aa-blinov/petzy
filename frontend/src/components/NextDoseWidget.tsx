@@ -35,7 +35,7 @@ function minutesUntilDose(dose: UpcomingDose, now = new Date()): number {
     return Math.round((new Date(`${dose.date}T${dose.time}:00`).getTime() - now.getTime()) / 60000);
 }
 
-/** «Принять» now, «Уже дали в 08:00» at the slot, or «Пропустить». */
+/** «Дали сейчас» now, «Дали вовремя» at the slot, or «Пропустить приём». */
 type IntakeKind = 'now' | 'scheduled' | 'skip';
 
 export function NextDoseWidget() {
@@ -76,14 +76,14 @@ export function NextDoseWidget() {
         mutationFn: ({ dose, kind }: { dose: UpcomingDose; kind: IntakeKind }) => {
             // No dose_taken: the backend uses the course's own dose. A
             // hard-coded 1 took a whole tablet off a half-tablet course.
-            // «Принять» is logged at the moment it's given, not at the
-            // scheduled time: «Дать раньше» at 14:00 for 20:00 is a 14:00
-            // intake. «Уже дали в 08:00» is for a dose given on time and
-            // marked later; a skip sits at its slot.
+            // «Дали сейчас» is logged at the moment it's given, not at the
+            // scheduled time: it at 14:00 for a 20:00 dose is a 14:00
+            // intake. «Дали вовремя» is for a dose given on time and marked
+            // later; a skip sits at its slot.
             const now = new Date();
             const nowDate = formatDate(now);
             const nowTime = formatTime(now);
-            // The slot the dose is for goes with it: «Принять сейчас» at 14:30 for the 08:00 dose closes the 08:00 one,
+            // The slot the dose is for goes with it: «Дали сейчас» at 14:30 for the 08:00 dose closes the 08:00 one,
             // not the nearest, and a dose of last evening given after midnight closes that evening.
             const slot = { slot_date: dose.date, slot_time: dose.time };
             if (kind === 'now')
