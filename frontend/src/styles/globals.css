@@ -970,6 +970,11 @@ select {
     margin: 0 auto;
     padding: 0;
     list-style: none;
+    /* The active icon grows to 1.12 and its indicator sits 4px above the icon,
+       which put the indicator's top edge 0.4px over the bar and painted it on
+       the page above. Nothing of the bar belongs over the page, so it is cut
+       at the bar's own edge. The focus ring is already inset by 4px and stays. */
+    overflow: hidden;
 }
 
 .app-tab-bar > li {

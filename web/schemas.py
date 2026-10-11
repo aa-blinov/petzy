@@ -246,6 +246,20 @@ class LegalInfoResponse(BaseModel):
     )
 
 
+class VersionResponse(BaseModel):
+    """Which commit is answering. Empty fields mean the deploy did not write one, not that it is hidden."""
+
+    commit: str = Field(description="Полный номер коммита, на котором собрано то, что отвечает")
+    short: str = Field(description="Первые семь знаков того же коммита, для разговора вслух")
+    known: bool = Field(description="False, когда запуск не был сделан деплоем и номера у него нет")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"commit": "d38df68cf0a3b5aa2e177799d759dc5c45c2c3dd", "short": "d38df68", "known": True}
+        }
+    )
+
+
 class RegistrationStatusResponse(BaseModel):
     open: bool
     mail_enabled: bool = False

@@ -77,6 +77,10 @@ jobs:
               cat .env.new > .env
               rm -f .env.new
             }
+            # Which commit this deploy is, so /api/version can answer. .env is
+            # already the web container's env_file, so nothing carries it by
+            # hand. Rewritten every deploy, never a secret.
+            upsert_env PETZY_BUILD_SHA "${{ github.sha }}"
             upsert_env VAPID_PUBLIC_KEY "${{ secrets.VAPID_PUBLIC_KEY }}"
             upsert_env VAPID_PRIVATE_KEY "${{ secrets.VAPID_PRIVATE_KEY }}"
             upsert_env VAPID_CLAIMS_EMAIL "${{ secrets.VAPID_CLAIMS_EMAIL }}"
