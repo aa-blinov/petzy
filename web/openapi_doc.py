@@ -112,6 +112,11 @@ TAGS = [
         "x-displayName": "Выгрузка",
         "description": "Выгрузка записей в CSV, TSV, HTML, Markdown или ZIP",
     },
+    {
+        "name": "medical-records",
+        "x-displayName": "Медкарта",
+        "description": "Записи, из которых собирается медкарта: прививки, обработки от паразитов, визиты и операции",
+    },
     {"name": "push", "x-displayName": "Уведомления", "description": "Подписка браузера на Web Push"},
     {
         "name": "users",
@@ -120,7 +125,12 @@ TAGS = [
     },
 ]
 
-# No session needed for these.
+# No session needed for these. Everything else answers 401 without a token, and
+# the spec has to say so: it said so on eight operations out of a hundred, so a
+# reader had no way to tell which calls need a token at all.
+# Three were missing here and the published spec said the opposite: a vet opens
+# a shared card by its link with no account at all, and the reset check is what
+# the page behind the emailed link asks.
 PUBLIC = {
     ("post", "/api/auth/login"),
     ("post", "/api/auth/register"),
@@ -129,9 +139,35 @@ PUBLIC = {
     ("post", "/api/auth/logout"),
     ("post", "/api/auth/password/forgot"),
     ("post", "/api/auth/password/reset"),
+    ("get", "/api/auth/password/reset/check"),
     ("post", "/api/auth/email/verify"),
+    ("post", "/api/auth/password/common"),
     ("get", "/api/legal"),
+    ("get", "/api/shared/medical-card/{token}"),
+    ("get", "/api/shared/medical-card/{token}/pdf"),
 }
+
+# What a person can ask for before the answer is 429, in the words of the limit. The numbers
+# come from the @limiter.limit above each view, and from RATE_LIMIT_CONFIG for the two that read
+# it at run time (sign-up and sign-in). Only one operation said so before.
+RATE_LIMITS = {
+    ("post", "/api/auth/login"): "5 попыток в минуту с одного адреса",
+    ("post", "/api/auth/register"): "5 аккаунтов в час с одного адреса",
+    ("post", "/api/auth/password/forgot"): "5 писем в час",
+    ("post", "/api/auth/password/reset"): "20 попыток в час",
+    ("get", "/api/auth/password/reset/check"): "30 проверок в час",
+    ("post", "/api/auth/email/verify"): "30 проверок в час",
+    ("post", "/api/auth/password/common"): "60 проверок пароля в час",
+    ("put", "/api/me/email"): "10 в час",
+    ("post", "/api/me/email/resend"): "5 в час",
+    ("put", "/api/me/password"): "10 в час",
+    ("delete", "/api/me/account"): "10 в час",
+    ("post", "/api/images/preview"): "120 в час",
+    ("get", "/api/shared/medical-card/{token}"): "60 в минуту",
+    ("get", "/api/shared/medical-card/{token}/pdf"): "60 в минуту",
+}
+
+_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
 
 _BINARY = {"type": "string", "format": "binary"}
 
@@ -176,10 +212,24 @@ def finish_spec(spec: dict) -> dict:
     spec["security"] = [{"bearerAuth": []}, {"cookieAuth": []}]
 
     paths = spec.get("paths", {})
+    error_schema = {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}
     for path, operations in paths.items():
         for method, operation in operations.items():
+            if method not in _METHODS:
+                continue
             if (method, path) in PUBLIC:
                 operation["security"] = []
+            else:
+                # What a client sees first on every route outside PUBLIC, whether the token was
+                # forgotten, expired or stolen.
+                operation.setdefault("responses", {}).setdefault(
+                    "401", {"description": "Нет токена или он истёк", **error_schema}
+                )
+            limit = RATE_LIMITS.get((method, path))
+            if limit:
+                operation.setdefault("responses", {}).setdefault(
+                    "429", {"description": f"Ограничение: {limit}", **error_schema}
+                )
 
     def op(method: str, path: str) -> dict:
         return paths.get(path, {}).get(method, {})
@@ -274,7 +324,7 @@ def finish_spec(spec: dict) -> dict:
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
         },
         "429": {
-            "description": "Больше 120 запросов в час",
+            "description": "Ограничение: 120 запросов в час",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
         },
     }

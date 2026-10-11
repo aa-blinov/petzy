@@ -26,3 +26,63 @@ def test_every_item_schema_has_its_id(client):
 
 def test_the_dev_outbox_is_not_published(client):
     assert "/api/dev/outbox" not in client.get("/api/openapi.json").get_json()["paths"]
+
+
+def _operations(spec):
+    return [
+        (path, method, operation)
+        for path, item in spec["paths"].items()
+        for method, operation in item.items()
+        if method in ("get", "post", "put", "patch", "delete")
+    ]
+
+
+def test_every_route_outside_public_says_401(client):
+    """A client has no other way to learn which calls need a token.
+
+    It used to be eight operations out of a hundred, and three of the others were
+    the reverse mistake: a vet's shared card and the reset check need no account
+    at all, while the spec asked for a bearer token.
+    """
+    spec = client.get("/api/openapi.json").get_json()
+    missing = [
+        f"{m.upper()} {p}"
+        for p, m, o in _operations(spec)
+        if "401" not in o.get("responses", {}) and o.get("security") != []
+    ]
+    public = [f"{m.upper()} {p}" for p, m, o in _operations(spec) if o.get("security") == []]
+    assert public, "nothing is public any more, which cannot be right"
+    assert not missing, missing
+
+
+def test_public_routes_are_really_public(client):
+    """The link a vet opens with no account, and the page behind the reset letter."""
+    spec = client.get("/api/openapi.json").get_json()
+    for path, method in (("/api/shared/medical-card/{token}", "get"), ("/api/auth/password/reset/check", "get")):
+        assert spec["paths"][path][method].get("security") == [], f"{method.upper()} {path}"
+
+
+def test_a_limited_route_says_429_with_the_limit(client):
+    spec = client.get("/api/openapi.json").get_json()
+    for path, method in (("/api/auth/login", "post"), ("/api/auth/register", "post"), ("/api/images/preview", "post")):
+        rate_limited = spec["paths"][path][method]["responses"]["429"]
+        assert rate_limited["description"].startswith("Ограничение: "), rate_limited
+
+
+def test_every_operation_can_be_named_and_grouped(client):
+    """operationId is what a generator calls the method, so it has to be there and unique."""
+    spec = client.get("/api/openapi.json").get_json()
+    declared = {tag["name"] for tag in spec["tags"]}
+    ids, problems = [], []
+    for path, method, operation in _operations(spec):
+        if not operation.get("summary"):
+            problems.append(f"нет summary: {method.upper()} {path}")
+        if not operation.get("operationId"):
+            problems.append(f"нет operationId: {method.upper()} {path}")
+        else:
+            ids.append(operation["operationId"])
+        for tag in operation.get("tags", []):
+            if tag not in declared:
+                problems.append(f"группа {tag} не объявлена: {method.upper()} {path}")
+    assert not problems, problems
+    assert len(ids) == len(set(ids)), "operationId повторяется"
