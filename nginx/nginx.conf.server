@@ -1,3 +1,21 @@
+# A copy of the host's own nginx file, /etc/nginx/sites-enabled/cat-health-control, as it stood on
+# 2026-10-11. It is here to be read and compared, not deployed: the host file is edited by hand on
+# the server, because the deploy user has no sudo. Change one, change the other.
+#
+# It does far less than it used to. An earlier version served the built frontend from a directory on
+# the host and proxied /api/ straight to gunicorn on 5001; both are gone. Now the host only
+# terminates TLS and forwards everything to the app's own nginx at 127.0.0.1:3000, which is what
+# routes, caches and sets headers. That is why nothing here mentions /api/, /assets or /health:
+# those are decided by nginx/nginx.conf inside the container, which is the file that really runs and
+# the one to change for anything about how the app is served.
+#
+# What is left here is TLS and forwarding. Two things to keep in mind when editing:
+#   - X-Forwarded-For appends, and the container trusts this hop, so the visitor's real address
+#     survives a client that sends its own X-Forwarded-For.
+#   - This nginx adds nosniff and HSTS through Certbot's include, and the container adds them too,
+#     so API answers carry both headers twice. Harmless, and it only goes away by dropping one of
+#     the two, which is a decision to make deliberately rather than by accident.
+
 server {
     server_name petzy.duckdns.org;
 
@@ -8,84 +26,20 @@ server {
     # Увеличение размера загружаемых файлов
     client_max_body_size 10M;
 
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Root directory for React static files
-    root /home/justcomex/services/cat-health-control/frontend/dist;
-    index index.html;
-
-    # API proxy - forward to Flask backend
-    location /api/ {
-        proxy_pass http://127.0.0.1:5001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+    # Весь трафик — в nginx приложения, он слушает только на петле
+    location / {
+        proxy_pass http://127.0.0.1:3000; # Направляем трафик на внутренний Nginx в Docker
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        # Important for cookies
-        proxy_cookie_path / /;
-        proxy_cookie_flags ~ nosecure samesite=lax;
-        # Pass cookies
-        proxy_pass_header Set-Cookie;
-        # Timeouts
+
+        # Таймауты
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
+
         proxy_buffering off;
-    }
-
-    # Build output under /assets/ has a content hash in every file name,
-    # so it can be cached for good.
-    location ^~ /assets/ {
-        root /home/justcomex/services/cat-health-control/frontend/dist;
-        try_files $uri =404;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Everything else at the root keeps its name when its content changes
-    # (favicon.svg, the icons, sw.js, registerSW.js): revalidate on every
-    # use. These used to share the year-long immutable rule above, so a new
-    # favicon or manifest never reached anyone who had opened the site.
-    location = /manifest.webmanifest {
-        root /home/justcomex/services/cat-health-control/frontend/dist;
-        types { }
-        default_type application/manifest+json;
-        try_files $uri =404;
-        add_header Cache-Control "no-cache";
-    }
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ {
-        root /home/justcomex/services/cat-health-control/frontend/dist;
-        try_files $uri =404;
-        add_header Cache-Control "no-cache";
-    }
-
-    # React app routes - SPA fallback (everything except the API is the React app, /login included)
-    location / {
-        root /home/justcomex/services/cat-health-control/frontend/dist;
-        try_files $uri $uri/ /index.html;
-        # index.html names the current hashed bundle; never serve it stale.
-        add_header Cache-Control "no-cache";
-    }
-
-    # Health check
-    location /health {
-        access_log off;
-        return 200 "healthy\n";
-        add_header Content-Type text/plain;
     }
 
     listen 443 ssl; # managed by Certbot
@@ -104,4 +58,3 @@ server {
     server_name petzy.duckdns.org;
     return 404; # managed by Certbot
 }
-
