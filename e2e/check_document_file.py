@@ -75,7 +75,7 @@ async def main():
             )
             check(
                 "«Добавлен» is the document's own time, not the phone's",
-                "Добавлен " in line and f"Добавлен {added.day} " in line,
+                f"в {added:%H:%M}" in line and "Добавлен" in line,
                 line.replace(chr(10), " | "),
             )
 
