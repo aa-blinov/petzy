@@ -2607,7 +2607,8 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
 .onb__text-btn,
 .record-push-note__button,
 .medlinks__retry {
-    border: 1px solid var(--app-primary-text) !important;
+    /* The outline is the colour of the text: the pet's own accent where it has one, the copper otherwise. */
+    border: 1px solid currentColor !important;
     border-radius: var(--radius-md) !important;
     background: transparent !important;
     padding: 0 var(--spacing-md) !important;
