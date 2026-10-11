@@ -1,5 +1,7 @@
 """The published reference: open to anyone, valid, and saying how to sign in."""
 
+import json
+
 
 def test_the_docs_and_spec_need_no_login(client):
     page = client.get("/api/docs")
@@ -95,6 +97,37 @@ def test_a_description_is_a_sentence_and_not_a_scrap(client):
         if o.get("description") and o["description"][:1].islower()
     ]
     assert not scraps, scraps
+
+
+def test_a_schema_a_client_reads_has_an_example(client):
+    """Types on their own are not enough to build a client from.
+
+    37 of 139 schemas carried an example. The rest were a list of names and
+    types, and the values that show what those types really hold had to be
+    guessed from the demo data.
+    """
+    spec = client.get("/api/openapi.json").get_json()
+    schemas = spec["components"]["schemas"]
+    read_by_a_client = set()
+
+    def collect(node):
+        if isinstance(node, dict):
+            ref = node.get("$ref")
+            if isinstance(ref, str):
+                read_by_a_client.add(ref.rsplit("/", 1)[1])
+            for value in node.values():
+                collect(value)
+        elif isinstance(node, list):
+            for item in node:
+                collect(item)
+
+    for item in spec["paths"].values():
+        for operation in item.values():
+            collect(operation.get("responses", {}))
+            collect(operation.get("requestBody", {}))
+
+    bare = sorted(n for n in read_by_a_client if "example" not in json.dumps(schemas.get(n, {})))
+    assert not bare, bare
 
 
 def test_every_operation_can_be_named_and_grouped(client):
