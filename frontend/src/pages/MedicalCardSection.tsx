@@ -24,7 +24,7 @@ export type CardSectionKey = 'risks' | 'meds' | 'prevention' | 'weight' | 'visit
 const TITLES: Record<CardSectionKey, string> = {
   risks: 'Здоровье и аллергии',
   meds: 'Лекарства',
-  prevention: 'Профилактика',
+  prevention: 'Прививки и обработки',
   weight: 'Вес',
   visits: 'Визиты и операции',
   documents: 'Документы',
@@ -223,7 +223,7 @@ const SECTION_ADDS: Record<CardSectionKey, { label: string; to: (petId: string) 
 };
 
 /** Where the block of the section already carries its own «Добавить», «Записать вес» or «Указать», the round «+» only
-    repeats that door. It stays where the block has no door of its own, and where it asks between two kinds. «Профилактика»
+    repeats that door. It stays where the block has no door of its own, and where it asks between two kinds. «Прививки и обработки»
     and «Визиты» ask between two kinds, and their blocks carry no door at all, so one «+» opens the whole screen. */
 const SECTION_OPENS_ITSELF: ReadonlySet<CardSectionKey> = new Set(['risks', 'meds', 'weight', 'clinic', 'life']);
 

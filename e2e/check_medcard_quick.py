@@ -25,7 +25,7 @@ async def main():
         check(
             "the overdue strip is text: no button, and it says where the repeat is written",
             await pg.locator(".medcard__alert button").count() == 0
-            and "Профилактика" in await pg.locator(".medcard__alert").inner_text(),
+            and "Прививки и обработки" in await pg.locator(".medcard__alert").inner_text(),
         )
         await pg.get_by_role("button", name="Вес: 29,3 кг, 04.10.2026").click()
         await pg.wait_for_timeout(800)

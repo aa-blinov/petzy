@@ -72,7 +72,7 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
     },
     {
       key: 'prevention',
-      label: 'Профилактика',
+      label: 'Прививки и обработки',
       icon: Bug,
       value: prev.total === 0 ? 'Нет записей' : prev.overdue > 0 ? `${prev.overdue} просрочено` : prev.soon > 0 ? `${prev.soon} скоро` : 'Всё в срок',
       note: prev.overdue > 0 ? { text: 'Нужно повторить', tone: 'bad' } : prev.soon > 0 ? { text: 'Скоро срок', tone: 'warn' } : prev.total > 0 ? { text: 'В порядке', tone: 'ok' } : undefined,

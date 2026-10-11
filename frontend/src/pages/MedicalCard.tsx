@@ -393,7 +393,7 @@ function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
 }
 
 /** The one line that matters most, under the mode switch in both modes: what is overdue and where it is put right. The put-right
-    action is in the section that holds the record («Профилактика»), not on the card: the card shows, the section acts. */
+    action is in the section that holds the record («Прививки и обработки»), not on the card: the card shows, the section acts. */
 export function OverdueStrip({ card, canAct, shared = false, hidden }: { card: Card; canAct: boolean; shared?: boolean; hidden: ReadonlySet<string> }) {
   const items = overdueItems(card, hidden);
   if (items.length === 0) return null;
@@ -407,7 +407,7 @@ export function OverdueStrip({ card, canAct, shared = false, hidden }: { card: C
           {others.length > 0 ? `. И ещё ${others.length}` : ''}
         </p>
         {canAct ? (
-          <p className="medcard__alert-text">Записать повторно можно в разделе «Профилактика»</p>
+          <p className="medcard__alert-text">Записать повторно можно в разделе «Прививки и обработки»</p>
         ) : shared ? (
           // The vet's copy of the card: there is nothing to press here, so the strip says who can put it right.
           <p className="medcard__alert-text">Обновить сможет тот, у кого есть доступ к питомцу, в приложении</p>
