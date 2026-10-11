@@ -155,7 +155,10 @@ def _generate_event_type_key() -> str:
 @login_required
 @api.validate(resp=Response(HTTP_200=EventTypeListResponse), tags=["events"])
 def list_event_types():
-    """List the event types this user can use: builtin, and their household's."""
+    """List the event types this user can use: builtin, and their household's.
+
+    Built-in types are the same for everyone and are renamed only by an administrator. A household's own types are shared with everyone the pet is shared with, and only the person who made one may change or remove it, and only while it has no records.
+    """
     username, _ = get_current_user()
     docs = list(app.db[EVENT_TYPES_COLLECTION].find(_visible_types_query(username)))
     docs.sort(key=_registry_order)
@@ -179,7 +182,10 @@ def _registry_order(doc: dict) -> tuple:
 )
 @login_required
 def create_event_type():
-    """Create a custom event type."""
+    """Create a custom event type.
+
+    Everyone the pet is shared with sees it at once, the person who made it included. The name has to be free within the household: two types under one name make a record impossible to tell apart later.
+    """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
 
@@ -421,7 +427,12 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
 )
 @require_pet_access
 def create_event():
-    """Create a new event of any registered type."""
+    """Create a new event of any registered type.
+
+    The type is checked against what this person may use. Two records saying the same
+    thing in the same minute by the same person are one record written twice, and the
+    second is refused rather than kept.
+    """
     data = request.context.body  # type: ignore[attr-defined]
     pet_id = g.pet_id
     username = g.username
@@ -521,7 +532,10 @@ def create_event():
 )
 @require_pet_access
 def list_events():
-    """List events for the current pet, optionally filtered by type."""
+    """List events for the current pet, optionally filtered by type.
+
+    Newest first and paginated. Dates and times are the person's own, kept as they were typed: the zone travels with the record and is taken out again on the device that reads it.
+    """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
     page = query_params.page
@@ -546,7 +560,10 @@ def list_events():
 )
 @require_record_access(EVENTS_COLLECTION)
 def get_event(record_id):
-    """Fetch a single event."""
+    """Fetch a single event.
+
+    The same check as the list: a record of a pet the caller cannot see answers exactly like a missing one.
+    """
     try:
         return jsonify(_serialize_event(g.record))
     except Exception as e:
@@ -568,7 +585,10 @@ def get_event(record_id):
 )
 @require_record_access(EVENTS_COLLECTION)
 def update_event(record_id):
-    """Update an event. The event's type cannot change."""
+    """Update an event. The event's type cannot change.
+
+    The type is fixed once written: a different kind of thing belongs in a new record. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
+    """
     from bson import ObjectId  # lazy import to keep this module Mongo-free at import time
 
     username = g.username
@@ -624,7 +644,10 @@ def update_event(record_id):
 )
 @require_record_access(EVENTS_COLLECTION)
 def delete_event(record_id):
-    """Delete an event."""
+    """Delete an event.
+
+    The record goes. What was counted from it goes with it, and the day and the totals it was part of close up again.
+    """
     from bson import ObjectId
 
     username = g.username
@@ -648,7 +671,10 @@ def delete_event(record_id):
 @api.validate(query=PetIdQuery, resp=Response(HTTP_403=ErrorResponse), tags=["events"])
 @require_pet_access
 def used_event_types():
-    """The types this pet has at least one record of: what a filter of its history has something to show for."""
+    """The types this pet has at least one record of: what a filter of its history has something to show for.
+
+    A filter over a type with nothing behind it would only show an empty list, so the history offers the types that have records.
+    """
     types = app.db[EVENTS_COLLECTION].distinct("type", {"pet_id": g.pet_id})
     return jsonify({"types": sorted(t for t in types if isinstance(t, str))})
 
@@ -661,7 +687,10 @@ def used_event_types():
 )
 @require_pet_access
 def get_health_stats():
-    """Get event statistics for charts."""
+    """Get event statistics for charts.
+
+    Counts and sums for the graphs: by day, by type, and the range the chart shows. ``client_date`` and ``tz`` put the buckets on the device's days rather than the server's.
+    """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
     record_type = query_params.type

@@ -361,7 +361,10 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 )
 @require_pet_access
 def export_data(export_type, format_type):
-    """Export data in various formats."""
+    """Export data in various formats.
+
+    CSV, TSV, HTML, Markdown or ZIP, of one pet or of all of them. ``all`` with any format gives the ZIP. The file comes back with the answer instead of being stored anywhere.
+    """
     try:
         pet_id = g.pet_id  # Provided by @require_pet_access
         username = g.username  # Provided by @require_pet_access

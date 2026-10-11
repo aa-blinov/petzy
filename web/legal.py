@@ -46,7 +46,10 @@ def consent_needed(user: dict) -> bool:
 @legal_bp.route("/api/legal", methods=["GET"])
 @api.validate(resp=Response(HTTP_200=LegalInfoResponse), tags=["account"])
 def legal_info():
-    """What the privacy policy page fills in: operator, contact, where the data is."""
+    """What the privacy policy page fills in: operator, contact, where the data is.
+
+    Read by the policy and consent pages, which say what they say about this deployment. It also carries the version the account's consent is compared against.
+    """
     return jsonify(
         {
             "policy_version": PRIVACY_POLICY_VERSION,
@@ -66,7 +69,10 @@ def legal_info():
     tags=["account"],
 )
 def accept_privacy_policy():
-    """Agree to the current policy version (the app asks when it changes)."""
+    """Agree to the current policy version (the app asks when it changes).
+
+    Records which version of the policy was agreed to and when. A new version leaves the person who has not agreed to it asked again before the app goes on.
+    """
     data = request.context.body  # type: ignore[attr-defined]
     if data.version != PRIVACY_POLICY_VERSION:
         # The page was open while a new wording came out: show the new one.

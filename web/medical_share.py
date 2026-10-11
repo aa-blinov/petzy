@@ -113,7 +113,12 @@ def create_share(pet_id):
     tags=["pets"],
 )
 def list_shares(pet_id):
-    """The links to the card that work now, newest first. Without their secrets: those are not kept."""
+    """The links to the card that work now, newest first. Without their secrets: those are not kept.
+
+    Revoked and expired links are gone from here, so the list is what is still
+    usable. The address itself is shown once, when the link is made, and only its
+    hash is stored: there is nothing here to copy and send twice.
+    """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
     if access_error:
@@ -131,7 +136,12 @@ def list_shares(pet_id):
     tags=["pets"],
 )
 def revoke_share(pet_id, share_id):
-    """Take a link back: it stops opening the card at once."""
+    """Take a link back: it stops opening the card at once.
+
+    The card itself is untouched, and the revoking party is not recorded anywhere
+    the owner sees. Any member of the pet may do this, owner included. Making a link is different:
+    only the owner may.
+    """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
     if access_error:
@@ -220,7 +230,10 @@ def get_shared_card(token):
     tags=["pets"],
 )
 def get_shared_card_pdf(token):
-    """The same card as a PDF, by the link."""
+    """The same card as a PDF, by the link.
+
+    The card the link opens, as a file, for the vet who asked to keep it. Needs no account, and stops working the moment the link is taken back or runs out.
+    """
     from web.medical_card_full import build_full_card
     from web.medical_card_pdf import render_medical_card_pdf
 
