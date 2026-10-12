@@ -48,7 +48,19 @@ export function installKeyboardWatch() {
     // can stay panned down inside the page, and everything fixed to the bottom floats that far above the screen's
     // edge. While there is no keyboard and no pinch-zoom, the fixed bars are moved down by that offset; the
     // page is also nudged once, which makes the browser put the viewport back where it belongs.
-    const panned = !open && viewport.scale <= 1.01 ? Math.max(0, Math.round(viewport.offsetTop)) : 0;
+    const offset = Math.max(0, Math.round(viewport.offsetTop));
+    let panned = !open && viewport.scale <= 1.01 ? offset : 0;
+    // But only as far as the bar actually floats. The nudge above cannot always put the viewport back
+    // (at the end of the page there is nowhere to go, and a slight pinch-zoom leaves it panned too),
+    // and a stale offset is not a harmless leftover: a bottom-fixed bar moved down by it leaves the
+    // screen altogether, which is the bar «улетающий» вниз. So the bar may come down to the edge of
+    // the visible area and not one pixel past it.
+    const bar = document.querySelector('.bottom-tab-bar-container');
+    if (bar && panned) {
+      root.style.setProperty('--vv-shift', '0px'); // its unshifted place, read before shifting again
+      const floats = Math.round(viewport.offsetTop + viewport.height - bar.getBoundingClientRect().bottom);
+      panned = Math.min(panned, Math.max(0, floats));
+    }
     root.style.setProperty('--vv-shift', `${panned}px`);
     if (panned > 0 && !isTextField(document.activeElement)) {
       window.requestAnimationFrame(() => window.scrollTo(window.scrollX, window.scrollY));
