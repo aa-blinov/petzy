@@ -54,14 +54,18 @@
        appears or is selected: that decelerates (--motion-ease-emphasized). */
     --motion-ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
 
-    --app-accent-deep: #9F4F2A;
+    /* 4.5:1 on the soft accent, and not only on its default: the pet's colour may be any of
+       the seven, and the selected mode chip sits on all of them. #9F4F2A was 4.481 against
+       #FFDBCB, a twentieth short. */
+    --app-accent-deep: #9C4D28;
 
     /* Neutral / Text Colors (warm). Secondary and tertiary were 4.4:1
        and 2.6:1 on the cream page, below WCAG AA for their text sizes;
        now 5.2:1 and 4.6:1 on both page and card. Tertiary doubles as
        the placeholder colour, which was a near-invisible 1.2:1. */
     --app-text-primary: #1F1B16;
-    --app-text-secondary: #6F675D;
+    /* On the important block's tint the old value was 4.305:1. */
+    --app-text-secondary: #6A6258;
     /* Passes 4.5:1 on the form field fill too (it was 4.2). */
     --app-text-tertiary: #665E53;
     --app-text-placeholder: var(--app-text-tertiary);
@@ -724,7 +728,8 @@ html[data-prefers-color-scheme='dark'] {
     /* Passes 4.5:1 on the form field fill in the dark theme (it was 4.5 on the page, 4.0 on the field). */
     --app-text-tertiary: #A59B88;
 
-    --app-danger-text: #FF7A70;
+    /* 4.248:1 on the soft accent, which is the ground under the important block's title. */
+    --app-danger-text: #FF8B82;
     --app-warning-text: #FFB340;
     --app-success-text: #5FD47E;
     --app-info-text: #64B5FF;
