@@ -599,6 +599,22 @@
     text-wrap: pretty;
 }
 
+/* The overdue strip is the one place that says what to do about a late repeat, so it is the one
+   place that is pressable. Same colour and weight as the line above it, underlined so it reads as a
+   door, and a real focus ring. */
+.medcard__alert-link {
+    display: inline-block;
+    margin-top: 2px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    align-self: flex-start;
+}
+
+.medcard__alert-link:focus-visible {
+    outline-offset: 2px;
+}
+
 .medcard__section-title,
 .medcard__important-title {
     text-wrap: balance;

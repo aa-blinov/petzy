@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Link2, Minus, ShieldAlert } from 'lucide-react';
@@ -9,6 +9,7 @@ import { MedicalSummary } from '../components/MedicalSummary';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
+import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { listWords, missingReadiness, readinessChecks } from '../utils/medicalReadiness';
 import { usePet } from '../hooks/usePet';
 import { LoadError } from '../components/LoadError';
@@ -18,6 +19,7 @@ import { showToast } from '../utils/toast';
 import { showUndo } from '../utils/undo';
 import { httpStatus } from '../services/api';
 import { formatDate, hasLife, weightDelta } from '../utils/medicalCardFormat';
+import { pluralRu } from '../utils/relativeTime';
 import './MedicalCard.css';
 
 const EMPTY_TEXT: Record<MedicalKind, string> = {
@@ -264,6 +266,9 @@ function recordLines(record: MedicalRecord): RowLine[] {
     record.note ? { label: 'Заметка', text: record.note, tier: 'meta' } : null,
     // What it is against: the same line of the card for any brand of it, so a change of brand reads as a repeat.
     record.kind === 'vaccination' && record.protects_label ? { label: 'Защита', text: record.protects_label, tier: 'meta' } : null,
+    // Attached files ride on the record itself: a third button here put a name before the repeat
+    // that the row was opened for, and the row was already pressable.
+    record.documents.length > 0 ? { label: 'Документы', text: record.documents.map((d) => d.title).join(', '), tier: 'meta' } : null,
     record.superseded ? { text: 'Есть более новая запись', tier: 'meta' } : null,
   ];
   return lines.filter((l): l is RowLine => !!l && !!l.text);
@@ -304,7 +309,6 @@ function recordAriaLabel(record: MedicalRecord): string {
 /** One record of the card: what, when, and (for a vaccination or a treatment) when it is due again. */
 function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord; onOpen: () => void; onRepeat?: () => void; onStop?: () => void }) {
   const repeating = record.kind === 'vaccination' || record.kind === 'parasite';
-  const navigate = useNavigate();
   return (
     <li className={`medcard__row medcard__row--stack${record.superseded ? ' medcard__row--history' : ''}`}>
       <button type="button" className="medcard__row-button" onClick={onOpen} aria-label={recordAriaLabel(record)}>
@@ -316,12 +320,6 @@ function RecordRow({ record, onOpen, onRepeat, onStop }: { record: MedicalRecord
           </span>
         </span>
       </button>
-      {record.documents.map((d) => (
-        // Attached files are one tap from the record, not only a name in a line of text.
-        <button key={d.id} type="button" className="medcard__row-action medcard__row-action--quiet" onClick={() => navigate(`/documents?open=${d.id}`)}>
-          Открыть документ: {d.title}
-        </button>
-      ))}
       {/* Only where a repeat is asked for: a vaccination in its term has nothing to repeat yet (the «+» does it in two taps). */}
       {repeating && onRepeat && !record.superseded && (record.status === 'overdue' || record.status === 'soon') && (
         <button type="button" className="medcard__row-action" onClick={onRepeat}>
@@ -395,6 +393,7 @@ function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
 /** The one line that matters most, under the mode switch in both modes: what is overdue and where it is put right. The put-right
     action is in the section that holds the record («Прививки и обработки»), not on the card: the card shows, the section acts. */
 export function OverdueStrip({ card, canAct, shared = false, hidden }: { card: Card; canAct: boolean; shared?: boolean; hidden: ReadonlySet<string> }) {
+  const { id } = useParams<{ id: string }>();
   const items = overdueItems(card, hidden);
   if (items.length === 0) return null;
   const [first, ...others] = items;
@@ -404,14 +403,21 @@ export function OverdueStrip({ card, canAct, shared = false, hidden }: { card: C
       <div className="medcard__alert-body">
         <p className="medcard__alert-text">
           <b>{first.title}</b>: {first.text}
-          {others.length > 0 ? `. И ещё ${others.length}` : ''}
+          {others.length > 0 ? `. И ещё ${others.length}: ${others.map((r) => r.title).join(', ')}` : ''}
         </p>
-        {canAct ? (
-          <p className="medcard__alert-text">Записать повторно можно в разделе «Прививки и обработки»</p>
-        ) : shared ? (
-          // The vet's copy of the card: there is nothing to press here, so the strip says who can put it right.
-          <p className="medcard__alert-text">Обновить сможет тот, у кого есть доступ к питомцу, в приложении</p>
-        ) : null}
+        {canAct && id ? (
+          <NavLink className="medcard__alert-text medcard__alert-link" to={`/pets/${id}/medical-card/prevention`}>
+            Записать повторную прививку
+          </NavLink>
+        ) : (
+          // Nobody pressed this on the vet's copy or on a member's read-only one, but the strip is the
+          // only place that says what to do about an overdue repeat, so it says who can put it right.
+          <p className="medcard__alert-text">
+            {shared
+              ? 'Обновить сможет тот, у кого есть доступ к питомцу, в приложении'
+              : 'Открыть раздел и обновить сможет владелец'}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -714,6 +720,47 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
 
       {/* The owner hands the card over, so the file and the link come right after what could harm, the first thing a vet reads. */}
       {onShare && handover}
+
+      {/* The results come before the courses: they are what a vet came for, and the PDF has always
+          listed them. The screen was a strict subset of the file, and the analyses were the part
+          that had no other way in. */}
+      {card.documents.length > 0 && (
+        <Section id="medcard-vet-documents" title="Последние результаты">
+          <ul className="medcard__list">
+            {card.documents.map((d) => (
+              <li key={d.id} className="medcard__row">
+                <div className="medcard__row-main">
+                  <div className="medcard__row-title">{d.title}</div>
+                  <div className="medcard__row-sub">
+                    {DOCUMENT_CATEGORY_LABELS[d.category as DocumentCategory] ?? 'Документ'}, {formatDate(d.added)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {/* The line is in the file too, and a single number does not say whether the animal is
+          on the way up. Read-only here: a vet does not weigh, and the owner's own form is one
+          tap away on the other side of the card. */}
+      {card.weight && card.weight.series.length > 1 && (
+        <Section id="medcard-vet-weight" title="Вес">
+          <div className="medcard__weight">
+            <Sparkline points={card.weight.series.map((w) => w.value)} />
+            <div className="medcard__row-sub medcard__row-sub--meta">
+              {weightDelta(card.weight.series) ?? ''}
+              {weightDelta(card.weight.series) ? ' · ' : ''}
+              {card.weight.series.length} {pluralRu(card.weight.series.length, 'замер', 'замера', 'замеров')}, {formatDate(card.weight.series[card.weight.series.length - 1].date)}
+              {(() => {
+                const values = card.weight!.series.map((w) => w.value);
+                const min = Math.min(...values), max = Math.max(...values);
+                return min === max ? '' : `, диапазон ${min.toLocaleString('ru-RU')}–${max.toLocaleString('ru-RU')} кг`;
+              })()}
+            </div>
+          </div>
+        </Section>
+      )}
 
       <Section id="medcard-vet-meds" title="Лекарства">
         {card.medications.length === 0 ? (

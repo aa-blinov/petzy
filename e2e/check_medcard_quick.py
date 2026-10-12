@@ -22,10 +22,19 @@ async def main():
             await pg.get_by_role("button", name="Записать", exact=True).count() == 0
             and await pg.get_by_role("button", name="Изменить", exact=True).count() == 0,
         )
+        # The strip is the one line that says what to do about a late repeat, so it is the one
+        # line that is pressable: a link into the section that holds the record. It also names the
+        # others instead of counting them, since "И ещё 1" does not say whether it is a vaccine.
+        strip = await pg.locator(".medcard__alert").inner_text()
         check(
-            "the overdue strip is text: no button, and it says where the repeat is written",
-            await pg.locator(".medcard__alert button").count() == 0
-            and "Прививки и обработки" in await pg.locator(".medcard__alert").inner_text(),
+            "the overdue strip offers the repeat itself, not the name of a section",
+            await pg.locator(".medcard__alert-link").count() == 1 and "Записать повторную прививку" in strip,
+            strip.replace("\n", " | "),
+        )
+        check(
+            "the rest of the overdue is named, not just counted",
+            "И ещё 1: " in strip,
+            strip.replace("\n", " | "),
         )
         await pg.get_by_role("button", name="Вес: 29,3 кг, 04.10.2026").click()
         await pg.wait_for_timeout(800)

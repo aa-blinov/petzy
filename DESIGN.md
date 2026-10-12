@@ -4,7 +4,7 @@ description: A pet health diary on warm cream paper, written in ginger-cat coppe
 colors:
   ginger-cat: "#C46A3F"
   ginger-deep: "#AD5830"
-  copper-ink: "#9F4F2A"
+  copper-ink: "#9C4D28"
   peach-fur: "#E8946A"
   apricot-wash: "#FBEFE5"
   cream-paper: "#FAF6EF"
@@ -12,7 +12,7 @@ colors:
   oat-line: "#EFE9DD"
   oat-divider: "#E5DFD0"
   espresso-ink: "#1F1B16"
-  driftwood: "#6F675D"
+  driftwood: "#6A6258"
   pebble: "#786E62"
   on-fill: "#FFFFFF"
   alarm-red: "#B3261E"
@@ -90,7 +90,7 @@ components:
     rounded: "{rounded.md}"
     padding: "3px 12px"
   button-danger-dark:
-    backgroundColor: "#FF7A70"
+    backgroundColor: "#FF8B82"
     textColor: "{colors.espresso-ink}"
     rounded: "{rounded.md}"
     height: "48px"
@@ -160,7 +160,7 @@ A warm, single-accent palette: ginger copper on cream, with espresso-brown ink a
 ### Primary
 - **Ginger Cat** (ginger-cat): the brand accent for icons, the active tab, the add-button's glow and focus rings. Never used for text on cream or under white type; it is too light for either (3.7:1 and 3.8:1).
 - **Ginger Deep** (ginger-deep): the working copper. Solid buttons, selected chips and copper text (the active tab label, «Добавить», outline buttons). White on it reads at 5:1.
-- **Copper Ink** (copper-ink): copper for small text and icons on the apricot tint: chips, settings-row icons, the expiry badge's accents.
+- **Copper Ink** (copper-ink): copper for small text and icons on the apricot tint: chips, settings-row icons, the expiry badge's accents. It reads on the apricot tint itself, not only on the page: the card's soft accent may be any of the seven pet colours, and every token that lands on it has to clear 4.5:1 against all of them, not against the default alone.
 - **Peach Fur** (peach-fur): the light end of the brand gradient (peach-fur to ginger-cat, 135°) for the wordmark and the cat and default photo placeholders; also the accent itself in the dark theme.
 - **Apricot Wash** (apricot-wash): the soft copper tint behind icons, the pet card's «Кормление» and «Вес» tiles, the active rail item and empty-state icons.
 
@@ -174,7 +174,7 @@ A warm, single-accent palette: ginger copper on cream, with espresso-brown ink a
 - **Alarm Red** (alarm-red), **Amber Note** (amber-note), **Meadow Green** (meadow-green), **Sky Note** (sky-note): status as text; each also has a soft tint (the same hue at 12-20% opacity) for badges and banners. The bright iOS fills (#FF453A, #FF9F0A, #34C759) are for fills and icons only; as small text on cream they fail contrast.
 
 ### Dark theme
-The same roles on a warm night: night-hearth page, night-card sheets, night-ink text; the accent lifts to peach-fur, copper text becomes #F5C9A8 on a #3A2A1F apricot wash, and fills that are light in the dark theme (the accent, the #FF7A70 red) carry espresso-ink text instead of white.
+The same roles on a warm night: night-hearth page, night-card sheets, night-ink text; the accent lifts to peach-fur, copper text becomes #F5C9A8 on a #3A2A1F apricot wash, and fills that are light in the dark theme (the accent, the #FF8B82 red) carry espresso-ink text instead of white.
 
 ### Named Rules
 **The One Ink Rule.** Copper is the only accent. A new screen gets its emphasis from copper, weight and size, never from a second brand colour. Record pastels identify a record type; they never mark an action.
