@@ -10,7 +10,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       S3_ENDPOINT: https://s3.eu-central-003.backblazeb2.com
       S3_REGION: eu-central-003

@@ -9,7 +9,7 @@ on:
 jobs:
   nginx:
     name: nginx config
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: nginx -t for every config
@@ -69,7 +69,7 @@ jobs:
 
   lint:
     name: Ruff
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v1
@@ -83,7 +83,7 @@ jobs:
 
   test-stateless:
     name: Pytest (stateless)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -110,7 +110,7 @@ jobs:
 
   frontend:
     name: Frontend (typecheck + build + lint)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
@@ -130,7 +130,7 @@ jobs:
 
   test-stateful:
     name: Pytest (stateful)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -157,7 +157,7 @@ jobs:
 
   backup:
     name: Backup image (dump, upload, rotate, restore)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       # The same script runs locally: Docker only, never the real bucket.
