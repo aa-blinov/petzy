@@ -1,3 +1,4 @@
+import { utcStampToLocal } from '../utils/dateUtils';
 import { Fragment, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { isAxiosError } from 'axios';
 import { showToast } from '../utils/toast';
@@ -180,6 +181,8 @@ export function HealthRecordForm() {
   const savingRef = useRef(false);
   // Who wrote the record down: a household of several people looks at this line to know whom to ask.
   const [recordedBy, setRecordedBy] = useState<string | null>(null);
+  // When the record was written, in the viewer's own clock: «кто и когда записал».
+  const [recordedAt, setRecordedAt] = useState<string | null>(null);
 
   // The fields of a new record that can hold a default, and which of them came filled from the person's own defaults.
   // The weight itself is what changes each time; everything else about a record can be remembered.
@@ -331,6 +334,7 @@ export function HealthRecordForm() {
           }
           reset(normalizeData(data));
           setRecordedBy(data.username ?? null);
+          setRecordedAt(typeof data.created_at === 'string' ? utcStampToLocal(data.created_at) : null);
           setLoadError(false);
           setNotFound(false);
         } catch (err) {
@@ -360,6 +364,7 @@ export function HealthRecordForm() {
       .then((data) => {
         reset(normalizeData(data));
         setRecordedBy(data.username ?? null);
+        setRecordedAt(typeof data.created_at === 'string' ? utcStampToLocal(data.created_at) : null);
       })
       .catch((err) => {
         console.error('Error loading record:', err);
@@ -579,6 +584,7 @@ export function HealthRecordForm() {
             {isEditing && recordedBy && (
               <p style={{ margin: petName ? 'var(--spacing-2xs)' : 0 }}>
                 Записал(а): <strong style={{ color: 'var(--app-text-primary)' }}>{recordedBy}</strong>
+                {recordedAt ? `, ${recordedAt}` : ''}
               </p>
             )}
           </div>
