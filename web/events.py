@@ -176,6 +176,7 @@ def _registry_order(doc: dict) -> tuple:
 
 
 @events_bp.route("/api/event-types", methods=["POST"])
+@login_required
 @api.validate(
     body=Request(EventTypeCreate),
     resp=Response(HTTP_201=EventTypeItem, HTTP_422=ErrorResponse),
@@ -210,6 +211,7 @@ def create_event_type():
 
 
 @events_bp.route("/api/event-types/<key>", methods=["PUT"])
+@login_required
 @api.validate(
     body=Request(EventTypeUpdate),
     resp=Response(HTTP_403=ErrorResponse, HTTP_200=EventTypeItem, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
@@ -221,9 +223,9 @@ def update_event_type(key):
 
     A custom type by its author only (403 ``event_type_not_yours``). A builtin type is the same for every
     user, so renaming it renamed it for everyone: an admin's change only (403 ``event_type_builtin_admin_only``).
-    The rules of creation apply, with one gap: ``chart.value_field`` is checked against ``fields`` only when both
-    come in the same request, so a chart sent alone, or fields sent without the chart, are not checked against
-    what is stored. When ``fields`` is sent again, ``max``, ``step`` and ``deviation_threshold``
+    The rules of creation apply: a value chart must name a number field of the type as it will be after the change,
+    so a chart sent alone is checked against the stored fields and fields sent alone against the stored chart
+    (422 ``validation_error``). When ``fields`` is sent again, ``max``, ``step`` and ``deviation_threshold``
     left out of a field are kept from the stored field of the same name.
     """
     # @login_required already guarantees request.current_user is set.
@@ -256,6 +258,14 @@ def update_event_type(key):
         )
     if data.chart is not None:
         update_data["chart"] = data.chart.model_dump()
+    # A chart of values must name a number field of the type as it will be after this change, whichever of the
+    # two came: a chart sent alone is checked against the stored fields, fields sent alone against the stored chart.
+    if data.chart is not None or data.fields is not None:
+        chart = update_data.get("chart", existing.get("chart")) or {}
+        fields = update_data.get("fields", existing.get("fields", []))
+        numbers = {f.get("name") for f in fields if f.get("type") == "number"}
+        if chart.get("kind") == "value" and chart.get("value_field") not in numbers:
+            return error_response("validation_error", "Для графика значений нужно выбрать числовое поле типа")
 
     if update_data:
         app.db[EVENT_TYPES_COLLECTION].update_one({"key": key}, {"$set": update_data})
@@ -263,6 +273,12 @@ def update_event_type(key):
 
     app.logger.info(f"Event type updated: key={key}, user={username}")
     return jsonify(_serialize_event_type(existing)), 200
+
+
+def _flag(name: str) -> bool:
+    """A yes/no query value: ``true``, ``1``, ``yes`` or ``on``, any case. Only ``true`` used to count, and ``1`` asked
+    for a preview went on to delete for real."""
+    return (request.args.get(name) or "").strip().lower() in ("true", "1", "yes", "on")
 
 
 @events_bp.route("/api/event-types/<key>", methods=["DELETE"])
@@ -280,8 +296,8 @@ def delete_event_type(key):
     records, on every pet.
 
     ``?preview=true`` counts the records and deletes nothing (the answer carries ``events_count``), so the question
-    «удалить тип вместе с записями?» is asked once, with the number in it. Only the literal ``true`` counts for
-    ``preview`` and ``with_events``: ``1`` or ``True`` is not a preview, and a type without records is then deleted.
+    «удалить тип вместе с записями?» is asked once, with the number in it. ``preview`` and ``with_events`` take
+    ``true``, ``1``, ``yes`` or ``on``, any case.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -294,9 +310,9 @@ def delete_event_type(key):
     if existing.get("created_by") != username:
         return error_response("event_type_not_yours")
     count = app.db[EVENTS_COLLECTION].count_documents({"type": key})
-    if request.args.get("preview") == "true":
+    if _flag("preview"):
         return jsonify({"success": True, "message": "", "events_count": count}), 200
-    with_events = request.args.get("with_events") == "true"
+    with_events = _flag("with_events")
     if count > 0 and not with_events:
         # Says how many, so that the client can ask «delete the type with its N records?» instead of refusing flatly.
         response, status = error_response("event_type_has_events")
@@ -425,6 +441,7 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
 
 
 @events_bp.route("/api/events", methods=["POST"])
+@login_required
 @api.validate(
     body=Request(EventCreate),
     resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
@@ -533,6 +550,7 @@ def create_event():
 
 
 @events_bp.route("/api/events", methods=["GET"])
+@login_required
 @api.validate(
     query=EventListQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=EventListResponse, HTTP_422=ErrorResponse),
@@ -580,6 +598,7 @@ def get_event(record_id):
 
 
 @events_bp.route("/api/events/<record_id>", methods=["PUT"])
+@login_required
 @api.validate(
     body=Request(EventUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
@@ -589,7 +608,7 @@ def get_event(record_id):
 def update_event(record_id):
     """Update an event. The event's type cannot change.
 
-    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Send ``date`` and ``time`` every time, both: without them the record's time is replaced with the server's current time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
+    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Without ``date`` and ``time`` the record keeps its time; one of them sent alone is completed from the stored time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
     """
     from bson import ObjectId  # lazy import to keep this module Mongo-free at import time
 
@@ -601,9 +620,17 @@ def update_event(record_id):
     if not event_type:
         return error_response("event_type_not_found")
 
-    event_dt, dt_error = parse_event_datetime_safe(
-        data.date, data.time, f"{event_type['label']} update", pet_id, username
-    )
+    # A change that leaves the time out keeps it: a comment edited from another client must not move the
+    # record to now. One half sent is completed from the stored time.
+    stored_dt = g.record.get("date_time")
+    if data.date is None and data.time is None:
+        event_dt, dt_error = None, None
+    else:
+        date_str = data.date or (stored_dt.strftime("%Y-%m-%d") if isinstance(stored_dt, datetime) else None)
+        time_str = data.time or (stored_dt.strftime("%H:%M") if isinstance(stored_dt, datetime) else None)
+        event_dt, dt_error = parse_event_datetime_safe(
+            date_str, time_str, f"{event_type['label']} update", pet_id, username
+        )
     if dt_error:
         return dt_error[0], dt_error[1]
 
@@ -664,6 +691,7 @@ def delete_event(record_id):
 
 
 @events_bp.route("/api/events/used-types", methods=["GET"])
+@login_required
 @api.validate(query=PetIdQuery, resp=Response(HTTP_404=ErrorResponse, HTTP_200=UsedEventTypesResponse), tags=["events"])
 @require_pet_access
 def used_event_types():
@@ -676,6 +704,7 @@ def used_event_types():
 
 
 @events_bp.route("/api/stats/health", methods=["GET"])
+@login_required
 @api.validate(
     query=HealthStatsQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=HealthStatsResponse, HTTP_422=ErrorResponse),
@@ -731,6 +760,7 @@ def get_health_stats():
 
 
 @events_bp.route("/api/history/timeline", methods=["GET"])
+@login_required
 @api.validate(
     query=TimelineQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=TimelineResponse, HTTP_422=ErrorResponse),

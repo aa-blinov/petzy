@@ -21,6 +21,7 @@ from flask import Blueprint, g, jsonify, request
 from flask_pydantic_spec import Request, Response
 
 import web.app as app
+from web.security import login_required
 from web.app import api
 from web.decorators import require_pet_access, require_record_access
 from web.errors import error_response
@@ -243,6 +244,7 @@ def _stored(data: dict, kind: str) -> dict:
 
 
 @medical_records_bp.route("/api/medical-records", methods=["POST"])
+@login_required
 @api.validate(
     body=Request(MedicalRecordCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
@@ -273,6 +275,7 @@ def create_medical_record():
 
 
 @medical_records_bp.route("/api/medical-records", methods=["GET"])
+@login_required
 @api.validate(
     query=MedicalRecordListQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=MedicalRecordListResponse, HTTP_422=ErrorResponse),
@@ -309,6 +312,7 @@ def get_medical_record(id):
 
 
 @medical_records_bp.route("/api/medical-records/<id>", methods=["PUT"])
+@login_required
 @api.validate(
     body=Request(MedicalRecordUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),

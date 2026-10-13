@@ -336,6 +336,11 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         from flask import g  # imported lazily to avoid hard dependency at import time
 
+        # Checked once per request: a route signs in first, before its body is validated, and the access
+        # decorators inside sign in again; a second pass would renew an expired session a second time.
+        if getattr(request, "_signed_in_checked", False):
+            return f(*args, **kwargs)
+
         token = get_token_from_request()
         payload = None
         new_token = new_refresh_token = None
@@ -359,6 +364,7 @@ def login_required(f):
         username = payload.get("username")
         set_sentry_user(username)
         setattr(request, "current_user", username)
+        setattr(request, "_signed_in_checked", True)
         g.current_user = username  # optional, for Flask context
 
         response = f(*args, **kwargs)

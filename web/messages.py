@@ -28,6 +28,14 @@ MESSAGES: Dict[str, MessageDef] = {
     "account_verification_sent": MessageDef("Письмо отправлено ещё раз"),
     "auth_logout_success": MessageDef("Вы вышли"),
     "auth_refresh_success": MessageDef("Токен обновлён"),
+    # Medication messages
+    "medication_created": MessageDef("Курс добавлен"),
+    "medication_updated": MessageDef("Курс сохранён"),
+    "medication_deleted": MessageDef("Курс и его приёмы удалены"),
+    "intake_logged": MessageDef("Приём отмечен"),
+    "stock_added": MessageDef("Остаток пополнен"),
+    "intake_updated": MessageDef("Приём изменён"),
+    "intake_deleted": MessageDef("Приём удалён"),
     # Pet messages
     "pet_created": MessageDef("Питомец создан"),
     "pet_updated": MessageDef("Данные питомца обновлены"),

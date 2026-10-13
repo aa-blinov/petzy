@@ -29,6 +29,7 @@ from flask import Blueprint, g, make_response, request
 from flask_pydantic_spec import Response
 
 import web.app as app  # access db, logger
+from web.security import login_required
 from web.app import api
 from web.decorators import require_pet_access
 from web.errors import error_response
@@ -348,6 +349,7 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 
 
 @export_bp.route("/api/export/<export_type>/<format_type>", methods=["GET"])
+@login_required
 @api.validate(
     query=ExportQuery,
     resp=Response(
