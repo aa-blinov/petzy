@@ -1012,6 +1012,12 @@ select {
     color: var(--app-primary-text);
 }
 
+/* Copper and the grey of the other labels are almost the same lightness: at 11px the hue alone did not tell the
+   current tab. The weight does. */
+.app-tab-bar__item--active .app-tab-bar__title {
+    font-weight: 600;
+}
+
 .app-tab-bar__icon {
     display: inline-flex;
     height: 24px;
