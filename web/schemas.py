@@ -1159,6 +1159,7 @@ class MedicalProfile(BaseModel):
 class MedicalProfileOut(MedicalProfile):
     updated_at: Optional[str] = None
     version: Optional[str] = Field(None, description="Версия профиля: меняется при каждом сохранении")
+    base_version: Optional[str] = Field(None, description="Только для запроса; в ответе его нет или null")
 
 
 def _trimmed_name(value: Optional[str]) -> Optional[str]:
@@ -1732,8 +1733,12 @@ class EventTypeCreate(BaseModel):
     """Create a new (always custom) event type."""
 
     label: str = Field(..., min_length=1, max_length=100, description="Название типа события")
-    icon: str = Field(..., min_length=1, max_length=50, description="Ключ иконки")
-    color: str = Field(..., min_length=1, max_length=20, description="Цвет плитки")
+    icon: str = Field(
+        ..., min_length=1, max_length=50, description="Ключ иконки", json_schema_extra={"pattern": "^[a-z0-9_-]{1,50}$"}
+    )
+    color: str = Field(
+        ..., min_length=1, max_length=20, description="Цвет плитки", json_schema_extra={"enum": list(EVENT_TYPE_COLORS)}
+    )
     fields: List[EventTypeField] = Field(default_factory=list)
     chart: EventChartConfig = Field(default_factory=EventChartConfig)
 
@@ -1779,8 +1784,8 @@ class EventTypeUpdate(BaseModel):
     """Update an existing event type (builtin or custom)."""
 
     label: Optional[str] = Field(None, min_length=1, max_length=100)
-    icon: Optional[str] = Field(None, min_length=1, max_length=50)
-    color: Optional[str] = Field(None, min_length=1, max_length=20)
+    icon: Optional[str] = Field(None, min_length=1, max_length=50, json_schema_extra={"pattern": "^[a-z0-9_-]{1,50}$"})
+    color: Optional[str] = Field(None, min_length=1, max_length=20, json_schema_extra={"enum": list(EVENT_TYPE_COLORS)})
     fields: Optional[List[EventTypeField]] = None
     chart: Optional[EventChartConfig] = None
 
@@ -2308,6 +2313,7 @@ class MedicationItem(BaseModel):
         None, description="Сегодняшние приёмы по расписанию, которые ещё ничем не закрыты, по времени"
     )
     username: Optional[str] = None
+    created_at: Optional[str] = Field(None, description="Когда курс создан")
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -2454,6 +2460,12 @@ class MedicationIntakeItem(BaseModel):
     username: str
     comment: Optional[str] = None
     skipped: bool = False
+    medication_name: Optional[str] = Field(None, description="Название курса")
+    tz: Optional[str] = Field(None, description="IANA-зона, в которой отмечен приём")
+    slot_date: Optional[str] = Field(None, description="Дата приёма по расписанию, который закрыт этой отметкой")
+    slot_time: Optional[str] = Field(None, description="Время этого приёма по расписанию")
+    inventory_deducted: Optional[float] = Field(None, description="Сколько списано с остатка")
+    created_at: Optional[str] = Field(None, description="Когда отметка сделана")
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -2765,6 +2777,8 @@ class DocumentItem(BaseModel):
         default_factory=list,
         description="Записи медкарты, к которым прикреплён документ, новые первыми: откуда файл и по чему его искать",
     )
+    scan: Optional[bool] = Field(None, description="Скан из хранилища (архив, DICOM): файл отдаётся редиректом 302")
+    upload_id: Optional[str] = Field(None, description="Id загрузки, по которому её можно было отменить")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -3319,6 +3333,7 @@ class VisitPrep(BaseModel):
 class VisitPrepOut(VisitPrep):
     updated_at: Optional[str] = None
     version: str = ""
+    base_version: Optional[str] = Field(None, description="Только для запроса; в ответе его нет или null")
 
 
 class VisitPrepResponse(BaseModel):
