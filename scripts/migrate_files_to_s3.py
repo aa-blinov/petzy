@@ -15,6 +15,7 @@ Runs on every deploy (.github/workflows/deploy.yaml):
 
 import argparse
 import logging
+import os
 import sys
 
 from bson import ObjectId
@@ -103,6 +104,11 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="report what would move, change nothing")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # The migration limits nothing, but importing web.app builds the rate limiter. Its MongoDB storage opens a
+    # client when it is garbage-collected, and at exit that fails with "sys.meta_path is None". Memory storage
+    # has no such step. Set before web.configs is imported.
+    os.environ["RATELIMIT_STORAGE_URI"] = "memory://"
 
     from web import storage
 
