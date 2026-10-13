@@ -178,8 +178,8 @@ def create_pet():
     """Create a new pet.
 
     The caller becomes the owner and the pet starts shared with nobody. A photo
-    sent in the same request is converted to WebP and kept as it is. A birth date
-    in the future is refused.
+    sent in the same request is converted to WebP, at most 1920 px on the longer side; a file that is not a
+    picture is refused (422). A birth date in the future or more than 50 years back is refused.
     """
     try:
         # @login_required already guarantees request.current_user is set.
@@ -263,13 +263,7 @@ def create_pet():
 @pets_bp.route("/api/pets/<pet_id>", methods=["GET"])
 @login_required
 @api.validate(
-    resp=Response(
-        HTTP_200=PetResponseWrapper,
-        HTTP_422=ErrorResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_404=ErrorResponse,
-        HTTP_500=ErrorResponse,
-    ),
+    resp=Response(HTTP_200=PetResponseWrapper, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["pets"],
 )
 def get_pet(pet_id):
@@ -332,7 +326,8 @@ def update_pet(pet_id):
 
     The owner only. Anyone the pet is shared with may read it but is told that the
     action is the owner's. Fields left out keep their value, and ``remove_photo``
-    drops the photo without touching the rest.
+    drops the photo without touching the rest. An empty ``birth_date`` keeps the date
+    rather than clearing it. A new photo is handled as at creation.
     """
     try:
         # @login_required already guarantees request.current_user is set.
@@ -462,7 +457,8 @@ def share_pet(pet_id):
     """Invite another user to a pet (owner only).
 
     An invitation, not access: it takes effect once they accept
-    (``/invite/accept``). Handing out access directly let anyone put a pet
+    (``/invite/accept``). ``username`` is the exact login, case included (as GET /api/users/search returns it);
+    a switched-off account answers the same 404 ``user_not_found`` as a missing one. Handing out access directly let anyone put a pet
     on anyone's account, and with it reminders worded by the sender on
     their devices and the sender inside their «circle».
     """
@@ -507,7 +503,13 @@ def share_pet(pet_id):
 @pets_bp.route("/api/pets/<pet_id>/share/<share_username>", methods=["DELETE"])
 @login_required
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_404=ErrorResponse,
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["pets"],
 )
 def unshare_pet(pet_id, share_username):
@@ -515,7 +517,8 @@ def unshare_pet(pet_id, share_username):
 
     Takes back the access and, if the invitation was never answered, the invitation with
     it. Nothing is deleted: the person keeps their own account and nothing of the pet
-    goes with them. Only the owner can do this, and only for a pet they own.
+    goes with them. Only the owner can do this, and only for a pet they own. A login that had
+    neither access nor an invitation still answers 200.
     """
     try:
         # @login_required already guarantees request.current_user is set.
@@ -632,10 +635,10 @@ def put_pet_form_defaults(pet_id):
     tags=["pets"],
 )
 def put_pet_look(pet_id):
-    """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop.
+    """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop, the scene and the crops.
 
     The owner's to set: the family sees it, but a sitter or a vet with access
-    does not restyle someone else's pet. Empty clears.
+    does not restyle someone else's pet. The body replaces the whole look: a part left out is cleared.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
@@ -883,12 +886,7 @@ def purge_pet(pet: dict) -> bool:
 @api.validate(
     query=PhotoQueryParams,
     resp=Response(
-        HTTP_200=None,
-        HTTP_422=ErrorResponse,
-        HTTP_401=ErrorResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_404=ErrorResponse,
-        HTTP_500=ErrorResponse,
+        HTTP_200=None, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse
     ),
     tags=["pets"],
 )
@@ -896,8 +894,10 @@ def get_pet_photo(pet_id):
     """Get pet photo file with optional resizing.
 
     Readable by everyone the pet is shared with. ``?w=`` and ``?h=`` give a smaller
-    copy for a list that has no reason to pull the original; without them the stored
-    photo goes out as it is, a WebP.
+    copy for a list that has no reason to pull the original: they are rounded up to the nearest standard size,
+    and above 1440 px the original goes out. Without them the stored photo goes out as it is: a WebP, or JPEG,
+    PNG or GIF for photos stored before the conversion. The answer carries an ETag; a matching
+    ``If-None-Match`` gets an empty 304. A pet without a photo answers 404 ``photo_not_found``.
     """
     try:
         # @login_required already guarantees request.current_user is set.

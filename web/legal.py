@@ -71,7 +71,7 @@ def legal_info():
 def accept_privacy_policy():
     """Agree to the current policy version (the app asks when it changes).
 
-    Records which version of the policy was agreed to and when. A new version leaves the person who has not agreed to it asked again before the app goes on.
+    Records which version of the policy was agreed to and when. A new version leaves the person who has not agreed to it asked again before the app goes on. A `version` that is not the current one (the policy changed while the screen was open) answers 422 `privacy_version_outdated`: read GET /api/legal again and ask once more.
     """
     data = request.context.body  # type: ignore[attr-defined]
     if data.version != PRIVACY_POLICY_VERSION:

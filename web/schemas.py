@@ -124,7 +124,7 @@ class DeletionPet(BaseModel):
     new_owner: Optional[str] = Field(None, description="Кому перейдёт питомец (в transferred)")
     owner: Optional[str] = Field(None, description="Чей это питомец (в left)")
     model_config = ConfigDict(
-        json_schema_extra={"example": {"id": "507f1e88bf19b6fcdb027c7d5", "name": "Рекс", "new_owner": "family"}}
+        json_schema_extra={"example": {"id": "507f1e88bf19b6fcdb027c75", "name": "Рекс", "new_owner": "family"}}
     )
 
 
@@ -143,9 +143,9 @@ class AccountDeletionPreviewResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "can_delete": True,
-                "deleted": [{"id": "507f1e88bf19b6fcdb027c7d5", "name": "Рекс"}],
-                "transferred": [{"id": "507f1e88bf19b6fcdb027c7d6", "name": "Мурзик", "new_owner": "family"}],
-                "left": [{"id": "507f1e88bf19b6fcdb027c7d7", "name": "Писька"}],
+                "deleted": [{"id": "507f1e88bf19b6fcdb027c75", "name": "Рекс"}],
+                "transferred": [{"id": "507f1e88bf19b6fcdb027c76", "name": "Мурзик", "new_owner": "family"}],
+                "left": [{"id": "507f1e88bf19b6fcdb027c77", "name": "Писька"}],
             }
         }
     )
@@ -313,7 +313,7 @@ class AuthTokensResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "success": True,
-                "message": "Login successful",
+                "message": "Вы вошли",
                 "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
                 "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
             }
@@ -325,6 +325,7 @@ class AuthRefreshResponse(BaseModel):
     """Access token refresh response."""
 
     success: bool = True
+    message: str = Field("Токен обновлён", description="Текст для человека")
     access_token: str
     refresh_token: Optional[str] = Field(
         None,
@@ -335,6 +336,7 @@ class AuthRefreshResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "success": True,
+                "message": "Токен обновлён",
                 "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
             }
         }
@@ -381,7 +383,7 @@ class UserSearchItem(BaseModel):
     """Simple user item for search/autocomplete."""
 
     username: str
-    model_config = ConfigDict(json_schema_extra={"example": {"username": "anna", "full_name": "Анна"}})
+    model_config = ConfigDict(json_schema_extra={"example": {"username": "anna"}})
 
 
 class FormDefaults(BaseModel):
@@ -403,7 +405,9 @@ class FormDefaults(BaseModel):
                 raise ValueError("Слишком длинное значение по умолчанию")
         return value
 
-    model_config = ConfigDict(json_schema_extra={"example": {"food_weight": 320, "food_type": "сухой"}})
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"form_defaults": {"feeding": {"food_type": "сухой", "food_weight": "320"}}}}
+    )
 
 
 # What may be remembered as a default: any plain field of any record type, built-in or the family's own. Only the shape is
@@ -525,7 +529,7 @@ class PetLook(BaseModel):
     """PUT /api/pets/<id>/look: how the pet's card shows it, a line about it, a colour, a hand-written face for the name and a frame for the photo.
 
     The whole look, replacing the old one; an empty line and no colour clear it. Everyone with access to the pet sees
-    (and may change) the same, like its form defaults."""
+    the same look; only the owner may change it."""
 
     tagline: str = ""
     accent: str = ""
@@ -631,7 +635,7 @@ class UserSearchResponse(BaseModel):
     """List of usernames for autocomplete."""
 
     users: List[UserSearchItem]
-    model_config = ConfigDict(json_schema_extra={"example": {"users": ["anna", "family"]}})
+    model_config = ConfigDict(json_schema_extra={"example": {"users": [{"username": "anna"}, {"username": "family"}]}})
 
 
 # ============================================================================
@@ -691,6 +695,17 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: str
     created_by: Optional[str] = None
+    # The account document comes whole (without the password hash), so these are in the answer too.
+    email_verified: Optional[bool] = Field(None, description="Подтверждена ли почта")
+    pending_email: Optional[str] = Field(
+        None, description="Новый адрес, который ждёт подтверждения по ссылке из письма"
+    )
+    is_admin: Optional[bool] = Field(
+        None, description="Флаг в записи; администратором считается только встроенный аккаунт ADMIN_USERNAME"
+    )
+    privacy_consent: Optional[Dict[str, Any]] = Field(None, description="Какая редакция политики принята и когда")
+    sessions_valid_after: Optional[str] = Field(None, description="Токены, выданные раньше, не действуют")
+    form_defaults: Optional[Dict[str, Any]] = Field(None, description="Устаревшие значения форм на аккаунте")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -826,7 +841,7 @@ class SharedPetRef(BaseModel):
 
     model_config = ConfigDict(
         populate_by_name=True,
-        json_schema_extra={"example": {"_id": "507f1e88bf19b6fcdb027c7d5", "name": "Рекс"}},
+        json_schema_extra={"example": {"_id": "507f1e88bf19b6fcdb027c75", "name": "Рекс"}},
     )
 
 
@@ -953,7 +968,9 @@ class Clinic(BaseModel):
         return _blank_to_none(v)
 
     model_config = ConfigDict(
-        json_schema_extra={"example": {"name": "Ортовет", "phone": "+7 727 000 00 00", "address": "Толе би 25"}}
+        json_schema_extra={
+            "example": {"name": "Ветклиника «Айболит»", "vet": "Иванова А. П.", "phone": "+7 701 555 01 02"}
+        }
     )
 
 
@@ -989,12 +1006,9 @@ class ClinicEntry(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "id": "507f1c77bcf86cd799439015",
-                "name": "Ортовет",
-                "phone": "+7 727 000 00 00",
-                "address": "Толе би 25",
-                "is_primary": True,
-                "doctors": [{"name": "Каримов Д.", "specialty": "терапевт"}],
+                "name": "Ветклиника «Айболит»",
+                "phone": "+7 701 555 01 02",
+                "doctors": [{"name": "Иванова А. П.", "specialty": "терапевт"}],
             }
         }
     )
@@ -1303,6 +1317,16 @@ class PetResponse(BaseModel):
     created_at: Optional[str] = None
     created_by: Optional[str] = None
     current_user_is_owner: Optional[bool] = None
+    look: Optional[Dict[str, Any]] = Field(
+        None, description="Оформление питомца, как его задаёт PUT /api/pets/{pet_id}/look"
+    )
+    form_defaults: Optional[Dict[str, Any]] = Field(
+        None, description="Значения по умолчанию для новых записей питомца, по типу записи"
+    )
+    next_owner: Optional[str] = Field(
+        None,
+        description="Только владельцу: к кому перейдёт питомец, если владелец удалит аккаунт (нет никого: null)",
+    )
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -1357,7 +1381,7 @@ class PetInviteItem(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                "pet_id": "507f1e88bf19b6fcdb027c75",
                 "pet_name": "Рекс",
                 "species": "собака",
                 "owner": "family",
@@ -1372,7 +1396,7 @@ class PetInviteListResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "invites": [
-                    {"pet_id": "507f1e88bf19b6fcdb027c7d5", "pet_name": "Рекс", "species": "собака", "owner": "family"}
+                    {"pet_id": "507f1e88bf19b6fcdb027c75", "pet_name": "Рекс", "species": "собака", "owner": "family"}
                 ]
             }
         }
@@ -1419,6 +1443,24 @@ class PetCreatedResponse(SuccessResponse):
     """POST /api/pets: the new pet comes back whole."""
 
     pet: PetResponse
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "message": "Питомец создан",
+                "id": "507f1f77bcf86cd799439011",
+                "pet": {
+                    "_id": "507f1f77bcf86cd799439011",
+                    "name": "Мурзик",
+                    "species": "Кот",
+                    "owner": "demo",
+                    "shared_with": [],
+                    "current_user_is_owner": True,
+                },
+            }
+        }
+    )
 
 
 class PetListResponse(BaseModel):
@@ -1554,7 +1596,7 @@ class EventFieldOption(BaseModel):
 
     value: str = Field(..., min_length=1, max_length=100)
     text: str = Field(..., min_length=1, max_length=100)
-    model_config = ConfigDict(json_schema_extra={"example": {"value": "normal", "label": "Как обычно"}})
+    model_config = ConfigDict(json_schema_extra={"example": {"value": "normal", "text": "Как обычно"}})
 
 
 class EventTypeField(BaseModel):
@@ -1769,7 +1811,7 @@ class EventTypeUpdate(BaseModel):
             _chart_names_a_number_field(self.chart, self.fields)
         return self
 
-    model_config = ConfigDict(json_schema_extra={"example": {"label": "Кормление и угощение", "color": "amber"}})
+    model_config = ConfigDict(json_schema_extra={"example": {"label": "Кормление и угощение", "color": "yellow"}})
 
 
 class EventTypeItem(BaseModel):
@@ -1895,11 +1937,15 @@ class EventItem(BaseModel):
     # project's date format like everything else around it; it used to reach the client as a
     # web-server date, «Sun, 11 Oct 2026 12:18:21 GMT», next to a date_time in «YYYY-MM-DD HH:MM».
     created_at: Optional[str] = Field(default=None, description="Когда запись создана, UTC, «YYYY-MM-DD HH:MM»")
+    tz: Optional[str] = Field(
+        default=None,
+        description="IANA-зона, в которой введено время (Asia/Almaty); клиент переводит date_time на свои часы. Нет у старых записей",
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "_id": "507f1f77bcf86cd799439011",
-                "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                "pet_id": "507f1e88bf19b6fcdb027c75",
                 "type": "weight",
                 "date_time": "2026-10-04 08:02",
                 "username": "demo",
@@ -1921,7 +1967,7 @@ class EventListResponse(PaginatedResponse):
                 "items": [
                     {
                         "_id": "507f1f77bcf86cd799439011",
-                        "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                        "pet_id": "507f1e88bf19b6fcdb027c75",
                         "type": "weight",
                         "date_time": "2026-10-04 08:02",
                         "username": "demo",
@@ -2000,7 +2046,11 @@ class ExportQuery(PetIdQuery):
     tz: Optional[str] = Field(
         None,
         max_length=64,
-        description="IANA-имя часового пояса пользователя (Asia/Almaty): по нему считается время в имени файла",
+        description="IANA-имя часового пояса пользователя (Asia/Almaty): по нему считаются время в имени файла и время записей в файле",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "tz": "Asia/Almaty"}}
     )
 
 
@@ -2030,15 +2080,17 @@ class HealthStatsQuery(PetIdQuery):
     type: str = Field(..., description="Тип записи (feeding, asthma, weight и т.д.)")
     days: Optional[int] = Field(30, description="Количество дней")
 
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "type": "weight", "days": 90}}
+    )
+
 
 class HealthStatsItem(BaseModel):
     """Simplified health record item for charts."""
 
-    date: str
-    value: Any
-    model_config = ConfigDict(
-        json_schema_extra={"example": {"key": "2026-10-04", "count": 2, "sum": 58.6, "avg": 29.3}}
-    )
+    date: str = Field(..., description="Время записи, «YYYY-MM-DD HH:MM»")
+    value: Any = Field(..., description="1 для считаемого типа или значение поля графика")
+    model_config = ConfigDict(json_schema_extra={"example": {"date": "2026-10-04 08:02", "value": 29.3}})
 
 
 class HealthStatsResponse(BaseModel):
@@ -2049,7 +2101,8 @@ class HealthStatsResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "data": [
-                    {"key": "2026-10-04", "count": 2, "sum": 58.6, "avg": 29.3},
+                    {"date": "2026-10-03 08:10", "value": 29.2},
+                    {"date": "2026-10-04 08:02", "value": 29.3},
                 ]
             }
         }
@@ -2093,11 +2146,19 @@ class MedicationListQuery(PetIdQuery):
 
     client_date: Optional[str] = Field(None, description="Client local date (YYYY-MM-DD)")
 
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "client_date": "2026-10-13"}}
+    )
+
 
 class UpcomingDosesQuery(PetIdQuery):
     """Query parameters for upcoming doses with timezone support."""
 
     client_datetime: Optional[str] = Field(None, description="Client local datetime (ISO format)")
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "client_datetime": "2026-10-13 08:30"}}
+    )
 
 
 class MedicationCreate(PetIdQuery):
@@ -2140,6 +2201,21 @@ class MedicationCreate(PetIdQuery):
         if self.started_on and self.ended_on and self.ended_on < self.started_on:
             raise ValueError("Окончание курса раньше его начала")
         return self
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1e88bf19b6fcdb027c75",
+                "name": "Дронтал Плюс",
+                "type": "Таблетка",
+                "dose_unit": "таб",
+                "default_dose": 1,
+                "schedule": {"days": [6], "times": ["10:00"]},
+                "inventory_enabled": True,
+                "inventory_current": 6,
+            }
+        }
+    )
 
 
 class MedicationUpdate(BaseModel):
@@ -2288,9 +2364,6 @@ class MedicationListResponse(BaseModel):
                         "inventory_low": False,
                     }
                 ],
-                "page": 1,
-                "page_size": 100,
-                "total": 2,
             }
         }
     )
@@ -2385,12 +2458,11 @@ class MedicationIntakeItem(BaseModel):
         json_schema_extra={
             "example": {
                 "_id": "507f1f77bcf86cd799439011",
-                "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                "pet_id": "507f1e88bf19b6fcdb027c75",
                 "medication_id": "507f1d77bcf86cd799439012",
                 "medication_name": "Мелоксидил",
                 "date_time": "2026-10-06 08:43",
                 "dose_taken": 2.5,
-                "dose_unit": "мл",
                 "inventory_deducted": 0,
                 "comment": "",
                 "username": "demo",
@@ -2408,7 +2480,7 @@ class MedicationIntakeListResponse(PaginatedResponse):
                 "intakes": [
                     {
                         "_id": "507f1f77bcf86cd799439011",
-                        "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                        "pet_id": "507f1e88bf19b6fcdb027c75",
                         "medication_id": "507f1d77bcf86cd799439012",
                         "medication_name": "Мелоксидил",
                         "date_time": "2026-10-06 08:43",
@@ -2529,12 +2601,30 @@ class DocumentCreate(PetIdQuery):
         # landing centuries out).
         return validate_date_logic(v, allow_future=True, max_future_days=3650)
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1e88bf19b6fcdb027c75",
+                "category": "vaccination",
+                "title": "Паспорт, прививки 2025",
+                "expires_at": "2027-04-21",
+                "tz": "Asia/Almaty",
+            }
+        }
+    )
+
 
 class ScanUploadRequest(PetIdQuery):
     """Ask for a slot to upload a scan archive straight to object storage."""
 
     filename: str = Field(..., min_length=1, max_length=255, description="Имя файла с расширением")
     size: int = Field(..., gt=0, description="Размер файла в байтах")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"pet_id": "507f1e88bf19b6fcdb027c75", "filename": "КТ грудной клетки.zip", "size": 184549376}
+        }
+    )
 
 
 class ScanUploadSlot(BaseModel):
@@ -2545,9 +2635,9 @@ class ScanUploadSlot(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "upload_id": "507f1c77bcf86cd799439016",
-                "upload_url": "https://s3.eu-central-003.backblazeb2.com/put/507f1c77bcf86cd799439016",
-                "content_type": "application/pdf",
+                "upload_id": "3f9a1c0e7b2d4e6f8a9b0c1d2e3f4a5b",
+                "upload_url": "https://s3.eu-central-003.backblazeb2.com/put/3f9a1c0e7b2d4e6f8a9b0c1d2e3f4a5b",
+                "content_type": "application/zip",
                 "max_bytes": 524288000,
             }
         }
@@ -2589,8 +2679,8 @@ class DownloadLink(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "url": "https://petzy.duckdns.org/api/documents/507f1f77bcf86cd799439011/download",
-                "expires_in": 900,
+                "url": "/api/documents/507f1f77bcf86cd799439011/file",
+                "expires_in": None,
             }
         }
     )
@@ -2681,7 +2771,7 @@ class DocumentItem(BaseModel):
         json_schema_extra={
             "example": {
                 "_id": "507f1f77bcf86cd799439011",
-                "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                "pet_id": "507f1e88bf19b6fcdb027c75",
                 "username": "demo",
                 "tz": None,
                 "category": "vaccination",
@@ -2708,7 +2798,7 @@ class DocumentListResponse(PaginatedResponse):
                 "documents": [
                     {
                         "_id": "507f1f77bcf86cd799439011",
-                        "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                        "pet_id": "507f1e88bf19b6fcdb027c75",
                         "category": "vaccination",
                         "title": "Паспорт, прививки 2025",
                         "original_filename": "passport.pdf",
@@ -2737,7 +2827,7 @@ class DocumentDetailResponse(BaseModel):
             "example": {
                 "document": {
                     "_id": "507f1f77bcf86cd799439011",
-                    "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                    "pet_id": "507f1e88bf19b6fcdb027c75",
                     "category": "vaccination",
                     "title": "Паспорт, прививки 2025",
                     "original_filename": "passport.pdf",
@@ -2886,7 +2976,7 @@ class TimelineResponse(PaginatedResponse):
                 "items": [
                     {
                         "_id": "507f1f77bcf86cd799439011",
-                        "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                        "pet_id": "507f1e88bf19b6fcdb027c75",
                         "record_type": "medications",
                         "date_time": "2026-10-06 08:43",
                         "username": "demo",
@@ -3019,6 +3109,21 @@ class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
             self.target = None
         return self
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pet_id": "507f1e88bf19b6fcdb027c75",
+                "kind": "vaccination",
+                "date": "2026-08-29",
+                "title": "Нобивак DHPPi",
+                "protects": "dhpp",
+                "next_due": "2027-08-29",
+                "clinic": "Ветклиника «Айболит»",
+                "batch": "A123B",
+            }
+        }
+    )
+
 
 class MedicalRecordUpdate(MedicalRecordBody):
     """The whole record again: its pet and kind stay as they were."""
@@ -3067,7 +3172,7 @@ class MedicalRecordItem(BaseModel):
         json_schema_extra={
             "example": {
                 "_id": "507f1a77bcf86cd799439013",
-                "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                "pet_id": "507f1e88bf19b6fcdb027c75",
                 "kind": "visit",
                 "date": "2026-09-23",
                 "title": "Плановый осмотр",
@@ -3088,6 +3193,12 @@ class MedicalRecordListQuery(PetIdQuery):
         None, max_length=64, description="IANA-имя часового пояса пользователя: по нему считается «сегодня»"
     )
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"pet_id": "507f1e88bf19b6fcdb027c75", "kind": "vaccination", "tz": "Asia/Almaty"}
+        }
+    )
+
 
 class MedicalRecordResponse(BaseModel):
     record: MedicalRecordItem
@@ -3096,7 +3207,7 @@ class MedicalRecordResponse(BaseModel):
             "example": {
                 "record": {
                     "_id": "507f1a77bcf86cd799439013",
-                    "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                    "pet_id": "507f1e88bf19b6fcdb027c75",
                     "kind": "visit",
                     "date": "2026-09-23",
                     "title": "Плановый осмотр",
@@ -3127,7 +3238,7 @@ class MedicalRecordListResponse(BaseModel):
                 "records": [
                     {
                         "_id": "507f1a77bcf86cd799439013",
-                        "pet_id": "507f1e88bf19b6fcdb027c7d5",
+                        "pet_id": "507f1e88bf19b6fcdb027c75",
                         "kind": "visit",
                         "date": "2026-09-23",
                         "title": "Плановый осмотр",
@@ -3219,7 +3330,6 @@ class VisitPrepResponse(BaseModel):
                     "complaint": "Чаще пьёт воду",
                     "checks": {"appetite": "normal", "thirst": "changed"},
                     "updated_at": "2026-09-23 18:04",
-                    "updated_by": "demo",
                     "version": "507f1f77bcf86cd799439011",
                 }
             }
@@ -3239,17 +3349,14 @@ class MedicalCardPet(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "id": "507f1e88bf19b6fcdb027c7d5",
                 "name": "Рекс",
-                "species": "собака",
+                "species": "Собака",
                 "breed": "Лабрадор",
                 "birth_date": "2021-08-01",
-                "gender": "Мужской",
-                "age": "5 лет",
-                "weight_kg": 29.3,
-                "blood_type": "DEA 1.1+",
-                "chip_number": "643094100200311",
-                "photo_url": "/api/pets/507f1e88bf19b6fcdb027c7d5/photo",
+                "age_text": "5 лет",
+                "gender": "Мальчик",
+                "neutered_text": "кастрирован",
+                "health_notes": None,
             }
         }
     )
@@ -3267,12 +3374,12 @@ class MedicalCardWeight(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "current": 29.3,
-                "unit": "кг",
-                "measured_on": "2026-10-04",
-                "previous": {"value": 29.0, "date": "2026-10-01"},
-                "count": 12,
-                "range": {"from": 28.5, "to": 31.0},
+                "latest": {"date": "2026-10-04", "value": 29.3},
+                "series": [
+                    {"date": "2026-09-19", "value": 29.0},
+                    {"date": "2026-10-03", "value": 29.1},
+                    {"date": "2026-10-04", "value": 29.3},
+                ],
             }
         }
     )
@@ -3327,16 +3434,12 @@ class MedicalCardVaccination(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "_id": "507f1a77bcf86cd799439013",
-                "title": "Нобивак DHPPi",
-                "date": "2025-08-29",
-                "next_due": "2026-08-29",
-                "status": "overdue",
-                "days_left": -43,
-                "clinic": "Ортовет",
-                "batch": "LOT-12345",
-                "protects": "dhpp",
-                "protects_label": "Бешенство, лептоспироз, гепатит",
+                "id": "507f1f77bcf86cd799439031",
+                "title": "Паспорт, прививки 2025",
+                "expires_at": "2027-04-21",
+                "status": "valid",
+                "days_left": 190,
+                "note": None,
             }
         }
     )
@@ -3406,64 +3509,97 @@ class MedicalCardData(BaseModel):
     # о животном, а не настройка владельца (см. put_medical_profile). Описание здесь прежде говорило
     # обратное, и поле нигде не читалось.
     can_edit: bool = Field(
-        description="Может ли текущий пользователь править анкету: да, если у него есть доступ к питомцу"
+        description="Владелец ли это: ссылку для врача делает только владелец, приложение по этому флагу показывает её кнопку. Править анкету может любой с доступом"
     )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "generated_at": "2026-10-11",
-                "can_edit": True,
                 "pet": {
-                    "id": "507f1e88bf19b6fcdb027c7d5",
                     "name": "Рекс",
-                    "species": "собака",
+                    "species": "Собака",
                     "breed": "Лабрадор",
-                    "age": "5 лет",
-                    "weight_kg": 29.3,
+                    "birth_date": "2021-08-01",
+                    "age_text": "5 лет",
+                    "gender": "Мальчик",
+                    "neutered_text": "кастрирован",
+                    "health_notes": None,
+                },
+                "visit_prep": None,
+                "profile": {
+                    "allergies": [],
+                    "allergies_none_known": False,
                     "blood_type": "DEA 1.1+",
                     "chip_number": "643094100200311",
+                    "conditions": [
+                        {
+                            "name": "Дисплазия тазобедренных суставов",
+                            "note": "обострения после нагрузки",
+                            "since_year": 2023,
+                        }
+                    ],
+                    "clinics": [
+                        {
+                            "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
+                            "name": "Ортовет",
+                            "phone": "+7 727 555 03 04",
+                        }
+                    ],
+                    "updated_at": "2026-10-05 11:51",
+                    "version": "3f2a9c1e",
                 },
                 "weight": {
-                    "current": 29.3,
-                    "unit": "кг",
-                    "measured_on": "2026-10-04",
-                    "previous": {"value": 29.0, "date": "2026-10-01"},
-                    "count": 12,
+                    "latest": {"date": "2026-10-04", "value": 29.3},
+                    "series": [
+                        {"date": "2026-09-19", "value": 29.0},
+                        {"date": "2026-10-03", "value": 29.1},
+                        {"date": "2026-10-04", "value": 29.3},
+                    ],
                 },
-                "medications": [
-                    {
-                        "id": "507f1d77bcf86cd799439012",
-                        "name": "Дронтал Плюс",
-                        "type": "Таблетка",
-                        "dose_text": "1 таб",
-                        "schedule_text": "По сб в 10:00",
-                        "given": 9,
-                        "skipped": 0,
-                        "status": "active",
-                    }
-                ],
+                "records": {
+                    "parasite": [
+                        {
+                            "_id": "507f1f77bcf86cd799439041",
+                            "batch": None,
+                            "clinic": None,
+                            "complaint": None,
+                            "date": "2026-09-08",
+                            "days_left": 55,
+                            "diagnosis": None,
+                            "documents": [],
+                            "kind": "parasite",
+                            "next_due": "2026-12-07",
+                            "note": None,
+                            "pet_id": "507f1e88bf19b6fcdb027c75",
+                            "protects": None,
+                            "protects_label": None,
+                            "recommendations": None,
+                            "status": "ok",
+                            "superseded": False,
+                            "target": "worms",
+                            "title": "Дронтал Плюс",
+                            "vet": None,
+                        }
+                    ]
+                },
+                "record_counts": {"vaccination": 0, "parasite": 1, "visit": 0, "procedure": 0},
                 "overdue_records": [],
-                "vaccinations": [],
-                "visits": [],
-                "documents": [
+                "medications": [],
+                "past_courses": [],
+                "past_courses_total": 0,
+                "vaccinations": [
                     {
-                        "id": "507f1b77bcf86cd799439014",
-                        "title": "Анализ крови",
-                        "category": "lab_result",
-                        "added": "2026-09-23",
+                        "id": "507f1f77bcf86cd799439031",
+                        "title": "Паспорт, прививки 2025",
+                        "expires_at": "2027-04-21",
+                        "status": "valid",
+                        "days_left": 190,
+                        "note": None,
                     }
                 ],
-                "clinics": [
-                    {
-                        "id": "507f1c77bcf86cd799439015",
-                        "name": "Ортовет",
-                        "phone": "+7 727 000 00 00",
-                        "address": "Толе би 25",
-                        "is_primary": True,
-                        "doctors": [],
-                    }
-                ],
+                "documents": [],
+                "generated_at": "2026-10-13",
+                "can_edit": True,
             }
         }
     )
@@ -3475,45 +3611,91 @@ class MedicalCardResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "card": {
-                    "generated_at": "2026-10-11",
-                    "can_edit": True,
-                    "weight": {
-                        "current": 29.3,
-                        "unit": "кг",
-                        "measured_on": "2026-10-04",
-                        "previous": {"value": 29.0, "date": "2026-10-01"},
-                        "count": 12,
+                    "pet": {
+                        "name": "Рекс",
+                        "species": "Собака",
+                        "breed": "Лабрадор",
+                        "birth_date": "2021-08-01",
+                        "age_text": "5 лет",
+                        "gender": "Мальчик",
+                        "neutered_text": "кастрирован",
+                        "health_notes": None,
                     },
-                    "medications": [
-                        {
-                            "id": "507f1d77bcf86cd799439012",
-                            "name": "Дронтал Плюс",
-                            "type": "Таблетка",
-                            "strength": None,
-                            "comment": None,
-                            "dose_text": "1 таб",
-                            "schedule_text": "По сб в 10:00",
-                            "started_on": "2026-08-08",
-                            "ended_on": None,
-                            "given": 9,
-                            "skipped": 0,
-                            "purpose": "Профилактика глистов",
-                            "prescribed_by": "Каримов Д.",
-                            "status": "active",
-                        }
-                    ],
+                    "visit_prep": None,
+                    "profile": {
+                        "allergies": [],
+                        "allergies_none_known": False,
+                        "blood_type": "DEA 1.1+",
+                        "chip_number": "643094100200311",
+                        "conditions": [
+                            {
+                                "name": "Дисплазия тазобедренных суставов",
+                                "note": "обострения после нагрузки",
+                                "since_year": 2023,
+                            }
+                        ],
+                        "clinics": [
+                            {
+                                "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
+                                "name": "Ортовет",
+                                "phone": "+7 727 555 03 04",
+                            }
+                        ],
+                        "updated_at": "2026-10-05 11:51",
+                        "version": "3f2a9c1e",
+                    },
+                    "weight": {
+                        "latest": {"date": "2026-10-04", "value": 29.3},
+                        "series": [
+                            {"date": "2026-09-19", "value": 29.0},
+                            {"date": "2026-10-03", "value": 29.1},
+                            {"date": "2026-10-04", "value": 29.3},
+                        ],
+                    },
+                    "records": {
+                        "parasite": [
+                            {
+                                "_id": "507f1f77bcf86cd799439041",
+                                "batch": None,
+                                "clinic": None,
+                                "complaint": None,
+                                "date": "2026-09-08",
+                                "days_left": 55,
+                                "diagnosis": None,
+                                "documents": [],
+                                "kind": "parasite",
+                                "next_due": "2026-12-07",
+                                "note": None,
+                                "pet_id": "507f1e88bf19b6fcdb027c75",
+                                "protects": None,
+                                "protects_label": None,
+                                "recommendations": None,
+                                "status": "ok",
+                                "superseded": False,
+                                "target": "worms",
+                                "title": "Дронтал Плюс",
+                                "vet": None,
+                            }
+                        ]
+                    },
+                    "record_counts": {"vaccination": 0, "parasite": 1, "visit": 0, "procedure": 0},
                     "overdue_records": [],
-                    "vaccinations": [],
-                    "visits": [],
-                    "documents": [],
-                    "clinics": [
+                    "medications": [],
+                    "past_courses": [],
+                    "past_courses_total": 0,
+                    "vaccinations": [
                         {
-                            "id": "507f1c77bcf86cd799439015",
-                            "name": "Ортовет",
-                            "phone": "+7 727 000 00 00",
-                            "address": "Толе би 25",
+                            "id": "507f1f77bcf86cd799439031",
+                            "title": "Паспорт, прививки 2025",
+                            "expires_at": "2027-04-21",
+                            "status": "valid",
+                            "days_left": 190,
+                            "note": None,
                         }
                     ],
+                    "documents": [],
+                    "generated_at": "2026-10-13",
+                    "can_edit": True,
                 }
             }
         }
@@ -3555,9 +3737,10 @@ class MedicalShareItem(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "id": "507f1c77bcf86cd799439015",
-                "created_at": "2026-10-03 07:52",
-                "expires_at": "2026-10-10 07:52",
+                "id": "507f1f77bcf86cd799439051",
+                "username": "demo",
+                "created_at": "2026-10-03T07:52:00.123456Z",
+                "expires_at": "2026-10-10T07:52:00.123456Z",
             }
         }
     )
@@ -3571,12 +3754,13 @@ class MedicalShareCreated(BaseModel):
         json_schema_extra={
             "example": {
                 "share": {
-                    "id": "507f1c77bcf86cd799439015",
-                    "created_at": "2026-10-03 07:52",
-                    "expires_at": "2026-10-10 07:52",
+                    "id": "507f1f77bcf86cd799439051",
+                    "username": "demo",
+                    "created_at": "2026-10-03T07:52:00.123456Z",
+                    "expires_at": "2026-10-10T07:52:00.123456Z",
                 },
-                "token": "1IY0uFBHDbP6wKu5TzrWTscq3_iv_AURQmX-vxcpuaI",
-                "path": "/share/medical/1IY0uFBHDbP6wKu5TzrWTscq3_iv_AURQmX-vxcpuaI",
+                "token": "kq3W9xP2...",
+                "path": "/share/medical/kq3W9xP2...",
             }
         }
     )
@@ -3589,9 +3773,10 @@ class MedicalSharesResponse(BaseModel):
             "example": {
                 "shares": [
                     {
-                        "id": "507f1c77bcf86cd799439015",
-                        "created_at": "2026-10-03 07:52",
-                        "expires_at": "2026-10-10 07:52",
+                        "id": "507f1f77bcf86cd799439051",
+                        "username": "demo",
+                        "created_at": "2026-10-03T07:52:00.123456Z",
+                        "expires_at": "2026-10-10T07:52:00.123456Z",
                     }
                 ]
             }
@@ -3617,8 +3802,7 @@ class SharedMedicalCardResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "card": {"generated_at": "2026-10-11", "can_edit": False},
-                "expires_at": "2026-10-18T07:52:00Z",
-                "pet_id": None,
+                "expires_at": "2026-10-18T07:52:00.123456Z",
             }
         }
     )

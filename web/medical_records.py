@@ -245,14 +245,14 @@ def _stored(data: dict, kind: str) -> dict:
 @medical_records_bp.route("/api/medical-records", methods=["POST"])
 @api.validate(
     body=Request(MedicalRecordCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["medical-records"],
 )
 @require_pet_access
 def create_medical_record():
     """Add a vaccination, treatment, visit or procedure to a pet's medical card.
 
-    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached.
+    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``complaint``, ``diagnosis`` and ``recommendations`` a visit's).
     """
     data = request.context.body  # type: ignore[attr-defined]
     fields = data.model_dump()
@@ -275,14 +275,14 @@ def create_medical_record():
 @medical_records_bp.route("/api/medical-records", methods=["GET"])
 @api.validate(
     query=MedicalRecordListQuery,
-    resp=Response(HTTP_200=MedicalRecordListResponse, HTTP_403=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=MedicalRecordListResponse, HTTP_422=ErrorResponse),
     tags=["medical-records"],
 )
 @require_pet_access
 def list_medical_records():
     """A pet's medical records, newest first, each with its status.
 
-    Vaccinations, parasite treatments, visits and procedures, with what each one's repeat date says today: late, close, in time, or no repeat asked for. A newer record of the same name is the one that counts; the older one stays in the list as history. ``tz`` decides which day 'today' is.
+    Vaccinations, parasite treatments, visits and procedures, with what each one's repeat date says today: late, close (within 14 days), in time, or no repeat asked for. Only vaccinations and parasite treatments get a status; visits and procedures are always ``none``. A newer record against the same thing (the same protection, the same target, otherwise the same name) is the one that counts; the older one stays in the list as history. ``tz`` decides which day 'today' is.
     """
     query = request.context.query  # type: ignore[attr-defined]
     if query.kind and query.kind not in MEDICAL_KINDS:
@@ -295,14 +295,14 @@ def list_medical_records():
 
 @medical_records_bp.route("/api/medical-records/<id>", methods=["GET"])
 @api.validate(
-    resp=Response(HTTP_200=MedicalRecordResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=MedicalRecordResponse, HTTP_404=ErrorResponse),
     tags=["medical-records"],
 )
 @require_record_access("medical_records")
 def get_medical_record(id):
     """One record.
 
-    As the card reads it, with the same status. A record of a pet the caller cannot see answers like a missing one.
+    As the card reads it, with the same status (``tz`` in the query decides which day 'today' is). A record of a pet the caller cannot see answers like a missing one; a malformed id answers 422 ``invalid_record_id``.
     """
     mine = [r for r in pet_records(g.pet_id, _today(request.args.get("tz"))) if r["_id"] == id]
     return jsonify({"record": mine[0]})
@@ -311,14 +311,14 @@ def get_medical_record(id):
 @medical_records_bp.route("/api/medical-records/<id>", methods=["PUT"])
 @api.validate(
     body=Request(MedicalRecordUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["medical-records"],
 )
 @require_record_access("medical_records")
 def update_medical_record(id):
     """Replace a record's contents; its pet and kind stay.
 
-    Everything in the record can change except which pet it belongs to and what kind of thing it is. A new repeat date on a vaccination puts the card's answer back to in time.
+    Everything in the record can change except which pet it belongs to and what kind of thing it is. A new repeat date on a vaccination puts the card's answer back to in time, or to close if the date is within two weeks.
     """
     data = request.context.body  # type: ignore[attr-defined]
     kind = g.record["kind"]
@@ -334,7 +334,7 @@ def update_medical_record(id):
 
 @medical_records_bp.route("/api/medical-records/<id>", methods=["DELETE"])
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medical-records"],
 )
 @require_record_access("medical_records")

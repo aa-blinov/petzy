@@ -29,7 +29,7 @@ API дневника здоровья питомцев Petzy: питомцы, з
 1. `POST /api/auth/login` с `{"username": "...", "password": "..."}`. Запрос без заголовка `Origin` получает в ответе `access_token` (живёт 15 минут) и `refresh_token` (7 дней).
 2. В каждом запросе заголовок `Authorization: Bearer <access_token>`.
 3. На ответ 401 отправьте `POST /api/auth/refresh` с `{"refresh_token": "..."}` и повторите запрос с новым `access_token`. Ответ содержит и новый `refresh_token`: сохраните его вместо старого. Старый работает ещё 30 секунд (на случай параллельных запросов), а предъявленный позже считается украденным, и вход на этом устройстве отменяется. Если обновление ответило 401, нужно войти заново.
-4. Выход: `POST /api/auth/logout` с `{"refresh_token": "..."}`. Он завершает все сессии пользователя.
+4. Выход: `POST /api/auth/logout` с `{"refresh_token": "..."}`. Он удаляет все refresh-токены пользователя: другие устройства больше не обновят вход, но их access-токены доживают свои 15 минут.
 
 Храните `refresh_token` в защищённом хранилище (Keychain, EncryptedSharedPreferences). Смена или сброс пароля завершают все остальные сессии, их токены перестают работать сразу.
 
@@ -45,7 +45,7 @@ API дневника здоровья питомцев Petzy: питомцы, з
 
 ## Ошибки
 
-Тело ошибки: `{"success": false, "error": "текст для человека", "code": "машинный_код"}`. Показывайте пользователю `error`, а решения принимайте по `code`. Ошибка проверки данных (422, `code: "validation_error"`) приходит в том же виде и добавляет `details`: список `{"field": "comment", "type": "string_too_long"}`, чтобы подсветить нужное поле.
+Тело ошибки: `{"success": false, "error": "текст для человека", "code": "машинный_код"}`. Показывайте пользователю `error`, а решения принимайте по `code`. Ошибка проверки схемы (422, `code: "validation_error"`) добавляет `details`: список `{"field": "comment", "type": "string_too_long"}`, чтобы подсветить нужное поле. Проверки, которые делает сам обработчик (значения полей события, даты), приходят с тем же кодом, но без `details`: причина только в `error`.
 
 | Статус | Значит |
 |---|---|
@@ -53,22 +53,24 @@ API дневника здоровья питомцев Petzy: питомцы, з
 | 403 | нет прав (например, действие только для владельца питомца) |
 | 404 | не найдено, в том числе чужая запись |
 | 422 | неверные данные |
-| 429 | слишком много запросов, повторите позже |
-| 503 | не настроена часть сервиса (почта, хранилище файлов) |
+| 413 | тело запроса больше 16 МБ |
+| 429 | слишком много запросов: через сколько секунд повторить, скажут поле `retry_after` и заголовок `Retry-After` |
+| 503 | не настроена часть сервиса (почта, хранилище файлов). Push без ключей VAPID отвечает иначе: 422 `push_not_configured` |
 
 ## Даты и время
 
-Дата `YYYY-MM-DD`, время `HH:MM`, вместе `YYYY-MM-DD HH:MM`. Это местное время пользователя: часовой пояс не передаётся и не хранится, присылайте время так, как его видит человек. Эндпоинты, которым нужно «сегодня», принимают текущие дату и время устройства (`client_date`, `client_datetime`). Без них сервер считает по UTC.
+Дата `YYYY-MM-DD`, время `HH:MM`, вместе `YYYY-MM-DD HH:MM`. Это время на часах того, кто его ввёл: присылайте его так, как видит человек. Записи событий, приёмы лекарств и документы принимают ещё `tz`, IANA-имя зоны устройства (`Asia/Almaty`), и хранят его рядом со временем: так приложение и выгрузка показывают время на часах того, кто смотрит. Без `tz` время ни к какой зоне не привязано. Эндпоинты, которым нужно «сегодня», принимают текущие дату и время устройства (`client_date`, `client_datetime`). Без них сервер считает по UTC.
 
 ## Списки
 
-Параметры `page` (с 1) и `page_size`. В ответе `page`, `page_size` и `total`.
+Параметры `page` (с 1) и `page_size`. В ответе `page`, `page_size` и `total`. Исключения: список курсов лекарств отдаётся целиком, без страниц, а список пользователей у администратора берёт только `page`, страница в 20 аккаунтов, в ответе `per_page`.
 
 ## Ограничения
 
-- Вход: 5 попыток в минуту с одного адреса. Регистрация: 5 аккаунтов в час.
+- Вход: 5 попыток в минуту с одного адреса. Регистрация: 5 созданных аккаунтов и 30 попыток в час с одного адреса.
 - Документ файлом до 10 МБ. Сканы и архивы до 500 МБ загружаются прямо в хранилище, см. ниже.
-- На владельца питомцев 2 ГБ под документы.
+- На владельца питомцев 2 ГБ под документы (сервер может задать другой размер). Начатая загрузка скана занимает место сразу, до подтверждения. У администратора ограничения нет.
+- Тело запроса не больше 16 МБ: всё, что больше, загружается как скан.
 
 ## Сканы и архивы
 
@@ -153,7 +155,7 @@ PUBLIC = {
 # it at run time (sign-up and sign-in). Only one operation said so before.
 RATE_LIMITS = {
     ("post", "/api/auth/login"): "5 попыток в минуту с одного адреса",
-    ("post", "/api/auth/register"): "5 аккаунтов в час с одного адреса",
+    ("post", "/api/auth/register"): "5 созданных аккаунтов и 30 попыток в час с одного адреса",
     ("post", "/api/auth/password/forgot"): "5 писем в час",
     ("post", "/api/auth/password/reset"): "20 попыток в час",
     ("get", "/api/auth/password/reset/check"): "30 проверок в час",
@@ -179,10 +181,10 @@ def _multipart(properties: dict, required: list) -> dict:
 
 PET_FORM = {
     "name": {"type": "string", "maxLength": 100},
-    "species": {"type": "string", "description": "cat, dog, rabbit, ferret, … (как в веб-приложении)"},
-    "breed": {"type": "string"},
-    "birth_date": {"type": "string", "format": "date"},
-    "gender": {"type": "string"},
+    "species": {"type": "string", "maxLength": 50, "description": "cat, dog, rabbit, ferret, … (как в веб-приложении)"},
+    "breed": {"type": "string", "maxLength": 100},
+    "birth_date": {"type": "string", "format": "date", "description": "Не в будущем и не раньше чем 50 лет назад"},
+    "gender": {"type": "string", "maxLength": 20},
     "is_neutered": {"type": "string", "enum": ["true", "false"]},
     "health_notes": {"type": "string", "maxLength": 1000},
     "tiles_settings": {"type": "string", "description": 'JSON: {"order": [...], "visible": {...}}'},
@@ -247,7 +249,9 @@ def finish_spec(spec: dict) -> dict:
                     "title": {"type": "string", "maxLength": 100},
                     "note": {"type": "string", "maxLength": 500},
                     "expires_at": {"type": "string", "format": "date"},
-                    "file": {**_BINARY, "description": "JPEG, PNG, WebP, HEIC или PDF, до 10 МБ"},
+                    "tz": {"type": "string", "description": "IANA-зона устройства (Asia/Almaty)"},
+                    "upload_id": {"type": "string", "description": "32 hex: по нему загрузку можно отменить"},
+                    "file": {**_BINARY, "description": "JPEG, PNG, WebP, HEIC/HEIF или PDF, до 10 МБ"},
                 },
                 ["pet_id", "category", "title", "file"],
             ),
@@ -347,13 +351,13 @@ def finish_spec(spec: dict) -> dict:
         "Фото, которое браузер не рисует (HEIC с телефона: Safari показывает, Chrome нет), приходит сюда "
         "и уходит картинкой WebP до 1600 px, которую уже видно в форме. Ничего не сохраняется: при "
         "сохранении формы отправляется исходный файл, и тогда он переводится на сервере. PDF не принимается. "
-        "Ограничение 120 запросов в час на человека."
+        "Ограничение 120 запросов в час с одного адреса; тело больше 16 МБ останавливается на 413."
     )
     preview["parameters"] = []
     preview["requestBody"] = {
         "required": True,
         "content": _multipart(
-            {"file": {**_BINARY, "description": "JPEG, PNG, WebP или HEIC, до 10 МБ"}},
+            {"file": {**_BINARY, "description": "JPEG, PNG, WebP, HEIC или HEIF, до 10 МБ"}},
             ["file"],
         ),
     }
@@ -368,11 +372,196 @@ def finish_spec(spec: dict) -> dict:
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
         },
         "429": {
-            "description": "Ограничение: 120 запросов в час",
+            "description": "Ограничение: 120 запросов в час с одного адреса",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
         },
     }
+
+    _say_what_errors_mean(paths, op, error_schema)
+    _name_the_params_views_read(op, error_schema)
     return spec
+
+
+def _param(name: str, where: str, schema: dict, description: str, required: bool = False) -> dict:
+    return {"name": name, "in": where, "required": required, "schema": schema, "description": description}
+
+
+def _name_the_params_views_read(op, error_schema: dict) -> None:
+    """Query values a view reads itself, outside a pydantic model, so the generator never saw them."""
+    adds = {
+        ("get", "/api/auth/password/reset/check"): [
+            _param("token", "query", {"type": "string"}, "Токен из ссылки в письме")
+        ],
+        ("get", "/api/users"): [
+            _param("q", "query", {"type": "string"}, "Часть логина или имени, без учёта регистра"),
+            _param("page", "query", {"type": "integer", "minimum": 1, "default": 1}, "Страница, по 20 аккаунтов"),
+        ],
+        ("get", "/api/users/search"): [
+            _param("q", "query", {"type": "string", "minLength": 2}, "Начало логина или логин целиком", True)
+        ],
+        ("delete", "/api/event-types/{key}"): [
+            _param("preview", "query", {"type": "boolean"}, "Только посчитать записи типа, ничего не удаляя"),
+            _param("with_events", "query", {"type": "boolean"}, "Удалить тип вместе со всеми его записями"),
+        ],
+        ("get", "/api/medical-records/{id}"): [
+            _param("tz", "query", {"type": "string"}, "IANA-зона устройства: по ней считается «сегодня» для статуса")
+        ],
+    }
+    for (method, path), params in adds.items():
+        operation = op(method, path)
+        if operation:
+            known = {x.get("name") for x in operation.get("parameters", [])}
+            operation.setdefault("parameters", []).extend(x for x in params if x["name"] not in known)
+
+    export = op("get", "/api/export/{export_type}/{format_type}")
+    for parameter in export.get("parameters", []) if export else []:
+        if parameter.get("name") == "export_type":
+            parameter["description"] = "Ключ типа события, medications или all (все типы одним ZIP)"
+        elif parameter.get("name") == "format_type":
+            parameter["schema"] = {"type": "string", "enum": ["csv", "tsv", "html", "md"]}
+
+    for path in ("/api/pets/{pet_id}/medical-card/pdf", "/api/shared/medical-card/{token}/pdf"):
+        if op("get", path):
+            op("get", path)["responses"]["500"] = {
+                "description": "Не удалось собрать PDF (`internal_error`)",
+                **error_schema,
+            }
+    for path, what in (
+        ("/api/pets/{pet_id}/medical-profile", "profile"),
+        ("/api/pets/{pet_id}/visit-prep", "visit_prep"),
+    ):
+        operation = op("put", path)
+        if operation and "409" in operation.get("responses", {}):
+            operation["responses"]["409"] = {
+                "description": f"Сохранение сделано со старой копии: `base_version` не совпал. В ответе `{what}` как он есть сейчас",
+                **error_schema,
+            }
+
+
+# Operations with nothing to validate: no body, no query, no path value the schema checks. The generator still
+# promised them a 422, which never comes.
+NOTHING_TO_VALIDATE = {
+    ("get", "/api/auth/check-admin"),
+    ("get", "/api/auth/registration"),
+    ("get", "/api/auth/session"),
+    ("get", "/api/me/account"),
+    ("get", "/api/me/account/deletion"),
+    ("get", "/api/legal"),
+    ("get", "/api/version"),
+    ("get", "/api/event-types"),
+    ("get", "/api/vaccines/catalog"),
+    ("get", "/api/pets"),
+    ("get", "/api/pets/invites"),
+    ("get", "/api/me/form-defaults"),
+    ("get", "/api/users/search"),
+    ("get", "/api/users/{username}/profile"),
+    ("post", "/api/pets/{pet_id}/invite/accept"),
+    ("post", "/api/pets/{pet_id}/invite/decline"),
+    ("post", "/api/pets/{pet_id}/leave"),
+}
+
+# Bodies above 16 MB stop at the server before the view (MAX_CONTENT_LENGTH): 413, not the view's own 422.
+TOO_LARGE = {
+    ("post", "/api/documents"),
+    ("put", "/api/documents/{id}/file"),
+    ("post", "/api/pets"),
+    ("put", "/api/pets/{pet_id}"),
+    ("post", "/api/images/preview"),
+}
+
+# Where a file is written to or read from object storage, which a deploy may leave unconfigured.
+NEEDS_STORAGE = {
+    ("post", "/api/documents"),
+    ("put", "/api/documents/{id}/file"),
+    ("get", "/api/documents/{id}/file"),
+    ("post", "/api/documents/scans/{upload_id}/complete"),
+    ("post", "/api/pets"),
+    ("put", "/api/pets/{pet_id}"),
+}
+
+
+def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
+    """Replace the generator's bare status names with what the error means here, and add the ones it cannot see."""
+
+    def answer(text: str) -> dict:
+        return {"description": text, **error_schema}
+
+    for path, operations in paths.items():
+        for method, operation in operations.items():
+            if method not in _METHODS:
+                continue
+            responses = operation.setdefault("responses", {})
+            key = (method, path)
+            if key in NOTHING_TO_VALIDATE:
+                responses.pop("422", None)
+            elif responses.get("422", {}).get("description") in ("Validation Error", "Unprocessable Entity"):
+                responses["422"] = answer(
+                    "Неверные данные. `code` называет причину; ошибка проверки схемы (`validation_error`) "
+                    "добавляет `details` с полями"
+                )
+            if responses.get("404", {}).get("description") == "Not Found":
+                if path.startswith("/api/users"):
+                    text = "Нет такого пользователя (`user_not_found`)"
+                elif path.startswith("/api/shared/"):
+                    text = "Ссылки нет: неверная, истекла или отозвана (`not_found`)"
+                elif path.startswith("/api/event-types/"):
+                    text = "Такого типа нет среди встроенных и ваших (`event_type_not_found`)"
+                else:
+                    text = (
+                        "Питомца или записи нет, или к ним нет доступа: чужое отвечает так же, как несуществующее "
+                        "(`pet_not_found`, `record_not_found` и подобные)"
+                    )
+                responses["404"] = answer(text)
+            if responses.get("403", {}).get("description") == "Forbidden":
+                if path.startswith("/api/users"):
+                    text = "Только для администратора (`forbidden_admin_only`): это встроенный аккаунт ADMIN_USERNAME"
+                elif path == "/api/auth/register":
+                    text = "Регистрация закрыта (`registration_closed`)"
+                elif path.startswith("/api/event-types/"):
+                    text = (
+                        "Встроенный тип меняет только администратор (`event_type_builtin_admin_only`), "
+                        "чужой тип нельзя ни менять, ни удалять (`event_type_not_yours`)"
+                    )
+                else:
+                    text = "Только для владельца питомца (`owner_action_forbidden`)"
+                responses["403"] = answer(text)
+            if responses.get("401", {}).get("description") == "Unauthorized":
+                responses["401"] = answer("Нет токена или он истёк")
+            if responses.get("500", {}).get("description") == "Internal Server Error":
+                responses["500"] = answer("Сбой на сервере (`internal_error`), повторите позже")
+            if responses.get("503", {}).get("description") == "Service Unavailable":
+                responses["503"] = answer("Не настроена часть сервиса: почта или хранилище файлов")
+            if key in TOO_LARGE:
+                responses["413"] = answer("Тело запроса больше 16 МБ (`request_too_large`)")
+            if key in NEEDS_STORAGE:
+                responses.setdefault("503", answer("Хранилище файлов не настроено (`storage_not_configured`)"))
+
+    for path, text in (
+        ("/api/auth/login", "Неверный логин или пароль, или аккаунт отключён"),
+        ("/api/auth/refresh", "refresh-токен недействителен, истёк или отозван: войдите заново"),
+        ("/api/auth/session", "Сессии нет: и access-, и refresh-токен недействительны"),
+    ):
+        method = "get" if path.endswith("session") else "post"
+        if "401" in op(method, path).get("responses", {}):
+            op(method, path)["responses"]["401"] = answer(text)
+
+    # Files sent with an ETag: a repeated request with If-None-Match gets an empty 304.
+    for path in ("/api/pets/{pet_id}/photo", "/api/documents/{id}/file"):
+        if op("get", path):
+            op("get", path)["responses"]["304"] = {"description": "Файл не изменился (совпал If-None-Match)"}
+
+    duplicate = op("post", "/api/events")
+    if duplicate:
+        duplicate["responses"]["409"] = answer(
+            "Тот же человек прислал ту же запись (питомец, тип, время до минуты, поля и комментарий) в течение "
+            "5 минут (`duplicate_event`). В ответе `existing`: `id`, `date`, `time`, `username`, `own`"
+        )
+    intake = op("post", "/api/medications/{id}/log")
+    if intake:
+        intake["responses"]["409"] = answer(
+            "Приём уже отмечен (`duplicate_intake`, в ответе `existing`; повторите с `force: true`, чтобы записать "
+            "всё равно), или остаток не удалось списать с трёх попыток (`conflict`)"
+        )
 
 
 @docs_bp.route("/api/openapi.json", methods=["GET"])
