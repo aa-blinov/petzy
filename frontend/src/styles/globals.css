@@ -1023,7 +1023,6 @@ select {
     height: 24px;
     align-items: center;
     margin-bottom: var(--spacing-xs);
-    transition: transform var(--motion-duration-fast) var(--motion-ease-emphasized);
 }
 
 /* On the pet switcher: another pet has something overdue. The picker says which, in words. */
@@ -1054,10 +1053,6 @@ select {
     box-shadow: 0 0 0 2px var(--app-card-background);
 }
 
-.app-tab-bar__item--active .app-tab-bar__icon {
-    transform: scale(1.12);
-}
-
 /* Material 3 navigation bar: the current item sits on an active indicator, a pill of primary-container behind its icon.
    The icon wrapper is its own stacking context, so the pill paints behind the icon and under the unread dot. */
 .app-tab-bar__icon {
@@ -1068,10 +1063,12 @@ select {
     content: '';
     position: absolute;
     z-index: -1;
-    top: -4px;
+    /* 28px, not Material's 32: the bar is 50px tall, and a 32px pill reached its top edge and the label. 2px either
+       side keeps it inside the bar and off the text. */
+    top: -2px;
     left: 50%;
     width: 56px;
-    height: 32px;
+    height: 28px;
     border-radius: var(--radius-pill);
     background: transparent;
     transform: translateX(-50%);
