@@ -37,9 +37,12 @@ USERS_PER_PAGE = 20
 @users_bp.route("/api/users", methods=["GET"])
 @login_required
 @admin_required
-@api.validate(resp=Response(HTTP_200=UserListResponse), tags=["users"])
+@api.validate(resp=Response(HTTP_403=ErrorResponse, HTTP_200=UserListResponse), tags=["users"])
 def get_users():
     """One page of the account list, newest first, with a search by login or name (admin only).
+
+    Query: `q`, a part of the login or the full name, any case; `page`, from 1. A page holds 20 accounts, and the
+    answer says `page`, `per_page` and `total`.
 
     The search runs over every account whatever is typed into it, which is
     why both this route and the search sit behind @admin_required: see
@@ -93,7 +96,8 @@ def search_users():
     Suggestions come only from your own circle, people you share a pet with
     either way round, whose logins you already see on those pets. Anyone else
     is found by typing the whole login, case-insensitive, the way other apps
-    share by email.
+    share by email. Query: `q`, at least 2 characters (shorter answers an empty list); suggestions match the start
+    of a login. At most 20 active accounts, never the caller.
 
     This used to be a substring search over every account, which any
     logged-in user could run (an empty query listed twenty): a way to see
@@ -130,7 +134,7 @@ def search_users():
 def get_form_defaults():
     """The signed-in user's form defaults («Настройки форм»).
 
-    What a new record's form starts with: the last values used, per pet. Empty for anything never filled in.
+    Account-level defaults per record type, from before they moved to each pet (GET and PUT /api/pets/{pet_id}/form-defaults). The app no longer reads or writes these. Empty if never set.
     """
     user = app.db["users"].find_one({"username": request.current_user}, {"form_defaults": 1}) or {}
     return jsonify({"form_defaults": user.get("form_defaults") or {}})
@@ -142,7 +146,7 @@ def get_form_defaults():
 def put_form_defaults():
     """Replace the signed-in user's form defaults, for all of their devices.
 
-    Replaces the whole set, not one field. Whatever the app remembers while filling a form is written here too, and reaches the person's other devices on their next request.
+    Replaces the whole set, not one field. Kept for older clients: the app now remembers values per pet, with PUT /api/pets/{pet_id}/form-defaults, and does not read these.
     """
     form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
     app.db["users"].update_one({"username": request.current_user}, {"$set": {"form_defaults": form_defaults}})
@@ -153,15 +157,11 @@ def put_form_defaults():
 @login_required
 @api.validate(resp=Response(HTTP_200=UserPublicProfile, HTTP_404=ErrorResponse), tags=["users"])
 def get_user_public_profile(username):
-    """A co-owner's public profile — name and pets you both have access to.
+    """A co-owner's public profile: name and the pets you both have access to.
 
-    Deliberately not admin-only (unlike GET /api/users/<username>): the
-    point is letting a shared user see who they're sharing a pet with.
-    Gated on actually sharing a pet instead, so it can't be used to look
-    up an arbitrary username — a mismatch returns the same 404 as a
-    genuinely nonexistent one, rather than a distinguishable 403, so it
-    doesn't confirm a username exists to someone who isn't sharing
-    anything with them.
+    Not admin-only, unlike GET /api/users/{username}: a person you share a pet with may be seen, anyone else
+    answers the same 404 as a login that does not exist, so the answer does not confirm who has an account.
+    Your own profile is always readable. The administrator reads anyone's, with all of that person's pets.
     """
     requester = request.current_user
 
@@ -212,13 +212,14 @@ def get_user_public_profile(username):
 @admin_required
 @api.validate(
     body=Request(UserCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(HTTP_403=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["users"],
 )
 def create_user():
     """Create a new user (admin only).
 
-    For an account made by hand rather than by the person themselves.
+    For an account made by hand rather than by the person themselves. The 201 answer also carries `user`: the
+    created account (`_id`, `username`, `full_name`, `email`, `created_at`, `created_by`, `is_active`).
     """
     try:
         # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
@@ -263,14 +264,14 @@ def create_user():
 @login_required
 @admin_required
 @api.validate(
-    resp=Response(HTTP_200=UserResponseWrapper, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_403=ErrorResponse, HTTP_200=UserResponseWrapper, HTTP_404=ErrorResponse),
     tags=["users"],
 )
 def get_user(username):
     """Get user information (admin only).
 
     Only an administrator reaches this. For anybody else it is 403, and the account it
-    would have named stays unnamed.
+    would have named stays unnamed. The account comes whole, without the password hash.
     """
     user = app.db["users"].find_one({"username": username})
     if not user:
@@ -289,13 +290,19 @@ def get_user(username):
 @admin_required
 @api.validate(
     body=Request(UserUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_403=ErrorResponse,
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["users"],
 )
 def update_user(username):
     """Update user information (admin only).
 
-    Name, address and role. A password set here starts a session on every device that person is signed in on.
+    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device. Nobody deactivates themselves (422 `validation_error_admin_deactivation`).
     """
     try:
         user = app.db["users"].find_one({"username": username})
@@ -347,7 +354,13 @@ def update_user(username):
 @login_required
 @admin_required
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_403=ErrorResponse,
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["users"],
 )
 def delete_user(username):
@@ -386,7 +399,13 @@ def delete_user(username):
 @admin_required
 @api.validate(
     body=Request(UserPasswordResetRequest),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_403=ErrorResponse,
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["users"],
 )
 def reset_user_password(username):

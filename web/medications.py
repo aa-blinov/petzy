@@ -161,14 +161,14 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
 @medications_bp.route("/api/medications", methods=["POST"])
 @api.validate(
     body=Request(MedicationCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_400=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse),
     tags=["medications"],
 )
 @require_pet_access
 def add_medication():
     """Create a new medication course.
 
-    The course, not the dose. A schedule is days of the week and times of day; a medicine given by occasion is added with no schedule at all, and then it has no reminders. If the stock is being counted, the first pack sets it.
+    The course, not the dose. A schedule is days of the week and times of day; a medicine given by occasion is sent with ``as_needed: true`` (or a schedule with no times), and then it has no reminders. If the stock is being counted, the first pack sets it.
     """
     try:
         data = request.context.body  # type: ignore[attr-defined]
@@ -194,14 +194,14 @@ def add_medication():
 @medications_bp.route("/api/medications", methods=["GET"])
 @api.validate(
     query=MedicationListQuery,
-    resp=Response(HTTP_200=MedicationListResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=MedicationListResponse),
     tags=["medications"],
 )
 @require_pet_access
 def get_medications():
     """List medication courses for a pet.
 
-    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. ``client_date`` is the device's today, and the stock and the next dose are read against it.
+    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. ``client_date`` is the device's today: today's doses (``intakes_today``, ``scheduled_today``, ``open_slots_today``) and the course status are read against it. The list is not paged.
     """
     try:
         query_params = request.context.query
@@ -310,16 +310,16 @@ def get_medications():
 
 @medications_bp.route("/api/medications/<id>", methods=["GET"])
 @api.validate(
-    resp=Response(HTTP_200=MedicationDetailResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=MedicationDetailResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")
 def get_medication(id):
     """Fetch a single medication course by id.
 
-    The decorator already loads the record into ``g.record`` after
-    verifying ownership via ``@require_record_access``; we only need
-    to serialise ``_id`` and return the document.
+    The course with its stock and last dose. Thinner than an item of the list: no ``last_taken_by``,
+    ``scheduled_today``, ``open_slots_today`` or ``course_status``, and ``intakes_today`` is counted from
+    midnight UTC.
     """
     try:
         record = g.record
@@ -356,14 +356,14 @@ def get_medication(id):
 @medications_bp.route("/api/medications/<id>", methods=["PUT"])
 @api.validate(
     body=Request(MedicationUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")
 def update_medication(id):
     """Update a medication course.
 
-    Fields left out keep their value. Turning a schedule on or off says nothing about what has already been taken: the intakes keep the slots they closed.
+    Fields left out keep their value; ``null`` means "not sent", and a date is cleared with an empty string. Switching the course back on (``is_active: true``) removes its end date unless a new one is sent. An empty body answers 422 ``validation_error_no_update_data``. Turning a schedule on or off says nothing about what has already been taken: the intakes keep the slots they closed.
     """
     try:
         medication = g.record
@@ -401,14 +401,14 @@ def update_medication(id):
 
 @medications_bp.route("/api/medications/<id>", methods=["DELETE"])
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")
 def delete_medication(id):
-    """Delete a medication course and all related intakes atomically.
+    """Delete a medication course and all related intakes.
 
-    Both or neither: a course whose intakes stayed behind would leave doses belonging to nothing. The intakes go from the medical card too. There is no undo, so the app asks first.
+    In one transaction where the database supports it; on a standalone server (production) the course goes first and then its intakes, and an intake left behind by a failure there is only logged. The intakes go from the medical card too. There is no undo, so the app asks first.
     """
     try:
         medication = g.record
@@ -531,14 +531,14 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
 @api.validate(
     body=Request(MedicationIntakeCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")
 def log_intake(id):
     """Log a medication intake.
 
-    Closes one slot of the course, and the slot travels with it: marking at 14:30 closes the 08:00 dose it was given late for, not the nearest one. A slot already closed, by anybody in the household, is not written twice: the answer says who closed it and when, and asks whether a second one is really wanted. The stock is drawn down here and the reminder for that slot stops.
+    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when, and ``force: true`` records it anyway (skips and «as needed» courses are not checked). A date or time that is invalid or more than 8 days ahead answers 422. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops.
     """
     try:
         medication = g.record
@@ -694,14 +694,14 @@ def log_intake(id):
 @medications_bp.route("/api/medications/<id>/restock", methods=["POST"])
 @api.validate(
     body=Request(MedicationRestock),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")
 def restock_medication(id):
     """Add a bought pack to the stock (and start tracking it if it wasn't).
 
-    Counting starts here if it was off, and then the amount is the first pack rather than a top-up. No dose is recorded, so no reminder moves.
+    If the course has no stock count yet, the amount becomes the stock; otherwise it is added to it (a course whose counting was switched off keeps its old count). The answer carries the new ``inventory_current``. No dose is recorded, so no reminder moves.
     """
     try:
         medication = g.record
@@ -727,14 +727,14 @@ def restock_medication(id):
 @medications_bp.route("/api/medications/intakes", methods=["GET"])
 @api.validate(
     query=PetIdPaginationQuery,
-    resp=Response(HTTP_200=MedicationIntakeListResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=MedicationIntakeListResponse),
     tags=["medications"],
 )
 @require_pet_access
 def get_medication_intakes():
     """Get list of medication intakes with pagination.
 
-    Every marked dose of a pet, newest first, narrowed by date or by course if asked. Each intake keeps the slot it closed, which is what lets a later mark notice that the same dose was already taken.
+    Every marked dose of a pet, newest first, page by page; no filters besides the pet. An intake keeps the slot it closed when the client named one (``slot_date``, ``slot_time``), which is what lets a later mark notice that the same dose was already taken. Items also carry ``medication_name``, ``tz`` and ``inventory_deducted``.
     """
     try:
         query_params = request.context.query  # type: ignore[attr-defined]
@@ -772,14 +772,14 @@ def get_medication_intakes():
 @medications_bp.route("/api/medications/intakes/<id>", methods=["PUT"])
 @api.validate(
     body=Request(MedicationIntakeUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medication_intakes")
 def update_intake(id):
     """Move an intake to when the dose was really given, marked late or at the wrong time.
 
-    Only the time moves. The dose and the stock it took stay as they were.
+    Only the time moves. The dose and the stock it took stay as they were. A moved intake no longer holds the slot it was marked for and counts for the slot nearest its new time; ``tz`` becomes the editor's. A date more than 8 days ahead answers 422.
     """
     try:
         intake = g.record
@@ -811,7 +811,7 @@ def update_intake(id):
 
 @medications_bp.route("/api/medications/intakes/<id>", methods=["DELETE"])
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medication_intakes")
@@ -845,14 +845,14 @@ def delete_intake(id):
 @medications_bp.route("/api/medications/upcoming", methods=["GET"])
 @api.validate(
     query=UpcomingDosesQuery,
-    resp=Response(HTTP_200=UpcomingDosesResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=UpcomingDosesResponse),
     tags=["medications"],
 )
 @require_pet_access
 def get_upcoming_doses():
     """Get the next doses for the dashboard.
 
-    What the feed shows above the records: the nearest dose, and both when two fall in the same minute. ``client_date`` is the device's today, so the row does not turn over before the phone does.
+    What the feed shows above the records: today's unmarked doses, overdue ones included, plus last evening's still unmarked; if today has none, the doses of the next day that has any, up to 7 days ahead. Active courses with a schedule only. ``client_datetime`` (ISO or ``YYYY-MM-DD HH:MM``) is the device's local now, so the row does not turn over before the phone does.
     """
     try:
         query_params = request.context.query

@@ -61,7 +61,9 @@ def subscribe():
     Upserts on ``endpoint`` — a browser's own subscription URL is already
     a stable per-device identity, so re-subscribing the same browser
     (e.g. after clearing the toggle off and on) updates the row in place
-    instead of accumulating duplicates.
+    instead of accumulating duplicates. ``endpoint`` must be an https URL of a known push service, not an IP
+    address. An endpoint already registered to another account with other keys answers 422
+    ``push_subscription_taken``; with the same keys the subscription moves to the caller.
     """
     try:
         username = request.current_user

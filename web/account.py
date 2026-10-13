@@ -186,6 +186,9 @@ def change_email():
 
     Needs the current password: whoever controls the email controls the account,
     so a borrowed phone with an open session mustn't be enough to change it.
+    A new address goes to `pending_email` and a letter with a link (valid for a day) is sent to it;
+    `email` changes only after POST /api/auth/email/verify, and until then the old address stays the working one.
+    The address that is already confirmed answers with the account unchanged.
     """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]
@@ -348,7 +351,8 @@ def check_reset_link():
 
     Asked when the screen opens, so a link that expired or was already spent
     is said at once instead of after the person picks a password. The token is
-    only read here: the form still needs it.
+    only read here: the form still needs it. It comes as the query parameter `token`;
+    a missing or unknown one answers `{"valid": false}`.
     """
     record = app.db.account_tokens.find_one({"token_hash": _hash(request.args.get("token") or ""), "purpose": "reset"})
     return jsonify({"valid": _link_is_live(record)})
@@ -365,7 +369,9 @@ def reset_password():
     """Set a new password from the letter's link and sign in with it.
 
     Every other session of the account ends. The link is checked before it is
-    spent, so a password the server refuses does not burn it.
+    spent, so a password the server refuses does not burn it. The link lives an hour;
+    an expired, spent or unknown one, or one of a switched-off account, answers 422 `account_link_invalid`.
+    Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. A notice goes to the confirmed address.
     """
     data = request.context.body  # type: ignore[attr-defined]
     # Checked against the link's account before the link is spent, so a
@@ -412,7 +418,9 @@ def reset_password():
 def change_password():
     """Change the password knowing the current one.
 
-    Other sessions end; this one continues with fresh cookies.
+    Other sessions end. This one continues: the web app gets fresh cookies, a native app (no Origin header) gets
+    new `access_token` and `refresh_token` in the body and must replace its old ones, which stop working.
+    Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. A notice goes to the confirmed address.
     """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]
@@ -444,7 +452,7 @@ def change_password():
 def deletion_preview():
     """What deleting the account would do: pets deleted, handed over, left.
 
-    Read it before calling ``DELETE /api/me/account``. Pets owned alone are deleted with their records and files, pets shared with somebody else are handed over, and pets whose owner is gone go to the next in line. Nothing here changes anything on its own.
+    Read it before calling ``DELETE /api/me/account``. Pets owned alone are deleted with their records and files (`deleted`). A pet shared with somebody goes to the first of them who can still sign in, otherwise to the first who has an account at all (`transferred`, `new_owner`). Other people's pets you were invited to stay with their owner, and you lose access (`left`, `owner`). Nothing here changes anything on its own.
     """
     username = request.current_user
     return jsonify({"can_delete": not is_admin(username), **plan_summary(deletion_plan(username))})
@@ -485,9 +493,11 @@ def login_or_already_deleted(view):
 def delete_own_account():
     """Delete the account for good, confirmed with the password.
 
-    A pet shared with someone goes to the first of them, the rest are
+    A pet shared with someone goes to the first of them who can still sign in, the rest are
     deleted with their records and files (see GET /api/me/account/deletion).
-    Every session ends; the web app's cookies are cleared.
+    Every session ends; the web app's cookies are cleared. Letters go to the account's confirmed
+    address and to every new owner. The administrator cannot be deleted (422 `account_admin_undeletable`).
+    Repeating the call after a successful deletion (a lost answer) answers the same 200.
     """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]

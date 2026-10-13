@@ -390,7 +390,7 @@ def _card_for(pet_id: str):
 @login_required
 @api.validate(
     query=MedicalCardQuery,
-    resp=Response(HTTP_200=MedicalCardResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=MedicalCardResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["pets"],
 )
 def get_medical_card(pet_id):
@@ -413,17 +413,16 @@ def get_medical_card(pet_id):
 @login_required
 @api.validate(
     query=MedicalCardQuery,
-    resp=Response(
-        HTTP_200=MedicalAlertsResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse
-    ),
+    resp=Response(HTTP_200=MedicalAlertsResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["pets"],
 )
 def get_medical_alerts(pet_id):
     """What is overdue on the pet's card: the dot on the «Медкарта» tab, without the whole card.
 
-    Three booleans: a repeat is late, a repeat is close, a dose went unmarked. The
-    card's own rules decide the first two, so a newer record of the same name counts
-    and an older one does not. Cheap enough to ask about every pet in the switcher.
+    Three booleans: ``vaccination``, a vaccination is late (a record past its repeat date or an
+    expired certificate); ``parasite``, a parasite treatment is late; ``medication``, a scheduled dose
+    went unmarked for more than an hour. A newer record against the same thing (the same protection,
+    the same target, otherwise the same name) counts and an older one does not. Cheap enough to ask about every pet in the switcher.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
@@ -439,7 +438,7 @@ def get_medical_alerts(pet_id):
 @login_required
 @api.validate(
     query=MedicalCardQuery,
-    resp=Response(HTTP_200=None, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=None, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["pets"],
 )
 def get_medical_card_pdf(pet_id):
@@ -447,7 +446,8 @@ def get_medical_card_pdf(pet_id):
 
     Page one is the consultation: who the pet is, allergies, what is late, what is
     being taken now. The rest is the history. The file name carries the pet's name
-    and the date, so two cards in a phone's downloads do not look alike.
+    and the date, so two cards in a phone's downloads do not look alike. A failure to build the file
+    answers 500 ``internal_error``.
     """
     from web.medical_card_full import build_full_card
     from web.medical_card_pdf import render_medical_card_pdf
@@ -477,11 +477,7 @@ def get_medical_card_pdf(pet_id):
 @api.validate(
     body=Request(MedicalProfile),
     resp=Response(
-        HTTP_200=MedicalProfileResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_404=ErrorResponse,
-        HTTP_409=ErrorResponse,
-        HTTP_422=ErrorResponse,
+        HTTP_200=MedicalProfileResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse, HTTP_422=ErrorResponse
     ),
     tags=["pets"],
 )
@@ -490,7 +486,9 @@ def put_medical_profile(pet_id):
 
     Anyone with access to the pet may: it is the household's shared knowledge
     about the animal, like its weight and medicines, not the owner's setting.
-    Unlike the pet card, which only the owner edits.
+    Unlike the pet card, which only the owner edits. A save made from an older copy answers 409 and
+    brings ``profile``, the profile as it is now. Allergies together with ``allergies_none_known: true``
+    answer 422.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
@@ -543,13 +541,7 @@ def _visit_prep_conflict(pet: dict):
 @login_required
 @api.validate(
     body=Request(VisitPrep),
-    resp=Response(
-        HTTP_200=VisitPrepResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_404=ErrorResponse,
-        HTTP_409=ErrorResponse,
-        HTTP_422=ErrorResponse,
-    ),
+    resp=Response(HTTP_200=VisitPrepResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["pets"],
 )
 def put_visit_prep(pet_id):

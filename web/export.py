@@ -351,11 +351,7 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 @api.validate(
     query=ExportQuery,
     resp=Response(
-        HTTP_200=None,
-        HTTP_422=ErrorResponse,
-        HTTP_401=ErrorResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_500=ErrorResponse,
+        HTTP_404=ErrorResponse, HTTP_200=None, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_500=ErrorResponse
     ),
     tags=["export"],
 )
@@ -363,7 +359,7 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 def export_data(export_type, format_type):
     """Export data in various formats.
 
-    CSV, TSV, HTML, Markdown or ZIP, of one pet or of all of them. ``all`` with any format gives the ZIP. The file comes back with the answer instead of being stored anywhere.
+    One pet's records as a file. ``export_type`` is an event type key, ``medications`` or ``all``; ``format_type`` is ``csv``, ``tsv``, ``html`` or ``md``. ``all`` gives a ZIP with one file per record type that has records. ``tz`` puts the file name and every record's time on that zone's clock. Nothing to export answers 404 ``no_data_for_export``; an unknown type or format answers 422 ``export_invalid_type`` or ``export_invalid_format``. The file comes back with the answer instead of being stored anywhere.
     """
     try:
         pet_id = g.pet_id  # Provided by @require_pet_access

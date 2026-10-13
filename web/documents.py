@@ -218,16 +218,19 @@ def _serialize_document(
 @login_required
 @api.validate(
     body=Request(DocumentCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
 def create_document():
     """Attach a new document (image or PDF) to a pet.
 
     Request must be ``multipart/form-data`` with the ``DocumentCreate``
-    fields (``pet_id``, ``category``, ``title``, optional ``note``) as
-    form fields and the file itself under the ``file`` field — unlike
-    pet creation, the file is mandatory here, not optional.
+    fields (``pet_id``, ``category``, ``title``, optional ``note``, ``expires_at``, ``tz``, and ``upload_id``,
+    32 hex, to be able to cancel it) as form fields and the file itself under the ``file`` field; unlike
+    pet creation, the file is mandatory here. ``category``: vaccination, lab_result, conclusion, imaging,
+    insurance or other. JPEG, PNG, WebP, HEIC/HEIF or PDF up to 10 MB (422 ``document_file_too_large``; a body
+    over 16 MB stops at 413). A file whose content is not what its type says answers 422
+    ``document_content_mismatch``, an exceeded quota 422 ``storage_quota_exceeded``.
     """
     try:
         # @api.validate(body=Request(DocumentCreate)) already parsed and
@@ -308,14 +311,17 @@ def storage_status():
 @login_required
 @api.validate(
     body=Request(ScanUploadRequest),
-    resp=Response(HTTP_201=ScanUploadSlot, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse, HTTP_503=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_201=ScanUploadSlot, HTTP_422=ErrorResponse, HTTP_503=ErrorResponse),
     tags=["documents"],
 )
 def create_scan_upload():
     """Reserve a slot and a signed URL to PUT a scan archive to storage.
 
     The file never passes through this process (see web/storage.py); it is
-    checked when the client confirms the upload.
+    checked when the client confirms the upload. Archives (ZIP, 7z, RAR, tar, gzip), DICOM and ISO
+    (422 ``scan_unsupported_type`` otherwise), up to the storage's size (422 ``scan_too_large``). The reserved
+    size counts against the quota at once (422 ``storage_quota_exceeded``). At most 3 unconfirmed uploads per
+    person (429 ``too_many_pending_uploads``).
     """
     if not storage.storage_configured():
         return error_response("storage_not_configured")
@@ -380,13 +386,13 @@ def create_scan_upload():
 @login_required
 @api.validate(
     body=Request(ScanUploadComplete),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
 def complete_scan_upload(upload_id):
     """Check the uploaded object and turn it into a document.
 
-    The last step of uploading a large scan: the object is checked to be really there and really what was sent, and only then does the document appear. A part that did not arrive leaves nothing behind.
+    The last step of uploading a large scan: the object is checked to be really there and really what was sent, and only then does the document appear, in category ``imaging``. A file that has not fully arrived answers 422 ``scan_upload_incomplete`` and the slot stays, so the PUT can be retried and confirmed; a file of the wrong size or content (``scan_too_large``, ``scan_content_mismatch``) is deleted. An unknown or another person's upload answers 404 ``scan_upload_not_found``.
     """
     if not storage.storage_configured():
         return error_response("storage_not_configured")
@@ -447,14 +453,14 @@ def complete_scan_upload(upload_id):
 @documents_bp.route("/api/documents", methods=["GET"])
 @api.validate(
     query=DocumentListQuery,
-    resp=Response(HTTP_200=DocumentListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=DocumentListResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
 @require_pet_access
 def get_documents():
     """List documents for a pet, optionally filtered by category.
 
-    Newest first. Each document says what it is attached to: records of the medical card, files of the medicine courses, or nothing yet.
+    Newest first. Each document says which records of the medical card point at it, if any.
     """
     try:
         query_params = request.context.query  # type: ignore[attr-defined]
@@ -482,7 +488,7 @@ def get_documents():
 
 @documents_bp.route("/api/documents/<id>", methods=["GET"])
 @api.validate(
-    resp=Response(HTTP_200=DocumentDetailResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=DocumentDetailResponse, HTTP_404=ErrorResponse),
     tags=["documents"],
 )
 @require_record_access("documents")
@@ -507,15 +513,16 @@ def get_document(id):
 @documents_bp.route("/api/documents/<id>", methods=["PUT"])
 @api.validate(
     body=Request(DocumentUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
 @require_record_access("documents")
 def update_document(id):
-    """Update a document's metadata (category/title/note).
+    """Update a document's metadata (category, title, note, expires_at).
 
     The file itself is replaced by its own route (PUT .../<id>/file), not
-    here: this one takes JSON, so it has nowhere to put a file.
+    here: this one takes JSON, so it has nowhere to put a file. A scan stays in ``imaging``
+    (422 ``scan_category_fixed``).
     """
     try:
         document = g.record
@@ -538,7 +545,7 @@ def update_document(id):
 
 @documents_bp.route("/api/documents/<id>/file", methods=["PUT"])
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
 @require_record_access("documents")
@@ -553,7 +560,8 @@ def replace_document_file(id):
     The document keeps its id, so what it is attached to in the medical card
     (medical_record_kinds) stays as it was, and the new file gets its own
     key, so the old thumbnail is thrown away with the old file and the ETag
-    of ``/file`` changes with it (storage.file_version hashes the key).
+    of ``/file`` changes with it (storage.file_version hashes the key). A scan whose file is replaced
+    becomes an ordinary document. No file answers 422 ``document_file_required``.
     """
     document = g.record
     username = g.username
@@ -655,7 +663,7 @@ def cancel_document_upload(upload_id):
 
 @documents_bp.route("/api/documents/<id>", methods=["DELETE"])
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
     tags=["documents"],
 )
 @require_record_access("documents")
@@ -718,7 +726,7 @@ def _scan_download_url(document: dict) -> str:
 
 @documents_bp.route("/api/documents/<id>/download", methods=["GET"])
 @api.validate(
-    resp=Response(HTTP_200=DownloadLink, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_503=ErrorResponse),
+    resp=Response(HTTP_200=DownloadLink, HTTP_404=ErrorResponse, HTTP_503=ErrorResponse),
     tags=["documents"],
 )
 @require_record_access("documents")
@@ -727,7 +735,9 @@ def get_document_download(id):
 
     The app asks here first instead of navigating to ``/file``: an error
     (session gone, access revoked) then comes back to the page as a
-    message, rather than replacing the app with a bare error response.
+    message, rather than replacing the app with a bare error response. For an ordinary file ``url`` is
+    ``/api/documents/{id}/file`` and ``expires_in`` is null; for a scan it is a signed storage link that lives
+    600 seconds.
     """
     document = g.record
     if not document.get("scan"):
@@ -742,7 +752,7 @@ def get_document_download(id):
 @documents_bp.route("/api/documents/<id>/file", methods=["GET"])
 @api.validate(
     query=PhotoQueryParams,
-    resp=Response(HTTP_200=None, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=None, HTTP_404=ErrorResponse),
     tags=["documents"],
 )
 @require_record_access("documents")
@@ -751,7 +761,9 @@ def get_document_file(id):
 
     Images support the same optional ``?w=&h=`` thumbnail resize as pet
     photos (``pets.get_pet_photo``); PDF and anything else is streamed
-    unchanged.
+    unchanged. A picture that could not be converted at upload goes out as it came (PNG, HEIC).
+    The answer carries an ETag; a matching ``If-None-Match`` gets an empty 304. A scan answers 302 to a
+    temporary storage link.
     """
     document = g.record
     if document.get("scan"):

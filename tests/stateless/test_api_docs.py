@@ -184,3 +184,26 @@ def test_a_call_that_reads_a_body_documents_it(client):
         if method in ("post", "put", "patch") and (method, path) not in BODYLESS and "requestBody" not in operation
     ]
     assert not undocumented, undocumented
+
+
+def test_every_error_says_what_it_means_here(client):
+    """«Not Found» or «Forbidden» says nothing a client can act on: a member gets 404 for a pet it
+    cannot see, 403 means owner-only or admin-only, and the code to branch on is named."""
+    spec = client.get("/api/openapi.json").get_json()
+    generic = {
+        "Not Found",
+        "Forbidden",
+        "Validation Error",
+        "Unprocessable Entity",
+        "Internal Server Error",
+        "Service Unavailable",
+        "Unauthorized",
+        "Conflict",
+    }
+    bare = [
+        f"{method.upper()} {path} {code}"
+        for path, method, operation in _operations(spec)
+        for code, response in operation.get("responses", {}).items()
+        if response.get("description") in generic
+    ]
+    assert not bare, bare

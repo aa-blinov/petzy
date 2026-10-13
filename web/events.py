@@ -158,7 +158,7 @@ def _generate_event_type_key() -> str:
 def list_event_types():
     """List the event types this user can use: builtin, and their household's.
 
-    Built-in types are the same for everyone and are renamed only by an administrator. A household's own types are shared with everyone the pet is shared with, and only the person who made one may change or remove it, and only while it has no records.
+    Built-in types are the same for everyone and are renamed only by an administrator. A household's own types are visible to everyone you share any pet with, either way round. Only the person who made a custom type may change or remove it; removing a type that has records takes ``?with_events=true`` and deletes those records too.
     """
     username, _ = get_current_user()
     docs = list(app.db[EVENT_TYPES_COLLECTION].find(_visible_types_query(username)))
@@ -185,7 +185,7 @@ def _registry_order(doc: dict) -> tuple:
 def create_event_type():
     """Create a custom event type.
 
-    Everyone the pet is shared with sees it at once, the person who made it included. The name has to be free within the household: two types under one name make a record impossible to tell apart later.
+    Everyone you share any pet with sees it at once, the person who made it included. The name has to be free among the built-in types and the household's own, case and spaces ignored (422 ``event_type_label_taken``): two types under one name make a record impossible to tell apart later. ``color`` is one of brown, orange, red, green, purple, teal, cyan, yellow, blue, pink, gray; ``icon`` is 1-50 of a-z, 0-9, ``_`` and ``-``. Field names must be unique and cannot be pet_id, date, time, comment, type or fields; a number field with no ``min`` gets ``min: 0``. With ``chart.kind: "value"``, ``value_field`` names a number field of the type.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -212,15 +212,17 @@ def create_event_type():
 @events_bp.route("/api/event-types/<key>", methods=["PUT"])
 @api.validate(
     body=Request(EventTypeUpdate),
-    resp=Response(HTTP_200=EventTypeItem, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_403=ErrorResponse, HTTP_200=EventTypeItem, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["events"],
 )
 @login_required
 def update_event_type(key):
     """Update an event type's label/icon/color/fields/chart.
 
-    A custom type by its author only. A builtin type is the same for every
-    user, so renaming it renamed it for everyone: an admin's change only.
+    A custom type by its author only (403 ``event_type_not_yours``). A builtin type is the same for every
+    user, so renaming it renamed it for everyone: an admin's change only (403 ``event_type_builtin_admin_only``).
+    The same rules as at creation. When ``fields`` is sent again, ``max``, ``step`` and ``deviation_threshold``
+    left out of a field are kept from the stored field of the same name.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -263,18 +265,19 @@ def update_event_type(key):
 
 @events_bp.route("/api/event-types/<key>", methods=["DELETE"])
 @api.validate(
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_403=ErrorResponse, HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["events"],
 )
 @login_required
 def delete_event_type(key):
     """Delete a custom event type.
 
-    Builtin types can't be deleted, and a custom type with existing events
-    can't either — its history would otherwise lose its field labels and
-    rendering.
+    Builtin types can't be deleted (422 ``event_type_builtin_immutable``), and another person's type
+    can't either (403 ``event_type_not_yours``). A type with records answers 422 ``event_type_has_events``
+    with ``events_count``; repeated with ``?with_events=true`` it deletes the type together with all of its
+    records, on every pet.
 
-    ``?preview=true`` counts the records and deletes nothing: the question
+    ``?preview=true`` counts the records and deletes nothing (the answer carries ``events_count``): the question
     «удалить тип вместе с записями?» is asked once, with the number in it.
     Before, the first question knew nothing about the records and the
     number only turned up in the second one, after the first was answered.
@@ -423,21 +426,18 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
 @events_bp.route("/api/events", methods=["POST"])
 @api.validate(
     body=Request(EventCreate),
-    resp=Response(
-        HTTP_201=SuccessResponse,
-        HTTP_422=ErrorResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_500=ErrorResponse,
-    ),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["events"],
 )
 @require_pet_access
 def create_event():
     """Create a new event of any registered type.
 
-    The type is checked against what this person may use. Two records saying the same
-    thing in the same minute by the same person are one record written twice, and the
-    second is refused rather than kept.
+    The type is checked against what this person may use (404 ``event_type_not_found`` otherwise). The same
+    record sent again by the same person within 5 minutes (pet, type, time to the minute, fields and comment all
+    the same) is one record written twice: it is refused with 409 ``duplicate_event``, and ``existing`` says
+    which. For a type charted by value, a reading far from the pet's recent average sends the pet's family a
+    Web Push «Необычное значение» (when push is configured).
     """
     data = request.context.body  # type: ignore[attr-defined]
     pet_id = g.pet_id
@@ -533,14 +533,14 @@ def create_event():
 @events_bp.route("/api/events", methods=["GET"])
 @api.validate(
     query=EventListQuery,
-    resp=Response(HTTP_200=EventListResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=EventListResponse, HTTP_422=ErrorResponse),
     tags=["events"],
 )
 @require_pet_access
 def list_events():
     """List events for the current pet, optionally filtered by type.
 
-    Newest first and paginated. Dates and times are the person's own, kept as they were typed: the zone travels with the record and is taken out again on the device that reads it.
+    Newest first and paginated. Dates and times are the person's own, kept as they were typed: the zone travels with the record (``tz``, the IANA zone it was typed in) and the reading device puts the time on its own clock.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
@@ -561,7 +561,7 @@ def list_events():
 
 @events_bp.route("/api/events/<record_id>", methods=["GET"])
 @api.validate(
-    resp=Response(HTTP_200=EventItem, HTTP_404=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_200=EventItem, HTTP_404=ErrorResponse),
     tags=["events"],
 )
 @require_record_access(EVENTS_COLLECTION)
@@ -580,20 +580,14 @@ def get_event(record_id):
 @events_bp.route("/api/events/<record_id>", methods=["PUT"])
 @api.validate(
     body=Request(EventUpdate),
-    resp=Response(
-        HTTP_200=SuccessResponse,
-        HTTP_422=ErrorResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_404=ErrorResponse,
-        HTTP_500=ErrorResponse,
-    ),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["events"],
 )
 @require_record_access(EVENTS_COLLECTION)
 def update_event(record_id):
     """Update an event. The event's type cannot change.
 
-    The type is fixed once written: a different kind of thing belongs in a new record. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
+    The type is fixed once written: a different kind of thing belongs in a new record. Send ``date`` and ``time`` every time, both: without them the record's time is replaced with the server's current time. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
     """
     from bson import ObjectId  # lazy import to keep this module Mongo-free at import time
 
@@ -639,13 +633,7 @@ def update_event(record_id):
 
 @events_bp.route("/api/events/<record_id>", methods=["DELETE"])
 @api.validate(
-    resp=Response(
-        HTTP_200=SuccessResponse,
-        HTTP_422=ErrorResponse,
-        HTTP_403=ErrorResponse,
-        HTTP_404=ErrorResponse,
-        HTTP_500=ErrorResponse,
-    ),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["events"],
 )
 @require_record_access(EVENTS_COLLECTION)
@@ -674,7 +662,7 @@ def delete_event(record_id):
 
 
 @events_bp.route("/api/events/used-types", methods=["GET"])
-@api.validate(query=PetIdQuery, resp=Response(HTTP_200=UsedEventTypesResponse, HTTP_403=ErrorResponse), tags=["events"])
+@api.validate(query=PetIdQuery, resp=Response(HTTP_404=ErrorResponse, HTTP_200=UsedEventTypesResponse), tags=["events"])
 @require_pet_access
 def used_event_types():
     """The types this pet has at least one record of: what a filter of its history has something to show for.
@@ -688,14 +676,14 @@ def used_event_types():
 @events_bp.route("/api/stats/health", methods=["GET"])
 @api.validate(
     query=HealthStatsQuery,
-    resp=Response(HTTP_200=HealthStatsResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=HealthStatsResponse, HTTP_422=ErrorResponse),
     tags=["stats"],
 )
 @require_pet_access
 def get_health_stats():
     """Get event statistics for charts.
 
-    Counts and sums for the graphs: by day, by type, and the range the chart shows. ``client_date`` and ``tz`` put the buckets on the device's days rather than the server's.
+    Records of one type from the last ``days`` days (30 by default, counted back from now in UTC), oldest first, one point each: ``date`` is the record's time, ``value`` is 1 for a counted type or the charted field's value for a type charted by value. ``type=medications`` gives the doses given (skipped ones left out). An unknown type answers 422 ``invalid_type``.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
@@ -743,14 +731,18 @@ def get_health_stats():
 @events_bp.route("/api/history/timeline", methods=["GET"])
 @api.validate(
     query=TimelineQuery,
-    resp=Response(HTTP_200=TimelineResponse, HTTP_422=ErrorResponse, HTTP_403=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_200=TimelineResponse, HTTP_422=ErrorResponse),
     tags=["events"],
 )
 @require_pet_access
 def get_history_timeline():
     """Get an aggregate timeline of events + medication intakes for a pet.
 
-    Both source collections are indexed on ``{pet_id, date_time}`` — used
+    One page of a pet's records and medication doses, newest first. ``type`` is ``all``, ``medications`` (doses
+    only) or the key of an event type. Event items carry ``record_type``; dose items add ``medication_name`` and
+    ``dose_unit``.
+
+    Both source collections are indexed on ``{pet_id, date_time}``, used
     here for a sorted, `limit`-ed fetch from each instead of loading the
     pet's entire history on every call. Fetching the top
     ``offset + page_size`` from each source (rather than everything) is

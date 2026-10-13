@@ -79,7 +79,8 @@ def create_share(pet_id):
     Only the owner makes one: a link opens the card to anyone who has the address, with no
     sign-in, so letting a co-owner mint one would hand out the pet beyond the owner's choice --
     the same reason inviting another person to the pet is the owner's alone. Revoking a link
-    stays open to anyone with access: that is the safety valve."""
+    stays open to anyone with access: that is the safety valve. At most 10 working links per pet: the next one
+    answers 422 ``validation_error`` until one is revoked or runs out. ``days`` is 1, 7 or 30."""
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
     if access_error:
@@ -109,7 +110,7 @@ def create_share(pet_id):
 @medical_share_bp.route("/api/pets/<pet_id>/medical-card/shares", methods=["GET"])
 @login_required
 @api.validate(
-    resp=Response(HTTP_200=MedicalSharesResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=MedicalSharesResponse, HTTP_404=ErrorResponse),
     tags=["pets"],
 )
 def list_shares(pet_id):
@@ -132,7 +133,7 @@ def list_shares(pet_id):
 @medical_share_bp.route("/api/pets/<pet_id>/medical-card/shares/<share_id>", methods=["DELETE"])
 @login_required
 @api.validate(
-    resp=Response(HTTP_200=MedicalShareRevoked, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=MedicalShareRevoked, HTTP_404=ErrorResponse),
     tags=["pets"],
 )
 def revoke_share(pet_id, share_id):
@@ -208,7 +209,7 @@ def get_shared_card(token):
 
     ``pet_id`` comes only to someone who is signed in and may see the pet: the owner opens
     their own link to show it to a vet, and without a way back the app would be a dead end.
-    A vet gets no id and no door.
+    A vet gets no id and no door: without a session and access the key is not in the answer at all.
     """
     pet, share = _shared_pet(token)
     if not pet:
@@ -232,7 +233,7 @@ def get_shared_card(token):
 def get_shared_card_pdf(token):
     """The same card as a PDF, by the link.
 
-    The card the link opens, as a file, for the vet who asked to keep it. Needs no account, and stops working the moment the link is taken back or runs out.
+    The card the link opens, as a file, for the vet who asked to keep it. Needs no account, and stops working the moment the link is taken back or runs out. A failure to build the file answers 500 ``internal_error``.
     """
     from web.medical_card_full import build_full_card
     from web.medical_card_pdf import render_medical_card_pdf

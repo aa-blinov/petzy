@@ -173,7 +173,7 @@ def registration_status():
 def api_register():
     """Create an account and sign it in.
 
-    Registration may be closed, in which case the form says so before anything is sent. Consent to the policy is required and its version is stored with the account. Five accounts an hour from one address.
+    Registration may be closed (403 `registration_closed`), and GET /api/auth/registration says so before anything is sent. Consent to the policy is required and its version is stored with the account. Логин приводится к нижнему регистру: 3-30 знаков из латиницы, цифр, точки, дефиса и подчёркивания, первый знак буква или цифра (иначе 422 `register_username_invalid`, занятый: `register_username_taken`). Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. Почта записывается в `pending_email`, на неё уходит письмо, и адресом для восстановления она станет после ссылки из письма. С одного адреса: 5 созданных аккаунтов и 30 попыток в час.
     """
     if not registration_open():
         return error_response("registration_closed")
@@ -253,7 +253,9 @@ def password_is_common():
 
     So the form can say so under the field, before the person presses
     anything. The list never leaves the server: only yes or no goes to the
-    screen, about a password that hasn't been sent anywhere yet.
+    screen, about a password that hasn't been sent anywhere yet. The body takes the same model as a reset,
+    so a password shorter than 6 or longer than 100 characters answers 422, not `{"common": false}`:
+    ask once it is at least 6 characters long.
     """
     data = request.context.body  # type: ignore[attr-defined]
     return jsonify({"common": data.password.lower() in COMMON_PASSWORDS})
@@ -303,7 +305,7 @@ def api_login():
 def api_refresh():
     """Refresh access token using refresh token.
 
-    Returns a new pair, and the refresh token in the answer replaces the old one. The previous access token works for about half a minute more, for requests already on their way; a refresh token presented after that is treated as stolen and signs this device out everywhere.
+    Returns a new pair, and the refresh token in the answer replaces the old one. The old refresh token, presented again within 30 seconds (parallel requests, a lost answer), gets the same new pair. Presented later, it is treated as stolen: this sign-in ends and the device has to log in again; other devices are not affected. The old access token is not touched and lives until its own 15 minutes run out.
     """
     # Try to get refresh_token from body (validated by @api.validate) or cookies
     refresh_token = None
@@ -340,6 +342,8 @@ def api_refresh():
 )
 def api_logout():
     """Logout — invalidate this user's refresh tokens.
+
+    Deletes every refresh token of the user, so no device can renew its sign-in. Access tokens already given out (other devices included) still work until their 15 minutes run out. A native app sends its refresh token in the body, the web app sends nothing and is identified by its cookie.
 
     We delete the specific token the cookie carries, AND any other
     tokens belonging to the same user. Logging out is supposed to
@@ -383,7 +387,9 @@ def api_logout():
     tags=["auth"],
 )
 def api_session():
-    """Return the identity behind the current cookies.
+    """Return the identity behind the current access token (cookie or Bearer).
+
+    With an expired access cookie and a live refresh cookie the session is renewed on the way and new cookies come with the answer, so a 401 here means the refresh token is gone too.
 
     This is the SPA's only auth probe. It used to infer "am I signed
     in?" from GET /api/pets, which conflated a cold cache, a failed
@@ -406,7 +412,7 @@ def api_session():
     tags=["auth"],
 )
 def check_admin():
-    """Check if current user is admin (returns 200 with isAdmin flag, no 403).
+    """Check if current user is admin (returns 200 with is_admin, no 403).
 
     Always answers, admin or not, so the app can hide the admin screens without guessing and without the sign-in screen treating a 403 as a broken session.
     """
