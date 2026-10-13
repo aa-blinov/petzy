@@ -52,7 +52,7 @@ def get_vapid_public_key():
 @login_required
 @api.validate(
     body=Request(PushSubscribeRequest),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["push"],
 )
 def subscribe():
