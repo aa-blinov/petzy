@@ -86,3 +86,48 @@ def test_ensure_indexes_drops_legacy_refresh_token_index():
         ensure_indexes()
 
         assert "refresh_token_unique" not in mock_db.refresh_tokens.index_information()
+
+
+def test_ensure_indexes_replaces_index_built_from_an_older_definition():
+    """refresh_token_ttl was first built without its partial filter. A database that still holds that index gets
+    the current one, instead of keeping the old one and warning on every start."""
+    from pymongo import ASCENDING
+
+    cm, mock_db = _patched_db()
+    with cm:
+        mock_db.refresh_tokens.create_index([("expires_at", ASCENDING)], name="refresh_token_ttl", expireAfterSeconds=0)
+
+        ensure_indexes()
+
+        info = mock_db.refresh_tokens.index_information()["refresh_token_ttl"]
+        assert info["partialFilterExpression"] == {"expires_at": {"$exists": True}}
+        assert info["expireAfterSeconds"] == 0
+
+
+def test_ensure_indexes_makes_deleted_account_username_unique():
+    """A repeat delete of one account must hit the unique index. An index built before the unique flag existed is
+    replaced, not left in place."""
+    from pymongo import ASCENDING
+
+    cm, mock_db = _patched_db()
+    with cm:
+        mock_db.deleted_accounts.create_index([("username", ASCENDING)], name="deleted_accounts_username")
+
+        ensure_indexes()
+
+        assert mock_db.deleted_accounts.index_information()["deleted_accounts_username"].get("unique") is True
+
+
+def test_ensure_indexes_keeps_old_index_when_new_one_cannot_be_built():
+    """Duplicate rows block the unique index. The old index must be built back, not left dropped."""
+    from pymongo import ASCENDING
+
+    cm, mock_db = _patched_db()
+    with cm:
+        mock_db.deleted_accounts.create_index([("username", ASCENDING)], name="deleted_accounts_username")
+        mock_db.deleted_accounts.insert_many([{"username": "same"}, {"username": "same"}])
+
+        ensure_indexes()
+
+        info = mock_db.deleted_accounts.index_information()["deleted_accounts_username"]
+        assert not info.get("unique")

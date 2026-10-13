@@ -66,6 +66,42 @@ HEALTH_RECORD_COLLECTIONS = (
 )
 
 
+def _index_matches(existing: dict, keys: list, opts: dict) -> bool:
+    """True when the index already built under this name is the one the code asks for.
+
+    Only what changes how an index behaves is compared: its keys, uniqueness, TTL and partial filter.
+    ``background`` does not change that, so it is left out.
+    """
+    return (
+        [tuple(k) for k in existing["key"]] == [tuple(k) for k in keys]
+        and bool(existing.get("unique")) == bool(opts.get("unique"))
+        and existing.get("expireAfterSeconds") == opts.get("expireAfterSeconds")
+        and existing.get("partialFilterExpression") == opts.get("partialFilterExpression")
+    )
+
+
+def _create_index(coll, keys: list, name: str, opts: dict) -> None:
+    """Create an index, replacing a same-named one that was built from another definition.
+
+    Indexes change after their first build (the unique flag and the TTL partial filter were added later for
+    some). MongoDB refuses a second index under the same name, so the old one is dropped first. If the new
+    definition cannot be built on the data (a unique index over duplicate rows), the old one is built back,
+    so the collection is never left without it.
+    """
+    existing = coll.index_information().get(name)
+    if not existing or _index_matches(existing, keys, opts):
+        coll.create_index(keys, name=name, background=True, **opts)
+        return
+    coll.drop_index(name)
+    try:
+        coll.create_index(keys, name=name, background=True, **opts)
+    except Exception:
+        restore = ("unique", "expireAfterSeconds", "partialFilterExpression")
+        old_opts = {k: existing[k] for k in restore if k in existing}
+        coll.create_index(existing["key"], name=name, background=True, **old_opts)
+        raise
+
+
 def ensure_indexes() -> None:
     """Create the indexes the application relies on.
 
@@ -256,10 +292,10 @@ def ensure_indexes() -> None:
         name = spec[2]
         opts = spec[3] if len(spec) > 3 else {}
         try:
-            coll.create_index(keys, name=name, background=True, **opts)
+            _create_index(coll, keys, name, opts)
         except Exception as exc:  # pragma: no cover — defensive
-            # Don't fail startup if an index already exists under a
-            # different name with conflicting options; log and move on.
+            # Don't fail startup on an index that cannot be built (a unique
+            # index over duplicate rows); log and move on.
             logger.warning("Could not create index %s on %s: %s", name, coll.name, exc)
 
 
