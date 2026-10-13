@@ -90,6 +90,8 @@
        at 1.8-3.3:1. */
     --app-danger-text: #B3261E;
     --app-warning-text: #9A5800;
+    /* Red on the inverted bar (the snackbar): that bar is dark in the light theme, so the light red. */
+    --app-danger-on-inverse: #FF8A80;
     --app-success-text: #1E7A3C;
     --app-info-text: #0062C4;
     --app-violet-text: #8E3BB8;
@@ -731,6 +733,7 @@ html[data-prefers-color-scheme='dark'] {
     /* 4.248:1 on the soft accent, which is the ground under the important block's title. */
     --app-danger-text: #FF8B82;
     --app-warning-text: #FFB340;
+    --app-danger-on-inverse: #B3261E;
     --app-success-text: #5FD47E;
     --app-info-text: #64B5FF;
     --app-violet-text: #DA8FFF;

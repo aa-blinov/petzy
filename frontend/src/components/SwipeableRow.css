@@ -19,7 +19,6 @@
     /* Spring back when the user releases without committing. The
        transition is paused while dragging so the row tracks 1:1. */
     transition: transform var(--motion-duration-slow) var(--motion-ease-spring);
-    will-change: transform;
     touch-action: pan-y pinch-zoom;
     /* Allow the inner card-soft to keep its rounded corners. */
     border-radius: var(--radius-lg);
@@ -29,6 +28,8 @@
     /* Cancel the spring while the pointer is down — direct manipulation
        feels native, the bounce only kicks in on release. */
     transition: none;
+    /* A layer of its own only while the finger moves it: a long feed would otherwise keep one per row. */
+    will-change: transform;
     /* A horizontal mouse drag would otherwise select the row's text. */
     user-select: none;
     -webkit-user-select: none;

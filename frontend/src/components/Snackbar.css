@@ -42,14 +42,9 @@
     color: var(--app-accent-soft);
 }
 
-/* The light red reads on the dark bar of the light theme; the dark theme's
-   bar is light, so the deeper red. */
+/* The bar is inverted to the theme, so its red is the inverted one too. */
 .snackbar--error .snackbar__icon {
-    color: #FF8A80;
-}
-
-html[data-prefers-color-scheme='dark'] .snackbar--error .snackbar__icon {
-    color: #B3261E;
+    color: var(--app-danger-on-inverse);
 }
 
 .snackbar__action {
