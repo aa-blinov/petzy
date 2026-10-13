@@ -48,7 +48,7 @@ export function EmptyState({
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        padding: compact ? '24px 16px' : '40px 24px',
+        padding: compact ? 'var(--spacing-xl) var(--spacing-lg)' : 'var(--spacing-xl)',
       }}
     >
       <div

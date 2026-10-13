@@ -428,7 +428,7 @@ export function DocumentsList() {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     flexShrink: 0,
-                                    fontSize: 10,
+                                    fontSize: 'var(--text-xs)',
                                     fontWeight: 700,
                                     letterSpacing: '0.02em',
                                   }}

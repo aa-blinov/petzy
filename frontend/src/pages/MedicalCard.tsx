@@ -750,7 +750,7 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
             <Sparkline points={card.weight.series.map((w) => w.value)} />
             <div className="medcard__row-sub medcard__row-sub--meta">
               {weightDelta(card.weight.series) ?? ''}
-              {weightDelta(card.weight.series) ? ' · ' : ''}
+              {weightDelta(card.weight.series) ? ', ' : ''}
               {card.weight.series.length} {pluralRu(card.weight.series.length, 'замер', 'замера', 'замеров')}, {formatDate(card.weight.series[card.weight.series.length - 1].date)}
               {(() => {
                 const values = card.weight!.series.map((w) => w.value);
