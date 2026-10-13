@@ -1045,7 +1045,8 @@ export function PetForm() {
                 onConfirm={async () => {
                   await deletePet(pet);
                   release();
-                  goBack(navigate, '/pets');
+                  // In the app, not back in history: see HealthRecordForm. The «Отменить» bar must outlive this screen.
+                  navigate('/pets', { replace: true });
                 }}
               />
             )}
@@ -1057,7 +1058,7 @@ export function PetForm() {
                 onConfirm={async () => {
                   await leavePet(pet);
                   release();
-                  goBack(navigate, '/pets');
+                  navigate('/pets', { replace: true });
                 }}
               />
             )}
