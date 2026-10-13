@@ -59,7 +59,7 @@ def subscribe():
 
     One subscription per ``endpoint``: subscribing the same browser again updates it instead of adding a second.
     ``timezone`` is an IANA zone: medication reminder times are read on this clock (the first subscription on
-    record among a pet's recipients decides), and an unknown name means reminders for those pets are not sent.
+    record among a pet's recipients decides); an unknown name answers 422.
     ``endpoint`` must be an https URL of a known push service, not an IP
     address. An endpoint already registered to another account with other keys answers 422
     ``push_subscription_taken``; with the same keys the subscription moves to the caller.

@@ -28,6 +28,7 @@ from web.security import (
     create_access_token,
     create_refresh_token,
     verify_user_credentials,
+    revoke_user_sessions,
     ADMIN_USERNAME,
 )
 from web.schemas import (
@@ -40,7 +41,7 @@ from web.schemas import (
     RegisterRequest,
     RegistrationStatusResponse,
     PasswordCommonCheckResponse,
-    UserPasswordResetRequest,
+    PasswordCommonCheckRequest,
     SuccessResponse,
     ErrorResponse,
 )
@@ -241,10 +242,8 @@ def api_register():
 
 @auth_bp.route("/api/auth/password/common", methods=["POST"])
 @limiter.limit("60 per hour")
-# UserPasswordResetRequest is the schemas.py model with a single password
-# field; a dedicated one (PasswordCommonCheckRequest) belongs there too.
 @api.validate(
-    body=Request(UserPasswordResetRequest),
+    body=Request(PasswordCommonCheckRequest),
     resp=Response(HTTP_200=PasswordCommonCheckResponse),
     tags=["auth"],
 )
@@ -253,9 +252,7 @@ def password_is_common():
 
     So the form can say so under the field, before the person presses
     anything. The list never leaves the server: only yes or no goes to the
-    screen, about a password that hasn't been sent anywhere yet. The body takes the same model as a reset,
-    so a password shorter than 6 or longer than 100 characters answers 422, not `{"common": false}`:
-    ask once it is at least 6 characters long.
+    screen, about a password that hasn't been sent anywhere yet. Any length is answered, up to 200 characters.
     """
     data = request.context.body  # type: ignore[attr-defined]
     return jsonify({"common": data.password.lower() in COMMON_PASSWORDS})
@@ -343,7 +340,7 @@ def api_refresh():
 def api_logout():
     """Logout — invalidate this user's refresh tokens.
 
-    Deletes every refresh token of the user, so no device can renew its sign-in. Access tokens already given out (other devices included) still work until their 15 minutes run out. A native app sends its refresh token in the body, the web app sends nothing and is identified by its cookie (when both come, the cookie wins). The answer is always 200, with no token or an unknown or expired one too, and both cookies are cleared.
+    Ends every session of the user on every device at once: the refresh tokens are deleted, and access tokens already given out stop working too, as after a password change. A native app sends its refresh token in the body, the web app sends nothing and is identified by its cookie (when both come, the cookie wins). The answer is always 200, with no token or an unknown or expired one too, and both cookies are cleared.
 
     We delete the specific token the cookie carries, AND any other
     tokens belonging to the same user. Logging out is supposed to
@@ -366,9 +363,9 @@ def api_logout():
         username = payload.get("username") if payload else None
 
         if username:
-            # Drop every refresh token for this user. Cheap because
-            # refresh_tokens collection is small (TTL keeps it bounded).
-            app.db["refresh_tokens"].delete_many({"username": username})
+            # Every session, not only the refresh tokens: access tokens already given out stop at once too,
+            # as after a password change, instead of living on for their 15 minutes.
+            revoke_user_sessions(username)
         else:
             # Couldn't decode — fall back to removing the specific token.
             app.db["refresh_tokens"].delete_one({"token": refresh_token})

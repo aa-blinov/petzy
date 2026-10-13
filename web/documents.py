@@ -454,6 +454,7 @@ def complete_scan_upload(upload_id):
 
 
 @documents_bp.route("/api/documents", methods=["GET"])
+@login_required
 @api.validate(
     query=DocumentListQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=DocumentListResponse, HTTP_422=ErrorResponse),
@@ -514,6 +515,7 @@ def get_document(id):
 
 
 @documents_bp.route("/api/documents/<id>", methods=["PUT"])
+@login_required
 @api.validate(
     body=Request(DocumentUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
@@ -756,6 +758,7 @@ def get_document_download(id):
 
 
 @documents_bp.route("/api/documents/<id>/file", methods=["GET"])
+@login_required
 @api.validate(
     query=PhotoQueryParams,
     resp=Response(HTTP_200=None, HTTP_404=ErrorResponse),

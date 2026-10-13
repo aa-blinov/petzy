@@ -1819,7 +1819,7 @@ class EventTypeUpdate(BaseModel):
 
     @model_validator(mode="after")
     def chart_has_its_field(self):
-        # Only when the same request carries both: a chart sent alone is checked against the fields already stored.
+        # Here only when the same request carries both; the view checks a chart or fields sent alone against what is stored.
         if self.chart is not None and self.fields is not None:
             _chart_names_a_number_field(self.chart, self.fields)
         return self
@@ -2935,9 +2935,27 @@ def _validate_push_endpoint(v: str) -> str:
 class PushSubscribeRequest(BaseModel):
     endpoint: str = Field(..., min_length=1, max_length=2048, description="URL пуш-сервиса браузера")
     keys: PushSubscriptionKeys
-    timezone: str = Field(..., min_length=1, max_length=64, description="IANA-имя часового пояса (напр. Asia/Almaty)")
+    timezone: str = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="IANA-имя часового пояса (напр. Asia/Almaty): на этих часах читается время напоминаний",
+    )
 
     _check_endpoint = field_validator("endpoint")(_validate_push_endpoint)
+
+    @field_validator("timezone")
+    @classmethod
+    def known_timezone(cls, v):
+        # An unknown name was stored as sent, and the reminder sender then skipped the pet without a word.
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError, OSError):
+            raise ValueError("Неизвестный часовой пояс")
+        return v
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {

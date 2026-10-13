@@ -6,6 +6,7 @@ from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 
 import web.app as app
+from web.security import login_required
 from web.app import api
 from web.errors import error_response, MedicationNotFoundDuringDeletion
 from web.courses import course_covers, course_status
@@ -24,6 +25,7 @@ from web.helpers import (
     ru_dose_unit,
     valid_tz,
 )
+from web.messages import get_message
 from web.schemas import (
     MedicationCreate,
     MedicationRestock,
@@ -159,6 +161,7 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
 
 
 @medications_bp.route("/api/medications", methods=["POST"])
+@login_required
 @api.validate(
     body=Request(MedicationCreate),
     resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse),
@@ -185,13 +188,14 @@ def add_medication():
 
         result = app.db.medications.insert_one(medication_data)
 
-        return jsonify({"message": "Medication course created", "id": str(result.inserted_id)}), 201
+        return get_message("medication_created", status=201, id=str(result.inserted_id))
     except Exception as e:
         app.logger.error(f"Error adding medication: {e}")
         return error_response("internal_error")
 
 
 @medications_bp.route("/api/medications", methods=["GET"])
+@login_required
 @api.validate(
     query=MedicationListQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=MedicationListResponse),
@@ -319,8 +323,7 @@ def get_medication(id):
 
     The course with its stock and last dose. Thinner than an item of the list: no ``last_taken_by``,
     ``last_taken_tz``, ``scheduled_today``, ``open_slots_today`` or ``course_status``; ``intakes_today`` is
-    counted from midnight UTC, and ``created_at`` comes as an HTTP date (``Tue, 13 Oct 2026 08:00:00 GMT``),
-    not ``YYYY-MM-DD HH:MM``.
+    counted from midnight UTC.
     """
     try:
         record = g.record
@@ -348,6 +351,9 @@ def get_medication(id):
         # screens it is opened from.
         record["dose_unit"] = ru_dose_unit(record.get("dose_unit") or record.get("unit"))
         _add_stock_status(record)
+        # The list's format, not Flask's HTTP date («Tue, 13 Oct 2026 08:00:00 GMT»).
+        if isinstance(record.get("created_at"), datetime):
+            record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
         return jsonify({"medication": record})
     except Exception as e:
         app.logger.error(f"Error fetching medication: {e}")
@@ -355,6 +361,7 @@ def get_medication(id):
 
 
 @medications_bp.route("/api/medications/<id>", methods=["PUT"])
+@login_required
 @api.validate(
     body=Request(MedicationUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
@@ -394,7 +401,7 @@ def update_medication(id):
 
         app.db.medications.update_one({"_id": medication_id}, {"$set": update_data})
 
-        return jsonify({"message": "Medication updated"})
+        return get_message("medication_updated")
     except Exception as e:
         app.logger.error(f"Error updating medication: {e}")
         return error_response("internal_error")
@@ -461,7 +468,7 @@ def delete_medication(id):
                 # Re-raise if it's not a transaction-related error
                 raise
 
-        return jsonify({"message": "Medication course and history deleted"})
+        return get_message("medication_deleted")
     except Exception as e:
         app.logger.error(f"Error deleting medication: {e}")
         return error_response("internal_error")
@@ -530,6 +537,7 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
 
 
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
+@login_required
 @api.validate(
     body=Request(MedicationIntakeCreate),
     resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse),
@@ -686,13 +694,14 @@ def log_intake(id):
             raise
 
         # The id lets the client offer «Отменить» for a dose logged by mistake.
-        return jsonify({"message": "Intake logged", "id": str(inserted.inserted_id), "ran_out": ran_out}), 201
+        return get_message("intake_logged", status=201, id=str(inserted.inserted_id), ran_out=ran_out)
     except Exception as e:
         app.logger.error(f"Error logging intake: {e}")
         return error_response("internal_error")
 
 
 @medications_bp.route("/api/medications/<id>/restock", methods=["POST"])
+@login_required
 @api.validate(
     body=Request(MedicationRestock),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
@@ -702,12 +711,13 @@ def log_intake(id):
 def restock_medication(id):
     """Add a bought pack to the stock (and start tracking it if it wasn't).
 
-    If the course has no stock count yet, the amount becomes the stock; otherwise it is added to it (a course whose counting was switched off keeps its old count). The answer carries the new ``inventory_current``. No dose is recorded, so no reminder moves.
+    If the course has no stock count yet, or counting was switched off, the amount becomes the stock; otherwise it is added to it. The answer carries the new ``inventory_current``. No dose is recorded, so no reminder moves.
     """
     try:
         medication = g.record
         amount = request.context.body.amount  # type: ignore[attr-defined]
-        if medication.get("inventory_current") is None:
+        # A count kept while counting was off says nothing about the shelf: the pack starts the count again.
+        if medication.get("inventory_current") is None or not medication.get("inventory_enabled"):
             app.db.medications.update_one(
                 {"_id": medication["_id"]},
                 {"$set": {"inventory_current": amount, "inventory_enabled": True}},
@@ -719,13 +729,14 @@ def restock_medication(id):
                 {"$inc": {"inventory_current": amount}, "$set": {"inventory_enabled": True}},
             )
         updated = app.db.medications.find_one({"_id": medication["_id"]}, {"inventory_current": 1})
-        return jsonify({"message": "Stock added", "inventory_current": updated.get("inventory_current")})
+        return get_message("stock_added", inventory_current=updated.get("inventory_current"))
     except Exception as e:
         app.logger.error(f"Error restocking medication: {e}")
         return error_response("internal_error")
 
 
 @medications_bp.route("/api/medications/intakes", methods=["GET"])
+@login_required
 @api.validate(
     query=PetIdPaginationQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=MedicationIntakeListResponse),
@@ -771,6 +782,7 @@ def get_medication_intakes():
 
 
 @medications_bp.route("/api/medications/intakes/<id>", methods=["PUT"])
+@login_required
 @api.validate(
     body=Request(MedicationIntakeUpdate),
     resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
@@ -804,7 +816,7 @@ def update_intake(id):
             # closes the one that time is nearest to (see web/dose_slots.py).
             update["$unset"] = {"slot_date": "", "slot_time": ""}
         app.db.medication_intakes.update_one({"_id": intake["_id"]}, update)
-        return jsonify({"message": "Intake updated"})
+        return get_message("intake_updated")
     except Exception as e:
         app.logger.error(f"Error updating intake: {e}")
         return error_response("internal_error")
@@ -837,13 +849,14 @@ def delete_intake(id):
 
         app.db.medication_intakes.delete_one({"_id": intake_id})
 
-        return jsonify({"message": "Intake deleted"})
+        return get_message("intake_deleted")
     except Exception as e:
         app.logger.error(f"Error deleting intake: {e}")
         return error_response("internal_error")
 
 
 @medications_bp.route("/api/medications/upcoming", methods=["GET"])
+@login_required
 @api.validate(
     query=UpcomingDosesQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=UpcomingDosesResponse),
