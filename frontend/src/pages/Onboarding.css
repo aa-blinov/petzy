@@ -247,7 +247,7 @@
     display: grid;
     place-items: center;
     border-radius: var(--radius-md);
-    color: #3B2A1E;
+    color: var(--app-text-on-tile);
 }
 
 /* Scans read as film, like their badge in the documents list: the
@@ -391,7 +391,7 @@
     display: grid;
     place-items: center;
     border-radius: var(--radius-md);
-    color: #fff;
+    color: var(--app-text-on-dark);
     box-shadow: 0 12px 26px -10px rgba(60, 40, 20, 0.45);
 }
 
@@ -407,7 +407,7 @@
     margin-left: -8px;
     border-radius: 50%;
     border: 2px solid var(--app-card-background);
-    color: #3B2A1E;
+    color: var(--app-text-on-tile);
     font-family: var(--font-display);
     font-size: 12px;
     font-weight: 700;
@@ -452,7 +452,7 @@
     display: grid;
     place-items: center;
     border-radius: 22px;
-    color: #fff;
+    color: var(--app-text-on-dark);
 }
 
 /* ── Setup: name ─────────────────────────────────────────────────── */
@@ -465,7 +465,7 @@
     border-radius: 42px;
     display: grid;
     place-items: center;
-    color: #fff;
+    color: var(--app-text-on-dark);
     cursor: pointer;
     box-shadow: 0 18px 40px -16px rgba(60, 40, 20, 0.5);
     overflow: visible;
@@ -553,7 +553,7 @@
     place-items: center;
     border-radius: 36px;
     background: var(--app-brand-gradient);
-    color: #fff;
+    color: var(--app-text-on-dark);
     box-shadow: 0 20px 44px -16px rgba(196, 106, 63, 0.6);
 }
 
@@ -577,7 +577,7 @@
     place-items: center;
     border-radius: 42px;
     overflow: hidden;
-    color: #fff;
+    color: var(--app-text-on-dark);
     box-shadow: 0 18px 40px -16px rgba(60, 40, 20, 0.5);
     animation: onb-pop 480ms var(--motion-ease-emphasized) 120ms both;
 }
