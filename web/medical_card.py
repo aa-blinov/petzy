@@ -399,7 +399,11 @@ def get_medical_card(pet_id):
     Read only: nothing here is edited, the card is put together on the spot out of
     what the pet already has. Anyone the pet is shared with may read it. The answer
     is marked no-store, and so is the PDF, because a card carries the owner's notes
-    about their animal.
+    about their animal. ``records`` always has all four kinds, empty lists included. ``weight.series`` holds
+    at most 12 points; ``documents`` the latest 5 results and conclusions (``lab_result``, ``conclusion``);
+    ``vaccinations`` leaves out a certificate attached to a record, or renewed by a vaccination record with
+    the same title dated on or after the day the certificate was filed. ``tz`` decides which day «today» is;
+    an unknown zone is read as UTC.
     """
     card, error = _card_for(pet_id)
     if error:
@@ -487,8 +491,9 @@ def put_medical_profile(pet_id):
     Anyone with access to the pet may: it is the household's shared knowledge
     about the animal, like its weight and medicines, not the owner's setting.
     Unlike the pet card, which only the owner edits. A save made from an older copy answers 409 and
-    brings ``profile``, the profile as it is now. Allergies together with ``allergies_none_known: true``
-    answer 422.
+    brings ``profile``, the profile as it is now. Without ``base_version`` the check is skipped and the save
+    overwrites what is stored; ``""`` means the copy had no version yet. Allergies together with
+    ``allergies_none_known: true`` answer 422.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
@@ -547,8 +552,9 @@ def _visit_prep_conflict(pet: dict):
 def put_visit_prep(pet_id):
     """What to tell the vet at the next appointment: the complaint and what has changed.
 
-    Anyone with access to the pet may write it, like the profile. Empty clears it, and
-    the visit form does that once the visit is recorded.
+    Anyone with access to the pet may write it, like the profile. Empty (a blank ``complaint`` and ``checks``
+    ``{}``) clears it and answers ``{"visit_prep": null}``; the visit form does that once the visit is recorded.
+    Without ``base_version`` the check is skipped and the save overwrites what is stored.
 
     The note carries a version like the vet profile does: two phones editing it used to
     leave whoever pressed last as the only truth, silently. A save made from an older

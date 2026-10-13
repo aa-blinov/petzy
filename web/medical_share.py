@@ -116,6 +116,8 @@ def create_share(pet_id):
 def list_shares(pet_id):
     """The links to the card that work now, newest first. Without their secrets: those are not kept.
 
+    Any member of the pet may read them, with the login of whoever made each link.
+
     Revoked and expired links are gone from here, so the list is what is still
     usable. The address itself is shown once, when the link is made, and only its
     hash is stored: there is nothing here to copy and send twice.
@@ -141,7 +143,8 @@ def revoke_share(pet_id, share_id):
 
     The card itself is untouched, and the revoking party is not recorded anywhere
     the owner sees. Any member of the pet may do this, owner included. Making a link is different:
-    only the owner may.
+    only the owner may. A malformed id, or a link already revoked, answers 404 ``not_found``; a link that
+    ran out but was never revoked answers 200 ``{"revoked": true}``.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)

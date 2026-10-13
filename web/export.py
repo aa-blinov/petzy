@@ -359,7 +359,7 @@ def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, Expo
 def export_data(export_type, format_type):
     """Export data in various formats.
 
-    One pet's records as a file. ``export_type`` is an event type key, ``medications`` or ``all``; ``format_type`` is ``csv``, ``tsv``, ``html`` or ``md``. ``all`` gives a ZIP with one file per record type that has records. ``tz`` puts the file name and every record's time on that zone's clock. Nothing to export answers 404 ``no_data_for_export``; an unknown type or format answers 422 ``export_invalid_type`` or ``export_invalid_format``. The file comes back with the answer instead of being stored anywhere.
+    One pet's records as a file. ``export_type`` is an event type key, ``medications`` or ``all``; ``format_type`` is ``csv``, ``tsv``, ``html`` or ``md``. ``all`` gives a ZIP with one file per record type that has records. ``tz`` puts the file name on that zone's clock, and the time of every record that has its own zone; a record without one keeps its time as typed, and without a known ``tz`` the name is stamped in UTC. The file name comes in ``Content-Disposition`` (``filename*=UTF-8''…``); dates in the file are ``DD.MM.YYYY HH:MM``, numbers use a decimal comma, CSV is UTF-8 with a BOM. Nothing to export answers 404 ``no_data_for_export``; an unknown type or format answers 422 ``export_invalid_type`` or ``export_invalid_format``. The file comes back with the answer instead of being stored anywhere.
     """
     try:
         pet_id = g.pet_id  # Provided by @require_pet_access

@@ -201,7 +201,7 @@ def add_medication():
 def get_medications():
     """List medication courses for a pet.
 
-    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. ``client_date`` is the device's today: today's doses (``intakes_today``, ``scheduled_today``, ``open_slots_today``) and the course status are read against it. The list is not paged.
+    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. ``client_date`` is the device's today: today's doses (``intakes_today``, ``scheduled_today``, ``open_slots_today``) and the course status are read against it. ``intakes_today`` counts every intake from the start of that day on, skips and doses logged ahead included. The list is not paged.
     """
     try:
         query_params = request.context.query
@@ -318,8 +318,9 @@ def get_medication(id):
     """Fetch a single medication course by id.
 
     The course with its stock and last dose. Thinner than an item of the list: no ``last_taken_by``,
-    ``scheduled_today``, ``open_slots_today`` or ``course_status``, and ``intakes_today`` is counted from
-    midnight UTC.
+    ``last_taken_tz``, ``scheduled_today``, ``open_slots_today`` or ``course_status``; ``intakes_today`` is
+    counted from midnight UTC, and ``created_at`` comes as an HTTP date (``Tue, 13 Oct 2026 08:00:00 GMT``),
+    not ``YYYY-MM-DD HH:MM``.
     """
     try:
         record = g.record
@@ -538,7 +539,7 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
 def log_intake(id):
     """Log a medication intake.
 
-    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when, and ``force: true`` records it anyway (skips and «as needed» courses are not checked). A date or time that is invalid or more than 8 days ahead answers 422. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops.
+    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when. With a slot, a slot closed by a skip counts as marked too; without one, «already marked» is a given dose of this course within 30 minutes either side. ``force: true`` records it anyway, and then the new intake closes the nearest other open slot of that day (the evening dose, say). Skips and courses without scheduled times are not checked. A date or time that is invalid or more than 8 days ahead answers 422. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops.
     """
     try:
         medication = g.record

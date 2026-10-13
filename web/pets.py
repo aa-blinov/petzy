@@ -327,7 +327,8 @@ def update_pet(pet_id):
     The owner only. Anyone the pet is shared with may read it but is told that the
     action is the owner's. Fields left out keep their value, and ``remove_photo``
     drops the photo without touching the rest. An empty ``birth_date`` keeps the date
-    rather than clearing it. A new photo is handled as at creation.
+    rather than clearing it. A new photo is handled as at creation. A body that changes nothing answers
+    422 ``validation_error_no_update_data``.
     """
     try:
         # @login_required already guarantees request.current_user is set.
@@ -458,7 +459,9 @@ def share_pet(pet_id):
 
     An invitation, not access: it takes effect once they accept
     (``/invite/accept``). ``username`` is the exact login, case included (as GET /api/users/search returns it);
-    a switched-off account answers the same 404 ``user_not_found`` as a missing one. Handing out access directly let anyone put a pet
+    a switched-off account answers the same 404 ``user_not_found`` as a missing one. 422 codes:
+    ``validation_error_username_required`` (blank), ``validation_error_self_share``,
+    ``validation_error_already_shared`` (already a member) and ``share_already_invited``. Handing out access directly let anyone put a pet
     on anyone's account, and with it reminders worded by the sender on
     their devices and the sender inside their «circle».
     """
@@ -616,7 +619,10 @@ def put_pet_form_defaults(pet_id):
     """What a new record's form starts with for this pet.
 
     Anyone who can add its records can set it, owner or not: the food in the
-    bowl is known to whoever feeds the pet.
+    bowl is known to whoever feeds the pet. Replaces the whole set. Type and field names are 1-64 of latin
+    letters, digits, ``_`` and ``-``; ``date``, ``time``, ``comment``, ``pet_id``, ``_id``, ``type`` and
+    ``username`` cannot be remembered. At most 40 types, 30 fields per type and 300 values in all, a value up
+    to 200 characters after trimming; otherwise 422. Read them back from ``form_defaults`` in GET /api/pets/{pet_id}.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username)
@@ -638,7 +644,8 @@ def put_pet_look(pet_id):
     """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop, the scene and the crops.
 
     The owner's to set: the family sees it, but a sitter or a vet with access
-    does not restyle someone else's pet. The body replaces the whole look: a part left out is cleared.
+    does not restyle someone else's pet. The body replaces the whole look: a part left out or empty is dropped,
+    and with every part empty the look is removed. Unknown values answer 422 (the allowed ones are in the schema).
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
@@ -896,7 +903,8 @@ def get_pet_photo(pet_id):
     Readable by everyone the pet is shared with. ``?w=`` and ``?h=`` give a smaller
     copy for a list that has no reason to pull the original: they are rounded up to the nearest standard size,
     and above 1440 px the original goes out. Without them the stored photo goes out as it is: a WebP, or JPEG,
-    PNG or GIF for photos stored before the conversion. The answer carries an ETag; a matching
+    PNG or GIF for photos stored before the conversion, and any other stored type as
+    ``application/octet-stream`` with ``Content-Disposition: attachment``. The answer carries an ETag; a matching
     ``If-None-Match`` gets an empty 304. A pet without a photo answers 404 ``photo_not_found``.
     """
     try:

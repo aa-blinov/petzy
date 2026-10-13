@@ -221,7 +221,9 @@ def update_event_type(key):
 
     A custom type by its author only (403 ``event_type_not_yours``). A builtin type is the same for every
     user, so renaming it renamed it for everyone: an admin's change only (403 ``event_type_builtin_admin_only``).
-    The same rules as at creation. When ``fields`` is sent again, ``max``, ``step`` and ``deviation_threshold``
+    The rules of creation apply, with one gap: ``chart.value_field`` is checked against ``fields`` only when both
+    come in the same request, so a chart sent alone, or fields sent without the chart, are not checked against
+    what is stored. When ``fields`` is sent again, ``max``, ``step`` and ``deviation_threshold``
     left out of a field are kept from the stored field of the same name.
     """
     # @login_required already guarantees request.current_user is set.
@@ -277,10 +279,9 @@ def delete_event_type(key):
     with ``events_count``; repeated with ``?with_events=true`` it deletes the type together with all of its
     records, on every pet.
 
-    ``?preview=true`` counts the records and deletes nothing (the answer carries ``events_count``): the question
-    «удалить тип вместе с записями?» is asked once, with the number in it.
-    Before, the first question knew nothing about the records and the
-    number only turned up in the second one, after the first was answered.
+    ``?preview=true`` counts the records and deletes nothing (the answer carries ``events_count``), so the question
+    «удалить тип вместе с записями?» is asked once, with the number in it. Only the literal ``true`` counts for
+    ``preview`` and ``with_events``: ``1`` or ``True`` is not a preview, and a type without records is then deleted.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -436,8 +437,9 @@ def create_event():
     The type is checked against what this person may use (404 ``event_type_not_found`` otherwise). The same
     record sent again by the same person within 5 minutes (pet, type, time to the minute, fields and comment all
     the same) is one record written twice: it is refused with 409 ``duplicate_event``, and ``existing`` says
-    which. For a type charted by value, a reading far from the pet's recent average sends the pet's family a
-    Web Push «Необычное значение» (when push is configured).
+    which. For a type charted by value, a reading far from the average of the pet's last 5 (at least 3 earlier
+    readings; 15% by default, or the field's own ``deviation_threshold``) sends the pet's family a
+    Web Push «Необычное значение» (when push is configured). Keys the type does not declare are dropped. A number field becomes a float and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone.
     """
     data = request.context.body  # type: ignore[attr-defined]
     pet_id = g.pet_id
@@ -587,7 +589,7 @@ def get_event(record_id):
 def update_event(record_id):
     """Update an event. The event's type cannot change.
 
-    The type is fixed once written: a different kind of thing belongs in a new record. Send ``date`` and ``time`` every time, both: without them the record's time is replaced with the server's current time. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
+    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Send ``date`` and ``time`` every time, both: without them the record's time is replaced with the server's current time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
     """
     from bson import ObjectId  # lazy import to keep this module Mongo-free at import time
 
@@ -640,7 +642,7 @@ def update_event(record_id):
 def delete_event(record_id):
     """Delete an event.
 
-    The record goes. What was counted from it goes with it, and the day and the totals it was part of close up again.
+    The record goes. Any member of the pet may delete any of its records, whoever wrote it. What was counted from it goes with it, and the day and the totals it was part of close up again.
     """
     from bson import ObjectId
 
@@ -683,7 +685,7 @@ def used_event_types():
 def get_health_stats():
     """Get event statistics for charts.
 
-    Records of one type from the last ``days`` days (30 by default, counted back from now in UTC), oldest first, one point each: ``date`` is the record's time, ``value`` is 1 for a counted type or the charted field's value for a type charted by value. ``type=medications`` gives the doses given (skipped ones left out). An unknown type answers 422 ``invalid_type``.
+    Records of one type from the last ``days`` days (30 by default, counted back from now in UTC), oldest first, one point each: ``date`` is the record's time, ``value`` is 1 for a counted type or the charted field's value for a type charted by value. ``type=medications`` gives the doses given (skipped ones left out). An unknown type answers 422 ``invalid_type``. ``days=0`` is read as 30 and a negative value gives nothing. A record of a value-charted type without that field gives ``value: 0``.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
@@ -739,18 +741,9 @@ def get_history_timeline():
     """Get an aggregate timeline of events + medication intakes for a pet.
 
     One page of a pet's records and medication doses, newest first. ``type`` is ``all``, ``medications`` (doses
-    only) or the key of an event type. Event items carry ``record_type``; dose items add ``medication_name`` and
-    ``dose_unit``.
-
-    Both source collections are indexed on ``{pet_id, date_time}``, used
-    here for a sorted, `limit`-ed fetch from each instead of loading the
-    pet's entire history on every call. Fetching the top
-    ``offset + page_size`` from each source (rather than everything) is
-    still enough to answer this page correctly: any record that belongs
-    in the merged page can be at most that far down within its own
-    collection, since everything ahead of it globally is also ahead of
-    it within its source. Medication names are batch-resolved with one
-    `$in` query instead of a `find_one` per intake.
+    only) or the key of an event type; a key that is not known gives an empty list, not an error. Event items carry
+    ``record_type`` in place of ``type``. Dose items include skipped ones (``skipped``) and add ``medication_name``
+    and ``dose_unit`` while the course still exists.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id

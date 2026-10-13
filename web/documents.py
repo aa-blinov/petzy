@@ -229,8 +229,10 @@ def create_document():
     32 hex, to be able to cancel it) as form fields and the file itself under the ``file`` field; unlike
     pet creation, the file is mandatory here. ``category``: vaccination, lab_result, conclusion, imaging,
     insurance or other. JPEG, PNG, WebP, HEIC/HEIF or PDF up to 10 MB (422 ``document_file_too_large``; a body
-    over 16 MB stops at 413). A file whose content is not what its type says answers 422
-    ``document_content_mismatch``, an exceeded quota 422 ``storage_quota_exceeded``.
+    over 16 MB stops at 413, and the server's proxy may stop it after 10 MB). Another type answers 422
+    ``document_unsupported_type``, no file ``document_file_required``, content that is not what its type says
+    ``document_content_mismatch``, an exceeded quota ``storage_quota_exceeded``: the quota is the pet owner's,
+    whoever uploads.
     """
     try:
         # @api.validate(body=Request(DocumentCreate)) already parsed and
@@ -318,10 +320,11 @@ def create_scan_upload():
     """Reserve a slot and a signed URL to PUT a scan archive to storage.
 
     The file never passes through this process (see web/storage.py); it is
-    checked when the client confirms the upload. Archives (ZIP, 7z, RAR, tar, gzip), DICOM and ISO
-    (422 ``scan_unsupported_type`` otherwise), up to the storage's size (422 ``scan_too_large``). The reserved
-    size counts against the quota at once (422 ``storage_quota_exceeded``). At most 3 unconfirmed uploads per
-    person (429 ``too_many_pending_uploads``).
+    checked when the client confirms the upload. The format is taken from the ``filename`` extension only:
+    .zip, .7z, .rar, .tar, .tar.gz, .tgz, .gz, .dcm, .iso (422 ``scan_unsupported_type`` otherwise, a DICOM file
+    without .dcm included), up to the storage's size (422 ``scan_too_large``). The reserved size counts against
+    the quota at once (422 ``storage_quota_exceeded``). At most 3 unconfirmed uploads begun in the last hour per
+    person (429 ``too_many_pending_uploads``). A slot left unconfirmed is swept after 6 hours. Scans take no ``tz``.
     """
     if not storage.storage_configured():
         return error_response("storage_not_configured")
@@ -392,7 +395,7 @@ def create_scan_upload():
 def complete_scan_upload(upload_id):
     """Check the uploaded object and turn it into a document.
 
-    The last step of uploading a large scan: the object is checked to be really there and really what was sent, and only then does the document appear, in category ``imaging``. A file that has not fully arrived answers 422 ``scan_upload_incomplete`` and the slot stays, so the PUT can be retried and confirmed; a file of the wrong size or content (``scan_too_large``, ``scan_content_mismatch``) is deleted. An unknown or another person's upload answers 404 ``scan_upload_not_found``.
+    The last step of uploading a large scan: the object is checked to be really there and really what was sent, and only then does the document appear, in category ``imaging``. A file that is missing, cut short or of another size than declared answers 422 ``scan_upload_incomplete`` and the slot stays, so the PUT can be retried and confirmed. A file whose first bytes are not what its extension says is deleted with its slot (422 ``scan_content_mismatch``). An unknown, swept or another person's upload answers 404 ``scan_upload_not_found``.
     """
     if not storage.storage_configured():
         return error_response("storage_not_configured")
@@ -522,7 +525,8 @@ def update_document(id):
 
     The file itself is replaced by its own route (PUT .../<id>/file), not
     here: this one takes JSON, so it has nowhere to put a file. A scan stays in ``imaging``
-    (422 ``scan_category_fixed``).
+    (422 ``scan_category_fixed``). ``category`` is one of the six known values; ``expires_at`` is cleared with
+    an empty string (``null`` means "not sent"); an empty body answers 422 ``validation_error_no_update_data``.
     """
     try:
         document = g.record
@@ -629,6 +633,8 @@ def cancel_document_upload(upload_id):
 
     A replacement writes no upload id, so stopping one never takes the
     document away: by then its file is the new one, and the form says so.
+    Only a document the caller uploaded is removed. The answer is always 200, for an unknown or malformed id
+    and when there is nothing to remove too.
     """
     username = request.current_user
     clean_id = clean_upload_id(upload_id)
@@ -761,7 +767,9 @@ def get_document_file(id):
 
     Images support the same optional ``?w=&h=`` thumbnail resize as pet
     photos (``pets.get_pet_photo``); PDF and anything else is streamed
-    unchanged. A picture that could not be converted at upload goes out as it came (PNG, HEIC).
+    unchanged. ``w`` and ``h`` are rounded up to a standard size; above 1440 px the original goes out.
+    A picture that could not be converted at upload goes out as it came (PNG, HEIC, HEIF). An ordinary file
+    that cannot be read answers 404 ``upload_error``; 503 is for scans only.
     The answer carries an ETag; a matching ``If-None-Match`` gets an empty 304. A scan answers 302 to a
     temporary storage link.
     """

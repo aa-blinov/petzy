@@ -38,9 +38,8 @@ push_bp = Blueprint("push", __name__)
 def get_vapid_public_key():
     """Return the VAPID public key PushManager.subscribe() needs.
 
-    422 when the server has no VAPID keys configured — push is an
-    optional feature, not something the app requires to run, so the
-    frontend treats this the same as "browser doesn't support push".
+    Without VAPID keys on the server the answer is 422 ``push_not_configured``: push is optional, and the
+    app treats it like a browser without push.
     """
     public_key = PUSH_CONFIG["vapid_public_key"]
     if not public_key:
@@ -58,10 +57,10 @@ def get_vapid_public_key():
 def subscribe():
     """Save (or refresh) a browser's push subscription.
 
-    Upserts on ``endpoint`` — a browser's own subscription URL is already
-    a stable per-device identity, so re-subscribing the same browser
-    (e.g. after clearing the toggle off and on) updates the row in place
-    instead of accumulating duplicates. ``endpoint`` must be an https URL of a known push service, not an IP
+    One subscription per ``endpoint``: subscribing the same browser again updates it instead of adding a second.
+    ``timezone`` is an IANA zone: medication reminder times are read on this clock (the first subscription on
+    record among a pet's recipients decides), and an unknown name means reminders for those pets are not sent.
+    ``endpoint`` must be an https URL of a known push service, not an IP
     address. An endpoint already registered to another account with other keys answers 422
     ``push_subscription_taken``; with the same keys the subscription moves to the caller.
     """
@@ -108,16 +107,14 @@ def subscribe():
 @login_required
 @api.validate(
     body=Request(PushUnsubscribeRequest),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["push"],
 )
 def unsubscribe():
     """Remove a browser's push subscription.
 
-    Scoped to the requesting user's own ``endpoint`` so one account can't
-    unsubscribe another user's device by guessing/replaying its endpoint.
-    Removing an endpoint that's already gone is not an error — the end
-    state ("this browser has no subscription") is identical either way.
+    Only the caller's own subscription is removed, so one account cannot switch off another's device. An endpoint
+    that is already gone is not an error: the result is the same.
     """
     try:
         username = request.current_user
