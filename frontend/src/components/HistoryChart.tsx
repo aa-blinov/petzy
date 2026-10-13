@@ -287,13 +287,14 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 dataKey="label"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                // 12 is --text-xs: an SVG attribute takes no CSS variable.
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 12 }}
                                 minTickGap={20}
                             />
                             <YAxis
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 12 }}
                                 // «28,9» plus the rotated axis name: 35px put one on the other.
                                 width={48}
                                 domain={scale?.domain}
@@ -309,7 +310,7 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                     value: valueLabel,
                                     angle: -90,
                                     position: 'insideLeft',
-                                    style: { textAnchor: 'middle', fill: 'var(--app-text-secondary)', fontSize: 11 },
+                                    style: { textAnchor: 'middle', fill: 'var(--app-text-secondary)', fontSize: 12 },
                                 }}
                             />
                             <Tooltip
@@ -352,19 +353,19 @@ export function HistoryChart({ type, petId }: HistoryChartProps) {
                                 dataKey="label"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 12 }}
                             />
                             <YAxis
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 10 }}
+                                tick={{ fill: 'var(--app-text-secondary)', fontSize: 12 }}
                                 allowDecimals={false}
                                 width={35}
                                 label={{
                                     value: valueLabel,
                                     angle: -90,
                                     position: 'insideLeft',
-                                    style: { textAnchor: 'middle', fill: 'var(--app-text-secondary)', fontSize: 11 },
+                                    style: { textAnchor: 'middle', fill: 'var(--app-text-secondary)', fontSize: 12 },
                                 }}
                             />
                             <Tooltip

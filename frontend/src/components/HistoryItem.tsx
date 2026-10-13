@@ -313,7 +313,7 @@ export function SwipeHint() {
             role="note"
             style={{
                 margin: '0 0 var(--spacing-md)',
-                padding: '10px 12px',
+                padding: 'var(--spacing-md)',
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--app-accent-soft)',
                 color: 'var(--app-accent-deep)',

@@ -349,7 +349,7 @@ function PetCard({
                   borderRadius: 'var(--radius-sm)',
                 }}
               >
-                <Scale size={13} strokeWidth={2.2} style={{ display: 'block' }} />
+                <Scale size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
                 {formatAmount(Number(lastWeight.fields?.weight))} кг
               </span>
             )}
