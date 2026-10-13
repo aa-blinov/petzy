@@ -167,6 +167,14 @@ export function HealthRecordForm() {
   // The record did not load: the form says so on itself and offers to try again, instead of
   // throwing the person out to the feed.
   const [loadError, setLoadError] = useState(false);
+  // The record is not there (deleted, or a link to it is old): said as it is, with no «Повторить».
+  const [notFound, setNotFound] = useState(false);
+  // Both flags are set together, so a failure after a missing record cannot leave «not found» on the screen.
+  const markLoadFailed = (err: unknown) => {
+    const gone = isAxiosError(err) && err.response?.status === 404;
+    setNotFound(gone);
+    setLoadError(!gone);
+  };
   // A save that is already in flight: a second press while the first is unanswered is the same
   // save, and must not become a second record.
   const savingRef = useRef(false);
@@ -324,12 +332,13 @@ export function HealthRecordForm() {
           reset(normalizeData(data));
           setRecordedBy(data.username ?? null);
           setLoadError(false);
+          setNotFound(false);
         } catch (err) {
           console.error('Error loading record:', err);
           // Said on the form itself, with a way back and a way to try again. Leaving at once
           // threw the person out to History, where «Назад» opened this same form again, and
           // that threw them out again.
-          setLoadError(true);
+          markLoadFailed(err);
         } finally {
           setIsLoading(false);
         }
@@ -354,7 +363,7 @@ export function HealthRecordForm() {
       })
       .catch((err) => {
         console.error('Error loading record:', err);
-        setLoadError(true);
+        markLoadFailed(err);
       })
       .finally(() => setIsLoading(false));
   };
@@ -500,6 +509,22 @@ export function HealthRecordForm() {
 
   // The record could not be loaded. Said here, where the person is, with the two ways out: back
   // to where the form was opened from, or one more try while the connection holds.
+  if (notFound) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <EmptyState
+            icon={PawPrint}
+            title="Такой записи нет"
+            description="Её удалили или она не открыта вашему питомцу"
+            actionLabel="К ленте"
+            onAction={() => navigate('/', { replace: true })}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
       <div className="page-container">
@@ -548,7 +573,7 @@ export function HealthRecordForm() {
           <div className="safe-area-padding" style={{ margin: 'var(--spacing-xs) 0 var(--spacing-md)', color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)' }}>
             {petName && (
               <p style={{ margin: 0 }}>
-                Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{petName}</strong>
+                Питомец: <strong className="pet-name" style={{ color: 'var(--app-text-primary)' }}>{petName}</strong>
               </p>
             )}
             {isEditing && recordedBy && (

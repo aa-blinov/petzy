@@ -441,7 +441,7 @@ export function MedicationForm() {
                     the form. The title block's own margin is that room only when there is no line. */}
                 {selectedPetName && (
                     <p className="safe-area-padding" style={{ margin: 'var(--spacing-xs) 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
-                        Питомец: <strong style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
+                        Питомец: <strong className="pet-name" style={{ color: 'var(--app-text-primary)' }}>{selectedPetName}</strong>
                     </p>
                 )}
 

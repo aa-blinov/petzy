@@ -2146,6 +2146,12 @@ button.chip::after {
     margin-block: -15px;
 }
 
+/* A pet's name inside a sentence: one line, but a single long word (no space in it) may break,
+   or it pushes the whole page wider than the phone. */
+.pet-name {
+    overflow-wrap: anywhere;
+}
+
 /* Text that can be as long as the server allows (a 100-character name, a
    500-character comment): cut to one line or a few, and break a single
    long word instead of pushing it past the edge. */
