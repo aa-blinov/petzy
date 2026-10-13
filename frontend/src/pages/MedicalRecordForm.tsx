@@ -35,6 +35,7 @@ import { catalogSpecies, inferProtects, useVaccineCatalog } from '../hooks/useVa
 import { getApiErrorMessage } from '../utils/apiError';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
+import { medicationsListQuery } from '../services/medications.service';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { goBack } from '../utils/navigation';
@@ -205,6 +206,12 @@ function PushNote() {
   );
 }
 
+/** The pet's courses still going, as one group of the treatment picker (none when there are none). */
+function ownCourseGroup(courses: { name: string; is_active: boolean; course_status?: string }[]): ProductGroup[] {
+  const names = [...new Set(courses.filter((m) => m.is_active && m.course_status !== 'ended').map((m) => m.name))];
+  return names.length > 0 ? [{ key: 'own', label: 'Лекарства питомца', items: names }] : [];
+}
+
 export function MedicalRecordForm() {
   const { id: petId, recordId } = useParams<{ id: string; recordId?: string }>();
   const [params] = useSearchParams();
@@ -221,6 +228,8 @@ export function MedicalRecordForm() {
   const cardPath = `/pets/${petId}/medical-card`;
 
   const card = useQuery({ queryKey: ['medical-card', petId], queryFn: () => medicalCardService.get(petId!), enabled: !!petId });
+  // The medicines the pet is taking now: a parasite treatment is often one of them, so they are offered in its list.
+  const courses = useQuery({ ...medicationsListQuery(petId ?? ''), enabled: !!petId });
   const record = useQuery({ queryKey: ['medical-record', recordId], queryFn: () => medicalRecordsService.get(recordId!), enabled: isEditing, staleTime: 0, refetchOnMount: 'always' });
   const documents = useQuery({ ...documentsListQuery(petId ?? ''), enabled: !!petId });
 
@@ -394,7 +403,11 @@ export function MedicalRecordForm() {
           .filter((g) => g.species.includes(species))
           .map((g) => ({ key: g.key, label: g.label, detail: g.detail || undefined, items: catalog.products.filter((p) => p.protects === g.key && p.species.includes(species)).map((p) => p.name) }))
       : kind === 'parasite'
-        ? (['fleas_ticks', 'worms', 'both'] as ParasiteTarget[]).map((t) => ({ key: t, label: PARASITE_TARGET_LABELS[t], items: PARASITE_PRODUCTS.filter((p) => p.target === t).map((p) => p.name) }))
+        ? [
+            ...(['fleas_ticks', 'worms', 'both'] as ParasiteTarget[]).map((t) => ({ key: t, label: PARASITE_TARGET_LABELS[t], items: PARASITE_PRODUCTS.filter((p) => p.target === t).map((p) => p.name) })),
+            // A course the pet is on now, by its own name: the same product may be given in a treatment.
+            ...ownCourseGroup(courses.data ?? []),
+          ]
         : kind === 'visit' || kind === 'procedure'
           ? // What the pet already has is in «Ранее у питомца» at the top: not offered a second time below it.
             OCCASION_GROUPS[kind]
