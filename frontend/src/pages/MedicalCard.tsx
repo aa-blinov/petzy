@@ -963,7 +963,8 @@ export function MedicalCard() {
 
           <ModeSwitch mode={mode} onChange={chooseMode} />
 
-          <OverdueStrip card={card} canAct={mode === 'fill'} hidden={hidden} />
+          {/* The owner can put an overdue repeat right from the strip on either copy: the link goes to the form, not to the vet's copy. */}
+          <OverdueStrip card={card} canAct={mode === 'fill' || card.can_edit} hidden={hidden} />
 
           {mode === 'vet' ? (
             <VetView card={card} hidden={hidden} saving={saving} canPdf={doneCount >= 2} onPdf={downloadPdf} onAll={() => chooseMode('fill')} onShare={() => setShareOpen(true)} canShare={card.can_edit} />
