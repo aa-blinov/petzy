@@ -81,11 +81,18 @@ export function formatRelativeDateTime(dateStr: string, now: Date = new Date()):
 
   if (days === 0) return `сегодня в ${time}`;
   if (days === 1) return `вчера в ${time}`;
+  // A day ahead of the reader's own (a document added in a zone that is already tomorrow here):
+  // the time is still wanted, as it is for a day back.
+  if (days === -1) return `завтра в ${time}`;
+  if (days < -1 && days > -7) return `через ${-days} ${pluralRu(-days, "день", "дня", "дней")}, ${time}`;
   // Within a week the time of day is still wanted (a dose, a feeding); beyond it the day is enough.
   if (days > 1 && days < 7) return `${days} ${pluralRu(days, "день", "дня", "дней")} назад, ${time}`;
   if (days >= 7 && days < 365) return `${days} ${pluralRu(days, "день", "дня", "дней")} назад`;
 
   const monthName = MONTHS_GENITIVE[parsed.m - 1];
+  if (days <= -7) {
+    return parsed.y === today.y ? `${parsed.d} ${monthName} в ${time}` : `${parsed.d} ${monthName} ${parsed.y} в ${time}`;
+  }
   if (parsed.y === today.y) return `${parsed.d} ${monthName}`;
   return `${parsed.d} ${monthName} ${parsed.y}`;
 }

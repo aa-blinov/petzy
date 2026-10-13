@@ -7,7 +7,7 @@ that a file could only be changed by deleting the document.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from common import BASE, api, async_playwright, check, login, summary
@@ -61,6 +61,14 @@ async def main():
             docs = (await api(pg, "GET", f"/documents?pet_id={pid}"))["json"]["documents"]
             doc = docs[0]
             doc_id = doc["_id"]
+            # The phone's clock is set to the evening before the document's own day: the moment
+            # it was added is then tomorrow here, whatever the real time is, so the check is not
+            # left to chance (it used to pass only outside New York's late afternoon and evening).
+            added_utc = datetime.strptime(doc["created_at"], "%Y-%m-%d %H:%M").replace(tzinfo=ZoneInfo("UTC"))
+            almaty = ZoneInfo("Asia/Almaty")
+            doc_day = added_utc.astimezone(almaty).date()
+            evening_before = datetime.combine(doc_day, time(0, 0), tzinfo=almaty) - timedelta(hours=1)
+            await pg.clock.install(time=evening_before.timestamp())
 
             await pg.goto(BASE + "/documents")
             await pg.wait_for_timeout(1800)
