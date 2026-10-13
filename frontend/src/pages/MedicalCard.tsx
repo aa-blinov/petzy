@@ -1,3 +1,4 @@
+import { weightRangeByYear } from '../utils/weightRanges';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -752,6 +753,9 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
               {weightDelta(card.weight.series) ?? ''}
               {weightDelta(card.weight.series) ? ', ' : ''}
               {card.weight.series.length} {pluralRu(card.weight.series.length, 'замер', 'замера', 'замеров')}, {formatDate(card.weight.series[card.weight.series.length - 1].date)}
+              {new Set(card.weight.series.map((w) => w.date.slice(0, 4))).size > 1 && (
+                <span>, по годам: {weightRangeByYear(card.weight.series)}</span>
+              )}
               {(() => {
                 const values = card.weight!.series.map((w) => w.value);
                 const min = Math.min(...values), max = Math.max(...values);

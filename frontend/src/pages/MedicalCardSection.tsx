@@ -1,3 +1,4 @@
+import { weightRangeByYear } from '../utils/weightRanges';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -130,6 +131,9 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
                   {series.length} {pluralRu(series.length, 'замер', 'замера', 'замеров')} с {formatDate(series[0].date)}
                   {range ? `, диапазон ${range}` : ''}
                 </div>
+              )}
+              {series.length > 1 && (
+                <div className="medcard__row-sub medcard__row-sub--meta">По годам: {weightRangeByYear(series)}</div>
               )}
             </div>
           </Section>
