@@ -28,6 +28,7 @@ from web.builtin_event_types import BUILTIN_TYPE_ORDER
 from web.pydantic_helpers import validate_request_data
 from web.schemas import (
     PetCreate,
+    PetDeletionImpactResponse,
     PetUpdate,
     PetResponseWrapper,
     PetListResponse,
@@ -724,7 +725,9 @@ def delete_pet(pet_id):
 
 @pets_bp.route("/api/pets/<pet_id>/deletion-impact", methods=["GET"])
 @login_required
-@api.validate(resp=Response(HTTP_403=ErrorResponse, HTTP_404=ErrorResponse), tags=["pets"])
+@api.validate(
+    resp=Response(HTTP_200=PetDeletionImpactResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse), tags=["pets"]
+)
 def pet_deletion_impact(pet_id):
     """What deleting the pet would take with it: the numbers the confirmation names.
 

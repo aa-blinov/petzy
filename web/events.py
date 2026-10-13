@@ -28,6 +28,7 @@ from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscript
 from web.trend_alerts import detect_anomaly
 from web.schemas import (
     EventItem,
+    UsedEventTypesResponse,
     ErrorResponse,
     EventCreate,
     EventListQuery,
@@ -673,7 +674,7 @@ def delete_event(record_id):
 
 
 @events_bp.route("/api/events/used-types", methods=["GET"])
-@api.validate(query=PetIdQuery, resp=Response(HTTP_403=ErrorResponse), tags=["events"])
+@api.validate(query=PetIdQuery, resp=Response(HTTP_200=UsedEventTypesResponse, HTTP_403=ErrorResponse), tags=["events"])
 @require_pet_access
 def used_event_types():
     """The types this pet has at least one record of: what a filter of its history has something to show for.

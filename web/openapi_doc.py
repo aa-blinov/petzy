@@ -261,6 +261,42 @@ def finish_spec(spec: dict) -> dict:
         if pets and "requestBody" in pets:
             pets["requestBody"]["content"].update(_multipart({**PET_FORM, **extra}, required))
 
+    # A native app has no cookie: it signs out with its refresh token in the body. The web app sends nothing,
+    # so the body stays optional and is not a pydantic model (that would refuse the empty request).
+    logout = op("post", "/api/auth/logout")
+    if logout:
+        logout["requestBody"] = {
+            "required": False,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "refresh_token": {
+                                "type": "string",
+                                "description": "Нативное приложение: refresh_token этого устройства. Веб-приложение тело не шлёт",
+                            }
+                        },
+                    },
+                    "example": {"refresh_token": "eyJhbGciOiJIUzI1NiIs..."},
+                }
+            },
+        }
+    replace_file = op("put", "/api/documents/{id}/file")
+    if replace_file:
+        replace_file["requestBody"] = {
+            "required": True,
+            "content": _multipart(
+                {
+                    "file": {
+                        **_BINARY,
+                        "description": "JPEG, PNG, WebP, HEIC или PDF, до 10 МБ; проверяется как при создании",
+                    }
+                },
+                ["file"],
+            ),
+        }
+
     # Endpoints that answer with the file itself.
     photo = op("get", "/api/pets/{pet_id}/photo")
     if photo:
@@ -279,6 +315,13 @@ def finish_spec(spec: dict) -> dict:
             },
         }
         document_file["responses"]["302"] = {"description": "Скан: редирект на временную ссылку хранилища"}
+    for path in ("/api/pets/{pet_id}/medical-card/pdf", "/api/shared/medical-card/{token}/pdf"):
+        pdf = op("get", path)
+        if pdf:
+            pdf["responses"]["200"] = {
+                "description": "Медкарта одним файлом PDF",
+                "content": {"application/pdf": {"schema": _BINARY}},
+            }
     export = op("get", "/api/export/{export_type}/{format_type}")
     if export:
         export["responses"]["200"] = {

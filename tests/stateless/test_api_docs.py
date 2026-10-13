@@ -147,3 +147,40 @@ def test_every_operation_can_be_named_and_grouped(client):
                 problems.append(f"группа {tag} не объявлена: {method.upper()} {path}")
     assert not problems, problems
     assert len(ids) == len(set(ids)), "operationId повторяется"
+
+
+# Actions that read nothing from the request: the path and the session say it all.
+BODYLESS = {
+    ("post", "/api/documents/uploads/{upload_id}/cancel"),
+    ("post", "/api/me/email/resend"),
+    ("post", "/api/pets/{pet_id}/invite/accept"),
+    ("post", "/api/pets/{pet_id}/invite/decline"),
+    ("post", "/api/pets/{pet_id}/leave"),
+}
+
+
+def test_every_operation_says_what_it_answers_with(client):
+    """A call with no success answer in the spec leaves a client to guess its shape.
+
+    used-types and deletion-impact answered JSON that the reference never showed, and
+    the two PDFs had a 200 with no type.
+    """
+    spec = client.get("/api/openapi.json").get_json()
+    silent = []
+    for path, method, operation in _operations(spec):
+        ok = {code: r for code, r in operation.get("responses", {}).items() if code[0] in "23"}
+        if not any(code in ("204", "302") or r.get("content") for code, r in ok.items()):
+            silent.append(f"{method.upper()} {path}")
+    assert not silent, silent
+
+
+def test_a_call_that_reads_a_body_documents_it(client):
+    """Sign-out takes the native app's refresh token in its body, and replacing a document's
+    file takes the file: neither was in the reference."""
+    spec = client.get("/api/openapi.json").get_json()
+    undocumented = [
+        f"{method.upper()} {path}"
+        for path, method, operation in _operations(spec)
+        if method in ("post", "put", "patch") and (method, path) not in BODYLESS and "requestBody" not in operation
+    ]
+    assert not undocumented, undocumented
