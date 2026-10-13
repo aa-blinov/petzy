@@ -139,6 +139,9 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                     }}
                   >
                     {tile.title}
+                    {tile.custom && (
+                      <span style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 400, opacity: 0.75 }}>Свой</span>
+                    )}
                   </span>
                 </button>
               </Grid.Item>
