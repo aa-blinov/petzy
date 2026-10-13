@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { showToast } from '../utils/toast';
 import { returnPath } from '../utils/returnTo';
+import { resumePetFor } from '../utils/sessionDraft';
 import { getApiErrorMessage } from '../utils/apiError';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -61,6 +62,9 @@ export function Login() {
       // sleep waited for cookies that the browser had already applied
       // when the response headers arrived.
       await login({ username: username.trim(), password });
+      // The pet the person had chosen goes back, when they are returning to a screen that needs one
+      // (a sign-in without a screen to return to is a plain one: nothing to resume).
+      if (target !== '/') resumePetFor(username.trim());
       navigate(target, { replace: true });
     } catch (err) {
       let errorMessage = 'Не удалось войти. Проверьте соединение или логин и пароль';
