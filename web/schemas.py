@@ -24,7 +24,9 @@ def validate_date_logic(v: str, allow_future: bool = True, max_future_days: int 
         raise ValueError("Неверный формат даты. Используйте YYYY-MM-DD")
 
     now = datetime.now()
-    if not allow_future and dt.date() > now.date():
+    # The server runs in UTC and the app sends its own calendar date: a phone east of UTC is a day ahead for hours
+    # every day. One day of slack, as for an event's date, keeps «today» valid wherever the person is.
+    if not allow_future and dt.date() > now.date() + timedelta(days=1):
         raise ValueError("Дата не может быть в будущем")
 
     if allow_future:
