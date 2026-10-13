@@ -18,6 +18,38 @@ const LEGACY_KEY = 'petzy:sessionDraft';
  *  lives for days should not hand back yesterday's numbers as if they were written now. */
 const STALE_MS = 12 * 60 * 60 * 1000;
 
+/** The pet a person had chosen when the session ran out. Clearing the sign-in state wipes the choice (so the next
+ *  person on this device does not start on the previous one's pet), and the same person going back in then landed on
+ *  the feed, not on the screen they were on: a form for a pet bounced home with no pet selected. The choice is kept in
+ *  memory for this page only (an expiry moves inside the app, so it survives to the sign-in; a reload drops it, as it
+ *  always did), and it is given back only to the same login. */
+let keptPet: { login: string; petId: string; petName: string | null; savedAt: number } | null = null;
+
+export function stashPetBeforeSignOut(): void {
+  try {
+    const login = localStorage.getItem('petzy:auth:username');
+    const petId = JSON.parse(localStorage.getItem('selectedPetId') ?? 'null');
+    const petName = JSON.parse(localStorage.getItem('selectedPetName') ?? 'null');
+    keptPet = login && petId ? { login, petId, petName, savedAt: Date.now() } : null;
+  } catch {
+    keptPet = null;
+  }
+}
+
+/** Gives the pet back when the person signs in again with the login the choice was kept for. */
+export function resumePetFor(login: string): void {
+  const kept = keptPet;
+  keptPet = null;
+  if (!kept || kept.login.trim().toLowerCase() !== login.trim().toLowerCase()) return;
+  if (Date.now() - kept.savedAt > STALE_MS) return;
+  try {
+    localStorage.setItem('selectedPetId', JSON.stringify(kept.petId));
+    localStorage.setItem('selectedPetName', JSON.stringify(kept.petName));
+  } catch {
+    /* storage unavailable: the person lands on the feed, as before */
+  }
+}
+
 /** What a draft belongs to: the screen it was written on, and the pet it was about. */
 export interface DraftOwner {
   path: string;
