@@ -52,7 +52,8 @@ class TestSkip:
     def test_a_skip_handles_the_slot_but_is_not_the_last_dose(
         self, client, mock_db, regular_user_token, test_pet, course
     ):
-        now = datetime.now()
+        # Noon, not «now»: run in the first minutes after midnight, «five minutes ago» is yesterday's dose.
+        now = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0)
         _log(client, regular_user_token, course, now - timedelta(minutes=5))
         _log(client, regular_user_token, course, now, skipped=True)
 
