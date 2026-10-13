@@ -97,7 +97,7 @@ def search_users():
     either way round, whose logins you already see on those pets. Anyone else
     is found by typing the whole login, case-insensitive, the way other apps
     share by email. Query: `q`, at least 2 characters (shorter answers an empty list); suggestions match the start
-    of a login. At most 20 active accounts, never the caller.
+    of a login. At most 20 active accounts sorted by login, never the caller.
 
     This used to be a substring search over every account, which any
     logged-in user could run (an empty query listed twenty): a way to see
@@ -134,7 +134,7 @@ def search_users():
 def get_form_defaults():
     """The signed-in user's form defaults («Настройки форм»).
 
-    Account-level defaults per record type, from before they moved to each pet (GET and PUT /api/pets/{pet_id}/form-defaults). The app no longer reads or writes these. Empty if never set.
+    Account-level defaults per record type, from before they moved to each pet (``form_defaults`` in GET /api/pets/{pet_id}, set with PUT /api/pets/{pet_id}/form-defaults). The app no longer reads or writes these. Empty if never set.
     """
     user = app.db["users"].find_one({"username": request.current_user}, {"form_defaults": 1}) or {}
     return jsonify({"form_defaults": user.get("form_defaults") or {}})
@@ -146,7 +146,7 @@ def get_form_defaults():
 def put_form_defaults():
     """Replace the signed-in user's form defaults, for all of their devices.
 
-    Replaces the whole set, not one field. Kept for older clients: the app now remembers values per pet, with PUT /api/pets/{pet_id}/form-defaults, and does not read these.
+    Replaces the whole set, not one field. Kept for older clients: the app now remembers values per pet, with PUT /api/pets/{pet_id}/form-defaults, and does not read these. At most 50 types and 30 fields each, names up to 50 characters, values up to 300, otherwise 422.
     """
     form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
     app.db["users"].update_one({"username": request.current_user}, {"$set": {"form_defaults": form_defaults}})
@@ -302,7 +302,7 @@ def get_user(username):
 def update_user(username):
     """Update user information (admin only).
 
-    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device. Nobody deactivates themselves (422 `validation_error_admin_deactivation`).
+    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device. Nobody deactivates themselves (422 `validation_error_admin_deactivation`). ``email`` is stored as sent, with no format or uniqueness check, and ``email_verified`` stays as it was. An empty body answers 422 `validation_error_no_update_data`.
     """
     try:
         user = app.db["users"].find_one({"username": username})
@@ -366,7 +366,7 @@ def update_user(username):
 def delete_user(username):
     """Deactivate user (admin only).
 
-    The account stops working at once and stays in the database with its records. Nobody deactivates themselves, and the built-in administrator cannot be switched off.
+    The account stops working at once and stays in the database with its records. Nobody deactivates themselves, and the built-in administrator cannot be switched off: both answer 422 `validation_error_admin_deactivation`.
     """
     try:
         if username == ADMIN_USERNAME:

@@ -188,7 +188,10 @@ def change_email():
     so a borrowed phone with an open session mustn't be enough to change it.
     A new address goes to `pending_email` and a letter with a link (valid for a day) is sent to it;
     `email` changes only after POST /api/auth/email/verify, and until then the old address stays the working one.
-    The address that is already confirmed answers with the account unchanged.
+    The address that is already confirmed answers with the account unchanged. An empty ``email`` removes the
+    address and any pending one at once, mail configured or not. Errors: 422 ``account_wrong_password``,
+    ``account_email_invalid``, ``account_email_taken``; 503 ``mail_not_configured`` or ``mail_send_failed``
+    (then ``pending_email`` is already saved and the letter can be sent again).
     """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]
@@ -229,7 +232,7 @@ def change_email():
 def resend_verification():
     """Send the confirmation letter for the pending address again.
 
-    For an address that was typed but not confirmed. The letter goes only to the new address, and while it is unconfirmed the old one stays the working one.
+    For an address that was typed but not confirmed. The letter goes only to the new address, and while it is unconfirmed the old one stays the working one. The new letter's link replaces the earlier one, which stops working.
     """
     username = request.current_user
     user = app.db.users.find_one({"username": username}) or {}
@@ -257,7 +260,11 @@ def verify_email():
     """Confirm an email address from the link in the letter.
 
     No session needed: the link may be opened on another device than the one
-    the address was typed on.
+    the address was typed on. The link lives a day; an unknown, used or expired link, one replaced by a newer
+    letter, one for an address changed since, or one of a switched-off account answers 422
+    ``account_link_invalid``. An address confirmed meanwhile on another account answers 422
+    ``account_email_taken`` (the link is spent by then). If another address was confirmed before, a notice
+    goes to it.
     """
     data = request.context.body  # type: ignore[attr-defined]
     record = _take_token(data.token, "verify_email")
@@ -300,6 +307,11 @@ def forgot_password():
     real one, the answer is the plain «sent» — otherwise two requests for a
     made-up login and for a real one would differ, and the form would become a
     way to find out who has an account here.
+
+    The answer is always 200 with the same text. A value with «@» is matched, any case, against confirmed
+    addresses only; otherwise the exact login, then the lowercased one. At most one letter per account every
+    2 minutes; the link lives an hour. Nothing is sent if mail is not configured or sending fails, and the
+    answer is still 200. The limit counts requests, not letters.
     """
     data = request.context.body  # type: ignore[attr-defined]
     login = data.login.strip()
@@ -420,6 +432,7 @@ def change_password():
 
     Other sessions end. This one continues: the web app gets fresh cookies, a native app (no Origin header) gets
     new `access_token` and `refresh_token` in the body and must replace its old ones, which stop working.
+    A wrong ``current_password`` answers 422 ``account_wrong_password`` before the password rules are checked.
     Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. A notice goes to the confirmed address.
     """
     username = request.current_user
@@ -496,8 +509,11 @@ def delete_own_account():
     A pet shared with someone goes to the first of them who can still sign in, the rest are
     deleted with their records and files (see GET /api/me/account/deletion).
     Every session ends; the web app's cookies are cleared. Letters go to the account's confirmed
-    address and to every new owner. The administrator cannot be deleted (422 `account_admin_undeletable`).
-    Repeating the call after a successful deletion (a lost answer) answers the same 200.
+    address and to every new owner, when mail is configured. The administrator cannot be deleted (422
+    `account_admin_undeletable`, checked first); a wrong password answers 422 `account_wrong_password`.
+    The heir is the first member who can still sign in, otherwise the first who has an account at all.
+    Repeating the call after a successful deletion (a lost answer) answers the same 200 while the old access
+    token is still valid (15 minutes); later, or once the login is registered again, it answers 401.
     """
     username = request.current_user
     data = request.context.body  # type: ignore[attr-defined]

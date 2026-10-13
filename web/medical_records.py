@@ -252,7 +252,7 @@ def _stored(data: dict, kind: str) -> dict:
 def create_medical_record():
     """Add a vaccination, treatment, visit or procedure to a pet's medical card.
 
-    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``complaint``, ``diagnosis`` and ``recommendations`` a visit's).
+    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``target`` a parasite treatment's, ``complaint``, ``diagnosis`` and ``recommendations`` a visit's). Any member of the pet may add, change or delete any of its records.
     """
     data = request.context.body  # type: ignore[attr-defined]
     fields = data.model_dump()
@@ -282,7 +282,7 @@ def create_medical_record():
 def list_medical_records():
     """A pet's medical records, newest first, each with its status.
 
-    Vaccinations, parasite treatments, visits and procedures, with what each one's repeat date says today: late, close (within 14 days), in time, or no repeat asked for. Only vaccinations and parasite treatments get a status; visits and procedures are always ``none``. A newer record against the same thing (the same protection, the same target, otherwise the same name) is the one that counts; the older one stays in the list as history. ``tz`` decides which day 'today' is.
+    Vaccinations, parasite treatments, visits and procedures, with what each one's repeat date says today: late, close (within 14 days for a vaccination, 7 for a parasite treatment), in time, or no repeat asked for. Only vaccinations and parasite treatments get a status; visits and procedures are always ``none``. A newer record against the same thing (the same protection, the same target, otherwise the same name) is the one that counts; the older one stays in the list as history. ``tz`` decides which day 'today' is.
     """
     query = request.context.query  # type: ignore[attr-defined]
     if query.kind and query.kind not in MEDICAL_KINDS:
@@ -318,7 +318,7 @@ def get_medical_record(id):
 def update_medical_record(id):
     """Replace a record's contents; its pet and kind stay.
 
-    Everything in the record can change except which pet it belongs to and what kind of thing it is. A new repeat date on a vaccination puts the card's answer back to in time, or to close if the date is within two weeks.
+    A full replace: everything in the record can change except which pet it belongs to and what kind of thing it is, and a field left out is cleared, ``document_ids`` included (sent without it, the record lets go of its documents). The rules of creation apply (``target`` for a parasite treatment, fields of another kind dropped). A new repeat date on a vaccination puts the card's answer back to in time, or to close if it is within two weeks, when that date is still ahead and no newer record replaces this one.
     """
     data = request.context.body  # type: ignore[attr-defined]
     kind = g.record["kind"]

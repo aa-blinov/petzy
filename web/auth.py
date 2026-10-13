@@ -173,7 +173,7 @@ def registration_status():
 def api_register():
     """Create an account and sign it in.
 
-    Registration may be closed (403 `registration_closed`), and GET /api/auth/registration says so before anything is sent. Consent to the policy is required and its version is stored with the account. Логин приводится к нижнему регистру: 3-30 знаков из латиницы, цифр, точки, дефиса и подчёркивания, первый знак буква или цифра (иначе 422 `register_username_invalid`, занятый: `register_username_taken`). Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. Почта записывается в `pending_email`, на неё уходит письмо, и адресом для восстановления она станет после ссылки из письма. С одного адреса: 5 созданных аккаунтов и 30 попыток в час.
+    Registration may be closed (403 `registration_closed`), and GET /api/auth/registration says so before anything is sent. Consent to the policy is required and its version is stored with the account. Логин приводится к нижнему регистру: 3-30 знаков из латиницы, цифр, точки, дефиса и подчёркивания, первый знак буква или цифра (иначе 422 `register_username_invalid`, занятый: `register_username_taken`). Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. Нужны `full_name` (422 `register_name_required`), почта, когда почта настроена (`register_email_required`), и согласие (`privacy_consent_required`). Неверный адрес: `account_email_invalid`, подтверждённый у другого аккаунта: `account_email_taken`. Почта записывается в `pending_email`, и, если почта настроена, на неё уходит письмо; адресом для восстановления она станет после ссылки из письма. Если письмо не ушло, аккаунт всё равно создан (201), письмо можно отправить снова через POST /api/me/email/resend. С одного адреса: 5 созданных аккаунтов и 30 попыток в час.
     """
     if not registration_open():
         return error_response("registration_closed")
@@ -305,7 +305,7 @@ def api_login():
 def api_refresh():
     """Refresh access token using refresh token.
 
-    Returns a new pair, and the refresh token in the answer replaces the old one. The old refresh token, presented again within 30 seconds (parallel requests, a lost answer), gets the same new pair. Presented later, it is treated as stolen: this sign-in ends and the device has to log in again; other devices are not affected. The old access token is not touched and lives until its own 15 minutes run out.
+    Returns a new pair, and the refresh token in the answer replaces the old one. The old refresh token, presented again within 30 seconds (parallel requests, a lost answer), gets the same new refresh token and a fresh access token. Presented later, it is treated as stolen: this sign-in ends and the device has to log in again; other devices are not affected. The old access token is not touched and lives until its own 15 minutes run out.
     """
     # Try to get refresh_token from body (validated by @api.validate) or cookies
     refresh_token = None
@@ -343,7 +343,7 @@ def api_refresh():
 def api_logout():
     """Logout — invalidate this user's refresh tokens.
 
-    Deletes every refresh token of the user, so no device can renew its sign-in. Access tokens already given out (other devices included) still work until their 15 minutes run out. A native app sends its refresh token in the body, the web app sends nothing and is identified by its cookie.
+    Deletes every refresh token of the user, so no device can renew its sign-in. Access tokens already given out (other devices included) still work until their 15 minutes run out. A native app sends its refresh token in the body, the web app sends nothing and is identified by its cookie (when both come, the cookie wins). The answer is always 200, with no token or an unknown or expired one too, and both cookies are cleared.
 
     We delete the specific token the cookie carries, AND any other
     tokens belonging to the same user. Logging out is supposed to
@@ -389,7 +389,7 @@ def api_logout():
 def api_session():
     """Return the identity behind the current access token (cookie or Bearer).
 
-    With an expired access cookie and a live refresh cookie the session is renewed on the way and new cookies come with the answer, so a 401 here means the refresh token is gone too.
+    With an expired access cookie and a live refresh cookie the session is renewed on the way and new cookies come with the answer, so for the web app a 401 here means the refresh token is gone too. A native app (Bearer) gets 401 as soon as its access token expires: call /api/auth/refresh.
 
     This is the SPA's only auth probe. It used to infer "am I signed
     in?" from GET /api/pets, which conflated a cold cache, a failed

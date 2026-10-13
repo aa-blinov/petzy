@@ -363,7 +363,7 @@ class AuthSessionResponse(BaseModel):
     The SPA's single auth probe: it answers "am I signed in, and as
     whom?" and nothing else. Cheap enough to call on every app boot —
     the username comes straight off the verified JWT and the admin flag
-    is a string comparison, so no collection is touched.
+    is a string comparison; the only read is the account's active check.
     """
 
     username: str
@@ -528,19 +528,22 @@ PET_TAGLINE_MAX = 40
 class PetLook(BaseModel):
     """PUT /api/pets/<id>/look: how the pet's card shows it, a line about it, a colour, a hand-written face for the name and a frame for the photo.
 
-    The whole look, replacing the old one; an empty line and no colour clear it. Everyone with access to the pet sees
-    the same look; only the owner may change it."""
+    The whole look, replacing the old one: a part left empty is dropped, and with every part empty the look is removed.
+    Everyone with access to the pet sees the same look; only the owner may change it."""
 
-    tagline: str = ""
-    accent: str = ""
-    font: str = ""
-    frame: str = ""
-    backdrop: str = ""
+    tagline: str = Field("", description="Подпись: пробелы схлопываются, не длиннее 40 символов")
+    accent: str = Field("", json_schema_extra={"enum": ["", *PET_ACCENTS]})
+    font: str = Field("", json_schema_extra={"enum": ["", *PET_FONTS]})
+    frame: str = Field("", json_schema_extra={"enum": ["", *PET_FRAMES]})
+    backdrop: str = Field("", json_schema_extra={"enum": ["", *PET_BACKDROPS]})
     # The same catalogue behind the whole feed area of the pet (not the card): its background.
-    scene: str = ""
+    scene: str = Field("", json_schema_extra={"enum": ["", *PET_BACKDROPS]})
     # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
     # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
-    crops: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    crops: Dict[str, Dict[str, float]] = Field(
+        default_factory=dict,
+        description="По рамке: {x, y, w, h} в процентах фото; x, y от 0 до 100, w, h от 1 до 100, x+w и y+h не больше 100,5",
+    )
 
     @field_validator("tagline")
     @classmethod
@@ -704,7 +707,9 @@ class UserResponse(BaseModel):
         None, description="Флаг в записи; администратором считается только встроенный аккаунт ADMIN_USERNAME"
     )
     privacy_consent: Optional[Dict[str, Any]] = Field(None, description="Какая редакция политики принята и когда")
-    sessions_valid_after: Optional[str] = Field(None, description="Токены, выданные раньше, не действуют")
+    sessions_valid_after: Optional[int] = Field(
+        None, description="Unix-время в секундах: токены, выданные раньше, не действуют"
+    )
     form_defaults: Optional[Dict[str, Any]] = Field(None, description="Устаревшие значения форм на аккаунте")
 
     model_config = ConfigDict(
@@ -731,6 +736,7 @@ class UserResponseWrapper(BaseModel):
         json_schema_extra={
             "example": {
                 "user": {
+                    "_id": "507f1f77bcf86cd799439011",
                     "username": "demo",
                     "full_name": "Анна",
                     "email": "anna@example.com",
@@ -760,6 +766,7 @@ class UserListResponse(BaseModel):
             "example": {
                 "users": [
                     {
+                        "_id": "507f1f77bcf86cd799439011",
                         "username": "demo",
                         "full_name": "Анна",
                         "email": "anna@example.com",
@@ -771,7 +778,7 @@ class UserListResponse(BaseModel):
                 ],
                 "total": 1,
                 "page": 1,
-                "per_page": 50,
+                "per_page": 20,
             }
         }
     )
@@ -1201,9 +1208,9 @@ class PetCreate(BaseModel):
             "example": {
                 "name": "Мурзик",
                 "breed": "Британская короткошерстная",
-                "species": "Кот",
+                "species": "cat",
                 "birth_date": "2020-03-15",
-                "gender": "Мужской",
+                "gender": "male",
                 "is_neutered": True,
                 "health_notes": "Здоров, аллергий нет",
                 "tiles_settings": {
@@ -1262,9 +1269,9 @@ class PetUpdate(BaseModel):
             "example": {
                 "name": "Мурзик Обновленный",
                 "breed": "Британская короткошерстная",
-                "species": "Кот",
+                "species": "cat",
                 "birth_date": "2020-03-15",
-                "gender": "Мужской",
+                "gender": "male",
                 "is_neutered": True,
                 "health_notes": "Аллергия на курицу",
                 "remove_photo": False,
@@ -1328,6 +1335,9 @@ class PetResponse(BaseModel):
         None,
         description="Только владельцу: к кому перейдёт питомец, если владелец удалит аккаунт (нет никого: null)",
     )
+    visit_prep: Optional[Dict[str, Any]] = Field(
+        None, description="Заметка к приёму, как её задаёт PUT /api/pets/{pet_id}/visit-prep"
+    )
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -1336,9 +1346,9 @@ class PetResponse(BaseModel):
                 "_id": "507f1f77bcf86cd799439011",
                 "name": "Мурзик",
                 "breed": "Британская короткошерстная",
-                "species": "Кот",
+                "species": "cat",
                 "birth_date": "2020-03-15",
-                "gender": "Мужской",
+                "gender": "male",
                 "is_neutered": True,
                 "health_notes": "Здоров",
                 "photo_url": "/api/pets/507f1f77bcf86cd799439011/photo?v=abc12345",
@@ -1384,7 +1394,7 @@ class PetInviteItem(BaseModel):
             "example": {
                 "pet_id": "507f1e88bf19b6fcdb027c75",
                 "pet_name": "Рекс",
-                "species": "собака",
+                "species": "dog",
                 "owner": "family",
             }
         }
@@ -1397,7 +1407,7 @@ class PetInviteListResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "invites": [
-                    {"pet_id": "507f1e88bf19b6fcdb027c75", "pet_name": "Рекс", "species": "собака", "owner": "family"}
+                    {"pet_id": "507f1e88bf19b6fcdb027c75", "pet_name": "Рекс", "species": "dog", "owner": "family"}
                 ]
             }
         }
@@ -1414,7 +1424,7 @@ class PetResponseWrapper(BaseModel):
                 "pet": {
                     "_id": "507f1f77bcf86cd799439011",
                     "name": "Рекс",
-                    "species": "собака",
+                    "species": "dog",
                     "breed": "Лабрадор",
                     "birth_date": "2021-08-01",
                     "gender": "male",
@@ -1450,14 +1460,12 @@ class PetCreatedResponse(SuccessResponse):
             "example": {
                 "success": True,
                 "message": "Питомец создан",
-                "id": "507f1f77bcf86cd799439011",
                 "pet": {
                     "_id": "507f1f77bcf86cd799439011",
                     "name": "Мурзик",
-                    "species": "Кот",
+                    "species": "cat",
                     "owner": "demo",
                     "shared_with": [],
-                    "current_user_is_owner": True,
                 },
             }
         }
@@ -1475,7 +1483,7 @@ class PetListResponse(BaseModel):
                     {
                         "_id": "507f1f77bcf86cd799439011",
                         "name": "Рекс",
-                        "species": "собака",
+                        "species": "dog",
                         "breed": "Лабрадор",
                         "birth_date": "2021-08-01",
                         "gender": "male",
@@ -2497,7 +2505,6 @@ class MedicationIntakeListResponse(PaginatedResponse):
                         "medication_name": "Мелоксидил",
                         "date_time": "2026-10-06 08:43",
                         "dose_taken": 2.5,
-                        "dose_unit": "мл",
                         "inventory_deducted": 0,
                         "comment": "",
                         "username": "demo",
@@ -3166,7 +3173,10 @@ class MedicalRecordItem(BaseModel):
         "none", description="overdue (просрочено), soon (скоро), ok, none (повтор не нужен или заменена)"
     )
     days_left: Optional[int] = Field(None, description="Дней до повтора; отрицательное, если просрочен")
-    superseded: bool = Field(False, description="Есть более новая запись с тем же названием: эта осталась историей")
+    superseded: bool = Field(
+        False,
+        description="Есть более новая прививка или обработка от того же (та же защита, та же цель, иначе то же название): эта осталась историей",
+    )
     clinic: Optional[str] = None
     vet: Optional[str] = None
     note: Optional[str] = None
@@ -3202,7 +3212,10 @@ class MedicalRecordItem(BaseModel):
 
 
 class MedicalRecordListQuery(PetIdQuery):
-    kind: Optional[str] = Field(None, description="Только этого вида")
+    kind: Optional[str] = Field(
+        None,
+        description="Только этого вида: vaccination, parasite, visit или procedure (другое: 422 `validation_error`)",
+    )
     tz: Optional[str] = Field(
         None, max_length=64, description="IANA-имя часового пояса пользователя: по нему считается «сегодня»"
     )
@@ -3322,7 +3335,7 @@ class VisitPrep(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "base_version": "507f1f77bcf86cd799439011",
+                "base_version": "9b1c2e7f4a3d48e6b0c5d1f2a7e9c3b8",
                 "complaint": "Чаще пьёт воду",
                 "checks": {"appetite": "normal", "thirst": "changed", "stool": "normal"},
             }
@@ -3345,7 +3358,7 @@ class VisitPrepResponse(BaseModel):
                     "complaint": "Чаще пьёт воду",
                     "checks": {"appetite": "normal", "thirst": "changed"},
                     "updated_at": "2026-09-23 18:04",
-                    "version": "507f1f77bcf86cd799439011",
+                    "version": "9b1c2e7f4a3d48e6b0c5d1f2a7e9c3b8",
                 }
             }
         }
@@ -3483,14 +3496,30 @@ class MedicalProfileResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "profile": {
-                    "chip_number": "643094100200311",
-                    "blood_type": "DEA 1.1+",
                     "allergies": [],
-                    "allergies_none_known": True,
-                    "conditions": [],
-                    "diet": "",
-                    "living": "",
-                    "reproduction": "",
+                    "allergies_none_known": False,
+                    "blood_type": "DEA 1.1+",
+                    "chip_number": "643094100200311",
+                    "clinic": {"name": "Ортовет", "phone": "+7 727 555 03 04", "vet": "Каримов Д."},
+                    "clinics": [
+                        {
+                            "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
+                            "name": "Ортовет",
+                            "phone": "+7 727 555 03 04",
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "name": "Дисплазия тазобедренных суставов",
+                            "note": "обострения после нагрузки",
+                            "since_year": 2023,
+                        }
+                    ],
+                    "diet": "Сухой корм для крупных пород, два раза в день",
+                    "living": "Квартира, гуляет два раза в день",
+                    "reproduction": None,
+                    "updated_at": "2026-10-05 11:51",
+                    "version": "9b1c2e7f4a3d48e6b0c5d1f2a7e9c3b8",
                 }
             }
         }
@@ -3544,15 +3573,10 @@ class MedicalCardData(BaseModel):
                 "profile": {
                     "allergies": [],
                     "allergies_none_known": False,
+                    "base_version": None,
                     "blood_type": "DEA 1.1+",
                     "chip_number": "643094100200311",
-                    "conditions": [
-                        {
-                            "name": "Дисплазия тазобедренных суставов",
-                            "note": "обострения после нагрузки",
-                            "since_year": 2023,
-                        }
-                    ],
+                    "clinic": {"name": "Ортовет", "phone": "+7 727 555 03 04", "vet": "Каримов Д."},
                     "clinics": [
                         {
                             "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
@@ -3560,8 +3584,18 @@ class MedicalCardData(BaseModel):
                             "phone": "+7 727 555 03 04",
                         }
                     ],
+                    "conditions": [
+                        {
+                            "name": "Дисплазия тазобедренных суставов",
+                            "note": "обострения после нагрузки",
+                            "since_year": 2023,
+                        }
+                    ],
+                    "diet": "Сухой корм для крупных пород, два раза в день",
+                    "living": "Квартира, гуляет два раза в день",
+                    "reproduction": None,
                     "updated_at": "2026-10-05 11:51",
-                    "version": "3f2a9c1e",
+                    "version": "9b1c2e7f4a3d48e6b0c5d1f2a7e9c3b8",
                 },
                 "weight": {
                     "latest": {"date": "2026-10-04", "value": 29.3},
@@ -3572,6 +3606,7 @@ class MedicalCardData(BaseModel):
                     ],
                 },
                 "records": {
+                    "vaccination": [],
                     "parasite": [
                         {
                             "_id": "507f1f77bcf86cd799439041",
@@ -3595,7 +3630,9 @@ class MedicalCardData(BaseModel):
                             "title": "Дронтал Плюс",
                             "vet": None,
                         }
-                    ]
+                    ],
+                    "visit": [],
+                    "procedure": [],
                 },
                 "record_counts": {"vaccination": 0, "parasite": 1, "visit": 0, "procedure": 0},
                 "overdue_records": [],
@@ -3640,15 +3677,10 @@ class MedicalCardResponse(BaseModel):
                     "profile": {
                         "allergies": [],
                         "allergies_none_known": False,
+                        "base_version": None,
                         "blood_type": "DEA 1.1+",
                         "chip_number": "643094100200311",
-                        "conditions": [
-                            {
-                                "name": "Дисплазия тазобедренных суставов",
-                                "note": "обострения после нагрузки",
-                                "since_year": 2023,
-                            }
-                        ],
+                        "clinic": {"name": "Ортовет", "phone": "+7 727 555 03 04", "vet": "Каримов Д."},
                         "clinics": [
                             {
                                 "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
@@ -3656,8 +3688,18 @@ class MedicalCardResponse(BaseModel):
                                 "phone": "+7 727 555 03 04",
                             }
                         ],
+                        "conditions": [
+                            {
+                                "name": "Дисплазия тазобедренных суставов",
+                                "note": "обострения после нагрузки",
+                                "since_year": 2023,
+                            }
+                        ],
+                        "diet": "Сухой корм для крупных пород, два раза в день",
+                        "living": "Квартира, гуляет два раза в день",
+                        "reproduction": None,
                         "updated_at": "2026-10-05 11:51",
-                        "version": "3f2a9c1e",
+                        "version": "9b1c2e7f4a3d48e6b0c5d1f2a7e9c3b8",
                     },
                     "weight": {
                         "latest": {"date": "2026-10-04", "value": 29.3},
@@ -3668,6 +3710,7 @@ class MedicalCardResponse(BaseModel):
                         ],
                     },
                     "records": {
+                        "vaccination": [],
                         "parasite": [
                             {
                                 "_id": "507f1f77bcf86cd799439041",
@@ -3691,7 +3734,9 @@ class MedicalCardResponse(BaseModel):
                                 "title": "Дронтал Плюс",
                                 "vet": None,
                             }
-                        ]
+                        ],
+                        "visit": [],
+                        "procedure": [],
                     },
                     "record_counts": {"vaccination": 0, "parasite": 1, "visit": 0, "procedure": 0},
                     "overdue_records": [],
@@ -3816,7 +3861,101 @@ class SharedMedicalCardResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "card": {"generated_at": "2026-10-11", "can_edit": False},
+                "card": {
+                    "pet": {
+                        "name": "Рекс",
+                        "species": "Собака",
+                        "breed": "Лабрадор",
+                        "birth_date": "2021-08-01",
+                        "age_text": "5 лет",
+                        "gender": "Мальчик",
+                        "neutered_text": "кастрирован",
+                        "health_notes": None,
+                    },
+                    "visit_prep": None,
+                    "profile": {
+                        "allergies": [],
+                        "allergies_none_known": False,
+                        "base_version": None,
+                        "blood_type": "DEA 1.1+",
+                        "chip_number": "643094100200311",
+                        "clinic": {"name": "Ортовет", "phone": "+7 727 555 03 04", "vet": "Каримов Д."},
+                        "clinics": [
+                            {
+                                "doctors": [{"name": "Каримов Д.", "specialty": "хирург-ортопед"}],
+                                "name": "Ортовет",
+                                "phone": "+7 727 555 03 04",
+                            }
+                        ],
+                        "conditions": [
+                            {
+                                "name": "Дисплазия тазобедренных суставов",
+                                "note": "обострения после нагрузки",
+                                "since_year": 2023,
+                            }
+                        ],
+                        "diet": "Сухой корм для крупных пород, два раза в день",
+                        "living": "Квартира, гуляет два раза в день",
+                        "reproduction": None,
+                        "updated_at": "2026-10-05 11:51",
+                        "version": "9b1c2e7f4a3d48e6b0c5d1f2a7e9c3b8",
+                    },
+                    "weight": {
+                        "latest": {"date": "2026-10-04", "value": 29.3},
+                        "series": [
+                            {"date": "2026-09-19", "value": 29.0},
+                            {"date": "2026-10-03", "value": 29.1},
+                            {"date": "2026-10-04", "value": 29.3},
+                        ],
+                    },
+                    "records": {
+                        "vaccination": [],
+                        "parasite": [
+                            {
+                                "_id": "507f1f77bcf86cd799439041",
+                                "batch": None,
+                                "clinic": None,
+                                "complaint": None,
+                                "date": "2026-09-08",
+                                "days_left": 55,
+                                "diagnosis": None,
+                                "documents": [],
+                                "kind": "parasite",
+                                "next_due": "2026-12-07",
+                                "note": None,
+                                "pet_id": "507f1e88bf19b6fcdb027c75",
+                                "protects": None,
+                                "protects_label": None,
+                                "recommendations": None,
+                                "status": "ok",
+                                "superseded": False,
+                                "target": "worms",
+                                "title": "Дронтал Плюс",
+                                "vet": None,
+                            }
+                        ],
+                        "visit": [],
+                        "procedure": [],
+                    },
+                    "record_counts": {"vaccination": 0, "parasite": 1, "visit": 0, "procedure": 0},
+                    "overdue_records": [],
+                    "medications": [],
+                    "past_courses": [],
+                    "past_courses_total": 0,
+                    "vaccinations": [
+                        {
+                            "id": "507f1f77bcf86cd799439031",
+                            "title": "Паспорт, прививки 2025",
+                            "expires_at": "2027-04-21",
+                            "status": "valid",
+                            "days_left": 190,
+                            "note": None,
+                        }
+                    ],
+                    "documents": [],
+                    "generated_at": "2026-10-13",
+                    "can_edit": True,
+                },
                 "expires_at": "2026-10-18T07:52:00.123456Z",
             }
         }

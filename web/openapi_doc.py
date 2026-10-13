@@ -33,7 +33,7 @@ API дневника здоровья питомцев Petzy: питомцы, з
 
 Храните `refresh_token` в защищённом хранилище (Keychain, EncryptedSharedPreferences). Смена или сброс пароля завершают все остальные сессии, их токены перестают работать сразу.
 
-Веб-приложение входит по httpOnly-кукам `access_token` и `refresh_token`. Браузер всегда присылает `Origin`, и токены в теле ответа ему не отдаются.
+Веб-приложение входит по httpOnly-кукам `access_token` и `refresh_token`. Браузер всегда присылает `Origin`, и refresh-токен в теле ему не отдаётся; `POST /api/auth/refresh` возвращает в теле только `access_token`.
 
 Аккаунт создаётся через `POST /api/auth/register`. Открыта ли регистрация и работает ли почта, скажет `GET /api/auth/registration`.
 
@@ -45,7 +45,9 @@ API дневника здоровья питомцев Petzy: питомцы, з
 
 ## Ошибки
 
-Тело ошибки: `{"success": false, "error": "текст для человека", "code": "машинный_код"}`. Показывайте пользователю `error`, а решения принимайте по `code`. Ошибка проверки схемы (422, `code: "validation_error"`) добавляет `details`: список `{"field": "comment", "type": "string_too_long"}`, чтобы подсветить нужное поле. Проверки, которые делает сам обработчик (значения полей события, даты), приходят с тем же кодом, но без `details`: причина только в `error`.
+Изменения курсов лекарств и приёмов отвечают `{"message": "...", ...}` без поля `success`, и `message` у них по-английски.
+
+Тело ошибки: `{"success": false, "error": "текст для человека", "code": "машинный_код"}`. Показывайте пользователю `error`, а решения принимайте по `code`. Ошибка проверки схемы (422, `code: "validation_error"`) добавляет `details`: список `{"field": "comment", "type": "string_too_long"}`, чтобы подсветить нужное поле. Проверки, которые делает сам обработчик (значения полей события, дата вместе со временем), приходят с тем же кодом, но без `details`: причина только в `error`.
 
 | Статус | Значит |
 |---|---|
@@ -53,24 +55,24 @@ API дневника здоровья питомцев Petzy: питомцы, з
 | 403 | нет прав (например, действие только для владельца питомца) |
 | 404 | не найдено, в том числе чужая запись |
 | 422 | неверные данные |
-| 413 | тело запроса больше 16 МБ |
-| 429 | слишком много запросов: через сколько секунд повторить, скажут поле `retry_after` и заголовок `Retry-After` |
-| 503 | не настроена часть сервиса (почта, хранилище файлов). Push без ключей VAPID отвечает иначе: 422 `push_not_configured` |
+| 413 | тело запроса слишком большое. Приложение отвечает так на тело больше 16 МБ, но прокси сервера может остановить уже тело больше 10 МБ, и тогда ответ не JSON |
+| 429 | слишком много запросов. Поле `retry_after` и заголовок `Retry-After` дают длину окна ограничения в секундах: повторить можно не позже, чем через столько. У 429 `too_many_pending_uploads` (незавершённые загрузки сканов) их нет |
+| 503 | не настроена часть сервиса (почта, хранилище файлов) или письмо не удалось отправить (`mail_send_failed`). Push без ключей VAPID отвечает иначе: 422 `push_not_configured` |
 
 ## Даты и время
 
-Дата `YYYY-MM-DD`, время `HH:MM`, вместе `YYYY-MM-DD HH:MM`. Это время на часах того, кто его ввёл: присылайте его так, как видит человек. Записи событий, приёмы лекарств и документы принимают ещё `tz`, IANA-имя зоны устройства (`Asia/Almaty`), и хранят его рядом со временем: так приложение и выгрузка показывают время на часах того, кто смотрит. Без `tz` время ни к какой зоне не привязано. Эндпоинты, которым нужно «сегодня», принимают текущие дату и время устройства (`client_date`, `client_datetime`). Без них сервер считает по UTC.
+Дата `YYYY-MM-DD`, время `HH:MM`, вместе `YYYY-MM-DD HH:MM`. Это время на часах того, кто его ввёл: присылайте его так, как видит человек. Записи событий, приёмы лекарств и документы (кроме сканов) принимают ещё `tz`, IANA-имя зоны устройства (`Asia/Almaty`), и хранят его рядом со временем: так приложение и выгрузка показывают время на часах того, кто смотрит. Без `tz`, или с неизвестным именем зоны (его молча отбрасывают), время ни к какой зоне не привязано. Эндпоинты, которым нужно «сегодня», принимают текущие дату и время устройства (`client_date`, `client_datetime`), а медкарта и её записи принимают `tz`. Без них, и при неизвестной зоне, сервер считает по UTC.
 
 ## Списки
 
-Параметры `page` (с 1) и `page_size`. В ответе `page`, `page_size` и `total`. Исключения: список курсов лекарств отдаётся целиком, без страниц, а список пользователей у администратора берёт только `page`, страница в 20 аккаунтов, в ответе `per_page`.
+По страницам (`page` с 1 и `page_size`, в ответе `page`, `page_size` и `total`) отдаются лента событий, история, документы и приёмы лекарств. Остальные списки (питомцы, приглашения, курсы, поиск людей) приходят целиком. Список пользователей у администратора берёт только `page`: страница в 20 аккаунтов, в ответе `per_page`.
 
 ## Ограничения
 
 - Вход: 5 попыток в минуту с одного адреса. Регистрация: 5 созданных аккаунтов и 30 попыток в час с одного адреса.
 - Документ файлом до 10 МБ. Сканы и архивы до 500 МБ загружаются прямо в хранилище, см. ниже.
 - На владельца питомцев 2 ГБ под документы (сервер может задать другой размер). Начатая загрузка скана занимает место сразу, до подтверждения. У администратора ограничения нет.
-- Тело запроса не больше 16 МБ: всё, что больше, загружается как скан.
+- Тело запроса не больше 10 МБ (на этом месте его может остановить прокси сервера): всё, что больше, загружается как скан.
 
 ## Сканы и архивы
 
@@ -156,18 +158,18 @@ PUBLIC = {
 RATE_LIMITS = {
     ("post", "/api/auth/login"): "5 попыток в минуту с одного адреса",
     ("post", "/api/auth/register"): "5 созданных аккаунтов и 30 попыток в час с одного адреса",
-    ("post", "/api/auth/password/forgot"): "5 писем в час",
-    ("post", "/api/auth/password/reset"): "20 попыток в час",
-    ("get", "/api/auth/password/reset/check"): "30 проверок в час",
-    ("post", "/api/auth/email/verify"): "30 проверок в час",
-    ("post", "/api/auth/password/common"): "60 проверок пароля в час",
-    ("put", "/api/me/email"): "10 в час",
-    ("post", "/api/me/email/resend"): "5 в час",
-    ("put", "/api/me/password"): "10 в час",
-    ("delete", "/api/me/account"): "10 в час",
-    ("post", "/api/images/preview"): "120 в час",
-    ("get", "/api/shared/medical-card/{token}"): "60 в минуту",
-    ("get", "/api/shared/medical-card/{token}/pdf"): "60 в минуту",
+    ("post", "/api/auth/password/forgot"): "5 запросов в час с одного адреса",
+    ("post", "/api/auth/password/reset"): "20 попыток в час с одного адреса",
+    ("get", "/api/auth/password/reset/check"): "30 проверок в час с одного адреса",
+    ("post", "/api/auth/email/verify"): "30 проверок в час с одного адреса",
+    ("post", "/api/auth/password/common"): "60 проверок пароля в час с одного адреса",
+    ("put", "/api/me/email"): "10 в час с одного адреса",
+    ("post", "/api/me/email/resend"): "5 в час с одного адреса",
+    ("put", "/api/me/password"): "10 в час с одного адреса",
+    ("delete", "/api/me/account"): "10 в час с одного адреса",
+    ("post", "/api/images/preview"): "120 в час с одного адреса",
+    ("get", "/api/shared/medical-card/{token}"): "60 в минуту с одного адреса",
+    ("get", "/api/shared/medical-card/{token}/pdf"): "60 в минуту с одного адреса",
 }
 
 _METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
@@ -305,8 +307,14 @@ def finish_spec(spec: dict) -> dict:
     photo = op("get", "/api/pets/{pet_id}/photo")
     if photo:
         photo["responses"]["200"] = {
-            "description": "Фото (WebP). ?w= и ?h= дают уменьшенную копию",
-            "content": {"image/webp": {"schema": _BINARY}},
+            "description": "Фото (WebP; у старых JPEG, PNG или GIF). ?w= и ?h= дают уменьшенную копию",
+            "content": {
+                "image/webp": {"schema": _BINARY},
+                "image/jpeg": {"schema": _BINARY},
+                "image/png": {"schema": _BINARY},
+                "image/gif": {"schema": _BINARY},
+                "application/octet-stream": {"schema": _BINARY},
+            },
         }
     document_file = op("get", "/api/documents/{id}/file")
     if document_file:
@@ -315,6 +323,9 @@ def finish_spec(spec: dict) -> dict:
             "content": {
                 "image/webp": {"schema": _BINARY},
                 "image/jpeg": {"schema": _BINARY},
+                "image/png": {"schema": _BINARY},
+                "image/heic": {"schema": _BINARY},
+                "image/heif": {"schema": _BINARY},
                 "application/pdf": {"schema": _BINARY},
             },
         }
@@ -394,14 +405,29 @@ def _name_the_params_views_read(op, error_schema: dict) -> None:
         ],
         ("get", "/api/users"): [
             _param("q", "query", {"type": "string"}, "Часть логина или имени, без учёта регистра"),
-            _param("page", "query", {"type": "integer", "minimum": 1, "default": 1}, "Страница, по 20 аккаунтов"),
+            _param(
+                "page",
+                "query",
+                {"type": "integer", "default": 1},
+                "Страница, по 20 аккаунтов; неверное значение читается как 1",
+            ),
         ],
         ("get", "/api/users/search"): [
-            _param("q", "query", {"type": "string", "minLength": 2}, "Начало логина или логин целиком", True)
+            _param("q", "query", {"type": "string"}, "Начало логина или логин целиком; короче 2 знаков: пустой список")
         ],
         ("delete", "/api/event-types/{key}"): [
-            _param("preview", "query", {"type": "boolean"}, "Только посчитать записи типа, ничего не удаляя"),
-            _param("with_events", "query", {"type": "boolean"}, "Удалить тип вместе со всеми его записями"),
+            _param(
+                "preview",
+                "query",
+                {"type": "string", "enum": ["true"]},
+                "Только посчитать записи типа, ничего не удаляя. Считается только буквальное `true`: `1` или `True` удаляют по-настоящему",
+            ),
+            _param(
+                "with_events",
+                "query",
+                {"type": "string", "enum": ["true"]},
+                "Удалить тип вместе со всеми его записями. Считается только буквальное `true`",
+            ),
         ],
         ("get", "/api/medical-records/{id}"): [
             _param("tz", "query", {"type": "string"}, "IANA-зона устройства: по ней считается «сегодня» для статуса")
@@ -458,6 +484,12 @@ NOTHING_TO_VALIDATE = {
     ("post", "/api/pets/{pet_id}/invite/accept"),
     ("post", "/api/pets/{pet_id}/invite/decline"),
     ("post", "/api/pets/{pet_id}/leave"),
+    ("post", "/api/auth/logout"),
+    ("get", "/api/auth/password/reset/check"),
+    ("get", "/api/users"),
+    ("get", "/api/users/{username}"),
+    ("post", "/api/documents/uploads/{upload_id}/cancel"),
+    ("get", "/api/documents/storage"),
 }
 
 # Bodies above 16 MB stop at the server before the view (MAX_CONTENT_LENGTH): 413, not the view's own 422.
@@ -494,6 +526,8 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
             key = (method, path)
             if key in NOTHING_TO_VALIDATE:
                 responses.pop("422", None)
+            elif key == ("post", "/api/me/email/resend"):
+                responses["422"] = answer("Нет новой почты, ждущей подтверждения (`account_no_pending_email`)")
             elif responses.get("422", {}).get("description") in ("Validation Error", "Unprocessable Entity"):
                 responses["422"] = answer(
                     "Неверные данные. `code` называет причину; ошибка проверки схемы (`validation_error`) "
@@ -505,7 +539,10 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
                 elif path.startswith("/api/shared/"):
                     text = "Ссылки нет: неверная, истекла или отозвана (`not_found`)"
                 elif path.startswith("/api/event-types/"):
-                    text = "Такого типа нет среди встроенных и ваших (`event_type_not_found`)"
+                    text = (
+                        "Такого типа нет среди встроенных и типов вашего круга, людей, с которыми у вас общий питомец "
+                        "(`event_type_not_found`)"
+                    )
                 else:
                     text = (
                         "Питомца или записи нет, или к ним нет доступа: чужое отвечает так же, как несуществующее "
@@ -517,22 +554,35 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
                     text = "Только для администратора (`forbidden_admin_only`): это встроенный аккаунт ADMIN_USERNAME"
                 elif path == "/api/auth/register":
                     text = "Регистрация закрыта (`registration_closed`)"
+                elif path.startswith("/api/event-types/") and method == "delete":
+                    text = "Чужой тип удалить нельзя (`event_type_not_yours`)"
                 elif path.startswith("/api/event-types/"):
                     text = (
                         "Встроенный тип меняет только администратор (`event_type_builtin_admin_only`), "
-                        "чужой тип нельзя ни менять, ни удалять (`event_type_not_yours`)"
+                        "чужой тип менять нельзя (`event_type_not_yours`)"
                     )
                 else:
                     text = "Только для владельца питомца (`owner_action_forbidden`)"
                 responses["403"] = answer(text)
             if responses.get("401", {}).get("description") == "Unauthorized":
                 responses["401"] = answer("Нет токена или он истёк")
-            if responses.get("500", {}).get("description") == "Internal Server Error":
+            if key == ("delete", "/api/me/account") and "500" in responses:
+                responses["500"] = answer(
+                    "Не удалось удалить (`account_delete_failed`): ничего не изменилось, повторите позже"
+                )
+            elif responses.get("500", {}).get("description") == "Internal Server Error":
                 responses["500"] = answer("Сбой на сервере (`internal_error`), повторите позже")
             if responses.get("503", {}).get("description") == "Service Unavailable":
-                responses["503"] = answer("Не настроена часть сервиса: почта или хранилище файлов")
+                if path.startswith(("/api/me/email", "/api/auth")):
+                    responses["503"] = answer(
+                        "Почта не настроена (`mail_not_configured`) или письмо не удалось отправить (`mail_send_failed`)"
+                    )
+                else:
+                    responses["503"] = answer("Хранилище файлов не настроено (`storage_not_configured`)")
             if key in TOO_LARGE:
-                responses["413"] = answer("Тело запроса больше 16 МБ (`request_too_large`)")
+                responses["413"] = answer(
+                    "Тело слишком большое: больше 16 МБ (`request_too_large`), а прокси сервера может остановить его уже после 10 МБ"
+                )
             if key in NEEDS_STORAGE:
                 responses.setdefault("503", answer("Хранилище файлов не настроено (`storage_not_configured`)"))
 
@@ -549,12 +599,21 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
     for path in ("/api/pets/{pet_id}/photo", "/api/documents/{id}/file"):
         if op("get", path):
             op("get", path)["responses"]["304"] = {"description": "Файл не изменился (совпал If-None-Match)"}
+            op("get", path)["responses"]["404"] = answer(
+                "Питомца, документа или файла нет, к ним нет доступа, или сохранённый файл не удалось прочитать "
+                "(`upload_error`)"
+            )
 
     duplicate = op("post", "/api/events")
     if duplicate:
         duplicate["responses"]["409"] = answer(
             "Тот же человек прислал ту же запись (питомец, тип, время до минуты, поля и комментарий) в течение "
             "5 минут (`duplicate_event`). В ответе `existing`: `id`, `date`, `time`, `username`, `own`"
+        )
+    scans = op("post", "/api/documents/scans")
+    if scans:
+        scans["responses"]["429"] = answer(
+            "Уже 3 незавершённые загрузки, начатые за последний час (`too_many_pending_uploads`): дождитесь их"
         )
     intake = op("post", "/api/medications/{id}/log")
     if intake:
