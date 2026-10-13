@@ -822,7 +822,7 @@ function FamilyArt() {
 }
 
 function Confetti() {
-  const colors = ['var(--app-accent)', 'var(--tile-yellow)', 'var(--tile-green)', 'var(--tile-pink)', 'var(--tile-blue)', '#E8B558'];
+  const colors = ['var(--app-accent)', 'var(--tile-yellow)', 'var(--tile-green)', 'var(--tile-pink)', 'var(--tile-blue)', 'var(--species-dog-light)'];
   const pieces = Array.from({ length: 18 }, (_, i) => {
     const angle = (i / 18) * Math.PI * 2;
     const dist = 110 + (i % 3) * 28;
