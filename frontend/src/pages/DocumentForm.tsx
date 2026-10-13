@@ -426,7 +426,8 @@ export function DocumentForm() {
   // other field had passed, so a user fixed one thing and hit the next.
   const submit = () => {
     const missingFile = !isEditing && !file ? (isImaging ? 'Выберите снимки: фото, PDF или архив' : 'Выберите фото или PDF') : undefined;
-    setFileError((current) => missingFile ?? (file ? undefined : current));
+    // A file that was refused on the pick keeps its reason here; «no file» is said only when there is none.
+    setFileError((current) => (file ? undefined : current ?? missingFile));
     const fileErrors = missingFile ? { file: { type: 'required', message: missingFile } } : {};
     handleSubmit(
       (data) => (missingFile ? onInvalidSubmit(fileErrors as FieldErrors) : onSubmit(data)),
