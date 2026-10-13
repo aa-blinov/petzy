@@ -6,6 +6,8 @@ export interface TileConfig {
   title: string;
   color: TileColor;
   isTile?: boolean; // If false, won't show on Dashboard grid, QuickAddSheet or in Tiles Settings
+  /** The family's own type: the add sheet says so, so it is not taken for a built-in one of the same name. */
+  custom?: boolean;
 }
 
 /** The one tile not driven by the event-type registry — medications have
@@ -23,7 +25,7 @@ export const MEDICATIONS_TILE: TileConfig = {
  *  pet) is what actually reorders/hides them at render time. */
 export function buildTiles(eventTypes: EventType[]): TileConfig[] {
   return [
-    ...eventTypes.map((t): TileConfig => ({ id: t.key, title: t.label, color: t.color })),
+    ...eventTypes.map((t): TileConfig => ({ id: t.key, title: t.label, color: t.color, custom: !t.is_builtin })),
     MEDICATIONS_TILE,
   ];
 }
