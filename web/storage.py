@@ -82,15 +82,19 @@ def storage_configured() -> bool:
 
 
 @lru_cache(maxsize=1)
-def _client():
+def _client(public: bool = False):
+    """The storage client. Links for the browser (``public``) are signed for ``S3_PUBLIC_ENDPOINT`` when the
+    browser reaches storage at another address than the server does: a local stand, where the storage name
+    "s3" exists only inside the compose network. Unset, both are the same address."""
     if not storage_configured():
         raise StorageNotConfigured("S3_ENDPOINT, S3_BUCKET, S3_KEY_ID and S3_SECRET_KEY must be set")
     import boto3
     from botocore.config import Config
 
+    endpoint = (_env("S3_PUBLIC_ENDPOINT") if public else None) or _env("S3_ENDPOINT")
     return boto3.client(
         "s3",
-        endpoint_url=_env("S3_ENDPOINT"),
+        endpoint_url=endpoint,
         region_name=_env("S3_REGION") or None,
         aws_access_key_id=_env("S3_KEY_ID"),
         aws_secret_access_key=_env("S3_SECRET_KEY"),
@@ -294,7 +298,7 @@ def upload_url(key: str, content_type: str, size: int) -> str:
     body of any other size: nobody can park more than they declared (and
     we checked against MAX_SCAN_BYTES) behind a slot.
     """
-    return _client().generate_presigned_url(
+    return _client(public=True).generate_presigned_url(
         "put_object",
         Params={"Bucket": _bucket(), "Key": key, "ContentType": content_type, "ContentLength": size},
         ExpiresIn=upload_url_ttl(size),
@@ -307,7 +311,7 @@ def upload_url_ttl(size: int) -> int:
 
 
 def download_url(key: str, content_disposition: str) -> str:
-    return _client().generate_presigned_url(
+    return _client(public=True).generate_presigned_url(
         "get_object",
         Params={"Bucket": _bucket(), "Key": key, "ResponseContentDisposition": content_disposition},
         ExpiresIn=DOWNLOAD_URL_TTL_SECONDS,
@@ -320,9 +324,11 @@ def ensure_bucket_cors(logger=None) -> bool:
     Best effort at startup: the upload of anything else never needs it.
     Returns whether the rules are in place.
     """
+    # Origins a development stand adds (its own app address), from the environment; production sets none.
+    extra = [origin.strip() for origin in (_env("S3_CORS_EXTRA_ORIGINS") or "").split(",") if origin.strip()]
     rules = [
         {
-            "AllowedOrigins": CORS_ORIGINS,
+            "AllowedOrigins": CORS_ORIGINS + extra,
             "AllowedMethods": ["PUT", "GET", "HEAD"],
             "AllowedHeaders": ["content-type", "content-length"],
             "ExposeHeaders": ["ETag"],

@@ -22,6 +22,9 @@
 
 x-local-env: &local-env
   S3_ENDPOINT: http://s3:7070
+  # The browser reaches the same storage on the host; links it uses are signed for this address.
+  S3_PUBLIC_ENDPOINT: http://localhost:7070
+  S3_CORS_EXTRA_ORIGINS: http://localhost:3000
   S3_REGION: us-east-1
   S3_BUCKET: petzy-local
   # Credentials of the local file store only (below); not secrets.
@@ -68,6 +71,8 @@ services:
   s3:
     image: versity/versitygw:v1.8.0
     command: ["posix", "/data"]
+    ports:
+      - "127.0.0.1:7070:7070"
     environment:
       ROOT_ACCESS_KEY: petzy-local
       ROOT_SECRET_KEY: petzy-local-secret
