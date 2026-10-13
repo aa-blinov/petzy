@@ -1973,6 +1973,27 @@ class PetIdQuery(BaseModel):
     )
 
 
+class UsedEventTypesResponse(BaseModel):
+    """The event types a pet has at least one record of."""
+
+    types: List[str] = Field(..., description="Ключи типов событий, по алфавиту")
+
+    model_config = ConfigDict(json_schema_extra={"example": {"types": ["feeding", "walk", "weight"]}})
+
+
+class PetDeletionImpactResponse(BaseModel):
+    """What deleting a pet takes with it, counted."""
+
+    events: int = Field(..., description="Записи событий")
+    medications: int = Field(..., description="Курсы лекарств")
+    documents: int = Field(..., description="Документы")
+    medical_records: int = Field(..., description="Записи медкарты")
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"events": 214, "medications": 3, "documents": 5, "medical_records": 12}}
+    )
+
+
 class ExportQuery(PetIdQuery):
     """Query of a data export: the pet, and the user's time zone."""
 
