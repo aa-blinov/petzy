@@ -725,8 +725,11 @@ export function HealthRecordForm() {
                           ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
                       }),
                   });
+                  // In the app, not back in history: a form opened by its address has a previous page of another
+                  // document, and going back to it unloads this one. The page's exit then sends the delete at once,
+                  // with no «Отменить» left to offer. The bar lives in the app and survives this move.
                   release();
-                  goBack(navigate, '/history');
+                  navigate('/history', { replace: true });
                 }}
                 style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
               >
