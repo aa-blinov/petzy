@@ -386,30 +386,6 @@ class UserSearchItem(BaseModel):
     model_config = ConfigDict(json_schema_extra={"example": {"username": "anna"}})
 
 
-class FormDefaults(BaseModel):
-    """What a new record's form starts with, per type: {"defecation": {"food": "…"}}.
-
-    Kept on the account since the defaults moved off each browser; superseded by the pet's own
-    (PetFormDefaults): a pet's food or drops are about that pet and shared by everyone who can add its records.
-    Nothing in the app reads this one any more."""
-
-    form_defaults: Dict[str, Dict[str, str]] = Field(default_factory=dict)
-
-    @field_validator("form_defaults")
-    @classmethod
-    def _bounded(cls, value: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
-        if len(value) > 50 or any(len(fields) > 30 for fields in value.values()):
-            raise ValueError("Слишком много значений по умолчанию")
-        for form, fields in value.items():
-            if len(form) > 50 or any(len(k) > 50 or len(v) > 300 for k, v in fields.items()):
-                raise ValueError("Слишком длинное значение по умолчанию")
-        return value
-
-    model_config = ConfigDict(
-        json_schema_extra={"example": {"form_defaults": {"feeding": {"food_type": "сухой", "food_weight": "320"}}}}
-    )
-
-
 # What may be remembered as a default: any plain field of any record type, built-in or the family's own. Only the shape is
 # checked here (a type is a short code, a field a short name), since the types and fields of a household are its own.
 _DEFAULT_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")

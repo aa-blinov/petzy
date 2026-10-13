@@ -476,7 +476,6 @@ NOTHING_TO_VALIDATE = {
     ("get", "/api/vaccines/catalog"),
     ("get", "/api/pets"),
     ("get", "/api/pets/invites"),
-    ("get", "/api/me/form-defaults"),
     ("get", "/api/users/search"),
     ("get", "/api/users/{username}/profile"),
     ("post", "/api/pets/{pet_id}/invite/accept"),
