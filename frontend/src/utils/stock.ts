@@ -44,7 +44,15 @@ export function stockSummary(med: Medication): StockSummary | null {
   let lasts = '';
   if (days != null) {
     const whole = Math.floor(days);
-    lasts = whole < 1 ? 'меньше чем на день' : `хватит примерно на ${whole} ${pluralRu(whole, 'день', 'дня', 'дней')}`;
+    if (whole < 1) {
+      lasts = 'меньше чем на день';
+    } else {
+      // The day it runs out is the day to buy the next pack by: counted from today, on the viewer's clock.
+      const runsOut = new Date();
+      runsOut.setDate(runsOut.getDate() + whole);
+      const buyBy = runsOut.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+      lasts = `хватит примерно на ${whole} ${pluralRu(whole, 'день', 'дня', 'дней')}, докупить до ${buyBy}`;
+    }
   }
   const low = !!med.inventory_low;
   return {
