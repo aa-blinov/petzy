@@ -2518,8 +2518,9 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
     z-index: 5;
     margin: 0 calc(-1 * var(--spacing-md));
     padding: 0 var(--spacing-md) var(--spacing-xs);
-    /* The pet's own screen ground when it has one, so the bar is not a plain band over it (as the form's bar is). */
-    background: var(--pet-scene-bg, color-mix(in srgb, var(--app-page-background) 86%, transparent));
+    /* No ground of its own: a painted band (the page colour, or the pet's scene drawn again from its own corner) reads as
+       a box over the screen. The screen shows through, and what scrolls under the tabs is only softened by the blur. */
+    background: none;
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--app-border-color);
