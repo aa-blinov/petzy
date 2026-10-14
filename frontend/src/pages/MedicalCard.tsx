@@ -757,6 +757,13 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
         </Section>
       )}
 
+      {/* What the card does not have, in one line: a vet reads the empty parts as missing, not as «all is well». */}
+      {missing.length > 0 && (
+        <p className="medcard__empty" role="note">
+          Не заполнено: {listWords(missing)}
+        </p>
+      )}
+
       <Section id="medcard-vet-meds" title="Лекарства">
         {card.medications.length === 0 ? (
           <p className="medcard__empty">Сейчас ничего не принимает</p>
@@ -856,13 +863,6 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
 
       {/* The owner hands the card over: the file and the link sit after the results and the weight. */}
       {onShare && handover}
-
-      {/* What the card does not have, in one line: a vet reads the empty parts as missing, not as «all is well». */}
-      {missing.length > 0 && (
-        <p className="medcard__empty" role="note">
-          Не заполнено: {listWords(missing)}
-        </p>
-      )}
 
       {card.past_courses.length > 0 && (
         <Section id="medcard-vet-past" title="Прошлые курсы">
