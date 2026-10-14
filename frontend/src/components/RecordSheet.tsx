@@ -89,7 +89,7 @@ export function RecordFab({ petId, petName }: { petId: string; petName?: string 
   const navigate = useNavigate();
   return (
     <>
-      <Fab label="Записать в медкарту" onClick={() => setOpen(true)} popup />
+      <Fab label="Записать в медкарту" onClick={() => setOpen(true)} popup awayAtTop />
       <RecordSheet
         visible={open}
         petId={petId}

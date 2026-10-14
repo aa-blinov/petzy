@@ -18,6 +18,22 @@ async def main():
         pid = await login(pg)
         await pg.goto(BASE + f"/pets/{pid}/medical-card?mode=fill")
         await pg.wait_for_timeout(1800)
+        # The round plus is put aside at the top of the card: its last row of tiles is where it would stand.
+        check(
+            "the round plus stays aside at the top of the card",
+            await pg.locator(".app-fab--away").count() == 1,
+        )
+        await pg.evaluate("window.scrollBy(0, 700)")
+        await pg.wait_for_timeout(400)
+        # The card is shorter than 700px of scroll: this lands mid-page, off the top zone where it stays aside.
+        await pg.evaluate("window.scrollBy(0, -200)")
+        await pg.wait_for_timeout(600)
+        check(
+            "and it comes back on a scroll up",
+            await pg.locator(".app-fab:not(.app-fab--away)").count() == 1,
+        )
+        await pg.evaluate("window.scrollTo(0, 0)")
+        await pg.wait_for_timeout(600)
         link = pg.locator(".medcard__alert-link").first
         if await link.count():
             box = await link.bounding_box()
