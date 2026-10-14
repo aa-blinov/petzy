@@ -32,6 +32,8 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
   const accentAttr = petAccentAttr(look);
   const font = petFontOf(look);
   const frame = petFrameStyle(look.frame, slot / 112);
+  // A frame cut to a shape (heart, star, cloud…) is a mask: see the box round the avatar below.
+  const shapedFrame = Boolean(frame.box.maskImage);
   const backdrop = petBackdropKey(look);
   // The name is hidden until its face has landed: a fallback face at the same size is a different width, and the name
   // jumps when the face comes in. Hidden keeps its place, so nothing moves when it shows.
@@ -108,6 +110,10 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
           marginBottom: compact ? 0 : "var(--spacing-md)",
         }}
       >
+        {/* A shape frame is a mask, and a mask cuts away any shadow on the element it is on: the outline is drawn by a
+            shadow on the box round it. Without a photo the shape takes a tint of the pet's colour, or it would be the
+            card's own colour and vanish. */}
+        <div style={{ flexShrink: 0, width: `${slot}px`, height: `${slot}px`, filter: shapedFrame ? "drop-shadow(0 0 1px rgba(0, 0, 0, 0.45))" : undefined }}>
         {/* Square avatar — image if available, else species icon on the
             brand-soft tint. object-fit: cover keeps the photo square
             even if the source is rectangular. */}
@@ -140,6 +146,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
             alignItems: "center",
             justifyContent: "center",
             ...frame.box,
+            ...(shapedFrame && !pet.photo_url ? { background: "color-mix(in srgb, var(--app-accent-deep) 18%, var(--app-card-background))" } : {}),
           }}
         >
           {pet.photo_url ? (
@@ -163,6 +170,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
               "aria-hidden": true,
             })
           )}
+        </div>
         </div>
 
         {/* Right column — name and the age, breed and gender line.
