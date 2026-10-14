@@ -174,10 +174,10 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
             display: "flex",
             flexDirection: "column",
             gap: "var(--spacing-sm)",
-            // Over a photo backdrop the text sits on a plate of the card's own colour: the photo stays visible at the
-            // edges and the name, the line and the meta read on any photo (white or black, in both themes).
+            // Over a photo backdrop each letter gets a halo in the card's own colour, not a box: the photo stays whole, and the
+            // name, the line and the meta read on any part of it, white or black, in both themes.
             ...(backdrop === "photo"
-              ? { background: "color-mix(in srgb, var(--app-card-background) 92%, transparent)", borderRadius: "var(--radius-md)", padding: "8px 12px", alignSelf: "stretch" }
+              ? { textShadow: "0 0 3px var(--app-card-background), 0 0 7px var(--app-card-background)" }
               : {}),
           }}
         >
