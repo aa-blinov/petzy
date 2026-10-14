@@ -1872,7 +1872,8 @@ button:focus-visible,
     position: fixed;
     /* 24px from the edge on a phone; on a wide window, at the right
        edge of the content column rather than of the screen. */
-    right: max(24px, calc((100vw - var(--content-max-width)) / 2 + var(--spacing-lg)));
+    /* Material 3: 16dp from the edge of the screen. */
+    right: max(16px, calc((100vw - var(--content-max-width)) / 2 + var(--spacing-lg)));
     bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     z-index: 200;
     translate: 0 var(--vv-shift, 0px);
