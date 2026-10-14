@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Dialog } from 'antd-mobile';
+import { isAxiosError } from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
@@ -255,6 +256,8 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const [cropping, setCropping] = useState<string | null>(null);
   const SpeciesIcon = getSpecies(pet.species).icon;
   const [saving, setSaving] = useState(false);
+  // The copy this form was made from: a save from an older one is refused, and the look as it is now comes back.
+  const baseVersion = useRef(saved.version ?? '');
   const mountedRef = useRef(true);
   const pinRef = useRef<HTMLDivElement | null>(null);
 
@@ -340,11 +343,23 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const dirty = snapshot(draft) !== snapshot(saved);
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
 
+  // The look as it is now on the server: taken into the form when the person chooses it after a conflict.
+  const applyLook = (l: PetLook) => {
+    setTagline(l.tagline ?? '');
+    setAccent(l.accent ?? '');
+    setFont(l.font ?? '');
+    setFrame(l.frame ?? '');
+    setBackdrop(l.backdrop ?? '');
+    setScene(l.scene ?? '');
+    setCrops(l.crops ?? {});
+  };
+
   const save = async () => {
     if (saving) return;
     setSaving(true);
     try {
-      const look = await petsService.saveLook(pet._id, draft);
+      const look = await petsService.saveLook(pet._id, draft, baseVersion.current);
+      baseVersion.current = look.version ?? '';
       queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, look } : p)));
       showToast.success('Оформление сохранено');
       release();
@@ -352,10 +367,34 @@ function PetLookFor({ pet }: { pet: Pet }) {
       // so jumping to /settings left its own address in history and the second «Назад» opened it again.
       goBack(navigate, '/settings');
     } catch (err) {
+      // 409: someone else saved the look while this form was open. Saving over it would wipe what they set: say so,
+      // and let the person take their copy, or knowingly keep their own (the visit note does the same).
+      const current = isAxiosError(err) && err.response?.status === 409 ? (err.response.data as { look?: PetLook } | undefined)?.look : undefined;
+      if (current !== undefined) {
+        void resolveConflict(current);
+        return;
+      }
       // The server's own words: «подпись не может быть длиннее» says more than «не удалось».
       showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить оформление'));
     } finally {
       if (mountedRef.current) setSaving(false);
+    }
+  };
+
+  const resolveConflict = async (current: PetLook) => {
+    const showCurrent = await Dialog.confirm({
+      title: 'Оформление изменили в другом месте',
+      content: 'Пока вы его правили, его сохранили с другого устройства или другой член семьи. Показать, что там сейчас? Ваши правки в этой форме тогда не сохранятся',
+      confirmText: 'Показать актуальное',
+      cancelText: 'Сохранить моё',
+    });
+    baseVersion.current = current.version ?? '';
+    queryClient.setQueryData<Pet[]>(['pets'], (pets) => pets?.map((p) => (p._id === pet._id ? { ...p, look: current } : p)));
+    if (showCurrent) {
+      applyLook(current);
+      showToast.info('Показали актуальное оформление. Внесите правки ещё раз');
+    } else {
+      void save();
     }
   };
 

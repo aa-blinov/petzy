@@ -1,5 +1,6 @@
 """Pets management routes (API)."""
 
+import uuid
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -641,11 +642,25 @@ def put_pet_form_defaults(pet_id):
     return jsonify({"form_defaults": form_defaults})
 
 
+def _look_conflict(pet: dict):
+    """409 with the look as it is now, so the client can show it and let the person choose (as the visit note does)."""
+    response, status = error_response("conflict", "Оформление изменили в другом месте, пока вы его правили")
+    body = response.get_json()
+    body["look"] = pet.get("look") or {}
+    return jsonify(body), status
+
+
 @pets_bp.route("/api/pets/<pet_id>/look", methods=["PUT"])
 @login_required
 @api.validate(
     body=Request(PetLook),
-    resp=Response(HTTP_200=PetLookResponse, HTTP_403=ErrorResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(
+        HTTP_200=PetLookResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_422=ErrorResponse,
+    ),
     tags=["pets"],
 )
 def put_pet_look(pet_id):
@@ -654,12 +669,19 @@ def put_pet_look(pet_id):
     Anyone the pet is shared with can set it: the look lives on the pet, so the owner and the family see the same
     thing after a save. Someone without access gets 404. The body replaces the whole look: a part left out or empty
     is dropped, and with every part empty the look is removed. Unknown values answer 422 (the allowed ones are in the schema).
+
+    The look carries a version, like the visit note: a save made from an older copy (``base_version`` is not the stored
+    one) answers 409 with the look as it is now, and two saves in the same instant do not both win.
     """
     username, _ = get_current_user()
     pet, access_error = get_pet_and_validate(pet_id, username)
     if access_error:
         return access_error[0], access_error[1]
     body = request.context.body  # type: ignore[attr-defined]
+    # "" is a copy of a look that was never saved or was saved before versions existed.
+    stored_version = (pet.get("look") or {}).get("version")
+    if body.base_version is not None and body.base_version != (stored_version or ""):
+        return _look_conflict(pet)
     look = {
         key: value
         for key, value in (
@@ -674,8 +696,16 @@ def put_pet_look(pet_id):
     }
     if body.crops:
         look["crops"] = body.crops
-    update = {"$set": {"look": look}} if look else {"$unset": {"look": ""}}
-    app.db["pets"].update_one({"_id": pet["_id"]}, update)
+    # Taken only if nobody saved between the read above and now.
+    guard = {"_id": pet["_id"], "look.version": stored_version} if stored_version is not None else {"_id": pet["_id"]}
+    if look:
+        look["version"] = uuid.uuid4().hex
+        update = {"$set": {"look": look}}
+    else:
+        update = {"$unset": {"look": ""}}
+    result = app.db["pets"].update_one(guard, update)
+    if stored_version is not None and result.matched_count == 0:
+        return _look_conflict(app.db["pets"].find_one({"_id": pet["_id"]}) or pet)
     return jsonify({"look": look})
 
 

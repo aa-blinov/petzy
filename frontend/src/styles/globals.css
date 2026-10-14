@@ -2518,7 +2518,8 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
     z-index: 5;
     margin: 0 calc(-1 * var(--spacing-md));
     padding: 0 var(--spacing-md) var(--spacing-xs);
-    background: color-mix(in srgb, var(--app-page-background) 86%, transparent);
+    /* The pet's own screen ground when it has one, so the bar is not a plain band over it (as the form's bar is). */
+    background: var(--pet-scene-bg, color-mix(in srgb, var(--app-page-background) 86%, transparent));
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--app-border-color);
