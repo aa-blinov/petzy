@@ -53,6 +53,10 @@ async def main():
             "(() => { const e = document.querySelector('.adm-checkbox-icon'); return e ? getComputedStyle(e).borderTopColor : ''; })()"
         )
         check("the empty consent box is drawn in the secondary text colour", border == "rgb(106, 98, 88)", border)
+        top = await pg.evaluate(
+            "(() => { const box = document.querySelector('div[style*=\"max-width: 400px\"]'); return box ? Math.round(box.getBoundingClientRect().top) : -1; })()"
+        )
+        check("the register wordmark keeps its 16px gutter from the top edge", top >= 16, str(top))
         await ctx.close()
 
         ctx, pg = await new_page(browser)
