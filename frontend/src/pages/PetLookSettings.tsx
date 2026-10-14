@@ -207,7 +207,7 @@ function TabStrip({ value, onChange }: { value: TabKey; onChange: (key: TabKey) 
     refs.current[key]?.focus();
   };
   return (
-    <div role="tablist" aria-label="Что менять" style={{ display: 'flex', gap: '4px', overflowX: 'auto', scrollbarWidth: 'none', padding: '2px 0' }}>
+    <div role="tablist" aria-label="Что менять" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '2px 0' }}>
       {TABS.map((t, i) => {
         const on = value === t.key;
         return (
@@ -235,13 +235,14 @@ function TabStrip({ value, onChange }: { value: TabKey; onChange: (key: TabKey) 
             style={{
               flex: '1 0 auto',
               minHeight: 'var(--touch-min)',
-              padding: '0 14px',
+              // Wraps to a second row on a narrow phone rather than cutting the last tab off at the edge.
+              padding: '0 10px',
               border: 'none',
               borderBottom: on ? '3px solid var(--app-accent-deep)' : '3px solid transparent',
               background: 'none',
               color: on ? 'var(--app-accent-deep)' : 'var(--app-text-secondary)',
               fontFamily: 'inherit',
-              fontSize: 'var(--text-md)',
+              fontSize: 'var(--text-sm)',
               fontWeight: 500,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
