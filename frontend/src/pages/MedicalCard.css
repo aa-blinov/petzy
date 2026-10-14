@@ -603,7 +603,10 @@
    place that is pressable. Same colour and weight as the line above it, underlined so it reads as a
    door, and a real focus ring. */
 .medcard__alert-link {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    /* The one place on the card that is pressed on purpose: a 44px line to touch, as DESIGN.md asks. */
+    min-height: var(--touch-min);
     margin-top: 2px;
     font-weight: 600;
     text-decoration: underline;

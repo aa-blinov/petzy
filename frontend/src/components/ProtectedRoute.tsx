@@ -43,7 +43,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }}
       >
         <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-md)', margin: 0 }}>
-          Не удалось связаться с сервером
+          {/* Same words as the other screens use when the device itself is offline, so a dropped connection is not called a server fault. */}
+          {navigator.onLine === false
+            ? 'Нет связи с интернетом. Когда связь появится, нажмите «Повторить»'
+            : 'Не удалось связаться с сервером'}
         </p>
         <Button color="primary" fill="outline" onClick={() => { void retryProbe(); }}>
           Повторить
