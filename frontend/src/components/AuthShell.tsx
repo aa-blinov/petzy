@@ -40,8 +40,10 @@ export function AuthShell({ title, children }: { title?: string; children: React
       justifyContent: 'center',
       padding: '16px',
       backgroundColor: 'var(--app-page-background)',
-      paddingTop: 'env(safe-area-inset-top)',
-      paddingBottom: 'env(safe-area-inset-bottom)',
+      // The safe-area inset is added to the 16px gutter, not put in its place: on a phone without a notch the inset is 0,
+      // and the wordmark sat on the very top edge of the register screen.
+      paddingTop: 'calc(16px + env(safe-area-inset-top, 0px))',
+      paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
         {/* Stylized wordmark — gradient copper fill, no icon, no subtitle
