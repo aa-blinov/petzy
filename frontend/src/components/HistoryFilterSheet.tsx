@@ -108,9 +108,8 @@ export function HistoryFilterSheet({ visible, onClose, options, activeId, onSele
                       fontWeight: 500,
                       lineHeight: 1.25,
                       letterSpacing: '-0.01em',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      // Two lines before anything is cut: «Закапывание глаз» is a whole name, not «Закапывание г…».
+                      overflowWrap: 'anywhere',
                     }}
                   >
                     {option.label}

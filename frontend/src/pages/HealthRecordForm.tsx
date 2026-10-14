@@ -130,7 +130,7 @@ export function HealthRecordForm() {
           // numeric field, including ones with no declared min at all.
           let numberSchema = z.number({
             // An empty field is asked for by name; something that is not a number is told how a number is written.
-            error: (issue) => (issue.input === undefined || issue.input === null ? `Укажите: ${field.label.toLowerCase()}` : 'Введите число, например 4,5'),
+            error: (issue) => (issue.input === undefined || issue.input === null ? `Укажите ${field.label.toLowerCase()}` : 'Введите число, например 4,5'),
           });
           const hard = hardBounds(type, field.name);
           const lowest = hard ? Math.max(field.min ?? -Infinity, hard[0]) : field.min;

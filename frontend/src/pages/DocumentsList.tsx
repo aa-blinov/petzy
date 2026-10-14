@@ -491,7 +491,8 @@ export function DocumentsList() {
                                         navigate(`/pets/${selectedPetId}/medical-records/${first.id}`);
                                       }}
                                     >
-                                      Из записи: {first.title}{first.date ? `, ${formatDate(first.date)}` : ''}
+                                      Из записи: {first.title}
+                                      {first.date && <span style={{ whiteSpace: 'nowrap' }}>{`, ${formatDate(first.date)}`}</span>}
                                       {/* The rest in words: «и ещё 2» read as a leftover count, «и ещё 2 записи»
                                           as how many records hold this file. */}
                                       {rest.length > 0 && ` и ещё ${rest.length} ${pluralRu(rest.length, 'запись', 'записи', 'записей')}`}
