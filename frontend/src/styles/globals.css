@@ -2523,7 +2523,6 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
     background: none;
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--app-border-color);
 }
 @media (max-height: 560px) {
     .look-sticky {
