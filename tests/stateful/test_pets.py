@@ -342,6 +342,8 @@ class TestPetManagement:
         response = self._look(client, regular_user_token, test_pet, {"scene": "stars"})
         assert response.get_json() == {"look": {"scene": "stars"}}
         assert self._look(client, regular_user_token, test_pet, {"scene": "lava"}).status_code == 422
+        # The photo is a backdrop for the card only: no screen takes it.
+        assert self._look(client, regular_user_token, test_pet, {"scene": "photo"}).status_code == 422
 
     def test_the_owner_sees_who_inherits_the_pet_and_a_member_does_not(
         self, client, mock_db, regular_user_token, test_pet
@@ -370,7 +372,7 @@ class TestPetManagement:
     def test_someone_else_cannot_set_a_look(self, client, mock_db, regular_user_token, admin_pet):
         assert self._look(client, regular_user_token, admin_pet, {"accent": "sky"}).status_code == 404
 
-    def test_only_the_owner_sets_a_look_a_member_sees_it_but_cannot_change_it(
+    def test_a_member_sets_the_look_and_the_owner_sees_what_was_saved(
         self, client, mock_db, regular_user_token, test_pet
     ):
         from web.security import create_access_token
@@ -388,12 +390,13 @@ class TestPetManagement:
         mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["member2"]}})
         assert self._look(client, regular_user_token, test_pet, {"tagline": "Лапы"}).status_code == 200
         member = create_access_token("member2")
-        response = self._look(client, member, test_pet, {"tagline": "Чужое"})
-        assert response.status_code == 403
-        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"tagline": "Лапы"}
-        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {member}"}).get_json()
+        response = self._look(client, member, test_pet, {"tagline": "Чужое", "accent": "sky"})
+        assert response.status_code == 200
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"tagline": "Чужое", "accent": "sky"}
+        # The owner's next load of the pets has the member's save, not the one before it.
+        listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
         mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
-        assert mine["look"] == {"tagline": "Лапы"}
+        assert mine["look"] == {"tagline": "Чужое", "accent": "sky"}
 
     def test_share_pet_success(self, client, mock_db, regular_user_token, test_pet, admin_pet):
         """Test sharing pet with another user."""
@@ -962,6 +965,25 @@ class TestUpdatePetFieldsAndValidation:
         assert response.status_code == 200
         pet = mock_db["pets"].find_one({"_id": test_pet["_id"]})
         assert pet["photo_file_id"] is None
+
+    def test_removing_the_photo_takes_the_crops_of_the_look_with_it(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        # The crop is a part of the old photo: after the photo goes, the frame and the rest of the look stay, the crop does not.
+        look = {"frame": "heart", "accent": "sun", "crops": {"heart": {"x": 10, "y": 10, "w": 50, "h": 50}}}
+        client.put(
+            f"/api/pets/{test_pet['_id']}/look",
+            json=look,
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"photo_file_id": str(ObjectId())}})
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}",
+            json={"remove_photo": True},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 200
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"frame": "heart", "accent": "sun"}
 
     def test_update_pet_no_fields_returns_error(self, client, mock_db, regular_user_token, test_pet):
         response = client.put(

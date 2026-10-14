@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { usePet } from '../hooks/usePet';
-import { petLookOf, petSceneStyle } from '../utils/petLook';
+import { petAccentAttr, petLookOf, petSceneStyle } from '../utils/petLook';
 import { usePetLookPreview } from '../utils/petLookPreview';
 
 /**
@@ -25,6 +25,18 @@ export function PetLookTheme() {
       body.style.removeProperty('--pet-scene-bg');
     };
   }, [scene]);
+
+  // The pet's own tones, for the screen behind the records (globals.css, body[data-pet-scene-accent]). The attribute is
+  // only the name of the colour: the tones themselves live in the stylesheet, next to the card's.
+  const accent = petAccentAttr(look)['data-pet-accent'];
+  useLayoutEffect(() => {
+    const body = document.body;
+    if (accent) body.setAttribute('data-pet-scene-accent', accent);
+    else body.removeAttribute('data-pet-scene-accent');
+    return () => {
+      body.removeAttribute('data-pet-scene-accent');
+    };
+  }, [accent]);
 
   return null;
 }

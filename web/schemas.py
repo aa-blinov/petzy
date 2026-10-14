@@ -467,6 +467,9 @@ PET_BACKDROPS = (
     "paper",
     "linen",
 )
+# What lies behind the screens of the pet: the same patterns, minus the photo, which only the card can take (it is a picture of
+# the pet, not a backdrop for every screen).
+PET_SCENES = tuple(key for key in PET_BACKDROPS if key != "photo")
 # The frames the pet's photo can take, drawn in the frontend (petLook.ts).
 PET_FRAMES = (
     "story",
@@ -515,7 +518,7 @@ class PetLook(BaseModel):
     frame: str = Field("", json_schema_extra={"enum": ["", *PET_FRAMES]})
     backdrop: str = Field("", json_schema_extra={"enum": ["", *PET_BACKDROPS]})
     # The same catalogue behind the whole feed area of the pet (not the card): its background.
-    scene: str = Field("", json_schema_extra={"enum": ["", *PET_BACKDROPS]})
+    scene: str = Field("", json_schema_extra={"enum": ["", *PET_SCENES]})
     # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
     # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
     crops: Dict[str, Dict[str, float]] = Field(
@@ -572,12 +575,20 @@ class PetLook(BaseModel):
             cleaned[frame] = {"x": x, "y": y, "w": w, "h": h}
         return cleaned
 
-    @field_validator("backdrop", "scene")
+    @field_validator("backdrop")
     @classmethod
     def _backdrop(cls, value: str) -> str:
         value = (value or "").strip()
         if value and value not in PET_BACKDROPS:
             raise ValueError("Такой подложки нет")
+        return value
+
+    @field_validator("scene")
+    @classmethod
+    def _scene(cls, value: str) -> str:
+        value = (value or "").strip()
+        if value and value not in PET_SCENES:
+            raise ValueError("Такого фона нет")
         return value
 
     model_config = ConfigDict(

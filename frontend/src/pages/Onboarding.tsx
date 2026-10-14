@@ -758,7 +758,7 @@ function LookArt() {
           <Palette size={20} strokeWidth={2.2} />
         </span>
         <span className="onb-card__body">
-          <span className="onb-card__title">Цвет и фон ленты</span>
+          <span className="onb-card__title">Цвет и фон экранов</span>
           <span className="onb-card__meta">Свои для каждого питомца</span>
         </span>
         <span className="onb-avatars">

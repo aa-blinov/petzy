@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
+import { Dialog } from 'antd-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import { petsService, type Pet } from '../services/pets.service';
 import { usePet } from '../hooks/usePet';
@@ -65,27 +66,8 @@ const optionState = (on: boolean): CSSProperties => ({
 export function PetLookSettings() {
   const { getSelectedPet } = usePet();
   if (!getSelectedPet) return <NoPetState what="Оформление питомца" />;
-  // The look is the owner's to set; the family sees it. A link or a stale tab does not get a member into the editor.
-  if (getSelectedPet.current_user_is_owner === false) return <OwnerOnly name={getSelectedPet.name} />;
   // Keyed by the pet: choosing another pet in the switcher opens that pet's own card.
   return <PetLookFor key={getSelectedPet._id} pet={getSelectedPet} />;
-}
-
-function OwnerOnly({ name }: { name: string }) {
-  const navigate = useNavigate();
-  return (
-    <div className="page-container">
-      <div className="max-width-container safe-area-padding">
-        <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>Оформление питомца</h1>
-        <p style={{ margin: 'var(--spacing-md) 0', fontSize: 'var(--text-md)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-          Питомец: <span className="pet-name">{name}</span>. Оформление меняет только владелец, вы видите его таким, каким его выбрали
-        </p>
-        <SpinnerButton type="button" block loading={false} onClick={() => navigate('/settings')}>
-          В настройки
-        </SpinnerButton>
-      </div>
-    </div>
-  );
 }
 
 /** A row of round colour buttons: one radio group, `none` first (the pet's own colour, or the brand's). */
@@ -171,7 +153,7 @@ function BackdropGrid({
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--app-border-color)',
                   background: 'var(--app-card-background)',
-                  ...petBackdropStyle(b.key, hex),
+                  ...petBackdropStyle(b.key, hex, 'screen'),
                 }}
               >
                 {b.key === 'photo' && photoUrl && (
@@ -190,10 +172,10 @@ function BackdropGrid({
 const TABS = [
   { key: 'vibes', label: 'Образы' },
   { key: 'color', label: 'Цвет' },
-  { key: 'name', label: 'Имя' },
+  { key: 'name', label: 'Подпись и шрифт' },
   { key: 'frame', label: 'Рамка' },
-  { key: 'card', label: 'Подложка' },
-  { key: 'scene', label: 'Фон' },
+  { key: 'card', label: 'Фон карточки' },
+  { key: 'scene', label: 'Фон экранов' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
@@ -333,6 +315,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
 
   // «Сбросить оформление» resets the whole look, the caption and the framing of the photo included: the
   // button said «оформление» and left the two things it had just saved standing.
+  const [askReset, setAskReset] = useState(false);
   const reset = () => {
     setTagline('');
     setAccent('');
@@ -344,7 +327,16 @@ function PetLookFor({ pet }: { pet: Pet }) {
   };
 
   // What has been changed and not saved: the screen asks before it is left, like the app's other forms.
-  const snapshot = (l: PetLook) => JSON.stringify([l.tagline ?? '', l.accent ?? '', l.font ?? '', l.frame ?? '', l.backdrop ?? '', l.scene ?? '', l.crops ?? {}]);
+  const snapshot = (l: PetLook) =>
+    JSON.stringify([
+      l.tagline ?? '',
+      l.accent ?? '',
+      l.font ?? '',
+      l.frame ?? '',
+      l.backdrop ?? '',
+      l.scene ?? '',
+      Object.fromEntries(Object.entries(l.crops ?? {}).filter(([key]) => PET_FRAMES.some((f) => f.key === key))),
+    ]);
   const dirty = snapshot(draft) !== snapshot(saved);
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(dirty);
 
@@ -373,7 +365,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
           <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>Оформление питомца</h1>
           <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: <span className="pet-name">{pet.name}</span>. Оформление видят все, у кого есть доступ к питомцу, а менять его можете только вы
+            Питомец: <span className="pet-name">{pet.name}</span>. Оформление меняют и видят все, у кого есть доступ к питомцу: что сохраните, увидят и остальные
           </p>
         </div>
 
@@ -387,12 +379,21 @@ function PetLookFor({ pet }: { pet: Pet }) {
           <section id="look-panel" role="tabpanel" aria-labelledby={`look-tab-${tab}`} className="card-soft" style={{ padding: '16px', marginTop: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
             {tab === 'vibes' && (
               <>
-                <p style={{ ...hint, margin: 0 }}>Готовый набор одним нажатием: цвет, шрифт, рамка и фон. Потом можно поменять по отдельности</p>
+                <p style={{ ...hint, margin: 0 }}>Готовый набор одним нажатием: цвет, шрифт, рамка и оба фона. Потом можно поменять по отдельности</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px 0 4px' }}>
-                  {PET_VIBES.map((v) => (
+                  {PET_VIBES.map((v) => {
+                    // The set that the look matches exactly is the one marked as chosen; a single change after it un-marks it.
+                    const on =
+                      (v.look.accent ?? '') === accent &&
+                      (v.look.font ?? '') === font &&
+                      (v.look.frame ?? '') === frame &&
+                      (v.look.backdrop ?? '') === backdrop &&
+                      (v.look.scene ?? '') === scene;
+                    return (
                     <button
                       key={v.key}
                       type="button"
+                      aria-pressed={on}
                       className="tap-feedback"
                       onClick={() => applyVibe(v)}
                       style={{
@@ -402,8 +403,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                         minHeight: 'var(--touch-min)',
                         padding: '0 14px',
                         borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--app-text-secondary)',
-                        background: 'var(--app-page-background)',
+                        ...optionState(on),
                         color: 'var(--app-text-primary)',
                         fontFamily: 'inherit',
                         fontSize: 'var(--text-sm)',
@@ -414,23 +414,26 @@ function PetLookFor({ pet }: { pet: Pet }) {
                       <span aria-hidden style={{ width: '14px', height: '14px', borderRadius: '50%', background: PET_ACCENTS.find((a) => a.key === v.look.accent)?.swatch }} />
                       {v.label}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
                 <button
                   type="button"
                   className="tap-feedback"
-                  onClick={reset}
+                  onClick={() => setAskReset(true)}
                   style={{ marginTop: '4px', minHeight: 'var(--touch-min)', padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
                 >
                   Сбросить оформление
                 </button>
+                <p style={{ ...hint, margin: '4px 0 0' }}>Уберёт также подпись и кадрирование фото</p>
               </>
             )}
 
             {tab === 'color' && (
               <>
-                <p style={{ ...hint, margin: 0 }}>Цвет питомца виден на его карточке и в акцентах приложения, пока выбран этот питомец</p>
+                <p style={{ ...hint, margin: 0 }}>Цвет виден на карточке питомца и на его кнопке в переключателе, пока выбран этот питомец</p>
                 <Swatches label="Цвет питомца" value={accent} onChange={setAccent} noneLabel="Терракот" />
+                <p style={{ ...hint, margin: '8px 0 0' }}>Сейчас: {PET_ACCENTS.find((a) => a.key === accent)?.label ?? PET_BRAND_ACCENT.label}</p>
               </>
             )}
 
@@ -446,9 +449,10 @@ function PetLookFor({ pet }: { pet: Pet }) {
                   onChange={(e) => setTagline(e.target.value)}
                   enterKeyHint="done"
                   onKeyDown={(e) => {
+                    // Enter closes the keyboard; saving stays on the button, so a half-made look is not sent by accident.
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      void save();
+                      e.currentTarget.blur();
                     }
                   }}
                   placeholder="Например, хозяин дивана"
@@ -519,7 +523,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
               <>
                 {PET_FRAME_GROUPS.map((g) => (
                   <div key={g.key} role="radiogroup" aria-label={`Рамка: ${g.label}`} onKeyDown={rovingKeyDown} style={{ marginBottom: '12px' }}>
-                    <div aria-hidden style={{ fontSize: 'var(--text-xs)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--app-text-secondary)', margin: 'var(--spacing-xs) var(--spacing-xs) var(--spacing-sm)' }}>
+                    <div aria-hidden style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-text-secondary)', margin: 'var(--spacing-xs) var(--spacing-xs) var(--spacing-sm)' }}>
                       {g.label}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: OPTION_GRID, gap: '8px' }}>
@@ -574,7 +578,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Кадрировать фото под рамку
+                    Выбрать часть фото
                   </button>
                 )}
               </>
@@ -588,7 +592,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
 
             {tab === 'scene' && (
               <>
-                <p style={{ ...hint, margin: 0 }}>Фон за записями на всех экранах этого питомца, в цвете питомца</p>
+                <p style={{ ...hint, margin: 0 }}>Фон на всех экранах, пока выбран этот питомец, в его цвете</p>
                 <BackdropGrid label="Узор фона" items={[{ key: '', label: 'Без фона' }, ...PET_SCENES.filter((b) => b.key !== 'plain')]} value={scene} onChange={setScene} hex={hex} />
               </>
             )}
@@ -597,6 +601,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
           {/* The list of frames is long: the button that closes the form stays within reach instead of
               being under the last row. The same .form-sticky-action the other forms use. */}
           <div className="form-sticky-action">
+            {dirty && <p style={{ ...hint, margin: '0 0 8px', textAlign: 'center' }}>Изменения видны здесь, но ещё не сохранены</p>}
             <SpinnerButton type="button" block loading={saving} onClick={save}>
               Сохранить
             </SpinnerButton>
@@ -604,6 +609,18 @@ function PetLookFor({ pet }: { pet: Pet }) {
         </div>
       </div>
       {leaveDialog}
+      <Dialog
+        visible={askReset}
+        title="Сбросить оформление?"
+        content="Уберутся подпись, цвет, шрифт, рамка, фон и кадрирование фото. Пока не сохранено, закрытие экрана вернёт всё как было"
+        getContainer={() => document.body}
+        onClose={() => setAskReset(false)}
+        actions={[
+          // Destructive action first, cancel second: the app's dialog order.
+          { key: 'reset', text: 'Сбросить', danger: true, onClick: () => { setAskReset(false); reset(); } },
+          { key: 'keep', text: 'Оставить', bold: true, onClick: () => setAskReset(false) },
+        ]}
+      />
       {cropping && pet.photo_url && (
         <FrameCropModal
           src={pet.photo_url}

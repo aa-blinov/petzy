@@ -2492,6 +2492,24 @@ html[data-prefers-color-scheme='dark'] [data-pet-accent='slate'] {
     --app-accent-deep: #AEB9C8;
 }
 
+/* The screen behind a pet's records and the backdrop samples in the settings take the pet's tones from <body>
+   (components/PetLookTheme.tsx, petBackdropStyle tone 'screen'). They sit in their own variables, not in --app-accent-*:
+   the rest of the page keeps the brand copper, and only what shows the pet is re-tinted. Same pairs as the card above. */
+body[data-pet-scene-accent='sage'] { --pet-soft: #E6F0E4; --pet-deep: #3F6B3A; }
+body[data-pet-scene-accent='sky'] { --pet-soft: #E3EFF9; --pet-deep: #2D6190; }
+body[data-pet-scene-accent='lilac'] { --pet-soft: #EEE8F7; --pet-deep: #6040A0; }
+body[data-pet-scene-accent='rose'] { --pet-soft: #FBE6EC; --pet-deep: #B03358; }
+body[data-pet-scene-accent='sun'] { --pet-soft: #FBF0D4; --pet-deep: #8A5F00; }
+body[data-pet-scene-accent='teal'] { --pet-soft: #DFF1EF; --pet-deep: #1F6B66; }
+body[data-pet-scene-accent='slate'] { --pet-soft: #E9ECF0; --pet-deep: #475569; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='sage'] { --pet-soft: #1F2E1E; --pet-deep: #9BCB93; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='sky'] { --pet-soft: #1B2A38; --pet-deep: #8FC0EB; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='lilac'] { --pet-soft: #2A2238; --pet-deep: #C0A6EE; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='rose'] { --pet-soft: #38202A; --pet-deep: #F09AB4; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='sun'] { --pet-soft: #35290F; --pet-deep: #E6B84D; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='teal'] { --pet-soft: #17302E; --pet-deep: #72CBC4; }
+html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --pet-soft: #262B33; --pet-deep: #AEB9C8; }
+
 /* The pet card and the switch of what to change, held under the header while the options scroll: the result is always in view.
    On a short screen (a phone on its side) they would take the whole view, so there they scroll with the page. */
 .look-sticky {
