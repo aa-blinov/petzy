@@ -122,25 +122,28 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                       style={{ display: 'block', flexShrink: 0, color: 'var(--app-text-on-tile)' }}
                     />
                   )}
-                  <span
-                    style={{
-                      fontSize: 'var(--text-sm)',
-                      fontWeight: 500,
-                      lineHeight: 1.25,
-                      letterSpacing: '-0.01em',
-                      overflow: 'hidden',
-                      // Two lines before a cut: «Приступ астмы» on a narrow phone is not «Приступ аст…».
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflowWrap: 'anywhere',
-                      minWidth: 0,
-                      textAlign: 'left',
-                    }}
-                  >
-                    {tile.title}
+                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
+                    <span
+                      style={{
+                        fontSize: 'var(--text-sm)',
+                        fontWeight: 500,
+                        lineHeight: 1.25,
+                        letterSpacing: '-0.01em',
+                        overflow: 'hidden',
+                        // Two lines before a cut: «Приступ астмы» on a narrow phone is not «Приступ аст…».
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflowWrap: 'anywhere',
+                        minWidth: 0,
+                        textAlign: 'left',
+                      }}
+                    >
+                      {tile.title}
+                    </span>
+                    {/* Outside the clamp: a long name must not push the mark that says the type is the person's own out of sight. */}
                     {tile.custom && (
-                      <span style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 400, opacity: 0.75 }}>Свой</span>
+                      <span style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 400, opacity: 0.75, marginTop: 2 }}>Свой</span>
                     )}
                   </span>
                 </button>

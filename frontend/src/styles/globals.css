@@ -1198,6 +1198,13 @@ a,
     }
 }
 
+/* An empty checkbox's frame is the hairline oat colour (1.1:1 on cream), so an unticked consent
+   box looked like nothing was asked. Its frame takes the secondary text colour: 4.5:1 or more on
+   the page in both themes (WCAG 1.4.11 asks 3:1 for a control's visible boundary). */
+.adm-checkbox .adm-checkbox-icon {
+    border-color: var(--app-text-secondary);
+}
+
 /* Selector chips (weekday row, options) stay compact on screen but get
    the same 44px hit area as .touch-target. antd clips both the chip and
    the group (overflow: hidden, for the corner checkmark hidden below),
