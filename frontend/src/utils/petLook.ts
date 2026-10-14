@@ -449,7 +449,8 @@ export function petFrameStyle(frame: string | undefined, scale = 1): PetFrameSty
         box: rim(
           w,
           `linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 40%), linear-gradient(45deg, #1b1b1b 25%, transparent 25% 75%, #1b1b1b 75%) 0 0 / ${t * 2}px ${t * 2}px, linear-gradient(45deg, #1b1b1b 25%, #2c2c2c 25% 75%, #1b1b1b 75%) ${t}px ${t}px / ${t * 2}px ${t * 2}px, #232323`,
-          { borderRadius: px(4) },
+          // A thin light edge round the black rim: on the dark card the rim alone was the colour of the card behind it.
+          { borderRadius: px(4), boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.22), 0 3px 8px rgba(0, 0, 0, 0.35)' },
           '#0c0c0c',
         ),
       };
