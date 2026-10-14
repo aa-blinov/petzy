@@ -710,17 +710,8 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
       {/* On the page a vet opens by a link the file comes before everything that is read: it is what they take away with them. */}
       {byLink && handover}
 
+      {/* What could harm comes first: allergies and conditions are read before anything else on the card. */}
       <ImportantBlock card={card} onEdit={() => undefined} readOnly />
-
-      {/* What the card does not have, in one line: a vet reads the empty parts as missing, not as «all is well». */}
-      {missing.length > 0 && (
-        <p className="medcard__empty" role="note">
-          Не заполнено: {listWords(missing)}
-        </p>
-      )}
-
-      {/* The owner hands the card over, so the file and the link come right after what could harm, the first thing a vet reads. */}
-      {onShare && handover}
 
       {/* The results come before the courses: they are what a vet came for, and the PDF has always
           listed them. The screen was a strict subset of the file, and the analyses were the part
@@ -861,6 +852,16 @@ export function VetView({ card, hidden, saving, canPdf, onPdf, onAll, onShare, c
             ))}
           </ul>
         </Section>
+      )}
+
+      {/* The owner hands the card over: the file and the link sit after the results and the weight. */}
+      {onShare && handover}
+
+      {/* What the card does not have, in one line: a vet reads the empty parts as missing, not as «all is well». */}
+      {missing.length > 0 && (
+        <p className="medcard__empty" role="note">
+          Не заполнено: {listWords(missing)}
+        </p>
       )}
 
       {card.past_courses.length > 0 && (
