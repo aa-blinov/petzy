@@ -397,7 +397,9 @@ def update_pet(pet_id):
         if data.tiles_settings is not None:
             update_data["tiles_settings"] = data.tiles_settings.model_dump()
 
-        # Handle photo fields based on request type
+        # Handle photo fields based on request type. The crops of the look are parts of the photo they were cut from:
+        # a photo that is replaced or removed takes them away, or the next photo would show a stranger's framing.
+        photo_changed = False
         if is_multipart:
             logger.info(
                 f"Photo handling: photo_file_id={photo_file_id}, remove_photo={request.form.get('remove_photo')}"
@@ -407,10 +409,12 @@ def update_pet(pet_id):
                 # Photo was explicitly removed - clear BOTH fields in database
                 update_data["photo_file_id"] = None
                 update_data["photo_url"] = None  # Also clear photo_url to remove any leftover blob URLs
+                photo_changed = True
                 logger.info(f"Setting photo_file_id and photo_url to None for pet {pet_id}")
             elif photo_file_id is not None and photo_file_id != pet.get("photo_file_id"):
                 # New photo was uploaded (photo_file_id changed)
                 update_data["photo_file_id"] = photo_file_id
+                photo_changed = True
         else:
             # JSON request: a photo can only be removed here (a client-given
             # photo_url isn't kept, see _expose_photo).
@@ -419,13 +423,17 @@ def update_pet(pet_id):
                 stale_photo_id = pet.get("photo_file_id") if pet else None
                 update_data["photo_file_id"] = None
                 update_data["photo_url"] = None
+                photo_changed = True
 
         logger.info(f"Update data for pet {pet_id}: {update_data}")
 
         if not update_data:
             return error_response("validation_error_no_update_data")
 
-        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$set": update_data})
+        update = {"$set": update_data}
+        if photo_changed:
+            update["$unset"] = {"look.crops": ""}
+        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, update)
         if stale_photo_id and stale_photo_id != update_data.get("photo_file_id", photo_file_id):
             try:
                 delete_stored_file(stale_photo_id)
@@ -643,12 +651,12 @@ def put_pet_form_defaults(pet_id):
 def put_pet_look(pet_id):
     """The pet's look: the line, the colour, the name's face, the photo's frame, the backdrop, the scene and the crops.
 
-    The owner's to set: the family sees it, but a sitter or a vet with access
-    does not restyle someone else's pet. The body replaces the whole look: a part left out or empty is dropped,
-    and with every part empty the look is removed. Unknown values answer 422 (the allowed ones are in the schema).
+    Anyone the pet is shared with can set it: the look lives on the pet, so the owner and the family see the same
+    thing after a save. Someone without access gets 404. The body replaces the whole look: a part left out or empty
+    is dropped, and with every part empty the look is removed. Unknown values answer 422 (the allowed ones are in the schema).
     """
     username, _ = get_current_user()
-    pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
+    pet, access_error = get_pet_and_validate(pet_id, username)
     if access_error:
         return access_error[0], access_error[1]
     body = request.context.body  # type: ignore[attr-defined]

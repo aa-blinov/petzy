@@ -60,9 +60,9 @@ async def main():
                 "the look screen is open on the pet of this check",
                 "Тест-М" in await pg.inner_text("body"),
             )
-            await pg.get_by_role("tab", name="Имя").click()
+            await pg.get_by_role("tab", name="Подпись и шрифт").click()
             await pg.wait_for_timeout(1200)
-            field = pg.get_by_label("Подпись")
+            field = pg.locator("#pet-tagline")
             # A space at the end: the saved line is 13 characters, the typed one 14.
             await field.fill("Хозяин дивана ")
             await pg.wait_for_timeout(600)

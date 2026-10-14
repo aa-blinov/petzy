@@ -110,6 +110,9 @@ export function FrameCropModal({ src, species, frame, initial, onCancel, onDone 
       <div style={{ color: 'var(--app-text-on-dark)', padding: '12px 16px', fontWeight: 500, fontSize: 'var(--text-md)' }}>
         Кадр для рамки «{label}»
       </div>
+      <div style={{ color: 'var(--app-text-on-dark)', padding: '0 16px 12px', fontSize: 'var(--text-sm)', opacity: 0.8 }}>
+        Двигайте фото и увеличивайте, чтобы нужная часть попала в рамку
+      </div>
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         <Cropper
           image={src}

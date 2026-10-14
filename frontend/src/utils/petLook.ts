@@ -5,7 +5,7 @@
  * only when a pet uses it or the settings page shows them: about 45 KB each, never part of the install.
  *
  * The colours are only names here; the tints are in globals.css (`[data-pet-accent]`), light and dark, each checked at
- * 5:1 or better for its deep tone on its soft one. The server knows the same names (PET_ACCENTS in web/schemas.py).
+ * 4.5:1 or better for its deep tone on its soft one (measured: 4.63 at least on the light theme). The server knows the same names (PET_ACCENTS in web/schemas.py).
  */
 
 import type { CSSProperties } from 'react';
@@ -552,10 +552,6 @@ export function petAccentHex(look?: PetLook | null): string {
   return PET_ACCENTS.find((a) => a.key === look?.accent)?.swatch ?? COPPER;
 }
 
-const soft = 'var(--app-accent-soft)';
-const deep = 'var(--app-accent-deep)';
-const base = 'var(--app-card-background)';
-const wash = `color-mix(in srgb, ${soft} 38%, ${base})`;
 
 /** A tile of small shapes in the colour, as a background layer; two rows offset, so it does not read as a grid. */
 function tile(hex: string, alpha: number, shape: string, size = 56): string {
@@ -573,13 +569,23 @@ const HEART = `<path d='M0 6 C-8 0 -7 -6 -3.4 -6 C-1.6 -6 -0.4 -5 0 -3.6 C0.4 -5
  * patterns are drawn in the colour passed (`hex`), faint enough to leave the text legible. `photo` is not here: it is a
  * blurred picture and needs an element of its own (see PetSummaryCard).
  */
-export function petBackdropStyle(key: string, hex: string): CSSProperties {
+/**
+ * `card` (the default) reads the accent tokens of the element it sits in: the card carries its pet's `data-pet-accent`.
+ * `screen` reads `--pet-soft` and `--pet-deep`, which PetLookTheme's body carries for the selected pet (globals.css,
+ * `body[data-pet-scene-accent]`): the screen behind the records and the samples in the settings, where the element has no
+ * accent of its own. Without a pet's colour both fall back to the brand copper.
+ */
+export function petBackdropStyle(key: string, hex: string, tone: 'card' | 'screen' = 'card'): CSSProperties {
+  const soft = tone === 'screen' ? 'var(--pet-soft, var(--app-accent-soft))' : 'var(--app-accent-soft)';
+  const deep = tone === 'screen' ? 'var(--pet-deep, var(--app-accent-deep))' : 'var(--app-accent-deep)';
+  const base = 'var(--app-card-background)';
+  const wash = `color-mix(in srgb, ${soft} 38%, ${base})`;
   const faint = (a: number) => `${hex}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
   switch (key) {
     case 'fill':
       return { background: `color-mix(in srgb, ${soft} 60%, ${base})` };
     case 'gradient':
-      return { background: `linear-gradient(135deg, color-mix(in srgb, ${soft} 90%, ${base}), color-mix(in srgb, ${deep} 26%, ${base}))` };
+      return { background: `linear-gradient(135deg, color-mix(in srgb, ${soft} 90%, ${base}), color-mix(in srgb, ${deep} 14%, ${base}))` };
     case 'aurora':
       return {
         background: `radial-gradient(60% 90% at 6% 0%, color-mix(in srgb, ${deep} 38%, transparent), transparent), radial-gradient(60% 90% at 100% 8%, rgba(122, 162, 255, 0.3), transparent), radial-gradient(70% 100% at 70% 115%, rgba(255, 122, 182, 0.28), transparent), ${base}`,
@@ -617,7 +623,7 @@ export const PET_SCENES = PET_BACKDROPS.filter((b) => b.key !== 'photo');
 /** The feed area's own background, from `scene`; none leaves the page as it is. */
 export function petSceneStyle(look?: PetLook | null): CSSProperties {
   const key = look?.scene;
-  return key && key !== 'plain' && key !== 'photo' ? { ...petBackdropStyle(key, petAccentHex(look)) } : {};
+  return key && key !== 'plain' && key !== 'photo' ? { ...petBackdropStyle(key, petAccentHex(look), 'screen') } : {};
 }
 
 /**

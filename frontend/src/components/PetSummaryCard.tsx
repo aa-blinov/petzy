@@ -119,7 +119,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
             cursor: pet.photo_url ? "pointer" : "default",
             borderRadius: "var(--radius-md)",
             overflow: "hidden",
-            backgroundColor: "var(--app-accent-soft)",
+            background: "var(--app-accent-soft)",
             color: "var(--app-accent-deep)",
             display: "flex",
             alignItems: "center",
@@ -137,7 +137,16 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
               style={frame.image}
             />
           ) : (
-            createElement(SpeciesIcon, { size: slot / 2, strokeWidth: 1.6, style: { display: "block" }, "aria-hidden": true })
+            // With a frame, the icon sits on the frame's own mat, which can be dark or metallic: it gets the card's
+            // ground behind it, so the accent colour reads on it in both themes (the mat's colour is not the card's).
+            createElement(SpeciesIcon, {
+              size: slot / 2,
+              strokeWidth: 1.6,
+              style: Object.keys(frame.box).length
+                ? { display: "block", background: "var(--app-card-background)", borderRadius: "50%", padding: slot / 12, boxSizing: "content-box" }
+                : { display: "block" },
+              "aria-hidden": true,
+            })
           )}
         </div>
 
