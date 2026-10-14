@@ -23,9 +23,11 @@ interface HistoryItemProps {
   item: HistoryItemType;
   config: EventDisplayConfig;
   type: string;
+  /** On the feed, the round «+» floats over the right edge of the rows: the row keeps its date clear of it. */
+  clearFab?: boolean;
   }
 
-export const HistoryItem = memo(function HistoryItem({ item, config, type }: HistoryItemProps) {
+export const HistoryItem = memo(function HistoryItem({ item, config, type, clearFab = false }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { username: currentUsername } = useAuth();
@@ -163,7 +165,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
             // the icon and the row looked unanchored.
             alignItems: 'flex-start',
             gap: '12px',
-            padding: 'var(--spacing-lg)',
+            // Right side kept clear of the round «+» on the feed, so the date of the row is never under it.
+            padding: clearFab ? 'var(--spacing-lg) 64px var(--spacing-lg) var(--spacing-lg)' : 'var(--spacing-lg)',
           }}
         >
           {/* Pill-icon on the left — tinted rounded square with category icon */}
