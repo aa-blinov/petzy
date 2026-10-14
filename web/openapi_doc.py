@@ -453,6 +453,7 @@ def _name_the_params_views_read(op, error_schema: dict) -> None:
     for path, what in (
         ("/api/pets/{pet_id}/medical-profile", "profile"),
         ("/api/pets/{pet_id}/visit-prep", "visit_prep"),
+        ("/api/pets/{pet_id}/look", "look"),
     ):
         operation = op("put", path)
         if operation and "409" in operation.get("responses", {}):

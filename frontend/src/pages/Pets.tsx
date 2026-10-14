@@ -12,7 +12,8 @@ import { computePetAge } from '../utils/relativeTime';
 import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { hapticFeedback } from '../utils/haptic';
-import { PetImage } from '../components/PetImage';
+import { PetPhotoFill } from '../components/PetPhotoFill';
+import { petAccentAttr, petCropOf, petFrameStyle, petLookOf } from '../utils/petLook';
 import { PetCardSkeleton } from '../components/Skeletons';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
@@ -221,6 +222,9 @@ function PetCard({
       };
 
   const Avatar = pet.photo_url ? 'button' : 'div';
+  // The pet's look shows in its row too: the frame round the photo and the colour of the row, as on its card.
+  const look = petLookOf(pet);
+  const frame = petFrameStyle(look.frame, 96 / 112);
 
   return (
     <SwipeableRow leftAction={leftAction} rightAction={rightAction} itemLabel={pet.name}>
@@ -231,6 +235,7 @@ function PetCard({
       <button
         type="button"
         className="card-soft card-soft--interactive"
+        {...petAccentAttr(look)}
         aria-label={`Изменить питомца ${pet.name}`}
         style={{ padding: '16px', cursor: 'pointer', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left' }}
         onClick={onEdit}
@@ -264,6 +269,7 @@ function PetCard({
               border: 'none',
               background: 'none',
               cursor: pet.photo_url ? 'pointer' : 'default',
+              ...frame.box,
             }}
           >
             <div
@@ -275,11 +281,13 @@ function PetCard({
               }}
             />
             {pet.photo_url ? (
-              <PetImage
+              <PetPhotoFill
                 src={pet.photo_url}
                 alt={pet.name}
                 size={96}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, cursor: 'pointer' }}
+                species={pet.species}
+                crop={petCropOf(look)}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, cursor: 'pointer', ...frame.image }}
               />
             ) : (
               <div

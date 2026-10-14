@@ -33,8 +33,23 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
   const font = petFontOf(look);
   const frame = petFrameStyle(look.frame, slot / 112);
   const backdrop = petBackdropKey(look);
+  // The name is hidden until its face has landed: a fallback face at the same size is a different width, and the name
+  // jumps when the face comes in. Hidden keeps its place, so nothing moves when it shows.
+  // Which face has landed: the key, so a face that is still loading is never taken for a ready one.
+  const [landedFont, setLandedFont] = useState<string | null>(null);
+  const fontReady = !font || landedFont === font.key;
   useEffect(() => {
-    if (font) void loadPetFont(font);
+    if (!font) return;
+    let live = true;
+    void loadPetFont(font)
+      .then(() => document.fonts?.load(`${font.weight} 1em '${font.family}'`))
+      .catch(() => undefined)
+      .finally(() => {
+        if (live) setLandedFont(font.key);
+      });
+    return () => {
+      live = false;
+    };
   }, [font]);
   const age = computePetAge(pet.birth_date ?? "");
   const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
@@ -152,7 +167,20 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
 
         {/* Right column — name and the age, breed and gender line.
             minWidth: 0 lets flex children ellipsis correctly. */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "var(--spacing-sm)" }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--spacing-sm)",
+            // Over a photo backdrop the text sits on a plate of the card's own colour: the photo stays visible at the
+            // edges and the name, the line and the meta read on any photo (white or black, in both themes).
+            ...(backdrop === "photo"
+              ? { background: "color-mix(in srgb, var(--app-card-background) 92%, transparent)", borderRadius: "var(--radius-md)", padding: "8px 12px", alignSelf: "stretch" }
+              : {}),
+          }}
+        >
           <div
             className="display-headline"
             style={{
@@ -166,6 +194,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
               overflow: "hidden",
               overflowWrap: "anywhere",
               ...petFontStyle(font, compact ? "var(--text-lg)" : "var(--text-xl)"),
+              ...(fontReady ? {} : { visibility: "hidden" }),
             }}
           >
             {pet.name}

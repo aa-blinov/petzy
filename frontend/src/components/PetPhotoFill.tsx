@@ -1,6 +1,7 @@
+import { useState, createElement, type CSSProperties } from 'react';
 import { PetImage } from './PetImage';
 import { petCropStyle, type PetCrop } from '../utils/petLook';
-import type { CSSProperties } from 'react';
+import { getSpecies } from '../utils/species';
 
 /**
  * The pet's photo filling the window of its box, whole or the part of it a frame was cropped to. The box (the card's
@@ -24,6 +25,16 @@ export function PetPhotoFill({
   /** For the photo's own corners, where the box's rounding does not reach (the story's round photo). */
   style?: CSSProperties;
 }) {
+  // A cropped photo that fails to load shows the species picture, like the plain one (PetImage).
+  const [failed, setFailed] = useState(false);
+  if (crop && failed) {
+    const FallbackIcon = getSpecies(species).icon;
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--adm-color-border)', color: 'var(--app-text-tertiary)', ...style }}>
+        {createElement(FallbackIcon, { size: Math.round(size * 0.55), strokeWidth: 1.6, 'aria-hidden': true })}
+      </div>
+    );
+  }
   if (!crop) {
     return (
       <PetImage
@@ -46,6 +57,7 @@ export function PetPhotoFill({
         draggable={false}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
+        onError={() => setFailed(true)}
         style={petCropStyle(crop)}
       />
     </div>

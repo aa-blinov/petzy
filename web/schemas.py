@@ -510,7 +510,8 @@ class PetLook(BaseModel):
     """PUT /api/pets/<id>/look: how the pet's card shows it, a line about it, a colour, a hand-written face for the name and a frame for the photo.
 
     The whole look, replacing the old one: a part left empty is dropped, and with every part empty the look is removed.
-    Everyone with access to the pet sees the same look; only the owner may change it."""
+    Everyone with access to the pet sets it and sees the same look. A save made from an older copy is refused (409) and the
+    look as it is now comes back with it, the way the visit note does it."""
 
     tagline: str = Field("", description="Подпись: пробелы схлопываются, не длиннее 40 символов")
     accent: str = Field("", json_schema_extra={"enum": ["", *PET_ACCENTS]})
@@ -519,6 +520,11 @@ class PetLook(BaseModel):
     backdrop: str = Field("", json_schema_extra={"enum": ["", *PET_BACKDROPS]})
     # The same catalogue behind the whole feed area of the pet (not the card): its background.
     scene: str = Field("", json_schema_extra={"enum": ["", *PET_SCENES]})
+    base_version: Optional[str] = Field(
+        None,
+        description="Только для запроса: версия оформления, с которой его правили. Без неё сохранение перезаписывает то, что есть, "
+        "а с устаревшей версией отвечает 409 и отдаёт оформление как оно сейчас",
+    )
     # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
     # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
     crops: Dict[str, Dict[str, float]] = Field(

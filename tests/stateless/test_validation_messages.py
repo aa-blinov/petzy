@@ -46,6 +46,8 @@ def test_a_multipart_form_says_it_in_russian_too(client, regular_user_token):
         ({"type": "string_too_short", "ctx": {"min_length": 1}}, "Заполните обязательные поля"),
         ({"type": "string_too_long", "ctx": {"max_length": 1}}, "Слишком длинный текст: не больше 1 символа"),
         ({"type": "float_parsing"}, "Введите число"),
+        # A part of the photo sent empty says which part, not just «введите число».
+        ({"type": "float_type", "loc": ("body", "crops", "heart", "x")}, "Введите числа для области фото"),
         ({"type": "less_than_equal", "ctx": {"le": 100}}, "Число вне допустимых пределов (100)"),
         ({"type": "value_error", "msg": "Value error, Дата не может быть в будущем"}, "Дата не может быть в будущем"),
         ({"type": "something_new", "msg": "Some English"}, "Проверьте введённые данные"),

@@ -6,6 +6,14 @@ from bson import ObjectId
 from tests.conftest import password_hash_for
 
 
+def bare_look(look):
+    """The look without its version: every saved look carries one (checked here), and the tests compare the rest."""
+    look = dict(look)
+    if look:
+        assert isinstance(look.pop("version", None), str)
+    return look
+
+
 @pytest.mark.pets
 class TestPetManagement:
     """Test pet management endpoints."""
@@ -276,15 +284,15 @@ class TestPetManagement:
     def test_a_pet_keeps_its_look_and_the_list_returns_it(self, client, mock_db, regular_user_token, test_pet):
         response = self._look(client, regular_user_token, test_pet, {"tagline": "  Хозяин   дивана ", "accent": "sage"})
         assert response.status_code == 200
-        assert response.get_json() == {"look": {"tagline": "Хозяин дивана", "accent": "sage"}}
+        assert bare_look(response.get_json()["look"]) == {"tagline": "Хозяин дивана", "accent": "sage"}
         listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
         mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
-        assert mine["look"] == {"tagline": "Хозяин дивана", "accent": "sage"}
+        assert bare_look(mine["look"]) == {"tagline": "Хозяин дивана", "accent": "sage"}
 
     def test_an_empty_look_clears_it(self, client, mock_db, regular_user_token, test_pet):
         self._look(client, regular_user_token, test_pet, {"accent": "rose"})
         response = self._look(client, regular_user_token, test_pet, {"tagline": " ", "accent": ""})
-        assert response.get_json() == {"look": {}}
+        assert bare_look(response.get_json()["look"]) == {}
         assert "look" not in mock_db["pets"].find_one({"_id": test_pet["_id"]})
 
     def test_a_colour_the_palette_lacks_and_a_long_line_are_refused(
@@ -299,14 +307,14 @@ class TestPetManagement:
     ):
         assert self._look(client, regular_user_token, test_pet, {"font": "Comic Sans"}).status_code == 422
         response = self._look(client, regular_user_token, test_pet, {"font": "marck", "accent": "sun"})
-        assert response.get_json() == {"look": {"accent": "sun", "font": "marck"}}
+        assert bare_look(response.get_json()["look"]) == {"accent": "sun", "font": "marck"}
 
     def test_a_frame_the_set_lacks_is_refused_and_a_known_one_is_kept(
         self, client, mock_db, regular_user_token, test_pet
     ):
         assert self._look(client, regular_user_token, test_pet, {"frame": "wooden"}).status_code == 422
         response = self._look(client, regular_user_token, test_pet, {"frame": "polaroid"})
-        assert response.get_json() == {"look": {"frame": "polaroid"}}
+        assert bare_look(response.get_json()["look"]) == {"frame": "polaroid"}
 
     def test_each_frame_keeps_its_own_part_of_the_photo(self, client, mock_db, regular_user_token, test_pet):
         crops = {
@@ -337,10 +345,10 @@ class TestPetManagement:
 
     def test_a_backdrop_is_kept_and_an_unknown_one_refused(self, client, mock_db, regular_user_token, test_pet):
         response = self._look(client, regular_user_token, test_pet, {"backdrop": "aurora"})
-        assert response.get_json() == {"look": {"backdrop": "aurora"}}
+        assert bare_look(response.get_json()["look"]) == {"backdrop": "aurora"}
         assert self._look(client, regular_user_token, test_pet, {"backdrop": "lava"}).status_code == 422
         response = self._look(client, regular_user_token, test_pet, {"scene": "stars"})
-        assert response.get_json() == {"look": {"scene": "stars"}}
+        assert bare_look(response.get_json()["look"]) == {"scene": "stars"}
         assert self._look(client, regular_user_token, test_pet, {"scene": "lava"}).status_code == 422
         # The photo is a backdrop for the card only: no screen takes it.
         assert self._look(client, regular_user_token, test_pet, {"scene": "photo"}).status_code == 422
@@ -392,11 +400,50 @@ class TestPetManagement:
         member = create_access_token("member2")
         response = self._look(client, member, test_pet, {"tagline": "Чужое", "accent": "sky"})
         assert response.status_code == 200
-        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"tagline": "Чужое", "accent": "sky"}
+        assert bare_look(mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"]) == {
+            "tagline": "Чужое",
+            "accent": "sky",
+        }
         # The owner's next load of the pets has the member's save, not the one before it.
         listed = client.get("/api/pets", headers={"Authorization": f"Bearer {regular_user_token}"}).get_json()
         mine = next(p for p in listed["pets"] if p["_id"] == str(test_pet["_id"]))
-        assert mine["look"] == {"tagline": "Чужое", "accent": "sky"}
+        assert bare_look(mine["look"]) == {"tagline": "Чужое", "accent": "sky"}
+
+    def test_a_look_saved_from_an_old_copy_is_refused_and_the_current_one_comes_back(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        from web.security import create_access_token
+
+        mock_db["users"].insert_one(
+            {
+                "username": "member3",
+                "password_hash": "x",
+                "full_name": "Member",
+                "email": "",
+                "created_at": datetime.now(timezone.utc),
+                "is_active": True,
+            }
+        )
+        mock_db["pets"].update_one({"_id": test_pet["_id"]}, {"$set": {"shared_with": ["member3"]}})
+        member = create_access_token("member3")
+        # The owner saves first, from the copy nobody had saved yet.
+        first = self._look(client, regular_user_token, test_pet, {"tagline": "Лапы", "base_version": ""})
+        assert first.status_code == 200
+        first_version = first.get_json()["look"]["version"]
+        # The member's copy is the same old one: refused, and the owner's look comes back with the refusal.
+        stale = self._look(client, member, test_pet, {"tagline": "Чужое", "base_version": ""})
+        assert stale.status_code == 409
+        assert stale.get_json()["look"]["tagline"] == "Лапы"
+        assert stale.get_json()["look"]["version"] == first_version
+        assert bare_look(mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"]) == {"tagline": "Лапы"}
+        # Saved from the copy that came back, it goes through and gets a new version.
+        current = self._look(client, member, test_pet, {"tagline": "Чужое", "base_version": first_version})
+        assert current.status_code == 200
+        assert current.get_json()["look"]["version"] != first_version
+        # The owner's copy from before is stale now.
+        again = self._look(client, regular_user_token, test_pet, {"tagline": "Лапы", "base_version": first_version})
+        assert again.status_code == 409
+        assert bare_look(mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"]) == {"tagline": "Чужое"}
 
     def test_share_pet_success(self, client, mock_db, regular_user_token, test_pet, admin_pet):
         """Test sharing pet with another user."""
@@ -983,7 +1030,10 @@ class TestUpdatePetFieldsAndValidation:
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 200
-        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"] == {"frame": "heart", "accent": "sun"}
+        assert bare_look(mock_db["pets"].find_one({"_id": test_pet["_id"]})["look"]) == {
+            "frame": "heart",
+            "accent": "sun",
+        }
 
     def test_update_pet_no_fields_returns_error(self, client, mock_db, regular_user_token, test_pet):
         response = client.put(
