@@ -2,8 +2,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Trash2, UserRound, Users } from 'lucide-react';
+import { Bell, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Tag, Trash2, UserRound, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import api from '../services/api';
 import { accountService, ACCOUNT_QUERY_KEY, type Account } from '../services/account.service';
 
 import { useTheme } from '../hooks/useTheme';
@@ -325,6 +326,7 @@ export function Settings() {
               chevron
               onClick={() => navigate('/privacy')}
             />
+            <VersionRow />
           </Group>
 
           {/* Admin: used to be its own bottom-tab entry shown only to admins, a whole tab-bar slot for one link. As a row here it
@@ -393,4 +395,20 @@ export function Settings() {
       {selectedPetId && <ExportModal visible={exportVisible} onClose={() => setExportVisible(false)} petId={selectedPetId} defaultType={ALL_TYPES} />}
     </div>
   );
+}
+
+/** «Версия»: the build on this phone and the one the server runs, each by its commit, so a bug report and a release
+ *  say the same number. Both come from the deploy (the commit it built), nothing is numbered by hand. */
+function VersionRow() {
+  const app = (import.meta.env.VITE_SENTRY_RELEASE as string | undefined) || '';
+  const built = import.meta.env.VITE_BUILD_TIME as string | undefined;
+  const { data: server } = useQuery({
+    queryKey: ['server-version'],
+    queryFn: async () => (await api.get<{ short: string; known: boolean }>('/version')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+  const date = built ? new Date(built).toLocaleDateString('ru-RU') : '';
+  const parts = [app ? `Приложение ${app}${date ? ` от ${date}` : ''}` : 'Приложение: локальная сборка'];
+  if (server) parts.push(server.known ? `сервер ${server.short}` : 'сервер: локальный');
+  return <SettingsRow icon={<Tag size={18} strokeWidth={2} style={{ display: 'block' }} />} label="Версия" description={parts.join(', ')} />;
 }
