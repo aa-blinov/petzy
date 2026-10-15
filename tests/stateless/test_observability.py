@@ -73,3 +73,11 @@ def test_the_secret_of_a_card_link_is_taken_out_of_every_address():
     assert secret not in str(scrubbed)
     assert scrubbed["request"]["url"].endswith(f"/api/shared/medical-card/{FILTERED}/pdf?tz=Asia/Almaty")
     assert scrubbed["transaction"] == f"/share/medical/{FILTERED}"
+
+
+def test_a_malformed_dsn_turns_sentry_off_instead_of_taking_the_app_down(monkeypatch):
+    """A DSN pasted with its first letter lost («ttps://…») must not stop the server from starting."""
+    from web.observability import init_sentry
+
+    monkeypatch.setenv("SENTRY_DSN", "ttps://abc@o1.ingest.de.sentry.io/2")
+    assert init_sentry("web") is False

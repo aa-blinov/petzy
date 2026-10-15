@@ -11,6 +11,7 @@ event is sent: cookies, the Authorization header, and any password or
 token in a request body or query string.
 """
 
+import logging
 import os
 import re
 
@@ -101,6 +102,13 @@ def init_sentry(component: str) -> bool:
         return False
     import sentry_sdk
 
+    try:
+        # A DSN pasted with a letter missing («ttps://…») made sentry_sdk raise at import, and the whole site went down
+        # with it. Reporting is never worth the app: a bad DSN turns Sentry off and says so in the log.
+        sentry_sdk.utils.Dsn(dsn)
+    except Exception as error:  # noqa: BLE001 - any malformed value, whatever the SDK calls it
+        logging.getLogger(__name__).warning("Sentry is off: SENTRY_DSN is not a valid DSN (%s)", error)
+        return False
     sentry_sdk.init(
         dsn=dsn,
         environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
