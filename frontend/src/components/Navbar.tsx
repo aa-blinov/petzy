@@ -284,6 +284,9 @@ export function Navbar() {
       backgroundColor: 'var(--app-card-background)',
       paddingTop: 'var(--safe-area-top)',
       boxShadow: 'var(--app-shadow)',
+      // iPhone, a standalone app: a viewport left panned after the keyboard took the top bar up under the Dynamic
+      // Island. It follows the same shift as the tab bar (utils/keyboard.ts), 0 almost always.
+      translate: '0 var(--vv-shift, 0px)',
     }}>
       <div className="app-navbar">
         <div className="app-navbar__left">{leftContent}</div>
