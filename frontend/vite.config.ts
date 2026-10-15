@@ -8,6 +8,10 @@ export default defineConfig(() => {
   const basePath = '/';
   
   return {
+  // When this bundle was built: shown with the commit in Settings → «Версия».
+  define: {
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({

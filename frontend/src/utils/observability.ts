@@ -1,10 +1,12 @@
 import * as Sentry from '@sentry/react';
 
 /**
- * Errors and page performance to Sentry, the same project as the backend
+ * Errors, page performance and session replay to Sentry, the same project as the backend
  * (web/observability.py). Off unless the build got VITE_SENTRY_DSN (the
  * deploy passes the SENTRY_DSN secret; local and CI builds have none).
- * No session replay: it would record pets' records and documents.
+ * The replay shows how the screens moved, never what is on them: every text,
+ * every field and every picture is masked or blocked before it is recorded,
+ * so pets' records and documents do not leave the phone in it.
  */
 /** The part of an event this file touches: the request it happened in. */
 interface WithRequest {
@@ -56,8 +58,14 @@ export function initSentry(): void {
       httpBodies: [],
       urlQueryParams: { deny: ['token'] },
     },
-    integrations: [Sentry.browserTracingIntegration()],
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({ maskAllText: true, maskAllInputs: true, blockAllMedia: true }),
+    ],
     tracesSampleRate: 1.0,
+    // One ordinary session in ten, and every session that hit an error.
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
     // Same-origin /api calls carry the trace, so a slow screen and the
     // backend request behind it show up as one trace.
     tracePropagationTargets: [/^\/api\//],
