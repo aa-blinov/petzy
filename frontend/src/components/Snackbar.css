@@ -80,3 +80,10 @@ body:has(.app-fab) .snackbar {
         animation: none;
     }
 }
+
+/* The new-release offer (UpdateBanner.tsx): under the top bar, so it never covers a «Отменить» at the bottom. */
+.snackbar--update {
+    top: calc(var(--safe-area-top, 0px) + 64px + var(--spacing-sm));
+    bottom: auto;
+    cursor: default;
+}

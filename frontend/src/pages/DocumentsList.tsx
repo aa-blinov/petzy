@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { markSeen, wasSeen } from '../utils/seenImages';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -411,7 +412,9 @@ export function DocumentsList() {
                                   src={`${documentsService.getFileUrl(doc._id)}?w=128&h=128`}
                                   alt=""
                                   aria-hidden
-                                  loading="lazy"
+                                  // Seen before in this session: drawn at once, not left for the lazy loader to pop in.
+                                  loading={wasSeen(`${documentsService.getFileUrl(doc._id)}?w=128&h=128`) ? 'eager' : 'lazy'}
+                                  onLoad={() => markSeen(`${documentsService.getFileUrl(doc._id)}?w=128&h=128`)}
                                   decoding="async"
                                   className="docs__thumb"
                                 />
