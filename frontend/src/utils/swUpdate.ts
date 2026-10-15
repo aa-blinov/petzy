@@ -1,23 +1,25 @@
-import { isMainTabPath } from './navigation';
-
 /**
  * Brings a new release to an app that stays open. The browser only looks
  * for a new service worker on a navigation, and an installed app resumed
  * from the background doesn't navigate: a phone kept running a build from
  * days before. So the app asks when it comes back to the screen and every
  * hour; the new worker takes over at once (skipWaiting + clientsClaim in
- * sw.ts), and the page reloads into it on a main tab, never in the middle
- * of a form someone is filling in.
+ * sw.ts), and the person is offered «Обновить» (components/UpdateBanner.tsx)
+ * instead of a reload that came on its own: a form half filled in is never
+ * lost to it, and nobody has to reinstall the app to get a new version.
  */
 let updateReady = false;
+const listeners = new Set<() => void>();
 
-function onMainTab(pathname: string): boolean {
-  return isMainTabPath(pathname);
+export function isUpdateReady(): boolean {
+  return updateReady;
 }
 
-/** Reload into the new release if one is waiting and nothing can be lost here. */
-export function reloadIfUpdated(pathname: string): void {
-  if (updateReady && onMainTab(pathname)) window.location.reload();
+export function subscribeUpdate(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function watchForUpdates(): void {
@@ -25,9 +27,9 @@ export function watchForUpdates(): void {
   // The very first install also takes control; that isn't an update.
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) return;
+    if (!hadController || updateReady) return;
     updateReady = true;
-    reloadIfUpdated(window.location.pathname);
+    listeners.forEach((listener) => listener());
   });
 
   const check = () => {

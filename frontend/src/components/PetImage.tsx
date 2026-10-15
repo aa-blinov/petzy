@@ -1,5 +1,6 @@
 import { useState, createElement } from 'react';
 import { getSpecies } from '../utils/species';
+import { markSeen, wasSeen } from '../utils/seenImages';
 
 interface PetImageProps {
     src: string;
@@ -22,7 +23,9 @@ interface PetImageProps {
 }
 
 export function PetImage({ src, alt, size = 48, className, style, species, objectPosition = 'center 20%', priority = false }: PetImageProps) {
-    const [isLoaded, setIsLoaded] = useState(false);
+    // Keyed by the address: a picture shown before in this session is shown at once, with no placeholder or fade.
+    const [loadedSrc, setLoadedSrc] = useState<string | null>(() => (wasSeen(src) ? src : null));
+    const isLoaded = loadedSrc === src || wasSeen(src);
     const [error, setError] = useState(false);
     // getSpecies() picks among a fixed set of module-level lucide icons —
     // it never creates a new component. createElement (rather than JSX
@@ -91,7 +94,10 @@ export function PetImage({ src, alt, size = 48, className, style, species, objec
                     // browser reads the attribute either way.
                     {...(priority ? ({ fetchpriority: 'high' } as Record<string, string>) : {})}
                     decoding="async"
-                    onLoad={() => setIsLoaded(true)}
+                    onLoad={() => {
+                        markSeen(src);
+                        setLoadedSrc(src);
+                    }}
                     onError={() => setError(true)}
                     style={{
                         width: '100%',

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { NotFound } from './components/NotFound';
-import { reloadIfUpdated } from './utils/swUpdate';
 import { setSentryUser } from './utils/observability';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
@@ -19,6 +18,7 @@ import { HapticListener } from './components/HapticListener';
 import { RouteTransition } from './components/RouteTransition';
 import { RouteFocus } from './components/RouteFocus';
 import { Snackbar } from './components/Snackbar';
+import { UpdateBanner } from './components/UpdateBanner';
 import { usePet } from './hooks/usePet';
 import { useSession } from './hooks/useSession';
 import { flushPendingIntakes, usePendingIntakes } from './utils/offlineIntakes';
@@ -228,14 +228,6 @@ function SentryUser() {
   return null;
 }
 
-/** A release that arrived while the app was open loads on the next main tab. */
-function UpdateOnMainTabs() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    reloadIfUpdated(pathname);
-  }, [pathname]);
-  return null;
-}
 
 function AppRoutes() {
   return (
@@ -243,10 +235,10 @@ function AppRoutes() {
       <SessionExpiryBridge />
       <PrefetchTabs />
       <SendPendingIntakes />
-      <UpdateOnMainTabs />
       <SentryUser />
       <PrivacyConsentGate />
       <Snackbar />
+      <UpdateBanner />
       <PetLookTheme />
       <Navbar />
       <RouteFocus />
