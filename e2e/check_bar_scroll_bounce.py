@@ -54,6 +54,13 @@ async def main():
         await pg.wait_for_selector(".bottom-tab-bar-container", timeout=20000)
         await pg.wait_for_timeout(700)
 
+        spring = await pg.evaluate("getComputedStyle(document.documentElement).overscrollBehaviorY")
+        check(
+            "the page does not spring at its ends (the rule is on the root, where iPhone reads it)",
+            spring == "none",
+            spring,
+        )
+
         await pg.evaluate(FAKE, [40, "scroll"])
         await pg.wait_for_timeout(300)
         got = await pg.evaluate(READ)
