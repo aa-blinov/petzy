@@ -1900,7 +1900,7 @@ button:focus-visible,
     transform: scale(0.94);
 }
 
-/* Stepped aside while the page is read downward (RecordFab): out of the way of the links at the edge, back on a scroll up. */
+/* Stepped aside while the page is read downward: out of the way of the links at the edge, back on a scroll up. */
 .app-fab--away {
     opacity: 0;
     visibility: hidden;

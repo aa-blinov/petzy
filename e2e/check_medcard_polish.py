@@ -1,8 +1,8 @@
 """The small rules of the card's parts and of the note to the vet:
 
-- a part of the card where the block already has its own «Записать вес» or «Указать» does not carry the round «+» again;
-- «Прививки и обработки» and «Визиты» ask between two kinds and keep the round «+», so their blocks carry no door of their own:
-  two ways to the same record on one screen is one too many, and the card itself keeps its «+»;
+- every part of the card adds by its own round «+», and no block repeats it with a button of its own («Записать вес»,
+  «Добавить»): two ways to the same record on one screen is one too many; the card's summary has no «+» at all;
+- «Прививки и обработки» and «Визиты» ask between two kinds;
 - the part names the pet and offers the way to the list of pets when there is more than one;
 - the five-clinic cap is said instead of the «+ Добавить клинику» button simply disappearing;
 - an answer to «К приёму» that was taken back is not a change, so leaving asks nothing.
@@ -42,13 +42,13 @@ async def main():
             await pg.wait_for_timeout(800)
             pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
 
-            # a part with its own door: the round «+» would only repeat it
+            # the weight is added by the part's round «+»; the block does not repeat it
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
             await pg.wait_for_timeout(2000)
             check(
-                "«Вес»: the block's own «Записать вес» and no second round «+»",
-                await pg.get_by_role("button", name="Записать вес").count() == 1
-                and await pg.locator(".app-fab").count() == 0,
+                "«Вес»: the round «+» records, and the block has no second «Записать вес»",
+                await pg.get_by_role("button", name="Записать вес").count() == 0
+                and await pg.locator(".app-fab").count() == 1,
             )
             check(
                 "the part names the pet and offers the way to the list",
@@ -73,11 +73,11 @@ async def main():
                     + (await pg.inner_text("main"))[:100].replace(chr(10), " | "),
                 )
 
-            # The card itself keeps its «+» too: it is the only way from there to an allergy, a medicine, a
-            # weight or a document, so removing it would take the card out of the business of being filled.
+            # The card's summary has no «+»: it showed and hid itself on a scroll, and it added anything at all, while
+            # each part adds its own things. A tile is one tap to the part and its «+».
             await pg.goto(BASE + f"/pets/{rex}/medical-card")
             await pg.wait_for_timeout(2000)
-            check("the card keeps the round «+» in the mode that edits", await pg.locator(".app-fab").count() == 1)
+            check("the card's summary has no round «+» of its own", await pg.locator(".app-fab").count() == 0)
 
             # the clinic cap is said, not silently enforced
             saved = await api(
