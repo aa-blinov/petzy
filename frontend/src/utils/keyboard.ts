@@ -30,8 +30,21 @@ export function installKeyboardWatch() {
   // The tallest the page has been at this width: what «no keyboard» is.
   let tallest = window.innerHeight;
   let width = window.innerWidth;
+  // What is written on <html> now: a write of the same value still makes the browser restyle the whole page, and
+  // this runs on every scroll frame.
+  let shift = 0;
+  const written = new Map<string, string>();
+  const write = (name: string, value: string) => {
+    if (written.get(name) === value) return;
+    written.set(name, value);
+    root.style.setProperty(name, value);
+  };
 
-  const update = () => {
+  // `scrolling`: called from a scroll of the visual viewport. On iPhone the end of a page springs back, and while it
+  // does the visual viewport reports an offset for a moment; moving the bars by it then (and nudging the page) made
+  // the tab bar jump at the bottom of every page and broke the momentum. A scroll may only take a shift away; only a
+  // resize, a focus change or a return to the app may put one in.
+  const update = (scrolling = false) => {
     if (window.innerWidth !== width) {
       // Rotated or resized: what was tall is no longer.
       width = window.innerWidth;
@@ -55,27 +68,35 @@ export function installKeyboardWatch() {
     // and a stale offset is not a harmless leftover: a bottom-fixed bar moved down by it leaves the
     // screen altogether, which is the bar «улетающий» вниз. So the bar may come down to the edge of
     // the visible area and not one pixel past it.
+    if (scrolling) panned = Math.min(panned, shift);
     const bar = document.querySelector('.bottom-tab-bar-container');
     if (bar && panned) {
-      root.style.setProperty('--vv-shift', '0px'); // its unshifted place, read before shifting again
+      write('--vv-shift', '0px'); // its unshifted place, read before shifting again
       const floats = Math.round(viewport.offsetTop + viewport.height - bar.getBoundingClientRect().bottom);
       panned = Math.min(panned, Math.max(0, floats));
     }
-    root.style.setProperty('--vv-shift', `${panned}px`);
-    if (panned > 0 && !isTextField(document.activeElement)) {
+    shift = panned;
+    write('--vv-shift', `${panned}px`);
+    if (panned > 0 && !scrolling && !isTextField(document.activeElement)) {
       window.requestAnimationFrame(() => window.scrollTo(window.scrollX, window.scrollY));
     }
-    root.classList.toggle('keyboard-open', open);
-    root.style.setProperty('--keyboard-inset', open ? `${covered}px` : '0px');
+    if (root.classList.contains('keyboard-open') !== open) root.classList.toggle('keyboard-open', open);
+    write('--keyboard-inset', open ? `${covered}px` : '0px');
     // How far up a bar fixed to the bottom must sit to clear the keyboard.
-    root.style.setProperty('--keyboard-fixed-offset', open && !pageShrunk ? `${covered}px` : '0px');
+    write('--keyboard-fixed-offset', open && !pageShrunk ? `${covered}px` : '0px');
   };
 
-  viewport.addEventListener('resize', update);
-  viewport.addEventListener('scroll', update);
-  window.addEventListener('resize', update);
-  document.addEventListener('focusin', update);
+  const full = () => update(false);
+  viewport.addEventListener('resize', full);
+  viewport.addEventListener('scroll', () => update(true));
+  window.addEventListener('resize', full);
+  document.addEventListener('focusin', full);
   // Focus moving from one field to the next passes through «nothing».
-  document.addEventListener('focusout', () => setTimeout(update, 60));
-  update();
+  document.addEventListener('focusout', () => setTimeout(full, 60));
+  // Back from another app: this is when the viewport is left panned without any resize.
+  window.addEventListener('pageshow', full);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') setTimeout(full, 60);
+  });
+  full();
 }
