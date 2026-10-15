@@ -835,6 +835,10 @@ html {
     background-color: var(--app-card-background);
     height: 100%;
     width: 100%;
+    /* No spring at the ends of the page. iPhone reads this on the root only (the same rule on <body> did nothing), and in
+       an app opened from the home screen the spring moved the fixed bars with the page: the top bar went up under the
+       Dynamic Island, the tab bar floated above the bottom or slid below it. */
+    overscroll-behavior: none;
     /* Performance optimizations for high refresh rate displays */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
