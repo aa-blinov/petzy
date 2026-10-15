@@ -1,4 +1,4 @@
-"""The weight screen: «Записать вес» next to «История», and the card follows what the feed records."""
+"""The weight screen: «История» in the head, the round «+» to record, and the card follows what the feed records."""
 
 import asyncio
 
@@ -30,16 +30,15 @@ async def main():
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
             await pg.wait_for_timeout(1800)
             check(
-                "with a weight there: «Записать вес» and «История» in the head",
-                await pg.get_by_role("button", name="Записать вес").count() == 1
-                and await pg.get_by_role("button", name="История").count() == 1,
+                "with a weight there: «История» in the head and the round «+» to record",
+                await pg.get_by_role("button", name="История").count() == 1
+                and await pg.get_by_role("button", name="Записать вес").count() == 0
+                and await pg.locator(".app-fab").count() == 1,
             )
             await pg.screenshot(path="wt_section.png")
-            await pg.get_by_role("button", name="Записать вес").click()
+            await pg.locator(".app-fab").click()
             await pg.wait_for_timeout(1500)
-            check(
-                "«Записать вес» opens the feed's weight form", pg.url.endswith("/form/weight"), pg.url.replace(BASE, "")
-            )
+            check("the «+» opens the feed's weight form", pg.url.endswith("/form/weight"), pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
             await pg.get_by_role("button", name="Создать").click()
             await pg.wait_for_timeout(2200)

@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Skeleton } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Link2, Minus, ShieldAlert } from 'lucide-react';
 import { MedicalShareSheet } from '../components/MedicalShareSheet';
-import { RecordFab } from '../components/RecordSheet';
 import { MedicalSummary } from '../components/MedicalSummary';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
@@ -1028,7 +1027,6 @@ export function MedicalCard() {
         </div>
       </div>
       {/* The same round «+» as the feed's, in the mode that edits; the reading mode has nothing to add to. */}
-      {mode === 'fill' && <RecordFab petId={id!} petName={pets.find((p) => p._id === id)?.name} />}
       <MedicalShareSheet visible={shareOpen} petId={id!} petName={card.pet.name} onClose={() => setShareOpen(false)} />
     </div>
   );

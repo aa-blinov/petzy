@@ -48,7 +48,8 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
           <Section
             id="medcard-medications"
             title="Сейчас"
-            action={{ label: card.medications.length ? 'Все лекарства' : 'Добавить', onClick: () => navigate(card.medications.length ? '/medications' : '/medications/new') }}
+            // Adding is the round «+» of this part; the block only leads to the full list, once there is one.
+            action={card.medications.length ? { label: 'Все лекарства', onClick: () => navigate('/medications') } : undefined}
           >
             {card.medications.length === 0 ? (
               <p className="medcard__empty">Сейчас ничего не принимает</p>
@@ -106,7 +107,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
     case 'weight': {
       if (!card.weight) {
         return (
-          <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }}>
+          <Section id="medcard-weight" title="Сейчас">
             <p className="medcard__empty">Вес не записан. Врач считает по нему дозы</p>
           </Section>
         );
@@ -118,7 +119,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
       const before = series.slice(0, -1).slice(-4).reverse();
       return (
         <>
-          <Section id="medcard-weight" title="Сейчас" action={{ label: 'Записать вес', onClick: () => navigate('/form/weight') }} secondary={{ label: 'История', onClick: () => navigate('/history') }}>
+          <Section id="medcard-weight" title="Сейчас" action={{ label: 'История', onClick: () => navigate('/history') }}>
             <div className="medcard__weight">
               <div className="medcard__weight-now">
                 <span className="medcard__weight-value">{latest.value.toLocaleString('ru-RU')} кг</span>
@@ -179,7 +180,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
           id="medcard-clinic"
           title={card.profile.clinics.length > 1 ? 'Клиники' : 'Клиника'}
           titleHidden
-          action={{ label: card.profile.clinics.length ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=clinic`) }}
+          action={card.profile.clinics.length ? { label: 'Изменить', onClick: () => navigate(`${profileTo}?section=clinic`) } : undefined}
         >
           {card.profile.clinics.length === 0 ? (
             <p className="medcard__empty">Клиника не указана. Её телефон врач увидит в карте</p>
@@ -194,7 +195,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
       );
     case 'life':
       return (
-        <Section id="medcard-life" title="Сейчас" action={{ label: hasLife(card.profile) ? 'Изменить' : 'Указать', onClick: () => navigate(`${profileTo}?section=life`) }}>
+        <Section id="medcard-life" title="Сейчас" action={hasLife(card.profile) ? { label: 'Изменить', onClick: () => navigate(`${profileTo}?section=life`) } : undefined}>
           {hasLife(card.profile) ? (
             <ul className="medcard__list">
               <LifeRows profile={card.profile} />
@@ -226,17 +227,11 @@ const SECTION_ADDS: Record<CardSectionKey, { label: string; to: (petId: string) 
   life: [{ label: 'Питание и условия', to: (id) => `/pets/${id}/medical-profile?section=life` }],
 };
 
-/** Where the block of the section already carries its own «Добавить», «Записать вес» or «Указать», the round «+» only
-    repeats that door. It stays where the block has no door of its own, and where it asks between two kinds. «Прививки и обработки»
-    and «Визиты» ask between two kinds, and their blocks carry no door at all, so one «+» opens the whole screen. */
-const SECTION_OPENS_ITSELF: ReadonlySet<CardSectionKey> = new Set(['risks', 'meds', 'weight', 'clinic', 'life']);
-
-/** The round «+» of one part of the card: where there is one thing to add it opens the screen, where there are two
-    it asks which, in the same sheet the card uses. */
+/** The round «+» of one part of the card, the same place on every part: the card's summary has none, and each part adds
+    its own thing. Where there is one thing to add it opens the screen, where there are two it asks which. */
 function SectionFab({ section, petId, navigate }: { section: CardSectionKey; petId: string; navigate: (to: string) => void }) {
   const [open, setOpen] = useState(false);
   const adds = SECTION_ADDS[section];
-  if (SECTION_OPENS_ITSELF.has(section)) return null;
   if (adds.length === 1) return <Fab label={`Добавить: ${adds[0].label}`} onClick={() => navigate(adds[0].to(petId))} />;
   return (
     <>

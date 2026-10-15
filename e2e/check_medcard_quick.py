@@ -39,8 +39,8 @@ async def main():
         await pg.get_by_role("button", name="Вес: 29,3 кг, 04.10.2026").click()
         await pg.wait_for_timeout(800)
         check(
-            "the weight is recorded inside its section",
-            await pg.get_by_role("button", name="Записать вес", exact=True).count() == 1,
+            "the weight is recorded inside its section, by its own round «+»",
+            await pg.locator(".app-fab").count() == 1,
         )
         await pg.goto(BASE + card + "/risks")
         await pg.wait_for_timeout(800)

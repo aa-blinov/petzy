@@ -13,12 +13,12 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         rex = await login(pg, "demo", "Рекс")
         card = f"/pets/{rex}/medical-card"
-        # a filled-in card opens as the working mode every time, with the «+» and a switch that says «Записи»
+        # a filled-in card opens as the working mode every time, with a switch that says «Записи»; the «+» is in each part
         await pg.goto(BASE + card)
         await pg.locator(".medcard__mode").first.wait_for(timeout=10000)
         check(
-            "a complete card opens as «Записи» with the round plus",
-            await pg.locator(".app-fab").count() == 1
+            "a complete card opens as «Записи», without a round plus of its own (each part has one)",
+            await pg.locator(".app-fab").count() == 0
             and await pg.locator(".medcard__mode").all_inner_texts() == ["Записи", "Врачу"],
         )
         await pg.goto(BASE + card + "?mode=vet")
