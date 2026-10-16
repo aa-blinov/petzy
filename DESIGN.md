@@ -304,6 +304,9 @@ gone. The label sits above the value, as before.
 - **Target:** at least 44px (the `--touch-min` token) to press even when the chip is drawn smaller.
 - **In code:** `ChoiceChips` (a labelled group) and `ChoiceChip` (a choice with `pressed`) in `components/ChoiceChips.tsx`; the stylesheet comes with the component. The record form, the profile and «К приёму» use them: a choice row is not drawn by hand again. They are pills (a choice is a shape-is-the-meaning case), selected on the apricot wash.
 
+### Tabs
+A screen's own tabs (here the six parts of a pet's look) sit in one grid of equal columns, so every row is full and a label that is too long for its column wraps inside it. A tab is never cut off at the edge or scrolled out of sight, and the tabs never leave a short last row. The chosen tab has a 3px copper underline and `aria-selected`; each tab keeps the 44px touch height.
+
 ### Cards / Containers
 - **Corner Style:** 12px, as every rectangle.
 - **Background:** milk-card on cream-paper.
