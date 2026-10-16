@@ -68,6 +68,8 @@ def load_config() -> Dict[str, Any]:
             # up together, not for a script making hundreds.
             "register_limit": os.getenv("RATE_LIMIT_REGISTER", "5 per hour"),
             "register_attempt_limit": os.getenv("RATE_LIMIT_REGISTER_ATTEMPTS", "30 per hour"),
+            # Who to share a pet with, per signed-in user: enough for typing a login, not for walking the accounts.
+            "user_search_limit": os.getenv("RATE_LIMIT_USER_SEARCH", "30 per minute"),
         },
         # Logging settings
         "logging": {

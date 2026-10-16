@@ -7,7 +7,8 @@ import bcrypt
 from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 
-from web.app import api, logger  # shared logger and api
+from web.app import api, limiter, logger  # shared logger and api
+from web.configs import RATE_LIMIT_CONFIG  # per-route limits overridable via env
 from web.security import login_required, admin_required, is_admin, revoke_user_sessions
 import web.app as app  # to access patched app.db in tests
 from web.security import ADMIN_USERNAME
@@ -88,6 +89,8 @@ def users_page(query: str, raw_page, per_page: int = USERS_PER_PAGE):
 
 @users_bp.route("/api/users/search", methods=["GET"])
 @login_required
+# Below login_required on purpose: the count is per signed-in user, and login_required is what sets that user.
+@limiter.limit(lambda: RATE_LIMIT_CONFIG["user_search_limit"], key_func=lambda: request.current_user)
 @api.validate(resp=Response(HTTP_200=UserSearchResponse), tags=["users"])
 def search_users():
     """Who to share a pet with: people you already share pets with.

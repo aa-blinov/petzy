@@ -151,8 +151,8 @@ PUBLIC = {
 }
 
 # What a person can ask for before the answer is 429, in the words of the limit. The numbers
-# come from the @limiter.limit above each view, and from RATE_LIMIT_CONFIG for the two that read
-# it at run time (sign-up and sign-in). Only one operation said so before.
+# come from the @limiter.limit above each view, and from RATE_LIMIT_CONFIG for the ones that read
+# it at run time (sign-up, sign-in and search). Only one operation said so before.
 RATE_LIMITS = {
     ("post", "/api/auth/login"): "5 попыток в минуту с одного адреса",
     ("post", "/api/auth/register"): "5 созданных аккаунтов и 30 попыток в час с одного адреса",
@@ -168,6 +168,7 @@ RATE_LIMITS = {
     ("post", "/api/images/preview"): "120 в час с одного адреса",
     ("get", "/api/shared/medical-card/{token}"): "60 в минуту с одного адреса",
     ("get", "/api/shared/medical-card/{token}/pdf"): "60 в минуту с одного адреса",
+    ("get", "/api/users/search"): "30 в минуту на одного пользователя",
 }
 
 _METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
