@@ -299,7 +299,7 @@ export function History() {
                     gap: 'var(--spacing-sm)',
                     minHeight: '40px',
                 }}>
-                    <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', margin: 0 }}>
+                    <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
                         История
                     </h1>
                     <button

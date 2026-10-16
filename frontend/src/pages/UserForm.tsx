@@ -247,7 +247,7 @@ export function UserForm() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', margin: 0 }}>
+          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать пользователя' : 'Создать пользователя'}
           </h1>
         </div>
