@@ -239,6 +239,8 @@ def ensure_indexes() -> None:
       document_uploads    created_at        (sweep abandoned scan uploads)
       deleted_accounts   username unique  (a repeat delete after a broken answer
                                            answers instead of «wrong password»)
+      login_failures      expires_at TTL    (wrong-password count per login, _id is the
+                                           login: gone when its window or its lock ends)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -301,6 +303,8 @@ def ensure_indexes() -> None:
         # Links from letters (web/account.py): looked up by hash, gone when expired.
         (db.account_tokens, [("token_hash", ASCENDING)], "account_tokens_hash_unique", {"unique": True}),
         (db.account_tokens, [("expires_at", ASCENDING)], "account_tokens_ttl", {"expireAfterSeconds": 0}),
+        # Wrong-password count per login (web/login_lockout.py): the row goes when its window or its lock ends.
+        (db.login_failures, [("expires_at", ASCENDING)], "login_failures_ttl", {"expireAfterSeconds": 0}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (
             db.refresh_tokens,

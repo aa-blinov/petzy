@@ -37,6 +37,8 @@ HELD_ELSEWHERE = {
     "medication_reminders_sent": "a dedupe row for one reminder slot; `purge_at` TTL drops it",
     "document_expiry_reminders_sent": "a dedupe row for one expiry date; `purge_at` TTL drops it",
     "medical_due_reminders_sent": "a dedupe row for one repeat stage; `purge_at` TTL drops it",
+    "login_failures": "a wrong-password count keyed by the lowercase login, not the account's rows: "
+    "`delete_account` clears it with `clear_failures`, and the TTL ends it within fifteen minutes",
 }
 
 

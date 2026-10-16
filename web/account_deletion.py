@@ -15,7 +15,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 
 import web.app as app
-from web import storage
+from web import login_lockout, storage
 from web.app import logger
 
 # The records that carry the login of whoever made them.
@@ -192,6 +192,8 @@ def delete_account(username: str) -> dict:
     for name in PERSONAL_COLLECTIONS:
         app.db[name].delete_many({"username": username})
     app.db.users.delete_one({"username": username})
+    # The count of wrong passwords for this login goes too: the login is free for someone else to register.
+    login_lockout.clear_failures(username)
     # A repeat of this DELETE answers as if it had just been done (see
     # was_deleted). Not one of PERSONAL_COLLECTIONS: it holds no data of the
     # account, only that this login is free again.
