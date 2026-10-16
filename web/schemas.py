@@ -4046,8 +4046,13 @@ class PersonalTokenList(BaseModel):
 
 
 class PersonalTokenRevoked(BaseModel):
-    revoked: bool
-    model_config = ConfigDict(json_schema_extra={"example": {"revoked": True}})
+    """What a DELETE on a personal access token answered: revoked, and whether its record is gone now."""
+
+    revoked: bool = Field(description="Доступ отозван: теперь или раньше")
+    deleted: bool = Field(
+        False, description="Запись удалена из базы: так отвечает повторный вызов по уже отозванному доступу"
+    )
+    model_config = ConfigDict(json_schema_extra={"example": {"revoked": True, "deleted": False}})
 
 
 class SharedMedicalCardResponse(BaseModel):

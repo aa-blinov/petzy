@@ -150,10 +150,12 @@ def list_personal_tokens():
 @login_required
 @api.validate(resp=Response(HTTP_200=PersonalTokenRevoked, HTTP_404=ErrorResponse), tags=["tokens"])
 def revoke_personal_token(token_id):
-    """Revoke one of your personal access tokens: it stops working at once, and it cannot be made to work again.
+    """Revoke one of your personal access tokens, or delete one that is already revoked.
 
-    Revoking a token twice is safe: the second call answers the same way and keeps the time of the first. A token of
-    another person, or an id that is not one, answers 404 ``personal_token_not_found``.
+    The first call revokes a working token: it stops working at once, and it stays in the list, revoked, until it is
+    deleted. A second call on that token takes its record out of the database, and the answer says so (``deleted``:
+    true). After that the token is gone: a call on it answers 404 ``personal_token_not_found``, as does a token of
+    another person, or an id that is not one.
     """
     username, _ = get_current_user()
     try:
@@ -161,8 +163,13 @@ def revoke_personal_token(token_id):
     except (InvalidId, TypeError):
         return error_response("personal_token_not_found")
     tokens = app.db["api_tokens"]
-    tokens.update_one({"_id": oid, "username": username, "revoked_at": None}, {"$set": {"revoked_at": _now()}})
-    if tokens.find_one({"_id": oid, "username": username}, {"_id": 1}) is None:
-        return error_response("personal_token_not_found")
-    logger.info(f"Personal token revoked: id={token_id}, user={username}")
-    return jsonify({"revoked": True})
+    if tokens.update_one(
+        {"_id": oid, "username": username, "revoked_at": None}, {"$set": {"revoked_at": _now()}}
+    ).matched_count:
+        logger.info(f"Personal token revoked: id={token_id}, user={username}")
+        return jsonify({"revoked": True, "deleted": False})
+    # Already revoked: this call takes the record out of the database.
+    if tokens.delete_one({"_id": oid, "username": username, "revoked_at": {"$ne": None}}).deleted_count:
+        logger.info(f"Personal token deleted: id={token_id}, user={username}")
+        return jsonify({"revoked": True, "deleted": True})
+    return error_response("personal_token_not_found")

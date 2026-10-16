@@ -135,6 +135,21 @@ async def attempt(name, step, token=None):
         check(name, False, message[:200])
 
 
+async def discard_token(pg, token_id):
+    """Takes the token out of the database, so that runs leave nothing behind.
+
+    The owner's revocation above is the first DELETE; this one is the second, and it deletes the revoked record. A run
+    that stopped before the revocation still has a token that works: then the first call here only revokes it, and the
+    second one deletes it.
+    """
+    answer = await api(pg, "DELETE", f"/me/tokens/{token_id}")
+    if (answer["json"] or {}).get("deleted") is False:
+        answer = await api(pg, "DELETE", f"/me/tokens/{token_id}")
+    check(
+        "the throwaway token is deleted for good", (answer["json"] or {}).get("deleted") is True, str(answer["status"])
+    )
+
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome")
@@ -168,7 +183,7 @@ async def main():
                     await attempt("a revoked token is refused by the tool", revoked_token(token), token)
         finally:
             if token_id:
-                await api(pg, "DELETE", f"/me/tokens/{token_id}")
+                await discard_token(pg, token_id)
             if pet_id:
                 await api(pg, "DELETE", f"/pets/{pet_id}")
         await browser.close()
