@@ -35,6 +35,19 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
   // A frame cut to a shape (heart, star, cloud…) is a mask: see the box round the avatar below.
   const shapedFrame = Boolean(frame.box.maskImage);
   const backdrop = petBackdropKey(look);
+  // The photo backdrop is blurred over the card, so when it arrived late it switched the whole card's tone at once.
+  // The picture is loaded first and the backdrop only fades in once it is there, so it never jumps.
+  const photoUrl = backdrop === "photo" ? pet.photo_url : undefined;
+  const [photoLoaded, setPhotoLoaded] = useState<string | null>(null);
+  useEffect(() => {
+    if (!photoUrl) return;
+    let live = true;
+    const img = new Image();
+    img.onload = () => { if (live) setPhotoLoaded(photoUrl); };
+    img.src = photoUrl;
+    return () => { live = false; };
+  }, [photoUrl]);
+  const photoReady = Boolean(photoUrl) && photoLoaded === photoUrl;
   // The name is hidden until its face has landed: a fallback face at the same size is a different width, and the name
   // jumps when the face comes in. Hidden keeps its place, so nothing moves when it shows.
   // Which face has landed: the key, so a face that is still loading is never taken for a ready one.
@@ -91,7 +104,8 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
             backgroundPosition: "center",
             filter: "blur(22px) saturate(1.35)",
             transform: "scale(1.4)",
-            opacity: 0.6,
+            opacity: photoReady ? 0.6 : 0,
+            transition: "opacity var(--motion-duration-fast) var(--motion-ease-standard)",
           }}
         />
       )}
