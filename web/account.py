@@ -6,6 +6,7 @@ A token is single-use and short-lived (TTL index on ``expires_at``).
 """
 
 import hashlib
+import hmac
 import os
 import re
 import secrets
@@ -14,6 +15,8 @@ from functools import wraps
 from typing import Optional
 
 import bcrypt
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 
@@ -21,6 +24,7 @@ import web.app as app
 from web import mail
 from web.app import api, limiter, logger
 from web.auth import password_problem, signed_in_response
+from web.configs import JWT_CONFIG
 from web.errors import error_response
 from web.legal import consent_needed
 from web.messages import get_message
@@ -53,6 +57,9 @@ account_bp = Blueprint("account", __name__)
 
 RESET_TTL = timedelta(hours=1)
 VERIFY_TTL = timedelta(days=1)
+# Confirmation letters counted per address at sign-up: this many in this window (reserve_verification_letter).
+VERIFY_LETTERS_PER_ADDRESS = 3
+VERIFY_LETTERS_WINDOW = timedelta(hours=24)
 # One reset letter per account this often, however many times it's asked.
 RESET_RESEND_AFTER = timedelta(minutes=2)
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
@@ -138,6 +145,49 @@ def send_verification(username: str, email: str) -> None:
         f"Ссылка работает сутки.\n\n"
         f"Если вы не регистрировались в Petzy, просто удалите это письмо.",
     )
+
+
+def _address_key(email: str) -> str:
+    """How an address is kept in ``verification_mail_log``: an HMAC of it in lower case, under a key derived from the
+    server's secret. The log holds no readable address, and a copy of the collection alone cannot be matched to one."""
+    key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"petzy verification letter").derive(
+        JWT_CONFIG["secret_key"].encode("utf-8")
+    )
+    return hmac.new(key, email.strip().lower().encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def reserve_verification_letter(email: str):
+    """Count one confirmation letter to ``email`` before it goes out; return the id of the row that counts it.
+
+    None when the address has had its letters for the day: the row is taken back, so a refusal counts for nothing.
+    The row is written before it is counted, so two sign-ups at the same moment cannot both take the last place.
+    A letter counted here stays counted if sending it then fails.
+    """
+    now = datetime.now(timezone.utc)
+    key = _address_key(email)
+    row = app.db.verification_mail_log.insert_one({"address_key": key, "expires_at": now + VERIFY_LETTERS_WINDOW})
+    letters = app.db.verification_mail_log.count_documents({"address_key": key, "expires_at": {"$gt": now}})
+    if letters > VERIFY_LETTERS_PER_ADDRESS:
+        app.db.verification_mail_log.delete_one({"_id": row.inserted_id})
+        return None
+    return row.inserted_id
+
+
+def release_verification_letter(letter_id) -> None:
+    """Take back a counted letter that will not go out, because its account was not made."""
+    app.db.verification_mail_log.delete_one({"_id": letter_id})
+
+
+def letter_limit_response():
+    """The 429 for an address whose letters are used up for the day. ``retry_after`` and ``Retry-After`` give the
+    window's length in seconds, as for every 429 (web/app.py)."""
+    window = int(VERIFY_LETTERS_WINDOW.total_seconds())
+    response, status = error_response("register_letter_limit")
+    body = response.get_json()
+    body["retry_after"] = window
+    response = jsonify(body)
+    response.headers["Retry-After"] = str(window)
+    return response, status
 
 
 def _notify(user: dict, subject: str, text: str) -> None:

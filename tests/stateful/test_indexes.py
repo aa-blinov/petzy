@@ -43,6 +43,7 @@ def test_ensure_indexes_creates_expected_indexes():
             "medical_due_reminders_sent_ttl",
         ],
         "login_failures": ["login_failures_ttl"],
+        "verification_mail_log": ["verification_mail_log_address", "verification_mail_log_ttl"],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()
@@ -54,6 +55,21 @@ def test_ensure_indexes_creates_expected_indexes():
     for coll_name in HEALTH_RECORD_COLLECTIONS:
         info = mock_db[coll_name].index_information()
         assert f"{coll_name}_pet_date" in info, f"{coll_name} missing pet+date index; have {list(info.keys())}"
+
+
+def test_the_letter_log_is_indexed_by_address_and_expires_its_rows():
+    """Counting an address's letters reads one address's rows, and a row leaves the log a day after its letter."""
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+        info = mock_db.verification_mail_log.index_information()
+
+    assert [tuple(k) for k in info["verification_mail_log_address"]["key"]] == [
+        ("address_key", 1),
+        ("expires_at", 1),
+    ]
+    assert [tuple(k) for k in info["verification_mail_log_ttl"]["key"]] == [("expires_at", 1)]
+    assert info["verification_mail_log_ttl"]["expireAfterSeconds"] == 0
 
 
 def test_ensure_indexes_idempotent():
