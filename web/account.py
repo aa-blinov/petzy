@@ -146,13 +146,32 @@ def send_verification(username: str, email: str) -> None:
     )
 
 
+# One mailbox has several spellings at gmail.com and googlemail.com: dots in the name, a part after «+», the other
+# domain name. The letter limit counts them as one address (see _counted_address).
+GMAIL_DOMAINS = ("gmail.com", "googlemail.com")
+
+
+def _counted_address(email: str) -> str:
+    """The address as the letter limit counts it, in lower case.
+
+    At gmail.com and googlemail.com the dots in the name and anything after «+» are left out, and the domain is
+    gmail.com: v.era+1@googlemail.com counts as vera@gmail.com. Other domains are kept as typed.
+    """
+    address = email.strip().lower()
+    local, at, domain = address.rpartition("@")
+    if at and domain in GMAIL_DOMAINS:
+        return local.split("+", 1)[0].replace(".", "") + "@gmail.com"
+    return address
+
+
 def _address_key(email: str) -> str:
-    """How an address is kept in ``verification_mail_log``: an HMAC of it in lower case, under a key derived from the
-    server's secret. The log holds no readable address, and a copy of the collection alone cannot be matched to one."""
+    """How an address is kept in ``verification_mail_log``: an HMAC of it as ``_counted_address`` gives it, under a
+    key derived from the server's secret. The log holds no readable address, and a copy of the collection alone
+    cannot be matched to one."""
     key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"petzy verification letter").derive(
         JWT_CONFIG["secret_key"].encode("utf-8")
     )
-    return hmac.new(key, email.strip().lower().encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.new(key, _counted_address(email).encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def reserve_verification_letter(email: str):

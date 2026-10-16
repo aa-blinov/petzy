@@ -4,6 +4,8 @@ Sign-up is limited per address of the asker (web/configs.py), which does not sto
 from many accounts. Each letter is counted before it goes out, whichever of the three asks for it. A fourth one in a
 day is refused with 429 and no letter, and nothing changes: no account is made, no address is set. The count is kept
 for an address whether or not it has an account, and a letter that failed to send still counts.
+At gmail.com and googlemail.com one mailbox has several spellings (dots in the name, a part after «+», the other
+domain), and they count as one address. Other domains count as typed.
 """
 
 import itertools
@@ -106,6 +108,44 @@ def test_the_same_address_written_another_way_is_the_same_address(client, outbox
 
     assert _sign_up(client, "vera4", email=written).status_code == 429
     assert len(outbox) == 3
+
+
+def test_gmail_spellings_of_one_mailbox_share_the_limit(client, mock_db, outbox):
+    # v.era+1@googlemail.com and vera@gmail.com are one mailbox: together they have the three letters of a day.
+    assert _sign_up(client, "vera1", email="v.era+1@googlemail.com").status_code == 201
+    assert _sign_up(client, "vera2", email="vera@gmail.com").status_code == 201
+    assert _sign_up(client, "vera3", email="vera@gmail.com").status_code == 201
+
+    refused = _sign_up(client, "vera4", email="V.E.R.A+9@GOOGLEMAIL.com")
+
+    assert refused.status_code == 429
+    assert refused.get_json()["code"] == "register_letter_limit"
+    assert len(outbox) == 3
+    assert mock_db["users"].find_one({"username": "vera4"}) is None
+
+
+def test_gmail_spellings_do_not_share_with_another_domain(client, outbox):
+    assert _sign_up(client, "vera1", email="v.era+1@googlemail.com").status_code == 201
+    assert _sign_up(client, "vera2", email="vera@gmail.com").status_code == 201
+    assert _sign_up(client, "vera3", email="vera@gmail.com").status_code == 201
+
+    assert _sign_up(client, "vera4", email="vera@example.com").status_code == 201
+    assert outbox[-1]["to"] == "vera@example.com"
+
+
+def test_other_domains_keep_their_dots_and_plus(client, outbox):
+    _three_letters(client)  # vera@example.com has its three letters
+
+    assert _sign_up(client, "pyotr", email="v.era+1@example.com").status_code == 201
+    assert outbox[-1]["to"] == "v.era+1@example.com"
+
+
+def test_a_gmail_address_is_kept_as_typed(client, mock_db, outbox):
+    # Only the count is merged: the letter and the account keep the address as it was typed.
+    _sign_up(client, "vera1", email="v.era+1@googlemail.com")
+
+    assert outbox[-1]["to"] == "v.era+1@googlemail.com"
+    assert mock_db["users"].find_one({"username": "vera1"})["pending_email"] == "v.era+1@googlemail.com"
 
 
 def test_another_address_is_not_affected(client, outbox):
