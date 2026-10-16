@@ -128,6 +128,22 @@ services:
     networks:
       - app-network
 
+  # The MCP server for assistants (mcp/petzy_mcp, its own image). Reached only through nginx, at /mcp: it
+  # publishes no port of its own and takes no secrets, since each request brings its own personal access
+  # token (ptz_...) in the Authorization header. Its health check is the one in mcp/Dockerfile (/healthz on
+  # port 8000). depends_on has no condition: the web service has no health check to wait for.
+  mcp:
+    logging: *default-logging
+    build: ./mcp
+    environment:
+      # The app on the Docker network: gunicorn listens on port 5000 in the web container.
+      - PETZY_API_URL=http://web:5000
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - app-network
+
 volumes:
   mongodata:
   static_content:
