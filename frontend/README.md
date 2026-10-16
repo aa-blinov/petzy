@@ -12,7 +12,7 @@ npm run preview   # serve dist/ on http://localhost:4173, same /api proxy
 npm run lint
 ```
 
-Run the API next to it with `.venv/bin/python scripts/dev_local.py` (in-memory database, demo data, `admin` / `test1234`).
+Run the API next to it with `.venv/bin/python scripts/dev_local.py` (in-memory database, demo data, администратор `admin`, пароль задан в скрипте).
 
 `VITE_API_URL` overrides the API base (default `/api`, same origin). Production builds need nothing set: nginx serves the app and the API from one origin.
 

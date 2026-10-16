@@ -58,7 +58,7 @@ python3.12 -m venv .venv
 cd frontend && npm install && npm run dev    # приложение на http://localhost:5173
 ```
 
-Заходите под `admin` / `test1234` (только для локального раннера). Vite dev server проксирует `/api` на порт 5001.
+Заходите под `admin` с паролем из `scripts/dev_local.py` (только для локального раннера). Vite dev server проксирует `/api` на порт 5001.
 
 - Файлы уходят в тот же бакет, что и в проде, под `dev/`, если в `.env` прописаны ключи `S3_*`, или в S3 в памяти при `DEV_STORAGE=memory`.
 - Письма (подтверждение, сброс пароля) лежат на http://localhost:5001/api/dev/outbox. На любом другом адресе эндпоинт отвечает 404.
@@ -116,7 +116,7 @@ docker compose -p petzy-local -f docker-compose.yml -f docker-compose.local.yml 
 | `MONGO_USER`, `MONGO_PASS`, `MONGO_DB` | база; root-аккаунт, его используют бэкапы |
 | `MONGO_APP_USER`, `MONGO_APP_PASS` | собственный аккаунт приложения (чтение и запись только в свою базу и `limits`); деплой создаёт его и пароль на сервере. Без него приложение логинится как root |
 | `FLASK_SECRET_KEY`, `JWT_SECRET_KEY` | длинное случайное значение; приложение не стартует с примерным |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` | аккаунт админа (bcrypt-хэш) |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` | аккаунт админа: пароль задаётся только хэшем bcrypt, значения по умолчанию нет (без хэша приложение не стартует), логин по умолчанию `admin` |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY_ID`, `S3_SECRET_KEY` | объектное хранилище для всех файлов и бэкапов |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | почта для восстановления пароля; без неё приложение говорит, что восстановление через админа |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CLAIMS_EMAIL` | Web Push (`python -m scripts.generate_vapid_keys`) |
