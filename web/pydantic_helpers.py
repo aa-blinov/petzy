@@ -9,6 +9,7 @@ from typing import TypeVar, Type, Tuple, Optional
 from flask import Request
 from pydantic import BaseModel, ValidationError
 
+from web import strict_json
 from web.errors import error_response
 
 T = TypeVar("T", bound=BaseModel)
@@ -50,7 +51,7 @@ def validate_request_data(
             for key, value in data_dict.items():
                 if isinstance(value, str) and (value.startswith("{") or value.startswith("[")):
                     try:
-                        data_dict[key] = json.loads(value)
+                        data_dict[key] = strict_json.loads(value)
                     except (json.JSONDecodeError, ValueError):
                         pass  # Keep as string if not valid JSON
             validated_data = model_class.model_validate(data_dict)
@@ -96,7 +97,7 @@ def form_value(values: list):
     value = values[0]
     if isinstance(value, str) and value.startswith(("{", "[")):
         try:
-            return json.loads(value)
+            return strict_json.loads(value)
         except (json.JSONDecodeError, ValueError):
             pass
     return value

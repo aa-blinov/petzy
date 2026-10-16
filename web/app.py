@@ -18,6 +18,7 @@ from web.observability import init_sentry
 from web.configs import CORS_CONFIG, FLASK_CONFIG, LOGGING_CONFIG, RATE_LIMIT_CONFIG
 from web.db import db, ensure_indexes
 from web.errors import error_response
+from web.strict_json import NonFiniteNumber, StrictJSONRequest, keep_json_strict
 
 
 # Configure logging
@@ -51,6 +52,8 @@ fs = GridFS(db)
 # JSON API only — the UI is the React app, served by nginx. No static
 # folder, so Flask doesn't register a /static route of its own.
 app = Flask(__name__, static_folder=None)
+# Request bodies are read without NaN and Infinity (web/strict_json.py).
+app.request_class = StrictJSONRequest
 # The React app is served from the same origin (nginx), so it needs no
 # CORS at all. Only an explicit CORS_ALLOWED_ORIGINS list opens the API to
 # other origins; with none, flask-cors used to echo back any Origin with
@@ -135,6 +138,13 @@ api = FlaskPydanticSpec(
 from web.pydantic_helpers import keep_form_text_as_text  # noqa: E402
 
 keep_form_text_as_text()
+keep_json_strict()
+
+
+@app.errorhandler(NonFiniteNumber)
+def handle_non_finite_number(err):
+    """NaN, Infinity or a number too large for a float in a request: refused as a validation error."""
+    return error_response("validation_error", str(err))
 
 
 @app.errorhandler(422)
