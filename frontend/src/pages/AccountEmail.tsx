@@ -159,7 +159,7 @@ export function AccountEmail() {
               {/* Shown even when no address is set: the server takes the request
                   either way, and a button that comes and goes with the state
                   makes the screen ask itself whether there is anything to remove. */}
-              <Button block fill="none" color="danger" loading={busy === 'remove'} disabled={!!busy} onClick={() => save('', 'remove')}>
+              <Button block color="danger" loading={busy === 'remove'} disabled={!!busy} onClick={() => save('', 'remove')}>
                 Удалить почту
               </Button>
               <Button block fill="none" onClick={() => goBack(navigate, '/settings')}>

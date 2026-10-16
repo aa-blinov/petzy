@@ -163,7 +163,7 @@ function ClinicBlock({ control, index, only, onRemove, getValues }: { control: C
             )}
           />
           <Form.Item>
-            <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={() => removeWithUndo(doctors, j, getValues().clinics[index].doctors[j], 'Врач убран')} aria-label={`Убрать врача ${j + 1} клиники ${index + 1}`}>
+            <Button size="small" color="danger" style={REMOVE_STYLE} onClick={() => removeWithUndo(doctors, j, getValues().clinics[index].doctors[j], 'Врач убран')} aria-label={`Убрать врача ${j + 1} клиники ${index + 1}`}>
               <DeleteOutline aria-hidden /> Убрать врача
             </Button>
           </Form.Item>
@@ -178,7 +178,7 @@ function ClinicBlock({ control, index, only, onRemove, getValues }: { control: C
       )}
       {!only && (
         <Form.Item>
-          <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={onRemove} aria-label={`Убрать клинику ${index + 1}`}>
+          <Button size="small" color="danger" style={REMOVE_STYLE} onClick={onRemove} aria-label={`Убрать клинику ${index + 1}`}>
             <DeleteOutline aria-hidden /> Убрать клинику
           </Button>
         </Form.Item>
@@ -435,7 +435,7 @@ export function MedicalProfileForm() {
                   )}
                 />
                 <Form.Item>
-                  <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={() => removeWithUndo(allergies, index, getValues().allergies[index], 'Аллерген убран')} aria-label={`Убрать аллергию ${index + 1}`}>
+                  <Button size="small" color="danger" style={REMOVE_STYLE} onClick={() => removeWithUndo(allergies, index, getValues().allergies[index], 'Аллерген убран')} aria-label={`Убрать аллергию ${index + 1}`}>
                     <DeleteOutline aria-hidden /> Убрать
                   </Button>
                 </Form.Item>
@@ -488,7 +488,7 @@ export function MedicalProfileForm() {
                 )}
               />
               <Form.Item>
-                <Button size="small" color="danger" fill="none" style={REMOVE_STYLE} onClick={() => removeWithUndo(conditions, index, getValues().conditions[index], 'Состояние убрано')} aria-label={`Убрать состояние ${index + 1}`}>
+                <Button size="small" color="danger" style={REMOVE_STYLE} onClick={() => removeWithUndo(conditions, index, getValues().conditions[index], 'Состояние убрано')} aria-label={`Убрать состояние ${index + 1}`}>
                   <DeleteOutline aria-hidden /> Убрать
                 </Button>
               </Form.Item>

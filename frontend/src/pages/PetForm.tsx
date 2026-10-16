@@ -936,7 +936,6 @@ export function PetForm() {
                   <Button
                     size="mini"
                     color="danger"
-                    fill="none"
                     onClick={() => handleRemoveSharedUser(username)}
                     aria-label={(pet?.shared_with || []).includes(username) ? `Закрыть доступ для ${username}` : `Отменить приглашение для ${username}`}
                   >

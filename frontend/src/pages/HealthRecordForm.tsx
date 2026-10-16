@@ -719,7 +719,6 @@ export function HealthRecordForm() {
               <Button
                 block
                 size="large"
-                fill="none"
                 color="danger"
                 onClick={() => {
                   deleteWithUndo({

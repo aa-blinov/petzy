@@ -994,7 +994,6 @@ export function MedicalRecordForm() {
             <Button
               block
               size="large"
-              fill="none"
               color="danger"
               onClick={() => {
                 deleteWithUndo({
