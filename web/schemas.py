@@ -1216,6 +1216,10 @@ class PetCreate(BaseModel):
     breed: Optional[str] = Field(None, max_length=100, description="Порода")
     species: Optional[str] = Field(None, max_length=50, description="Вид животного (кот, собака и т.д.)")
     birth_date: Optional[str] = Field(None, description="Дата рождения в формате YYYY-MM-DD")
+    tz: Optional[str] = Field(
+        None,
+        description="IANA-имя часового пояса, в котором введена дата рождения (Asia/Almaty): «сегодня» для неё считается по нему",
+    )
     gender: Optional[str] = Field(None, max_length=20, description="Пол")
     is_neutered: Optional[bool] = Field(None, description="Кастрирован/Стерилизована")
     health_notes: Optional[str] = Field(None, max_length=1000, description="Особенности здоровья, аллергии")
@@ -1239,6 +1243,7 @@ class PetCreate(BaseModel):
                 "breed": "Британская короткошерстная",
                 "species": "cat",
                 "birth_date": "2020-03-15",
+                "tz": "Asia/Almaty",
                 "gender": "male",
                 "is_neutered": True,
                 "health_notes": "Здоров, аллергий нет",
@@ -1276,6 +1281,10 @@ class PetUpdate(BaseModel):
     breed: Optional[str] = Field(None, max_length=100)
     species: Optional[str] = Field(None, max_length=50)
     birth_date: Optional[str] = Field(None, description="Дата рождения в формате YYYY-MM-DD")
+    tz: Optional[str] = Field(
+        None,
+        description="IANA-имя часового пояса, в котором введена дата рождения (Asia/Almaty): «сегодня» для неё считается по нему",
+    )
     gender: Optional[str] = Field(None, max_length=20)
     is_neutered: Optional[bool] = None
     health_notes: Optional[str] = Field(None, max_length=1000)
@@ -2183,10 +2192,23 @@ def _course_date(v: Optional[str]) -> Optional[str]:
 COURSE_FIELDS_NOTE = "YYYY-MM-DD; пустая строка убирает дату"
 
 
+class MedicationDetailQuery(BaseModel):
+    """Query of one course: the user's zone, for «сегодня» (``intakes_today``). Any other value reads as UTC."""
+
+    tz: Optional[str] = Field(
+        None,
+        description="IANA-имя часового пояса человека (Asia/Almaty): по нему «сегодня» для intakes_today. Без него, или если имя неизвестно, UTC",
+    )
+
+
 class MedicationListQuery(PetIdQuery):
     """Query parameters for listing medications with timezone support."""
 
     client_date: Optional[str] = Field(None, description="Client local date (YYYY-MM-DD)")
+    tz: Optional[str] = Field(
+        None,
+        description="IANA-имя часового пояса человека (Asia/Almaty): по нему «сегодня» для intakes_today. Без него, или если имя неизвестно, берётся client_date, а без него UTC",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "client_date": "2026-10-13"}}
@@ -2197,6 +2219,10 @@ class UpcomingDosesQuery(PetIdQuery):
     """Query parameters for upcoming doses with timezone support."""
 
     client_datetime: Optional[str] = Field(None, description="Client local datetime (ISO format)")
+    tz: Optional[str] = Field(
+        None,
+        description="IANA-имя часового пояса человека (Asia/Almaty): без client_datetime «сейчас» берётся по нему. Без него, или если имя неизвестно, UTC",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "client_datetime": "2026-10-13 08:30"}}

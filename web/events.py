@@ -488,7 +488,9 @@ def create_event():
     if field_error:
         return error_response("validation_error", field_error)
 
-    event_dt, dt_error = parse_event_datetime_safe(data.date, data.time, event_type["label"], pet_id, username)
+    event_dt, dt_error = parse_event_datetime_safe(
+        data.date, data.time, event_type["label"], pet_id, username, tz=data.tz
+    )
     if dt_error:
         return dt_error[0], dt_error[1]
 
@@ -645,7 +647,7 @@ def update_event(record_id):
         date_str = data.date or (stored_dt.strftime("%Y-%m-%d") if isinstance(stored_dt, datetime) else None)
         time_str = data.time or (stored_dt.strftime("%H:%M") if isinstance(stored_dt, datetime) else None)
         event_dt, dt_error = parse_event_datetime_safe(
-            date_str, time_str, f"{event_type['label']} update", pet_id, username
+            date_str, time_str, f"{event_type['label']} update", pet_id, username, tz=data.tz
         )
     if dt_error:
         return dt_error[0], dt_error[1]
