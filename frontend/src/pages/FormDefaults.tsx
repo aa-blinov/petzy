@@ -9,6 +9,8 @@ import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
 import { NoPetState } from '../components/NoPetState';
 import { SpinnerButton } from '../components/SpinnerButton';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LoadError } from '../components/LoadError';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -41,7 +43,7 @@ export function FormDefaults() {
 
 function FormDefaultsFor({ pet }: { pet: Pet }) {
   const queryClient = useQueryClient();
-  const { eventTypes, eventTypesByKey } = useEventTypes();
+  const { eventTypes, eventTypesByKey, isLoading: typesLoading, error: typesError, refetch: refetchTypes } = useEventTypes();
   const settings = useMemo<FormSettings>(() => pet.form_defaults ?? {}, [pet.form_defaults]);
   const [editing, setEditing] = useState<Row | null>(null);
   const [text, setText] = useState('');
@@ -141,6 +143,19 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
   };
 
   const isSelect = editing?.def?.type === 'select';
+
+  // The registry names the sections and the fields. Until it is here they would read «Удалённый вид записи» and raw
+  // field names, so the screen waits for it, and says so when it cannot be read at all.
+  if (typesLoading) return <LoadingSpinner />;
+  if (typesError && !eventTypes.length) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <LoadError what="виды записей" onRetry={refetchTypes} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
