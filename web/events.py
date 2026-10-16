@@ -292,12 +292,14 @@ def delete_event_type(key):
 
     Builtin types can't be deleted (422 ``event_type_builtin_immutable``), and another person's type
     can't either (403 ``event_type_not_yours``). A type with records answers 422 ``event_type_has_events``
-    with ``events_count``; repeated with ``?with_events=true`` it deletes the type together with all of its
-    records, on every pet.
+    with ``events_count``; repeated with ``?with_events=true`` it deletes the type together with its records.
 
-    ``?preview=true`` counts the records and deletes nothing (the answer carries ``events_count``), so the question
-    «удалить тип вместе с записями?» is asked once, with the number in it. ``preview`` and ``with_events`` take
-    ``true``, ``1``, ``yes`` or ``on``, any case.
+    Only records on the pets this person can open are counted and deleted. A type with a record on any other pet
+    answers 422 ``event_type_has_events_elsewhere``, the preview too, and nothing is deleted.
+
+    ``?preview=true`` counts the records on the pets this person can open and deletes nothing (the answer carries
+    ``events_count``), so the question «удалить тип вместе с записями?» is asked once, with the number in it.
+    ``preview`` and ``with_events`` take ``true``, ``1``, ``yes`` or ``on``, any case.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -309,7 +311,14 @@ def delete_event_type(key):
         return error_response("event_type_builtin_immutable")
     if existing.get("created_by") != username:
         return error_response("event_type_not_yours")
-    count = app.db[EVENTS_COLLECTION].count_documents({"type": key})
+    # The pets this person may open follow the same rule as the pet list (get_pets): their own and the shared ones.
+    pets = app.db.pets.find({"$or": [{"owner": username}, {"shared_with": username}]}, {"_id": 1})
+    accessible_pet_ids = [str(pet["_id"]) for pet in pets]
+    # A record on a pet this person cannot open is someone else's diary entry. Then nothing changes, and the preview
+    # refuses too, so no deletion is offered that the delete itself would refuse.
+    if app.db[EVENTS_COLLECTION].find_one({"type": key, "pet_id": {"$nin": accessible_pet_ids}}, {"_id": 1}):
+        return error_response("event_type_has_events_elsewhere")
+    count = app.db[EVENTS_COLLECTION].count_documents({"type": key, "pet_id": {"$in": accessible_pet_ids}})
     if _flag("preview"):
         return jsonify({"success": True, "message": "", "events_count": count}), 200
     with_events = _flag("with_events")
@@ -320,7 +329,7 @@ def delete_event_type(key):
         body["events_count"] = count
         return jsonify(body), status
     if count > 0:
-        app.db[EVENTS_COLLECTION].delete_many({"type": key})
+        app.db[EVENTS_COLLECTION].delete_many({"type": key, "pet_id": {"$in": accessible_pet_ids}})
         app.logger.info(f"Event type records deleted with it: key={key}, count={count}, user={username}")
 
     app.db[EVENT_TYPES_COLLECTION].delete_one({"key": key})
