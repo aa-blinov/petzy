@@ -209,7 +209,7 @@ Sizes are written in rem tokens (`--text-xs` to `--text-display`), never in px: 
 
 One centred column, 800px at most, with a 16px side gutter that grows to the safe-area inset on notched phones. Spacing comes from one scale (2, 4, 8, 12, 16, 24, 32px, the `--spacing-*` tokens); cards sit 12px apart and pad 16px; sections are separated by 24px with the header closer to its content than to the section above. Each kind of gap has one value, listed under Spacing rules. The page reserves room for the fixed top bar (64px) and the bottom bar.
 
-Each screen's title is centred in one row of the touch height (44px, `--touch-min`), the `.screen-head` row. So every screen's title stands at the same height, and a button on the same row lines up with it.
+Each screen's title is one line, 32px high (`2rem`), on every screen, so every title starts at the same height under the top bar. A button on the title's row is centred on that line.
 
 A form row that holds one field is one height (`--form-row-height`, 51px) whatever control is in it, a switch, a text input or a picker, so the hairlines between the fields of a card keep one rhythm; a row with a note, a textarea or a group of choices is as tall as its content asks for. Blocks are separated by those hairlines rather than by space alone (see Dividers).
 
