@@ -34,6 +34,7 @@ import { PetAddedSheet } from '../components/PetAddedSheet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { PawPrint } from 'lucide-react';
 import { PhotoCropModal } from '../components/PhotoCropModal';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -122,6 +123,8 @@ export function PetForm() {
   // the list below, so the empty line says which it is.
   const [alreadyReached, setAlreadyReached] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  // The search itself failed: said under the box, and nothing from the search before is shown with it.
+  const [searchFailed, setSearchFailed] = useState(false);
 
   const [localSharedWith, setLocalSharedWith] = useState<string[]>([]);
   // People the server has said need no invitation from us (they already have the
@@ -139,7 +142,7 @@ export function PetForm() {
   // One pet by its own address, not the whole roster and a search through it: opening the form
   // used to pull every pet the person has. The roster is the cache this is seeded from, so the
   // form opens filled at once and the request by address is what refreshes it.
-  const { data: pet, isLoading: isLoadingPet } = useQuery({
+  const { data: pet, isLoading: isLoadingPet, isError: petFailed, error: petError, refetch: refetchPet } = useQuery({
     queryKey: ['pet', id],
     queryFn: async () => (id ? await petsService.getPet(id) : null),
     enabled: isEditing && !!id,
@@ -247,6 +250,7 @@ export function PetForm() {
     if (val.trim().length < 2) {
       setSearchResults([]);
       setAlreadyReached(false);
+      setSearchFailed(false);
       setSearchedTerm('');
       return;
     }
@@ -269,14 +273,23 @@ export function PetForm() {
         // exist: an empty list here would say «не найден» of a person standing
         // right there in the list below.
         setAlreadyReached(results.some(u => unreachable.has(u.username)));
+        setSearchFailed(false);
         setSearchedTerm(val);
       } catch (error) {
         console.error('Search error:', error);
+        // Whatever the term before found is not left under this one: the list is cleared, and the failure is said.
+        setSearchResults([]);
+        setAlreadyReached(false);
+        setSearchFailed(true);
+        setSearchedTerm(val);
       } finally {
         setSearchLoading(false);
       }
     }, 500);
   };
+
+  // The box shows the results of the term in it, and nothing while that term is being looked up.
+  const searchShown = !searchLoading && searchedTerm === searchTerm;
 
   const handleAddSharedUser = (username: string) => {
     if (!localSharedWith.includes(username)) {
@@ -454,7 +467,18 @@ export function PetForm() {
   if (isEditing && isLoadingPet) {
     return <LoadingSpinner />;
   }
-  // An address of a pet that is not there, or not the person's: said so, not an empty form to fill in.
+  // An address of a pet that is not there, or not the person's: said so, not an empty form to fill in. A failed
+  // request is not that: it never got an answer, so the screen offers to ask again.
+  const petGone = isAxiosError(petError) && petError.response?.status === 404;
+  if (isEditing && !pet && petFailed && !petGone) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <LoadError what="питомца" onRetry={refetchPet} />
+        </div>
+      </div>
+    );
+  }
   if (isEditing && !pet) {
     return (
       <div className="page-container">
@@ -883,15 +907,20 @@ export function PetForm() {
                   }}
                 />
                 {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
-                {/* Only an exact login matches (web/users.py), so say when none does. */}
-                {!searchLoading && searchedTerm === searchTerm && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
+                {/* Only an exact login matches (web/users.py), so say when none does. A search that failed says so. */}
+                {searchShown && searchFailed && (
+                  <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                    Не удалось найти, попробуйте ещё раз
+                  </div>
+                )}
+                {searchShown && !searchFailed && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
                   <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                     {alreadyReached
                       ? 'У этого человека уже есть доступ'
                       : 'Пользователь с таким логином не найден'}
                   </div>
                 )}
-                {!searchLoading && searchResults.length > 0 && (
+                {searchShown && searchResults.length > 0 && (
                   <div style={{
                     marginTop: '4px',
                     border: '1px solid var(--app-border-color)',

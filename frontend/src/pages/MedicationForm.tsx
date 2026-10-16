@@ -17,6 +17,8 @@ import { usePet } from '../hooks/usePet';
 import { Segmented } from '../components/Segmented';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
+import { isAxiosError } from 'axios';
 import { Pill } from 'lucide-react';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
@@ -226,7 +228,7 @@ export function MedicationForm() {
     // нет, его удалили или он не открыт вашему питомцу» while the course was right there and
     // access to it was fine. The server answers 404 for this request only when the course is
     // really gone or is not the caller's to see, so what is left on screen here is the truth.
-    const { data: med, isLoading: isLoadingMed, isError: medError } = useQuery({
+    const { data: med, isLoading: isLoadingMed, isError: medError, error: medErr, refetch: refetchMed } = useQuery({
         queryKey: ['medication', id],
         queryFn: () => medicationsService.getById(id!),
         enabled: isEditing && !!id,
@@ -409,8 +411,18 @@ export function MedicationForm() {
     // The course is gone (deleted by someone else, closed from under us, or a link from an old
     // message): the request answered and refused. That is now the only way to get here, so the
     // words are true. Before, the form looked for the course in the chosen pet's list and said
-    // this about any course of another pet.
+    // this about any course of another pet. A request that never got an answer is not that: it offers to ask again.
+    const medGone = isAxiosError(medErr) && medErr.response?.status === 404;
     if (isEditing && !!id && !isLoadingMed && (medError || !med)) {
+        if (medError && !medGone) {
+            return (
+                <div className="page-container">
+                    <div className="max-width-container">
+                        <LoadError what="лекарство" onRetry={refetchMed} />
+                    </div>
+                </div>
+            );
+        }
         return (
             <div className="page-container">
                 <div className="max-width-container">
