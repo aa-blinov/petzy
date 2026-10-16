@@ -32,3 +32,10 @@
     margin-bottom: var(--spacing-md);
 }
 
+/* The line under the list when the server holds more documents than the list shows: the newest ones are the ones on it. */
+.docs__more {
+    margin: 0;
+    padding-left: 4px;
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}

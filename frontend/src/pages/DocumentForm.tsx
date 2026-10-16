@@ -14,7 +14,7 @@ import { useForm, useWatch, Controller, type FieldErrors } from 'react-hook-form
 import { isAxiosError } from 'axios';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Archive, Image as ImageIcon, Upload } from 'lucide-react';
+import { Archive, FileText, Image as ImageIcon, Upload } from 'lucide-react';
 import {
   documentsService,
   documentDeleteText,
@@ -25,10 +25,13 @@ import {
   isUploadCancelled,
   type DocumentCategory,
 } from '../services/documents.service';
+import { httpStatus } from '../services/api';
 import { deviceTimeZone } from '../utils/timezone';
 import { formatFileSize } from '../utils/fileSize';
 import { usePet } from '../hooks/usePet';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { EmptyState } from '../components/EmptyState';
+import { LoadError } from '../components/LoadError';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -62,6 +65,15 @@ function scanErrorMessage(err: unknown): string {
   if (err instanceof ScanUploadError) return err.message;
   return getApiErrorMessage(err, 'Не удалось загрузить снимки');
 }
+
+// The frame of the screen: the same whether the form is shown or its document did not load.
+const PAGE_STYLE = {
+  minHeight: 'var(--app-vh)',
+  paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
+  paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
+  backgroundColor: 'var(--app-page-background)',
+  color: 'var(--app-text-color)',
+};
 
 export function DocumentForm() {
   const { id } = useParams<{ id: string }>();
@@ -180,7 +192,12 @@ export function DocumentForm() {
     return [days, months, years];
   }, [internalPickerDate, expiresAtValue]);
 
-  const { data: document, isLoading: isLoadingDocument } = useQuery({
+  const {
+    data: document,
+    isLoading: isLoadingDocument,
+    error: documentError,
+    refetch: refetchDocument,
+  } = useQuery({
     queryKey: ['document', id],
     queryFn: () => documentsService.getById(id!),
     enabled: isEditing && !!id,
@@ -439,6 +456,41 @@ export function DocumentForm() {
     return <LoadingSpinner />;
   }
 
+  // The heading is the same on the form and on the screen that says the document did not load.
+  const pageHead = (
+    <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
+      <div className="screen-head">
+        <h1 className="screen-title" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+          {isEditing ? 'Редактировать документ' : 'Новый документ'}
+        </h1>
+      </div>
+    </div>
+  );
+
+  // Without the document the form would open empty, and «Сохранить» would write an empty note and expiry over the saved
+  // ones. So the form is not drawn at all: the screen says what happened and offers a way on.
+  if (isEditing && !document) {
+    const gone = httpStatus(documentError) === 404;
+    return (
+      <div style={PAGE_STYLE}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          {pageHead}
+          {gone ? (
+            <EmptyState
+              icon={FileText}
+              title="Такого документа нет"
+              description="Его удалили или у вас нет к нему доступа"
+              actionLabel="К документам"
+              onAction={() => navigate('/documents', { replace: true })}
+            />
+          ) : (
+            <LoadError what="документ" onRetry={refetchDocument} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const isUploading = uploadProgress !== null;
   // What the file row counts: the file that will be uploaded, or, while
   // editing with nothing chosen, the one the document has now.
@@ -446,23 +498,9 @@ export function DocumentForm() {
   const isLoading = isSubmitting || createMutation.isPending || updateMutation.isPending || scanMutation.isPending;
 
   return (
-    <div
-      style={{
-        minHeight: 'var(--app-vh)',
-        paddingTop: 'calc(env(safe-area-inset-top) + 88px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-        backgroundColor: 'var(--app-page-background)',
-        color: 'var(--app-text-color)',
-      }}
-    >
+    <div style={PAGE_STYLE}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
-          <div className="screen-head">
-            <h1 className="screen-title" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {isEditing ? 'Редактировать документ' : 'Новый документ'}
-            </h1>
-          </div>
-        </div>
+        {pageHead}
 
         <div>
           <Form layout="horizontal" mode="card" style={{ '--prefix-width': '7em' } as React.CSSProperties}>
