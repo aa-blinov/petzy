@@ -67,6 +67,8 @@ const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(
 const MedicalCard = lazy(() => import('./pages/MedicalCard').then(m => ({ default: m.MedicalCard })));
 const MedicalCardSection = lazy(() => import('./pages/MedicalCardSection').then(m => ({ default: m.MedicalCardSection })));
 const MedicalLinks = lazy(() => import('./pages/MedicalLinks').then(m => ({ default: m.MedicalLinks })));
+const AssistantAccess = lazy(() => import('./pages/AssistantAccess').then(m => ({ default: m.AssistantAccess })));
+const AssistantAccessForm = lazy(() => import('./pages/AssistantAccessForm').then(m => ({ default: m.AssistantAccessForm })));
 const SharedMedicalCard = lazy(() => import('./pages/SharedMedicalCard').then(m => ({ default: m.SharedMedicalCard })));
 const MedicalProfileForm = lazy(() => import('./pages/MedicalProfileForm').then(m => ({ default: m.MedicalProfileForm })));
 const VisitPrepForm = lazy(() => import('./pages/VisitPrepForm').then(m => ({ default: m.VisitPrepForm })));
@@ -478,6 +480,22 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <MedicalLinks />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/assistants"
+                element={
+                  <ProtectedRoute>
+                    <AssistantAccess />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/assistants/new"
+                element={
+                  <ProtectedRoute>
+                    <AssistantAccessForm />
                   </ProtectedRoute>
                 }
               />

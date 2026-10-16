@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Tag, Trash2, UserRound, Users } from 'lucide-react';
+import { Bell, Bot, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Tag, Trash2, UserRound, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { accountService, ACCOUNT_QUERY_KEY, type Account } from '../services/account.service';
@@ -294,6 +294,13 @@ export function Settings() {
               description={accountText((a) => `Логин: ${a.username}`)}
               chevron
               onClick={() => navigate('/settings/password')}
+            />
+            <SettingsRow
+              icon={<Bot size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Доступ для ассистентов"
+              description="Личные доступы для скриптов и ассистентов: что они читают и пишут, и отзыв"
+              chevron
+              onClick={() => navigate('/settings/assistants')}
             />
             {/* The profile is not only something you look at when someone else opens it: it is the answer to
                 «кто я у человека, с которым делюсь питомцем». */}
