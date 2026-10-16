@@ -10,6 +10,7 @@ import re
 from typing import Optional, List, Annotated, Any, Dict, Literal
 from pydantic import (
     BaseModel as PydanticBaseModel,
+    BeforeValidator,
     Field,
     field_validator,
     model_validator,
@@ -17,8 +18,24 @@ from pydantic import (
     StringConstraints,
 )
 
-# A number a client sends. The type refuses NaN and Infinity, so a field needs no bound of its own to refuse them.
-FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
+
+def _not_a_flag(value: Any) -> Any:
+    # In a float field pydantic reads true as 1 and false as 0, so a flag sent where a number belongs is refused.
+    if isinstance(value, bool):
+        raise ValueError("Значение должно быть числом")
+    return value
+
+
+# A number a client sends. The type refuses NaN and Infinity, so a field needs no bound of its own to refuse them,
+# and it refuses true and false.
+FiniteFloat = Annotated[float, BeforeValidator(_not_a_flag), Field(allow_inf_nan=False)]
+
+
+def _dose_above_zero(value: Optional[float]) -> Optional[float]:
+    # A dose of zero or less would be written as an intake that takes nothing from the stock.
+    if value is not None and value <= 0:
+        raise ValueError("Доза должна быть больше нуля")
+    return value
 
 
 # Every schema in this module builds on this class. pydantic quotes the value that failed in its error text (a password,
@@ -2194,7 +2211,7 @@ class MedicationCreate(PetIdQuery):
     dosage: Optional[str] = Field(None, max_length=50, description="Legacy dosage string")
     unit: Optional[str] = Field(None, max_length=20, description="Legacy unit string")
     dose_unit: Optional[str] = Field(None, max_length=20, description="tablet, ml, etc")
-    default_dose: FiniteFloat = Field(1.0, ge=0, le=10_000, description="Default amount to subtract from inventory")
+    default_dose: FiniteFloat = Field(1.0, le=10_000, description="Default amount to subtract from inventory")
     schedule: MedicationSchedule
     # «По необходимости» хранится отдельно, а не выводится из пустого расписания: у курса
     # без напоминаний может быть расписание, и раньше оно молча пропадало вместе с режимом.
@@ -2215,6 +2232,11 @@ class MedicationCreate(PetIdQuery):
     ended_on: Optional[str] = Field(None, description="Окончание курса, " + COURSE_FIELDS_NOTE)
     purpose: Optional[str] = Field(None, max_length=200, description="От чего или для чего назначен")
     prescribed_by: Optional[str] = Field(None, max_length=100, description="Кто назначил (врач, клиника)")
+
+    @field_validator("default_dose")
+    @classmethod
+    def validate_default_dose(cls, v):
+        return _dose_above_zero(v)
 
     @field_validator("started_on", "ended_on")
     @classmethod
@@ -2253,7 +2275,7 @@ class MedicationUpdate(BaseModel):
     dosage: Optional[str] = Field(None, max_length=50)
     unit: Optional[str] = Field(None, max_length=20)
     dose_unit: Optional[str] = Field(None, max_length=20)
-    default_dose: Optional[FiniteFloat] = Field(None, ge=0, le=10_000)
+    default_dose: Optional[FiniteFloat] = Field(None, le=10_000)
     schedule: Optional[MedicationSchedule] = None
     as_needed: Optional[bool] = None
     inventory_enabled: Optional[bool] = None
@@ -2268,6 +2290,11 @@ class MedicationUpdate(BaseModel):
     ended_on: Optional[str] = Field(None, description="Окончание курса, " + COURSE_FIELDS_NOTE)
     purpose: Optional[str] = Field(None, max_length=200)
     prescribed_by: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("default_dose")
+    @classmethod
+    def validate_default_dose(cls, v):
+        return _dose_above_zero(v)
 
     @field_validator("started_on", "ended_on")
     @classmethod
@@ -2441,6 +2468,14 @@ class MedicationIntakeCreate(BaseModel):
         max_length=64,
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
+
+    @model_validator(mode="after")
+    def dose_is_above_zero(self):
+        # A skip takes no dose, so a number sent with one is not checked: the server writes 0 for a skip.
+        if not self.skipped:
+            _dose_above_zero(self.dose_taken)
+        return self
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {

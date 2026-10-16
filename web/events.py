@@ -363,6 +363,9 @@ def _validate_event_fields(
 
         field_type = field_def["type"]
         if field_type == "number":
+            # bool is an int in Python and float(True) is 1.0: a flag in a number field is refused, not stored as 1.
+            if isinstance(value, bool):
+                return None, f"Поле «{field_def['label']}» должно быть числом"
             try:
                 value = float(value)
             except (TypeError, ValueError, OverflowError):  # OverflowError: an integer too large for a float
@@ -469,7 +472,7 @@ def create_event():
     the same) is one record written twice: it is refused with 409 ``duplicate_event``, and ``existing`` says
     which. For a type charted by value, a reading far from the average of the pet's last 5 (at least 3 earlier
     readings; 15% by default, or the field's own ``deviation_threshold``) sends the pet's family a
-    Web Push «Необычное значение» (when push is configured). Keys the type does not declare are dropped. A number field becomes a float and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone.
+    Web Push «Необычное значение» (when push is configured). Keys the type does not declare are dropped. A number field becomes a float (a true or false is not a number) and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone.
     """
     data = request.context.body  # type: ignore[attr-defined]
     pet_id = g.pet_id
@@ -621,7 +624,7 @@ def get_event(record_id):
 def update_event(record_id):
     """Update an event. The event's type cannot change.
 
-    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Without ``date`` and ``time`` the record keeps its time; one of them sent alone is completed from the stored time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
+    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Without ``date`` and ``time`` the record keeps its time; one of them sent alone is completed from the stored time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float (a true or false is not a number) and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
     """
     from bson import ObjectId  # lazy import to keep this module Mongo-free at import time
 
