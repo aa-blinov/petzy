@@ -14,13 +14,12 @@ on:
 
 # One deploy at a time: two started together (a push and a manual run)
 # ran `docker compose up` side by side, fought over container names, and
-# left the site down until the next deploy. queue: max keeps every run that
-# waits; each one checks master again when its turn comes, so the newest
+# left the site down until the next deploy. A waiting run is replaced by a
+# newer one, and each run checks master again when its turn comes, so the newest
 # commit is deployed and an older run arriving later skips.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
-  queue: max
 
 jobs:
   deploy:
