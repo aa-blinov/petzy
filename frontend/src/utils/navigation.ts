@@ -39,14 +39,22 @@ export function isMainTabPath(pathname: string): boolean {
  * whichever screen (and scroll position, filter, tab, …) opened it,
  * for every entry point at once, with no route to keep in sync by
  * hand. (The scroll position is put back by components/ScrollManager;
- * without it the list came back at the top.) `fallback` only matters when the form was opened with no prior
- * history in this session (e.g. a deep link) — `history.length` here
- * mirrors the same check Navbar's own back button already uses.
+ * without it the list came back at the top.) `fallback` only matters when the form was opened with no earlier page
+ * of this app (e.g. a deep link), which is what `hasPreviousAppPage` checks.
  */
 export function goBack(navigate: NavigateFunction, fallback: string): void {
-  if (window.history.length > 1) {
+  if (hasPreviousAppPage()) {
     navigate(-1);
   } else {
     navigate(fallback, { replace: true });
   }
+}
+
+/**
+ * Is there an earlier page of this app to go back to? The router numbers its own history entries (`idx`, 0 for the
+ * page the tab opened on), and that is the test. `history.length` also counts the other sites in the tab: a form
+ * opened from a link in another site used to send «Назад» back to that site.
+ */
+export function hasPreviousAppPage(): boolean {
+  return (window.history.state?.idx ?? 0) > 0;
 }

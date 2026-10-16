@@ -8,7 +8,7 @@ import { hapticFeedback } from '../utils/haptic';
 import { PetImage } from './PetImage';
 import { getSpecies, speciesLabel } from '../utils/species';
 import type { Pet } from '../services/pets.service';
-import { isMainTabPath, medicalCardPetId } from '../utils/navigation';
+import { goBack, isMainTabPath, medicalCardPetId } from '../utils/navigation';
 import { isPublicPage } from '../utils/publicPages';
 import { petAccentAttr, petLookOf } from '../utils/petLook';
 
@@ -43,13 +43,8 @@ export function Navbar() {
     if (medicalCardPetId(location.pathname)) navigate(`/pets/${pet._id}/medical-card`, { replace: true });
   };
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
-  };
+  // Back to the earlier page of the app, or the feed when this screen was opened straight from a link.
+  const handleBack = () => goBack(navigate, '/');
 
   // Login and onboarding own the whole viewport
   if (isPublicPage(location.pathname) || location.pathname === '/welcome') {
