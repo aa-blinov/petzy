@@ -30,9 +30,16 @@ jobs:
           script: |
             set +e
             cd ~/services/cat-health-control-bot || exit 1
+            # Tokens of links sit in the path (medical card) or in ?token= (password reset,
+            # e-mail confirmation). gunicorn logs the request line and the referer whole, and
+            # nginx's error log the request line: all of it is masked here. Same mask in
+            # inspect_db.yaml, change both together.
             mask() {
               sed -E \
                 -e 's/(user|username|owner|created_by|pet_id|id)=[^ ,]+/\1=***/g' \
+                -e 's#/share/medical/[^ "]*#/share/medical/***#g' \
+                -e 's#/api/shared/medical-card/[^ "]*#/api/shared/medical-card/***#g' \
+                -e 's/(^|[^A-Za-z0-9_])(refresh_token|reset_token|token)=[^ &"]*/\1\2=***/g' \
                 -e 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/x.x.x.x/g' \
                 -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/***@***/g'
             }
