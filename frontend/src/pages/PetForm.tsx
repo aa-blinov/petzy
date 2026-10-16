@@ -479,11 +479,12 @@ export function PetForm() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          minHeight: '40px'
         }}>
-          <h1 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {isEditing ? 'Редактировать питомца' : 'Добавить питомца'}
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              {isEditing ? 'Редактировать питомца' : 'Добавить питомца'}
+            </h1>
+          </div>
         </div>
 
         {/* 4px under the title: this note is the line the title is about, and it carries the

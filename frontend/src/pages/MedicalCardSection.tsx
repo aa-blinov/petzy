@@ -308,7 +308,9 @@ export function MedicalCardSection() {
       <div className="max-width-container safe-area-padding">
         <div className="medcard medcard--entering">
           <div className="medcard__header">
-            <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{TITLES[section]}</h1>
+            <div className="screen-head">
+              <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{TITLES[section]}</h1>
+            </div>
             <p className="medcard__hint">{card.pet.name}</p>
             {/* No switcher in the bar here: the way to another pet is the list, said once under the name. */}
             {pets.length > 1 && (

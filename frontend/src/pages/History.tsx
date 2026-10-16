@@ -297,11 +297,12 @@ export function History() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     gap: 'var(--spacing-sm)',
-                    minHeight: '40px',
                 }}>
-                    <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-                        История
-                    </h1>
+                    <div className="screen-head">
+                      <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+                          История
+                      </h1>
+                    </div>
                     <button
                         type="button"
                         onClick={() => setExportVisible(true)}

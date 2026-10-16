@@ -963,7 +963,9 @@ export function MedicalCard() {
       <div className="max-width-container safe-area-padding">
         <div className={`medcard${mode === 'vet' ? ' medcard--reading' : ' medcard--entering'}`}>
           {/* The title stays in both modes: switching the mode changes what is below, not where the person is. */}
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', fontWeight: 700, margin: 0 }}>Медкарта</h1>
+          <div className="screen-head">
+            <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-display)', fontWeight: 700, margin: 0 }}>Медкарта</h1>
+          </div>
 
           <ModeSwitch mode={mode} onChange={chooseMode} />
 

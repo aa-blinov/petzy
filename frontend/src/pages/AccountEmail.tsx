@@ -94,7 +94,9 @@ export function AccountEmail() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Почта</h1>
+          <div className="screen-head">
+            <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Почта</h1>
+          </div>
         </div>
 
         {/* Three states, not one: while the state of the address is still

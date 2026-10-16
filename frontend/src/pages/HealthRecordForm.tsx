@@ -563,11 +563,12 @@ export function HealthRecordForm() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          minHeight: '40px'
         }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {id ? `${eventType.label}: правка` : `Записать: ${eventType.label}`}
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              {id ? `${eventType.label}: правка` : `Записать: ${eventType.label}`}
+            </h1>
+          </div>
         </div>
         {/* Whose record: with several pets, a form that does not say is a form that may be for the wrong one.
             The name is the pet's own, not the saved one: `selectedPetName` comes from localStorage
