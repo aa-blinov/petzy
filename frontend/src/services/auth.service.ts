@@ -41,10 +41,8 @@ export interface RegistrationStatus {
 }
 
 export interface ForgotPasswordResult {
-  /** The same words for every login, whether or not the account exists. */
+  /** The same words for every login, asked once or again, whether or not the account exists. */
   message: string;
-  /** The letter was asked for moments ago: no second one is on its way. */
-  already_sent: boolean;
 }
 
 export const authService = {

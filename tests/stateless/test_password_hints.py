@@ -1,6 +1,6 @@
 """Hints about a password that arrive before the form is sent: whether the
 letter's link still works, whether the password is one of the most guessed,
-and whether the letter is already on its way."""
+and what a repeated request for a letter gets back."""
 
 import itertools
 import re
@@ -154,56 +154,61 @@ def test_a_password_nobody_would_guess_is_accepted_still(client, outbox):
     )
 
 
-# The letter that is already on its way
+# The same answer every time: a repeated request sends no second letter, and the answer does not say so
+
+
+def _asked(client, login):
+    """The status and the body of one request for a letter, as the screen gets them."""
+    response = client.post("/api/auth/password/forgot", json={"login": login}, headers=_from(client))
+    return response.status_code, response.get_json()
 
 
 def test_the_first_request_says_the_letter_is_sent(client, outbox):
     _sign_up(client)
-    body = client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client)).get_json()
-    assert body["already_sent"] is False
+    status, body = _asked(client, "vera")
+    assert status == 200
+    assert body["success"] is True
+    assert "already_sent" not in body
     assert len([letter for letter in outbox if letter["subject"] == "Petzy: новый пароль"]) == 1
 
 
-def test_asking_again_by_the_confirmed_address_says_the_letter_is_already_on_its_way(client, outbox):
+def test_asking_again_by_the_confirmed_address_gets_the_same_answer(client, outbox):
     _sign_up(client)
-    client.post("/api/auth/password/forgot", json={"login": "vera@example.com"}, headers=_from(client))
+    first = _asked(client, "vera@example.com")
     outbox.clear()
-    body = client.post(
-        "/api/auth/password/forgot", json={"login": "vera@example.com"}, headers=_from(client)
-    ).get_json()
-    assert body["already_sent"] is True
-    # And no second letter is promised: none was sent.
+    again = _asked(client, "vera@example.com")
+    assert again == first
+    assert "already_sent" not in again[1]
+    # And no second letter is sent: the one on its way is still the only one.
     assert outbox == []
 
 
-def test_asking_again_by_the_login_says_only_that_the_letter_went(client, outbox):
-    # Someone who named the login has not proved they hold the mailbox, so the answer must not differ from the
-    # answer for a login nobody has.
+def test_asking_again_by_the_login_gets_the_same_answer(client, outbox):
     _sign_up(client)
-    client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client))
+    first = _asked(client, "vera")
     outbox.clear()
-    body = client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client)).get_json()
-    assert body["already_sent"] is False
+    again = _asked(client, "vera")
+    assert again == first
+    assert "already_sent" not in again[1]
     assert outbox == []
 
 
 def test_the_answer_says_nothing_about_which_logins_exist(client, outbox):
     _sign_up(client)
-    client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client))
-    answers = {
-        login: client.post("/api/auth/password/forgot", json={"login": login}, headers=_from(client)).get_json()
-        for login in ("vera", "nobody-here", "ghost@example.com")
-    }
-    # The whole answer is the same for a real login and for a made-up one: neither the word nor the flag.
-    assert len({answer["message"] for answer in answers.values()}) == 1
-    assert {answer["already_sent"] for answer in answers.values()} == {False}
+    _asked(client, "vera")
+    # A real login, a made-up one and an address, each asked once and then again: status and body are the same.
+    answers = [
+        _asked(client, login)
+        for login in ("vera", "nobody-here", "ghost@example.com", "vera@example.com", "vera@example.com")
+    ]
+    assert all(answer == answers[0] for answer in answers)
+    assert answers[0][0] == 200
+    assert "already_sent" not in answers[0][1]
 
 
-def test_asking_by_an_address_nobody_holds_says_nothing(client, outbox):
+def test_asking_by_an_address_nobody_holds_gets_the_same_answer(client, outbox):
     _sign_up(client)
-    client.post("/api/auth/password/forgot", json={"login": "vera@example.com"}, headers=_from(client))
+    first = _asked(client, "vera@example.com")
     outbox.clear()
-    body = client.post(
-        "/api/auth/password/forgot", json={"login": "stranger@example.com"}, headers=_from(client)
-    ).get_json()
-    assert body["already_sent"] is False
+    assert _asked(client, "stranger@example.com") == first
+    assert outbox == []

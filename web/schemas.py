@@ -813,17 +813,6 @@ class UserListResponse(BaseModel):
     )
 
 
-class PasswordForgotResponse(SuccessResponse):
-    """Answer to «I forgot the password».
-
-    ``already_sent`` says the letter was asked for moments ago and a second one is
-    not on its way: the screen used to say «sent» every time, and the person waited
-    for a letter that would not come.
-    """
-
-    already_sent: bool = False
-
-
 class PasswordResetCheckResponse(BaseModel):
     """Whether a password reset link is still usable, asked before showing the form."""
 

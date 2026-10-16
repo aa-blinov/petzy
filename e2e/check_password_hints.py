@@ -1,5 +1,5 @@
 """Hints before the form is sent: a spent password link, a guessed password
-under the field, and the letter that is already on its way.
+under the field, and the same answer when the letter is asked for again.
 
 Nothing here touches the demo account. The letter part needs an account with a
 confirmed address, so the check makes a throwaway one («e2e-hint»), confirms
@@ -137,11 +137,10 @@ async def main():
                 text[:200].replace(chr(10), " | "),
             )
 
-            # The same letter twice: said plainly the second time, still offered.
+            # The same letter twice: the same answer the second time, still offered.
             await pg.goto(BASE + "/forgot-password")
-            # По подтверждённой почте: только тому, кто назвал её, сервер и говорит, что письмо уже в пути.
-            # По логину ответ одинаков для существующего и несуществующего, иначе форма выдавала бы,
-            # у кого здесь есть аккаунт.
+            # Повтор отвечает так же, как первый запрос, для почты и для логина, существующей и несуществующей:
+            # форма не выдаёт, у кого здесь есть аккаунт.
             await pg.get_by_placeholder("vera или vera@example.com").fill(THROWAWAY["email"])
             await pg.get_by_role("button", name="Отправить ссылку").click()
             # Ждём экрана, а не секунды: пауза вслепую читает медленный ответ как отказ.
@@ -165,13 +164,23 @@ async def main():
                 first[:160].replace(chr(10), " | "),
             )
             again = pg.get_by_role("button", name="Отправить ещё раз")
-            await again.click()
-            second = await _wait_until(pg, lambda t: "уже отправляли недавно" in t or "Слишком много попыток" in t)
-            offered = await again.count() == 1 and await again.is_enabled()
+            # Ответ на повтор читаем из самого запроса: на экране уже стоит текст первого ответа.
+            async with pg.expect_response(lambda r: r.url.endswith("/api/auth/password/forgot")) as answered:
+                await again.click()
+            reply = await answered.value
+            reply_body = await reply.json()
+            # Кнопка снова доступна, когда ответ обработан; пока идёт запрос, она занята.
+            offered = False
+            for _ in range(75):
+                offered = await again.count() == 1 and await again.is_enabled()
+                if offered:
+                    break
+                await pg.wait_for_timeout(200)
+            second = await pg.inner_text("body")
             check(
-                "asked by the confirmed address, the second ask says the letter is already on its way",
-                "уже отправляли недавно" in second,
-                second[:200].replace(chr(10), " | "),
+                "asked again by the confirmed address, the answer is the first one again",
+                reply.status == 200 and "already_sent" not in reply_body and "отправили на неё ссылку" in second,
+                f"{reply.status} {str(reply_body)[:160]} | {second[:120].replace(chr(10), ' | ')}",
             )
             check(
                 "and asking again stays possible, not a refusal",
