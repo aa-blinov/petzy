@@ -1,34 +1,97 @@
 name: Deploy to Server
 
 on:
-  push:
-    branches:
-      - master
-    # Nothing the server runs: a docs or ops-workflow change doesn't need a
-    # rebuild of every image (which also costs disk on the small server).
-    paths-ignore:
-      - "**/*.md"
-      - ".impeccable/**"
-      - "screenshots/**"
-      - ".github/workflows/server_cleanup.yaml"
-      - ".github/workflows/server_diagnose.yaml"
-      - ".github/workflows/inspect_db.yaml"
-      - ".github/workflows/storage_check.yaml"
+  # Starts once CI has finished on master; the job's `if` lets through only a
+  # green push, or a manual run. The push trigger used to run next to CI, so a
+  # commit that CI had not judged yet could reach production. workflow_run has
+  # no paths filter, so the decide step skips docs-only commits instead.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
   # By hand, e.g. after adding or changing a secret (SMTP_*, S3_*).
   workflow_dispatch:
 
 # One deploy at a time: two started together (a push and a manual run)
 # ran `docker compose up` side by side, fought over container names, and
-# left the site down until the next deploy. A new run waits its turn.
+# left the site down until the next deploy. queue: max keeps every run that
+# waits; each one checks master again when its turn comes, so the newest
+# commit is deployed and an older run arriving later skips.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
+  queue: max
 
 jobs:
   deploy:
+    # A green CI run of a push to master, or a manual run. The event and repository
+    # checks keep pull requests (including one from a fork's branch named master)
+    # out of this job, which holds the server's SSH key.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-24.04
     steps:
+      # Full history: the decide step compares the commit with the one in production.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      # The one place that says whether this run deploys, and which commit.
+      - name: Decide whether this run deploys
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Master as GitHub has it now. Read without a token: the repository is public.
+          tip="$(git ls-remote "https://github.com/$REPO.git" refs/heads/master | cut -f1)"
+          if [ -z "$tip" ]; then
+            echo "::error::could not read master from GitHub"
+            exit 1
+          fi
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            # A manual run deploys master as it is now. Secrets reach .env only on a deploy.
+            target="$tip"
+          else
+            target="$HEAD_SHA"
+            if [ "$target" != "$tip" ]; then
+              echo "::notice::Deploy skipped: master is at $tip now, newer than $target. The run for $tip deploys it."
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            # Docs and ops files change nothing the server runs. If everything since the
+            # commit in production is one of them, nothing is rebuilt. Any doubt (no answer
+            # from /api/version, a commit this clone lacks) deploys as usual.
+            prod="$(curl -fsS --max-time 10 https://petzy.duckdns.org/api/version 2>/dev/null | jq -r '.commit // empty' 2>/dev/null || true)"
+            if [ -n "$prod" ] && [ "$prod" != "$target" ] && git cat-file -e "$prod^{commit}" 2>/dev/null; then
+              ignored() {
+                case "$1" in
+                  *.md | .impeccable/* | screenshots/* | .github/workflows/server_cleanup.yaml | .github/workflows/server_diagnose.yaml | .github/workflows/inspect_db.yaml | .github/workflows/storage_check.yaml) return 0 ;;
+                  *) return 1 ;;
+                esac
+              }
+              count=0
+              only_ignored=true
+              while IFS= read -r -d '' file; do
+                count=$((count + 1))
+                if ! ignored "$file"; then
+                  only_ignored=false
+                  break
+                fi
+              done < <(git diff --name-only -z "$prod" "$target")
+              if [ "$count" -gt 0 ] && [ "$only_ignored" = true ]; then
+                echo "::notice::Deploy skipped: since production's commit $prod only docs and ops files changed."
+                echo "deploy=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+          fi
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$target" >> "$GITHUB_OUTPUT"
       - name: Deploy to server
+        if: steps.decide.outputs.deploy == 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5, pinned: this step holds the server's SSH key
         with:
           host: ${{ secrets.SERVER_PETZY_HOST }}
@@ -41,6 +104,9 @@ jobs:
             # GitHub reports a green "Deploy to Server" run that actually
             # deployed nothing new.
             set -euo pipefail
+
+            # The commit this run deploys, as the decide step chose it.
+            deploy_sha="${{ steps.decide.outputs.sha }}"
 
             # The repository (and so this log) is public: no listings of
             # the server's folders or paths here.
@@ -60,10 +126,10 @@ jobs:
             # `git pull` fails outright if the server's checkout has ever
             # diverged from origin/master (a stray local commit, a manual
             # edit to a tracked file) — this is a deploy target, not a dev
-            # clone, so it should always end up exactly at origin/master
+            # clone, so it should always end up exactly at the deployed commit
             # rather than needing someone to reconcile history by hand.
             git fetch origin master
-            git reset --hard origin/master
+            git reset --hard "$deploy_sha"
 
             # Push (Web Push/VAPID) is optional and reads its keys from
             # .env — an untracked file `git reset` never touches — so they
@@ -80,7 +146,7 @@ jobs:
             # Which commit this deploy is, so /api/version can answer. .env is
             # already the web container's env_file, so nothing carries it by
             # hand. Rewritten every deploy, never a secret.
-            upsert_env PETZY_BUILD_SHA "${{ github.sha }}"
+            upsert_env PETZY_BUILD_SHA "$deploy_sha"
             upsert_env VAPID_PUBLIC_KEY "${{ secrets.VAPID_PUBLIC_KEY }}"
             upsert_env VAPID_PRIVATE_KEY "${{ secrets.VAPID_PRIVATE_KEY }}"
             upsert_env VAPID_CLAIMS_EMAIL "${{ secrets.VAPID_CLAIMS_EMAIL }}"
@@ -159,3 +225,23 @@ jobs:
             # Files still in GridFS move to object storage; skips what has
             # moved already and does nothing when storage isn't configured.
             docker compose exec -T web python -m scripts.migrate_files_to_s3
+      - name: Check that production answers with this commit
+        if: steps.decide.outputs.deploy == 'true'
+        env:
+          EXPECTED: ${{ steps.decide.outputs.sha }}
+        run: |
+          # The public address, through the same host nginx and TLS that users
+          # reach. Five minutes: the web container is recreated during a deploy.
+          end=$((SECONDS + 300))
+          while true; do
+            served="$(curl -fsS --max-time 10 https://petzy.duckdns.org/api/version 2>/dev/null | jq -r '.commit // empty' 2>/dev/null || true)"
+            if [ "$served" = "$EXPECTED" ]; then
+              echo "production answers with $EXPECTED"
+              exit 0
+            fi
+            if [ "$SECONDS" -ge "$end" ]; then
+              echo "production answers with '${served:-no answer}', expected $EXPECTED"
+              exit 1
+            fi
+            sleep 10
+          done
