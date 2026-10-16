@@ -1,10 +1,18 @@
 """Database interaction module for the web application."""
 
+import base64
+import hashlib
 import logging
 import os
+from functools import lru_cache
 from urllib.parse import quote_plus
 
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pymongo import ASCENDING, DESCENDING, MongoClient
+
+from web.configs import JWT_CONFIG
 
 
 def get_env(name: str, default: str = None) -> str:
@@ -102,6 +110,84 @@ def _create_index(coll, keys: list, name: str, opts: dict) -> None:
         raise
 
 
+def refresh_token_hash(token: str) -> str:
+    """How a refresh token is kept in ``refresh_tokens``: its sha256 in hex.
+
+    The token itself is never written to the database, so a read of the collection hands out no session. A session is
+    found by this value, and only the one who holds the token can produce it.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+PLAIN_JWT_PREFIX = "eyJ"  # every JWT starts with the base64 of its header, which opens with `{"`
+
+
+@lru_cache(maxsize=4)
+def _successor_cipher(secret: str) -> Fernet:
+    """The cipher that seals a spent session's successor, keyed from the JWT secret.
+
+    That secret lives in the server's environment, not in the database, so a dump of the collection opens nothing.
+    """
+    key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"petzy refresh successor").derive(
+        secret.encode("utf-8")
+    )
+    return Fernet(base64.urlsafe_b64encode(key))
+
+
+def seal_refresh_successor(token: str) -> str:
+    """How the successor of a spent refresh token is kept in ``replaced_by``: sealed, never as a token."""
+    return _successor_cipher(JWT_CONFIG["secret_key"]).encrypt(token.encode("utf-8")).decode("ascii")
+
+
+def open_refresh_successor(sealed: object) -> str | None:
+    """The token that ``seal_refresh_successor`` sealed, or None when it does not open: a plain token, damage, or a
+    secret that has changed. The caller then treats the sign-in as ended.
+    """
+    if not isinstance(sealed, str):
+        return None
+    try:
+        return _successor_cipher(JWT_CONFIG["secret_key"]).decrypt(sealed.encode("ascii")).decode("utf-8")
+    except (InvalidToken, ValueError):
+        return None
+
+
+def migrate_refresh_successors() -> int:
+    """Seal the successors that spent sessions kept as plain tokens (``replaced_by`` starting with ``eyJ``).
+
+    Returns how many rows changed. A sealed value never starts with ``eyJ``, so a second run changes nothing.
+    """
+    rows = list(db.refresh_tokens.find({"replaced_by": {"$regex": f"^{PLAIN_JWT_PREFIX}"}}, {"replaced_by": 1}))
+    changed = 0
+    for row in rows:
+        plain = row["replaced_by"]
+        # Compare-and-set: a row that another worker changed meanwhile is not overwritten.
+        result = db.refresh_tokens.update_one(
+            {"_id": row["_id"], "replaced_by": plain},
+            {"$set": {"replaced_by": seal_refresh_successor(plain)}},
+        )
+        changed += result.modified_count
+    return changed
+
+
+def migrate_refresh_token_hashes() -> int:
+    """Move the sessions written before the hash from ``token`` to ``token_hash``. Returns how many rows changed.
+
+    The token keeps its value, so an old session still works: only the way it is kept changes. The token is removed in
+    the same write that stores its hash. A second run changes nothing, and an empty collection is no error.
+    """
+    rows = list(db.refresh_tokens.find({"token": {"$exists": True}, "token_hash": {"$exists": False}}, {"token": 1}))
+    changed = 0
+    for row in rows:
+        token = row.get("token")
+        change = {"$unset": {"token": ""}}
+        if isinstance(token, str) and token:
+            change["$set"] = {"token_hash": refresh_token_hash(token)}
+        # The filter repeats "no hash yet", so a second worker starting at the same moment changes nothing.
+        result = db.refresh_tokens.update_one({"_id": row["_id"], "token_hash": {"$exists": False}}, change)
+        changed += result.modified_count
+    return changed
+
+
 def ensure_indexes() -> None:
     """Create the indexes the application relies on.
 
@@ -132,6 +218,8 @@ def ensure_indexes() -> None:
                                               index, which collided when
                                               two logins landed in the
                                               same wall-clock second)
+                          token_hash unique (sha256 of the token: the
+                                              token itself is not stored)
       push_subscriptions  endpoint unique   (upsert on re-subscribe)
                           username          (list a user's own devices)
       medication_reminders_sent
@@ -164,6 +252,23 @@ def ensure_indexes() -> None:
     except Exception:
         # mongomock and first-time prod: index doesn't exist yet, that's fine.
         pass
+
+    # Sessions written before the hash kept the token in `token`. Each one moves to `token_hash` here, so it keeps
+    # working and no token is left in plain text. A failure is logged, not raised: the startup goes on.
+    try:
+        moved = migrate_refresh_token_hashes()
+        if moved:
+            logger.info("Moved %d refresh tokens from token to token_hash", moved)
+    except Exception:  # pragma: no cover — defensive
+        logger.exception("Could not move refresh tokens to token_hash")
+
+    # Spent sessions kept their successor as a plain token (`replaced_by`). Startup seals those values the same way.
+    try:
+        sealed = migrate_refresh_successors()
+        if sealed:
+            logger.info("Sealed %d refresh successors kept as plain tokens", sealed)
+    except Exception:  # pragma: no cover — defensive
+        logger.exception("Could not seal refresh successors")
 
     declarations = [
         (db.pets, [("owner", ASCENDING), ("created_at", DESCENDING)], "pets_owner_created"),
@@ -211,6 +316,17 @@ def ensure_indexes() -> None:
                 # against a pre-existing legacy collection, while
                 # still preventing any future duplicate.
                 "partialFilterExpression": {"jti": {"$exists": True}},
+            },
+        ),
+        (
+            db.refresh_tokens,
+            [("token_hash", ASCENDING)],
+            "refresh_token_hash_unique",
+            {
+                "unique": True,
+                # Only rows that carry a hash. After the migration above, a row without one holds no token at all, and
+                # such rows would all collide on a null value.
+                "partialFilterExpression": {"token_hash": {"$exists": True}},
             },
         ),
         # TTL index — MongoDB's background TTL monitor sweeps every ~60s

@@ -3,6 +3,7 @@ flask==3.0.0
 werkzeug==3.0.6
 bcrypt==4.1.2
 pyjwt==2.8.0
+cryptography==50.0.1
 Flask-Limiter[mongodb]==3.5.0
 gunicorn==23.0.0
 setuptools==71.1.0

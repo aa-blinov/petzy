@@ -3,6 +3,7 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 import jwt
+from web.db import refresh_token_hash
 from web.security import JWT_SECRET_KEY, JWT_ALGORITHM
 
 
@@ -149,12 +150,12 @@ class TestAuthentication:
         )
 
         # Ensure cookie token exists (fixture already does this).
-        existing = db["refresh_tokens"].find_one({"token": admin_refresh_token})
+        existing = db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(admin_refresh_token)})
         if not existing:
             db["refresh_tokens"].insert_one(
                 {
                     "jti": uuid4().hex,
-                    "token": admin_refresh_token,
+                    "token_hash": refresh_token_hash(admin_refresh_token),
                     "username": "admin",
                     "created_at": datetime.now(timezone.utc),
                     "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
@@ -177,7 +178,7 @@ class TestAuthentication:
         db["refresh_tokens"].insert_one(
             {
                 "jti": other_jti,
-                "token": other_token,
+                "token_hash": refresh_token_hash(other_token),
                 "username": "admin",
                 "created_at": datetime.now(timezone.utc),
                 "expires_at": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
@@ -190,7 +191,7 @@ class TestAuthentication:
         db["refresh_tokens"].insert_one(
             {
                 "jti": uuid4().hex,
-                "token": "other-user-token",
+                "token_hash": refresh_token_hash("other-user-token"),
                 "username": "someone-else",
                 "created_at": datetime.now(timezone.utc),
                 "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
@@ -205,11 +206,11 @@ class TestAuthentication:
         assert data["success"] is True
 
         # Cookie token gone
-        assert db["refresh_tokens"].find_one({"token": admin_refresh_token}) is None
+        assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(admin_refresh_token)}) is None
         # Other admin token also gone (logout is "sign out of everything")
-        assert db["refresh_tokens"].find_one({"token": other_token}) is None
+        assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(other_token)}) is None
         # Other user untouched
-        assert db["refresh_tokens"].find_one({"token": "other-user-token"}) is not None
+        assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash("other-user-token")}) is not None
 
         # Should render login page with error
 
@@ -251,7 +252,7 @@ class TestAuthentication:
         db["refresh_tokens"].insert_one(
             {
                 "jti": jti,
-                "token": token,
+                "token_hash": refresh_token_hash(token),
                 "username": "admin",
                 "created_at": datetime.now(timezone.utc) - timedelta(days=2),
                 "expires_at": datetime.now(timezone.utc) - timedelta(days=1),
@@ -264,7 +265,7 @@ class TestAuthentication:
         # The /api/auth/refresh endpoint should reject and try_refresh
         # should have already deleted the row.
         assert response.status_code in (401, 403), response.get_json()
-        assert db["refresh_tokens"].find_one({"token": token}) is None
+        assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(token)}) is None
 
     def test_expired_token_rejection(self, client):
         """Test that expired tokens are rejected."""
@@ -374,20 +375,20 @@ class TestSessionProbe:
         response = client.get("/api/auth/session")
         assert response.status_code == 401
 
-    def test_logout_deletes_refresh_token_by_raw_value_when_undecodable(self, client, mock_db):
+    def test_logout_deletes_refresh_token_by_its_hash_when_undecodable(self, client, mock_db):
         """A refresh_token cookie holding garbage (not a valid JWT at all)
         can't be decoded to find its jti, so logout falls back to
-        deleting by the raw token string — otherwise an unparseable
+        deleting by the token's hash — otherwise an unparseable
         cookie would leave whatever row matches it (if any) behind
         forever."""
         garbage_token = "not-a-real-jwt"
-        mock_db["refresh_tokens"].insert_one({"token": garbage_token, "username": "admin"})
+        mock_db["refresh_tokens"].insert_one({"token_hash": refresh_token_hash(garbage_token), "username": "admin"})
         client.set_cookie("refresh_token", garbage_token)
 
         response = client.post("/api/auth/logout")
 
         assert response.status_code == 200
-        assert mock_db["refresh_tokens"].find_one({"token": garbage_token}) is None
+        assert mock_db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(garbage_token)}) is None
 
     @pytest.mark.parametrize("body_token", [{"$ne": None}, {"$regex": "."}])
     def test_logout_takes_a_string_token_from_the_body_or_nothing(self, client, mock_db, body_token):
@@ -396,8 +397,12 @@ class TestSessionProbe:
         ``{"refresh_token": {"$ne": null}}`` used to delete one other user's row per request, with no sign-in.
         The answer is the ordinary logout answer, and the table is left as it was.
         """
-        mock_db["refresh_tokens"].insert_one({"token": "someone-elses-token", "username": "someone-else"})
-        mock_db["refresh_tokens"].insert_one({"token": "another-token", "username": "someone-else"})
+        mock_db["refresh_tokens"].insert_one(
+            {"token_hash": refresh_token_hash("someone-elses-token"), "username": "someone-else"}
+        )
+        mock_db["refresh_tokens"].insert_one(
+            {"token_hash": refresh_token_hash("another-token"), "username": "someone-else"}
+        )
         before = mock_db["refresh_tokens"].count_documents({})
 
         response = client.post("/api/auth/logout", json={"refresh_token": body_token})

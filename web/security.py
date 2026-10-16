@@ -16,7 +16,7 @@ import jwt
 from flask import make_response, request, Response
 
 from web.configs import FLASK_CONFIG, JWT_CONFIG, ADMIN_CONFIG
-from web.db import db
+from web.db import db, open_refresh_successor, refresh_token_hash, seal_refresh_successor
 from web.errors import error_response
 from web.observability import set_user as set_sentry_user
 
@@ -142,8 +142,7 @@ def create_refresh_token(username, family=None):
     Each refresh token carries a fresh `jti` (JWT ID, RFC 7519 §4.1.7)
     so that two logins in the same wall-clock second produce distinct
     tokens and don't trip the unique index on `refresh_tokens.jti`.
-    Keeping `token` in the document too so existing `find_one({"token":
-    ...})` lookups in `verify_refresh_token` keep working.
+    The row keeps the token's hash (`token_hash`), never the token: a read of the collection hands out no session.
     """
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     jti = uuid4().hex
@@ -154,7 +153,7 @@ def create_refresh_token(username, family=None):
         {
             "jti": jti,
             "family": family or jti,
-            "token": token,
+            "token_hash": refresh_token_hash(token),
             "username": username,
             "created_at": datetime.now(timezone.utc),
             "expires_at": expire,
@@ -233,7 +232,7 @@ def validate_refresh_token(refresh_token: str):
     if not payload:
         return None
 
-    token_record = db["refresh_tokens"].find_one({"token": refresh_token})
+    token_record = db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(refresh_token)})
     if not token_record:
         return None
 
@@ -263,7 +262,8 @@ def rotate_refresh_token(refresh_token):
     """Spend a refresh token: ``(username, next refresh token)``, or None.
 
     Every use hands out a successor, and the spent token stays on record
-    (until its own expiry) as the evidence of reuse. Presented again:
+    (until its own expiry) as the evidence of reuse, its successor kept
+    sealed (see seal_refresh_successor). Presented again:
 
     - within REFRESH_REUSE_GRACE_SECONDS, it answers with the same
       successor: two tabs, or a retry after a dropped answer, refresh at
@@ -283,19 +283,23 @@ def rotate_refresh_token(refresh_token):
         successor = create_refresh_token(username, family=family)
         claimed = db["refresh_tokens"].update_one(
             {"_id": record["_id"], "rotated_at": {"$exists": False}},
-            {"$set": {"rotated_at": now, "replaced_by": successor}},
+            {"$set": {"rotated_at": now, "replaced_by": seal_refresh_successor(successor)}},
         )
         if claimed.modified_count == 1:
             return username, successor
         # A parallel refresh spent it first: drop ours, answer like it did.
-        db["refresh_tokens"].delete_one({"token": successor})
+        db["refresh_tokens"].delete_one({"token_hash": refresh_token_hash(successor)})
         record = db["refresh_tokens"].find_one({"_id": record["_id"]})
         if not record or not record.get("rotated_at"):
             return None
 
-    successor = record.get("replaced_by")
+    successor = open_refresh_successor(record.get("replaced_by"))
     in_grace = now - _aware(record["rotated_at"]) <= timedelta(seconds=REFRESH_REUSE_GRACE_SECONDS)
-    if in_grace and successor and db["refresh_tokens"].find_one({"token": successor}, {"_id": 1}):
+    if (
+        in_grace
+        and successor
+        and db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(successor)}, {"_id": 1})
+    ):
         return username, successor
 
     logger.warning(f"Refresh token reused, sign-in revoked: user={username}")

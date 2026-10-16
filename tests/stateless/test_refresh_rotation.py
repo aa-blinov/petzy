@@ -4,6 +4,7 @@ import itertools
 from datetime import datetime, timedelta, timezone
 
 from web import security
+from web.db import refresh_token_hash
 
 _addresses = itertools.count(1)
 
@@ -39,7 +40,8 @@ def test_a_spent_token_used_later_ends_the_sign_in(client, mock_db):
     second = _refresh(client, first).get_json()["refresh_token"]
     # Past the grace window.
     mock_db["refresh_tokens"].update_one(
-        {"token": first}, {"$set": {"rotated_at": datetime.now(timezone.utc) - timedelta(minutes=5)}}
+        {"token_hash": refresh_token_hash(first)},
+        {"$set": {"rotated_at": datetime.now(timezone.utc) - timedelta(minutes=5)}},
     )
     assert _refresh(client, first).status_code == 401
     # The thief's copy and the owner's current token are both gone.
@@ -51,7 +53,8 @@ def test_reuse_ends_only_that_sign_in(client, mock_db):
     laptop = _sign_in(client)["refresh_token"]
     _refresh(client, phone)
     mock_db["refresh_tokens"].update_one(
-        {"token": phone}, {"$set": {"rotated_at": datetime.now(timezone.utc) - timedelta(minutes=5)}}
+        {"token_hash": refresh_token_hash(phone)},
+        {"$set": {"rotated_at": datetime.now(timezone.utc) - timedelta(minutes=5)}},
     )
     assert _refresh(client, phone).status_code == 401
     assert _refresh(client, laptop).status_code == 200
@@ -78,4 +81,4 @@ def test_a_silent_refresh_renews_the_refresh_cookie_too(client, mock_db):
     assert response.status_code == 200
     cookies = " ".join(response.headers.getlist("Set-Cookie"))
     assert "access_token=ey" in cookies and "refresh_token=ey" in cookies
-    assert mock_db["refresh_tokens"].find_one({"token": refresh})["rotated_at"]
+    assert mock_db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(refresh)})["rotated_at"]
