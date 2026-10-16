@@ -279,7 +279,7 @@ def get_user(username):
 def update_user(username):
     """Update user information (admin only).
 
-    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device, and a new password ends their personal access tokens too. Nobody deactivates themselves (422 `validation_error_admin_deactivation`). ``email`` is stored as sent, with no format or uniqueness check, and ``email_verified`` stays as it was. An empty body answers 422 `validation_error_no_update_data`.
+    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device, and their personal access tokens too. Nobody deactivates themselves (422 `validation_error_admin_deactivation`). ``email`` is stored as sent, with no format or uniqueness check, and ``email_verified`` stays as it was. An empty body answers 422 `validation_error_no_update_data`.
     """
     try:
         user = app.db["users"].find_one({"username": username})
@@ -314,11 +314,9 @@ def update_user(username):
 
         if result.matched_count == 0:
             return error_response("user_not_found")
-        # A new password or a disabled account ends the sessions already open.
+        # A new password or a disabled account ends the sessions already open, and the personal access tokens.
         if data.password is not None or data.is_active is False:
             revoke_user_sessions(username)
-        # A new password ends the personal access tokens as well.
-        if data.password is not None:
             revoke_personal_tokens(username)
 
         logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
@@ -346,7 +344,7 @@ def update_user(username):
 def delete_user(username):
     """Deactivate user (admin only).
 
-    The account stops working at once and stays in the database with its records. Nobody deactivates themselves, and the built-in administrator cannot be switched off: both answer 422 `validation_error_admin_deactivation`.
+    The account stops working at once, and its personal access tokens are revoked for good: an enabled account needs new ones. It stays in the database with its records. Nobody deactivates themselves, and the built-in administrator cannot be switched off: both answer 422 `validation_error_admin_deactivation`.
     """
     try:
         if username == ADMIN_USERNAME:
@@ -362,6 +360,7 @@ def delete_user(username):
         if result.matched_count == 0:
             return error_response("user_not_found")
         revoke_user_sessions(username)
+        revoke_personal_tokens(username)
 
         logger.info(
             f"User deactivated: username={username}, deactivated_by={getattr(request, 'current_user', 'admin')}"
