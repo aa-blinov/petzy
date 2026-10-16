@@ -70,7 +70,7 @@ export function petLookOf(pet?: Pick<Pet, 'look'> | null): PetLook {
  * files are loaded on demand, see loadPetFont.
  */
 export const PET_FONTS = [
-  { key: 'caveat', label: 'Живой почерк', family: 'Caveat', weight: 700, scale: 1.55, line: 1.22, load: () => Promise.all([import('@fontsource/caveat/cyrillic-700.css'), import('@fontsource/caveat/latin-700.css')]) },
+  { key: 'caveat', label: 'Живой почерк', family: 'Caveat', weight: 700, scale: 1.55, line: 1.22, load: () => Promise.all([import('@fontsource/caveat/cyrillic-700.css'), import('@fontsource/caveat/latin-700.css'), import('@fontsource/caveat/latin-ext-700.css')]) },
   { key: 'marck', label: 'Перо', family: 'Marck Script', weight: 400, scale: 1.4, line: 1.29, load: () => Promise.all([import('@fontsource/marck-script/cyrillic-400.css'), import('@fontsource/marck-script/latin-400.css'), import('@fontsource/marck-script/latin-ext-400.css')]) },
   { key: 'bad', label: 'Письмо', family: 'Bad Script', weight: 400, scale: 1.2, line: 1.92, load: () => Promise.all([import('@fontsource/bad-script/cyrillic-400.css'), import('@fontsource/bad-script/latin-400.css'), import('@fontsource/bad-script/latin-ext-400.css')]) },
   { key: 'pacifico', label: 'Мягкая кисть', family: 'Pacifico', weight: 400, scale: 1.05, line: 1.8, load: () => Promise.all([import('@fontsource/pacifico/cyrillic-400.css'), import('@fontsource/pacifico/latin-400.css'), import('@fontsource/pacifico/latin-ext-400.css')]) },

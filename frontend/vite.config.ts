@@ -124,14 +124,6 @@ export default defineConfig(() => {
       },
     },
   },
-  css: {
-    preprocessorOptions: {
-      less: {
-        javascriptEnabled: true,
-        modifyVars: {},
-      },
-    },
-  },
   server: {
     port: 5173, // Vite default port for local dev
     proxy: {
