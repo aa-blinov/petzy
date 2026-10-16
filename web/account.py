@@ -6,6 +6,7 @@ A token is single-use and short-lived (TTL index on ``expires_at``).
 """
 
 import hashlib
+import os
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -560,10 +561,16 @@ def _deleted_answer():
     return response, status
 
 
+def _dev_tools_on() -> bool:
+    """The dev routes exist only on the local stand: PETZY_DEV_TOOLS=1 and MAIL_OUTBOX=memory
+    together. Either one alone answers 404, so a MAIL_OUTBOX left on a server opens nothing."""
+    return os.getenv("PETZY_DEV_TOOLS") == "1" and mail._outbox_mode()
+
+
 @account_bp.route("/api/dev/outbox", methods=["GET"])
 def dev_outbox():
     """Letters kept by MAIL_OUTBOX=memory, for local runs only: 404 otherwise."""
-    if not mail._outbox_mode():
+    if not _dev_tools_on():
         return error_response("not_found")
     return jsonify({"letters": mail.OUTBOX[-20:]})
 
@@ -575,10 +582,10 @@ def dev_reset_limits():
     A limit counts per address, and on the stand every browser check comes from the same one:
     five password letters and five sign-ups an hour are spent by the first run, and the second
     one starts on a spent limit and checks nothing. With this every run starts from the same
-    place. Gated the way /api/dev/outbox is gated (both mean "this is the local stand"), so the
-    endpoint answers 404 in production and no one can drop a real person's counters.
+    place. Gated the way /api/dev/outbox is gated (the two switches together mean "this is the local
+    stand"), so the endpoint answers 404 in production and no one can drop a real person's counters.
     """
-    if not mail._outbox_mode():
+    if not _dev_tools_on():
         return error_response("not_found")
     limiter.reset()
     return jsonify({"message": "Счётчики ограничений обнулены", "success": True})

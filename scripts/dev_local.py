@@ -490,8 +490,10 @@ def main() -> None:
     os.environ.setdefault("JWT_SECRET_KEY", "dev-local-jwt-secret")
     os.environ.setdefault("ADMIN_USERNAME", "admin")
     os.environ.setdefault("RATELIMIT_STORAGE_URI", "memory://")
-    # Letters stay in memory (GET /api/dev/outbox) and link to the dev server.
+    # Letters stay in memory (GET /api/dev/outbox) and link to the dev server. The dev routes also
+    # need PETZY_DEV_TOOLS=1, so the runner sets it next to MAIL_OUTBOX.
     os.environ.setdefault("MAIL_OUTBOX", "memory")
+    os.environ.setdefault("PETZY_DEV_TOOLS", "1")
     os.environ.setdefault("APP_BASE_URL", "http://localhost:5173")
 
     # Fixed dev-only VAPID pair (generated once via

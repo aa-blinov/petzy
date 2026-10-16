@@ -224,22 +224,49 @@ def test_the_account_shows_the_email_state(client, outbox):
     assert body["email"] == "vera@example.com" and body["email_verified"] is True and body["pending_email"] == ""
 
 
-def test_the_dev_outbox_is_closed_in_production(client, monkeypatch):
+DEV_ROUTES = (("GET", "/api/dev/outbox"), ("POST", "/api/dev/reset-limits"))
+
+
+@pytest.mark.parametrize("method, path", DEV_ROUTES)
+def test_the_dev_routes_stay_closed_with_mail_outbox_alone(client, monkeypatch, method, path):
+    """MAIL_OUTBOX=memory alone is not enough: the dev routes need PETZY_DEV_TOOLS=1 as well."""
+    monkeypatch.setenv("MAIL_OUTBOX", "memory")
+    monkeypatch.delenv("PETZY_DEV_TOOLS", raising=False)
+    assert client.open(path, method=method).status_code == 404
+
+
+@pytest.mark.parametrize("method, path", DEV_ROUTES)
+def test_the_dev_routes_stay_closed_without_mail_outbox(client, monkeypatch, method, path):
+    """The flag alone is not enough: without MAIL_OUTBOX=memory the routes stay shut too."""
     monkeypatch.delenv("MAIL_OUTBOX", raising=False)
+    monkeypatch.setenv("PETZY_DEV_TOOLS", "1")
+    assert client.open(path, method=method).status_code == 404
+
+
+@pytest.mark.parametrize("value", ["0", "true", ""])
+def test_the_dev_routes_need_the_flag_to_be_exactly_one(client, monkeypatch, value):
+    monkeypatch.setenv("MAIL_OUTBOX", "memory")
+    monkeypatch.setenv("PETZY_DEV_TOOLS", value)
     assert client.get("/api/dev/outbox").status_code == 404
-
-
-def test_the_dev_limit_reset_is_closed_in_production(client, monkeypatch):
-    monkeypatch.delenv("MAIL_OUTBOX", raising=False)
     assert client.post("/api/dev/reset-limits").status_code == 404
 
 
-def test_the_dev_limit_reset_gives_the_counters_back(client, outbox):
+def test_the_dev_outbox_lists_the_letters_with_both_switches(client, monkeypatch):
+    monkeypatch.setenv("MAIL_OUTBOX", "memory")
+    monkeypatch.setenv("PETZY_DEV_TOOLS", "1")
+    _sign_up(client)
+    response = client.get("/api/dev/outbox")
+    assert response.status_code == 200
+    assert any(letter["to"] == "vera@example.com" for letter in response.get_json()["letters"])
+
+
+def test_the_dev_limit_reset_gives_the_counters_back(client, monkeypatch, outbox):
     """The spent limit is real and stays real: only the counters move.
 
     A limit counts per address and every run of a browser check comes from the same one, so
     without this the second run starts spent and checks nothing at all.
     """
+    monkeypatch.setenv("PETZY_DEV_TOOLS", "1")
     address = _from(client)
     payload = {"login": "vera@example.com"}
     for _ in range(5):
