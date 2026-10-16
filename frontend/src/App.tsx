@@ -153,12 +153,12 @@ function SessionExpiryBridge() {
  * blank page and a one-frame skeleton before the cards; later visits,
  * with everything cached, just faded in.
  */
-/** Doses marked with no connection are sent by themselves: at start, when the connection returns, when the app comes
- *  back to the front, and every half minute while any wait. */
+/** Doses marked with no connection are sent by themselves: at start, at each sign-in, when the connection returns, when
+ *  the app comes back to the front, and every half minute while any wait. */
 function SendPendingIntakes() {
   const queryClient = useQueryClient();
   const pending = usePendingIntakes();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, username } = useSession();
   const waiting = pending.length > 0 && isAuthenticated !== false;
 
   useEffect(() => {
@@ -174,7 +174,7 @@ function SendPendingIntakes() {
       document.removeEventListener('visibilitychange', onVisible);
       clearInterval(timer);
     };
-  }, [waiting, queryClient]);
+  }, [waiting, username, queryClient]);
 
   return null;
 }

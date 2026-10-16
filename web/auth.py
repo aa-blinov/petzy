@@ -373,6 +373,10 @@ def api_logout():
     response, status = get_message("auth_logout_success")
     response.set_cookie("access_token", "", max_age=0)
     response.set_cookie("refresh_token", "", max_age=0)
+    # The browser drops its HTTP cache for this site, where the pet photos are kept for a year (private, immutable).
+    # "storage" is deliberately not sent: it would also wipe the app's own local data, including doses still waiting
+    # to be sent, and that queue has to survive a sign-out.
+    response.headers["Clear-Site-Data"] = '"cache"'
 
     return response, status
 

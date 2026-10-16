@@ -17,6 +17,7 @@ import { medicationsListQuery, medicationsService, type IntakeInput, type Medica
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
+import { useSession } from '../hooks/useSession';
 import { MedicationCardSkeleton, SkeletonList } from '../components/Skeletons';
 import { EmptyState } from '../components/EmptyState';
 import { NoPetState } from '../components/NoPetState';
@@ -104,6 +105,8 @@ function markedTodayByOther(med: Medication, currentUsername?: string | null): b
 export function MedicationsList() {
     const { selectedPetId, selectedPetName } = usePet();
     const { username: currentUsername } = useAuth();
+    // A dose marked with no connection is kept under the login the server says is signed in.
+    const { username: owner } = useSession();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -188,6 +191,7 @@ export function MedicationsList() {
               medications.find((m) => m._id === id)?.name ?? 'Лекарство',
               input,
               selectedPetName ?? undefined,
+              owner,
             );
         },
         onSuccess: ({ id, ran_out, queued }, { id: medId, skipped, when }) => {

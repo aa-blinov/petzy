@@ -143,5 +143,17 @@ export async function unsubscribeFromPush(): Promise<void> {
 
   const endpoint = subscription.endpoint;
   await subscription.unsubscribe();
+  // The browser is off push now, whatever the server call below does: remember it for the next screen that reads it.
+  rememberPushState('off');
   await pushService.unsubscribe(endpoint);
+}
+
+/** Takes this browser off push as part of signing out, while the session still works: the server call needs it.
+ *  Best effort. It never throws and stops waiting after a short time, since a service worker that is still installing
+ *  has no `ready` for a while and a slow network has no answer. Once the browser has unsubscribed, a late server call
+ *  is refused (the session is revoked), and the server drops the row on its next send, when the push service answers
+ *  gone. If the wait runs out before the browser has unsubscribed, the device stays subscribed. */
+export async function unsubscribeBeforeSignOut(waitMs = 2000): Promise<void> {
+  const gaveUp = new Promise<void>((resolve) => setTimeout(resolve, waitMs));
+  await Promise.race([unsubscribeFromPush().catch(() => undefined), gaveUp]);
 }
