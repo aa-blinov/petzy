@@ -273,7 +273,7 @@ shapes are the ones that are circles by nature: the round add button, avatars, c
 ### Buttons
 M3 buttons: one primary per screen.
 - **Shape:** the common 12px corner (`--radius-md`), the same as every other rectangle; the add button is round.
-- **Outline:** every button has a 1px border. A filled button's border is its fill; an outlined one takes its colour; a text-only one (fill none) takes the oat hairline, copper for the primary, red for the danger.
+- **Outline:** every button has a 1px border. A filled button's border is its fill; an outlined one takes its colour; a text-only one (fill none) takes the oat hairline, copper for the primary.
 - **Label:** weight 500 (medium), not 600.
 - **Press:** a 12% state layer and a 0.98 scale.
 - **Size:** two, picked by `size`, never by hand. **Large** (`size="large"`, 48px, the `--btn-height` token) is the main action of a screen or a sheet and the button stacked with it («Создать» and «Отмена», «Записать» and «Оформить карточку»). The **usual** size (44px, `--touch-min`) is for a button inside a card or a row («Дали сейчас», «Загрузить ещё»). The small and mini ones keep their look and get an invisible 44px area to touch. Plain `<button>`s that stand in for a large one (`SpinnerButton`, the sheet buttons) use the same `--btn-height`.
@@ -282,7 +282,7 @@ M3 buttons: one primary per screen.
 - **Outline:** a copper outline with ginger-deep text for secondary actions in a card («Отметить приём», «Пополнить»).
 - **Neutral outline:** an oat outline with ink text for the way out («Отмена», «Отклонить»): it takes no colour, so a copper outline always means a step forward.
 - **Text:** a navigation link on the sign-in screens only (plain ginger-deep text). Every action, header or row, is an outlined button (see Outline).
-- **Danger:** red text for destructive actions at the foot of a form; a solid red button only where deletion is the screen's purpose (dark text on it in the dark theme).
+- **Danger:** every destructive button is a solid red button, the same as «Удалить аккаунт» (dark text on it in the dark theme), at whatever size its place asks for: the foot of a form, a card, a row or a sheet («Удалить запись», «Убрать», «Отозвать»). Red text or a red outline is never an action: on a pet's patterned backdrop it does not read.
 - **Press:** 0.98 scale and the 12% state layer; no hover lift. A visible focus ring for the keyboard.
 
 ### The round «+»

@@ -733,7 +733,6 @@ export function MedicationForm() {
                                         <Button
                                             size="small"
                                             color="danger"
-                                            fill="none"
                                             onClick={() => removeTime(index)}
                                             aria-label="Удалить это время"
                                         >

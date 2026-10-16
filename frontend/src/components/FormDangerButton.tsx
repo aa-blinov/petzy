@@ -39,7 +39,6 @@ export function FormDangerButton({ label, confirmTitle, confirmContent, onConfir
       <Button
         block
         size="large"
-        fill="none"
         color="danger"
         disabled={disabled || pending}
         onClick={() => {

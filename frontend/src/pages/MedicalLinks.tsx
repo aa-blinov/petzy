@@ -112,7 +112,7 @@ export function MedicalLinks() {
                         До {formatShareEnd(share.expires_at)}
                         <span className="medlinks__by">Сделал {share.username || 'бывший участник'}, {formatShareEnd(share.created_at)}</span>
                       </span>
-                      <Button size="small" fill="none" color="danger" loading={revoke.isPending && revoke.variables?.shareId === share.id} onClick={() => void ask(pet._id, share.id)}>
+                      <Button size="small" color="danger" loading={revoke.isPending && revoke.variables?.shareId === share.id} onClick={() => void ask(pet._id, share.id)}>
                         Отозвать
                       </Button>
                     </li>
