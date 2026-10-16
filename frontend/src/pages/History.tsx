@@ -297,6 +297,8 @@ export function History() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     gap: 'var(--spacing-sm)',
+                    // The title's line: the 42px button is centred on it and does not push the title down.
+                    height: '2rem',
                 }}>
                     <div className="screen-head">
                       <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>

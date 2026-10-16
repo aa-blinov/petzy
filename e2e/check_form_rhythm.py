@@ -72,9 +72,8 @@ async def check_rows_one_height(pg, name: str) -> None:
 async def check_byline(pg, name: str, top: str, bottom: str) -> None:
     """The line under a screen's title sits 4px under it, in every form that has such a line.
 
-    `top` is where the title's own box ends, which is not always the h1: a title row is 44px
-    tall with the title centred in it, so the slack under the text is not a gap between two things
-    and must not be counted as one."""
+    `top` is the title's own box (its h1): the title is one 32px line, so that box is the text's box
+    and the gap is measured from it."""
     # The selectors go into the expression itself: Playwright does not pass an argument to a
     # string that is a function expression, and it fails on the call rather than on the page.
     gap = await pg.evaluate(GAP_UNDER % (json.dumps(top), json.dumps(bottom)))
