@@ -8,7 +8,7 @@ import { MedicalShareSheet } from '../components/MedicalShareSheet';
 import { MedicalSummary } from '../components/MedicalSummary';
 import { MEDICAL_KIND_LABELS, PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { useHiddenRecords } from '../utils/deferredDelete';
-import { medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
+import { medicalCardQuery, medicalCardService, VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { listWords, missingReadiness, readinessChecks } from '../utils/medicalReadiness';
 import { usePet } from '../hooks/usePet';
@@ -905,11 +905,8 @@ export function MedicalCard() {
   }, [id, pets, selectedPetId, selectPet]);
 
   const query = useQuery({
-    queryKey: ['medical-card', id],
-    queryFn: () => medicalCardService.get(id!),
+    ...medicalCardQuery(id!),
     enabled: !!id,
-    // Built from records that change elsewhere: always asked again on opening.
-    staleTime: 0,
     refetchOnMount: 'always',
   });
   const card: Card | undefined = query.data;

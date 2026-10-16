@@ -24,6 +24,7 @@ import { useSession } from './hooks/useSession';
 import { flushPendingIntakes, usePendingIntakes } from './utils/offlineIntakes';
 import { documentsListQuery } from './services/documents.service';
 import { medicationsListQuery } from './services/medications.service';
+import { medicalCardQuery } from './services/medicalCard.service';
 import { returnState } from './utils/returnTo';
 import { MedicalCardEntry, RequirePet } from './components/RequirePet';
 
@@ -64,7 +65,8 @@ const PetLookSettings = lazy(() => import('./pages/PetLookSettings').then(m => (
 const FormDefaults = lazy(() => import('./pages/FormDefaults').then(m => ({ default: m.FormDefaults })));
 const PetEvents = lazy(() => import('./pages/PetEvents').then(m => ({ default: m.PetEvents })));
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
-const MedicalCard = lazy(() => import('./pages/MedicalCard').then(m => ({ default: m.MedicalCard })));
+const loadMedicalCard = () => import('./pages/MedicalCard');
+const MedicalCard = lazy(() => loadMedicalCard().then(m => ({ default: m.MedicalCard })));
 const MedicalCardSection = lazy(() => import('./pages/MedicalCardSection').then(m => ({ default: m.MedicalCardSection })));
 const MedicalLinks = lazy(() => import('./pages/MedicalLinks').then(m => ({ default: m.MedicalLinks })));
 const AssistantAccess = lazy(() => import('./pages/AssistantAccess').then(m => ({ default: m.AssistantAccess })));
@@ -85,7 +87,7 @@ const Help = lazy(() => import('./pages/Help').then(m => ({ default: m.Help })))
 /** The bottom tabs' pages and the record form (opened from the feed and
  *  history), fetched ahead of the first tap (see PrefetchTabs). */
 const TAB_PAGE_LOADERS = [
-  loadDashboard, loadMedicationsList, loadDocumentsList, loadHistory, loadSettings, loadHealthRecordForm,
+  loadDashboard, loadMedicationsList, loadDocumentsList, loadHistory, loadSettings, loadHealthRecordForm, loadMedicalCard,
 ];
 
 const queryClient = new QueryClient({
@@ -191,6 +193,7 @@ function PrefetchTabs() {
       TAB_PAGE_LOADERS.forEach((load) => load().catch(() => undefined));
       queryClient.prefetchQuery(documentsListQuery(selectedPetId));
       queryClient.prefetchQuery(medicationsListQuery(selectedPetId));
+      queryClient.prefetchQuery(medicalCardQuery(selectedPetId));
     };
     // After the current screen has settled, not competing with it: on a slow connection the tabs' code and lists
     // were fetched in the same seconds as the screen's own, and held its photo and records back by about two seconds.
