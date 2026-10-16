@@ -105,7 +105,7 @@ export function ProductPickerSheet({
             )}
           </p>
         )}
-        {loading && !failed && <p className="prodpick__note">Загружаем список</p>}
+        {loading && !failed && <p className="prodpick__note">Загружаем список…</p>}
 
         {shownEarlier.length > 0 && (
           <section className="prodpick__group" aria-label="Ранее">

@@ -64,7 +64,7 @@ export function MedicalLinks() {
         </div>
 
         <div className="safe-area-padding medlinks__body">
-          {loading && <p className="medlinks__note" aria-busy="true">Загружаем</p>}
+          {loading && <p className="medlinks__note" aria-busy="true">Загружаем…</p>}
 
           {failed.map(({ pet, query }) => (
             <p key={pet._id} className="medlinks__note" role="alert">
