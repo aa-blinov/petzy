@@ -127,7 +127,8 @@ export function History() {
     // enough times to page past the noise. filterType is part of the
     // query key, so switching chips starts its own fresh, correctly
     // paginated fetch instead of re-slicing an unrelated one.
-    const pageSize = 100;
+    // The first page is drawn at once with every row's swipe layers: 30 keeps the open fast, the next pages come when asked for.
+    const pageSize = 30;
     const {
         data,
         fetchNextPage,
