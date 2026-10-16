@@ -457,3 +457,29 @@ def test_signing_out_leaves_the_personal_tokens_working(client, regular_user_tok
     assert client.post("/api/auth/logout", json={"refresh_token": refresh}).status_code == 200
 
     assert client.get("/api/pets", headers=_bearer(token)).status_code == 200
+
+
+# Deactivation by the administrator ---------------------------------------------------------------------------------
+
+
+def test_deactivating_an_account_revokes_its_personal_tokens_for_good(client, regular_user_token, auth_headers):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+    assert client.get("/api/pets", headers=_bearer(token)).status_code == 200
+
+    assert client.delete("/api/users/testuser", headers=auth_headers).status_code == 200
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")
+
+    assert client.put("/api/users/testuser", json={"is_active": True}, headers=auth_headers).status_code == 200
+    # Enabled again: the old token stays revoked, and a token made after enabling works.
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")
+    signed_in = client.post("/api/auth/login", json={"username": "testuser", "password": "user123"})
+    made = _make(client, signed_in.get_json()["access_token"], scopes=["pets:read"])
+    assert client.get("/api/pets", headers=_bearer(made["token"])).status_code == 200
+
+
+def test_deactivating_by_an_update_revokes_the_personal_tokens_too(client, regular_user_token, auth_headers):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+
+    assert client.put("/api/users/testuser", json={"is_active": False}, headers=auth_headers).status_code == 200
+
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")

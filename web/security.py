@@ -187,10 +187,12 @@ def revoke_user_sessions(username) -> None:
 
 
 def revoke_personal_tokens(username) -> None:
-    """End every personal access token of a user (web/personal_tokens.py), on a password change or reset.
+    """End every personal access token of a user (web/personal_tokens.py): on a password change or reset, and when an
+    administrator deactivates the account.
 
     A new password ends them as it ends sessions: a leaked password must not leave a token working. Signing out does
-    not call this, since it ends sessions only. A token already revoked keeps the time it was revoked.
+    not call this, since it ends sessions only. A token already revoked keeps the time it was revoked, and a
+    reactivated account gets none back.
     """
     db["api_tokens"].update_many(
         {"username": username, "revoked_at": None},
