@@ -1536,9 +1536,10 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
+/* Starts at 0.6, not 0: a screen mounted at 0 is blank for the first frames, and the tab switch blinked. */
 @keyframes motion-fade {
     from {
-        opacity: 0;
+        opacity: 0.6;
     }
 
     to {
