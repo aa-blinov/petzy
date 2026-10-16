@@ -10,6 +10,7 @@ Medications keep their own module: courses, doses, and inventory are a
 different domain (scheduled, stateful) from a point-in-time event log.
 """
 
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -364,7 +365,10 @@ def _validate_event_fields(
         if field_type == "number":
             try:
                 value = float(value)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):  # OverflowError: an integer too large for a float
+                return None, f"Поле «{field_def['label']}» должно быть числом"
+            # NaN passes every bound below (comparisons with it are false), and Infinity passes a field with no max.
+            if not math.isfinite(value):
                 return None, f"Поле «{field_def['label']}» должно быть числом"
             field_min = field_def.get("min")
             field_max = field_def.get("max")

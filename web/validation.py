@@ -60,7 +60,16 @@ def message_for(errors: list) -> str:
     if kind.startswith(("greater_than", "less_than")):
         bound = next((ctx[k] for k in ("gt", "ge", "lt", "le") if k in ctx), None)
         return f"Число вне допустимых пределов ({bound})" if bound is not None else "Число вне допустимых пределов"
-    if kind in ("int_parsing", "int_type", "float_parsing", "float_type", "decimal_parsing", "int_from_float"):
+    # finite_number: NaN, Infinity or text such as «inf» is not a number.
+    if kind in (
+        "int_parsing",
+        "int_type",
+        "float_parsing",
+        "float_type",
+        "decimal_parsing",
+        "int_from_float",
+        "finite_number",
+    ):
         # The part of the look that was cut from the photo: say which part, not just «введите число».
         if "crops" in (first.get("loc") or ()):
             return "Введите числа для области фото"

@@ -17,6 +17,9 @@ from pydantic import (
     StringConstraints,
 )
 
+# A number a client sends. The type refuses NaN and Infinity, so a field needs no bound of its own to refuse them.
+FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
+
 
 # Every schema in this module builds on this class. pydantic quotes the value that failed in its error text (a password,
 # a health note), and the logs keep that text, so the quoting is switched off for all of them.
@@ -541,7 +544,7 @@ class PetLook(BaseModel):
     )
     # Which part of the photo each frame shows, in percent of the photo: {frame: {x, y, w, h}}. A frame's window has its
     # own shape, so each has its own; the one the pet wears is read, the others wait for the next time it is chosen.
-    crops: Dict[str, Dict[str, float]] = Field(
+    crops: Dict[str, Dict[str, FiniteFloat]] = Field(
         default_factory=dict,
         description="По рамке: {x, y, w, h} в процентах фото; x, y от 0 до 100, w, h от 1 до 100, x+w и y+h не больше 100,5",
     )
@@ -1628,16 +1631,16 @@ class EventTypeField(BaseModel):
     # Only meaningful for type="number" — e.g. a weight field capped at a
     # plausible range instead of accepting any float a fat-fingered digit
     # can produce.
-    min: Optional[float] = None
-    max: Optional[float] = None
-    step: Optional[float] = None
+    min: Optional[FiniteFloat] = None
+    max: Optional[FiniteFloat] = None
+    step: Optional[FiniteFloat] = None
     # How far a new reading may drift from this field's own rolling average
     # before it's pushed as a trend anomaly (see web/trend_alerts.py) — e.g.
     # 0.15 for 15%. A stable field (weight) and a naturally noisy one (a
     # feeding portion) don't belong under the same fixed sensitivity, so
     # this is per-field rather than one constant for every numeric type.
     # None means "use the module default".
-    deviation_threshold: Optional[float] = Field(None, gt=0, lt=1)
+    deviation_threshold: Optional[FiniteFloat] = Field(None, gt=0, lt=1)
 
     @field_validator("type")
     @classmethod
@@ -2191,7 +2194,7 @@ class MedicationCreate(PetIdQuery):
     dosage: Optional[str] = Field(None, max_length=50, description="Legacy dosage string")
     unit: Optional[str] = Field(None, max_length=20, description="Legacy unit string")
     dose_unit: Optional[str] = Field(None, max_length=20, description="tablet, ml, etc")
-    default_dose: float = Field(1.0, ge=0, le=10_000, description="Default amount to subtract from inventory")
+    default_dose: FiniteFloat = Field(1.0, ge=0, le=10_000, description="Default amount to subtract from inventory")
     schedule: MedicationSchedule
     # «По необходимости» хранится отдельно, а не выводится из пустого расписания: у курса
     # без напоминаний может быть расписание, и раньше оно молча пропадало вместе с режимом.
@@ -2200,10 +2203,10 @@ class MedicationCreate(PetIdQuery):
     # по необходимости», а не стать «расписанием без времени».
     as_needed: Optional[bool] = None
     inventory_enabled: bool = False
-    inventory_total: Optional[float] = Field(None, ge=0, le=1_000_000)
-    inventory_current: Optional[float] = Field(None, ge=0, le=1_000_000)
-    inventory_warning_threshold: Optional[float] = Field(None, ge=0, le=1_000_000)
-    inventory_warning_days: Optional[float] = Field(
+    inventory_total: Optional[FiniteFloat] = Field(None, ge=0, le=1_000_000)
+    inventory_current: Optional[FiniteFloat] = Field(None, ge=0, le=1_000_000)
+    inventory_warning_threshold: Optional[FiniteFloat] = Field(None, ge=0, le=1_000_000)
+    inventory_warning_days: Optional[FiniteFloat] = Field(
         None, ge=0, le=60, description="Предупредить, когда запаса останется на столько дней"
     )
     is_active: bool = True
@@ -2250,14 +2253,14 @@ class MedicationUpdate(BaseModel):
     dosage: Optional[str] = Field(None, max_length=50)
     unit: Optional[str] = Field(None, max_length=20)
     dose_unit: Optional[str] = Field(None, max_length=20)
-    default_dose: Optional[float] = Field(None, ge=0, le=10_000)
+    default_dose: Optional[FiniteFloat] = Field(None, ge=0, le=10_000)
     schedule: Optional[MedicationSchedule] = None
     as_needed: Optional[bool] = None
     inventory_enabled: Optional[bool] = None
-    inventory_total: Optional[float] = Field(None, ge=0, le=1_000_000)
-    inventory_current: Optional[float] = Field(None, ge=0, le=1_000_000)
-    inventory_warning_threshold: Optional[float] = Field(None, ge=0, le=1_000_000)
-    inventory_warning_days: Optional[float] = Field(None, ge=0, le=60)
+    inventory_total: Optional[FiniteFloat] = Field(None, ge=0, le=1_000_000)
+    inventory_current: Optional[FiniteFloat] = Field(None, ge=0, le=1_000_000)
+    inventory_warning_threshold: Optional[FiniteFloat] = Field(None, ge=0, le=1_000_000)
+    inventory_warning_days: Optional[FiniteFloat] = Field(None, ge=0, le=60)
     is_active: Optional[bool] = None
     comment: Optional[str] = Field(None, max_length=500)
     # A date or text is cleared with an empty string (None means «not sent»).
@@ -2358,7 +2361,7 @@ class MedicationItem(BaseModel):
 class MedicationRestock(BaseModel):
     """Add a bought pack (or any amount) to the stock."""
 
-    amount: float = Field(..., gt=0, le=100000, description="Сколько добавить к остатку")
+    amount: FiniteFloat = Field(..., gt=0, le=100000, description="Сколько добавить к остатку")
     model_config = ConfigDict(json_schema_extra={"example": {"amount": 12}})
 
 
@@ -2419,7 +2422,7 @@ class MedicationDetailResponse(BaseModel):
 class MedicationIntakeCreate(BaseModel):
     date: str
     time: str
-    dose_taken: Optional[float] = None  # Uses default_dose if not provided
+    dose_taken: Optional[FiniteFloat] = None  # Uses default_dose if not provided
     comment: Optional[str] = None
     # «Пропустить»: the slot is handled, nothing is given or taken from the stock.
     skipped: bool = False
