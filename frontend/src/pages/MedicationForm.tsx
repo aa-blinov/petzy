@@ -157,7 +157,7 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
-    const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
+    const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty, dirtyFields } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
         // onInvalidSubmit scrolls to and focuses the first error in page order;
         // RHF's own focus picked the first registered ref instead.
         // Validated when a field is left, and after that as it changes: an error
@@ -358,7 +358,7 @@ export function MedicationForm() {
     });
 
     const mutation = useMutation({
-        mutationFn: async (data: MedicationFormData) => {
+        mutationFn: async ({ data, stockEdited }: { data: MedicationFormData; stockEdited: boolean }) => {
             const payload: MedicationCreate = {
                 ...data,
                 // Days and times are saved as chosen, in either mode: switching the
@@ -366,7 +366,10 @@ export function MedicationForm() {
                 schedule: data.schedule,
                 pet_id: selectedPetId!,
                 inventory_total: data.inventory_total ?? undefined,
-                inventory_current: data.inventory_current ?? undefined,
+                // A course already saved takes its stock only when this edit changed it. The form holds the stock
+                // of the moment it was opened, and another phone may have counted it down since: saving it back
+                // would undo those doses. A new course has no stock on the server yet, so its stock always goes.
+                inventory_current: !isEditing || stockEdited ? (data.inventory_current ?? undefined) : undefined,
                 inventory_warning_days: data.inventory_warning_days ?? undefined,
             };
             if (isEditing && id) {
@@ -389,7 +392,8 @@ export function MedicationForm() {
     });
 
     const onSubmit = (data: MedicationFormData) => {
-        mutation.mutate(data);
+        // Changed means different from what the form loaded with: react-hook-form keeps the loaded values as defaults.
+        mutation.mutate({ data, stockEdited: !!dirtyFields.inventory_current });
     };
 
     if (isEditing && isLoadingMed) return <LoadingSpinner />;
