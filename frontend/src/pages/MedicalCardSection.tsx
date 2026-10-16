@@ -2,7 +2,7 @@ import { weightRangeByYear } from '../utils/weightRanges';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Popup, Skeleton } from 'antd-mobile';
+import { Popup } from 'antd-mobile';
 import { FileHeart } from 'lucide-react';
 
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
@@ -18,6 +18,7 @@ import { useHiddenRecords } from '../utils/deferredDelete';
 import { formatDate, hasLife, weightDelta } from '../utils/medicalCardFormat';
 import { pluralRu } from '../utils/relativeTime';
 import { ClinicRow, CourseRow, ImportantBlock, KindSection, LifeRows, Section, Sparkline } from './MedicalCard';
+import { MedicalCardSkeleton } from '../components/Skeletons';
 import './MedicalCard.css';
 
 export type CardSectionKey = 'risks' | 'meds' | 'prevention' | 'weight' | 'visits' | 'documents' | 'clinic' | 'life';
@@ -297,8 +298,7 @@ export function MedicalCardSection() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding" aria-busy="true">
-          <Skeleton.Title animated />
-          <Skeleton.Paragraph lineCount={5} animated />
+          <MedicalCardSkeleton lines={5} />
         </div>
       </div>
     );

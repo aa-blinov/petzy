@@ -9,6 +9,7 @@ import { usePet } from '../hooks/usePet';
 import { formatShareEnd, medicalShareService } from '../services/medicalShare.service';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
+import { SkeletonList } from '../components/Skeletons';
 import './MedicalLinks.css';
 
 /**
@@ -66,7 +67,7 @@ export function MedicalLinks() {
         </div>
 
         <div className="safe-area-padding medlinks__body">
-          {loading && <p className="medlinks__note" aria-busy="true">Загружаем…</p>}
+          {loading && <SkeletonList count={2} flush />}
 
           {failed.map(({ pet, query }) => (
             <p key={pet._id} className="medlinks__note" role="alert">

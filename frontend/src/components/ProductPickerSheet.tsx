@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Popup, SearchBar, type SearchBarRef } from 'antd-mobile';
 
 import { DraggableSheetBody } from './DraggableSheetBody';
+import { LoadingSpinner } from './LoadingSpinner';
 import './ProductPickerSheet.css';
 
 export interface ProductGroup {
@@ -105,7 +106,7 @@ export function ProductPickerSheet({
             )}
           </p>
         )}
-        {loading && !failed && <p className="prodpick__note">Загружаем список…</p>}
+        {loading && !failed && <LoadingSpinner fullscreen={false} />}
 
         {shownEarlier.length > 0 && (
           <section className="prodpick__group" aria-label="Ранее">
