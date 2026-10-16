@@ -1,0 +1,92 @@
+/* Настройки → «Доступ для ассистентов» and its form: the list of tokens and the form that makes one. */
+
+.assist__head {
+    margin-bottom: var(--spacing-lg);
+}
+
+.assist__lead {
+    margin: var(--spacing-xs) 0 var(--spacing-lg);
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+.assist__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.assist__note {
+    margin: var(--spacing-sm) 0 0;
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.assist__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+}
+
+.assist__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    font-size: var(--text-sm);
+}
+
+.assist__item + .assist__item {
+    border-top: 1px solid var(--app-border-color);
+}
+
+.assist__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xs);
+    min-width: 0;
+}
+
+.assist__name {
+    color: var(--app-text-color);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.assist__scopes {
+    color: var(--app-text-color);
+}
+
+.assist__meta {
+    color: var(--app-text-secondary);
+    font-size: var(--text-xs);
+}
+
+.assist__scopes-choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+}
+
+.assist__token {
+    margin: 0;
+    padding: var(--spacing-md);
+    border: 1px solid var(--app-border-color);
+    border-radius: var(--radius-md);
+    color: var(--app-text-color);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.assist__warning {
+    margin: 0;
+    color: var(--app-text-color);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
