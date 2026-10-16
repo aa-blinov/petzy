@@ -16,7 +16,7 @@ from web.builtin_event_types import seed_builtin_event_types
 
 # Set test environment variables before importing app
 os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
-os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key"
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-the-test-suite-only"
 os.environ["ADMIN_USERNAME"] = "admin"
 os.environ["ADMIN_PASSWORD_HASH"] = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
 os.environ["MONGO_USER"] = "test_user"
