@@ -38,6 +38,8 @@ export function useSessionDraft<T>({ dirty, petId, getValues, reset, ready, rele
       registerDraftProvider(() => {
         if (!dirtyNow.current) return undefined;
         releaseNow.current();
+        // A draft without a pet is never restored (restore needs a pet), so it is not kept.
+        if (!petNow.current) return undefined;
         return { owner: { path: window.location.pathname, petId: petNow.current }, values: valuesNow.current() };
       }),
     [],
