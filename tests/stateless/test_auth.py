@@ -389,6 +389,23 @@ class TestSessionProbe:
         assert response.status_code == 200
         assert mock_db["refresh_tokens"].find_one({"token": garbage_token}) is None
 
+    @pytest.mark.parametrize("body_token", [{"$ne": None}, {"$regex": "."}])
+    def test_logout_takes_a_string_token_from_the_body_or_nothing(self, client, mock_db, body_token):
+        """A body value that is not a string is no token: as a query it matched other people's refresh tokens.
+
+        ``{"refresh_token": {"$ne": null}}`` used to delete one other user's row per request, with no sign-in.
+        The answer is the ordinary logout answer, and the table is left as it was.
+        """
+        mock_db["refresh_tokens"].insert_one({"token": "someone-elses-token", "username": "someone-else"})
+        mock_db["refresh_tokens"].insert_one({"token": "another-token", "username": "someone-else"})
+        before = mock_db["refresh_tokens"].count_documents({})
+
+        response = client.post("/api/auth/logout", json={"refresh_token": body_token})
+
+        assert response.status_code == 200
+        assert response.get_json()["success"] is True
+        assert mock_db["refresh_tokens"].count_documents({}) == before
+
     def test_logout_clears_the_browser_cache_but_not_app_storage(self, client, mock_db):
         """Logout asks the browser to drop its HTTP cache, where the pet photos stay for a year.
 
@@ -439,3 +456,15 @@ class TestSessionProbe:
             response = client.get("/api/auth/check-admin", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == 200
         assert response.get_json()["is_admin"] is False
+
+
+def test_verify_token_refuses_a_non_string_before_decoding(monkeypatch):
+    """A JSON object or list is not a token: it is refused before the JWT parser sees it."""
+    from web import security
+
+    def must_not_decode(*args, **kwargs):
+        raise AssertionError("a non-string token reached jwt.decode")
+
+    monkeypatch.setattr(security.jwt, "decode", must_not_decode)
+    assert security.verify_token({"$ne": None}, "refresh") is None
+    assert security.verify_token(["token"], "refresh") is None
