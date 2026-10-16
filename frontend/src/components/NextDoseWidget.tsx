@@ -11,6 +11,7 @@ import { Button } from 'antd-mobile';
 import { Check, Pill, TriangleAlert } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type UpcomingDose } from '../services/medications.service';
 import { useAuth } from '../hooks/useAuth';
+import { useSession } from '../hooks/useSession';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
 import { toDeviceClock } from '../utils/timezone';
@@ -40,6 +41,8 @@ type IntakeKind = 'now' | 'scheduled' | 'skip';
 
 export function NextDoseWidget() {
     const { selectedPetId, selectedPetName } = usePet();
+    // A dose marked with no connection is kept under the login the server says is signed in.
+    const { username: owner } = useSession();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
@@ -87,10 +90,10 @@ export function NextDoseWidget() {
             // not the nearest, and a dose of last evening given after midnight closes that evening.
             const slot = { slot_date: dose.date, slot_time: dose.time };
             if (kind === 'now')
-              return logIntakeAsking(dose.medication_id, dose.name, { date: nowDate, time: nowTime, ...slot }, selectedPetName ?? undefined);
+              return logIntakeAsking(dose.medication_id, dose.name, { date: nowDate, time: nowTime, ...slot }, selectedPetName ?? undefined, owner);
             const slotIsPast = `${dose.date} ${dose.time}` <= `${nowDate} ${nowTime}`;
             const at = slotIsPast ? { date: dose.date, time: dose.time } : { date: nowDate, time: nowTime };
-            return logIntakeAsking(dose.medication_id, dose.name, { ...at, ...slot, skipped: kind === 'skip' }, selectedPetName ?? undefined);
+            return logIntakeAsking(dose.medication_id, dose.name, { ...at, ...slot, skipped: kind === 'skip' }, selectedPetName ?? undefined, owner);
         },
         onSuccess: ({ id, ran_out, queued }, { dose, kind }) => {
             if (queued) {

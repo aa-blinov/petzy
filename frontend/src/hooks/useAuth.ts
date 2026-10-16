@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
-import { clearApiCaches, clearLocalAuthState, resetSessionExpired } from '../services/api';
+import { beginSignOut, clearApiCaches, clearLocalAuthState, resetSessionExpired } from '../services/api';
+import { unsubscribeBeforeSignOut } from '../utils/pushNotifications';
 import { SESSION_QUERY_KEY, useSession } from './useSession';
 import type { LoginRequest, RegisterRequest } from '../services/auth.service';
 
@@ -93,6 +94,10 @@ export function useAuth() {
   };
 
   const logout = async () => {
+    beginSignOut();
+    // This browser leaves push first, while the session can still make the request: the logout below ends that
+    // session, and the server no longer knows who is asking. Best effort, so it never holds the sign-out up for long.
+    await unsubscribeBeforeSignOut();
     try {
       // Tell the backend to revoke the refresh_token and clear the
       // httpOnly cookies. Must happen before we clear local state —

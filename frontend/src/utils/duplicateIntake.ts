@@ -27,18 +27,21 @@ export function duplicateOf(err: unknown): DuplicateIntake | null {
   return body?.code === 'duplicate_intake' && body.existing ? body.existing : null;
 }
 
-/** Logs a dose; when it is the same one already marked, says who marked it and when, and records another only if asked to. */
+/** Logs a dose; when it is the same one already marked, says who marked it and when, and records another only if asked to.
+ *  `owner` is the login signed in now: a dose with no connection is kept for it. Without one nothing is kept, and the
+ *  connection error goes on to the caller, since a dose queued for nobody would be claimed by whoever signs in next. */
 export async function logIntakeAsking(
   medicationId: string,
   name: string,
   input: IntakeInput,
-  petName?: string,
+  petName: string | undefined,
+  owner: string | null,
 ): Promise<{ id: string; ran_out: boolean; queued?: boolean }> {
   try {
     return await medicationsService.logIntake(medicationId, input);
   } catch (err) {
-    if (isOffline(err)) {
-      enqueueIntake(medicationId, name, input, petName);
+    if (isOffline(err) && owner) {
+      enqueueIntake(owner, medicationId, name, input, petName);
       return { id: '', ran_out: false, queued: true };
     }
     const existing = duplicateOf(err);

@@ -389,6 +389,17 @@ class TestSessionProbe:
         assert response.status_code == 200
         assert mock_db["refresh_tokens"].find_one({"token": garbage_token}) is None
 
+    def test_logout_clears_the_browser_cache_but_not_app_storage(self, client, mock_db):
+        """Logout asks the browser to drop its HTTP cache, where the pet photos stay for a year.
+
+        ``"storage"`` must not be sent: it would also wipe the app's local data, including the queue of doses that
+        have not reached the server yet, and that queue has to survive a sign-out.
+        """
+        response = client.post("/api/auth/logout")
+
+        assert response.status_code == 200
+        assert response.headers["Clear-Site-Data"] == '"cache"'
+
     def test_login_with_corrupted_password_hash_fails_cleanly(self, client, mock_db):
         """A stored password_hash that isn't valid bcrypt output (data
         corruption, a bad migration) must fail the check, not crash it.

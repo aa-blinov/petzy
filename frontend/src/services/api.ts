@@ -82,6 +82,13 @@ export function resetSessionExpired() {
   sessionExpired = false;
 }
 
+/** An explicit sign-out has begun. A request it still has in flight (the push unsubscribe, say) can come back with a
+ *  401 once the logout has revoked the session; that must not start a second sign-out with its own stash and
+ *  navigation. The latch above is what stops it, and the next sign-in releases it. */
+export function beginSignOut() {
+  sessionExpired = true;
+}
+
 /**
  * Wipe every piece of the signed-in user's identity we keep outside
  * httpOnly cookies.
