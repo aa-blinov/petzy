@@ -1,9 +1,9 @@
-"""Confirmation letters to one address: three a day, however many sign-ups ask for them.
+"""Confirmation letters to one address: three a day, however many sign-ups, address changes or resends ask for them.
 
 Sign-up is limited per address of the asker (web/configs.py), which does not stop one mailbox from getting letters
-from many accounts. Each letter is counted before it goes out. A fourth one in a day is refused with 429 and no
-letter, and no account is made. The count is kept for an address whether or not it has an account, and a letter that
-failed to send still counts.
+from many accounts. Each letter is counted before it goes out, whichever of the three asks for it. A fourth one in a
+day is refused with 429 and no letter, and nothing changes: no account is made, no address is set. The count is kept
+for an address whether or not it has an account, and a letter that failed to send still counts.
 """
 
 import itertools
@@ -27,9 +27,14 @@ def outbox(monkeypatch):
     mail.OUTBOX.clear()
 
 
+def _next_who():
+    """A request from an address of its own: the limits on sign-up, sign-in and letters are per address too."""
+    return {"X-Forwarded-For": f"203.0.113.{next(_addresses) % 250 + 1}"}
+
+
 def _sign_up(client, username, email=ADDRESS):
-    """One sign-up from an address of its own: the sign-up limit is per address too."""
-    who = {"X-Forwarded-For": f"203.0.113.{next(_addresses) % 250 + 1}"}
+    """One sign-up from an address of its own."""
+    who = _next_who()
     return client.post(
         "/api/auth/register",
         json={
@@ -52,6 +57,15 @@ def _window_ends_in(mock_db, delta):
     """Move the end of every counted letter's day to now plus ``delta``, as if days had gone by.
     The lockout tests move their rows the same way."""
     mock_db.verification_mail_log.update_many({}, {"$set": {"expires_at": datetime.now(timezone.utc) + delta}})
+
+
+def _change_email(client, email):
+    """The signed-in account asks for another address; the password is the one _sign_up gives every account."""
+    return client.put("/api/me/email", json={"email": email, "password": "kotik-2026"}, headers=_next_who())
+
+
+def _resend(client):
+    return client.post("/api/me/email/resend", headers=_next_who())
 
 
 def test_three_sign_ups_from_three_addresses_send_three_letters(client, mock_db, outbox):
@@ -173,3 +187,69 @@ def test_a_sign_up_that_loses_its_login_in_a_race_gives_its_letter_back(client, 
         assert _sign_up(client, name).status_code == 201
     assert _sign_up(client, "vera5").status_code == 429
     assert len(outbox) == 3
+
+
+def test_a_change_to_an_address_with_three_letters_is_refused_and_sends_nothing(client, mock_db, outbox):
+    _three_letters(client)
+    _sign_up(client, "pyotr", email="pyotr@example.com")
+    sent = len(outbox)
+
+    refused = _change_email(client, ADDRESS)
+
+    assert refused.status_code == 429
+    body = refused.get_json()
+    assert body["code"] == "register_letter_limit"
+    assert body["error"] == REFUSED
+    assert len(outbox) == sent
+    # The refused change set no pending address: the one from sign-up stays.
+    assert mock_db["users"].find_one({"username": "pyotr"})["pending_email"] == "pyotr@example.com"
+
+
+def test_a_change_counts_with_the_sign_ups_to_its_address(client, outbox):
+    _sign_up(client, "vera1")
+    _sign_up(client, "vera2")
+    # The third letter to the address, sent for vera2's own change rather than a sign-up.
+    assert _change_email(client, ADDRESS).status_code == 200
+
+    assert _change_email(client, ADDRESS).status_code == 429
+    assert len(outbox) == 3
+
+
+def test_a_resend_is_one_more_letter_to_the_address_and_is_limited(client, mock_db, outbox):
+    _sign_up(client, "vera1")
+    assert _resend(client).status_code == 200
+    assert _resend(client).status_code == 200
+
+    refused = _resend(client)
+
+    assert refused.status_code == 429
+    body = refused.get_json()
+    assert body["code"] == "register_letter_limit"
+    assert body["error"] == REFUSED
+    assert len(outbox) == 3
+    assert mock_db["users"].find_one({"username": "vera1"})["pending_email"] == ADDRESS
+
+
+def test_a_resend_counts_with_the_sign_ups_to_its_address(client, outbox):
+    _three_letters(client)  # the client is signed in as vera3, pending on the same address
+
+    assert _resend(client).status_code == 429
+    assert len(outbox) == 3
+
+
+def test_the_day_lifts_the_limit_for_a_change_too(client, mock_db, outbox):
+    _three_letters(client)
+    _sign_up(client, "pyotr", email="pyotr@example.com")
+    _window_ends_in(mock_db, timedelta(seconds=-1))
+
+    assert _change_email(client, ADDRESS).status_code == 200
+    assert outbox[-1]["to"] == ADDRESS
+
+
+def test_the_dev_reset_gives_the_letter_counts_back(client, mock_db, outbox, monkeypatch):
+    monkeypatch.setenv("PETZY_DEV_TOOLS", "1")
+    _three_letters(client)
+    assert _sign_up(client, "vera4").status_code == 429
+
+    assert client.post("/api/dev/reset-limits").status_code == 200
+    assert _sign_up(client, "vera4").status_code == 201

@@ -241,7 +241,8 @@ def change_email():
     `email` changes only after POST /api/auth/email/verify, and until then the old address stays the working one.
     The address that is already confirmed answers with the account unchanged. An empty ``email`` removes the
     address and any pending one at once, mail configured or not. Errors: 422 ``account_wrong_password``,
-    ``account_email_invalid``, ``account_email_taken``; 503 ``mail_not_configured`` or ``mail_send_failed``
+    ``account_email_invalid``, ``account_email_taken``; 429 ``register_letter_limit`` when three letters already went
+    to that address in the last day (then nothing changes); 503 ``mail_not_configured`` or ``mail_send_failed``
     (then ``pending_email`` is already saved and the letter can be sent again).
     """
     username = request.current_user
@@ -266,6 +267,10 @@ def change_email():
         return error_response("account_email_taken")
     if user.get("email_verified") and (user.get("email") or "").lower() == email.lower():
         return jsonify(_account(user))
+    # Counted before the letter is due, as at sign-up: a refused change sets no pending address.
+    if reserve_verification_letter(email) is None:
+        logger.warning(f"Address change refused, letters to the address used up for the day: user={username}")
+        return letter_limit_response()
 
     app.db.users.update_one({"username": username}, {"$set": {"pending_email": email}})
     try:
@@ -283,7 +288,7 @@ def change_email():
 def resend_verification():
     """Send the confirmation letter for the pending address again.
 
-    For an address that was typed but not confirmed. The letter goes only to the new address, and while it is unconfirmed the old one stays the working one. The new letter's link replaces the earlier one, which stops working.
+    For an address that was typed but not confirmed. The letter goes only to the new address, and while it is unconfirmed the old one stays the working one. The new letter's link replaces the earlier one, which stops working. Every letter to one address counts in the same three a day as at sign-up: a fourth answers 429 ``register_letter_limit``.
     """
     username = request.current_user
     user = app.db.users.find_one({"username": username}) or {}
@@ -292,6 +297,10 @@ def resend_verification():
         return error_response("account_no_pending_email")
     if not mail.mail_configured():
         return error_response("mail_not_configured")
+    # Counted before the letter goes, like every confirmation letter (see reserve_verification_letter).
+    if reserve_verification_letter(pending) is None:
+        logger.warning(f"Letter refused, letters to the address used up for the day: user={username}")
+        return letter_limit_response()
     try:
         send_verification(username, pending)
     except Exception as e:
@@ -627,7 +636,7 @@ def dev_outbox():
 
 @account_bp.route("/api/dev/reset-limits", methods=["POST"])
 def dev_reset_limits():
-    """The counters of the rate limits put back to zero, for local runs only: 404 otherwise.
+    """The rate-limit counters and the letter counts per address back to zero, for local runs only: 404 otherwise.
 
     A limit counts per address, and on the stand every browser check comes from the same one:
     five password letters and five sign-ups an hour are spent by the first run, and the second
@@ -638,4 +647,6 @@ def dev_reset_limits():
     if not _dev_tools_on():
         return error_response("not_found")
     limiter.reset()
+    # The letter counts per address are limits too: on the stand a browser check starts them from zero as well.
+    app.db.verification_mail_log.delete_many({})
     return jsonify({"message": "Счётчики ограничений обнулены", "success": True})
