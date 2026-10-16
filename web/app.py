@@ -145,7 +145,11 @@ def handle_unprocessable_entity(err):
     if data and "messages" in data:
         # flask-pydantic-spec puts errors in 'messages'
         messages = data["messages"]
-        logger.warning(f"Validation error (422): {messages}")
+        # Field and rule only: a message quotes the value that was sent (a health note, a password).
+        rules = []
+        if isinstance(messages, list):
+            rules = [(m.get("loc"), m.get("type")) for m in messages if isinstance(m, dict)]
+        logger.warning(f"Validation error (422): {rules}")
         if isinstance(messages, list) and len(messages) > 0:
             # Format the first error nicely
             # Each message is usually like {'loc': ['body', 'date'], 'msg': '...', 'type': '...'}

@@ -178,3 +178,28 @@ class TestUnsubscribe:
         assert response.status_code == 200
         # ...but the row is untouched, since it's scoped to admin's own username
         assert mock_db.push_subscriptions.count_documents({"endpoint": VALID_SUBSCRIBE_BODY["endpoint"]}) == 1
+
+
+def test_an_expired_subscription_is_logged_by_its_id_not_by_its_endpoint(monkeypatch, caplog):
+    """A push endpoint works as a credential: the log names the subscription, never the address."""
+    import logging
+    from unittest.mock import MagicMock
+
+    from bson import ObjectId
+    from pywebpush import WebPushException
+
+    from web import push_delivery
+
+    endpoint = "https://fcm.googleapis.com/fcm/send/REGISTRATION-TOKEN-OF-A-DEVICE"
+    sub = {"_id": ObjectId(), "endpoint": endpoint, "keys": {"p256dh": "k", "auth": "a"}, "username": "vera"}
+
+    def gone(**_kwargs):
+        raise WebPushException("Push failed: 410 Gone", response=MagicMock(status_code=410))
+
+    monkeypatch.setattr(push_delivery, "webpush", gone)
+    caplog.set_level(logging.INFO, logger="push_delivery")
+    push_delivery.send_push_to_subscriptions(MagicMock(), [sub], {"title": "t"}, "vapid-key", {"sub": "mailto:a@b.c"})
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("Removed expired push subscription" in message for message in messages)
+    assert not any("REGISTRATION-TOKEN" in message for message in messages)

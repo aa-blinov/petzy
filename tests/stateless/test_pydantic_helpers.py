@@ -1,6 +1,7 @@
 """Tests for web.pydantic_helpers.validate_request_data."""
 
 import json
+import logging
 
 import pytest
 from flask import Flask, request
@@ -215,3 +216,18 @@ def test_validation_error_with_no_error_entries_falls_back_to_str(flask_app):
     assert data is None
     body, status = err
     assert status == 422
+
+
+def test_a_rejected_health_note_is_logged_by_its_field_not_its_text(flask_app, caplog):
+    """pydantic quotes the value that failed; the warning keeps the field and the rule, never the note itself."""
+    from web.app import logger
+    from web.schemas import PetUpdate
+
+    note = "Аллергия на курицу. " * 60  # longer than PetUpdate.health_notes allows
+    caplog.set_level(logging.WARNING, logger=logger.name)
+    with flask_app.test_request_context("/x", method="PUT", json={"health_notes": note}):
+        data, err = validate_request_data(request, PetUpdate, context="pet update")
+    assert data is None and err is not None
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("Validation error in pet update" in message for message in messages)
+    assert not any("Аллергия" in message for message in messages)

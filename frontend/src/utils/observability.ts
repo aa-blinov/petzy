@@ -1,4 +1,8 @@
 import * as Sentry from '@sentry/react';
+import type { BrowserOptions } from '@sentry/react';
+
+/** A span as the SDK hands it to beforeSendSpan: the streamed format, which the default trace lifecycle sends. */
+type StreamedSpan = Parameters<NonNullable<BrowserOptions['beforeSendSpan']>>[0];
 
 /**
  * Errors, page performance and session replay to Sentry, the same project as the backend
@@ -16,20 +20,22 @@ interface WithRequest {
 }
 
 /** The page of a link to a pet's medical card has its secret in the address (/share/medical/<secret>); the API call behind it
- *  too. Neither goes to Sentry. */
+ *  too (/api/shared/medical-card/<secret>/pdf). Neither goes to Sentry. */
 const LINK_SECRET = /(\/shared\/medical-card\/|\/share\/medical\/)[^/?#\s]+/g;
-const scrubLink = (text: string) => text.replace(LINK_SECRET, '$1[Filtered]');
+
+/** The address with the secret of a medical card link replaced by ***; the rest of the address stays. */
+export const scrubUrl = (url: string): string => url.replace(LINK_SECRET, '$1***');
 
 /** Belt and braces over dataCollection below: a reset or confirmation
  *  link carries its one-time token in the page URL. */
 function scrub<T extends WithRequest>(event: T): T {
   const request = event.request;
-  if (request?.url) request.url = scrubLink(request.url);
-  if (event.transaction) event.transaction = scrubLink(event.transaction);
+  if (request?.url) request.url = scrubUrl(request.url);
+  if (event.transaction) event.transaction = scrubUrl(event.transaction);
   for (const crumb of event.breadcrumbs ?? []) {
-    if (crumb.message) crumb.message = scrubLink(crumb.message);
+    if (crumb.message) crumb.message = scrubUrl(crumb.message);
     for (const [key, value] of Object.entries(crumb.data ?? {})) {
-      if (typeof value === 'string') crumb.data![key] = scrubLink(value);
+      if (typeof value === 'string') crumb.data![key] = scrubUrl(value);
     }
   }
   if (request?.url && /[?&]token=/.test(request.url)) {
@@ -42,6 +48,15 @@ function scrub<T extends WithRequest>(event: T): T {
   return event;
 }
 
+/** A span carries the address too: a page's name is its path, and an API call's name and url attributes hold the whole address. */
+function scrubSpan(span: StreamedSpan): StreamedSpan {
+  span.name = scrubUrl(span.name);
+  for (const [key, value] of Object.entries(span.attributes)) {
+    if (typeof value === 'string') span.attributes[key] = scrubUrl(value);
+  }
+  return span;
+}
+
 export function initSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
   if (!dsn) return;
@@ -49,10 +64,10 @@ export function initSentry(): void {
     dsn,
     environment: (import.meta.env.VITE_SENTRY_ENVIRONMENT as string | undefined) || 'production',
     release: (import.meta.env.VITE_SENTRY_RELEASE as string | undefined) || undefined,
-    // The user and their address, as the backend sends; never cookies,
-    // the Authorization header or bodies (records, documents, passwords).
+    // userInfo is off: the SDK adds no IP address of its own. The login comes from setSentryUser (App.tsx), not from here.
+    // Never cookies, the Authorization header or bodies (records, documents, passwords).
     dataCollection: {
-      userInfo: true,
+      userInfo: false,
       cookies: false,
       httpHeaders: { request: { deny: ['authorization', 'cookie'] }, response: false },
       httpBodies: [],
@@ -71,6 +86,8 @@ export function initSentry(): void {
     tracePropagationTargets: [/^\/api\//],
     beforeSend: (event) => scrub(event),
     beforeSendTransaction: (event) => scrub(event),
+    // The default trace lifecycle sends spans, and beforeSendTransaction runs only for the static one: scrub spans here.
+    beforeSendSpan: scrubSpan,
   });
 }
 

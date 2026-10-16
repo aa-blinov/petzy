@@ -50,11 +50,11 @@ def send_push_to_subscriptions(
             status = e.response.status_code if e.response is not None else None
             if status in (404, 410):
                 db.push_subscriptions.delete_one({"endpoint": sub["endpoint"]})
-                logger.info(f"Removed expired push subscription: endpoint={sub['endpoint']}")
+                logger.info(f"Removed expired push subscription: id={sub.get('_id')}")
             else:
                 logger.warning(f"webpush failed (status={status}): {e}")
         except Exception:
-            logger.exception(f"Unexpected error sending push notification to endpoint={sub['endpoint']}")
+            logger.exception(f"Unexpected error sending push notification: subscription id={sub.get('_id')}")
     return sent
 
 

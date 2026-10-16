@@ -8,7 +8,9 @@ deploy writes it from the SENTRY_DSN repository secret.
 send_default_pii is on (the user and their address are what makes an error
 traceable), but what must never leave the server is taken out before an
 event is sent: cookies, the Authorization header, and any password or
-token in a request body or query string.
+token in a request body or query string. Health data does not leave either:
+a request's body and a crash's local variables are not sent at all, and
+Sentry Logs keep warnings and errors only (before_send_log).
 """
 
 import logging
@@ -50,6 +52,17 @@ def _scrub_value(value):
     return value
 
 
+def _scrub_links(value):
+    """A link secret never leaves the server, wherever it sits in the data."""
+    if isinstance(value, str):
+        return _scrub_link(value)
+    if isinstance(value, dict):
+        return {k: _scrub_links(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_scrub_links(v) for v in value]
+    return value
+
+
 def _scrub_frames(event) -> None:
     """A crash inside, say, login has the password in a local variable of
     its frame; Sentry sends frame variables."""
@@ -88,7 +101,20 @@ def scrub_event(event, _hint=None):
         query = request.get("query_string")
         if isinstance(query, str) and any(f"{key}=" in query.lower() for key in ("token", "password")):
             request["query_string"] = FILTERED
-    return event
+    return _scrub_links(event)
+
+
+# WARNING in the OpenTelemetry numbers the SDK uses for log levels (INFO is 9): Sentry Logs keep this level and above.
+_WARNING_SEVERITY = 13
+
+
+def scrub_log(log, _hint=None):
+    """before_send_log: warnings and errors only, with link secrets and secret keys taken out."""
+    if log["severity_number"] < _WARNING_SEVERITY:
+        return None
+    log["body"] = _scrub_link(log["body"])
+    log["attributes"] = _scrub_links(_scrub_value(log["attributes"]))
+    return log
 
 
 def init_sentry(component: str) -> bool:
@@ -114,7 +140,12 @@ def init_sentry(component: str) -> bool:
         environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
         release=os.getenv("SENTRY_RELEASE") or None,
         send_default_pii=True,
+        # A request's body (what was typed into it) and a crash's local variables (a note held in one) are not sent;
+        # the stack and the address still are.
+        max_request_body_size="never",
+        include_local_variables=False,
         enable_logs=True,
+        before_send_log=scrub_log,
         traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0")),
         profile_session_sample_rate=float(os.getenv("SENTRY_PROFILE_SAMPLE_RATE", "1.0")),
         profile_lifecycle="trace",
