@@ -36,6 +36,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { hapticFeedback } from '../utils/haptic';
 import { showToast } from '../utils/toast';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LoadError } from '../components/LoadError';
 import { PhotoCropModal } from '../components/PhotoCropModal';
 import { PET_ACCENTS } from '../utils/petLook';
 import { MORE_SPECIES, TILE_SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
@@ -75,10 +76,20 @@ function readStepDraft(): { name: string; birthDate: string; species: SpeciesKey
 /** Waits for the pet roster before deciding which flow this is: a user who
  *  already has pets only gets the intro slides (a replay), a brand-new one
  *  goes on to add their first pet. Decided once, up front — the roster
- *  changes mid-flow the moment that first pet is created. */
+ *  changes mid-flow the moment that first pet is created. A roster that did
+ *  not load is not «no pets»: the first-pet flow waits until it has. */
 export function Onboarding() {
-  const { pets, isFetched } = usePet();
+  const { pets, isFetched, isError, refetchPets } = usePet();
   const [searchParams] = useSearchParams();
+  if (isError) {
+    return (
+      <div className="page-container">
+        <div className="max-width-container">
+          <LoadError what="питомцев" onRetry={refetchPets} />
+        </div>
+      </div>
+    );
+  }
   if (!isFetched) return <LoadingSpinner />;
   return <OnboardingFlow initialReplay={searchParams.get('replay') === '1' || pets.length > 0} />;
 }
