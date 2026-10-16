@@ -176,7 +176,7 @@ def registration_status():
 def api_register():
     """Create an account and sign it in.
 
-    Registration may be closed (403 `registration_closed`), and GET /api/auth/registration says so before anything is sent. Consent to the policy is required and its version is stored with the account. Логин приводится к нижнему регистру: 3-30 знаков из латиницы, цифр, точки, дефиса и подчёркивания, первый знак буква или цифра (иначе 422 `register_username_invalid`, занятый: `register_username_taken`). Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. Нужны `full_name` (422 `register_name_required`), почта, когда почта настроена (`register_email_required`), и согласие (`privacy_consent_required`). Неверный адрес: `account_email_invalid`, подтверждённый у другого аккаунта: `account_email_taken`. Почта записывается в `pending_email`, и, если почта настроена, на неё уходит письмо; адресом для восстановления она станет после ссылки из письма. Если письмо не ушло, аккаунт всё равно создан (201), письмо можно отправить снова через POST /api/me/email/resend. С одного адреса: 5 созданных аккаунтов и 30 попыток в час.
+    Registration may be closed (403 `registration_closed`), and GET /api/auth/registration says so before anything is sent. Consent to the policy is required and its version is stored with the account. Логин приводится к нижнему регистру: 3-30 знаков из латиницы, цифр, точки, дефиса и подчёркивания, первый знак буква или цифра (иначе 422 `register_username_invalid`, занятый: `register_username_taken`). Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. Нужны `full_name` (422 `register_name_required`), почта, когда почта настроена (`register_email_required`), и согласие (`privacy_consent_required`). Неверный адрес: `account_email_invalid`, подтверждённый у другого аккаунта: `account_email_taken`. Почта записывается в `pending_email`, и, если почта настроена, на неё уходит письмо; адресом для восстановления она станет после ссылки из письма. Если письмо не ушло, аккаунт всё равно создан (201), письмо можно отправить снова через POST /api/me/email/resend. С одного адреса: 5 созданных аккаунтов и 30 попыток в час. На одну почту: 3 письма подтверждения за сутки, сверх этого 429 `register_letter_limit`, и аккаунт не создаётся.
     """
     if not registration_open():
         return error_response("registration_closed")
@@ -196,7 +196,14 @@ def api_register():
         return error_response(problem)
 
     from web import mail
-    from web.account import EMAIL_RE, _email_taken, send_verification
+    from web.account import (
+        EMAIL_RE,
+        _email_taken,
+        letter_limit_response,
+        release_verification_letter,
+        reserve_verification_letter,
+        send_verification,
+    )
     from web.legal import consent_record
 
     if not (data.full_name or "").strip():
@@ -211,6 +218,13 @@ def api_register():
             return error_response("account_email_invalid")
         if _email_taken(email, username):
             return error_response("account_email_taken")
+    # The letter is counted before the account is made, so a refused sign-up leaves no account behind.
+    letter = None
+    if email and mail.mail_configured():
+        letter = reserve_verification_letter(email)
+        if letter is None:
+            logger.warning(f"Sign-up refused, letters to the address used up for the day: ip={request.remote_addr}")
+            return letter_limit_response()
 
     try:
         app.db["users"].insert_one(
@@ -230,13 +244,15 @@ def api_register():
         )
     except DuplicateKeyError:
         # Someone took it between the check and the insert.
+        if letter is not None:
+            release_verification_letter(letter)
         return error_response("register_username_taken")
 
-    if email and mail.mail_configured():
+    if letter is not None:
         try:
             send_verification(username, email)
         except Exception as e:
-            # The account is made; the letter can be sent again from Settings.
+            # The account is made; the letter can be sent again from Settings, and the failed one stays counted.
             logger.error(f"Verification letter not sent at sign-up: user={username}, error={e}")
     logger.info(f"Account registered: user={username}, ip={request.remote_addr}")
     return signed_in_response("auth_registered", username, status=201)

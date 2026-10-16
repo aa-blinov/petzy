@@ -117,6 +117,9 @@ ERRORS: Dict[str, ErrorDef] = {
     "register_password_short": ErrorDef("register_password_short", "Пароль должен быть не короче 8 символов", 422),
     "register_password_long": ErrorDef("register_password_long", "Пароль слишком длинный", 422),
     "register_password_weak": ErrorDef("register_password_weak", "Такой пароль легко угадать. Придумайте другой", 422),
+    "register_letter_limit": ErrorDef(
+        "register_letter_limit", "Письма на этот адрес уже отправляли за последние сутки, попробуйте позже", 429
+    ),
     "share_already_invited": ErrorDef("share_already_invited", "Приглашение этому пользователю уже отправлено", 422),
     "share_invite_not_found": ErrorDef("share_invite_not_found", "Приглашение не найдено или уже отменено", 404),
     "share_not_member": ErrorDef("share_not_member", "У вас нет доступа к этому питомцу по приглашению", 404),

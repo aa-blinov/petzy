@@ -241,6 +241,10 @@ def ensure_indexes() -> None:
                                            answers instead of «wrong password»)
       login_failures      expires_at TTL    (wrong-password count per login, _id is the
                                            login: gone when its window or its lock ends)
+      verification_mail_log
+                          address_key + expires_at (letters to one address in the last day,
+                                           keyed by an HMAC: the address is not stored)
+                          expires_at TTL    (a row goes a day after its letter)
       <each health_*>     pet_id + date_time (per-type timelines)
     """
     # Migration: drop the obsolete `refresh_token_unique` on `token` if it
@@ -305,6 +309,13 @@ def ensure_indexes() -> None:
         (db.account_tokens, [("expires_at", ASCENDING)], "account_tokens_ttl", {"expireAfterSeconds": 0}),
         # Wrong-password count per login (web/login_lockout.py): the row goes when its window or its lock ends.
         (db.login_failures, [("expires_at", ASCENDING)], "login_failures_ttl", {"expireAfterSeconds": 0}),
+        # Confirmation letters counted per address for a day (web/account.py): keyed by an HMAC, not the address.
+        (
+            db.verification_mail_log,
+            [("address_key", ASCENDING), ("expires_at", ASCENDING)],
+            "verification_mail_log_address",
+        ),
+        (db.verification_mail_log, [("expires_at", ASCENDING)], "verification_mail_log_ttl", {"expireAfterSeconds": 0}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (
             db.refresh_tokens,

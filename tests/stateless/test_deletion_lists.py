@@ -39,6 +39,9 @@ HELD_ELSEWHERE = {
     "medical_due_reminders_sent": "a dedupe row for one repeat stage; `purge_at` TTL drops it",
     "login_failures": "a wrong-password count keyed by the lowercase login, not the account's rows: "
     "`delete_account` clears it with `clear_failures`, and the TTL ends it within fifteen minutes",
+    "verification_mail_log": "letters counted per address for a day, keyed by an HMAC of the address and not by the "
+    "account: deleting an account must not reset the count, or a sign-up could be repeated at will; the TTL on "
+    "`expires_at` drops each row a day after its letter",
 }
 
 
