@@ -131,6 +131,13 @@ export function usePet() {
     }
   }, [pets, selectedPetId, selectedPetName, isFetched, isError, setSelectedPet]);
 
+  // The saved name follows the roster. A pet renamed in its form is the name the header and every form show from
+  // then on, with no reload: PetForm invalidates the roster after a save. Written only when it differs, so it settles.
+  useEffect(() => {
+    const selected = pets.find((p) => p._id === selectedPetId);
+    if (selected && selected.name !== selectedPetName) setSelectedPetName(selected.name);
+  }, [pets, selectedPetId, selectedPetName, setSelectedPetName]);
+
   const getSelectedPet = useMemo((): Pet | null => {
     if (!selectedPetId) return null;
     return pets.find(p => p._id === selectedPetId) || null;

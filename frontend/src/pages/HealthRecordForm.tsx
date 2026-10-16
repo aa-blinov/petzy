@@ -77,10 +77,7 @@ export function HealthRecordForm() {
   const { type, id } = useParams<{ type: string; id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedPetId, selectedPetName, getSelectedPet } = usePet();
-  // The pet's own name, from the roster; the saved one is only a fallback for the moment
-  // before the roster arrives (usePet keeps `selectedPetName` in localStorage).
-  const petName = getSelectedPet?.name || selectedPetName;
+  const { pets, selectedPetId, selectedPetName, getSelectedPet } = usePet();
   const queryClient = useQueryClient();
   const { eventTypesByKey, isLoading: eventTypesLoading } = useEventTypes();
 
@@ -183,6 +180,8 @@ export function HealthRecordForm() {
   const [recordedBy, setRecordedBy] = useState<string | null>(null);
   // When the record was written, in the viewer's own clock: «кто и когда записал».
   const [recordedAt, setRecordedAt] = useState<string | null>(null);
+  // The pet the record belongs to, as the record itself says: the form names it, and an edit is saved to it.
+  const [recordPetId, setRecordPetId] = useState<string | null>(null);
 
   // The fields of a new record that can hold a default, and which of them came filled from the person's own defaults.
   // The weight itself is what changes each time; everything else about a record can be remembered.
@@ -284,7 +283,7 @@ export function HealthRecordForm() {
   // field names — the mirror image of onSubmit's payload building below.
   const normalizeData = useCallback((data: HealthRecord) => {
     const formData: Record<string, unknown> = {
-      pet_id: data.pet_id || selectedPetId || '',
+      pet_id: data.pet_id || '',
       comment: data.comment ?? '',
     };
 
@@ -312,7 +311,7 @@ export function HealthRecordForm() {
     }
 
     return formData;
-  }, [fields, selectedPetId]);
+  }, [fields]);
 
   useEffect(() => {
     if (!selectedPetId) {
@@ -333,6 +332,7 @@ export function HealthRecordForm() {
             data = await healthRecordsService.get(id!);
           }
           reset(normalizeData(data));
+          setRecordPetId(data.pet_id || null);
           setRecordedBy(data.username ?? null);
           setRecordedAt(typeof data.created_at === 'string' ? utcStampToLocal(data.created_at) : null);
           setLoadError(false);
@@ -363,6 +363,7 @@ export function HealthRecordForm() {
       .get(id!)
       .then((data) => {
         reset(normalizeData(data));
+        setRecordPetId(data.pet_id || null);
         setRecordedBy(data.username ?? null);
         setRecordedAt(typeof data.created_at === 'string' ? utcStampToLocal(data.created_at) : null);
       })
@@ -417,7 +418,9 @@ export function HealthRecordForm() {
   };
 
   const onSubmit = async (data: Record<string, unknown>) => {
-    if (!selectedPetId || !type || !eventType) return;
+    // An edit is saved to the record's own pet, which is not necessarily the selected one.
+    const petId = isEditing ? recordPetId : selectedPetId;
+    if (!petId || !type || !eventType) return;
     // A second press while the first request is still unanswered is the same save: the server
     // answers the repeat with the record it already has (see web/events.py), but there is no
     // point in making it at all.
@@ -430,7 +433,7 @@ export function HealthRecordForm() {
         fieldsPayload[field.name] = data[field.name];
       }
       const payload = {
-        pet_id: selectedPetId,
+        pet_id: petId,
         // Zod's resolver already enforced these as non-empty strings
         // before react-hook-form ever calls this handler.
         date: data.date as string,
@@ -550,6 +553,12 @@ export function HealthRecordForm() {
     );
   }
 
+  // The pet the form names. A record being edited names its own pet, from the roster: the selected pet is
+  // someone else's name when the record is not theirs, and a pet the roster no longer has (access closed,
+  // deleted) is named by nobody. A new record names the selected pet; its saved name stands in until the roster arrives.
+  const petName = isEditing
+    ? (pets.find((p) => p._id === recordPetId)?.name ?? null)
+    : getSelectedPet?.name || selectedPetName;
   // The line under the title belongs to it (4px, the gap the spacing table gives a title and
   // the line it is about). The header block's own bottom margin is the room before whatever
   // comes after the pair, so when the line is there the margin sits on the line instead.
