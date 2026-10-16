@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Skeleton } from 'antd-mobile';
+import { Button } from 'antd-mobile';
 import { FileHeart } from 'lucide-react';
 
 import { EmptyState } from '../components/EmptyState';
@@ -10,6 +10,7 @@ import { httpStatus } from '../services/api';
 import { formatShareEnd, medicalShareService } from '../services/medicalShare.service';
 import { showToast } from '../utils/toast';
 import { OverdueStrip, VetView } from './MedicalCard';
+import { MedicalCardSkeleton } from '../components/Skeletons';
 import './MedicalCard.css';
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
@@ -67,9 +68,7 @@ export function SharedMedicalCard() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding" aria-busy="true">
-          <p className="medcard__hint">Загружаем медкарту…</p>
-          <Skeleton.Title animated />
-          <Skeleton.Paragraph lineCount={6} animated />
+          <MedicalCardSkeleton lines={6} />
         </div>
       </div>
     );

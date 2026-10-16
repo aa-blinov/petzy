@@ -690,7 +690,7 @@ export function MedicalRecordForm() {
             ) : (
               <Form.Item label="От чего" description="Чтобы отметить защиту, укажите её в названии прививки">
                 <p className="medrec__add-hint">
-                  {catalogQuery.isError ? 'Список защит не загрузился. Можно указать защиту в названии прививки' : 'Загружаем список защит'}
+                  {catalogQuery.isError ? 'Список защит не загрузился. Можно указать защиту в названии прививки' : 'Загружаем…'}
                 </p>
                 {catalogQuery.isError && (
                   <Button size="small" fill="outline" color="primary" onClick={() => void catalogQuery.refetch()}>

@@ -90,6 +90,8 @@ interface SkeletonListProps {
   topPadding?: number;
   /** Which skeleton to repeat. Defaults to HistoryItemSkeleton. */
   render?: (index: number) => React.ReactNode;
+  /** Without the page's side gutter, for a list that already sits inside a padded block. */
+  flush?: boolean;
 }
 
 import * as React from 'react';
@@ -99,12 +101,13 @@ export function SkeletonList({
   gap = 12,
   topPadding = 0,
   render = () => <HistoryItemSkeleton />,
+  flush = false,
 }: SkeletonListProps) {
   return (
     <div
       // skeleton-list: hidden for the first 300 ms (globals.css), so a
       // quick load never flashes it.
-      className="safe-area-padding skeleton-list"
+      className={flush ? 'skeleton-list' : 'safe-area-padding skeleton-list'}
       role="status"
       style={{
         marginTop: 'var(--spacing-sm)',
@@ -117,6 +120,24 @@ export function SkeletonList({
       <span className="sr-only">Загрузка</span>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} aria-hidden>{render(i)}</div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A medical card while it loads: the bar where its title goes (the same row as the real title),
+ * then the lines of its first block.
+ */
+export function MedicalCardSkeleton({ lines = 5 }: { lines?: number }) {
+  return (
+    <div role="status" className="skeleton-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <span className="sr-only">Загрузка</span>
+      <div className="screen-head" aria-hidden>
+        <div className="skeleton" style={{ height: 24, width: '55%' }} />
+      </div>
+      {Array.from({ length: lines }).map((_, i) => (
+        <div key={i} className="skeleton" style={{ height: 12, width: `${92 - ((i * 17) % 30)}%` }} />
       ))}
     </div>
   );

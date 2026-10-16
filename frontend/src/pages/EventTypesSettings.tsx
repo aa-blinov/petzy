@@ -22,7 +22,7 @@ import { getEventIcon } from '../utils/iconRegistry';
 import { EmptyState } from '../components/EmptyState';
 import { CardChevron } from '../components/CardChevron';
 import { LoadError } from '../components/LoadError';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SkeletonList } from '../components/Skeletons';
 import { useAdmin } from '../hooks/useAdmin';
 import { useAuth } from '../hooks/useAuth';
 
@@ -91,7 +91,7 @@ export function EventTypesSettings() {
         </div>
 
         {isLoading ? (
-          <LoadingSpinner fullscreen={false} />
+          <SkeletonList count={3} />
         ) : error ? (
           // «У вас ничего нет» after a failed request is a lie the person acts on: they start creating types again.
           <LoadError what="типы событий" onRetry={() => refetch()} compact />

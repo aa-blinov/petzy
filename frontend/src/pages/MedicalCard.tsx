@@ -2,7 +2,7 @@ import { weightRangeByYear } from '../utils/weightRanges';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Skeleton } from 'antd-mobile';
+import { Button } from 'antd-mobile';
 import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Download, FileHeart, Link2, Minus, ShieldAlert } from 'lucide-react';
 import { MedicalShareSheet } from '../components/MedicalShareSheet';
 import { MedicalSummary } from '../components/MedicalSummary';
@@ -20,6 +20,7 @@ import { showUndo } from '../utils/undo';
 import { httpStatus } from '../services/api';
 import { formatDate, hasLife, weightDelta } from '../utils/medicalCardFormat';
 import { pluralRu } from '../utils/relativeTime';
+import { MedicalCardSkeleton } from '../components/Skeletons';
 import './MedicalCard.css';
 
 const EMPTY_TEXT: Record<MedicalKind, string> = {
@@ -944,8 +945,7 @@ export function MedicalCard() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding" aria-busy="true">
-          <Skeleton.Title animated />
-          <Skeleton.Paragraph lineCount={6} animated />
+          <MedicalCardSkeleton lines={6} />
         </div>
       </div>
     );

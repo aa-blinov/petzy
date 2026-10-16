@@ -338,6 +338,21 @@ The top of the feed: the pet's photo (or a species gradient with its outline ico
 ### Medical card
 One page of one pet, in two modes under the title «Медкарта» (the pet is named in the bar above), a segmented switch with «Записи» first and «Врачу» second. «Записи» is the working mode and opens every time, so that whoever comes back to record a visit finds the «+»: progress and the one next step, eight tiles (a tile opens its part on its own screen; «Документы» goes straight to the documents), «К приёму», and at the bottom «Для врача» with two different buttons, the file and the link. «Врачу» is read at the counter and is entered on purpose, never remembered between visits: the red overdue strip, one line naming the patient (name, species, breed, age) and one with the weight and the day it was taken, the file and the link side by side, then allergies, medicines, «На приём», what is due, clinics, life, the last visits and operations, past courses; no editing. The page a vet opens by a link has the pet's name as its title, says how old the data is and until when the link lives, then the overdue strip, then the same, with its one «Скачать PDF» after what there is to read. The chosen segment is lit: accent tint, accent text and ring, never the darker of the two. The red is for overdue only; the allergy block is a neutral apricot with a red icon. A row says its lines in tiers: what is acted on (ink, 600), the facts (ink, bold label), the context (grey), the rest (quiet). A status is always a word and an icon; days are counted («Просрочено на 35 дней»). A screen whose title already names a block does not name it again: the heading stays for a screen reader only.
 
+### Loading
+
+**The Loading Rule.** Waiting shows one indicator, chosen by what the wait stands in for, and a screen never shows two at once. The words are always «Загружаем…».
+
+| What is loading | What the person sees | Code |
+|---|---|---|
+| A list of records or cards (the feed, the history, the pets, the documents, the medicines, the medical card, the shared links, the event types) | Placeholder rows of the shape that is coming, shown only after 300 ms | `SkeletonList`, `PetCardSkeleton`, `DashboardSkeleton`, `MedicalCardSkeleton` |
+| A screen of one thing (a form, a profile, an account page, a text on its own), or what the screen is about before it is known (its pet, the session, the page's code) | One spinner with its words, centred on the screen | `LoadingSpinner` |
+| A block inside a screen (a chart, a sheet, a picker) | One spinner inside the block, the screen around it stays | `LoadingSpinner fullscreen={false}` |
+| The next part of a list, or a button that loads or retries | The words «Загружаем…» where the button's words were | the button |
+| A button that saves, sends or uploads | Its spinner in place of its words, the button disabled | `SpinnerButton` |
+| A value or a hint in a row | The words «Загружаем…» in its place | the row |
+
+A skeleton stands for the list it replaces: the same rows and the same gaps, and it never sits under a spinner.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -348,6 +363,7 @@ One page of one pet, in two modes under the title «Медкарта» (the pet 
 - **Do** write numbers the Russian way with the unit beside them («29,1 кг»).
 - **Do** keep touch targets at 44px, even for small chips, grips and links.
 - **Do** let `size` pick a button's height, radius and label: a `Button` carries no radius, height or weight of its own.
+- **Do** show a list's placeholder rows, one spinner for a screen of one thing, and the words «Загружаем…» for more items.
 
 ### Don't:
 - **Don't** put ginger-cat (#C46A3F) under white text or use it as text on cream.
@@ -356,3 +372,4 @@ One page of one pet, in two modes under the title «Медкарта» (the pet 
 - **Don't** use DynaPuff for anything but the «Petzy» wordmark, or gradient text anywhere else.
 - **Don't** join facts with a middle dot («·»); separate them with layout or a comma.
 - **Don't** use pure grey neutrals, pure black text or a pure white page.
+- **Don't** stack a spinner on a skeleton, or show two indicators on one screen.
