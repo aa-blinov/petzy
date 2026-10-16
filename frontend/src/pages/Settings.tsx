@@ -55,7 +55,7 @@ export function Settings() {
   // flight the description was a single space: an empty line under a label, which reads as a screen that
   // failed to load rather than one still loading.
   const accountText = (ready: (account: Account) => string) =>
-    accountFailed ? 'Не удалось загрузить' : !account || accountLoading ? 'Загружаем' : ready(account);
+    accountFailed ? 'Не удалось загрузить' : !account || accountLoading ? 'Загружаем…' : ready(account);
 
   // A row that acts on one pet says what it can do only when that pet is known. While the roster loads the
   // row says nothing at all (there is nothing true to say yet), and when there is no pet the row leads to

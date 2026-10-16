@@ -178,7 +178,7 @@ async def main():
                 if not await open_screen(pg, path):
                     check(f"{route} открывается", False, f"не открылся {path}")
                     continue
-                body = await wait_until(pg, lambda text: "Загрузка..." not in text and all(m in text for m in markers))
+                body = await wait_until(pg, lambda text: "Загружаем…" not in text and all(m in text for m in markers))
                 check(
                     f"{route} показывает своё",
                     all(m in body for m in markers),
@@ -203,7 +203,7 @@ async def main():
                 ("/consent", ["Согласие на обработку"]),
             ]:
                 await open_screen(pg, route)
-                body = await wait_until(pg, lambda text: "Загрузка..." not in text and all(m in text for m in markers))
+                body = await wait_until(pg, lambda text: "Загружаем…" not in text and all(m in text for m in markers))
                 check(f"без входа {route} показывает своё", all(m in body for m in markers), body[:120])
                 check(f"без входа {route} без текста о сбое", not any(word in body for word in BROKEN), body[:120])
         finally:

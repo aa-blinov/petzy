@@ -282,7 +282,7 @@ export function Dashboard() {
                         disabled={isFetchingNextPage}
                         loading={isFetchingNextPage}
                       >
-                        {isFetchingNextPage ? 'Загрузка...' : 'Загрузить ещё'}
+                        {isFetchingNextPage ? 'Загружаем…' : 'Загрузить ещё'}
                       </Button>
                     </div>
                   </AutoLoadMore>

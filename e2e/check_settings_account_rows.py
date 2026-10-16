@@ -42,7 +42,7 @@ async def main():
             await pg.goto(BASE + "/settings")
             await pg.get_by_role("heading", name="Настройки").first.wait_for(timeout=15000)
             await pg.wait_for_timeout(800)
-            check("пока аккаунт грузится, написано «Загружаем»", "Загружаем" in await pg.inner_text("body"))
+            check("пока аккаунт грузится, написано «Загружаем…»", "Загружаем…" in await pg.inner_text("body"))
             await pg.wait_for_timeout(4500)
             check(
                 "и потом приходит настоящий логин",

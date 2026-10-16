@@ -271,7 +271,7 @@ export function History() {
                             disabled={isFetchingNextPage}
                             loading={isFetchingNextPage}
                         >
-                            {isFetchingNextPage ? 'Загрузка...' : 'Загрузить ещё'}
+                            {isFetchingNextPage ? 'Загружаем…' : 'Загрузить ещё'}
                         </Button>
                     </div>
                 )}

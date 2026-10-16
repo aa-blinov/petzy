@@ -67,7 +67,7 @@ export function SharedMedicalCard() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding" aria-busy="true">
-          <p className="medcard__hint">Загружаем медкарту</p>
+          <p className="medcard__hint">Загружаем медкарту…</p>
           <Skeleton.Title animated />
           <Skeleton.Paragraph lineCount={6} animated />
         </div>
