@@ -1,0 +1,7 @@
+# MCP-сервер Petzy: официальный SDK, HTTP-клиент к API и веб-сервер для /mcp.
+# pydantic совпадает с корневым requirements.txt: в одном .venv одна версия.
+mcp==2.3.0
+httpx==0.28.1
+pydantic==2.13.5
+starlette==1.8.0
+uvicorn==0.54.0
