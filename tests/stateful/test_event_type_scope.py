@@ -120,3 +120,82 @@ def test_family_can_log_a_record_of_it_on_the_shared_pet(client, walk, family, t
         headers=_auth(family),
     )
     assert response.status_code == 201, response.get_json()
+
+
+@pytest.fixture
+def family_pet(mock_db, family):
+    """A pet only the family member owns: the author of the type cannot open it."""
+    return mock_db["pets"].insert_one({"name": "Барсик", "owner": "family", "shared_with": []}).inserted_id
+
+
+def _log(client, token, pet_id, type_key):
+    return client.post(
+        f"/api/events?pet_id={pet_id}",
+        json={"pet_id": str(pet_id), "type": type_key, "date": "2026-10-01", "time": "09:00", "fields": {}},
+        headers=_auth(token),
+    )
+
+
+def _records_on(mock_db, type_key, pet_id):
+    return mock_db["events"].count_documents({"type": type_key, "pet_id": str(pet_id)})
+
+
+def test_a_record_on_a_pet_the_author_cannot_open_blocks_the_deletion(
+    client, mock_db, walk, regular_user_token, family, test_pet, family_pet
+):
+    # The family member logged the author's type on their own pet. Nothing goes, not even the author's own record.
+    assert _log(client, regular_user_token, test_pet["_id"], walk).status_code == 201
+    assert _log(client, family, family_pet, walk).status_code == 201
+
+    response = client.delete(f"/api/event-types/{walk}?with_events=true", headers=_auth(regular_user_token))
+
+    assert response.status_code == 422
+    assert response.get_json()["code"] == "event_type_has_events_elsewhere"
+    assert response.get_json()["error"] == "Этот тип есть в записях, которых вы не видите, поэтому удалить его нельзя"
+    assert _records_on(mock_db, walk, family_pet) == 1
+    assert _records_on(mock_db, walk, test_pet["_id"]) == 1
+    assert mock_db["event_types"].find_one({"key": walk}) is not None
+
+
+@pytest.mark.parametrize("query", ["", "?preview=true", "?with_events=true"])
+def test_every_way_of_asking_is_refused_the_same_way(
+    client, mock_db, walk, regular_user_token, family, family_pet, query
+):
+    # The preview must not offer a deletion that the real one refuses, and the plain request must not ask about records.
+    assert _log(client, family, family_pet, walk).status_code == 201
+
+    response = client.delete(f"/api/event-types/{walk}{query}", headers=_auth(regular_user_token))
+
+    assert response.status_code == 422
+    assert response.get_json()["code"] == "event_type_has_events_elsewhere"
+    assert _records_on(mock_db, walk, family_pet) == 1
+    assert mock_db["event_types"].find_one({"key": walk}) is not None
+
+
+def test_records_only_on_the_authors_own_pet_go_with_the_type(
+    client, mock_db, walk, regular_user_token, family, test_pet
+):
+    assert _log(client, family, test_pet["_id"], walk).status_code == 201
+
+    response = client.delete(f"/api/event-types/{walk}?with_events=true", headers=_auth(regular_user_token))
+
+    assert response.status_code == 200
+    assert mock_db["events"].count_documents({"type": walk}) == 0
+    assert mock_db["event_types"].find_one({"key": walk}) is None
+
+
+def test_records_on_a_pet_shared_with_the_author_go_with_the_type(client, mock_db, family, test_pet):
+    # The family member is the author here: the pet is not theirs, only shared with them, so they can open it.
+    created = client.post(
+        "/api/event-types",
+        json={"label": "Тренировка на поводке", "icon": "footprints", "color": "green", "fields": []},
+        headers=_auth(family),
+    )
+    assert created.status_code == 201
+    key = created.get_json()["key"]
+    assert _log(client, family, test_pet["_id"], key).status_code == 201
+
+    response = client.delete(f"/api/event-types/{key}?with_events=true", headers=_auth(family))
+
+    assert response.status_code == 200
+    assert mock_db["events"].count_documents({"type": key}) == 0

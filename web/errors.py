@@ -133,6 +133,11 @@ ERRORS: Dict[str, ErrorDef] = {
         "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
     ),
     "event_type_has_events": ErrorDef("event_type_has_events", "У этого типа есть записи. Сначала удалите их", 422),
+    "event_type_has_events_elsewhere": ErrorDef(
+        "event_type_has_events_elsewhere",
+        "Этот тип есть в записях, которых вы не видите, поэтому удалить его нельзя",
+        422,
+    ),
     # Documents
     "document_file_required": ErrorDef("document_file_required", "Файл обязателен", 422),
     "document_unsupported_type": ErrorDef("document_unsupported_type", "Неподдерживаемый тип файла", 422),
