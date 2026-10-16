@@ -147,6 +147,19 @@ export interface MedicalAlerts {
   medication: boolean;
 }
 
+/**
+ * The medical card's query, shared by the page and the tab warm-up in App: a tap on the tab then shows the card
+ * from memory at once, as the other tabs do, and the page still asks again on opening (refetchOnMount: 'always').
+ */
+export function medicalCardQuery(petId: string) {
+  return {
+    queryKey: ['medical-card', petId] as const,
+    queryFn: () => medicalCardService.get(petId),
+    // Built from records that change elsewhere: always asked again on opening.
+    staleTime: 0,
+  };
+}
+
 export const medicalCardService = {
   /** What is overdue, without the card: the dot on the «Медкарта» tab. */
   async alerts(petId: string): Promise<MedicalAlerts> {
