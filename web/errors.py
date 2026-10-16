@@ -26,6 +26,10 @@ class MedicationNotFoundDuringDeletion(TransactionRollback):
     """Medication disappeared between access check and transaction delete."""
 
 
+class PetDeletionFailed(Exception):
+    """A record of a pet could not be deleted. The pet is still there, and deleting it again finishes the job."""
+
+
 @dataclass(frozen=True)
 class ErrorDef:
     """Definition of a single error type."""
@@ -97,6 +101,8 @@ ERRORS: Dict[str, ErrorDef] = {
     ),
     "mail_not_configured": ErrorDef("mail_not_configured", "Отправка писем пока не настроена", 503),
     "mail_send_failed": ErrorDef("mail_send_failed", "Не удалось отправить письмо. Попробуйте позже", 503),
+    # Pet deletion (web/pets.py): the pet stays, and repeating the request finishes the job
+    "pet_delete_failed": ErrorDef("pet_delete_failed", "Не удалось удалить питомца, попробуйте ещё раз", 503),
     "registration_closed": ErrorDef("registration_closed", "Регистрация сейчас закрыта", 403),
     "register_username_invalid": ErrorDef(
         "register_username_invalid",
