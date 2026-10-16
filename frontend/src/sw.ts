@@ -7,6 +7,7 @@ import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { CacheFirst, NetworkOnly } from 'workbox-strategies'
 import { clientsClaim } from 'workbox-core'
+import { ExpirationPlugin } from 'workbox-expiration'
 
 // A new release takes over open pages at once (see utils/swUpdate.ts,
 // which reloads them into it where that's safe).
@@ -36,6 +37,19 @@ registerRoute(
 registerRoute(
   ({ url }) => /^\/assets\/(caveat|marck-script|bad-script|pacifico|neucha|amatic-sc)-.*\.woff2$/.test(url.pathname),
   new CacheFirst({ cacheName: 'pet-fonts' })
+)
+
+// The code of the screens the first screen does not open (LAZY_SCREEN_CHUNKS in vite.config.ts) and the pets' face
+// stylesheets are fetched the first time they are used and kept here. Chunk names carry a content hash, so a cached copy
+// never goes stale. Workbox stores only status 200 by default, so a chunk that a later release removed is never kept as an
+// error. The entry cap and the age limit bound Cache Storage across releases. Only same-origin scripts and styles under
+// /assets/ match: API responses, photos, documents and PDFs are never stored here.
+registerRoute(
+  ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/assets/') && /\.(js|css)$/.test(url.pathname),
+  new CacheFirst({
+    cacheName: 'app-chunks',
+    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 24 * 60 * 60, purgeOnQuotaError: true })],
+  })
 )
 
 // No API response is ever served from a cache.

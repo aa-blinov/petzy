@@ -2,6 +2,20 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Chunks of the screens the first screen never opens, named as Rollup names them (a page, or a shared module it was merged
+// under). Their code is fetched on first use and kept by the runtime cache in sw.ts. recharts is in HistoryChart. A chunk the
+// first screen imports must never carry one of these names: Rollup names a shared chunk after one of its modules, so if the
+// feed started to import Segmented, its chunk would be left out of the precache without any error and break it offline.
+const LAZY_SCREEN_CHUNKS = [
+  'AccountDelete', 'AdminPanel', 'chevron-down', 'DocumentForm', 'DocumentsList', 'download', 'EventTypeForm',
+  'EventTypesSettings', 'file-up', 'FormDefaults', 'HealthRecordForm', 'Help', 'History', 'HistoryChart', 'layout-grid',
+  'link-2', 'log-out', 'MedicalCard', 'MedicalCardSection', 'MedicalLinks', 'MedicalProfileForm', 'MedicalRecordForm',
+  'MedicalShareSheet', 'medicationDelete', 'MedicationForm', 'MedicationsList', 'Onboarding', 'palette',
+  'pendingDocumentFile', 'PetEvents', 'PetForm', 'PetLookSettings', 'Pets', 'PhotoCropModal', 'plus', 'Privacy',
+  'ProductPickerSheet', 'Register', 'Segmented', 'Settings', 'SharedMedicalCard', 'shield-alert', 'sparkles',
+  'SpinnerButton', 'UserForm', 'UserProfile', 'users', 'vendor-dnd', 'VisitPrepForm',
+]
+
 // https://vite.dev/config/
 export default defineConfig(() => {
   // Use root path everywhere for simplicity
@@ -27,8 +41,14 @@ export default defineConfig(() => {
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // The pets' hand-written faces are fetched when one is used and kept by the service worker's own cache (sw.ts), not
-        // installed with the app for everyone.
-        globIgnores: ['**/assets/{caveat,marck-script,bad-script,pacifico,neucha,amatic-sc}-*.woff2'],
+        // installed with the app for everyone. Their stylesheets (fontsource's per-subset files) go with them.
+        // The app installs with index, Dashboard and what they import statically. The screens listed in LAZY_SCREEN_CHUNKS
+        // are left out and cached on first use (sw.ts, app-chunks).
+        globIgnores: [
+          '**/assets/{caveat,marck-script,bad-script,pacifico,neucha,amatic-sc}-*.woff2',
+          `**/assets/{${LAZY_SCREEN_CHUNKS.join(',')}}-*.{js,css}`,
+          '**/assets/{cyrillic,latin,latin-ext}-*.css',
+        ],
       },
       includeAssets: ['favicon.svg', 'icon.svg', 'apple-touch-icon.png', 'badge-96.png'],
       // The one manifest (a second, hand-written public/manifest.json with
