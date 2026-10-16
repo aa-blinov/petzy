@@ -350,8 +350,13 @@ def api_logout():
     happily mint access tokens. Deleting by username keeps the
     invariant "after logout, no refresh token for this user exists".
     """
-    # A native app has no cookies: it sends its refresh token in the body.
-    refresh_token = request.cookies.get("refresh_token") or (request.get_json(silent=True) or {}).get("refresh_token")
+    # A native app has no cookies: it sends its refresh token in the body. Only a non-empty string is a token: a JSON
+    # object there would reach the database as a query operator ({"$ne": null} deleted someone else's row).
+    body = request.get_json(silent=True)
+    body_token = body.get("refresh_token") if isinstance(body, dict) else None
+    refresh_token = request.cookies.get("refresh_token") or body_token
+    if not (isinstance(refresh_token, str) and refresh_token):
+        refresh_token = None
 
     if refresh_token:
         # Must see patched app.db in tests

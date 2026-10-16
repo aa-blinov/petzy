@@ -188,6 +188,9 @@ def revoke_user_sessions(username) -> None:
 
 def verify_token(token, token_type="access"):
     """Verify JWT token and return payload."""
+    # Only a string can be a token. A JSON object or list from a request body is refused before the parser sees it.
+    if not isinstance(token, str):
+        return None
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         if payload.get("type") != token_type:
