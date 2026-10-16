@@ -405,11 +405,12 @@ export function MedicationsList() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: 'var(--spacing-lg)',
-                    minHeight: '40px',
                 }}>
-                    <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
-                        Лекарства
-                    </h1>
+                    <div className="screen-head">
+                      <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
+                          Лекарства
+                      </h1>
+                    </div>
                 </div>
 
                 {isLoading ? (

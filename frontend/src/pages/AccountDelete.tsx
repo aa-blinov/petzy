@@ -124,9 +124,11 @@ export function AccountDelete() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding">
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            Удаление аккаунта
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              Удаление аккаунта
+            </h1>
+          </div>
 
           {isLoading && <LoadingSpinner />}
           {isError && (

@@ -670,6 +670,19 @@ button.setting-row:active {
     color: var(--app-text-primary);
 }
 
+/* A screen's title is centred in a row of the touch height, so every title's centre stands at the same height,
+   and an action on the same row lines up with it. Line height 1.2 is the Display leading of DESIGN.md. */
+.screen-head {
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-min);
+}
+
+.screen-title {
+    margin: 0;
+    line-height: 1.2;
+}
+
 .tap-feedback,
 .adm-button,
 .adm-list-item-clickable,

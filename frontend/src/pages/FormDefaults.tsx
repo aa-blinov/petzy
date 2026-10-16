@@ -146,7 +146,9 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
+          <div className="screen-head">
+            <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
+          </div>
           <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
             Питомец: <span className="pet-name">{pet.name}</span>. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запоминать значения». Здесь их можно поправить или забыть. У обязательного поля с вариантами, когда значение не запомнено, выбран первый вариант
           </p>

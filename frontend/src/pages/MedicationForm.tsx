@@ -430,11 +430,12 @@ export function MedicationForm() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    minHeight: '40px',
                 }}>
-                    <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
-                        {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
-                    </h1>
+                    <div className="screen-head">
+                      <h1 className="screen-title" style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
+                          {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
+                      </h1>
+                    </div>
                 </div>
                 {/* The pet's name is the line the title is about, so it sits 4px under it (the
                     spacing table's title and the line it is about) and carries the room before

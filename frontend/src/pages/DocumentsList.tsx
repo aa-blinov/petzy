@@ -299,12 +299,13 @@ export function DocumentsList() {
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: 'var(--spacing-lg)',
-            minHeight: '40px',
           }}
         >
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
-            Документы
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-display)', margin: 0 }}>
+              Документы
+            </h1>
+          </div>
         </div>
 
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>

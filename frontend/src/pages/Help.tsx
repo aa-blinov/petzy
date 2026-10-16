@@ -126,9 +126,11 @@ export function Help() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 className="display-headline" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            Справка
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title display-headline" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              Справка
+            </h1>
+          </div>
           <p style={{ margin: 'var(--spacing-xs) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Ответы на частые вопросы и как устроены основные экраны
           </p>

@@ -457,9 +457,11 @@ export function DocumentForm() {
     >
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
-          <h1 style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {isEditing ? 'Редактировать документ' : 'Новый документ'}
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              {isEditing ? 'Редактировать документ' : 'Новый документ'}
+            </h1>
+          </div>
         </div>
 
         <div>

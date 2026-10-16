@@ -620,9 +620,11 @@ export function MedicalRecordForm() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {isEditing ? labels!.one : fromId ? (kind === 'parasite' ? 'Повторная обработка' : 'Повторная прививка') : `Новая запись: ${labels!.one.toLowerCase()}`}
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              {isEditing ? labels!.one : fromId ? (kind === 'parasite' ? 'Повторная обработка' : 'Повторная прививка') : `Новая запись: ${labels!.one.toLowerCase()}`}
+            </h1>
+          </div>
           {pet && <p className="medrec__pet">{pet.name}</p>}
         </div>
 

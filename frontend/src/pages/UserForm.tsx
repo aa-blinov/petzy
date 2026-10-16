@@ -247,9 +247,11 @@ export function UserForm() {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-            {isEditing ? 'Редактировать пользователя' : 'Создать пользователя'}
-          </h1>
+          <div className="screen-head">
+            <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
+              {isEditing ? 'Редактировать пользователя' : 'Создать пользователя'}
+            </h1>
+          </div>
         </div>
 
         {/* A real form around the fields: Enter in any of them submits, as it does on every other form in the
