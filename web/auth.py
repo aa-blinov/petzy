@@ -18,6 +18,7 @@ from flask_pydantic_spec import Request, Response
 from web.app import api, limiter, logger  # app-level singletons
 import web.app as app  # use app.db so test patches (web.app.db) are visible
 from web.configs import RATE_LIMIT_CONFIG  # per-route limits overridable via env
+from web import login_lockout  # wrong-password count per login, see web/login_lockout.py
 from web.db import refresh_token_hash
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -273,6 +274,9 @@ def api_login():
     """API endpoint for login - returns JWT tokens.
 
     A request without an ``Origin`` header, which is what a native app sends, gets ``access_token`` and ``refresh_token`` in the body. A browser always sends ``Origin`` and is signed in with httpOnly cookies instead. Five attempts a minute from one address.
+
+    Ten wrong passwords for one login within fifteen minutes lock that login for fifteen minutes, the right password
+    included; the answer then is the same 401 as for a wrong one.
     """
     # `context` is injected by flask-pydantic-spec at runtime; static type checker doesn't know this attribute.
     data = request.context.body  # type: ignore[attr-defined]
@@ -284,12 +288,19 @@ def api_login():
     if username != username.lower() and not app.db["users"].find_one({"username": username}, {"_id": 1}):
         username = username.lower()
 
+    # A locked login is refused before its password is checked, with the answer a wrong password gets.
+    if login_lockout.is_locked(username):
+        logger.warning(f"Login refused, too many wrong passwords: user={username}, ip={client_ip}")
+        return error_response("unauthorized_invalid_credentials")
+
     # Verify username and password
     if verify_user_credentials(username, password):
+        login_lockout.clear_failures(username)
         logger.info(f"Successful login: user={username}, ip={client_ip}")
         return signed_in_response("auth_login_success", username)
 
-    # Failed login
+    # Failed login, counted for this login whether or not the account exists
+    login_lockout.record_failure(username)
     logger.warning(f"Failed login attempt: user={username}, ip={client_ip}")
     return error_response("unauthorized_invalid_credentials")
 

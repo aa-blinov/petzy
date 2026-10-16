@@ -42,6 +42,7 @@ def test_ensure_indexes_creates_expected_indexes():
             "medical_due_reminders_sent_unique",
             "medical_due_reminders_sent_ttl",
         ],
+        "login_failures": ["login_failures_ttl"],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()
@@ -147,3 +148,14 @@ def test_ensure_indexes_makes_a_refresh_token_hash_unique():
         mock_db.refresh_tokens.insert_one({"token_hash": "f" * 64, "username": "a"})
         with pytest.raises(DuplicateKeyError):
             mock_db.refresh_tokens.insert_one({"token_hash": "f" * 64, "username": "b"})
+
+
+def test_login_failures_expire_with_their_window_or_lock():
+    """A login's count of wrong passwords is swept when its window or its lock ends (web/login_lockout.py)."""
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db.login_failures.index_information()["login_failures_ttl"]
+        assert info["key"] == [("expires_at", 1)]
+        assert info["expireAfterSeconds"] == 0
