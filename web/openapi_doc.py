@@ -566,7 +566,7 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
                 responses["401"] = answer("Нет токена или он истёк")
             if key == ("delete", "/api/me/account") and "500" in responses:
                 responses["500"] = answer(
-                    "Не удалось удалить (`account_delete_failed`): ничего не изменилось, повторите позже"
+                    "Не удалось удалить (`account_delete_failed`): аккаунт остался, часть данных могла уже уйти, повторите позже"
                 )
             elif responses.get("500", {}).get("description") == "Internal Server Error":
                 responses["500"] = answer("Сбой на сервере (`internal_error`), повторите позже")
