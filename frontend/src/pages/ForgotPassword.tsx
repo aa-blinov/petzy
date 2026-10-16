@@ -64,11 +64,8 @@ export function ForgotPassword() {
   if (sent) {
     return (
       <AuthShell title="Проверьте почту">
-        {/* The server says whether a letter is already on its way: the screen
-            used to say «sent» every time, and the person waited for a second
-            letter that was never going to come. */}
         <p style={{ margin: 0, textAlign: 'center', lineHeight: 1.5, color: 'var(--app-text-primary)' }}>
-          {sent.already_sent ? 'Письмо уже отправляли недавно, ещё одно придёт позже' : sent.message}
+          {sent.message}
         </p>
         <p style={{ margin: 'var(--spacing-md) 0 0', textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
           Ссылка работает один час. Письма нет? Загляните в «Спам». Если почту к аккаунту не привязывали, напишите администратору Petzy

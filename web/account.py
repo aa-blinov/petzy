@@ -39,7 +39,6 @@ from web.schemas import (
     ErrorResponse,
     PasswordChangeRequest,
     PasswordForgotRequest,
-    PasswordForgotResponse,
     PasswordResetCheckResponse,
     PasswordResetRequest,
     SuccessResponse,
@@ -356,22 +355,16 @@ def verify_email():
 
 @account_bp.route("/api/auth/password/forgot", methods=["POST"])
 @limiter.limit("5 per hour")
-@api.validate(body=Request(PasswordForgotRequest), resp=Response(HTTP_200=PasswordForgotResponse), tags=["account"])
+@api.validate(body=Request(PasswordForgotRequest), resp=Response(HTTP_200=SuccessResponse), tags=["account"])
 def forgot_password():
     """Send a reset link to the account's confirmed email.
 
-    The answer must not tell anyone which logins or addresses are real. So
-    ``already_sent» («the letter was asked for moments ago, no second one is on
-    its way») is said only to the person who already proved they hold the
-    mailbox: they typed the confirmed address itself. Asked by a login, even a
-    real one, the answer is the plain «sent» — otherwise two requests for a
-    made-up login and for a real one would differ, and the form would become a
-    way to find out who has an account here.
-
-    The answer is always 200 with the same text. A value with «@» is matched, any case, against confirmed
-    addresses only; otherwise the exact login, then the lowercased one. At most one letter per account every
-    2 minutes; the link lives an hour. Nothing is sent if mail is not configured or sending fails, and the
-    answer is still 200. The limit counts requests, not letters.
+    The answer must not tell anyone which logins or addresses are real, nor that a letter was asked for moments
+    ago: it is the same 200 and the same text for a real account and a made-up one, asked once or again.
+    A value with «@» is matched, any case, against confirmed addresses only; otherwise the exact login, then the
+    lowercased one. At most one letter per account every 2 minutes, and a request inside that gap sends nothing;
+    the link lives an hour. Nothing is sent if mail is not configured or sending fails, and the answer is still
+    200. The limit counts requests, not letters.
     """
     data = request.context.body  # type: ignore[attr-defined]
     login = data.login.strip()
@@ -383,7 +376,6 @@ def forgot_password():
     else:
         user = app.db.users.find_one({"username": login}) or app.db.users.find_one({"username": login.lower()})
 
-    already_sent = False
     if user and user.get("is_active", True) and user.get("email_verified") and user.get("email"):
         recent = app.db.account_tokens.find_one(
             {
@@ -392,11 +384,8 @@ def forgot_password():
                 "created_at": {"$gt": datetime.now(timezone.utc) - RESET_RESEND_AFTER},
             }
         )
-        if recent:
-            # Само письмо не отправляется повторно в любом случае; говорить об этом можно только тому,
-            # кто назвал подтверждённую почту, иначе ответ отличит существующий логин от несуществующего.
-            already_sent = asked_by_email
-        elif mail.mail_configured():
+        # A letter asked for moments ago is not sent again, and the answer does not say so.
+        if not recent and mail.mail_configured():
             token = _new_token(user["username"], "reset", RESET_TTL)
             try:
                 mail.send_mail(
@@ -412,7 +401,7 @@ def forgot_password():
                 logger.info(f"Password reset link sent: user={user['username']}")
             except Exception as e:
                 logger.error(f"Password reset letter not sent: user={user['username']}, error={e}")
-    return get_message("account_reset_requested", already_sent=already_sent)
+    return get_message("account_reset_requested")
 
 
 @account_bp.route("/api/auth/password/reset/check", methods=["GET"])
