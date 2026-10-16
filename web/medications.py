@@ -547,7 +547,7 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
 def log_intake(id):
     """Log a medication intake.
 
-    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when. With a slot, a slot closed by a skip counts as marked too; without one, «already marked» is a given dose of this course within 30 minutes either side. ``force: true`` records it anyway, and then the new intake closes the nearest other open slot of that day (the evening dose, say). Skips and courses without scheduled times are not checked. A date or time that is invalid or more than 8 days ahead answers 422. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops.
+    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when. With a slot, a slot closed by a skip counts as marked too; without one, «already marked» is a given dose of this course within 30 minutes either side. ``force: true`` records it anyway, and then the new intake closes the nearest other open slot of that day (the evening dose, say). Skips and courses without scheduled times are not checked. A date or time that is invalid or more than 8 days ahead answers 422, and so does a dose of zero or less. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops.
     """
     try:
         medication = g.record
@@ -577,6 +577,9 @@ def log_intake(id):
             dose_taken = 0.0
         elif dose_taken is None:
             dose_taken = medication.get("default_dose", 1.0)
+            if not (dose_taken or 0) > 0:
+                # A course stored with a zero dose before the rule: it would write an intake that gives nothing.
+                return error_response("validation_error", "Доза курса должна быть больше нуля")
 
         # The same dose marked twice is asked about, not recorded silently. Two ways of telling, and
         # the slot is the stronger one: an intake that carries the slot it was for (the dose widget
@@ -831,11 +834,16 @@ def update_intake(id):
 def delete_intake(id):
     """Delete a medication intake record.
 
-    For a mark made by mistake. The dose goes back to the stock it took, and its reminders are back on.
+    For a mark made by mistake. The dose goes back to the stock it took, and its reminders are back on. Two requests for the same mark give the dose back once: the one that does not get the mark answers 404, as for a mark that is not there.
     """
     try:
-        intake = g.record
-        intake_id = intake["_id"]
+        intake_id = g.record["_id"]
+
+        # Take the mark out first, in one step. Of two requests that both found it, only the one that gets it gives the
+        # dose back, and the other answers as for a mark that is not there.
+        intake = app.db.medication_intakes.find_one_and_delete({"_id": intake_id})
+        if intake is None:
+            return error_response("record_not_found")
 
         # Give back what this intake took from the stock. Intakes from
         # before inventory_deducted was stored took their whole dose.
@@ -846,8 +854,6 @@ def delete_intake(id):
                 {"_id": medication_id, "inventory_enabled": True, "inventory_current": {"$ne": None}},
                 {"$inc": {"inventory_current": to_restore}},
             )
-
-        app.db.medication_intakes.delete_one({"_id": intake_id})
 
         return get_message("intake_deleted")
     except Exception as e:

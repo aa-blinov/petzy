@@ -129,6 +129,20 @@ class TestApi:
         assert doses and all(d["inventory_warning"] for d in doses)
         assert isinstance(ObjectId(doses[0]["medication_id"]), ObjectId)
 
+    @pytest.mark.parametrize("stock", [{}, {"inventory_current": None}], ids=["not sent", "null"])
+    def test_saving_a_course_without_its_stock_keeps_the_stock(
+        self, client, regular_user_token, med_id, mock_db, stock
+    ):
+        # Another phone counted the stock down after this form was opened. A save without it must not put it back.
+        mock_db["medications"].update_one({"_id": med_id}, {"$set": {"inventory_current": 7.0}})
+
+        response = client.put(
+            f"/api/medications/{med_id}", json={"comment": "с едой", **stock}, headers=_auth(regular_user_token)
+        )
+
+        assert response.status_code == 200
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 7.0
+
 
 def test_a_logged_intake_can_be_undone_by_its_id(client, regular_user_token, med_id, mock_db):
     now = datetime.now(timezone.utc)
@@ -143,3 +157,76 @@ def test_a_logged_intake_can_be_undone_by_its_id(client, regular_user_token, med
     assert undone.status_code == 200
     assert mock_db["medication_intakes"].count_documents({}) == 0
     assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 12.0
+
+
+class TestDoseAboveZero:
+    """A dose is more than zero. A zero or minus dose is refused, and nothing is written for it."""
+
+    @pytest.mark.parametrize("dose", [0, -1, -0.5])
+    def test_an_intake_with_a_dose_of_zero_or_less_is_refused(self, client, regular_user_token, med_id, mock_db, dose):
+        response = client.post(
+            f"/api/medications/{med_id}/log",
+            json={"date": "2026-01-01", "time": "10:00", "dose_taken": dose},
+            headers=_auth(regular_user_token),
+        )
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Доза должна быть больше нуля"
+        assert mock_db["medication_intakes"].count_documents({}) == 0
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 12.0
+
+    def test_a_skip_takes_no_dose_so_a_zero_sent_with_it_is_not_refused(
+        self, client, regular_user_token, med_id, mock_db
+    ):
+        response = client.post(
+            f"/api/medications/{med_id}/log",
+            json={"date": "2026-01-01", "time": "10:00", "skipped": True, "dose_taken": 0},
+            headers=_auth(regular_user_token),
+        )
+
+        assert response.status_code == 201
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 12.0
+
+    def test_a_course_stored_with_a_zero_dose_gives_no_intake_without_a_dose_sent(
+        self, client, regular_user_token, med_id, mock_db
+    ):
+        # A course saved with a zero dose before the rule: the mark that takes its dose would write a zero one.
+        mock_db["medications"].update_one({"_id": med_id}, {"$set": {"default_dose": 0}})
+
+        response = client.post(
+            f"/api/medications/{med_id}/log",
+            json={"date": "2026-01-01", "time": "10:00"},
+            headers=_auth(regular_user_token),
+        )
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Доза курса должна быть больше нуля"
+        assert mock_db["medication_intakes"].count_documents({}) == 0
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 12.0
+
+    @pytest.mark.parametrize("dose", [0, -2])
+    def test_a_new_course_is_not_saved_with_a_dose_of_zero_or_less(
+        self, client, regular_user_token, test_pet, mock_db, dose
+    ):
+        response = client.post(
+            "/api/medications",
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "name": "Габапентин",
+                "type": "Капсула",
+                "default_dose": dose,
+                "schedule": {"days": [0], "times": ["08:00"]},
+            },
+            headers=_auth(regular_user_token),
+        )
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Доза должна быть больше нуля"
+        assert mock_db["medications"].count_documents({}) == 0
+
+    def test_a_course_dose_cannot_be_changed_to_zero(self, client, regular_user_token, med_id, mock_db):
+        response = client.put(f"/api/medications/{med_id}", json={"default_dose": 0}, headers=_auth(regular_user_token))
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Доза должна быть больше нуля"
+        assert mock_db["medications"].find_one({"_id": med_id})["default_dose"] == 1.0

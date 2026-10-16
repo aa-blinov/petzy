@@ -1,8 +1,8 @@
-"""A number that is not finite is refused, and nothing is written.
+"""A number that is not finite, and a flag where a number belongs, is refused, and nothing is written.
 
 NaN and Infinity are not JSON numbers, and a client can also send them as text («inf»). A field with no bound of its
 own took them: a dose of Infinity drew the whole stock down (min(stock, Infinity) is the stock). Each case checks the
-answer and that the database did not change.
+answer and that the database did not change. true and false are not numbers either: a float reads them as 1 and 0.
 """
 
 import json
@@ -86,6 +86,18 @@ class TestEventNumbers:
         self, client, mock_db, regular_user_token, test_pet, number_type
     ):
         text = _record_text(test_pet["_id"], number_type, f'{{"n": {10**400}}}')
+
+        response = _raw(client, "post", "/api/events", text, regular_user_token)
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Поле «Число» должно быть числом"
+        assert mock_db["events"].count_documents({}) == 0
+
+    @pytest.mark.parametrize("value", ["true", "false"])
+    def test_a_flag_in_a_number_field_is_refused_not_read_as_one_or_zero(
+        self, client, mock_db, regular_user_token, test_pet, number_type, value
+    ):
+        text = _record_text(test_pet["_id"], number_type, f'{{"n": {value}}}')
 
         response = _raw(client, "post", "/api/events", text, regular_user_token)
 
@@ -209,6 +221,22 @@ class TestDoseAndStock:
 
         assert response.status_code == 200
         assert json.loads(response.data, parse_constant=_no_constants)["inventory_current"] == 42.0
+
+    @pytest.mark.parametrize("value", ["true", "false"])
+    def test_a_flag_as_the_dose_is_refused(self, client, mock_db, regular_user_token, course, value):
+        response = _raw(client, "post", f"/api/medications/{course}/log", _intake_text(value), regular_user_token)
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Значение должно быть числом"
+        assert _stock(mock_db, course) == 12.0
+        assert mock_db["medication_intakes"].count_documents({}) == 0
+
+    def test_a_flag_as_the_stock_is_refused(self, client, mock_db, regular_user_token, course):
+        response = _raw(client, "put", f"/api/medications/{course}", '{"inventory_current": true}', regular_user_token)
+
+        assert response.status_code == 422
+        assert response.get_json()["error"] == "Значение должно быть числом"
+        assert _stock(mock_db, course) == 12.0
 
 
 class TestPetLookCrops:

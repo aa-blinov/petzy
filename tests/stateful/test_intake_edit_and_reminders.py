@@ -10,6 +10,7 @@ from UTC+5 (03:00 UTC is 08:00 there).
 """
 
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 from bson import ObjectId
@@ -164,3 +165,37 @@ class TestTakingAnIntakeBack:
         intake = _intake(mock_db, course, test_pet, datetime(2024, 1, 2, 8, 10))
         client.delete(f"/api/medications/intakes/{intake}", headers=_auth(regular_user_token))
         assert _due(mock_db, MORNING_UTC) == []
+
+    def test_taking_a_mark_back_twice_gives_the_dose_back_once(
+        self, client, mock_db, regular_user_token, test_pet, course
+    ):
+        intake = _intake(mock_db, course, test_pet, datetime(2024, 1, 2, 7, 55), dose_taken=1.0, inventory_deducted=1.0)
+
+        first = client.delete(f"/api/medications/intakes/{intake}", headers=_auth(regular_user_token))
+        second = client.delete(f"/api/medications/intakes/{intake}", headers=_auth(regular_user_token))
+        missing = client.delete(f"/api/medications/intakes/{ObjectId()}", headers=_auth(regular_user_token))
+
+        assert first.status_code == 200
+        assert second.status_code == 404
+        assert second.get_json() == missing.get_json()
+        assert mock_db["medications"].find_one({"_id": course})["inventory_current"] == 11.0
+
+    def test_a_mark_another_request_took_first_gives_nothing_back(
+        self, client, mock_db, regular_user_token, test_pet, course
+    ):
+        """Both requests found the mark and the other one took it first: this one must not give the dose back too."""
+        intake = _intake(mock_db, course, test_pet, datetime(2024, 1, 2, 7, 55), dose_taken=1.0, inventory_deducted=1.0)
+        marks = mock_db["medication_intakes"]
+        take = marks.find_one_and_delete
+
+        def taken_by_the_other_request(*args, **kwargs):
+            take(*args, **kwargs)
+            return None
+
+        with patch.object(marks, "find_one_and_delete", side_effect=taken_by_the_other_request):
+            response = client.delete(f"/api/medications/intakes/{intake}", headers=_auth(regular_user_token))
+
+        assert response.status_code == 404
+        assert response.get_json()["code"] == "record_not_found"
+        assert mock_db["medications"].find_one({"_id": course})["inventory_current"] == 10.0
+        assert marks.count_documents({}) == 0
