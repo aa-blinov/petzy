@@ -42,8 +42,8 @@ export class ErrorBoundary extends Component<Props, State> {
                     <Result
                         status="error"
                         icon={<FrownOutline className="error-boundary-icon" />}
-                        title="Something went wrong"
-                        description="We encountered an unexpected error. Please try refreshing the page."
+                        title="Что-то пошло не так"
+                        description="Произошла непредвиденная ошибка. Попробуйте обновить страницу"
                     />
                     <div className="error-boundary-content">
                         <Button
@@ -51,12 +51,12 @@ export class ErrorBoundary extends Component<Props, State> {
                             color="primary"
                             onClick={this.handleReset}
                         >
-                            Return to Dashboard
+                            Вернуться в ленту
                         </Button>
 
                         {import.meta.env.DEV && this.state.error && (
                             <div className="error-boundary-details">
-                                <strong>Error Details:</strong>
+                                <strong>Подробности ошибки:</strong>
                                 <pre>
                                     {this.state.error.stack || this.state.error.message}
                                 </pre>
