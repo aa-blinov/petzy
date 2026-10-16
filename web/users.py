@@ -9,7 +9,7 @@ from flask_pydantic_spec import Request, Response
 
 from web.app import api, limiter, logger  # shared logger and api
 from web.configs import RATE_LIMIT_CONFIG  # per-route limits overridable via env
-from web.security import login_required, admin_required, is_admin, revoke_user_sessions
+from web.security import login_required, admin_required, is_admin, revoke_personal_tokens, revoke_user_sessions
 import web.app as app  # to access patched app.db in tests
 from web.security import ADMIN_USERNAME
 from web.messages import get_message
@@ -279,7 +279,7 @@ def get_user(username):
 def update_user(username):
     """Update user information (admin only).
 
-    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device. Nobody deactivates themselves (422 `validation_error_admin_deactivation`). ``email`` is stored as sent, with no format or uniqueness check, and ``email_verified`` stays as it was. An empty body answers 422 `validation_error_no_update_data`.
+    Name, email, active flag and password. A new password or `is_active: false` ends every session of that person on every device, and a new password ends their personal access tokens too. Nobody deactivates themselves (422 `validation_error_admin_deactivation`). ``email`` is stored as sent, with no format or uniqueness check, and ``email_verified`` stays as it was. An empty body answers 422 `validation_error_no_update_data`.
     """
     try:
         user = app.db["users"].find_one({"username": username})
@@ -317,6 +317,9 @@ def update_user(username):
         # A new password or a disabled account ends the sessions already open.
         if data.password is not None or data.is_active is False:
             revoke_user_sessions(username)
+        # A new password ends the personal access tokens as well.
+        if data.password is not None:
+            revoke_personal_tokens(username)
 
         logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
         return get_message("user_updated")
@@ -388,7 +391,7 @@ def delete_user(username):
 def reset_user_password(username):
     """Reset user password (admin only).
 
-    For an account that lost its password. Every session that person had ends, on every device.
+    For an account that lost its password. Every session that person had ends, on every device, and so do their personal access tokens.
     """
     try:
         data = request.context.body  # type: ignore[attr-defined]
@@ -405,6 +408,7 @@ def reset_user_password(username):
         if result.matched_count == 0:
             return error_response("user_not_found")
         revoke_user_sessions(username)
+        revoke_personal_tokens(username)
 
         logger.info(f"Password reset: username={username}, reset_by={getattr(request, 'current_user', 'admin')}")
         return get_message("user_password_reset")
