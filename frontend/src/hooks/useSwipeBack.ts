@@ -1,6 +1,6 @@
 /**
  * Detect a horizontal swipe from the left edge of the screen and
- * call navigate(-1). A bare-bones iOS-style back gesture — no fancy
+ * go back one page of this app (see hasPreviousAppPage). A bare-bones iOS-style back gesture — no fancy
  * preview animation, the route transition already handles the visual
  * part.
  *
@@ -17,6 +17,7 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { hasPreviousAppPage } from '../utils/navigation';
 
 const EDGE_PX = 24;
 const MIN_TRAVEL = 80;
@@ -78,7 +79,10 @@ export function useSwipeBack() {
       const dt = Date.now() - startTime;
       // Must be a horizontal right-swipe, not a vertical scroll.
       if (dx >= MIN_TRAVEL && Math.abs(dy) < 60 && Math.abs(dy) * 2 <= dx && dt <= MAX_DURATION) {
-        navigate(-1);
+        // Back means an earlier page of this app. A screen opened straight from a link has none, and the page the
+        // browser had before it may be another site: the feed is the place to go then.
+        if (hasPreviousAppPage()) navigate(-1);
+        else if (window.location.pathname !== '/') navigate('/', { replace: true });
       }
     }
 

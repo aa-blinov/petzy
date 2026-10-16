@@ -32,6 +32,7 @@ import { petsService, type Pet } from '../services/pets.service';
 import { getPushSubscriptionState, isPushSupported, needsHomeScreenForPush, subscribeToPush } from '../utils/pushNotifications';
 import { computePetAge, MONTHS_GENITIVE } from '../utils/relativeTime';
 import { dismissOnboarding } from '../utils/onboarding';
+import { goBack } from '../utils/navigation';
 import { getApiErrorMessage } from '../utils/apiError';
 import { hapticFeedback } from '../utils/haptic';
 import { showToast } from '../utils/toast';
@@ -198,8 +199,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     }
     // Replays are opened from Settings; a direct link has nowhere to go
     // back to, so land on the dashboard instead of leaving the app.
-    if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
-    else navigate('/', { replace: true });
+    goBack(navigate, '/');
   };
 
   const isIntro = INTRO_STEPS.includes(step);
