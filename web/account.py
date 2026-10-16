@@ -47,6 +47,7 @@ from web.security import (
     get_token_from_request,
     is_admin,
     login_required,
+    revoke_personal_tokens,
     revoke_user_sessions,
     verify_token,
     verify_user_credentials,
@@ -448,7 +449,7 @@ def check_reset_link():
 def reset_password():
     """Set a new password from the letter's link and sign in with it.
 
-    Every other session of the account ends. The link is checked before it is
+    Every other session of the account ends, and so do its personal access tokens. The link is checked before it is
     spent, so a password the server refuses does not burn it. The link lives an hour;
     an expired, spent or unknown one, or one of a switched-off account, answers 422 `account_link_invalid`.
     Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. A notice goes to the confirmed address.
@@ -475,6 +476,7 @@ def reset_password():
         {"$set": {"password_hash": bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()}},
     )
     revoke_user_sessions(username)
+    revoke_personal_tokens(username)
     _notify(
         user,
         "Petzy: пароль изменён",
@@ -498,7 +500,7 @@ def reset_password():
 def change_password():
     """Change the password knowing the current one.
 
-    Other sessions end. This one continues: the web app gets fresh cookies, a native app (no Origin header) gets
+    Other sessions end, and so do the personal access tokens. This one continues: the web app gets fresh cookies, a native app (no Origin header) gets
     new `access_token` and `refresh_token` in the body and must replace its old ones, which stop working.
     A wrong ``current_password`` answers 422 ``account_wrong_password`` before the password rules are checked.
     Пароль: от 8 символов и не длиннее 72 байт (36 русских букв), не из частых, не совпадает с логином и в нём хотя бы три разных символа; иначе 422 `register_password_short`, `register_password_long` или `register_password_weak`. A notice goes to the confirmed address.
@@ -515,6 +517,7 @@ def change_password():
         {"$set": {"password_hash": bcrypt.hashpw(data.new_password.encode(), bcrypt.gensalt()).decode()}},
     )
     revoke_user_sessions(username)
+    revoke_personal_tokens(username)
     user = app.db.users.find_one({"username": username}) or {}
     _notify(
         user,

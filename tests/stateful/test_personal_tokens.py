@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from bson import ObjectId
 
+from web.account import _new_token
 from web.security import PERSONAL_TOKEN_PREFIX, hash_personal_token
 
 EVENT = {"type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.4}, "comment": ""}
@@ -394,3 +395,65 @@ def test_deleting_the_account_deletes_its_tokens(client, mock_db, regular_user_t
     assert response.status_code == 200
     assert mock_db["api_tokens"].count_documents({"username": "testuser"}) == 0
     _refused(client.get("/api/pets", headers=_bearer(made["token"])), 401, "token_invalid")
+
+
+# Password change, reset by link, and the administrator's reset -----------------------------------------------------
+
+NEW_PASSWORD = "a-new-password-1"
+
+
+def test_a_password_change_revokes_the_personal_tokens(client, regular_user_token):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+    assert client.get("/api/pets", headers=_bearer(token)).status_code == 200
+
+    changed = client.put(
+        "/api/me/password",
+        json={"current_password": "user123", "new_password": NEW_PASSWORD},
+        headers=_bearer(regular_user_token),
+    )
+    assert changed.status_code == 200
+
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")
+    # The answer carries a session for this device, and a token made with it works.
+    made = _make(client, changed.get_json()["access_token"], scopes=["pets:read"])
+    assert client.get("/api/pets", headers=_bearer(made["token"])).status_code == 200
+
+
+def test_a_reset_by_link_revokes_the_personal_tokens(client, regular_user_token):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+    link = _new_token("testuser", "reset", timedelta(hours=1))
+
+    reset = client.post("/api/auth/password/reset", json={"token": link, "password": NEW_PASSWORD})
+    assert reset.status_code == 200
+
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")
+    made = _make(client, reset.get_json()["access_token"], scopes=["pets:read"])
+    assert client.get("/api/pets", headers=_bearer(made["token"])).status_code == 200
+
+
+def test_an_administrators_reset_revokes_the_personal_tokens(client, regular_user_token, auth_headers):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+
+    reset = client.post("/api/users/testuser/reset-password", json={"password": NEW_PASSWORD}, headers=auth_headers)
+
+    assert reset.status_code == 200
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")
+
+
+def test_an_administrators_new_password_revokes_the_personal_tokens(client, regular_user_token, auth_headers):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+
+    changed = client.put("/api/users/testuser", json={"password": NEW_PASSWORD}, headers=auth_headers)
+
+    assert changed.status_code == 200
+    _refused(client.get("/api/pets", headers=_bearer(token)), 401, "token_invalid")
+
+
+def test_signing_out_leaves_the_personal_tokens_working(client, regular_user_token):
+    token = _make(client, regular_user_token, scopes=["pets:read"])["token"]
+    signed_in = client.post("/api/auth/login", json={"username": "testuser", "password": "user123"})
+    refresh = signed_in.get_json()["refresh_token"]
+
+    assert client.post("/api/auth/logout", json={"refresh_token": refresh}).status_code == 200
+
+    assert client.get("/api/pets", headers=_bearer(token)).status_code == 200

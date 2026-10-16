@@ -186,6 +186,18 @@ def revoke_user_sessions(username) -> None:
     db["users"].update_one({"username": username}, {"$set": {"sessions_valid_after": int(time.time())}})
 
 
+def revoke_personal_tokens(username) -> None:
+    """End every personal access token of a user (web/personal_tokens.py), on a password change or reset.
+
+    A new password ends them as it ends sessions: a leaked password must not leave a token working. Signing out does
+    not call this, since it ends sessions only. A token already revoked keeps the time it was revoked.
+    """
+    db["api_tokens"].update_many(
+        {"username": username, "revoked_at": None},
+        {"$set": {"revoked_at": datetime.now(timezone.utc).replace(tzinfo=None)}},
+    )
+
+
 def verify_token(token, token_type="access"):
     """Verify JWT token and return payload."""
     # Only a string can be a token. A JSON object or list from a request body is refused before the parser sees it.
