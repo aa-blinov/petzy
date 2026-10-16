@@ -251,7 +251,7 @@ def create_pet():
         # once the caller re-fetches the pet.
         _expose_photo(pet_data)
 
-        logger.info(f"Pet created: id={pet_data['_id']}, name={pet_data['name']}, owner={username}")
+        logger.info(f"Pet created: id={pet_data['_id']}, owner={username}")
         return get_message("pet_created", status=201, pet=pet_data)
 
     except storage.StorageNotConfigured:
@@ -426,7 +426,8 @@ def update_pet(pet_id):
                 update_data["photo_url"] = None
                 photo_changed = True
 
-        logger.info(f"Update data for pet {pet_id}: {update_data}")
+        # Field names only: the values are the owner's own data, health notes among them.
+        logger.info(f"Update data for pet {pet_id}: fields={sorted(update_data)}")
 
         if not update_data:
             return error_response("validation_error_no_update_data")

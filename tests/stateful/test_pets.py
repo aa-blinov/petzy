@@ -1,5 +1,7 @@
 """Tests for pet management endpoints."""
 
+import logging
+
 import pytest
 from datetime import datetime, timezone
 from bson import ObjectId
@@ -136,6 +138,37 @@ class TestPetManagement:
 
         pet = db["pets"].find_one({"_id": test_pet["_id"]})
         assert pet["name"] == "Updated Cat"
+
+    def test_a_health_note_is_not_written_to_the_log(self, client, mock_db, regular_user_token, test_pet, caplog):
+        """The update is logged by the fields it changed; the note itself is in no log line."""
+        from web.app import logger
+
+        caplog.set_level(logging.INFO, logger=logger.name)
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}",
+            json={"health_notes": "Аллергия на курицу, наблюдать за сердцем"},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        messages = [record.getMessage() for record in caplog.records]
+        assert any("Update data for pet" in message for message in messages)
+        assert not any("Аллергия" in message for message in messages)
+
+    def test_a_rejected_health_note_is_not_written_to_the_log(
+        self, client, mock_db, regular_user_token, test_pet, caplog
+    ):
+        from web.app import logger
+
+        caplog.set_level(logging.INFO, logger=logger.name)
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}",
+            json={"health_notes": "Аллергия на курицу. " * 60},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 422
+        assert not any("Аллергия" in record.getMessage() for record in caplog.records)
 
     def test_update_pet_not_owner(self, client, mock_db, regular_user_token, admin_pet):
         """Test updating pet when not owner."""

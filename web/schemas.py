@@ -8,7 +8,21 @@ Naming Convention:
 from datetime import datetime, timedelta
 import re
 from typing import Optional, List, Annotated, Any, Dict, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, StringConstraints
+from pydantic import (
+    BaseModel as PydanticBaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    ConfigDict,
+    StringConstraints,
+)
+
+
+# Every schema in this module builds on this class. pydantic quotes the value that failed in its error text (a password,
+# a health note), and the logs keep that text, so the quoting is switched off for all of them.
+class BaseModel(PydanticBaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+
 
 # Custom type for ObjectId strings
 ObjectIdString = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{24}$")]

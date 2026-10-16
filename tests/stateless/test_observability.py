@@ -1,6 +1,6 @@
 """Sentry stays off without a DSN, and never gets cookies, tokens or passwords."""
 
-from web.observability import FILTERED, init_sentry, scrub_event
+from web.observability import FILTERED, init_sentry, scrub_event, scrub_log
 
 
 def test_off_without_a_dsn(monkeypatch):
@@ -81,3 +81,52 @@ def test_a_malformed_dsn_turns_sentry_off_instead_of_taking_the_app_down(monkeyp
 
     monkeypatch.setenv("SENTRY_DSN", "ttps://abc@o1.ingest.de.sentry.io/2")
     assert init_sentry("web") is False
+
+
+def _log(severity_number, body, attributes=None):
+    """A log record as the SDK hands it to before_send_log (OpenTelemetry numbers: INFO is 9, WARNING 13)."""
+    return {
+        "severity_text": "info",
+        "severity_number": severity_number,
+        "body": body,
+        "attributes": attributes or {},
+        "time_unix_nano": 0,
+        "trace_id": None,
+        "span_id": None,
+    }
+
+
+def test_sentry_logs_keep_warnings_and_errors_and_drop_info():
+    assert scrub_log(_log(9, "Pet updated: id=1")) is None
+    assert scrub_log(_log(5, "debug line")) is None
+    assert scrub_log(_log(13, "webpush failed"))["body"] == "webpush failed"
+    assert scrub_log(_log(17, "Unhandled exception")) is not None
+
+
+def test_a_link_secret_is_taken_out_of_a_sentry_log():
+    secret = "DNHuHdJ7ipxTQsZ_jknR4KQL9bE7Jx0rV8"
+    log = scrub_log(
+        _log(
+            13,
+            f"GET /api/shared/medical-card/{secret}/pdf failed",
+            {"url": f"/share/medical/{secret}", "password": "kotik-2026", "pet_id": "65a1"},
+        )
+    )
+    assert secret not in str(log)
+    assert log["body"] == f"GET /api/shared/medical-card/{FILTERED}/pdf failed"
+    assert log["attributes"] == {"url": f"/share/medical/{FILTERED}", "password": FILTERED, "pet_id": "65a1"}
+
+
+def test_sentry_is_started_with_the_log_filter_and_without_bodies_or_locals(monkeypatch):
+    """init_sentry wires the log filter and the no-bodies, no-locals settings: dropping one of them fails here."""
+    import sentry_sdk
+
+    started = {}
+    monkeypatch.setenv("SENTRY_DSN", "https://public@o1.ingest.sentry.io/2")
+    monkeypatch.setattr(sentry_sdk, "init", lambda **options: started.update(options))
+    monkeypatch.setattr(sentry_sdk, "set_tag", lambda *args, **kwargs: None)
+    assert init_sentry("web") is True
+    assert started["enable_logs"] is True
+    assert started["before_send_log"] is scrub_log
+    assert started["max_request_body_size"] == "never"
+    assert started["include_local_variables"] is False
