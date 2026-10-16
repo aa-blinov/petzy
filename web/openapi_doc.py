@@ -162,8 +162,10 @@ RATE_LIMITS = {
     ("get", "/api/auth/password/reset/check"): "30 проверок в час с одного адреса",
     ("post", "/api/auth/email/verify"): "30 проверок в час с одного адреса",
     ("post", "/api/auth/password/common"): "60 проверок пароля в час с одного адреса",
-    ("put", "/api/me/email"): "10 в час с одного адреса",
-    ("post", "/api/me/email/resend"): "5 в час с одного адреса",
+    ("put", "/api/me/email"): "10 в час с одного адреса, и 3 письма подтверждения на одну почту за сутки "
+    "(`register_letter_limit`)",
+    ("post", "/api/me/email/resend"): "5 в час с одного адреса, и 3 письма подтверждения на одну почту за сутки "
+    "(`register_letter_limit`)",
     ("put", "/api/me/password"): "10 в час с одного адреса",
     ("delete", "/api/me/account"): "10 в час с одного адреса",
     ("post", "/api/images/preview"): "120 в час с одного адреса",
