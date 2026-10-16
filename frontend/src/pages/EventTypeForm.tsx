@@ -351,7 +351,7 @@ export function EventTypeForm() {
     <div className="page-container" ref={pageRef}>
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
             {isEditing ? 'Редактировать тип' : 'Новый тип события'}
           </h1>
           {/* Someone else's type: the form below is there to read, not to fill in. Without this the person

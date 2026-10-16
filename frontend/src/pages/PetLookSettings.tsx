@@ -402,7 +402,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
     <div className="page-container">
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>Оформление питомца</h1>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
           <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
             Питомец: <span className="pet-name">{pet.name}</span>. Оформление меняют и видят все, у кого есть доступ к питомцу: что сохраните, увидят и остальные
           </p>

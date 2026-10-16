@@ -155,7 +155,7 @@ export function AdminPanel() {
           alignItems: 'center',
           minHeight: '40px',
         }}>
-          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 500, margin: 0 }}>Админ-панель</h1>
+          <h1 style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Админ-панель</h1>
         </div>
 
         {error && (

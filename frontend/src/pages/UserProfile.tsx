@@ -96,7 +96,7 @@ export function UserProfile() {
         >
           <UserAvatar username={profile.username} fullName={profile.full_name} size={88} />
           <div style={{ textAlign: 'center' }}>
-            <h1 className="display-headline" style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>
+            <h1 className="display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
               {profile.full_name || profile.username}
             </h1>
             {profile.full_name && (

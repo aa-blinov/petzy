@@ -432,7 +432,7 @@ export function MedicationForm() {
                     alignItems: 'center',
                     minHeight: '40px',
                 }}>
-                    <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 500 }}>
+                    <h1 style={{ margin: 0, fontSize: 'var(--text-xxl)', fontWeight: 600 }}>
                         {isEditing ? 'Изменить лекарство' : 'Новое лекарство'}
                     </h1>
                 </div>
