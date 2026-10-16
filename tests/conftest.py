@@ -165,13 +165,14 @@ def admin_refresh_token(mock_db):
     payload = {"username": "admin", "exp": expire, "type": "refresh", "jti": jti}
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
 
-    # Store in database
+    # Store in database, as its hash: the token itself is never stored
     from web.app import db
+    from web.db import refresh_token_hash
 
     db["refresh_tokens"].insert_one(
         {
             "jti": jti,
-            "token": token,
+            "token_hash": refresh_token_hash(token),
             "username": "admin",
             "created_at": datetime.now(timezone.utc),
             "expires_at": expire,

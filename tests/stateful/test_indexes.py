@@ -3,6 +3,8 @@
 from unittest.mock import patch
 
 import mongomock
+import pytest
+from pymongo.errors import DuplicateKeyError
 
 from web.db import HEALTH_RECORD_COLLECTIONS, ensure_indexes
 
@@ -24,7 +26,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "medications": ["meds_pet_created"],
         "medication_intakes": ["intakes_pet_date", "intakes_med_date"],
         "users": ["users_username_unique", "users_role"],
-        "refresh_tokens": ["refresh_token_jti_unique"],
+        "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique"],
         "events": ["events_pet_date", "events_pet_type_date"],
         "event_types": ["event_types_key_unique"],
         "documents": ["documents_pet_created", "documents_pet_category_created"],
@@ -131,3 +133,17 @@ def test_ensure_indexes_keeps_old_index_when_new_one_cannot_be_built():
 
         info = mock_db.deleted_accounts.index_information()["deleted_accounts_username"]
         assert not info.get("unique")
+
+
+def test_ensure_indexes_makes_a_refresh_token_hash_unique():
+    """One hash is one session: a second row with the same hash is refused."""
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db.refresh_tokens.index_information()["refresh_token_hash_unique"]
+        assert info.get("unique") is True
+        assert info["partialFilterExpression"] == {"token_hash": {"$exists": True}}
+        mock_db.refresh_tokens.insert_one({"token_hash": "f" * 64, "username": "a"})
+        with pytest.raises(DuplicateKeyError):
+            mock_db.refresh_tokens.insert_one({"token_hash": "f" * 64, "username": "b"})

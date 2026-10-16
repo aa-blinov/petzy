@@ -18,6 +18,7 @@ from flask_pydantic_spec import Request, Response
 from web.app import api, limiter, logger  # app-level singletons
 import web.app as app  # use app.db so test patches (web.app.db) are visible
 from web.configs import RATE_LIMIT_CONFIG  # per-route limits overridable via env
+from web.db import refresh_token_hash
 from web.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
@@ -373,7 +374,7 @@ def api_logout():
             revoke_user_sessions(username)
         else:
             # Couldn't decode — fall back to removing the specific token.
-            app.db["refresh_tokens"].delete_one({"token": refresh_token})
+            app.db["refresh_tokens"].delete_one({"token_hash": refresh_token_hash(refresh_token)})
 
     response, status = get_message("auth_logout_success")
     response.set_cookie("access_token", "", max_age=0)
