@@ -74,16 +74,20 @@ for _ in 1 2 3 4; do
 done
 
 echo "== restore the newest into a fresh database"
-in_image -v "$PWD:/out" "$IMAGE" python3 - <<'PY'
+# The archive comes out on stdout, not through a bind mount of the checkout:
+# the backup image runs as its own user, which may not write into it (on
+# CI's runner the checkout belongs to another user).
+in_image "$IMAGE" python3 - >.e2e-newest.archive.gz <<'PY'
 import sys
 sys.path.insert(0, "scripts")
 from web import storage
 import backup_to_s3 as backup
 
 keys = [b["key"] for b in backup.list_backups(storage)]
-print("  in the bucket:", keys)
+print("  in the bucket:", keys, file=sys.stderr)
 assert len(keys) == 3 and all(k.startswith("backups/mongo/petzy-") for k in keys), keys
-storage._client().download_file(storage._bucket(), keys[0], "/out/.e2e-newest.archive.gz")
+data, _ = storage.get_bytes(keys[0])
+sys.stdout.buffer.write(data)
 PY
 docker cp .e2e-newest.archive.gz "$NET-mongo:/tmp/newest.archive.gz"
 rm -f .e2e-newest.archive.gz

@@ -162,3 +162,19 @@ def test_upcoming_doses_are_in_time_order_across_courses(client, mock_db, regula
     )
     times = [d["time"] for d in response.get_json()["doses"] if d["date"] == day]
     assert times == ["07:00", "08:00", "20:00"]
+
+
+@pytest.mark.medications
+class TestIntakeComment:
+    def test_a_comment_over_500_characters_is_refused(self, client, mock_db, regular_user_token, course):
+        response = _log(client, regular_user_token, course, datetime.now(), comment="к" * 501)
+        assert response.status_code == 422
+        body = response.get_json()
+        assert body["error"] == "Слишком длинный текст: не больше 500 символов"
+        assert body["details"] == [{"field": "comment", "type": "string_too_long"}]
+        assert mock_db["medication_intakes"].count_documents({}) == 0
+
+    def test_a_comment_of_500_characters_is_kept(self, client, mock_db, regular_user_token, course):
+        response = _log(client, regular_user_token, course, datetime.now(), comment="к" * 500)
+        assert response.status_code == 201
+        assert mock_db["medication_intakes"].find_one({"medication_id": str(course)})["comment"] == "к" * 500

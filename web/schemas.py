@@ -2114,15 +2114,27 @@ class EventListQuery(PetIdPaginationQuery):
     type: Optional[str] = Field(None, description="Фильтр по ключу типа события (без него все типы)")
 
 
+# The longest period the History chart asks for («Всё время»). A count past
+# this is refused: timedelta and datetime overflow on a huge one, which answered 500.
+HEALTH_STATS_MAX_DAYS = 3650
+
+
 class HealthStatsQuery(PetIdQuery):
     """Query parameters for statistics."""
 
     type: str = Field(..., description="Тип записи (feeding, asthma, weight и т.д.)")
-    days: Optional[int] = Field(30, description="Количество дней")
+    days: Optional[int] = Field(30, description=f"Количество дней, от 1 до {HEALTH_STATS_MAX_DAYS}")
 
     model_config = ConfigDict(
         json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "type": "weight", "days": 90}}
     )
+
+    @field_validator("days")
+    @classmethod
+    def _days_in_range(cls, value: Optional[int]) -> Optional[int]:
+        if value is not None and not 1 <= value <= HEALTH_STATS_MAX_DAYS:
+            raise ValueError(f"Период: от 1 до {HEALTH_STATS_MAX_DAYS} дней")
+        return value
 
 
 class HealthStatsItem(BaseModel):
@@ -2465,7 +2477,7 @@ class MedicationIntakeCreate(BaseModel):
     date: str
     time: str
     dose_taken: Optional[FiniteFloat] = None  # Uses default_dose if not provided
-    comment: Optional[str] = None
+    comment: Optional[str] = Field(None, max_length=500)
     # «Пропустить»: the slot is handled, nothing is given or taken from the stock.
     skipped: bool = False
     slot_date: Optional[str] = Field(
