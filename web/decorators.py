@@ -1,8 +1,34 @@
 from functools import wraps
 from flask import request, g
 
-from web.security import get_current_user, login_required
+from web.app import limiter
+from web.configs import RATE_LIMIT_CONFIG
+from web.security import PAT_SCOPE_ATTR, PERSONAL_TOKEN_SCOPES, get_current_user, login_required
 from web.helpers import validate_pet_access_and_get, get_record_and_validate_access
+
+
+def pat_allowed(scope: str):
+    """Let a personal access token (``ptz_...``) call this route, if it holds ``scope``.
+
+    Put it directly below ``@login_required``. web/security.py (``check_personal_token``) reads the scope before the
+    view runs: a token without it answers 403 ``token_scope_missing``, and a route without this decorator answers 403
+    ``token_not_allowed``. The limit (``personal_token_limit``, 120 a minute) is counted per token here, for each
+    request that holds one: a session is not limited this way.
+    """
+    if scope not in PERSONAL_TOKEN_SCOPES:
+        raise ValueError(f"unknown personal token scope: {scope}")
+
+    def decorator(view):
+        limited = limiter.shared_limit(
+            lambda: RATE_LIMIT_CONFIG["personal_token_limit"],
+            scope="personal_tokens",
+            key_func=lambda: getattr(request, "pat_id", None) or "",
+            exempt_when=lambda: not getattr(request, "pat_id", None),
+        )(view)
+        setattr(limited, PAT_SCOPE_ATTR, scope)
+        return limited
+
+    return decorator
 
 
 def require_pet_access(f):

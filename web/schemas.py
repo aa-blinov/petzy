@@ -3941,6 +3941,115 @@ class MedicalShareRevoked(BaseModel):
     model_config = ConfigDict(json_schema_extra={"example": {"revoked": True}})
 
 
+# ============================================================================
+# Personal access tokens (web/personal_tokens.py)
+# ============================================================================
+
+
+class PersonalTokenCreate(BaseModel):
+    """A personal access token: the name to know it by, what it may do, how long it works."""
+
+    name: str = Field(..., min_length=1, max_length=60, description="Название, по которому доступ узнают в списке")
+    scopes: List[str] = Field(
+        ...,
+        description="Области доступа, хотя бы одна: pets:read (питомцы), events:write (записи), "
+        "history:read (лента и история), medical:read (медкарта)",
+    )
+    expires_in_days: Annotated[int, BeforeValidator(_not_a_flag)] = Field(
+        90, description="Срок в днях: от 1 до 365, по умолчанию 90"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def name_one_line(cls, v):
+        return _trimmed_name(v)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"name": "Ассистент для врача", "scopes": ["pets:read", "medical:read"], "expires_in_days": 90}
+        }
+    )
+
+
+class PersonalTokenItem(BaseModel):
+    """A personal access token as the list shows it: never its secret."""
+
+    id: str = Field(description="Идентификатор доступа: по нему его отзывают")
+    name: str = Field(description="Название")
+    scopes: List[str] = Field(description="Области доступа")
+    prefix: str = Field(description="Первые 8 знаков токена: по ним доступ узнают в списке")
+    created_at: str = Field(description="Когда создан, UTC, ISO 8601")
+    expires_at: str = Field(description="До какого момента работает, UTC, ISO 8601")
+    last_used_at: Optional[str] = Field(
+        None, description="Когда в последний раз пускал запрос, UTC; пусто, если ещё нет"
+    )
+    revoked_at: Optional[str] = Field(None, description="Когда отозван, UTC; пусто, если не отозван")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "507f1f77bcf86cd799439061",
+                "name": "Ассистент для врача",
+                "scopes": ["pets:read", "medical:read"],
+                "prefix": "ptz_Ab3d",
+                "created_at": "2026-10-03T07:52:00.123456Z",
+                "expires_at": "2027-01-01T07:52:00.123456Z",
+                "last_used_at": "2026-10-04T09:15:00.000000Z",
+                "revoked_at": None,
+            }
+        }
+    )
+
+
+class PersonalTokenCreated(BaseModel):
+    """The new token: its secret is in this answer only."""
+
+    id: str = Field(description="Идентификатор доступа: по нему его отзывают")
+    name: str = Field(description="Название")
+    scopes: List[str] = Field(description="Области доступа")
+    expires_at: str = Field(description="До какого момента работает, UTC, ISO 8601")
+    prefix: str = Field(description="Первые 8 знаков токена")
+    token: str = Field(description="Полный токен `ptz_...`. Показывается один раз: на сервере хранится только его хэш")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "507f1f77bcf86cd799439061",
+                "name": "Ассистент для врача",
+                "scopes": ["pets:read", "medical:read"],
+                "expires_at": "2027-01-01T07:52:00.123456Z",
+                "prefix": "ptz_Ab3d",
+                "token": "ptz_Ab3dK9qV2mRx7sT1uWvY4zN8pLcE5hJ6gQ0fA2bC3dE",
+            }
+        }
+    )
+
+
+class PersonalTokenList(BaseModel):
+    tokens: List[PersonalTokenItem]
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "tokens": [
+                    {
+                        "id": "507f1f77bcf86cd799439061",
+                        "name": "Ассистент для врача",
+                        "scopes": ["pets:read", "medical:read"],
+                        "prefix": "ptz_Ab3d",
+                        "created_at": "2026-10-03T07:52:00.123456Z",
+                        "expires_at": "2027-01-01T07:52:00.123456Z",
+                        "last_used_at": None,
+                        "revoked_at": None,
+                    }
+                ]
+            }
+        }
+    )
+
+
+class PersonalTokenRevoked(BaseModel):
+    revoked: bool
+    model_config = ConfigDict(json_schema_extra={"example": {"revoked": True}})
+
+
 class SharedMedicalCardResponse(BaseModel):
     """What a vet sees by the link: the card, read-only, and when the link ends."""
 

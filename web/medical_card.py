@@ -36,6 +36,7 @@ from web.schemas import (
     VisitPrepOut,
     VisitPrepResponse,
 )
+from web.decorators import pat_allowed
 from web.security import get_current_user, login_required
 
 medical_card_bp = Blueprint("medical_card", __name__)
@@ -381,6 +382,7 @@ def _card_for(pet_id: str):
 
 @medical_card_bp.route("/api/pets/<pet_id>/medical-card", methods=["GET"])
 @login_required
+@pat_allowed("medical:read")
 @api.validate(
     query=MedicalCardQuery,
     resp=Response(HTTP_200=MedicalCardResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),

@@ -44,6 +44,7 @@ def test_ensure_indexes_creates_expected_indexes():
         ],
         "login_failures": ["login_failures_ttl"],
         "verification_mail_log": ["verification_mail_log_address", "verification_mail_log_ttl"],
+        "api_tokens": ["api_tokens_token_hash_unique", "api_tokens_user_created"],
     }
     for coll_name, idx_names in expected.items():
         info = mock_db[coll_name].index_information()
@@ -175,3 +176,17 @@ def test_login_failures_expire_with_their_window_or_lock():
         info = mock_db.login_failures.index_information()["login_failures_ttl"]
         assert info["key"] == [("expires_at", 1)]
         assert info["expireAfterSeconds"] == 0
+
+
+def test_a_personal_token_hash_is_unique():
+    """One hash is one personal token: a second row with the same hash is refused, and a request finds its token by it."""
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db.api_tokens.index_information()["api_tokens_token_hash_unique"]
+        assert info.get("unique") is True
+        assert info["key"] == [("token_hash", 1)]
+        mock_db.api_tokens.insert_one({"token_hash": "a" * 64, "username": "a"})
+        with pytest.raises(DuplicateKeyError):
+            mock_db.api_tokens.insert_one({"token_hash": "a" * 64, "username": "b"})

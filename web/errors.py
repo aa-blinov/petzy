@@ -196,6 +196,19 @@ ERRORS: Dict[str, ErrorDef] = {
         422,
     ),
     "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
+    # Personal access tokens (web/personal_tokens.py, checked in web/security.py before each request)
+    "token_invalid": ErrorDef("token_invalid", "Доступ не найден, отозван или его срок истёк", 401),
+    "token_not_allowed": ErrorDef("token_not_allowed", "Личный доступ не работает для этого действия", 403),
+    "token_scope_missing": ErrorDef("token_scope_missing", "У этого доступа нет нужной области", 403),
+    "personal_token_not_found": ErrorDef("personal_token_not_found", "Доступ не найден", 404),
+    "personal_token_limit": ErrorDef(
+        "personal_token_limit", "Не больше 10 действующих доступов. Отзовите ненужные", 422
+    ),
+    "personal_token_scope_required": ErrorDef(
+        "personal_token_scope_required", "Выберите хотя бы одну область доступа", 422
+    ),
+    "personal_token_scope_unknown": ErrorDef("personal_token_scope_unknown", "Неизвестная область доступа", 422),
+    "personal_token_expiry_invalid": ErrorDef("personal_token_expiry_invalid", "Срок доступа: от 1 до 365 дней", 422),
     # Other
     "no_data_for_export": ErrorDef("no_data_for_export", "У этого питомца пока нет записей для выгрузки", 404),
     "upload_error": ErrorDef("upload_error", "Не удалось загрузить файл", 404),

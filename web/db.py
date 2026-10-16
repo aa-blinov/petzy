@@ -222,6 +222,9 @@ def ensure_indexes() -> None:
                                               token itself is not stored)
       push_subscriptions  endpoint unique   (upsert on re-subscribe)
                           username          (list a user's own devices)
+      api_tokens          token_hash unique (sha256 of a personal access token: the token
+                                              itself is not stored)
+                          username + created_at (a person's tokens, newest first)
       medication_reminders_sent
                           medication_id + date + time unique (dedupe: one
                                               reminder per scheduled slot)
@@ -307,6 +310,10 @@ def ensure_indexes() -> None:
         # Links from letters (web/account.py): looked up by hash, gone when expired.
         (db.account_tokens, [("token_hash", ASCENDING)], "account_tokens_hash_unique", {"unique": True}),
         (db.account_tokens, [("expires_at", ASCENDING)], "account_tokens_ttl", {"expireAfterSeconds": 0}),
+        # Personal access tokens (web/personal_tokens.py): found by the hash of the token on each request made with one.
+        (db.api_tokens, [("token_hash", ASCENDING)], "api_tokens_token_hash_unique", {"unique": True}),
+        # A person's tokens, newest first: their list, and the count of working ones.
+        (db.api_tokens, [("username", ASCENDING), ("created_at", DESCENDING)], "api_tokens_user_created"),
         # Wrong-password count per login (web/login_lockout.py): the row goes when its window or its lock ends.
         (db.login_failures, [("expires_at", ASCENDING)], "login_failures_ttl", {"expireAfterSeconds": 0}),
         # Confirmation letters counted per address for a day (web/account.py): keyed by an HMAC, not the address.

@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, make_response, request, url_for
 from flask_pydantic_spec import Request, Response
 
 from web.app import api, logger  # shared logger and api
+from web.decorators import pat_allowed
 from web.security import login_required, get_current_user
 import web.app as app  # to access patched app.db/app.fs in tests
 from web import storage
@@ -116,6 +117,7 @@ def convert_objectid_to_str(obj):
 
 @pets_bp.route("/api/pets", methods=["GET"])
 @login_required
+@pat_allowed("pets:read")
 @api.validate(resp=Response(HTTP_200=PetListResponse), tags=["pets"])
 def get_pets():
     """Get list of all pets accessible to current user.
@@ -263,6 +265,7 @@ def create_pet():
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["GET"])
 @login_required
+@pat_allowed("pets:read")
 @api.validate(
     resp=Response(HTTP_200=PetResponseWrapper, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["pets"],
