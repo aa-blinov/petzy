@@ -16,7 +16,7 @@ import {
   type MedicalRecord,
   type ParasiteTarget,
 } from '../services/medicalRecords.service';
-import { documentLocalStamp, documentsListQuery, documentsService, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
+import { documentLocalStamp, documentsListQuery, documentsService, listedDocuments, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { httpStatus } from '../services/api';
 import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
@@ -231,7 +231,7 @@ export function MedicalRecordForm() {
   // The medicines the pet is taking now: a parasite treatment is often one of them, so they are offered in its list.
   const courses = useQuery({ ...medicationsListQuery(petId ?? ''), enabled: !!petId });
   const record = useQuery({ queryKey: ['medical-record', recordId], queryFn: () => medicalRecordsService.get(recordId!), enabled: isEditing, staleTime: 0, refetchOnMount: 'always' });
-  const documents = useQuery({ ...documentsListQuery(petId ?? ''), enabled: !!petId });
+  const documents = useQuery({ ...documentsListQuery(petId ?? ''), select: listedDocuments, enabled: !!petId });
 
   // The kind: from the record being edited, else from the link.
   const kindParam = params.get('kind');

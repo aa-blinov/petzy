@@ -45,6 +45,14 @@ import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
  */
 const CATEGORY_ORDER = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[];
 
+/** The list while the server has not answered: one array for every render, so the memos below keep their result. */
+const NO_DOCUMENTS: PetDocument[] = [];
+
+/** The line under the list when the server holds more documents than the list shows: the newest N of M. */
+function shownDocumentsNote(shown: number, total: number): string | null {
+  return total > shown ? `Показаны первые ${shown} документов из ${total}` : null;
+}
+
 /**
  * One badge per format this app accepts (see ALLOWED_CONTENT_TYPES in
  * web/documents.py) — always a short text label, never an actual image
@@ -156,7 +164,7 @@ export function DocumentsList() {
   }, [imageViewer.visible, fileViewer.visible]);
 
   const {
-    data: documents = [],
+    data: list,
     isLoading,
     isError,
     refetch,
@@ -164,6 +172,9 @@ export function DocumentsList() {
     ...documentsListQuery(selectedPetId ?? ''),
     enabled: !!selectedPetId,
   });
+  // The list asks the server for its first page only; the total says how many documents there are in all.
+  const documents = list?.documents ?? NO_DOCUMENTS;
+  const shownNote = shownDocumentsNote(documents.length, list?.total ?? 0);
 
   // A document deleted a moment ago, «Отменить» still on offer, is left out of the list.
   const hiddenDocuments = useHiddenRecords();
@@ -556,6 +567,7 @@ export function DocumentsList() {
                   </div>
                 </div>
               ))}
+              {shownNote && <p className="docs__more">{shownNote}</p>}
             </div>
           </PullToRefresh>
         )}

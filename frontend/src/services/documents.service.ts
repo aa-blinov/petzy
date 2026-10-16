@@ -220,13 +220,17 @@ export interface DocumentListResponse {
   documents: PetDocument[];
   page: number;
   page_size: number;
+  /** Every document the pet has (in the category, if one is asked for), not only the ones on this page. */
   total: number;
 }
+
+/** The largest page the server takes (`page_size` is limited to 1000 in web/schemas.py). */
+const DOCUMENTS_PAGE_SIZE = 1000;
 
 export const documentsService = {
   async getList(petId: string, category?: DocumentCategory): Promise<DocumentListResponse> {
     const response = await api.get<DocumentListResponse>('/documents', {
-      params: { pet_id: petId, category, page: 1, page_size: 100 },
+      params: { pet_id: petId, category, page: 1, page_size: DOCUMENTS_PAGE_SIZE },
     });
     return response.data;
   },
@@ -333,11 +337,16 @@ export const documentsService = {
   },
 };
 
-/** The documents list query, shared by the page and the tab prefetch
- *  (App.tsx) so both fill the same cache entry. */
+/** The documents list query, shared by the page, the tab prefetch (App.tsx) and the medical record form, so all of them
+ *  fill the same cache entry. The entry is the whole response, `total` included. */
 export function documentsListQuery(petId: string) {
   return {
     queryKey: ['documents', petId] as const,
-    queryFn: () => documentsService.getList(petId).then((res) => res.documents),
+    queryFn: () => documentsService.getList(petId),
   };
+}
+
+/** The documents alone, for a screen that does not show the total. */
+export function listedDocuments(list: DocumentListResponse): PetDocument[] {
+  return list.documents;
 }
