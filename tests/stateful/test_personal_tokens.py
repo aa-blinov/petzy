@@ -150,20 +150,50 @@ def test_an_expired_token_does_not_count_against_the_ten(client, mock_db, regula
 # Revoking -------------------------------------------------------------------------------------------------------------
 
 
-def test_revoking_stops_a_token_at_once_and_a_second_revoke_is_safe(client, regular_user_token):
+def test_revoking_stops_a_token_at_once_and_keeps_its_record(client, mock_db, regular_user_token):
     made = _make(client, regular_user_token, scopes=["pets:read"])
     assert client.get("/api/pets", headers=_bearer(made["token"])).status_code == 200
 
-    first = client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token))
-    assert first.status_code == 200
-    assert first.get_json() == {"revoked": True}
-    _refused(client.get("/api/pets", headers=_bearer(made["token"])), 401, "token_invalid")
+    revoked = client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token))
 
-    [revoked_once] = client.get("/api/me/tokens", headers=_bearer(regular_user_token)).get_json()["tokens"]
-    again = client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token))
-    assert again.status_code == 200
-    [revoked_twice] = client.get("/api/me/tokens", headers=_bearer(regular_user_token)).get_json()["tokens"]
-    assert revoked_twice["revoked_at"] == revoked_once["revoked_at"]
+    assert revoked.status_code == 200
+    assert revoked.get_json() == {"revoked": True, "deleted": False}
+    _refused(client.get("/api/pets", headers=_bearer(made["token"])), 401, "token_invalid")
+    # Until it is deleted, the revoked token stays in the database and in the list.
+    assert mock_db["api_tokens"].find_one({"_id": ObjectId(made["id"])})["revoked_at"] is not None
+    [listed] = client.get("/api/me/tokens", headers=_bearer(regular_user_token)).get_json()["tokens"]
+    assert listed["id"] == made["id"] and listed["revoked_at"] is not None
+
+
+def test_a_second_delete_takes_the_revoked_record_out_for_good(client, mock_db, regular_user_token):
+    made = _make(client, regular_user_token, scopes=["pets:read"])
+    kept = _make(client, regular_user_token, scopes=["pets:read"])
+    client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token))
+
+    deleted = client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token))
+
+    assert deleted.status_code == 200
+    assert deleted.get_json() == {"revoked": True, "deleted": True}
+    assert mock_db["api_tokens"].find_one({"_id": ObjectId(made["id"])}) is None
+    # Only that record went: the other token of the same person is still in the list.
+    [listed] = client.get("/api/me/tokens", headers=_bearer(regular_user_token)).get_json()["tokens"]
+    assert listed["id"] == kept["id"]
+    # After the deletion there is nothing to revoke or delete.
+    _refused(
+        client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token)),
+        404,
+        "personal_token_not_found",
+    )
+
+
+def test_another_persons_revoked_token_cannot_be_deleted(client, mock_db, admin_token, regular_user_token):
+    made = _make(client, admin_token)
+    client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(admin_token))
+
+    response = client.delete(f"/api/me/tokens/{made['id']}", headers=_bearer(regular_user_token))
+
+    _refused(response, 404, "personal_token_not_found")
+    assert mock_db["api_tokens"].find_one({"_id": ObjectId(made["id"])}) is not None
 
 
 def test_another_persons_token_cannot_be_revoked(client, admin_token, regular_user_token):
