@@ -1,6 +1,8 @@
 # Tests, lint and the local runner (scripts/dev_local.py: mongomock, moto).
 # Not installed in the production image.
 -r requirements.txt
+# The MCP server's SDK and HTTP stack: tests/mcp imports it.
+-r mcp/requirements.txt
 pytest==8.0.0
 pytest-cov==4.1.0
 # Прогон в несколько процессов: `pytest tests -n auto`. Тесты не ходят ни в
