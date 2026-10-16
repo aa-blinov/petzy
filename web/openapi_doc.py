@@ -7,9 +7,12 @@ public. Both routes sit under /api/, the only path nginx forwards to the
 app (its own /apidoc stays local).
 """
 
+import re
+
 from flask import Blueprint, Response, jsonify
 
-from web.app import api
+from web.app import api, app
+from web.security import PAT_SCOPE_ATTR, PERSONAL_TOKEN_PREFIX
 
 docs_bp = Blueprint("docs", __name__)
 
@@ -36,6 +39,17 @@ API дневника здоровья питомцев Petzy: питомцы, з
 Веб-приложение входит по httpOnly-кукам `access_token` и `refresh_token`. Браузер всегда присылает `Origin`, и refresh-токен в теле ему не отдаётся; `POST /api/auth/refresh` возвращает в теле только `access_token`.
 
 Аккаунт создаётся через `POST /api/auth/register`. Открыта ли регистрация и работает ли почта, скажет `GET /api/auth/registration`.
+
+## Личные доступы
+
+Для скриптов и ассистентов есть долгоживущий доступ, личный токен `ptz_…`. Его делает владелец аккаунта: в веб-приложении, в настройках «Доступ для ассистентов», или `POST /api/me/tokens` со входом по логину. Полный токен показывается один раз.
+
+- Токен передаётся как `Authorization: Bearer ptz_…`. Каждый маршрут, который он открывает, пишет в описании свою область: `pets:read`, `events:write`, `history:read` или `medical:read`. Другая область отвечает 403 `token_scope_missing`.
+- Срок от 1 до 365 дней, по умолчанию 90. Не больше 10 действующих доступов на одного человека.
+- Доступ не расширяет права владельца: питомец, которого аккаунт не видит, по токену тоже не открывается.
+- Больше 120 запросов в минуту с одним токеном не пускают: 429 с `rate_limit_exceeded`. Вход по логину этим ограничением не считается.
+- Остальные маршруты отвечают 403 `token_not_allowed`, как бы ни был передан токен. Так устроены смена пароля, выход, удаление аккаунта, управление доступами и администрирование: их можно вызвать только входом по логину.
+- Отозванный или истёкший доступ, а также доступ отключённого аккаунта, отвечают 401 `token_invalid`. Смена пароля личные доступы не отзывает: отзовите их сами, если они больше не нужны.
 
 ## Персональные данные
 
@@ -120,6 +134,11 @@ TAGS = [
         "description": "Записи, из которых собирается медкарта: прививки, обработки от паразитов, визиты и операции",
     },
     {"name": "push", "x-displayName": "Уведомления", "description": "Подписка браузера на Web Push"},
+    {
+        "name": "tokens",
+        "x-displayName": "Личные доступы",
+        "description": "Личные токены для скриптов и ассистентов: создание, список и отзыв",
+    },
     {
         "name": "users",
         "x-displayName": "Пользователи",
@@ -207,7 +226,8 @@ def finish_spec(spec: dict) -> dict:
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "JWT",
-            "description": "access_token из /api/auth/login (нативное приложение)",
+            "description": f"access_token из /api/auth/login (нативное приложение), или личный доступ "
+            f"`{PERSONAL_TOKEN_PREFIX}…` (раздел «Личные доступы»)",
         },
         "cookieAuth": {
             "type": "apiKey",
@@ -390,9 +410,36 @@ def finish_spec(spec: dict) -> dict:
         },
     }
 
+    # A personal access token reaches only the operations that name it (pat_allowed in the views). Each one
+    # says which scope opens it.
+    for (method, path), scope in _personal_token_operations().items():
+        operation = op(method, path)
+        if operation:
+            operation["description"] = (
+                operation.get("description", "")
+                + f" A personal access token with the `{scope}` scope opens it; another scope answers 403 "
+                "`token_scope_missing`."
+            )
+            operation.setdefault("responses", {}).setdefault(
+                "429", {"description": "Ограничение: 120 запросов в минуту на один личный доступ", **error_schema}
+            )
+
     _say_what_errors_mean(paths, op, error_schema)
     _name_the_params_views_read(op, error_schema)
     return spec
+
+
+def _personal_token_operations() -> dict:
+    """``{(method, path): scope}`` for every operation a personal access token may call: the views marked pat_allowed."""
+    found = {}
+    for rule in app.url_map.iter_rules():
+        scope = getattr(app.view_functions.get(rule.endpoint), PAT_SCOPE_ATTR, None)
+        if scope is None:
+            continue
+        path = re.sub(r"<(?:[^:>]+:)?([^>]+)>", r"{\1}", rule.rule)
+        for method in {m.lower() for m in rule.methods} & set(_METHODS):
+            found[(method, path)] = scope
+    return found
 
 
 def _param(name: str, where: str, schema: dict, description: str, required: bool = False) -> dict:
@@ -480,6 +527,8 @@ NOTHING_TO_VALIDATE = {
     ("get", "/api/event-types"),
     ("get", "/api/vaccines/catalog"),
     ("get", "/api/pets"),
+    ("get", "/api/me/tokens"),
+    ("delete", "/api/me/tokens/{token_id}"),
     ("get", "/api/pets/invites"),
     ("get", "/api/users/search"),
     ("get", "/api/users/{username}/profile"),
@@ -540,6 +589,8 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
                     text = "Нет такого пользователя (`user_not_found`)"
                 elif path.startswith("/api/shared/"):
                     text = "Ссылки нет: неверная, истекла или отозвана (`not_found`)"
+                elif path.startswith("/api/me/tokens"):
+                    text = "Доступа нет, или он не ваш (`personal_token_not_found`)"
                 elif path.startswith("/api/event-types/"):
                     text = (
                         "Такого типа нет среди встроенных и типов вашего круга, людей, с которыми у вас общий питомец "

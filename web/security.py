@@ -7,13 +7,14 @@ from `web.app` and imported directly from blueprints.
 
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+import hashlib
 import logging
 import time
 from uuid import uuid4
 
 import bcrypt
 import jwt
-from flask import make_response, request, Response
+from flask import current_app, g, make_response, request, Response
 
 from web.configs import FLASK_CONFIG, JWT_CONFIG, ADMIN_CONFIG
 from web.db import db, open_refresh_successor, refresh_token_hash, seal_refresh_successor
@@ -315,6 +316,71 @@ def try_refresh_access_token():
         return None
     username, refresh_token = rotated
     return create_access_token(username), refresh_token
+
+
+# Personal access tokens (web/personal_tokens.py): a long-lived secret for a script or an assistant, sent as
+# `Authorization: Bearer ptz_...`. Only its SHA-256 is stored; it reaches only the routes that name it (pat_allowed).
+PERSONAL_TOKEN_PREFIX = "ptz_"
+PERSONAL_TOKEN_SCOPES = ("pets:read", "events:write", "history:read", "medical:read")
+# Set on each route a personal token may call, to the scope that route needs (web/decorators.py: pat_allowed).
+PAT_SCOPE_ATTR = "personal_token_scope"
+# A token's last use is written at most this often: a write on every request would be needless load.
+PERSONAL_TOKEN_TOUCH_EVERY = timedelta(minutes=5)
+
+
+def hash_personal_token(token: str) -> str:
+    """How a personal token is kept in ``api_tokens``: its sha256 in hex. The token itself is not stored."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _personal_token_usable(record: dict, now: datetime) -> bool:
+    """Not revoked, not expired, and its owner still has an active account."""
+    if record.get("revoked_at") is not None or _aware(record["expires_at"]) <= now:
+        return False
+    return is_active_user(record.get("username"))
+
+
+def _note_personal_token_use(record: dict, now: datetime) -> None:
+    last = record.get("last_used_at")
+    if last is None or now - _aware(last) >= PERSONAL_TOKEN_TOUCH_EVERY:
+        db["api_tokens"].update_one({"_id": record["_id"]}, {"$set": {"last_used_at": now.replace(tzinfo=None)}})
+
+
+def check_personal_token():
+    """Run before every request sent with a personal token (``ptz_...``): the route must name it, the token must be
+    usable and must hold the scope the route asks for. Returns the answer to send instead of running the view, or None.
+
+    A request that gets through runs as the token's owner, as ``login_required`` runs a session. Every other route
+    answers 403 ``token_not_allowed`` whatever the token is: the account settings, the admin pages, and the token
+    management itself name no token, so a token cannot reach them.
+    """
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return None
+    token = header[7:]
+    if not token.startswith(PERSONAL_TOKEN_PREFIX) or request.endpoint is None:
+        return None
+
+    record = db["api_tokens"].find_one({"token_hash": hash_personal_token(token)})
+    if record is not None:
+        setattr(request, "pat_id", str(record["_id"]))  # the request log names the token by its id (web/app.py)
+    scope = getattr(current_app.view_functions.get(request.endpoint), PAT_SCOPE_ATTR, None)
+    if scope is None:
+        return error_response("token_not_allowed")
+    now = datetime.now(timezone.utc)
+    if record is None or not _personal_token_usable(record, now):
+        return error_response("token_invalid")
+    if scope not in record.get("scopes", []):
+        return error_response("token_scope_missing")
+
+    _note_personal_token_use(record, now)
+    username = record["username"]
+    set_sentry_user(username)
+    setattr(request, "current_user", username)
+    g.current_user = username
+    # login_required takes the request as signed in and does not read a session from it.
+    setattr(request, "_signed_in_checked", True)
+    return None
 
 
 def get_current_user():

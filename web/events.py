@@ -21,7 +21,7 @@ from flask_pydantic_spec import Request, Response
 import web.app as app  # use app.db and app.logger so test patches are visible
 from web.app import api
 from web.configs import PUSH_CONFIG
-from web.decorators import require_pet_access, require_record_access
+from web.decorators import pat_allowed, require_pet_access, require_record_access
 from web.errors import error_response
 from web.helpers import apply_pagination, parse_event_datetime_safe, ru_dose_unit, valid_tz
 from web.messages import get_message
@@ -155,6 +155,7 @@ def _generate_event_type_key() -> str:
 
 @events_bp.route("/api/event-types", methods=["GET"])
 @login_required
+@pat_allowed("pets:read")
 @api.validate(resp=Response(HTTP_200=EventTypeListResponse), tags=["events"])
 def list_event_types():
     """List the event types this user can use: builtin, and their household's.
@@ -458,6 +459,7 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
 
 @events_bp.route("/api/events", methods=["POST"])
 @login_required
+@pat_allowed("events:write")
 @api.validate(
     body=Request(EventCreate),
     resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse, HTTP_500=ErrorResponse),
@@ -779,6 +781,7 @@ def get_health_stats():
 
 @events_bp.route("/api/history/timeline", methods=["GET"])
 @login_required
+@pat_allowed("history:read")
 @api.validate(
     query=TimelineQuery,
     resp=Response(HTTP_404=ErrorResponse, HTTP_200=TimelineResponse, HTTP_422=ErrorResponse),

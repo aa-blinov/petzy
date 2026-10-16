@@ -109,6 +109,26 @@ def _security_headers(response):
     return response
 
 
+# A personal access token goes only where a route names it, with the scope that route asks for (web/security.py).
+# The first hook to run: it answers for the token before any view or limit is reached.
+app.before_request(security.check_personal_token)
+
+
+@app.after_request
+def _log_personal_token_request(response):
+    """One line for each request made with a personal token: which token, which route, what it was answered with.
+
+    The token is named by its id. No body and no value is written.
+    """
+    token_id = getattr(request, "pat_id", None)
+    if token_id:
+        rule = request.url_rule.rule if request.url_rule else request.path
+        logger.info(
+            f"Personal token request: token={token_id}, route={request.method} {rule}, status={response.status_code}"
+        )
+    return response
+
+
 # Initialize Flask-Limiter for rate limiting
 # Use memory storage for tests, MongoDB for production
 # No default limits - rate limiting applied only to specific endpoints (login)
@@ -212,6 +232,7 @@ from web.auth import auth_bp  # noqa: E402
 from web.pets import pets_bp  # noqa: E402
 from web.users import users_bp  # noqa: E402
 from web.account import account_bp  # noqa: E402
+from web.personal_tokens import personal_tokens_bp  # noqa: E402
 from web.legal import legal_bp  # noqa: E402
 from web.version import version_bp  # noqa: E402
 from web.openapi_doc import docs_bp, finish_spec  # noqa: E402
@@ -231,6 +252,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(pets_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(account_bp)
+app.register_blueprint(personal_tokens_bp)
 app.register_blueprint(legal_bp)
 app.register_blueprint(version_bp)
 app.register_blueprint(events_bp)

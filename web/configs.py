@@ -70,6 +70,8 @@ def load_config() -> Dict[str, Any]:
             "register_attempt_limit": os.getenv("RATE_LIMIT_REGISTER_ATTEMPTS", "30 per hour"),
             # Who to share a pet with, per signed-in user: enough for typing a login, not for walking the accounts.
             "user_search_limit": os.getenv("RATE_LIMIT_USER_SEARCH", "30 per minute"),
+            # Requests a minute with one personal access token (web/personal_tokens.py), counted per token.
+            "personal_token_limit": os.getenv("RATE_LIMIT_PERSONAL_TOKEN", "120 per minute"),
         },
         # Logging settings
         "logging": {
