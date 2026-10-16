@@ -2,6 +2,13 @@ import api from './api';
 import type { FormSettings } from '../utils/formsConfig';
 import type { TilesSettings } from '../utils/tilesConfig';
 import type { PetLook } from '../utils/petLook';
+import { deviceTimeZone } from '../utils/timezone';
+
+/** The zone a birth date was typed in: the server reads «today» for it on that zone's clock. */
+function appendTimeZone(formData: FormData): void {
+  const tz = deviceTimeZone();
+  if (tz) formData.append('tz', tz);
+}
 
 export interface PetInvite {
   pet_id: string;
@@ -116,7 +123,10 @@ export const petsService = {
     formData.append('name', data.name);
     if (data.species) formData.append('species', data.species);
     if (data.breed) formData.append('breed', data.breed);
-    if (data.birth_date) formData.append('birth_date', data.birth_date);
+    if (data.birth_date) {
+      formData.append('birth_date', data.birth_date);
+      appendTimeZone(formData);
+    }
     if (data.gender) formData.append('gender', data.gender);
     if (data.is_neutered !== undefined) formData.append('is_neutered', String(data.is_neutered));
     if (data.health_notes) formData.append('health_notes', data.health_notes);
@@ -135,7 +145,10 @@ export const petsService = {
     if (data.name) formData.append('name', data.name);
     if (data.species !== undefined) formData.append('species', data.species);
     if (data.breed !== undefined) formData.append('breed', data.breed);
-    if (data.birth_date !== undefined) formData.append('birth_date', data.birth_date);
+    if (data.birth_date !== undefined) {
+      formData.append('birth_date', data.birth_date);
+      appendTimeZone(formData);
+    }
     if (data.gender !== undefined) formData.append('gender', data.gender);
     if (data.is_neutered !== undefined) formData.append('is_neutered', String(data.is_neutered));
     if (data.health_notes !== undefined) formData.append('health_notes', data.health_notes);

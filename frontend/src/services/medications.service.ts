@@ -137,7 +137,8 @@ export const medicationsService = {
         const response = await api.get<{ medications: Medication[] }>('/medications', {
             params: {
                 pet_id: petId,
-                client_date: clientDate
+                client_date: clientDate,
+                tz: deviceTimeZone()
             }
         });
         return response.data.medications;
@@ -149,7 +150,9 @@ export const medicationsService = {
     },
 
     async getById(id: string): Promise<Medication> {
-        const response = await api.get<{ medication: Medication }>(`/medications/${id}`);
+        const response = await api.get<{ medication: Medication }>(`/medications/${id}`, {
+            params: { tz: deviceTimeZone() }
+        });
         return response.data.medication;
     },
 
@@ -190,7 +193,8 @@ export const medicationsService = {
         const response = await api.get<{ doses: UpcomingDose[] }>('/medications/upcoming', {
             params: {
                 pet_id: petId,
-                client_datetime: clientDatetime
+                client_datetime: clientDatetime,
+                tz: deviceTimeZone()
             }
         });
         return response.data.doses;

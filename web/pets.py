@@ -211,7 +211,7 @@ def create_pet():
             if photo_file.filename:
                 photo_file_id = _store_pet_photo(photo_file, username, new_pet_id)
 
-        birth_date = parse_date(data.birth_date, allow_future=False)
+        birth_date = parse_date(data.birth_date, allow_future=False, tz=data.tz)
 
         pet_data = {
             "_id": new_pet_id,
@@ -377,7 +377,7 @@ def update_pet(pet_id):
                 stale_photo_id = pet.get("photo_file_id") if pet else None
                 photo_file_id = None
 
-        birth_date = parse_date(data.birth_date, allow_future=False)
+        birth_date = parse_date(data.birth_date, allow_future=False, tz=data.tz)
 
         # Build update data
         update_data = {}

@@ -22,6 +22,8 @@ from web.decorators import require_pet_access, require_record_access
 from web.helpers import (
     parse_event_datetime_safe,
     apply_pagination,
+    local_day_start,
+    local_now,
     ru_dose_unit,
     valid_tz,
 )
@@ -39,6 +41,7 @@ from web.schemas import (
     SuccessResponse,
     ErrorResponse,
     PetIdPaginationQuery,
+    MedicationDetailQuery,
     MedicationListQuery,
     UpcomingDosesQuery,
 )
@@ -205,7 +208,7 @@ def add_medication():
 def get_medications():
     """List medication courses for a pet.
 
-    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. ``client_date`` is the device's today: today's doses (``intakes_today``, ``scheduled_today``, ``open_slots_today``) and the course status are read against it. ``intakes_today`` counts every intake from the start of that day on, skips and doses logged ahead included. The list is not paged.
+    Newest first, and a finished course stays in the list with its mark instead of disappearing: the medical card wants the whole story, and a finished course is part of it. Today is the day of the zone ``tz`` names; without a known zone it is the device's ``client_date``, and UTC's day when neither is sent. Today's doses (``intakes_today``, ``scheduled_today``, ``open_slots_today``) and the course status are read against it. ``intakes_today`` counts every intake from the start of that day on, skips and doses logged ahead included. The list is not paged.
     """
     try:
         query_params = request.context.query
@@ -221,20 +224,17 @@ def get_medications():
         # Optimize: batch fetch all intake data at once
         med_ids = [str(med["_id"]) for med in meds]
 
-        # Determine "today" based on client date if provided
-        now_utc = datetime.now(timezone.utc)
-        if client_date_str:
+        # Today: the zone's day when the zone is known; otherwise the device's own date; otherwise UTC's day, as before.
+        today_start = local_day_start(query_params.tz)
+        if client_date_str and not valid_tz(query_params.tz):
             try:
                 today_start = datetime.strptime(client_date_str, "%Y-%m-%d")
             except ValueError:
                 app.logger.warning(
                     f"Unparseable client_date {client_date_str!r}; falling "
-                    'back to server UTC — "taken today" may land on the '
+                    'back to UTC — "taken today" may land on the '
                     "wrong day"
                 )
-                today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
-        else:
-            today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
 
         # Get all last intakes in one query using aggregation
         last_intakes_pipeline = [
@@ -314,6 +314,7 @@ def get_medications():
 
 @medications_bp.route("/api/medications/<id>", methods=["GET"])
 @api.validate(
+    query=MedicationDetailQuery,
     resp=Response(HTTP_200=MedicationDetailResponse, HTTP_404=ErrorResponse),
     tags=["medications"],
 )
@@ -323,7 +324,7 @@ def get_medication(id):
 
     The course with its stock and last dose. Thinner than an item of the list: no ``last_taken_by``,
     ``last_taken_tz``, ``scheduled_today``, ``open_slots_today`` or ``course_status``; ``intakes_today`` is
-    counted from midnight UTC.
+    counted from midnight of the zone ``tz`` names, or UTC without one.
     """
     try:
         record = g.record
@@ -343,7 +344,7 @@ def get_medication(id):
             else:
                 record.setdefault("last_taken_at", None)
 
-            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = local_day_start(request.context.query.tz)  # type: ignore[attr-defined]
             record["intakes_today"] = app.db.medication_intakes.count_documents(
                 {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
             )
@@ -567,6 +568,7 @@ def log_intake(id):
             medication["pet_id"],
             username,
             max_future_days=UPCOMING_LOOKAHEAD_DAYS + 1,
+            tz=data.tz,
         )
         if dt_error:
             return dt_error[0], dt_error[1]
@@ -807,6 +809,7 @@ def update_intake(id):
             intake.get("pet_id"),
             g.username,
             max_future_days=UPCOMING_LOOKAHEAD_DAYS + 1,
+            tz=data.tz,
         )
         if dt_error:
             return dt_error[0], dt_error[1]
@@ -872,7 +875,7 @@ def delete_intake(id):
 def get_upcoming_doses():
     """Get the next doses for the dashboard.
 
-    What the feed shows above the records: today's unmarked doses, overdue ones included, plus last evening's still unmarked; if today has none, the doses of the next day that has any, up to 7 days ahead. Active courses with a schedule only. ``client_datetime`` (ISO or ``YYYY-MM-DD HH:MM``) is the device's local now, so the row does not turn over before the phone does.
+    What the feed shows above the records: today's unmarked doses, overdue ones included, plus last evening's still unmarked; if today has none, the doses of the next day that has any, up to 7 days ahead. Active courses with a schedule only. ``client_datetime`` (ISO or ``YYYY-MM-DD HH:MM``) is the device's local now, so the row does not turn over before the phone does. Without it, the now is the clock of the zone ``tz`` names, and UTC when neither is sent.
     """
     try:
         query_params = request.context.query
@@ -900,15 +903,16 @@ def get_upcoming_doses():
             except ValueError:
                 app.logger.warning(
                     f"Unparseable client_datetime {client_datetime_str!r}; "
-                    "falling back to server UTC — dose timing will be off "
+                    "falling back to the clock of tz, or UTC — dose timing will be off "
                     "by the caller's offset"
                 )
-                now = datetime.now(timezone.utc)
+                now = local_now(query_params.tz)
         else:
             app.logger.warning(
-                "client_datetime missing; falling back to server UTC — dose timing will be off by the caller's offset"
+                "client_datetime missing; falling back to the clock of tz, or UTC — dose timing will be off by the "
+                "caller's offset"
             )
-            now = datetime.now(timezone.utc)
+            now = local_now(query_params.tz)
 
         current_day = now.weekday()
         today_start = datetime(now.year, now.month, now.day)

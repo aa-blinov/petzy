@@ -4,7 +4,7 @@ This module is intentionally independent from `web.app` to avoid circular import
 Helpers are imported into `web.app` and used by blueprints via `web.app.*`.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from typing import Optional, Tuple
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -42,7 +42,7 @@ warnings.simplefilter("error", Image.DecompressionBombWarning)
 logger = app.logger
 
 
-def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1, max_past_years=50):
+def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1, max_past_years=50, tz=None):
     """
     Safely parse datetime from date and optional time strings.
 
@@ -52,6 +52,7 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
         allow_future: Whether to allow future dates (default: True)
         max_future_days: Maximum days in the future allowed (default: 1)
         max_past_years: Maximum years in the past allowed (default: 50)
+        tz: IANA zone the value was typed in; the limits are read on that zone's clock (see _entry_now)
 
     Returns:
         datetime object if parsing and validation succeed
@@ -75,8 +76,8 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
         else:
             raise ValueError(f"Неверный формат даты. Ожидается YYYY-MM-DD, получено '{date_str}'")
 
-    # Compare against current local time (naive, matching the contract that user input is local).
-    now = datetime.now()
+    # The naive clock of the zone the value was typed in, or the server's own (see _entry_now).
+    now = _entry_now(tz)
     max_future = now + timedelta(days=max_future_days) if allow_future else now
     max_past = now - timedelta(days=max_past_years * 365)
 
@@ -89,7 +90,7 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
     return dt
 
 
-def parse_date(date_str, allow_future=False, max_past_years=50):
+def parse_date(date_str, allow_future=False, max_past_years=50, tz=None):
     """
     Safely parse date string (for birth_date).
 
@@ -97,6 +98,7 @@ def parse_date(date_str, allow_future=False, max_past_years=50):
         date_str: Date string in format "YYYY-MM-DD"
         allow_future: Whether to allow future dates (default: False for birth dates)
         max_past_years: Maximum years in the past allowed (default: 50)
+        tz: IANA zone the date was typed in: «today» is that zone's today
 
     Returns:
         datetime object if parsing and validation succeed, None if date_str is empty
@@ -113,10 +115,11 @@ def parse_date(date_str, allow_future=False, max_past_years=50):
         allow_future=allow_future,
         max_future_days=0,
         max_past_years=max_past_years,
+        tz=tz,
     )
 
 
-def parse_event_datetime(date_str, time_str, context=""):
+def parse_event_datetime(date_str, time_str, context="", tz=None):
     """
     Safely parse event datetime with proper error handling.
 
@@ -124,6 +127,7 @@ def parse_event_datetime(date_str, time_str, context=""):
         date_str: Date string in format "YYYY-MM-DD"
         time_str: Time string in format "HH:MM"
         context: Context string for error messages
+        tz: IANA zone the time was typed in (see _entry_now)
 
     Returns:
         datetime object if parsing succeeds, current datetime if both date_str and time_str are empty
@@ -132,11 +136,11 @@ def parse_event_datetime(date_str, time_str, context=""):
         ValueError: If date format is invalid or date is out of allowed range
     """
     if date_str and time_str:
-        return parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
+        return parse_datetime(date_str, time_str, allow_future=True, max_future_days=1, tz=tz)
     elif date_str or time_str:
         raise ValueError("Дата и время должны быть указаны вместе")
     else:
-        return datetime.now()
+        return _entry_now(tz)
 
 
 def valid_tz(name) -> Optional[str]:
@@ -163,6 +167,29 @@ def wall_clock_in(dt: datetime, from_tz: Optional[str], to_tz: Optional[str]) ->
     if not source or not target or source == target:
         return dt
     return dt.replace(tzinfo=ZoneInfo(source)).astimezone(ZoneInfo(target)).replace(tzinfo=None)
+
+
+def local_now(tz_name: Optional[str]) -> datetime:
+    """The wall clock of the person's zone, naive: the form schedules and intakes are written in.
+
+    A missing or unknown zone reads UTC, as the day counts did before a zone was sent.
+    """
+    zone = valid_tz(tz_name)
+    return datetime.now(ZoneInfo(zone) if zone else timezone.utc).replace(tzinfo=None)
+
+
+def local_day_start(tz_name: Optional[str]) -> datetime:
+    """Midnight of today on the person's zone, naive: where «today» starts for the times stored in that zone."""
+    return local_now(tz_name).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _entry_now(tz_name: Optional[str]) -> datetime:
+    """The naive now that a value typed in ``tz_name`` is judged against.
+
+    The zone's clock when the request names a known zone. Without one, the server's own clock, as before: a client
+    that sends no zone is judged exactly as it always was.
+    """
+    return local_now(tz_name) if valid_tz(tz_name) else datetime.now()
 
 
 def check_pet_access(pet_id, username):
@@ -217,9 +244,13 @@ def validate_pet_access(pet_id, username):
     return pet is not None, error
 
 
-def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, username=None, max_future_days=1):
+def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, username=None, max_future_days=1, tz=None):
     """
     Safely parse event datetime with error handling and logging.
+
+    ``tz`` is the IANA zone the time was typed in (the request's ``tz``): the limit and an empty time are read on that
+    zone's clock. The server runs in UTC, so without it a person whose clock is ahead of the server's is refused
+    a morning that is still within the limit on their own clock.
 
     Returns:
         tuple: (datetime_object, error_response) where error_response is None if parsing succeeds,
@@ -227,14 +258,14 @@ def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, usern
     """
     if date_str and time_str:
         try:
-            event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=max_future_days)
+            event_dt = parse_datetime(date_str, time_str, allow_future=True, max_future_days=max_future_days, tz=tz)
             return event_dt, None
         except ValueError as e:
             log_context = f"pet_id={pet_id}, user={username}" if pet_id and username else ""
             logger.warning(f"Invalid datetime format for {context}: {log_context}, error={e}")
             return None, error_response("validation_error", str(e))
     else:
-        return datetime.now(), None
+        return _entry_now(tz), None
 
 
 def get_record_and_validate_access(record_id, collection_name, username):

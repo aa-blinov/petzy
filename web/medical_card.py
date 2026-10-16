@@ -12,7 +12,6 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, make_response, request
 from flask_pydantic_spec import Request, Response
@@ -21,7 +20,7 @@ import web.app as app  # db, logger
 from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
-from web.helpers import get_pet_and_validate, ru_dose_unit, valid_tz
+from web.helpers import get_pet_and_validate, local_now, ru_dose_unit
 from web.medications import has_overdue_dose, is_as_needed
 from web.medical_records import linked_document_ids, normalize_title, pet_records, record_states
 from web.schemas import (
@@ -127,14 +126,8 @@ def schedule_text(schedule: dict) -> str:
     return f"По {names} {when}".strip() if names else when
 
 
-def _now_local(tz_name: Optional[str]) -> datetime:
-    """The wall clock of the person's zone, naive: what schedules and intakes are written in."""
-    zone = valid_tz(tz_name)
-    return datetime.now(ZoneInfo(zone) if zone else timezone.utc).replace(tzinfo=None)
-
-
 def _today(tz_name: Optional[str]) -> date:
-    return _now_local(tz_name).date()
+    return local_now(tz_name).date()
 
 
 def neutered_text(is_neutered, gender) -> Optional[str]:
@@ -432,7 +425,7 @@ def get_medical_alerts(pet_id):
     pet, access_error = get_pet_and_validate(pet_id, username, require_owner=False)
     if access_error:
         return access_error[0], access_error[1]
-    now_local = _now_local(request.context.query.tz)  # type: ignore[attr-defined]
+    now_local = local_now(request.context.query.tz)  # type: ignore[attr-defined]
     response = jsonify({"alerts": build_medical_alerts(pet_id, now_local.date(), now_local)})
     response.headers["Cache-Control"] = "private, no-store"
     return response

@@ -148,6 +148,41 @@ def client(mock_db):
         yield client
 
 
+class _AnyDatetimeIsInstance(type):
+    """``isinstance(value, FrozenDatetime)`` answers for every real datetime, as ``isinstance(value, datetime)`` does.
+
+    The patched name stands in for ``datetime`` inside a module, and that module still checks values read from the
+    database with ``isinstance(..., datetime)``. Those values are plain datetimes, not instances of the subclass.
+    """
+
+    def __instancecheck__(cls, value):
+        return isinstance(value, datetime)
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch):
+    """Stop the server's clock at one instant, in the modules that judge «now» for a request.
+
+    Call the returned function with an aware UTC instant. ``now()`` without a zone then reads that instant as the
+    server's own clock (UTC, as in production), and ``now(zone)`` reads it on that zone's clock. Everything else about
+    ``datetime`` is left alone.
+    """
+    import web.helpers as helpers
+    import web.medications as medications
+    import web.schemas as schemas
+
+    def freeze(instant_utc: datetime):
+        class FrozenDatetime(datetime, metaclass=_AnyDatetimeIsInstance):
+            @classmethod
+            def now(cls, tz=None):
+                return instant_utc.astimezone(tz) if tz else instant_utc.replace(tzinfo=None)
+
+        for module in (helpers, medications, schemas):
+            monkeypatch.setattr(module, "datetime", FrozenDatetime)
+
+    return freeze
+
+
 @pytest.fixture
 def admin_token():
     """Create a valid access token for admin user."""
