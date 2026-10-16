@@ -21,7 +21,7 @@ from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Request, Response
 
 import web.app as app
-from web import mail
+from web import login_lockout, mail
 from web.app import api, limiter, logger
 from web.auth import password_problem, signed_in_response
 from web.configs import JWT_CONFIG
@@ -636,17 +636,20 @@ def dev_outbox():
 
 @account_bp.route("/api/dev/reset-limits", methods=["POST"])
 def dev_reset_limits():
-    """The rate-limit counters and the letter counts per address back to zero, for local runs only: 404 otherwise.
+    """Every rate-limit counter, letter count and wrong-password lock back to zero, for local runs only: 404 otherwise.
 
     A limit counts per address, and on the stand every browser check comes from the same one:
     five password letters and five sign-ups an hour are spent by the first run, and the second
     one starts on a spent limit and checks nothing. With this every run starts from the same
     place. Gated the way /api/dev/outbox is gated (the two switches together mean "this is the local
     stand"), so the endpoint answers 404 in production and no one can drop a real person's counters.
+    A login locked by wrong passwords starts again too (web/login_lockout.py).
     """
     if not _dev_tools_on():
         return error_response("not_found")
     limiter.reset()
     # The letter counts per address are limits too: on the stand a browser check starts them from zero as well.
     app.db.verification_mail_log.delete_many({})
+    # A check that guessed wrong would hold its login for fifteen minutes: the locks go with the counters.
+    login_lockout.clear_all()
     return jsonify({"message": "Счётчики ограничений обнулены", "success": True})

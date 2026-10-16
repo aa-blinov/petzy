@@ -57,3 +57,8 @@ def record_failure(username: str) -> None:
 def clear_failures(username: str) -> None:
     """Forget the count for this login: after a right password, and when its account is deleted."""
     app.db.login_failures.delete_one({"_id": login_key(username)})
+
+
+def clear_all() -> None:
+    """Forget every count and lock. Only the local stand's reset calls this, behind its gate (web/account.py)."""
+    app.db.login_failures.delete_many({})

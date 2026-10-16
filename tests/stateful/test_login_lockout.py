@@ -8,6 +8,8 @@ count is kept for a login that does not exist as well, and a locked login answer
 import itertools
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from tests.conftest import password_hash_for
 
 PASSWORD = "user123"  # conftest's regular_user, testuser
@@ -154,4 +156,36 @@ def test_the_lock_runs_from_the_tenth_wrong_password_not_from_the_start_of_the_w
     ends = ends if ends.tzinfo else ends.replace(tzinfo=timezone.utc)
 
     assert ends - datetime.now(timezone.utc) > timedelta(minutes=14)
+    assert _login(client, "testuser", PASSWORD).status_code == 401
+
+
+def test_the_dev_reset_on_the_local_stand_lifts_a_lock(client, mock_db, regular_user, monkeypatch):
+    monkeypatch.setenv("PETZY_DEV_TOOLS", "1")
+    monkeypatch.setenv("MAIL_OUTBOX", "memory")
+    _wrong(client, "testuser", 10)
+    assert _login(client, "testuser", PASSWORD).status_code == 401
+
+    assert client.post("/api/dev/reset-limits").status_code == 200
+
+    assert _login(client, "testuser", PASSWORD).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "switches",
+    [
+        {"PETZY_DEV_TOOLS": "1"},  # one switch alone is not the local stand
+        {"MAIL_OUTBOX": "memory"},
+        {},  # production: neither switch
+    ],
+)
+def test_the_dev_reset_is_404_off_the_local_stand_and_keeps_the_lock(
+    client, mock_db, regular_user, monkeypatch, switches
+):
+    monkeypatch.delenv("PETZY_DEV_TOOLS", raising=False)
+    monkeypatch.delenv("MAIL_OUTBOX", raising=False)
+    for name, value in switches.items():
+        monkeypatch.setenv(name, value)
+    _wrong(client, "testuser", 10)
+
+    assert client.post("/api/dev/reset-limits").status_code == 404
     assert _login(client, "testuser", PASSWORD).status_code == 401
