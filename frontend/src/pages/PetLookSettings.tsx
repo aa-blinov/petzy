@@ -190,7 +190,7 @@ function TabStrip({ value, onChange }: { value: TabKey; onChange: (key: TabKey) 
     refs.current[key]?.focus();
   };
   return (
-    <div role="tablist" aria-label="Что менять" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '2px 0' }}>
+    <div role="tablist" aria-label="Что менять" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '4px 8px', padding: '2px 0' }}>
       {TABS.map((t, i) => {
         const on = value === t.key;
         return (
@@ -216,10 +216,9 @@ function TabStrip({ value, onChange }: { value: TabKey; onChange: (key: TabKey) 
             }}
             className="tap-feedback"
             style={{
-              flex: '1 0 auto',
               minHeight: 'var(--touch-min)',
-              // Wraps to a second row on a narrow phone rather than cutting the last tab off at the edge.
-              padding: '0 10px',
+              // Three equal columns make two full rows; a label too long for its column wraps inside it.
+              padding: '0 6px',
               border: 'none',
               borderBottom: on ? '3px solid var(--app-accent-deep)' : '3px solid transparent',
               background: 'none',
@@ -228,7 +227,7 @@ function TabStrip({ value, onChange }: { value: TabKey; onChange: (key: TabKey) 
               fontSize: 'var(--text-sm)',
               fontWeight: 500,
               cursor: 'pointer',
-              whiteSpace: 'nowrap',
+              textAlign: 'center',
             }}
           >
             {t.label}
