@@ -732,7 +732,7 @@ def used_event_types():
 def get_health_stats():
     """Get event statistics for charts.
 
-    Records of one type from the last ``days`` days (30 by default, counted back from now in UTC), oldest first, one point each: ``date`` is the record's time, ``value`` is 1 for a counted type or the charted field's value for a type charted by value. ``type=medications`` gives the doses given (skipped ones left out). An unknown type answers 422 ``invalid_type``. ``days=0`` is read as 30 and a negative value gives nothing. A record of a value-charted type without that field gives ``value: 0``.
+    Records of one type from the last ``days`` days (30 by default, counted back from now in UTC), oldest first, one point each: ``date`` is the record's time, ``value`` is 1 for a counted type or the charted field's value for a type charted by value. ``type=medications`` gives the doses given (skipped ones left out). An unknown type answers 422 ``invalid_type``. ``days`` is from 1 to 3650, and any other value answers 422 ``validation_error``. A record of a value-charted type without that field gives ``value: 0``.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id

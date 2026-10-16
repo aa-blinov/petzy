@@ -6,7 +6,8 @@ pyjwt==2.15.1
 cryptography==50.0.1
 Flask-Limiter[mongodb]==3.5.0
 gunicorn==23.0.0
-setuptools==71.1.0
+# 82.0.0 dropped pkg_resources, which mongomock (tests, scripts/dev_local.py) imports: stay on 81 until mongomock does not.
+setuptools==81.0.0
 flask-pydantic-spec==0.8.7
 pydantic==2.13.5
 Pillow==12.3.0

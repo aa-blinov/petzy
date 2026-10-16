@@ -936,6 +936,28 @@ class TestGetHealthStats:
         assert response.status_code == 200
         assert len(response.get_json()["data"]) == 1
 
+    @pytest.mark.parametrize("days", ["0", "-1", "3651", "1000000000000"])
+    def test_days_outside_one_to_3650_is_a_validation_error(self, client, mock_db, regular_user_token, test_pet, days):
+        # A count of 10**12 days overflowed the date arithmetic and answered 500.
+        response = client.get(
+            f"/api/stats/health?pet_id={test_pet['_id']}&type=asthma&days={days}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 422
+        body = response.get_json()
+        assert body["code"] == "validation_error"
+        assert body["error"] == "Период: от 1 до 3650 дней"
+        assert body["details"] == [{"field": "days", "type": "value_error"}]
+
+    @pytest.mark.parametrize("days", ["1", "3650"])
+    def test_days_at_the_edges_of_the_range_are_answered(self, client, mock_db, regular_user_token, test_pet, days):
+        # 3650 is «Всё время» in the History chart.
+        response = client.get(
+            f"/api/stats/health?pet_id={test_pet['_id']}&type=asthma&days={days}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 200
+
 
 @pytest.mark.health_records
 class TestTimelineToleratesMalformedMedicationId:
