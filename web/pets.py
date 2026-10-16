@@ -23,7 +23,7 @@ from web.helpers import (
     parse_date,
     snap_thumbnail_size,
 )
-from web.errors import error_response, PetNotFoundDuringDeletion
+from web.errors import error_response, PetDeletionFailed, PetNotFoundDuringDeletion
 from web.messages import get_message
 from web.builtin_event_types import BUILTIN_TYPE_ORDER
 from web.pydantic_helpers import validate_request_data
@@ -741,6 +741,7 @@ def leave_pet(pet_id):
         HTTP_403=ErrorResponse,
         HTTP_404=ErrorResponse,
         HTTP_500=ErrorResponse,
+        HTTP_503=ErrorResponse,
     ),
     tags=["pets"],
 )
@@ -751,7 +752,8 @@ def delete_pet(pet_id):
     it: every record, every medication course with its intakes, every document and
     the file behind it, the medical card and any links to it.
     ``GET /api/pets/{pet_id}/deletion-impact`` counts all of that beforehand, and
-    the app asks before calling this.
+    the app asks before calling this. If a record cannot be deleted, the pet stays
+    and the answer is ``pet_delete_failed``: calling this again finishes the job.
     """
     try:
         # @login_required already guarantees request.current_user is set.
@@ -761,7 +763,12 @@ def delete_pet(pet_id):
         if access_error:
             return access_error[0], access_error[1]
 
-        if not purge_pet(pet):
+        try:
+            purged = purge_pet(pet)
+        except PetDeletionFailed:
+            # The pet is still there, and calling this again finishes what is left.
+            return error_response("pet_delete_failed")
+        if not purged:
             return error_response("pet_not_found")
 
         logger.info(f"Pet deleted: id={pet_id}, user={username}")
@@ -805,7 +812,8 @@ def purge_pet(pet: dict) -> bool:
     """Remove a pet with everything recorded for it and every file it has.
 
     Shared by deleting one pet and deleting the owner's account. False if
-    the pet was already gone.
+    the pet was already gone. Raises PetDeletionFailed when a collection could
+    not be cleared: the pet is then still there, and the same call can be repeated.
     """
     pet_id = str(pet["_id"])
     pet_id_obj = ObjectId(pet_id)
@@ -833,6 +841,8 @@ def purge_pet(pet: dict) -> bool:
         ("documents", {"pet_id": pet_id}),
         ("medical_records", {"pet_id": pet_id}),
         ("medical_shares", {"pet_id": pet_id}),
+        # Scan slots still uploading: they belong to the pet, so they go with it.
+        ("document_uploads", {"pet_id": pet_id}),
     ]
 
     # Captured before the record goes
@@ -865,34 +875,33 @@ def purge_pet(pet: dict) -> bool:
 
                 logger.info(f"Pet deleted with transaction: id={pet_id}, total_related_records={total_deleted}")
     except Exception as tx_error:
-        # Fallback for standalone MongoDB (no replica set) or mongomock
+        # Fallback for standalone MongoDB (no replica set) or mongomock. Without a
+        # transaction the order is the only guarantee: everything the pet owns goes
+        # first and the pet document last. Until that last delete the pet is still
+        # there, so a failure leaves a DELETE that can be repeated (every delete here
+        # is idempotent). The first failure stops the purge.
         error_msg = str(tx_error).lower()
         if "transaction" in error_msg or "replica" in error_msg or "session" in error_msg or "mongomock" in error_msg:
             logger.warning(f"Transactions not supported, using fallback cascading delete: {tx_error}")
 
-            # Delete pet first, then related records (prevents foreign key issues)
-            result = app.db["pets"].delete_one({"_id": pet_id_obj})
-
-            if result.deleted_count == 0:
-                return False
-
-            # Best-effort deletion of related records
             total_deleted = 0
-            failed_collections = []
             for collection_name, query in collections_to_clean:
                 try:
                     result = app.db[collection_name].delete_many(query)
-                    if result.deleted_count > 0:
-                        logger.info(f"Deleted {result.deleted_count} records from {collection_name} for pet {pet_id}")
-                        total_deleted += result.deleted_count
                 except Exception as col_error:
-                    logger.error(f"Failed to delete from {collection_name} for pet {pet_id}: {col_error}")
-                    failed_collections.append(collection_name)
+                    logger.error(f"Pet deletion stopped at {collection_name}: id={pet_id}, error={col_error}")
+                    raise PetDeletionFailed(collection_name) from col_error
+                if result.deleted_count > 0:
+                    logger.info(f"Deleted {result.deleted_count} records from {collection_name} for pet {pet_id}")
+                    total_deleted += result.deleted_count
 
-            if failed_collections:
-                logger.warning(
-                    f"Some related records may not have been deleted for pet {pet_id}: {', '.join(failed_collections)}"
-                )
+            try:
+                result = app.db["pets"].delete_one({"_id": pet_id_obj})
+            except Exception as pet_error:
+                logger.error(f"Pet deletion stopped at the pet itself: id={pet_id}, error={pet_error}")
+                raise PetDeletionFailed("pets") from pet_error
+            if result.deleted_count == 0:
+                return False
 
             logger.info(f"Pet deleted (fallback): id={pet_id}, total_related_records={total_deleted}")
         else:
@@ -915,9 +924,8 @@ def purge_pet(pet: dict) -> bool:
         except Exception as file_error:
             logger.warning(f"Failed to delete document file {file_id} for pet {pet_id}: {file_error}")
 
-    # Unconfirmed scan uploads, and anything else left under the pet's
-    # prefix (thumbnails, an object whose record write failed).
-    app.db["document_uploads"].delete_many({"pet_id": pet_id})
+    # Anything else left under the pet's prefix (thumbnails, an object whose
+    # record write failed).
     if storage.storage_configured():
         try:
             storage.delete_prefix(storage.pet_prefix(app.db, pet["owner"], pet_id))

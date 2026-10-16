@@ -570,6 +570,10 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
                 )
             elif responses.get("500", {}).get("description") == "Internal Server Error":
                 responses["500"] = answer("Сбой на сервере (`internal_error`), повторите позже")
+            if key == ("delete", "/api/pets/{pet_id}") and "503" in responses:
+                responses["503"] = answer(
+                    "Не удалось удалить (`pet_delete_failed`): питомец остался, повторите удаление"
+                )
             if responses.get("503", {}).get("description") == "Service Unavailable":
                 if path.startswith(("/api/me/email", "/api/auth")):
                     responses["503"] = answer(
