@@ -103,7 +103,7 @@ function markedTodayByOther(med: Medication, currentUsername?: string | null): b
 }
 
 export function MedicationsList() {
-    const { selectedPetId, selectedPetName } = usePet();
+    const { selectedPetId, selectedPetName, selectPet, pets } = usePet();
     const { username: currentUsername } = useAuth();
     // A dose marked with no connection is kept under the login the server says is signed in.
     const { username: owner } = useSession();
@@ -340,20 +340,46 @@ export function MedicationsList() {
         // A pack size saved on the course is the likely amount.
         setRestock({ medication: med, amount: med.inventory_total ? formatAmount(med.inventory_total) : '', error: undefined });
     };
-    // The dose card's «Пополнить» arrives here with the course in the address.
+    // The dose card's «Пополнить» arrives here with the course in the address. The list shows only the chosen pet's courses,
+    // so a course of another pet is fetched by its id: its dialog opens, and its pet is chosen, so the list agrees with it.
     const [searchParams, setSearchParams] = useSearchParams();
     const restockId = searchParams.get('restock');
+    const clearRestockLink = () => {
+        setSearchParams((params) => {
+            params.delete('restock');
+            return params;
+        }, { replace: true });
+    };
+    const onChosenPet = !!restockId && medications.some((m) => m._id === restockId);
     useEffect(() => {
         if (!restockId) return;
         const med = medications.find((m) => m._id === restockId);
         if (!med) return;
         openRestock(med);
-        setSearchParams((params) => {
-            params.delete('restock');
-            return params;
-        }, { replace: true });
+        clearRestockLink();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [restockId, medications]);
+    const otherPetCourse = useQuery({
+        queryKey: ['medication', restockId ?? ''],
+        queryFn: () => medicationsService.getById(restockId ?? ''),
+        enabled: !!restockId && !isLoading && !onChosenPet,
+        retry: false,
+    });
+    useEffect(() => {
+        if (!restockId || !otherPetCourse.data) return;
+        const course = otherPetCourse.data;
+        openRestock(course);
+        const pet = pets.find((p) => p._id === course.pet_id);
+        if (pet && pet._id !== selectedPetId) selectPet(pet);
+        clearRestockLink();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [restockId, otherPetCourse.data]);
+    useEffect(() => {
+        if (!restockId || !otherPetCourse.isError) return;
+        showToast.failure(getApiErrorMessage(otherPetCourse.error, 'Не удалось открыть курс'));
+        clearRestockLink();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [restockId, otherPetCourse.isError]);
     const confirmRestock = () => {
         if (!restock.medication) return;
         const amount = parseAmount(restock.amount);
