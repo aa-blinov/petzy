@@ -16,7 +16,7 @@ async def main():
         await pg.goto(BASE + "/")
         cards = pg.locator(".card-soft--interactive", has=pg.locator("svg.lucide-chevron-right"))
         await cards.first.wait_for(timeout=15000)
-        chevron_gaps, date_gaps, date_tops, overlaps = [], [], [], []
+        chevron_gaps, date_gaps, date_tops, overlaps, edges = [], [], [], [], []
         for i in range(await cards.count()):
             card = cards.nth(i)
             box = await card.bounding_box()
@@ -24,6 +24,7 @@ async def main():
             chevron_gaps.append(round(box["x"] + box["width"] - (chevron["x"] + chevron["width"]), 1))
             date = await card.locator(".feed-date").first.bounding_box()
             if date:
+                edges.append(abs((date["x"] + date["width"]) - (chevron["x"] + chevron["width"])) <= 2)
                 date_gaps.append(round(box["x"] + box["width"] - (date["x"] + date["width"]), 1))
                 date_tops.append(round(date["y"] - box["y"], 1))
                 overlaps.append(
@@ -43,6 +44,7 @@ async def main():
             f"right gaps {date_gaps}, tops {date_tops}",
         )
         check("the date never runs into the chevron", bool(overlaps) and not any(overlaps), f"overlaps {overlaps}")
+        check("the date and the chevron share their right edge", bool(edges) and all(edges), f"aligned {edges}")
         await browser.close()
     summary("feed chevron and date")
 
