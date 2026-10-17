@@ -23,11 +23,9 @@ interface HistoryItemProps {
   item: HistoryItemType;
   config: EventDisplayConfig;
   type: string;
-  /** On the feed, the round «+» floats over the right edge of the rows: the row keeps its date clear of it. */
-  clearFab?: boolean;
   }
 
-export const HistoryItem = memo(function HistoryItem({ item, config, type, clearFab = false }: HistoryItemProps) {
+export const HistoryItem = memo(function HistoryItem({ item, config, type }: HistoryItemProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { username: currentUsername } = useAuth();
@@ -177,9 +175,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, clear
             {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
           </div>
 
-          {/* Body. On the feed its text ends just left of the round «+» (36px here, after the chevron's column), so the
-              round button never covers a date; the chevron stays at the card's own edge. */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: clearFab ? '36px' : undefined }}>
+          {/* Body */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {/* Header row: what it is, and when. An icon alone does not say «Смена лотка». */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span

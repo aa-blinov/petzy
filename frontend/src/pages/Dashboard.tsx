@@ -264,7 +264,6 @@ export function Dashboard() {
                             item={item}
                             config={config}
                             type={type}
-                            clearFab
                           />
                         );
                       })}
