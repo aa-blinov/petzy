@@ -177,9 +177,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, clear
             {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
           </div>
 
-          {/* Body. On the feed its text keeps clear of the round «+» (48px here, 16px card padding: 64px in all),
-              so the chevron below stays at the card's own edge. */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: clearFab ? '48px' : undefined }}>
+          {/* Body. On the feed its text ends just left of the round «+» (36px here, after the chevron's column), so the
+              round button never covers a date; the chevron stays at the card's own edge. */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: clearFab ? '36px' : undefined }}>
             {/* Header row: what it is, and when. An icon alone does not say «Смена лотка». */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span
@@ -188,7 +188,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, clear
               >
                 {config.displayName}
               </span>
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+              <span className="feed-date" style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
                 {formatRelativeDateTime(item.date_time)}
               </span>
             </div>
