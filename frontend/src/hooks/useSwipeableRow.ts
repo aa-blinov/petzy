@@ -40,6 +40,7 @@ import { useRef, useState, useCallback, useEffect, type MouseEvent as ReactMouse
 // intended. 40 px is comfortable for one-handed use; anything
 // shorter is interpreted as a tap.
 const THRESHOLD_PX = 40;     // travel needed to commit an action
+const DRAG_SLOP_PX = 10;     // travel before a press counts as a drag: a tap drifts a few px
 const MAX_OFFSET_PX = 84;    // hard cap so a long swipe doesn't yank the row off-screen
 const COMMIT_VELOCITY = 0.3; // px/ms — fast flick also commits even if travel < threshold
 const RUBBER_BAND = 0.45;    // resistance factor past MAX_OFFSET_PX
@@ -106,11 +107,13 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
 
     // Lock axis on the first significant move so vertical scroll
     // (within PullToRefresh) still works and a sloppy diagonal
-    // swipe doesn't trigger both. The 4-px floor is small enough
-    // that a slow, slightly-curved finger swipe still locks
-    // horizontally — anything larger and we treat it as scroll.
+    // swipe doesn't trigger both. Less than DRAG_SLOP_PX is still a
+    // tap: a finger drifts a few px while it taps, and a drift that
+    // locked here would swallow the click of a button inside the row
+    // («Пополнить», «Дали сейчас»). A slow, curved swipe locks once it
+    // passes the slop; anything larger and we treat it as scroll.
     if (lockedRef.current === null) {
-      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      if (Math.abs(dx) < DRAG_SLOP_PX && Math.abs(dy) < DRAG_SLOP_PX) return;
       // Horizontal lock only if horizontal travel dominates.
       if (Math.abs(dx) > Math.abs(dy)) {
         lockedRef.current = dx > 0 ? 'right' : 'left';
