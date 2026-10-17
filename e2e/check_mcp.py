@@ -192,6 +192,27 @@ async def narrow_token_refused(pg, pet_id):
             await discard_token(pg, token_id)
 
 
+async def revoked_token_leaves_the_list(pg):
+    """A revoked token is taken out of the page's list with «Убрать», and the server forgets its record."""
+    minted = await api(
+        pg, "POST", "/me/tokens", {"name": "Проверка уборки", "scopes": ["pets:read"], "expires_in_days": 1}
+    )
+    token_id = (minted["json"] or {}).get("id")
+    try:
+        await api(pg, "DELETE", f"/me/tokens/{token_id}")
+        await pg.goto(BASE + "/settings/assistants")
+        item = pg.locator(".assist__item", has_text="Проверка уборки")
+        await item.get_by_role("button", name="Убрать").click()
+        await pg.locator(".adm-dialog").get_by_role("button", name="Убрать").click()
+        await item.wait_for(state="detached", timeout=10000)
+        listed = await api(pg, "GET", "/me/tokens")
+        gone = all(t.get("id") != token_id for t in (listed["json"] or {}).get("tokens", []))
+        check("a revoked token leaves the list, and the server forgets its record", gone)
+    finally:
+        if token_id:
+            await api(pg, "DELETE", f"/me/tokens/{token_id}")
+
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome")
@@ -199,6 +220,7 @@ async def main():
         await ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=BASE)
         await login(pg)
         await attempt("the assistants page shows the address and the guide link", address_on_the_page(pg))
+        await attempt("a revoked token leaves the assistants page list", revoked_token_leaves_the_list(pg))
         pet_id = token_id = token = None
         try:
             made = await api(pg, "POST", "/pets", {"name": "Тест-М", "species": "dog", "gender": "male"})
