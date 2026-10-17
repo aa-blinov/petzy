@@ -18,6 +18,9 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
 import './AssistantAccess.css';
 
+// The guide to connecting an assistant, in the public repository next to the server's code.
+const MCP_GUIDE = 'https://github.com/aa-blinov/petzy/blob/master/mcp/README.md';
+
 /** When a token stopped or stops working, said in one line: revoked, ended, or until when. */
 function statusLine(token: PersonalToken): string {
   if (token.revoked_at) return `Отозван ${formatTokenTime(token.revoked_at)}`;
@@ -58,6 +61,15 @@ export function AssistantAccess() {
   };
 
   const list = tokens.data ?? [];
+  const mcpAddress = `${window.location.origin}/mcp`;
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(mcpAddress);
+      showToast.success('Адрес скопирован');
+    } catch {
+      showToast.failure('Не удалось скопировать, выделите адрес вручную');
+    }
+  };
 
   return (
     <div className="page-container">
@@ -69,6 +81,15 @@ export function AssistantAccess() {
           <p className="assist__lead">
             Личный доступ нужен скрипту или ассистенту, который читает дневник или пишет в него от вашего имени. Он открывает только отмеченные области и истекает через срок
           </p>
+          {/* The address of the MCP server: what an assistant is pointed at, next to the token it is given. */}
+          <div className="card-soft assist__address">
+            <p className="assist__address-title">Адрес сервера для ассистента</p>
+            <code className="assist__address-url">{mcpAddress}</code>
+            <div className="assist__address-actions">
+              <Button size="small" fill="outline" color="primary" onClick={copyAddress}>Скопировать адрес</Button>
+              <a className="tap-link assist__address-link" href={MCP_GUIDE} target="_blank" rel="noreferrer">Как подключить</a>
+            </div>
+          </div>
           <Button block color="primary" size="large" onClick={() => navigate('/settings/assistants/new')}>
             Создать доступ
           </Button>
