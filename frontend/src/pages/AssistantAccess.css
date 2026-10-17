@@ -90,3 +90,38 @@
     font-size: var(--text-sm);
     font-weight: 500;
 }
+
+/* The address of the MCP server, with the way to copy it and the guide to connecting. */
+.assist__address {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.assist__address-title {
+    margin: 0;
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.assist__address-url {
+    color: var(--app-text-primary);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+}
+
+.assist__address-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xs);
+}
+
+.assist__address-link {
+    color: var(--app-accent-deep);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}

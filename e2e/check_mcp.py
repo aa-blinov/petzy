@@ -1,4 +1,4 @@
-"""The MCP server on the stand: an assistant's personal token, the five tools over HTTP, and a revoked token.
+"""The MCP server on the stand: the assistants page's address, a personal token, the five tools, a revoked token.
 
 It goes the way an assistant does. The owner makes a personal access token (POST /api/me/tokens), and the MCP protocol
 runs on localhost:3000/mcp, through nginx. The throwaway pet «Тест-М» and the token are removed at the end, also when a
@@ -16,6 +16,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 MCP_URL = BASE + "/mcp"
+GUIDE = "https://github.com/aa-blinov/petzy/blob/master/mcp/README.md"
 SCOPES = ["pets:read", "events:write", "history:read", "medical:read"]
 TOOLS = {"list_pets", "list_event_types", "add_event", "get_history", "get_medical_card"}
 # The text petzy_mcp answers with when Petzy refuses the token (mcp/petzy_mcp/client.py).
@@ -150,11 +151,30 @@ async def discard_token(pg, token_id):
     )
 
 
+async def address_on_the_page(pg):
+    """The page shows the server's address, the button copies it, and the guide link is 44px to press."""
+    await pg.goto(BASE + "/settings/assistants")
+    shown = (await pg.locator(".assist__address-url").inner_text()).strip()
+    check("the assistants page shows the address of the MCP server", shown == MCP_URL, shown)
+    await pg.get_by_role("button", name="Скопировать адрес").click()
+    copied = await pg.evaluate("() => navigator.clipboard.readText()")
+    check("the copy button puts the address on the clipboard", copied == MCP_URL, copied[:80])
+    guide = pg.get_by_role("link", name="Как подключить")
+    href, target = await guide.get_attribute("href"), await guide.get_attribute("target")
+    check("the guide link opens the README in a new tab", href == GUIDE and target == "_blank", f"{href}")
+    box = await guide.bounding_box()
+    check(
+        "the guide link is at least 44px tall to press", bool(box) and box["height"] >= 44, str(box and box["height"])
+    )
+
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome")
-        _, pg = await new_page(browser, sw=False)
+        ctx, pg = await new_page(browser, sw=False)
+        await ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=BASE)
         await login(pg)
+        await attempt("the assistants page shows the address and the guide link", address_on_the_page(pg))
         pet_id = token_id = token = None
         try:
             made = await api(pg, "POST", "/pets", {"name": "Тест-М", "species": "dog", "gender": "male"})
