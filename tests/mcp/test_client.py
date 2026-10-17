@@ -14,7 +14,6 @@ from petzy_mcp.client import (
     NOT_FOUND,
     RATE_LIMITED,
     REJECTED_DATA,
-    SCOPE_MISSING,
     SERVER_FAILED,
     TIMED_OUT,
     UNREACHABLE,
@@ -58,7 +57,11 @@ def test_the_api_path_joins_the_base_address_without_a_double_slash():
     [
         (401, {"success": False, "code": "token_invalid", "error": "Доступ не найден"}, AUTH_FAILED),
         (401, None, AUTH_FAILED),
-        (403, {"success": False, "code": "token_scope_missing", "error": "x"}, SCOPE_MISSING),
+        (
+            403,
+            {"success": False, "code": "token_scope_missing", "error": "x"},
+            "У этого доступа нет нужной галочки. Создайте доступ и отметьте галочку для этого действия",
+        ),
         (403, {"success": False, "code": "token_not_allowed", "error": "x"}, NOT_ALLOWED),
         (
             403,
@@ -202,3 +205,26 @@ def test_the_api_address_is_accepted_when_the_token_stays_safe(value, expected):
 def test_an_address_that_would_send_the_token_in_the_clear_is_refused(value):
     with pytest.raises(ValueError):
         checked_api_url(value)
+
+
+@pytest.mark.parametrize(
+    "scope, label",
+    [
+        ("pets:read", "Читать питомцев"),
+        ("events:write", "Записывать события"),
+        ("history:read", "Читать ленту и историю"),
+        ("medical:read", "Читать медкарту"),
+    ],
+)
+def test_a_missing_scope_names_its_checkbox_as_the_settings_write_it(scope, label):
+    petzy = FakePetzy()
+    petzy.answer("GET", "/api/pets", status=403, body={"success": False, "code": "token_scope_missing", "error": "x"})
+
+    async def go():
+        async with PetzyClient(BASE_URL, TOKEN, petzy.transport, scope=scope) as api:
+            return await api.get("/api/pets")
+
+    with pytest.raises(PetzyError) as refused:
+        asyncio.run(go())
+
+    assert refused.value.message == f"У этого доступа нет галочки «{label}». Создайте доступ и отметьте её"

@@ -14,7 +14,13 @@ REQUEST_TIMEOUT_SECONDS = 15.0
 AUTH_FAILED = (
     "Доступ не найден, отозван или его срок истёк. Создайте новый в настройках Petzy, раздел «Доступ для ассистентов»"
 )
-SCOPE_MISSING = "У этого доступа нет нужной области. Создайте доступ с нужной галочкой"
+# Галочки под теми же подписями, что в настройках («Доступ для ассистентов»): по тексту ошибки их легко найти.
+SCOPE_LABELS = {
+    "pets:read": "Читать питомцев",
+    "events:write": "Записывать события",
+    "history:read": "Читать ленту и историю",
+    "medical:read": "Читать медкарту",
+}
 NOT_ALLOWED = "Этот доступ не работает для такого действия"
 NOT_FOUND = "Питомец или запись не найдены"
 EVENT_TYPE_NOT_FOUND = "Тип события не найден. Список типов покажет list_event_types"
@@ -34,6 +40,14 @@ class PetzyError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
+
+
+def scope_missing(scope: str | None) -> str:
+    """Что ответить, когда у доступа нет галочки: по её подписи, как она написана в настройках."""
+    label = SCOPE_LABELS.get(scope or "")
+    if label is None:
+        return "У этого доступа нет нужной галочки. Создайте доступ и отметьте галочку для этого действия"
+    return f"У этого доступа нет галочки «{label}». Создайте доступ и отметьте её"
 
 
 def checked_api_url(value: str) -> str:
@@ -64,8 +78,16 @@ class PetzyClient:
     Перенаправления не выполняются: иначе заголовок Authorization ушёл бы по адресу, который выбрал не Petzy.
     """
 
-    def __init__(self, base_url: str, token: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        transport: httpx.AsyncBaseTransport | None = None,
+        *,
+        scope: str | None = None,
+    ) -> None:
         self._token = token
+        self._scope = scope
         self._http = httpx.AsyncClient(
             base_url=base_url,
             headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
@@ -109,7 +131,7 @@ class PetzyClient:
             return AUTH_FAILED
         if status == 403:
             if code == "token_scope_missing":
-                return SCOPE_MISSING
+                return scope_missing(self._scope)
             if code == "token_not_allowed":
                 return NOT_ALLOWED
             return server_text or "У этого доступа не хватает прав на это действие"

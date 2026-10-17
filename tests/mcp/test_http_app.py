@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from petzy_mcp.auth import MALFORMED_TOKEN_TEXT, MISSING_TOKEN_TEXT
-from petzy_mcp.client import SCOPE_MISSING, TIMED_OUT
+from petzy_mcp.client import TIMED_OUT
 from petzy_mcp.http_app import create_app
 from tests.mcp.fake_petzy import BASE_URL, PET_ID, TOKEN, FakePetzy
 
@@ -104,7 +104,9 @@ def test_a_refused_scope_comes_back_to_the_model_as_the_plain_text():
     result = response.json()["result"]
     assert response.status_code == 200
     assert result["isError"] is True
-    assert result["content"][0]["text"] == SCOPE_MISSING
+    assert (
+        result["content"][0]["text"] == "У этого доступа нет галочки «Читать питомцев». Создайте доступ и отметьте её"
+    )
     assert TOKEN not in response.text
 
 
