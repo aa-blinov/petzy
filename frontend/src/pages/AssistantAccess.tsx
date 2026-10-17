@@ -50,6 +50,18 @@ export function AssistantAccess() {
     },
   });
 
+  const remove = useMutation({
+    mutationFn: (token: PersonalToken) => personalTokenService.remove(token),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PERSONAL_TOKENS_KEY });
+      showToast.success('Доступ убран из списка');
+    },
+    onError: (err: unknown) => {
+      void queryClient.invalidateQueries({ queryKey: PERSONAL_TOKENS_KEY });
+      showToast.failure(getApiErrorMessage(err, 'Не удалось убрать доступ'));
+    },
+  });
+
   const ask = async (token: PersonalToken) => {
     const sure = await Dialog.confirm({
       title: 'Отозвать доступ?',
@@ -58,6 +70,16 @@ export function AssistantAccess() {
       cancelText: 'Оставить',
     });
     if (sure) revoke.mutate(token.id);
+  };
+
+  const askRemove = async (token: PersonalToken) => {
+    const sure = await Dialog.confirm({
+      title: 'Убрать доступ из списка?',
+      content: 'Доступ уже не работает. Запись о нём пропадёт из списка, вернуть её нельзя',
+      confirmText: 'Убрать',
+      cancelText: 'Оставить',
+    });
+    if (sure) remove.mutate(token);
   };
 
   const list = tokens.data ?? [];
@@ -122,7 +144,7 @@ export function AssistantAccess() {
                     </span>
                     <span className="assist__meta">{statusLine(token)}</span>
                   </div>
-                  {isWorking(token) && (
+                  {isWorking(token) ? (
                     <Button
                       size="small"
                       color="danger"
@@ -130,6 +152,15 @@ export function AssistantAccess() {
                       onClick={() => void ask(token)}
                     >
                       Отозвать
+                    </Button>
+                  ) : (
+                    <Button
+                      size="small"
+                      color="danger"
+                      loading={remove.isPending && remove.variables?.id === token.id}
+                      onClick={() => void askRemove(token)}
+                    >
+                      Убрать
                     </Button>
                   )}
                 </li>

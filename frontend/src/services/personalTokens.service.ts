@@ -52,6 +52,14 @@ export const personalTokenService = {
   async revoke(id: string): Promise<void> {
     await api.delete(`/me/tokens/${id}`);
   },
+  /**
+   * Takes a token out of the list for good. A token not revoked yet (working or ended) is revoked by the first call, and
+   * the second takes its record out; a revoked one goes on the first call.
+   */
+  async remove(token: PersonalToken): Promise<void> {
+    if (token.revoked_at === null) await api.delete(`/me/tokens/${token.id}`);
+    await api.delete(`/me/tokens/${token.id}`);
+  },
 };
 
 /** Whether a token still opens the API: not revoked, and not yet at its end. */
