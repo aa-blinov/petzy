@@ -165,8 +165,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, clear
             // the icon and the row looked unanchored.
             alignItems: 'flex-start',
             gap: '12px',
-            // Right side kept clear of the round «+» on the feed, so the date of the row is never under it.
-            padding: clearFab ? 'var(--spacing-lg) 64px var(--spacing-lg) var(--spacing-lg)' : 'var(--spacing-lg)',
+            padding: 'var(--spacing-lg)',
           }}
         >
           {/* Pill-icon on the left — tinted rounded square with category icon */}
@@ -178,8 +177,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type, clear
             {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
           </div>
 
-          {/* Body */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* Body. On the feed its text keeps clear of the round «+» (48px here, 16px card padding: 64px in all),
+              so the chevron below stays at the card's own edge. */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: clearFab ? '48px' : undefined }}>
             {/* Header row: what it is, and when. An icon alone does not say «Смена лотка». */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span
