@@ -168,6 +168,30 @@ async def address_on_the_page(pg):
     )
 
 
+async def narrow_token_refused(pg, pet_id):
+    """A token with only «Читать питомцев» is refused by add_event, and the answer names the checkbox to tick."""
+    minted = await api(
+        pg, "POST", "/me/tokens", {"name": "Проверка галочек", "scopes": ["pets:read"], "expires_in_days": 1}
+    )
+    issued = minted["json"] or {}
+    token, token_id = issued.get("token"), issued.get("id")
+    try:
+        async with mcp_session(token) as session:
+            is_error, text = await call(
+                session,
+                "add_event",
+                {"pet_id": pet_id, "type": "weight", "date": "2026-10-01", "time": "09:30", "fields": {"weight": 4.2}},
+            )
+        check(
+            "a token without the events scope is refused, and the answer names the checkbox",
+            is_error and "«Записывать события»" in text,
+            text[:120],
+        )
+    finally:
+        if token_id:
+            await discard_token(pg, token_id)
+
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome")
@@ -194,6 +218,11 @@ async def main():
 
             if pet_id and token:
                 await attempt("the five tools answer over HTTP", use_the_tools(token, pet_id), token)
+            if pet_id:
+                await attempt(
+                    "a token without the events scope is refused, and the answer names the checkbox",
+                    narrow_token_refused(pg, pet_id),
+                )
             await attempt("without a token the request is refused", without_a_token())
             await attempt("an unknown token is refused by the tool", unknown_token())
             if token_id:

@@ -8,8 +8,8 @@ from types import SimpleNamespace
 import pytest
 
 from petzy_mcp.auth import MALFORMED_TOKEN_TEXT, MISSING_TOKEN_TEXT
-from petzy_mcp.client import SCOPE_MISSING, PetzyError
-from petzy_mcp.server import build_server, token_for_call
+from petzy_mcp.client import PetzyError
+from petzy_mcp.server import INSTRUCTIONS, build_server, token_for_call
 from petzy_mcp.tools import BAD_DATE
 from tests.mcp.fake_petzy import BASE_URL, PET_ID, TOKEN, FakePetzy
 
@@ -72,7 +72,7 @@ def test_a_refused_scope_reaches_the_model_as_the_plain_russian_text():
     result = _call(server, "list_pets", {})
 
     assert result.is_error is True
-    assert _text(result) == SCOPE_MISSING
+    assert _text(result) == "У этого доступа нет галочки «Читать питомцев». Создайте доступ и отметьте её"
     assert TOKEN not in _text(result)
 
 
@@ -109,3 +109,47 @@ def test_a_header_token_wins_over_the_fallback_and_a_bad_header_is_refused():
 
 def test_a_call_without_a_request_uses_the_stdio_token():
     assert token_for_call(SimpleNamespace(headers=None), stdio_token=TOKEN) == TOKEN
+
+
+@pytest.mark.parametrize(
+    "tool, arguments, method, path, label",
+    [
+        ("list_pets", {}, "GET", "/api/pets", "Читать питомцев"),
+        ("list_event_types", {}, "GET", "/api/event-types", "Читать питомцев"),
+        (
+            "add_event",
+            {"pet_id": PET_ID, "type": "weight", "date": "2026-10-01", "time": "09:30", "fields": {"weight": 4.2}},
+            "POST",
+            "/api/events",
+            "Записывать события",
+        ),
+        ("get_history", {"pet_id": PET_ID}, "GET", "/api/history/timeline", "Читать ленту и историю"),
+        ("get_medical_card", {"pet_id": PET_ID}, "GET", f"/api/pets/{PET_ID}/medical-card", "Читать медкарту"),
+    ],
+)
+def test_each_tool_names_the_checkbox_its_refusal_needs(tool, arguments, method, path, label):
+    petzy = FakePetzy()
+    petzy.answer(method, path, status=403, body={"success": False, "code": "token_scope_missing", "error": "x"})
+    server = build_server(BASE_URL, api_transport=petzy.transport, stdio_token=TOKEN)
+
+    result = _call(server, tool, arguments)
+
+    assert result.is_error is True
+    assert _text(result) == f"У этого доступа нет галочки «{label}». Создайте доступ и отметьте её"
+
+
+def test_the_instructions_name_the_calls_in_their_order_and_forbid_inventing():
+    order = [INSTRUCTIONS.index(name) for name in ("list_pets", "list_event_types", "add_event")]
+
+    assert order == sorted(order)
+    assert "не выдумывайте" in INSTRUCTIONS
+
+
+def test_add_event_tells_the_model_to_ask_for_the_day_and_the_time_and_to_leave_an_unknown_zone_out():
+    [add_event] = [t for t in asyncio.run(build_server(BASE_URL).list_tools()) if t.name == "add_event"]
+    described = add_event.input_schema["properties"]
+
+    assert "спросите" in described["date"]["description"]
+    assert "не выдумывайте" in described["time"]["description"]
+    assert "не передавайте" in described["tz"]["description"]
+    assert "50 г" in described["fields"]["description"]

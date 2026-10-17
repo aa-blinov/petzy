@@ -18,9 +18,13 @@ from .auth import MISSING_TOKEN_TEXT, TokenError, personal_token
 from .client import PetzyClient, PetzyError
 
 INSTRUCTIONS = (
-    "Дневник питомца Petzy. Сначала вызовите list_pets: без номера питомца остальные инструменты не работают. "
-    "Перед add_event вызовите list_event_types: там ключи типов записей и поля. Инструменты читают данные или "
-    "добавляют записи. Изменять и удалять записи они не умеют."
+    "Дневник питомца Petzy. Работайте по порядку. 1) list_pets: найдите питомца по имени, которое назвал "
+    "пользователь, и возьмите его id. Если имя не совпадает ни с одним или совпадает с двумя, спросите пользователя. "
+    "2) list_event_types: ключ типа (key) и имена полей (fields) для add_event берите только оттуда. "
+    "Обязательные поля (required), которых пользователь не назвал, спросите у пользователя. "
+    "3) add_event: одна запись за один вызов. Дату «сегодня» берите из контекста, если там есть текущая дата, "
+    "иначе спросите. Время не выдумывайте: если его не назвали, спросите. "
+    "Инструменты не меняют и не удаляют записи: правку скажите сделать в приложении Petzy."
 )
 
 LIST_PETS = (
@@ -35,14 +39,16 @@ LIST_EVENT_TYPES = (
 )
 ADD_EVENT = (
     "Добавляет одну запись в дневник питомца: вес, кормление, приём лекарства и другие типы из list_event_types. "
-    "Перед вызовом получите ключ типа и поля через list_event_types. Дата в формате ГГГГ-ММ-ДД, время ЧЧ:ММ, "
-    "в fields словарь «имя поля: значение». Одинаковую запись за последние 5 минут Petzy не сохранит дважды и "
-    "вернёт ошибку. Инструмент только добавляет запись: изменить или удалить существующую он не может."
+    "Перед вызовом получите ключ типа и поля через list_event_types. Ключ type тот же, что record_type в истории. "
+    "Дата ГГГГ-ММ-ДД, время ЧЧ:ММ, fields словарь «имя поля: значение». Если Petzy ответил «Такая запись уже "
+    "сохранена», запись уже есть: не записывайте её снова. Инструмент только добавляет запись: изменить или удалить "
+    "существующую он не может."
 )
 GET_HISTORY = (
     "Последние записи дневника питомца, новые сверху: события и приёмы лекарств. В каждой записи есть id, "
     "record_type (ключ типа события или medications для приёма), date_time (ГГГГ-ММ-ДД ЧЧ:ММ), fields и comment. "
-    "У приёма есть medication_name, dose_taken, dose_unit, а skipped означает пропущенный приём. Ничего не меняет."
+    "У приёма есть medication_name, dose_taken, dose_unit, а skipped означает пропущенный приём. В ответе total: "
+    "всего записей. Чтобы увидеть больше, увеличьте limit (до 100). Ничего не меняет."
 )
 GET_MEDICAL_CARD = (
     "Медицинская карта питомца: профиль (аллергии, группа крови), вес, текущие и прошедшие курсы лекарств, "
@@ -88,10 +94,10 @@ def build_server(
     """MCP-сервер с пятью инструментами. Для HTTP stdio_token не задают: каждый запрос несёт свой доступ."""
     server = MCPServer("petzy", instructions=INSTRUCTIONS, version=__version__)
 
-    async def run_tool(ctx: Context, call: Callable[[PetzyClient], Awaitable[Any]]) -> CallToolResult:
+    async def run_tool(ctx: Context, call: Callable[[PetzyClient], Awaitable[Any]], scope: str) -> CallToolResult:
         try:
             token = token_for_call(ctx, stdio_token)
-            async with PetzyClient(api_url, token, api_transport) as api:
+            async with PetzyClient(api_url, token, api_transport, scope=scope) as api:
                 data = await call(api)
         except PetzyError as exc:
             return _result(exc.message, is_error=True)
@@ -99,27 +105,42 @@ def build_server(
 
     @server.tool(description=LIST_PETS, structured_output=False)
     async def list_pets(ctx: Context) -> CallToolResult:
-        return await run_tool(ctx, tools.list_pets)
+        return await run_tool(ctx, tools.list_pets, "pets:read")
 
     @server.tool(description=LIST_EVENT_TYPES, structured_output=False)
     async def list_event_types(ctx: Context) -> CallToolResult:
-        return await run_tool(ctx, tools.list_event_types)
+        return await run_tool(ctx, tools.list_event_types, "pets:read")
 
     @server.tool(description=ADD_EVENT, structured_output=False)
     async def add_event(
         ctx: Context,
         pet_id: Annotated[str, Field(description="Номер питомца из list_pets, 24 символа")],
         type: Annotated[str, Field(description="Ключ типа записи из list_event_types, например weight")],
-        date: Annotated[str, Field(description="Дата события в формате ГГГГ-ММ-ДД")],
-        time: Annotated[str, Field(description="Время события в формате ЧЧ:ММ")],
+        date: Annotated[
+            str,
+            Field(
+                description="Дата в формате ГГГГ-ММ-ДД. «Сегодня» берите из контекста, если там есть текущая дата, "
+                "иначе спросите"
+            ),
+        ],
+        time: Annotated[
+            str,
+            Field(description="Время в формате ЧЧ:ММ. Если пользователь его не назвал, спросите: не выдумывайте"),
+        ],
         fields: Annotated[
             dict[str, Any],
-            Field(description="Значения полей: имя поля и значение, имена берутся из list_event_types"),
+            Field(
+                description="Значения полей: имя поля и значение, имена берутся из list_event_types. "
+                "Число передавайте числом без единиц: 50, а не «50 г»"
+            ),
         ],
         comment: Annotated[str, Field(description="Комментарий, до 500 символов, можно пустой")] = "",
         tz: Annotated[
             str | None,
-            Field(description="Часовой пояс, в котором введено время, например Europe/Moscow. Необязательно"),
+            Field(
+                description="IANA-имя пояса, в котором введено время (например Asia/Almaty). "
+                "Только если пояс пользователя известен. Иначе не передавайте: время сохранится как введено"
+            ),
         ] = None,
     ) -> CallToolResult:
         return await run_tool(
@@ -127,6 +148,7 @@ def build_server(
             lambda api: tools.add_event(
                 api, pet_id=pet_id, type=type, date=date, time=time, fields=fields, comment=comment, tz=tz
             ),
+            "events:write",
         )
 
     @server.tool(description=GET_HISTORY, structured_output=False)
@@ -137,13 +159,13 @@ def build_server(
             tools.HISTORY_LIMIT_DEFAULT
         ),
     ) -> CallToolResult:
-        return await run_tool(ctx, lambda api: tools.get_history(api, pet_id=pet_id, limit=limit))
+        return await run_tool(ctx, lambda api: tools.get_history(api, pet_id=pet_id, limit=limit), "history:read")
 
     @server.tool(description=GET_MEDICAL_CARD, structured_output=False)
     async def get_medical_card(
         ctx: Context,
         pet_id: Annotated[str, Field(description="Номер питомца из list_pets, 24 символа")],
     ) -> CallToolResult:
-        return await run_tool(ctx, lambda api: tools.get_medical_card(api, pet_id=pet_id))
+        return await run_tool(ctx, lambda api: tools.get_medical_card(api, pet_id=pet_id), "medical:read")
 
     return server
