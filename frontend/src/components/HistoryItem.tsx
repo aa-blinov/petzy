@@ -157,41 +157,40 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
           onClick={canEdit ? handleEdit : () => setIntakeInfoVisible(true)}
           style={{
             cursor: 'pointer',
-            display: 'flex',
-            // Pill-icon sits on the first text line (the title). Aligning
-            // with the row's vertical centre made the title drift above
-            // the icon and the row looked unanchored.
-            alignItems: 'flex-start',
-            gap: '12px',
+            // A grid: the icon, then the title and the details, then the chevron's own column (18px, the chevron's width).
+            // The header row spans the last two columns, so the date ends where the chevron ends. Every item starts at the
+            // top, so the icon sits on the first text line (the title).
+            display: 'grid',
+            gridTemplateColumns: 'auto minmax(0, 1fr) 18px',
+            gridTemplateRows: 'auto auto',
+            columnGap: '12px',
+            rowGap: '8px',
+            alignItems: 'start',
             padding: 'var(--spacing-lg)',
           }}
         >
           {/* Pill-icon on the left — tinted rounded square with category icon */}
           <div
             className="pill-icon"
-            style={{ backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}
+            style={{ gridColumn: 1, gridRow: '1 / span 2', backgroundColor: pillBg, color: 'var(--app-text-on-tile)' }}
             aria-hidden
           >
             {PillIcon ? <PillIcon size={22} strokeWidth={2} style={{ display: 'block' }} /> : null}
           </div>
 
-          {/* Body */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* Header row: what it is, and when. An icon alone does not say «Смена лотка». */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-              <span
-                className="display-headline"
-                style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}
-              >
-                {config.displayName}
-              </span>
-              {/* The chevron's column and its gap sit after the body: the date reaches over them, to the card's padding edge,
-                  so it lines up with the chevron below. */}
-              <span className="feed-date" style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginRight: '-30px' }}>
-                {formatRelativeDateTime(item.date_time)}
-              </span>
-            </div>
+          {/* What it is (the title) and when (the date, at the top right, where the chevron's edge is); an icon alone does not
+              say «Смена лотка». */}
+          <div style={{ gridColumn: '2 / span 2', gridRow: 1, minWidth: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
+            <span className="display-headline" style={{ minWidth: 0, fontSize: 'var(--text-md)', fontWeight: 500 }}>
+              {config.displayName}
+            </span>
+            <span className="feed-date" style={{ flexShrink: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+              {formatRelativeDateTime(item.date_time)}
+            </span>
+          </div>
 
+          {/* Who wrote it, and the details, under the title */}
+          <div style={{ gridColumn: 2, gridRow: 2, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {showAuthor && (
               <button
                 type="button"
@@ -240,8 +239,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
               ))}
             </div>
           </div>
-          {/* 16px above the chevron pushes it 8px below the card's middle: on a short card it then clears the date above. */}
-          <span style={{ alignSelf: 'center', paddingTop: '16px' }}><CardChevron /></span>
+          {/* The chevron: at the card's right edge, under the date, centred on the lines beside it. */}
+          <span style={{ gridColumn: 3, gridRow: 2, alignSelf: 'center', justifySelf: 'end' }}><CardChevron /></span>
         </div>
       </SwipeableRow>
 
