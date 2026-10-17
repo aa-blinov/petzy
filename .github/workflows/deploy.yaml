@@ -244,3 +244,23 @@ jobs:
             fi
             sleep 10
           done
+      # The assistants' endpoint is not covered by the check above: a deploy after which the MCP server
+      # never came back would still show green. Without a token /mcp answers 401 with the code
+      # token_missing (mcp/petzy_mcp/http_app.py). Only that answer is read; no token is sent.
+      - name: Check that the assistants' MCP endpoint answers
+        if: steps.decide.outputs.deploy == 'true'
+        run: |
+          end=$((SECONDS + 300))
+          answer="$RUNNER_TEMP/mcp-answer.json"
+          while true; do
+            code="$(curl -s --max-time 10 -o "$answer" -w '%{http_code}' -X POST https://petzy.duckdns.org/mcp -H 'Content-Type: application/json' -d '{}' || true)"
+            if [ "$code" = "401" ] && [ "$(jq -r '.code // empty' "$answer" 2>/dev/null)" = "token_missing" ]; then
+              echo "mcp answers 401 token_missing without a token"
+              exit 0
+            fi
+            if [ "$SECONDS" -ge "$end" ]; then
+              echo "mcp answered '${code:-no answer}', expected 401 token_missing"
+              exit 1
+            fi
+            sleep 10
+          done
