@@ -24,14 +24,32 @@ async def main():
 
         pg.on("response", lambda r: asyncio.ensure_future(on_response(r)))
         made = []
+        made_pets = []
         try:
             await pg.goto(BASE + "/")
             await pg.wait_for_timeout(2500)
             check("the feed has its h1", await pg.locator("h1").all_inner_texts() == ["Лента"])
+            # The block is empty only when nothing is due: the demo pet has a dose at a clock time, so the check
+            # uses a pet of its own with no medicines, and goes back to the demo pet afterwards.
+            empty = await api(pg, "POST", "/pets", {"name": "qa-feed-empty", "species": "собака"})
+            empty_id = empty["json"]["pet"]["_id"]
+            made_pets.append(empty_id)
+            await pg.evaluate(
+                "([id, n]) => { localStorage.setItem('selectedPetId', JSON.stringify(id)); localStorage.setItem('selectedPetName', JSON.stringify(n)); }",
+                [empty_id, "qa-feed-empty"],
+            )
+            await pg.goto(BASE + "/")
+            await pg.wait_for_timeout(2000)
             check(
                 "an empty block of notices takes no room",
                 await pg.evaluate("getComputedStyle(document.querySelector('.feed-widgets')).display") == "none",
             )
+            await pg.evaluate(
+                "([id, n]) => { localStorage.setItem('selectedPetId', JSON.stringify(id)); localStorage.setItem('selectedPetName', JSON.stringify(n)); }",
+                [rex, "Рекс"],
+            )
+            await pg.goto(BASE + "/")
+            await pg.wait_for_timeout(1500)
             # three records arrive while page one is being read: the offsets of the next page move by three
             for i in range(3):
                 r = await api(
@@ -63,6 +81,8 @@ async def main():
             check("and comes back on a scroll up", await pg.locator(".app-fab--away").count() == 0)
             check("no horizontal scroll", not await pg.evaluate("document.documentElement.scrollWidth > innerWidth"))
         finally:
+            for pid in made_pets:
+                await api(pg, "DELETE", f"/pets/{pid}")
             for m in made:
                 if m:
                     await api(pg, "DELETE", f"/events/{m}")
