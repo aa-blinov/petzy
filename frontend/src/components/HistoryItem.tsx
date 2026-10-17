@@ -185,7 +185,9 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
               >
                 {config.displayName}
               </span>
-              <span className="feed-date" style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+              {/* The chevron's column and its gap sit after the body: the date reaches over them, to the card's padding edge,
+                  so it lines up with the chevron below. */}
+              <span className="feed-date" style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)', marginRight: '-30px' }}>
                 {formatRelativeDateTime(item.date_time)}
               </span>
             </div>
@@ -238,7 +240,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
               ))}
             </div>
           </div>
-          <span style={{ alignSelf: 'center' }}><CardChevron /></span>
+          {/* 16px above the chevron pushes it 8px below the card's middle: on a short card it then clears the date above. */}
+          <span style={{ alignSelf: 'center', paddingTop: '16px' }}><CardChevron /></span>
         </div>
       </SwipeableRow>
 
