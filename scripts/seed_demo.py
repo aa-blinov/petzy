@@ -201,13 +201,20 @@ def seed(base: str) -> None:
         },
         files={"photo_file": _photo("dog.jpg")},
     )["pet"]["_id"]
+    # The card takes its colour from the look, which the pet is created without: the browser checks read this one.
+    demo.call(
+        "PUT",
+        f"/api/pets/{dog}/look",
+        {"accent": "sun", "backdrop": "stripes", "font": "pacifico", "frame": "rope"},
+    )
     print("pets: Мурзик, Рекс")
 
+    # Not «Прогулка»: the app has that as a built-in type now, and a custom type cannot take a built-in name.
     walk = demo.call(
         "POST",
         "/api/event-types",
         {
-            "label": "Прогулка",
+            "label": "Выгул",
             "icon": "paw",
             "color": "green",
             "fields": [
@@ -223,7 +230,7 @@ def seed(base: str) -> None:
         _event(demo, cat, "feeding", d, _time(8, 10), {"food_weight": random.randint(52, 64)})
         _event(demo, cat, "feeding", d, _time(19, 30), {"food_weight": random.randint(44, 56)})
         if d % 3 == 0:
-            _event(demo, cat, "litter", d, _time(21, 0))
+            _event(demo, cat, "litter", d, _time(21, 0), {"litter_type": "Комкующийся"})
         if d % 7 == 0:
             weight = round(4.95 - (60 - d) * 0.006 + random.uniform(-0.04, 0.04), 2)
             _event(demo, cat, "weight", d, _time(9, 0, 5), {"weight": weight, "food": "Royal Canin Sensitivity"})
@@ -411,7 +418,7 @@ def seed(base: str) -> None:
     # A few more days of the family's own entries: who marked what shows on the cards.
     for ago in (1, 2, 4, 6):
         _event(family, cat, "feeding", ago, "19:40", {"food_weight": random.randint(40, 50)}, "Вечерняя порция")
-    _event(family, cat, "litter", 2, "20:30")
+    _event(family, cat, "litter", 2, "20:30", {"litter_type": "Комкующийся"})
     # And Рекс is offered to them but not answered yet: an invitation to see.
     demo.call("POST", f"/api/pets/{dog}/share", {"username": FAMILY_LOGIN})
     print(f"sharing: Мурзик shared with {FAMILY_LOGIN}, Рекс invited")
@@ -577,7 +584,8 @@ def seed_medical_card(demo: "Api", cat: str, dog: str, rabies_doc: str, blood_do
         vet="Каримов Д.",
     )
     record(dog, "vaccination", 65, "Нобивак KC", next_due=ahead(300), clinic="Ортовет", vet="Каримов Д.")
-    record(dog, "parasite", 83, "Бравекто", target="fleas_ticks", next_due=ahead(4))
+    # Fell due six days ago: the card's overdue strip then names a second repeat beside the vaccine.
+    record(dog, "parasite", 83, "Бравекто", target="fleas_ticks", next_due=ahead(-6))
     record(dog, "parasite", 25, "Дронтал Плюс", target="worms", next_due=ahead(65))
     record(
         dog,
