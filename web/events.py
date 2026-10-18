@@ -12,6 +12,7 @@ different domain (scheduled, stateful) from a point-in-time event log.
 
 import math
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -23,7 +24,7 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import pat_allowed, require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import apply_pagination, parse_event_datetime_safe, ru_dose_unit, valid_tz
+from web.helpers import apply_pagination, check_pet_access, parse_event_datetime_safe, ru_dose_unit, valid_tz
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -457,6 +458,22 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
         app.logger.exception(f"Failed to send trend-anomaly push for pet_id={pet.get('_id')}")
 
 
+def _record_with_local_id(local_id: str) -> Optional[dict]:
+    """The record the device named with ``local_id``. A name is unique on the stand, so there is at most one."""
+    return app.db[EVENTS_COLLECTION].find_one({"local_id": local_id})
+
+
+def _answer_for_local_id(existing: dict, pet_id: str, type_key: str, local_id: str, label: str):
+    """The answer to a create request that names a record which is already there.
+
+    The same pet and the same type: that record, answered as saved (200) with its id, and nothing is written. Any
+    other record with that name is not this request's record: 409 ``local_id_taken``.
+    """
+    if str(existing.get("pet_id")) != str(pet_id) or existing.get("type") != type_key:
+        return error_response("local_id_taken")
+    return get_message("event_created", status=200, label=label, id=str(existing["_id"]), local_id=local_id)
+
+
 @events_bp.route("/api/events", methods=["POST"])
 @login_required
 @pat_allowed("events:write")
@@ -469,7 +486,7 @@ def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, ne
 def create_event():
     """Create a new event of any registered type.
 
-    The type is checked against what this person may use (404 ``event_type_not_found`` otherwise). The same
+    The type is checked against what this person may use (404 ``event_type_not_found`` otherwise). A ``local_id`` the device gives makes the request repeatable: sent again, it is answered with the record it already made (200), and nothing is written twice; a name that belongs to another pet's record is 409 ``local_id_taken``. The same
     record sent again by the same person within 5 minutes (pet, type, time to the minute, fields and comment all
     the same) is one record written twice: it is refused with 409 ``duplicate_event``, and ``existing`` says
     which. For a type charted by value, a reading far from the average of the pet's last 5 (at least 3 earlier
@@ -497,10 +514,18 @@ def create_event():
         return dt_error[0], dt_error[1]
 
     comment = data.comment or ""
-    # The same request sent twice (the answer to the first never came, so the person presses
-    # «Создать» again) is the one record, not two: the second request is answered with the
-    # record that is already there. The client treats this answer as a saved record.
-    twin = _same_record_just_saved(pet_id, data.type, username, event_dt, comment, cleaned_fields)
+    if data.local_id:
+        # The device names the record itself, so the name decides, and the guard below does not judge it: the same
+        # request sent again is the record that is already there, whatever the guard would make of it.
+        existing = _record_with_local_id(data.local_id)
+        if existing:
+            return _answer_for_local_id(existing, pet_id, data.type, data.local_id, event_type["label"])
+        twin = None
+    else:
+        # The same request sent twice (the answer to the first never came, so the person presses
+        # «Создать» again) is the one record, not two: the second request is answered with the
+        # record that is already there. The client treats this answer as a saved record.
+        twin = _same_record_just_saved(pet_id, data.type, username, event_dt, comment, cleaned_fields)
     if twin:
         app.logger.info(f"Event not written again: type={data.type}, pet_id={pet_id}, user={username}")
         return (
@@ -554,11 +579,22 @@ def create_event():
         # whether a request that comes again is a repeat (see DUPLICATE_EVENT_WINDOW).
         "created_at": datetime.now(timezone.utc),
     }
+    if data.local_id:
+        doc["local_id"] = data.local_id
     # The zone the entered clock is in: an export moves the time onto the
     # exporter's clock. Absent for old records and clients that don't say.
     if valid_tz(data.tz):
         doc["tz"] = data.tz
-    inserted = app.db[EVENTS_COLLECTION].insert_one(doc)
+    from pymongo.errors import DuplicateKeyError  # lazy import, as elsewhere in this module
+
+    try:
+        inserted = app.db[EVENTS_COLLECTION].insert_one(doc)
+    except DuplicateKeyError:
+        # Two requests naming one record at the same moment: the second one finds what the first one wrote.
+        existing = _record_with_local_id(data.local_id) if data.local_id else None
+        if not existing:
+            raise
+        return _answer_for_local_id(existing, pet_id, data.type, data.local_id, event_type["label"])
     app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
 
     if anomaly:
@@ -566,7 +602,9 @@ def create_event():
         _notify_trend_anomaly(g.pet, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
 
     # The id lets the client offer «Отменить» for a record made by mistake.
-    return get_message("event_created", status=201, label=event_type["label"], id=str(inserted.inserted_id))
+    # The name the device gave comes back with the id, so the device can match the answer to the record it sent.
+    named = {"local_id": data.local_id} if data.local_id else {}
+    return get_message("event_created", status=201, label=event_type["label"], id=str(inserted.inserted_id), **named)
 
 
 @events_bp.route("/api/events", methods=["GET"])
@@ -617,6 +655,30 @@ def get_event(record_id):
         return error_response("internal_error")
 
 
+def require_local_event_access(view):
+    """The same check as ``require_record_access``, for a record the device names by its ``local_id`` in the path.
+
+    An unknown name and a record of a pet the caller cannot see answer alike, as they do by id: 404 ``record_not_found``.
+    """
+
+    @login_required
+    @wraps(view)
+    def decorated_function(*args, **kwargs):
+        username, auth_error = get_current_user()
+        if auth_error:
+            return auth_error[0], auth_error[1]
+        local_id = kwargs.get("local_id")
+        record = app.db[EVENTS_COLLECTION].find_one({"local_id": local_id}) if local_id else None
+        if not record or not record.get("pet_id") or not check_pet_access(record["pet_id"], username):
+            return error_response("record_not_found")
+        g.username = username
+        g.record = record
+        g.pet_id = record["pet_id"]
+        return view(*args, **kwargs)
+
+    return decorated_function
+
+
 @events_bp.route("/api/events/<record_id>", methods=["PUT"])
 @login_required
 @api.validate(
@@ -630,19 +692,38 @@ def update_event(record_id):
 
     The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Without ``date`` and ``time`` the record keeps its time; one of them sent alone is completed from the stored time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float (a true or false is not a number) and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
     """
-    from bson import ObjectId  # lazy import to keep this module Mongo-free at import time
+    return _update_event_record(g.record)
 
+
+@events_bp.route("/api/events/local/<local_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(EventUpdate),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["events"],
+)
+@require_local_event_access
+def update_event_by_local_id(local_id):
+    """Update an event by the ``local_id`` the device gave it, for when the device has not got the record's id.
+
+    The same update as by id, on the same record. The name stays as it was created: an update does not change it.
+    """
+    return _update_event_record(g.record)
+
+
+def _update_event_record(record: dict):
+    """The update of one record found by the access check, by its id or by the local_id the device named."""
     username = g.username
     pet_id = g.pet_id
     data = request.context.body  # type: ignore[attr-defined]
 
-    event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": g.record["type"]})
+    event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
     if not event_type:
         return error_response("event_type_not_found")
 
     # A change that leaves the time out keeps it: a comment edited from another client must not move the
     # record to now. One half sent is completed from the stored time.
-    stored_dt = g.record.get("date_time")
+    stored_dt = record.get("date_time")
     if data.date is None and data.time is None:
         event_dt, dt_error = None, None
     else:
@@ -660,7 +741,7 @@ def update_event(record_id):
         # The form sends the whole time back even when only the comment was
         # edited: the zone is re-stamped only when the clock really moved,
         # or an author's time would be read as the editor's.
-        if event_dt != g.record.get("date_time") and valid_tz(data.tz):
+        if event_dt != record.get("date_time") and valid_tz(data.tz):
             update_data["tz"] = data.tz
     if data.comment is not None:
         update_data["comment"] = data.comment
@@ -672,11 +753,11 @@ def update_event(record_id):
             return error_response("validation_error", field_error)
         update_data["fields"] = cleaned_fields
 
-    result = app.db[EVENTS_COLLECTION].update_one({"_id": ObjectId(record_id)}, {"$set": update_data})
+    result = app.db[EVENTS_COLLECTION].update_one({"_id": record["_id"]}, {"$set": update_data})
     if result.matched_count == 0:
         return error_response("record_not_found")
 
-    app.logger.info(f"Event updated: record_id={record_id}, pet_id={pet_id}, user={username}")
+    app.logger.info(f"Event updated: record_id={record['_id']}, pet_id={pet_id}, user={username}")
     return get_message("event_updated", label=event_type["label"])
 
 
@@ -691,17 +772,34 @@ def delete_event(record_id):
 
     The record goes. Any member of the pet may delete any of its records, whoever wrote it. What was counted from it goes with it, and the day and the totals it was part of close up again.
     """
-    from bson import ObjectId
+    return _delete_event_record(g.record)
 
+
+@events_bp.route("/api/events/local/<local_id>", methods=["DELETE"])
+@api.validate(
+    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    tags=["events"],
+)
+@require_local_event_access
+def delete_event_by_local_id(local_id):
+    """Delete an event by the ``local_id`` the device gave it, for when the device has not got the record's id.
+
+    The same delete as by id: the record goes. An unknown name or someone else's record answers 404 ``record_not_found``.
+    """
+    return _delete_event_record(g.record)
+
+
+def _delete_event_record(record: dict):
+    """The delete of one record found by the access check, by its id or by the local_id the device named."""
     username = g.username
     pet_id = g.pet_id
-    event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": g.record["type"]})
+    event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
     label = event_type["label"] if event_type else "Запись"
 
-    result = app.db[EVENTS_COLLECTION].delete_one({"_id": ObjectId(record_id)})
+    result = app.db[EVENTS_COLLECTION].delete_one({"_id": record["_id"]})
     if result.deleted_count == 0:
         return error_response("record_not_found")
-    app.logger.info(f"Event deleted: record_id={record_id}, pet_id={pet_id}, user={username}")
+    app.logger.info(f"Event deleted: record_id={record['_id']}, pet_id={pet_id}, user={username}")
     return get_message("event_deleted", label=label)
 
 

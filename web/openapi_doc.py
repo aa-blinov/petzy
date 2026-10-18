@@ -666,7 +666,10 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
     if duplicate:
         duplicate["responses"]["409"] = answer(
             "Тот же человек прислал ту же запись (питомец, тип, время до минуты, поля и комментарий) в течение "
-            "5 минут (`duplicate_event`). В ответе `existing`: `id`, `date`, `time`, `username`, `own`"
+            "5 минут (`duplicate_event`). В ответе `existing`: `id`, `date`, `time`, `username`, `own`. С `local_id`, занятым другой записью: 409 `local_id_taken`"
+        )
+        duplicate["responses"]["200"] = answer(
+            "Запись с этим `local_id` уже сохранена этим питомцем с тем же типом: отдаётся она (`id`), новая не пишется"
         )
     scans = op("post", "/api/documents/scans")
     if scans:

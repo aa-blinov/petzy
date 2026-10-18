@@ -27,7 +27,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "medication_intakes": ["intakes_pet_date", "intakes_med_date"],
         "users": ["users_username_unique", "users_role"],
         "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique"],
-        "events": ["events_pet_date", "events_pet_type_date"],
+        "events": ["events_pet_date", "events_pet_type_date", "events_local_id_unique"],
         "event_types": ["event_types_key_unique"],
         "documents": ["documents_pet_created", "documents_pet_category_created"],
         "medical_records": ["medical_records_pet_kind_date"],
@@ -190,3 +190,21 @@ def test_a_personal_token_hash_is_unique():
         mock_db.api_tokens.insert_one({"token_hash": "a" * 64, "username": "a"})
         with pytest.raises(DuplicateKeyError):
             mock_db.api_tokens.insert_one({"token_hash": "a" * 64, "username": "b"})
+
+
+def test_ensure_indexes_makes_a_local_id_unique_and_sparse():
+    """A name the device gave is one record on the stand. A record without a name is left out of that index."""
+    from pymongo.errors import DuplicateKeyError
+
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db.events.index_information()["events_local_id_unique"]
+        assert info.get("unique") is True
+        assert info.get("sparse") is True
+        mock_db.events.insert_one({"pet_id": "p", "type": "weight"})
+        mock_db.events.insert_one({"pet_id": "p", "type": "weight"})
+        mock_db.events.insert_one({"pet_id": "p", "type": "weight", "local_id": "same"})
+        with pytest.raises(DuplicateKeyError):
+            mock_db.events.insert_one({"pet_id": "q", "type": "weight", "local_id": "same"})
