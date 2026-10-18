@@ -45,9 +45,9 @@ async def main():
         await pg.locator(".app-fab").click()
         await settle(pg, 150)
         check(
-            "it opens a sheet with the camera, the files and the scans",
+            "it opens a sheet with the camera and the files, archives among them",
             await pg.locator(".recsheet__label").all_inner_texts()
-            == ["Сфотографировать", "Фото или PDF из файлов", "Снимки МРТ, КТ, архив"],
+            == ["Сфотографировать", "Фото, PDF или архив из файлов"],
         )
         await pg.keyboard.press("Escape")
         await pg.mouse.click(195, 60)

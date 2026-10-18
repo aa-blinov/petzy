@@ -442,7 +442,7 @@ export function DocumentForm() {
   // A missing file used to be reported by a toast, and only after every
   // other field had passed, so a user fixed one thing and hit the next.
   const submit = () => {
-    const missingFile = !isEditing && !file ? (isImaging ? 'Выберите снимки: фото, PDF или архив' : 'Выберите фото или PDF') : undefined;
+    const missingFile = !isEditing && !file ? (isImaging ? 'Выберите снимки: фото, PDF или архив' : scansEnabled ? 'Выберите фото, PDF или архив' : 'Выберите фото или PDF') : undefined;
     // A file that was refused on the pick keeps its reason here; «no file» is said only when there is none.
     setFileError((current) => (file ? undefined : current ?? missingFile));
     const fileErrors = missingFile ? { file: { type: 'required', message: missingFile } } : {};
@@ -610,9 +610,9 @@ export function DocumentForm() {
               <input
                 id="document-file-input"
                 type="file"
-                // Archives only where they can go: «Снимки», or no
-                // category yet (picking one files it there).
-                accept={scansEnabled && (!categoryValue || isImaging) ? `${DOCUMENT_ACCEPT},${SCAN_ACCEPT}` : DOCUMENT_ACCEPT}
+                // Archives wherever scans are on: a picked archive files
+                // itself under «Снимки» (pickFile).
+                accept={scansEnabled ? `${DOCUMENT_ACCEPT},${SCAN_ACCEPT}` : DOCUMENT_ACCEPT}
                 disabled={isUploading}
                 // Visually hidden, not display:none: the input stays in
                 // the Tab order, so the picker opens from the keyboard.
