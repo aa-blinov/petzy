@@ -17,10 +17,13 @@ async def main():
         await pg.locator(".medsum__tile").first.wait_for(timeout=15000)
         await pg.wait_for_timeout(500)
         check("no tile carries a second button", await pg.locator(".medsum__item button").count() == 0)
+        # The rule is for the tiles and the strip. A section of the card carries its own action in its head («К приёму»
+        # says «Изменить» once there is a visit prep), and that action belongs to the section, not to a tile.
+        tiles_and_strip = pg.locator(".medsum, .medcard__alert")
         check(
-            "no «Записать» or «Изменить» button on the card",
-            await pg.get_by_role("button", name="Записать", exact=True).count() == 0
-            and await pg.get_by_role("button", name="Изменить", exact=True).count() == 0,
+            "no «Записать» or «Изменить» button on a tile or in the overdue strip",
+            await tiles_and_strip.get_by_role("button", name="Записать", exact=True).count() == 0
+            and await tiles_and_strip.get_by_role("button", name="Изменить", exact=True).count() == 0,
         )
         # The strip is the one line that says what to do about a late repeat, so it is the one
         # line that is pressable: a link into the section that holds the record. It also names the
@@ -36,7 +39,8 @@ async def main():
             "И ещё 1: " in strip,
             strip.replace("\n", " | "),
         )
-        await pg.get_by_role("button", name="Вес: 29,3 кг, 04.10.2026").click()
+        # The weight tile by its label: its figure and date are whatever the last weighing was.
+        await pg.locator(".medsum__tile", has_text="Вес").first.click()
         await settle(pg, 150)
         check(
             "the weight is recorded inside its section, by its own round «+»",

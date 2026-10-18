@@ -4,24 +4,32 @@ Needs the local stack and the demo data (docker compose -p petzy-local ... up, s
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary, settle
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def titles(pg):
     return [t.strip() for t in await pg.locator("h3").all_inner_texts()]
 
 
+def ddmmyyyy(iso):
+    year, month, day = iso.split("-")
+    return f"{day}.{month}.{year}"
+
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel="chrome")
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
-        await login(pg, "demo", "Рекс")
+        pid = await login(pg, "demo", "Рекс")
+        # The visit's day is read off the server: the seed sets it relative to the day it ran, so it is not written here.
+        records = (await api(pg, "GET", f"/medical-records?pet_id={pid}"))["json"]["records"]
+        visit_days = [ddmmyyyy(r["date"]) for r in records if r.get("title") == "Плановый осмотр"]
         await pg.goto(BASE + "/documents")
         await settle(pg)
         sources = await pg.locator(".docs__source").all_inner_texts()
         check(
             "a document held by a record says «Из записи» with its title and day",
-            any("Плановый осмотр, 23.09.2026" in s for s in sources),
+            any(f"Плановый осмотр, {day}" in s for day in visit_days for s in sources),
             str(sources),
         )
         check(
@@ -62,7 +70,8 @@ async def main():
         await search.fill("анализ ортовет")
         await pg.wait_for_timeout(400)
         check("several words must all be there", await titles(pg) == ["Анализ крови"], str(await titles(pg)))
-        await search.fill("23.09.2026")
+        shown_day = next((day for day in visit_days if any(f"Плановый осмотр, {day}" in s for s in sources)), "")
+        await search.fill(shown_day)
         await pg.wait_for_timeout(400)
         check("it is found by the day of the record", await titles(pg) == ["Анализ крови"], str(await titles(pg)))
         await search.fill("")
