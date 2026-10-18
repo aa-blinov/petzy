@@ -20,7 +20,7 @@ import web.app as app  # db, logger
 from web.courses import ACTIVE, ENDED, course_status
 from web.app import api
 from web.errors import error_response
-from web.helpers import get_pet_and_validate, local_now, ru_dose_unit
+from web.helpers import LIVE_EVENT_FILTER, get_pet_and_validate, local_now, ru_dose_unit
 from web.medications import has_overdue_dose, is_as_needed
 from web.medical_records import linked_document_ids, normalize_title, pet_records, record_states
 from web.schemas import (
@@ -164,7 +164,7 @@ def _vaccination_status(expires_at: Optional[str], today: date) -> tuple[str, Op
 
 def _weight(pet_id: str, limit: Optional[int] = WEIGHT_POINTS) -> Optional[dict]:
     """The latest measurement and the last ``limit`` of them, old to new; every one when ``limit`` is None."""
-    cursor = app.db.events.find({"pet_id": pet_id, "type": "weight"}).sort("date_time", -1)
+    cursor = app.db.events.find({"pet_id": pet_id, "type": "weight", **LIVE_EVENT_FILTER}).sort("date_time", -1)
     if limit is not None:
         cursor = cursor.limit(limit * 3)
     points = []

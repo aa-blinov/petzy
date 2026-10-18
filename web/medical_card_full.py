@@ -10,6 +10,7 @@ request from the same records; nothing is stored.
 
 from datetime import date, datetime
 import web.app as app
+from web.helpers import LIVE_EVENT_FILTER
 from web.medical_card import _as_date_str, _courses, _weight, build_medical_card
 from web.medical_records import pet_records
 
@@ -54,7 +55,7 @@ def _event_summary(pet_id: str) -> list[dict]:
     """
     labels = {t["key"]: t.get("label", t["key"]) for t in app.db.event_types.find({})}
     stats: dict[str, dict] = {}
-    for event in app.db.events.find({"pet_id": pet_id}, {"type": 1, "date_time": 1}):
+    for event in app.db.events.find({"pet_id": pet_id, **LIVE_EVENT_FILTER}, {"type": 1, "date_time": 1}):
         kind, moment = event.get("type"), event.get("date_time")
         if kind not in CLINICAL_EVENTS or not isinstance(moment, datetime):
             continue

@@ -27,7 +27,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "medication_intakes": ["intakes_pet_date", "intakes_med_date"],
         "users": ["users_username_unique", "users_role"],
         "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique"],
-        "events": ["events_pet_date", "events_pet_type_date", "events_local_id_unique"],
+        "events": ["events_pet_date", "events_pet_type_date", "events_local_id_unique", "events_deleted_ttl"],
         "event_types": ["event_types_key_unique"],
         "documents": ["documents_pet_created", "documents_pet_category_created"],
         "medical_records": ["medical_records_pet_kind_date"],
@@ -208,3 +208,15 @@ def test_ensure_indexes_makes_a_local_id_unique_and_sparse():
         mock_db.events.insert_one({"pet_id": "p", "type": "weight", "local_id": "same"})
         with pytest.raises(DuplicateKeyError):
             mock_db.events.insert_one({"pet_id": "q", "type": "weight", "local_id": "same"})
+
+
+def test_ensure_indexes_removes_a_deleted_event_after_thirty_days():
+    """A tombstone is kept for thirty days after its deletion, then the database removes it. A live event has no
+    deleted_at, so the index leaves it alone."""
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db.events.index_information()["events_deleted_ttl"]
+        assert info.get("expireAfterSeconds") == 30 * 24 * 60 * 60
+        mock_db.events.insert_one({"pet_id": "p", "type": "weight"})

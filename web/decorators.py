@@ -80,7 +80,7 @@ def require_pet_access(f):
     return decorated_function
 
 
-def require_record_access(collection_name):
+def require_record_access(collection_name, extra_filter=None):
     """
     Decorator to check authentication and access to a specific record.
     The record_id must be the FIRST positional argument or 'id'/'record_id' keyword argument.
@@ -105,7 +105,9 @@ def require_record_access(collection_name):
 
             # 3. Validate Record Access
             # get_record_and_validate_access handles validation of record_id string too
-            record, pet_id, access_error = get_record_and_validate_access(record_id, collection_name, username)
+            record, pet_id, access_error = get_record_and_validate_access(
+                record_id, collection_name, username, extra_filter
+            )
             if access_error:
                 return access_error[0], access_error[1]
 

@@ -2005,6 +2005,10 @@ class EventItem(BaseModel):
     local_id: Optional[str] = Field(
         default=None, description="Идентификатор, который дало устройство; нет у записей, созданных без него"
     )
+    is_deleted: Optional[bool] = Field(default=None, description="true у удалённой записи (надгробие); у живых нет")
+    deleted_at: Optional[str] = Field(
+        default=None, description="Когда запись удалена, UTC, как updated_at; только у надгробий"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -2146,6 +2150,11 @@ class FeedQuery(PetIdPaginationQuery):
         None,
         max_length=120,
         description="Курсор next_cursor из предыдущего ответа: с этой записи лента читается дальше. Когда он задан, page не учитывается, и новые записи не сдвигают страницы",
+    )
+
+    with_deleted: bool = Field(
+        False,
+        description="Вместе с живыми записями отдать и удалённые за последние 30 дней (с is_deleted и deleted_at): устройство убирает их у себя",
     )
 
     @field_validator("before")

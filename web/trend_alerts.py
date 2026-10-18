@@ -13,6 +13,8 @@ readings rather than flagging every step of it forever.
 
 from typing import Optional
 
+from web.helpers import LIVE_EVENT_FILTER
+
 # Need at least this many prior readings before judging a new one — with
 # fewer, "average" is too noisy to mean anything (e.g. a single prior
 # reading would flag literally any different second reading).
@@ -58,7 +60,9 @@ def detect_anomaly(
         deviation_threshold = DEVIATION_THRESHOLD
 
     history_cursor = (
-        db.events.find({"pet_id": pet_id, "type": event_type, f"fields.{field_name}": {"$exists": True}})
+        db.events.find(
+            {"pet_id": pet_id, "type": event_type, f"fields.{field_name}": {"$exists": True}, **LIVE_EVENT_FILTER}
+        )
         .sort("date_time", -1)
         .limit(ROLLING_WINDOW)
     )

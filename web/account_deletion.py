@@ -16,6 +16,7 @@ from bson.errors import InvalidId
 
 import web.app as app
 from web import login_lockout, storage
+from web.helpers import LIVE_EVENT_FILTER
 from web.app import logger
 
 # The records that carry the login of whoever made them.
@@ -145,7 +146,9 @@ def _settle_event_types(username: str, remaining_pet_ids: list) -> None:
     goes to that pet's owner (or its records couldn't be shown); an unused
     one is removed."""
     for event_type in app.db.event_types.find({"created_by": username, "is_builtin": {"$ne": True}}):
-        used = app.db.events.find_one({"type": event_type["key"], "pet_id": {"$in": remaining_pet_ids}}, {"pet_id": 1})
+        used = app.db.events.find_one(
+            {"type": event_type["key"], "pet_id": {"$in": remaining_pet_ids}, **LIVE_EVENT_FILTER}, {"pet_id": 1}
+        )
         pet = None
         if used:
             try:

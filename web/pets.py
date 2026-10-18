@@ -15,6 +15,7 @@ import web.app as app  # to access patched app.db/app.fs in tests
 from web import storage
 from web.account_deletion import _heir
 from web.helpers import (
+    LIVE_EVENT_FILTER,
     PRIVATE_IMMUTABLE_CACHE,
     delete_stored_file,
     get_pet_and_validate,
@@ -801,7 +802,7 @@ def pet_deletion_impact(pet_id):
         query = {"pet_id": str(pet["_id"])}
         return jsonify(
             {
-                "events": app.db["events"].count_documents(query),
+                "events": app.db["events"].count_documents({**query, **LIVE_EVENT_FILTER}),
                 "medications": app.db["medications"].count_documents(query),
                 "documents": app.db["documents"].count_documents(query),
                 "medical_records": app.db["medical_records"].count_documents(query),
