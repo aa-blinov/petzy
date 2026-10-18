@@ -7,7 +7,7 @@ own and save it on top. A throwaway pet is made for the check and deleted afterw
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-look-conflict"
 
@@ -31,9 +31,9 @@ async def main():
                 [pid, PET],
             )
             await pg.goto(BASE + "/pet-look")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             await pg.get_by_role("tab", name="Подпись и шрифт").first.click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             check("the screen shows the caption as saved", await pg.locator("#pet-tagline").input_value() == "первая")
 
             # The other phone saves a newer look while this screen is open.
@@ -45,7 +45,7 @@ async def main():
             await pg.locator("#pet-tagline").fill("моя")
             await pg.wait_for_timeout(200)
             await pg.get_by_role("button", name="Сохранить").first.click()
-            await pg.wait_for_timeout(900)
+            await settle(pg, 150)
             check(
                 "a stale save is refused with the question",
                 await pg.get_by_text("Оформление изменили в другом месте").count() == 1,
@@ -53,7 +53,7 @@ async def main():
             check("nothing was overwritten yet", (await stored(pg, pid)).get("tagline") == "вторая")
 
             await pg.locator(".adm-dialog-button", has_text="Показать актуальное").first.click()
-            await pg.wait_for_timeout(700)
+            await settle(pg, 150)
             check(
                 "«Показать актуальное» brings the other phone's caption into the form",
                 await pg.locator("#pet-tagline").input_value() == "вторая",
@@ -67,13 +67,13 @@ async def main():
             await pg.locator("#pet-tagline").fill("моя")
             await pg.wait_for_timeout(200)
             await pg.get_by_role("button", name="Сохранить").first.click()
-            await pg.wait_for_timeout(900)
+            await settle(pg, 150)
             check(
                 "a second stale save is refused as well",
                 await pg.get_by_text("Оформление изменили в другом месте").count() == 1,
             )
             await pg.locator(".adm-dialog-button", has_text="Сохранить моё").first.click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check("«Сохранить моё» saves the person's own caption", (await stored(pg, pid)).get("tagline") == "моя")
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")

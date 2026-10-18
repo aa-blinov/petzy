@@ -19,7 +19,7 @@ drawn from eleven files and up, and every one of them is removed afterwards.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until, settle
 
 # A one-pixel PNG, the smallest thing the document check will accept as a file.
 TINY_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -68,7 +68,7 @@ async def check_row(pg, group, name: str, exclusive: bool = True) -> None:
 
     label = (await chips.nth(target).inner_text()).strip()
     await chips.nth(target).click()
-    await pg.wait_for_timeout(350)
+    await settle(pg, 150)
     after = await marked(group)
 
     if exclusive:

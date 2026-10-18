@@ -8,7 +8,7 @@ shows the name in its text must still fit the screen.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 SCRATCH_PET = "Тест-М-2"
 LONG_NAME = "QA очень длинное имя " + "я" * 70
@@ -18,14 +18,14 @@ FORMS = ("/form/weight", "/medications/new")
 
 async def make_pet(pg):
     await pg.goto(BASE + "/pets/new")
-    await pg.wait_for_timeout(800)
+    await settle(pg)
     await pg.get_by_role("button", name="Собака").click()
     await pg.get_by_placeholder("Имя питомца").fill(LONG_NAME)
     await pg.get_by_role("button", name="Добавить", exact=True).click()
-    await pg.wait_for_timeout(2200)
+    await settle(pg, 150)
     if await pg.get_by_role("button", name="Готово").count():
         await pg.get_by_role("button", name="Готово").click()
-    await pg.wait_for_timeout(800)
+    await settle(pg, 150)
     pets = (await api(pg, "GET", "/pets"))["json"]["pets"]
     return next(q["_id"] for q in pets if q["name"] == LONG_NAME)
 
@@ -44,7 +44,7 @@ async def main():
             )
             for path in FORMS:
                 await pg.goto(BASE + path)
-                await pg.wait_for_timeout(1200)
+                await settle(pg)
                 wide = await pg.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
                 check(
                     f"{path} with a long pet name fits the phone's width", wide <= 1, f"{wide} px wider than the screen"

@@ -8,7 +8,7 @@ its weight record are made for the check and removed afterwards.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-formdel-owner"
 
@@ -36,9 +36,9 @@ async def main():
 
             # Opened by its address: this page is the first of the session, so «back» leaves the app.
             await pg.goto(f"{BASE}/form/weight/{record_id}")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             await pg.get_by_role("button", name="Удалить запись").first.click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
 
             check("the undo bar is shown", await pg.get_by_text("Запись удалена").count() > 0)
             check("«Отменить» is offered", await pg.get_by_text("Отменить").count() > 0)
@@ -48,7 +48,7 @@ async def main():
             )
 
             await pg.get_by_text("Отменить").first.click()
-            await pg.wait_for_timeout(1000)
+            await settle(pg, 150)
             check("«Отменить» keeps the record", await record_exists(pg, record_id))
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")

@@ -12,7 +12,7 @@ Own scratch pet «Тест-М», deleted afterwards; the demo pet is only read.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 CLINICS = [{"name": f"Клиника {i}", "phone": "+7 701 000 00 00", "doctors": []} for i in range(1, 6)]
 
@@ -33,18 +33,18 @@ async def main():
         pid = None
         try:
             await pg.goto(BASE + "/pets/new")
-            await pg.wait_for_timeout(1200)
+            await settle(pg)
             await pg.get_by_role("button", name="Собака").click()
             await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
             await pg.get_by_role("button", name="Добавить", exact=True).click()
-            await pg.wait_for_timeout(2200)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Готово").click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
 
             # the weight is added by the part's round «+»; the block does not repeat it
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             check(
                 "«Вес»: the round «+» records, and the block has no second «Записать вес»",
                 await pg.get_by_role("button", name="Записать вес").count() == 0
@@ -56,7 +56,7 @@ async def main():
                 and await pg.get_by_role("button", name="Все питомцы").count() == 1,
             )
             await pg.get_by_role("button", name="Все питомцы").click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check("it opens the list of pets", pg.url.endswith("/pets"), pg.url.replace(BASE, ""))
 
             # One way to add on a part: the round «+». The blocks used to carry a «Добавить» of their own, and
@@ -64,7 +64,7 @@ async def main():
             # to one record on one screen: the person reads which of them is the way, and guesses.
             for part, label in (("prevention", "Прививки и обработки"), ("visits", "Визиты")):
                 await pg.goto(BASE + f"/pets/{rex}/medical-card/{part}")
-                await pg.wait_for_timeout(2000)
+                await settle(pg)
                 check(f"«{label}» keeps the round «+»", await pg.locator(".app-fab").count() == 1)
                 check(
                     f"«{label}»: its blocks carry no second «Добавить»",
@@ -76,7 +76,7 @@ async def main():
             # The card's summary has no «+»: it showed and hid itself on a scroll, and it added anything at all, while
             # each part adds its own things. A tile is one tap to the part and its «+».
             await pg.goto(BASE + f"/pets/{rex}/medical-card")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             check("the card's summary has no round «+» of its own", await pg.locator(".app-fab").count() == 0)
 
             # the clinic cap is said, not silently enforced
@@ -95,7 +95,7 @@ async def main():
             )
             check("five clinics are saved", saved["status"] == 200, str(saved["json"])[:120])
             await pg.goto(BASE + f"/pets/{pid}/medical-profile")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             t = await pg.inner_text("body")
             check(
                 "with five clinics the cap is said and the button to add a sixth is not there",
@@ -106,16 +106,16 @@ async def main():
             # an answer taken back is not a change: leaving asks nothing
             await api(pg, "PUT", f"/pets/{pid}/visit-prep", {"complaint": "Кашляет", "checks": {}})
             await pg.goto(BASE + f"/pets/{pid}/medical-card")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             await pg.locator('section:has(h2:text-is("К приёму"))').get_by_role("button", name="Изменить").first.click()
-            await pg.wait_for_timeout(2000)
+            await settle(pg, 150)
             check("the note opens from the card", pg.url.endswith(f"/pets/{pid}/visit-prep"), pg.url.replace(BASE, ""))
             await pg.get_by_role("button", name="Как обычно").first.click()
-            await pg.wait_for_timeout(500)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Как обычно").first.click()
-            await pg.wait_for_timeout(500)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Отмена").click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             left = await pg.inner_text("body")
             check(
                 "after the answer is taken back, leaving asks nothing",

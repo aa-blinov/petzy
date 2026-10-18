@@ -4,7 +4,7 @@ Needs the local stack and the demo data (docker compose -p petzy-local ... up, s
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def titles(pg):
@@ -17,7 +17,7 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
         await pg.goto(BASE + "/documents")
-        await pg.wait_for_timeout(2000)
+        await settle(pg)
         sources = await pg.locator(".docs__source").all_inner_texts()
         check(
             "a document held by a record says «Из записи» with its title and day",
@@ -35,7 +35,7 @@ async def main():
         )
         check("a row does not repeat the file's name under its title", await pg.get_by_text(".pdf").count() == 0)
         await pg.locator(".app-fab").click()
-        await pg.wait_for_timeout(700)
+        await settle(pg, 150)
         check(
             "it opens a sheet with the camera, the files and the scans",
             await pg.locator(".recsheet__label").all_inner_texts()
@@ -43,7 +43,7 @@ async def main():
         )
         await pg.keyboard.press("Escape")
         await pg.mouse.click(195, 60)
-        await pg.wait_for_timeout(500)
+        await settle(pg, 150)
         search = pg.locator(".adm-search-bar input")
         await search.fill("плановый осмотр")
         await pg.wait_for_timeout(400)
@@ -68,14 +68,14 @@ async def main():
         await search.fill("")
         await pg.wait_for_timeout(300)
         await pg.locator(".docs__source", has_text="Плановый осмотр").click()
-        await pg.wait_for_timeout(1500)
+        await settle(pg, 150)
         check("the line opens the record", "/medical-records/" in pg.url, pg.url.replace(BASE, ""))
         # the form says at once what is not a photo or a PDF, and does not take it
         note = "/private/tmp/check_documents_note.txt"
         with open(note, "w", encoding="utf-8") as f:
             f.write("not a photo")
         await pg.goto(BASE + "/documents/new")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         await pg.locator("#document-file-input").set_input_files(note)
         await pg.wait_for_timeout(500)
         errors = [t.strip() for t in await pg.locator(".field-error").all_inner_texts()]

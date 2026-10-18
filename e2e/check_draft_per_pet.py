@@ -11,7 +11,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def _write_draft(pg, pet_id: str, weight: str) -> None:
@@ -21,7 +21,7 @@ async def _write_draft(pg, pet_id: str, weight: str) -> None:
         pet_id,
     )
     await pg.goto(BASE + "/form/weight")
-    await pg.wait_for_timeout(2000)
+    await settle(pg)
     await pg.get_by_label("Вес (кг)").fill(weight)
     await pg.wait_for_timeout(600)
     # Сессия кончилась: следующий запрос получит 401, и приложение спрячет черновик.
@@ -54,7 +54,7 @@ async def main():
             for pet_id, weight, who in ((mine, "12,4", "the first pet"), (other, "9,9", "the second pet")):
                 await pg.evaluate("id => localStorage.setItem('selectedPetId', JSON.stringify(id))", pet_id)
                 await pg.goto(BASE + "/form/weight")
-                await pg.wait_for_timeout(2200)
+                await settle(pg)
                 value = await pg.get_by_label("Вес (кг)").input_value()
                 check(f"{who} gets its own typing back", value == weight, repr(value))
                 check(
@@ -73,7 +73,7 @@ async def main():
             )
             await pg.evaluate("id => localStorage.setItem('selectedPetId', JSON.stringify(id))", mine)
             await pg.goto(BASE + "/form/weight")
-            await pg.wait_for_timeout(2200)
+            await settle(pg)
             adopted = await pg.get_by_label("Вес (кг)").input_value()
             check(
                 "a draft of the previous version is adopted by its own screen",

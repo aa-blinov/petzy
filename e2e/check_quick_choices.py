@@ -15,7 +15,19 @@ Needs the local stack and the demo data. Writes one weighing on the demo pet and
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, swipe_wheel, wait_until
+from common import (
+    wheel_settled,
+    BASE,
+    api,
+    async_playwright,
+    check,
+    login,
+    new_page,
+    summary,
+    swipe_wheel,
+    wait_until,
+    settle,
+)
 
 WHEN_CHIPS = ["Сейчас", "Час назад", "2 часа назад", "Вчера в это время"]
 
@@ -124,7 +136,7 @@ async def main():
             )
 
             await sw.click()
-            await pg.wait_for_timeout(400)
+            await settle(pg, 150)
             check(
                 "the «запоминать» switch takes the tap on the form as it opens, focus and all",
                 await sw.get_attribute("aria-checked") == "true",
@@ -132,7 +144,7 @@ async def main():
             )
             size_on = await sw.bounding_box()
             await sw.click()
-            await pg.wait_for_timeout(400)
+            await settle(pg, 150)
             size_off = await sw.bounding_box()
             check(
                 "and takes it back, at the same size both ways",
@@ -161,7 +173,7 @@ async def main():
             )
 
             await pg.get_by_role("button", name="2 часа назад", exact=True).click()
-            await pg.wait_for_timeout(400)
+            await settle(pg, 150)
             check(
                 "the pressed chip is marked", await pressed(pg, "Когда") == ["2 часа назад"], await pressed(pg, "Когда")
             )
@@ -193,7 +205,7 @@ async def main():
             # Changed by hand through the time wheel: the chip gives the mark up, because it no longer
             # says what is in the form.
             await pg.locator("#time").click()
-            await pg.wait_for_timeout(700)
+            await wheel_settled(pg)
             await swipe_wheel(pg, ctx, 0, 1, up=False)
             await pg.locator(".adm-picker-header-button", has_text="Готово").last.click()
             await pg.locator(".adm-picker-view-column-wheel").first.wait_for(state="hidden", timeout=8000)
@@ -207,7 +219,7 @@ async def main():
             )
 
             await pg.get_by_role("button", name="Сейчас", exact=True).click()
-            await pg.wait_for_timeout(400)
+            await settle(pg, 150)
             check(
                 "another chip takes the mark over", await pressed(pg, "Когда") == ["Сейчас"], await pressed(pg, "Когда")
             )
@@ -225,7 +237,7 @@ async def main():
                     "() => document.querySelector('[role=group][aria-label=\"Как раньше\"] .choice-chip')?.textContent.trim()"
                 )
                 await pg.get_by_role("button", name=chip, exact=True).click()
-                await pg.wait_for_timeout(400)
+                await settle(pg, 150)
                 check(
                     "a «as before» value is marked once it fills the field",
                     await pressed(pg, "Как раньше") == [chip],

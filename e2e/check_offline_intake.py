@@ -12,7 +12,7 @@ removes it afterwards.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PENDING_KEY = "petzy:pendingIntakes"
 
@@ -47,7 +47,7 @@ async def main():
             check("the dose is on the server to begin with", taken["status"] in (200, 201), str(taken["status"]))
 
             await pg.goto(BASE + "/medications")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             # The phone kept the mark whose answer was lost: same dose, one
             # moment earlier, so the server sees it as the same slot.
             await pg.evaluate(
@@ -59,7 +59,7 @@ async def main():
             )
             await pg.reload()
             # App.tsx sends what is waiting as soon as it sees it.
-            await pg.wait_for_timeout(3000)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 "the person is told the dose is already in the diary",

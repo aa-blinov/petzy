@@ -2,7 +2,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -12,13 +12,13 @@ async def main():
         await login(pg, "demo", "Рекс")
         # a scratch dog: an existing weight, then a new one from the section
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1200)
+        await settle(pg)
         await pg.get_by_role("button", name="Собака").click()
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
-        await pg.wait_for_timeout(2200)
+        await settle(pg, 150)
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             await api(
@@ -28,7 +28,7 @@ async def main():
                 {"pet_id": pid, "type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.0}},
             )
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             check(
                 "with a weight there: «История» in the head and the round «+» to record",
                 await pg.get_by_role("button", name="История").count() == 1
@@ -37,11 +37,11 @@ async def main():
             )
             await pg.screenshot(path="wt_section.png")
             await pg.locator(".app-fab").click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check("the «+» opens the feed's weight form", pg.url.endswith("/form/weight"), pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
             await pg.get_by_role("button", name="Создать").click()
-            await pg.wait_for_timeout(2200)
+            await settle(pg, 150)
             events = (await api(pg, "GET", f"/events?pet_id={pid}&type=weight"))["json"]
             rows = events.get("events") or events.get("items") or []
             check(
@@ -50,7 +50,7 @@ async def main():
                 str([x["fields"] for x in rows]),
             )
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             t = await pg.inner_text("body")
             check(
                 "the card shows the new weight and the change at once",

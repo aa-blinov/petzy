@@ -6,7 +6,7 @@ Needs the local stack and the demo data. Makes a course of its own and removes i
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 COURSE = "Т-проверка расписание"
 
@@ -42,11 +42,11 @@ async def main():
             med = r["json"]["id"]
 
             await pg.goto(BASE + f"/medications/{med}/edit")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
 
             # Where a name is typed is said on the row, so the sheet is not a dead end.
             await pg.get_by_text("Название", exact=True).first.click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             search = pg.get_by_role("searchbox").first
             await search.fill("Т-несуществующее")
             await pg.wait_for_timeout(1200)
@@ -67,13 +67,13 @@ async def main():
             check("the course's days are on the form to begin with", before == 3, f"{before} days")
 
             await pg.locator(".segmented__item", has_text="По необходимости").click()
-            await pg.wait_for_timeout(1200)
+            await settle(pg, 150)
             check(
                 "the mode is written as a sign of its own, not an empty schedule",
                 "Без напоминаний" in await pg.locator("body").inner_text(),
             )
             await pg.locator(".segmented__item", has_text="По расписанию").click()
-            await pg.wait_for_timeout(1200)
+            await settle(pg, 150)
             after = await days_text(pg)
             check(
                 "the days a course was written with come back with the mode",

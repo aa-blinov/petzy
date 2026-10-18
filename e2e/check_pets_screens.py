@@ -15,7 +15,7 @@ Needs the local stack and the demo data. Makes a pet of its own («Тест-М»
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 from seed_demo import DEMO_PASSWORD
 
 
@@ -47,21 +47,21 @@ async def main():
         try:
             # The events of the pet of this check, with the caption's counter on screen.
             await pg.goto(BASE + f"/pets/{pet_id}/edit")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             check(
                 "the card opens with this pet's own name",
                 await pg.get_by_placeholder("Имя питомца").input_value() == "Тест-М",
             )
 
             await pg.goto(BASE + "/pet-look")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             # The pet chosen is «Тест-М»: the check made it and left it selected on purpose.
             check(
                 "the look screen is open on the pet of this check",
                 "Тест-М" in await pg.inner_text("body"),
             )
             await pg.get_by_role("tab", name="Подпись и шрифт").click()
-            await pg.wait_for_timeout(1200)
+            await settle(pg, 150)
             field = pg.locator("#pet-tagline")
             # A space at the end: the saved line is 13 characters, the typed one 14.
             await field.fill("Хозяин дивана ")
@@ -80,7 +80,7 @@ async def main():
 
             # The events of this pet: the screen waits for them instead of saying «Пока ничего».
             await pg.goto(BASE + "/pet-events")
-            await pg.wait_for_timeout(300)
+            await settle(pg)
             early = await pg.inner_text("body")
             await pg.wait_for_timeout(2500)
             late = await pg.inner_text("body")
@@ -101,7 +101,7 @@ async def main():
             await api(pg, "POST", f"/pets/{pet_id}/share", {"username": "family"})
             await api(other, "POST", f"/pets/{pet_id}/invite/accept")
             await other.goto(BASE + f"/pets/{pet_id}/edit")
-            await other.wait_for_timeout(3000)
+            await settle(other)
             t = await other.inner_text("body")
             check(
                 "the shared card says who changes it",
@@ -116,7 +116,7 @@ async def main():
             )
             if await events_row.count() == 1:
                 await events_row.click()
-                await other.wait_for_timeout(2500)
+                await settle(other, 150)
                 check(
                     "and takes that person to the events of the pet",
                     other.url.endswith("/pet-events")
@@ -124,7 +124,7 @@ async def main():
                     other.url.replace(BASE, ""),
                 )
                 await other.goto(BASE + f"/pets/{pet_id}/edit")
-                await other.wait_for_timeout(2500)
+                await settle(other)
             leave = other.get_by_role("button", name="Выйти из доступа")
             check(
                 "«Выйти из доступа» is offered too, and takes a tap",

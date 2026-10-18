@@ -2,7 +2,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until, settle
 
 
 async def main():
@@ -30,7 +30,7 @@ async def main():
             await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
             await pg.get_by_role("button", name="Добавить", exact=True).click()
             await pg.get_by_role("button", name="Готово").click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
             made.append(pid)
             await pg.evaluate("id => localStorage.setItem('selectedPetId', JSON.stringify(id))", pid)
@@ -76,7 +76,7 @@ async def main():
                 dialog[-200:].replace(chr(10), " | "),
             )
             await pg.get_by_role("button", name="Остаться").click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             check(
                 "«Остаться» keeps the panel open with what was typed",
                 await pg.get_by_placeholder("Значение").count() == 1
@@ -163,7 +163,7 @@ async def main():
             )
             # The dialog's actions are divs, as in every dialog of the app (see check_settings_links.py)
             await pg.locator(".adm-dialog-button", has_text="Удалить тип и записи").last.click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             left = (await api(pg, "GET", "/event-types"))["json"]["event_types"]
             check("the type and its record are gone", not any(t["key"] == walk_type for t in left))
             made_types.remove(walk_type)

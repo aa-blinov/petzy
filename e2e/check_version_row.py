@@ -6,7 +6,7 @@ stand is not deployed by the workflow and says so instead of inventing a commit.
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -15,7 +15,7 @@ async def main():
         ctx, pg = await new_page(browser)
         await login(pg)
         await pg.goto(BASE + "/settings")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         body = await pg.inner_text("body")
         check("«О приложении» has a «Версия» row", "Версия" in body)
         line = next((ln for ln in body.split("\n") if ln.startswith("Приложение")), "")

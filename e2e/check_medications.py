@@ -6,7 +6,7 @@ Needs the local stack and the demo data. Makes two courses of its own and remove
 import asyncio
 from datetime import datetime
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def line(card) -> str:
@@ -40,7 +40,7 @@ async def main():
                 r = await api(pg, "POST", "/medications", {**course(name, times), "pet_id": rex})
                 ids.append(r["json"]["id"])
             await pg.goto(BASE + "/medications")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             two = pg.locator(".card-soft", has_text="Т-проверка два приёма").first
             check(
                 "a missed dose is said as missed, the next as next",
@@ -48,7 +48,7 @@ async def main():
                 await line(two),
             )
             await two.get_by_role("button", name="Дали сейчас").click()
-            await pg.wait_for_timeout(2000)
+            await settle(pg, 150)
             two = pg.locator(".card-soft", has_text="Т-проверка два приёма").first
             check(
                 "a dose given late closes the dose that was due, the evening one stays",

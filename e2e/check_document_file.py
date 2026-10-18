@@ -10,7 +10,7 @@ import asyncio
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from common import BASE, api, async_playwright, check, login, summary
+from common import BASE, api, async_playwright, check, login, summary, settle
 
 PDF_OLD = b"%PDF-1.4 old"
 PDF_NEW = b"%PDF-1.4 new"
@@ -36,13 +36,13 @@ async def main():
         ctx, pg = await new_page(b)
         await login(pg, "demo", "Рекс")
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1200)
+        await settle(pg)
         await pg.get_by_role("button", name="Собака").click()
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
-        await pg.wait_for_timeout(2200)
+        await settle(pg, 150)
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             # A document added in Almaty's zone, whatever clock the phone has.
@@ -71,7 +71,7 @@ async def main():
             await pg.clock.install(time=evening_before.timestamp())
 
             await pg.goto(BASE + "/documents")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             row = pg.get_by_text("Смена файла").first
             card = row.locator("xpath=ancestor::*[contains(@class,'adm-card')][1]")
             line = await card.inner_text()
@@ -89,7 +89,7 @@ async def main():
 
             # Правка: the file can be replaced from the form.
             await pg.goto(BASE + f"/documents/{doc_id}/edit")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             form_text = await pg.inner_text("body")
             check(
                 "the form no longer tells the file has to be deleted",
@@ -97,7 +97,7 @@ async def main():
                 form_text[:200].replace(chr(10), " | "),
             )
             await pg.get_by_text("Заменить файл", exact=True).click()
-            await pg.wait_for_timeout(400)
+            await settle(pg, 150)
             await pg.locator("#document-file-input").set_input_files(
                 files=[{"name": "новое.pdf", "mimeType": "application/pdf", "buffer": PDF_NEW}]
             )
@@ -108,7 +108,7 @@ async def main():
                 and await pg.get_by_text("Оставить прежний файл").count() == 1,
             )
             await pg.get_by_role("button", name="Сохранить").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             after = (await api(pg, "GET", f"/documents/{doc_id}"))["json"]["document"]
             check(
                 "the document keeps its id and gets the new file",
@@ -118,7 +118,7 @@ async def main():
                 json_str(after),
             )
             await pg.goto(BASE + "/documents")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 # Список показывает название, категорию, тип, дату и размер, а не имя файла; что файл новый,

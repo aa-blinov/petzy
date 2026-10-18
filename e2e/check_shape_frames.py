@@ -7,7 +7,7 @@ round frame (the story ring) keeps its own gradient. A throwaway pet is made for
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-shape-r8"
 
@@ -42,7 +42,7 @@ async def main():
             )
             await api(pg, "PUT", f"/pets/{pid}/look", {"frame": "heart", "accent": "rose"})
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             heart = await avatar_state(pg)
             check("a heart frame without a photo is outlined", heart["outlined"], str(heart))
             check(
@@ -53,7 +53,7 @@ async def main():
 
             await api(pg, "PUT", f"/pets/{pid}/look", {"frame": "story", "accent": "rose"})
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             story = await avatar_state(pg)
             check("a round frame (story) is not cut by the shape rule", story["outlined"] is False, str(story))
         finally:

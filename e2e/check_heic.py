@@ -4,7 +4,7 @@ Needs the local stack and the demo data. Makes a HEIC file of its own in /tmp.""
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 HEIC = "/tmp/check_heic.heic"
 
@@ -24,13 +24,13 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         rex = await login(pg, "demo", "Рекс")
         await pg.goto(BASE + f"/pets/{rex}/medical-records/new?kind=visit")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         await pg.locator("input[capture]").set_input_files(HEIC)
         await pg.wait_for_timeout(1500)
         widths = await pg.evaluate("[...document.querySelectorAll('.medrec__file-thumb')].map(i => i.naturalWidth)")
         check("the thumbnail of a picked HEIC is a picture", widths == [800], str(widths))
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         await pg.locator("#pet-photo-input").set_input_files(HEIC)
         await pg.wait_for_timeout(2500)
         crop = await pg.evaluate("[...document.querySelectorAll('img.reactEasyCrop_Image')].map(i => i.naturalWidth)")

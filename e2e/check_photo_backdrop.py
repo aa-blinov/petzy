@@ -6,7 +6,7 @@ A pet without that backdrop has no halo at all. A throwaway pet is made for the 
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-plate-r7"
 
@@ -37,7 +37,7 @@ async def main():
             )
             await api(pg, "PUT", f"/pets/{pid}/look", {"tagline": "Хозяин дивана", "backdrop": "stripes"})
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             plain = await name_column_background(pg)
             check(
                 "without a photo backdrop the letters carry no halo",
@@ -47,7 +47,7 @@ async def main():
 
             await api(pg, "PUT", f"/pets/{pid}/look", {"tagline": "Хозяин дивана", "backdrop": "photo"})
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             plate = await name_column_background(pg)
             check(
                 "on a photo backdrop the letters carry a halo in the card's colour",

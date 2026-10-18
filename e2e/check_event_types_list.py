@@ -3,7 +3,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 LABEL = "Тип для проверки"
 
@@ -23,7 +23,7 @@ async def main():
             )
             key = created["json"].get("key")
             await pg.goto(BASE + "/event-types")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 "в списке сказано, что встроенных типов здесь нет",
@@ -51,7 +51,7 @@ async def main():
             # Правка чужого типа: чужая форма открывается целиком, а отказ приходит только на сохранении.
             # Встроенный тип demo не администратор, поэтому править его нельзя.
             await pg.goto(BASE + "/event-types/weight/edit")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             form = await pg.inner_text("body")
             # Every field of this form is visible and labelled by eye, but the labels were plain
             # text: a screen reader named nothing. Each control answers by its own name now.

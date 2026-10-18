@@ -95,6 +95,48 @@ async def wait_until(pg, done, timeout=15_000):
     return body
 
 
+async def settle(pg, lead_ms=0):
+    """Wait until the page has done what it started: no request in flight for half a second, five seconds at most.
+
+    A fixed pause after a move or a click waited the same two seconds whether the page needed 100 ms or 1.5 s. This waits
+    for the page itself. `lead_ms` lets a click start its request before the wait asks whether the network is quiet.
+    """
+    if lead_ms:
+        await pg.wait_for_timeout(lead_ms)
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=5000)
+    except Exception:
+        pass
+
+
+async def animations_done(pg, timeout_ms=3000):
+    """Wait until the page's running transitions and one-off animations have ended (a sheet or a wheel has slid into place).
+
+    A spinner that turns forever is not waited for: it never ends, and it is no reason to keep the check waiting.
+    """
+    try:
+        await pg.wait_for_function(
+            "() => document.getAnimations().every((a) => a.playState !== 'running' "
+            "|| a.effect.getTiming().iterations === Infinity)",
+            timeout=timeout_ms,
+        )
+    except Exception:
+        pass
+
+
+async def wheel_settled(pg, timeout_ms=4000):
+    """Wait until a picker's wheel has its chosen item and that item has stopped moving: the wheel has put itself in place."""
+    chosen = pg.locator(".adm-picker-view-column-item-active").first
+    await chosen.wait_for(timeout=timeout_ms)
+    last = None
+    for _ in range(40):
+        box = await chosen.bounding_box()
+        if box and last and abs(box["y"] - last["y"]) < 0.5:
+            return
+        last = box
+        await pg.wait_for_timeout(100)
+
+
 def check(name, ok, detail=""):
     print(("PASS " if ok else "FAIL ") + name + (f"  [{detail}]" if detail else ""))
     if not ok:

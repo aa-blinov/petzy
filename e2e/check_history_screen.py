@@ -5,7 +5,7 @@ Needs the local stack. Makes its own pet «Тест-М» with three weights of i
 import asyncio
 from datetime import date, timedelta
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "Тест-М"
 
@@ -44,7 +44,7 @@ async def main():
 
             # The filter comes in the address from the start and stays there.
             await pg.goto(BASE + "/history?type=weight")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             check(
                 "a filtered screen is the one the address names",
                 pg.url.endswith("/history?type=weight"),
@@ -66,9 +66,9 @@ async def main():
             # Changing the filter writes it back to the address, and reloading keeps it.
             await pg.get_by_role("button", name="Показать записи", exact=False).count()
             await pg.locator(".history-filter-trigger").click()
-            await pg.wait_for_timeout(700)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Все", exact=True).first.click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             check("choosing «Все» clears the type from the address", "type=" not in pg.url, pg.url.replace(BASE, ""))
 
             # The export button names itself instead of leaving an icon to be guessed at:
@@ -83,15 +83,15 @@ async def main():
             # The swipe hint belongs to both lists and is said once: the key is the app's own.
             await pg.evaluate("localStorage.removeItem('petzy:swipeHintSeen')")
             await pg.goto(BASE + "/history")
-            await pg.wait_for_timeout(2200)
+            await settle(pg)
             check(
                 "the swipe hint is on the History screen too",
                 "Смахните запись" in (await pg.inner_text("body")),
             )
             await pg.get_by_role("button", name="Понятно").click()
-            await pg.wait_for_timeout(600)
+            await settle(pg, 150)
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             check(
                 "and said once: the feed does not repeat it",
                 "Смахните запись" not in (await pg.inner_text("body")),
@@ -99,9 +99,9 @@ async def main():
 
             # The form says whose record this is, and who wrote it, whichever line it is.
             await pg.goto(BASE + "/history?type=weight")
-            await pg.wait_for_timeout(2200)
+            await settle(pg)
             await pg.locator("[aria-label$=', открыть']").first.click()
-            await pg.wait_for_timeout(2200)
+            await settle(pg, 150)
             head = await pg.inner_text("body")
             check("the form opens the record for editing", "/form/weight/" in pg.url, pg.url.replace(BASE, ""))
             check("the address carries no unused parameter", "tab=" not in pg.url, pg.url.replace(BASE, ""))
@@ -110,7 +110,7 @@ async def main():
             # The name the saved one is empty (a cleared storage, a fresh install): the line still stands.
             await pg.evaluate("localStorage.setItem('selectedPetName', 'null')")
             await pg.reload()
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             head = await pg.inner_text("body")
             check(
                 "the pet's name comes from the pet, not only from the saved one",

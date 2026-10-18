@@ -3,7 +3,7 @@ link is the same copy, plus one button into the app. The wording of the link set
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -19,7 +19,7 @@ async def main():
 
             # The owner, signed in, opening their own link
             await pg.goto(url)
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             t = await pg.inner_text("body")
             door = pg.get_by_role("button", name="Медицинская карта")
             check("the owner is offered the way back into the app", await door.count() == 1, t[:120])
@@ -33,7 +33,7 @@ async def main():
             check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
             await pg.screenshot(path="sh_owner.png")
             await door.click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             check(
                 "the button opens the card in the app",
                 pg.url.endswith(f"/pets/{rex}/medical-card"),
@@ -43,7 +43,7 @@ async def main():
             # The same link in a browser where nobody is signed in
             ctx2, vet = await new_page(b, width=390, height=844, sw=False)
             await vet.goto(url)
-            await vet.wait_for_timeout(2500)
+            await settle(vet)
             t = await vet.inner_text("body")
             check(
                 "a vet with no account sees the card and no door into the app",
@@ -55,7 +55,7 @@ async def main():
 
             # The settings wording: shared links, not the person's own
             await pg.goto(BASE + "/settings")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             row = await pg.get_by_text("Ссылки на медкарту", exact=True).locator("xpath=..").inner_text()
             check(
                 "the row says the links are shared and who may use them",
@@ -63,7 +63,7 @@ async def main():
                 row.replace(chr(10), " | "),
             )
             await pg.get_by_text("Ссылки на медкарту", exact=True).click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             lead = await pg.locator(".medlinks__lead").inner_text()
             check(
                 "the page says a link is opened by anyone who has it, without signing in",

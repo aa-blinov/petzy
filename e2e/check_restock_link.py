@@ -6,7 +6,7 @@ course of another pet did nothing, and the address kept its mark. A link to a co
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 COURSE = "Тест-Ссылка"
 TITLE = "Пополнить остаток"
@@ -51,10 +51,10 @@ async def main():
             cancel = pg.locator(".adm-dialog").get_by_text("Отмена", exact=True)
             if await cancel.count():
                 await cancel.first.click(timeout=3000)
-                await pg.wait_for_timeout(400)
+                await settle(pg, 150)
 
             await pg.goto(BASE + "/medications?restock=" + "0" * 24)
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             check("a link to a course that does not exist leaves the address clean", "restock=" not in pg.url, pg.url)
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")

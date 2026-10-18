@@ -8,7 +8,7 @@ the server. The check signs in as the demo owner and touches nothing else.
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -17,15 +17,15 @@ async def main():
         ctx, pg = await new_page(browser)
         pid = await login(pg)
         await pg.goto(BASE + f"/pets/{pid}/medical-card?mode=fill")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         # The card's summary has no round plus of its own: each part has one, at the same place, for its own things.
         check("the card's summary has no round plus", await pg.locator(".app-fab").count() == 0)
         for part in ("risks", "meds", "prevention", "weight", "visits", "documents", "clinic", "life"):
             await pg.goto(BASE + f"/pets/{pid}/medical-card/{part}")
-            await pg.wait_for_timeout(900)
+            await settle(pg)
             check(f"«{part}» has its own round plus", await pg.locator(".app-fab").count() == 1)
         await pg.goto(BASE + f"/pets/{pid}/medical-card?mode=fill")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         link = pg.locator(".medcard__alert-link").first
         if await link.count():
             box = await link.bounding_box()
@@ -40,7 +40,7 @@ async def main():
 
         ctx, pg = await new_page(browser)
         await pg.goto(BASE + "/register")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         border = await pg.evaluate(
             "(() => { const e = document.querySelector('.adm-checkbox-icon'); return e ? getComputedStyle(e).borderTopColor : ''; })()"
         )
@@ -55,7 +55,7 @@ async def main():
         await login(pg)
         await ctx.set_offline(True)
         await pg.goto(BASE + "/history", wait_until="commit")
-        await pg.wait_for_timeout(2500)
+        await pg.get_by_text("Нет связи с интернетом").first.wait_for(timeout=8000)
         check(
             "offline, the page says there is no connection rather than a server fault",
             await pg.get_by_text("Нет связи с интернетом").count() >= 1

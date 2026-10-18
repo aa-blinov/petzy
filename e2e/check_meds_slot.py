@@ -9,7 +9,7 @@ Needs the local stack and the demo data. Makes three courses of its own and remo
 import asyncio
 from datetime import datetime, timedelta
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 SLOTS = "Т-проверка слот"
 QUESTION = "Т-проверка вопрос"
@@ -63,7 +63,7 @@ async def main():
             slots, question, needed = ids
 
             await pg.goto(BASE + "/medications")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
 
             # One slot is closed, the other is not.
             first_mark = await api(
@@ -114,7 +114,7 @@ async def main():
             # never offers a closed slot, so this is the case a stale screen leaves.
             card = pg.locator(".card-soft", has_text=QUESTION).first
             await card.get_by_role("button", name="Другое время или доза").click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             await api(
                 pg,
                 "POST",
@@ -122,9 +122,9 @@ async def main():
                 {"date": today, "time": late, "slot_date": today, "slot_time": times[0]},
             )
             await pg.get_by_role("button", name=f"В {times[0]}").click()
-            await pg.wait_for_timeout(600)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Записать", exact=True).click()
-            await pg.wait_for_timeout(2000)
+            await settle(pg, 150)
             screen = await pg.locator("body").inner_text()
             check(
                 "the question in the app speaks of the time, not of a dose near in time",
@@ -133,7 +133,7 @@ async def main():
             )
             check("the one who took the slot is named", "вами" in screen, screen.replace("\n", " | ")[:160])
             await pg.get_by_role("button", name="Не записывать").last.click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check(
                 "the refused mark left the intakes as they were",
                 len(await intakes(pg, rex, question)) == 1,
@@ -152,11 +152,11 @@ async def main():
             # With no connection the mark cannot leave the phone: the card of its own course says so
             # and offers no second tap, instead of only a line above the whole list.
             await pg.goto(BASE + "/medications", wait_until="domcontentloaded")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             await ctx.set_offline(True)
             card = pg.locator(".card-soft", has_text=NEEDED).first
             await card.get_by_role("button", name="Дали сейчас").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             card = pg.locator(".card-soft", has_text=NEEDED).first
             text = await card.inner_text()
             check(
