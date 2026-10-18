@@ -91,9 +91,12 @@ class TestAuthentication:
 
     def test_api_login_rate_limiting(self, client, mock_db):
         """Test rate limiting on login attempts."""
-        # Make multiple failed attempts
-        for _ in range(6):
+        # Ten wrong passwords from one address are allowed in a minute; the eleventh is refused
+        for _ in range(10):
             response = client.post("/api/auth/login", json={"username": "admin", "password": "wrongpassword"})
+            assert response.status_code == 401
+
+        response = client.post("/api/auth/login", json={"username": "admin", "password": "wrongpassword"})
 
         # Should be rate limited
         assert response.status_code == 429
