@@ -50,6 +50,7 @@ export function Settings() {
     queryFn: () => accountService.get(),
   });
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const [logoutEverywhereVisible, setLogoutEverywhereVisible] = useState(false);
 
   // A row about the account says what it knows, and says that it doesn't know yet. While the request is in
   // flight the description was a single space: an empty line under a label, which reads as a screen that
@@ -119,6 +120,11 @@ export function Settings() {
     // useAuth.logout() handles the navigate('/login', {replace:true}) itself,
     // so we don't need to navigate again here.
     await logout();
+  };
+
+  const confirmLogoutEverywhere = async () => {
+    setLogoutEverywhereVisible(false);
+    await logout({ everywhere: true });
   };
 
   return (
@@ -360,6 +366,12 @@ export function Settings() {
               description="На этом устройстве"
               onClick={() => setLogoutDialogVisible(true)}
             />
+            <SettingsRow
+              icon={<LogOut size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Выйти на всех устройствах"
+              description="Со всех телефонов и браузеров"
+              onClick={() => setLogoutEverywhereVisible(true)}
+            />
             {!isAdmin ? (
               <SettingsRow
                 icon={<Trash2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
@@ -397,6 +409,20 @@ export function Settings() {
             // the dangerous button changed position between screens.
             { key: 'confirm', text: 'Выйти', bold: true, danger: true, onClick: confirmLogout },
             { key: 'cancel', text: 'Отмена', onClick: () => setLogoutDialogVisible(false) },
+          ],
+        ]}
+      />
+
+      <Dialog
+        visible={logoutEverywhereVisible}
+        title="Выход на всех устройствах"
+        content="Войти придётся заново и на этом устройстве, и на остальных"
+        closeOnAction
+        onClose={() => setLogoutEverywhereVisible(false)}
+        actions={[
+          [
+            { key: 'confirm', text: 'Выйти везде', bold: true, danger: true, onClick: confirmLogoutEverywhere },
+            { key: 'cancel', text: 'Отмена', onClick: () => setLogoutEverywhereVisible(false) },
           ],
         ]}
       />
