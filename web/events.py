@@ -24,7 +24,7 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import pat_allowed, require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import apply_pagination, check_pet_access, parse_event_datetime_safe, ru_dose_unit, valid_tz
+from web.helpers import check_pet_access, parse_event_datetime_safe, ru_dose_unit, valid_tz
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -446,6 +446,32 @@ def _serialize_event(record: dict) -> dict:
     return record
 
 
+def _position(record: dict) -> tuple:
+    """Where a record stands in the feed: its time, then its id. The feed is newest first, so it is descending by this pair."""
+    moment = record.get("date_time")
+    return (moment if isinstance(moment, datetime) else datetime.min, record["_id"])
+
+
+def _cursor_text(position: tuple) -> str:
+    """The cursor a page ends with: the position as text, «2026-10-18T09:00:00,64f1…»."""
+    moment, record_id = position
+    return f"{moment.isoformat()},{record_id}"
+
+
+def _parse_cursor(text: str) -> tuple:
+    """The position a cursor names. The query checked its shape already (see FeedQuery)."""
+    from bson import ObjectId  # lazy import, as elsewhere in this module
+
+    moment_text, record_text = text.split(",", 1)
+    return datetime.fromisoformat(moment_text), ObjectId(record_text)
+
+
+def _after_cursor(position: tuple) -> dict:
+    """The records further down the feed than a position: an older time, or the same time and an older id."""
+    moment, record_id = position
+    return {"$or": [{"date_time": {"$lt": moment}}, {"date_time": moment, "_id": {"$lt": record_id}}]}
+
+
 def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, new_value, anomaly: dict) -> None:
     """Push the pet's subscribers that a reading looks abnormal compared
     to its own recent history. Never raises — a push failure must not
@@ -633,23 +659,35 @@ def create_event():
 def list_events():
     """List events for the current pet, optionally filtered by type.
 
-    Newest first and paginated. Dates and times are the person's own, kept as they were typed: the zone travels with the record (``tz``, the IANA zone it was typed in) and the reading device puts the time on its own clock.
+    Newest first. A page by number (``page``, ``page_size``) is what the web app reads. A device that reads the whole
+    diary passes ``before`` with the ``next_cursor`` of the previous answer: the cursor names the last record it has
+    seen by its time and its id, so a record written in between moves no page, and no record is read twice or missed.
+    ``next_cursor`` is null on the last page. Dates and times are the person's own, kept as they were typed: the zone
+    travels with the record (``tz``, the IANA zone it was typed in) and the reading device puts the time on its own clock.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
+    cursor = _parse_cursor(query_params.before) if query_params.before else None
 
     mongo_query: dict[str, Any] = {"pet_id": pet_id}
     if query_params.type:
         mongo_query["type"] = query_params.type
 
     total = app.db[EVENTS_COLLECTION].count_documents(mongo_query)
-    base_query = app.db[EVENTS_COLLECTION].find(mongo_query).sort("date_time", -1)
-    paginated_query, _ = apply_pagination(base_query, page, page_size)
-    items = [_serialize_event(r) for r in paginated_query]
+    skip = 0 if cursor else (page - 1) * page_size
+    query = {**mongo_query, **_after_cursor(cursor)} if cursor else mongo_query
+    # One record more than the page, to know whether there is a next one; read before the records are changed for the answer.
+    records = list(
+        app.db[EVENTS_COLLECTION].find(query).sort([("date_time", -1), ("_id", -1)]).skip(skip).limit(page_size + 1)
+    )
+    has_more = len(records) > page_size if cursor else total > skip + page_size
+    records = records[:page_size]
+    next_cursor = _cursor_text(_position(records[-1])) if has_more and records else None
+    items = [_serialize_event(r) for r in records]
 
-    return jsonify({"items": items, "page": page, "page_size": page_size, "total": total})
+    return jsonify({"items": items, "page": page, "page_size": page_size, "total": total, "next_cursor": next_cursor})
 
 
 @events_bp.route("/api/events/<record_id>", methods=["GET"])
@@ -909,37 +947,49 @@ def get_history_timeline():
     only) or the key of an event type; a key that is not known gives an empty list, not an error. Event items carry
     ``record_type`` in place of ``type``. Dose items include skipped ones (``skipped``) and add ``medication_name``
     and ``dose_unit`` while the course still exists.
+
+    A ``before`` cursor (the ``next_cursor`` of the previous answer) takes the feed on from there, as for the event
+    list; without it the page is by number. Both kinds of answer carry ``next_cursor``.
     """
     query_params = request.context.query  # type: ignore[attr-defined]
     pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
     filter_type = getattr(query_params, "type", "all")
-
-    all_records = []
-    total = 0
+    cursor = _parse_cursor(query_params.before) if query_params.before else None
 
     include_events = filter_type != "medications"
     include_medications = not filter_type or filter_type in ("all", "medications")
 
-    offset = (page - 1) * page_size
-    fetch_limit = offset + page_size
+    offset = 0 if cursor else (page - 1) * page_size
+    # Each source gives its newest records up to one past the page: enough to merge the feed, and to know there is more.
+    fetch_limit = offset + page_size + 1
+    rows = []  # (position, item): the merged feed is sorted by the position, newest first
+    total = 0
 
     if include_events:
         events_query: dict[str, Any] = {"pet_id": pet_id}
         if filter_type and filter_type != "all":
             events_query["type"] = filter_type
         total += app.db[EVENTS_COLLECTION].count_documents(events_query)
-        cursor = app.db[EVENTS_COLLECTION].find(events_query).sort("date_time", -1).limit(fetch_limit)
-        for record in cursor:
+        if cursor:
+            events_query = {**events_query, **_after_cursor(cursor)}
+        for record in (
+            app.db[EVENTS_COLLECTION].find(events_query).sort([("date_time", -1), ("_id", -1)]).limit(fetch_limit)
+        ):
+            position = _position(record)
             item = _serialize_event(record)
             item["record_type"] = item.pop("type")
-            all_records.append(item)
+            rows.append((position, item))
 
     if include_medications:
-        intakes_query = {"pet_id": pet_id}
+        intakes_query: dict[str, Any] = {"pet_id": pet_id}
         total += app.db["medication_intakes"].count_documents(intakes_query)
-        intake_records = list(app.db["medication_intakes"].find(intakes_query).sort("date_time", -1).limit(fetch_limit))
+        if cursor:
+            intakes_query = {**intakes_query, **_after_cursor(cursor)}
+        intake_records = list(
+            app.db["medication_intakes"].find(intakes_query).sort([("date_time", -1), ("_id", -1)]).limit(fetch_limit)
+        )
 
         from bson import ObjectId  # local import keeps module-load cheap
 
@@ -961,6 +1011,7 @@ def get_history_timeline():
         )
 
         for record in intake_records:
+            position = _position(record)
             record["_id"] = str(record["_id"])
             record["pet_id"] = str(record.get("pet_id", ""))
             record["record_type"] = "medications"
@@ -974,17 +1025,24 @@ def get_history_timeline():
                 # «1 таб», not a bare «1», on the feed. A unit from a script or an older
                 # client is read in Russian here; the course keeps what was written.
                 record["dose_unit"] = ru_dose_unit(med.get("dose_unit"))
-            all_records.append(record)
+            rows.append((position, record))
 
-    all_records.sort(key=lambda x: x.get("date_time", ""), reverse=True)
-
-    paginated_records = all_records[offset : offset + page_size]
+    rows.sort(key=lambda row: row[0], reverse=True)
+    if cursor:
+        page_rows = rows[:page_size]
+        has_more = len(rows) > page_size
+    else:
+        page_rows = rows[offset : offset + page_size]
+        has_more = total > offset + page_size
+    next_cursor = _cursor_text(page_rows[-1][0]) if has_more and page_rows else None
+    items = [item for _, item in page_rows]
 
     return jsonify(
         {
-            "items": paginated_records,
+            "items": items,
             "page": page,
             "page_size": page_size,
             "total": total,
+            "next_cursor": next_cursor,
         }
     )
