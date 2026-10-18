@@ -45,6 +45,9 @@ ERRORS: Dict[str, ErrorDef] = {
     "internal_error": ErrorDef("internal_error", "Внутренняя ошибка сервера", 500),
     # Auth / access (401)
     "unauthorized": ErrorDef("unauthorized", "Сессия закончилась. Войдите заново", 401),
+    "picture_link_invalid": ErrorDef(
+        "picture_link_invalid", "Ссылка на картинку не действует или истекла. Обновите питомца или документ", 401
+    ),
     "unauthorized_invalid_credentials": ErrorDef("unauthorized_invalid_credentials", "Неверный логин или пароль", 401),
     "unauthorized_refresh_token_required": ErrorDef(
         "unauthorized_refresh_token_required", "Требуется refresh token", 401

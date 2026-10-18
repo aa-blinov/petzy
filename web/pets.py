@@ -26,6 +26,7 @@ from web.helpers import (
     snap_thumbnail_size,
 )
 from web.errors import error_response, PetDeletionFailed, PetNotFoundDuringDeletion
+from web.picture_links import picture_route, signed_picture_url
 from web.messages import get_message
 from web.builtin_event_types import BUILTIN_TYPE_ORDER
 from web.pydantic_helpers import validate_request_data
@@ -69,9 +70,13 @@ def _expose_photo(pet: dict) -> None:
     # could point anywhere and load for everyone the pet is shared with.
     pet.pop("photo_url", None)
     if ref:
-        pet["photo_url"] = (
-            url_for("pets.get_pet_photo", pet_id=pet["_id"], _external=False) + f"?v={storage.file_version(ref)}"
+        pet_id, version = str(pet["_id"]), storage.file_version(ref)
+        # Signed for the person asking, and absolute: a native app loads it without the headers of its session.
+        address = signed_picture_url(
+            url_for("pets.get_pet_photo", pet_id=pet_id, _external=False), "pet-photo", pet_id, version, f"v={version}"
         )
+        if address:
+            pet["photo_url"] = address
 
 
 def _store_pet_photo(photo_file, owner_username: str, pet_id) -> str:
@@ -940,7 +945,7 @@ def purge_pet(pet: dict) -> bool:
 
 
 @pets_bp.route("/api/pets/<pet_id>/photo", methods=["GET"])
-@login_required
+@picture_route("pet-photo", login_required)
 @api.validate(
     query=PhotoQueryParams,
     resp=Response(

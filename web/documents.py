@@ -51,6 +51,7 @@ from web.schemas import (
     ScanUploadSlot,
     StorageStatus,
 )
+from web.picture_links import picture_route, signed_picture_url
 from web.security import is_admin, login_required
 
 documents_bp = Blueprint("documents", __name__)
@@ -207,6 +208,20 @@ def _serialize_document(
     # A document added before the field has no zone; the response says so
     # explicitly rather than leaving the client to guess (DocumentItem.tz).
     doc["tz"] = doc.get("tz")
+    # A picture (not a scan) gets an address signed for the person asking, as a pet's photo does: a native app shows
+    # it without the headers of its session.
+    file_ref = doc.get("file_id")
+    if file_ref and not doc.get("scan") and str(doc.get("content_type") or "").startswith("image/"):
+        version = storage.file_version(file_ref)
+        doc["file_url"] = signed_picture_url(
+            url_for("documents.get_document_file", id=doc["_id"], _external=False),
+            "document-file",
+            doc["_id"],
+            version,
+            f"v={version}",
+        )
+    else:
+        doc["file_url"] = None
     # Where a file sits in the bucket is ours to know, not the client's.
     doc.pop("file_id", None)
     if isinstance(doc.get("created_at"), datetime):
@@ -757,14 +772,18 @@ def get_document_download(id):
     return response
 
 
+def _document_session(view):
+    """What a document's file asked of a session before a signed address could open it."""
+    return login_required(require_record_access("documents")(view))
+
+
 @documents_bp.route("/api/documents/<id>/file", methods=["GET"])
-@login_required
+@picture_route("document-file", _document_session)
 @api.validate(
     query=PhotoQueryParams,
     resp=Response(HTTP_200=None, HTTP_404=ErrorResponse),
     tags=["documents"],
 )
-@require_record_access("documents")
 def get_document_file(id):
     """Serve the document's underlying file bytes.
 

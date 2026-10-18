@@ -1548,6 +1548,11 @@ class PhotoQueryParams(BaseModel):
 
     w: Optional[int] = Field(None, gt=0, le=4000, description="Ширина изображения в пикселях")
     h: Optional[int] = Field(None, gt=0, le=4000, description="Высота изображения в пикселях")
+    uid: Optional[str] = Field(None, description="Только у подписанного адреса картинки: кому он выдан")
+    exp: Optional[str] = Field(
+        None, description="Только у подписанного адреса: до какого момента действует, UNIX-секунды"
+    )
+    sig: Optional[str] = Field(None, description="Только у подписанного адреса: подпись; без неё нужен вход")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -2932,6 +2937,10 @@ class DocumentItem(BaseModel):
     id: str = Field(alias="_id")
     pet_id: str
     username: str
+    file_url: Optional[str] = Field(
+        default=None,
+        description="Подписанный адрес картинки документа (не скана и не PDF): открывается без заголовков входа, меняется раз в час и действует 1–2 часа",
+    )
     # Зона документа, а не зона смотрящего; у документов до этого поля её нет.
     tz: Optional[str] = None
     category: str
