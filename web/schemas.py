@@ -1825,7 +1825,9 @@ class EventTypeUpdate(BaseModel):
 
     label: Optional[str] = Field(None, min_length=1, max_length=100)
     icon: Optional[str] = Field(None, min_length=1, max_length=50, json_schema_extra={"pattern": "^[a-z0-9_-]{1,50}$"})
-    color: Optional[str] = Field(None, min_length=1, max_length=20, json_schema_extra={"enum": list(EVENT_TYPE_COLORS)})
+    color: Optional[str] = Field(
+        None, min_length=1, max_length=20, json_schema_extra={"enum": [*EVENT_TYPE_COLORS, None]}
+    )
     fields: Optional[List[EventTypeField]] = None
     chart: Optional[EventChartConfig] = None
 
