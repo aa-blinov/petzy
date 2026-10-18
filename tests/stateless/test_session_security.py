@@ -49,6 +49,14 @@ def test_the_login_limit_is_per_client_not_global(client):
     assert response.status_code == 401
 
 
+def test_right_passwords_do_not_use_up_the_address_limit(client):
+    """An address shared by many people (a mobile carrier's) is not locked out by their right passwords."""
+    shared = {"X-Forwarded-For": "203.0.113.9"}
+    for _ in range(15):
+        response = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"}, headers=shared)
+        assert response.status_code == 200
+
+
 def test_other_sites_get_no_cors_access(client, auth_headers):
     response = client.get("/api/pets", headers={**auth_headers, "Origin": "https://evil.example"})
     assert "Access-Control-Allow-Origin" not in response.headers

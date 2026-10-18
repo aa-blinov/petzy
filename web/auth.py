@@ -283,6 +283,7 @@ def password_is_common():
 @limiter.limit(
     lambda: RATE_LIMIT_CONFIG["login_limit"],
     error_message="Too many login attempts. Please try again later.",
+    deduct_when=lambda response: response.status_code == 401,
 )
 @api.validate(
     body=Request(AuthLoginRequest),
@@ -292,7 +293,11 @@ def password_is_common():
 def api_login():
     """API endpoint for login - returns JWT tokens.
 
-    A request without an ``Origin`` header, which is what a native app sends, gets ``access_token`` and ``refresh_token`` in the body. A browser always sends ``Origin`` and is signed in with httpOnly cookies instead. Five attempts a minute from one address.
+    A request without an ``Origin`` header, which is what a native app sends, gets ``access_token`` and ``refresh_token``
+    in the body. A browser always sends ``Origin`` and is signed in with httpOnly cookies instead.
+
+    Ten wrong passwords a minute from one address; a right password is not counted, so an address shared by many
+    people (a mobile carrier's) does not lock them out.
 
     Ten wrong passwords for one login within fifteen minutes lock that login for fifteen minutes, the right password
     included; the answer then is the same 401 as for a wrong one.

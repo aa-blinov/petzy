@@ -12,11 +12,11 @@ class TestErrorHandling:
     def test_rate_limit_exceeded_api(self, client, mock_db):
         """Test rate limit exceeded for API requests."""
 
-        # Make multiple login attempts to trigger rate limit
-        for _ in range(6):
+        # Ten wrong passwords use up the address's allowance for the minute
+        for _ in range(10):
             client.post("/api/auth/login", json={"username": "admin", "password": "wrongpassword"})
 
-        # Last request should be rate limited
+        # The next wrong password is refused
         response = client.post("/api/auth/login", json={"username": "admin", "password": "wrongpassword"})
 
         assert response.status_code == 429
