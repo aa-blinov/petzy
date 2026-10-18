@@ -223,3 +223,25 @@ def test_each_create_a_retry_may_send_again_takes_the_idempotency_key(client):
     ):
         names = [parameter["name"] for parameter in spec["paths"][path]["post"].get("parameters", [])]
         assert "Idempotency-Key" in names, path
+
+
+def test_an_enum_that_allows_null_lists_null(client):
+    """OpenAPI 3.1 reads `enum` next to `anyOf: [..., {type: null}]` as the whole answer: a value of null that the enum
+    does not list is invalid, and a generated client takes the enum as the only choices."""
+    schemas = client.get("/api/openapi.json").get_json()["components"]["schemas"]
+
+    def walk(node, where):
+        if isinstance(node, dict):
+            allows_null = any(
+                isinstance(option, dict) and option.get("type") == "null" for option in node.get("anyOf", [])
+            )
+            if "enum" in node and allows_null:
+                assert None in node["enum"], where
+            for key, value in node.items():
+                walk(value, f"{where}/{key}")
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                walk(item, f"{where}[{index}]")
+
+    for name, schema in schemas.items():
+        walk(schema, name)
