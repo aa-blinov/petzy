@@ -43,7 +43,7 @@ export function installKeyboardWatch() {
   // `scrolling`: called from a scroll of the visual viewport. On iPhone the end of a page springs back, and while it
   // does the visual viewport reports an offset for a moment; moving the bars by it then (and nudging the page) made
   // the tab bar jump at the bottom of every page and broke the momentum. A scroll may only take a shift away; only a
-  // resize, a focus change or a return to the app may put one in.
+  // resize, a focus change or a return to the app may put one in. The exception is a field being typed in (below).
   const update = (scrolling = false) => {
     if (window.innerWidth !== width) {
       // Rotated or resized: what was tall is no longer.
@@ -59,18 +59,23 @@ export function installKeyboardWatch() {
     const pageShrunk = tallest - window.innerHeight >= MIN_KEYBOARD_PX;
     // iPhone, a standalone app: after the keyboard is gone (or the app was left and returned to) the visual viewport
     // can stay panned down inside the page, and everything fixed to the bottom floats that far above the screen's
-    // edge. While there is no keyboard and no pinch-zoom, the fixed bars are moved down by that offset; the
-    // page is also nudged once, which makes the browser put the viewport back where it belongs.
+    // edge. While there is no pinch-zoom, the fixed bars are moved down by that offset; the page is also nudged once,
+    // which makes the browser put the viewport back where it belongs. A field being typed in is no exception: iOS pans
+    // the visual viewport to show the field, and a fixed top bar left in place floats out of the screen by that much.
+    // The tab bar and the add button are hidden while the keyboard is up, so only the header follows then.
     const offset = Math.max(0, Math.round(viewport.offsetTop));
-    let panned = !open && viewport.scale <= 1.01 ? offset : 0;
+    let panned = viewport.scale <= 1.01 ? offset : 0;
     // But only as far as the bar actually floats. The nudge above cannot always put the viewport back
     // (at the end of the page there is nowhere to go, and a slight pinch-zoom leaves it panned too),
     // and a stale offset is not a harmless leftover: a bottom-fixed bar moved down by it leaves the
     // screen altogether, which is the bar «улетающий» вниз. So the bar may come down to the edge of
     // the visible area and not one pixel past it.
-    if (scrolling) panned = Math.min(panned, shift);
+    // Only without a field being typed in: the keyboard is then coming up or going down, and the pan that comes with it
+    // is real, not a spring-back.
+    if (scrolling && !isTextField(document.activeElement)) panned = Math.min(panned, shift);
     const bar = document.querySelector('.bottom-tab-bar-container');
-    if (bar && panned) {
+    // The tab bar is hidden while the keyboard is up, so only a bar that is shown is kept on the screen.
+    if (bar && panned && !open) {
       write('--vv-shift', '0px'); // its unshifted place, read before shifting again
       const floats = Math.round(viewport.offsetTop + viewport.height - bar.getBoundingClientRect().bottom);
       panned = Math.min(panned, Math.max(0, floats));
