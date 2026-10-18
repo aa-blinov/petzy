@@ -227,6 +227,11 @@ def get_token_from_request():
     return request.cookies.get("access_token")
 
 
+def _bearer_sent() -> bool:
+    """A request that names its token in the Authorization header: a native app, or a script."""
+    return request.headers.get("Authorization", "").startswith("Bearer ")
+
+
 def validate_refresh_token(refresh_token: str):
     """Verify a refresh token end-to-end.
 
@@ -435,8 +440,9 @@ def login_required(f):
         if token:
             payload = verify_token(token, "access")
 
-        if not payload:
-            # Token missing or invalid, try to refresh
+        if not payload and not _bearer_sent():
+            # Only a browser's session renews itself, from its cookie. A native app names its token in the header
+            # and keeps its refresh token itself: a renewal from a cookie it also holds would spend the copy it keeps.
             renewed = try_refresh_access_token()
             new_token, new_refresh_token = renewed if renewed else (None, None)
             if new_token:

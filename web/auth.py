@@ -137,8 +137,11 @@ def signed_in_response(message_key: str, signed_in_as: str, status: int = 200, *
     refresh_token = create_refresh_token(signed_in_as)
     tokens = {"access_token": access_token, "refresh_token": refresh_token} if is_native_client() else {}
     response, status = get_message(message_key, status=status, **extra, **tokens)
-    set_auth_cookie(response, "access_token", access_token, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
-    set_auth_cookie(response, "refresh_token", refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
+    # A browser keeps its session in these cookies. A native app keeps the tokens above itself: a cookie it
+    # received would be a second copy of its refresh token, and the server's own renewals would spend that copy.
+    if not is_native_client():
+        set_auth_cookie(response, "access_token", access_token, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+        set_auth_cookie(response, "refresh_token", refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
     return response, status
 
 
@@ -355,8 +358,9 @@ def api_refresh():
     tokens = {"refresh_token": next_refresh_token} if is_native_client() else {}
     response, status = get_message("auth_refresh_success", access_token=access_token, **tokens)
 
-    set_auth_cookie(response, "access_token", access_token, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
-    set_auth_cookie(response, "refresh_token", next_refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
+    if not is_native_client():
+        set_auth_cookie(response, "access_token", access_token, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+        set_auth_cookie(response, "refresh_token", next_refresh_token, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
     return response, status
 
 

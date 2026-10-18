@@ -43,7 +43,8 @@ def _sign_up(client, username="vera", email="vera@example.com", password="kotik-
             "full_name": "Вера",
             "privacy_consent": True,
         },
-        headers=_from(client),
+        # A page signs up: its session is in cookies, which the tests below use as the page does.
+        headers={**_from(client), "Origin": "https://petzy.duckdns.org"},
     )
     assert response.status_code == 201, response.get_json()
     if not email:
@@ -80,7 +81,9 @@ def test_the_reset_link_sets_a_new_password_once(client, mock_db, outbox):
     assert client.post("/api/auth/password/forgot", json={"login": "vera"}, headers=_from(client)).status_code == 200
     token = _link_token(outbox[-1], "/reset-password")
     response = client.post(
-        "/api/auth/password/reset", json={"token": token, "password": "new-secret-42"}, headers=_from(client)
+        "/api/auth/password/reset",
+        json={"token": token, "password": "new-secret-42"},
+        headers={**_from(client), "Origin": "https://petzy.duckdns.org"},
     )
     assert response.status_code == 200
     # Signed in with the new password; the other device is signed out.
@@ -207,7 +210,7 @@ def test_changing_the_password_in_settings(client, mock_db, outbox):
     ok = client.put(
         "/api/me/password",
         json={"current_password": "kotik-2026", "new_password": "new-secret-42"},
-        headers=_from(client),
+        headers={**_from(client), "Origin": "https://petzy.duckdns.org"},
     )
     assert ok.status_code == 200
     assert outbox[-1]["subject"] == "Petzy: пароль изменён"
