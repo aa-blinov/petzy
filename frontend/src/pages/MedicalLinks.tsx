@@ -19,7 +19,7 @@ import './MedicalLinks.css';
 export function MedicalLinks() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { pets, selectedPetId } = usePet();
+  const { pets, selectedPetId, isFetched } = usePet();
 
   const lists = useQueries({
     queries: pets.map((pet) => ({ queryKey: ['medical-shares', pet._id], queryFn: () => medicalShareService.list(pet._id), staleTime: 0 })),
@@ -49,7 +49,8 @@ export function MedicalLinks() {
   };
 
   const rows = pets.map((pet, i) => ({ pet, query: lists[i] }));
-  const loading = rows.some((r) => r.query.isPending);
+  // Until the roster has come in, the count is not known yet: «0» then would be a lie for a moment.
+  const loading = !isFetched || rows.some((r) => r.query.isPending);
   const total = rows.reduce((n, r) => n + (r.query.data?.length ?? 0), 0);
   const failed = rows.filter((r) => r.query.isError);
 
@@ -78,7 +79,7 @@ export function MedicalLinks() {
             </p>
           ))}
 
-          {pets.length === 0 && (
+          {isFetched && pets.length === 0 && (
             <EmptyState
               icon={Link2}
               title="Питомцев пока нет"
