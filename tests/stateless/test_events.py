@@ -6,6 +6,7 @@ builtin and custom event type, so these tests exercise it generically and
 per-type only where the type's own field validation differs.
 """
 
+from bson import ObjectId
 import pytest
 from datetime import datetime, timezone, timedelta
 
@@ -714,7 +715,9 @@ class TestGetUpdateDeleteEvent:
 
         response = client.delete(f"/api/events/{event_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
         assert response.status_code == 200
-        assert mock_db["events"].count_documents({}) == 0
+        # Marked, not erased: a tombstone, and no ordinary read finds it.
+        assert mock_db["events"].count_documents({"is_deleted": {"$ne": True}}) == 0
+        assert mock_db["events"].find_one({"_id": ObjectId(event_id)})["is_deleted"] is True
 
     def test_delete_not_found(self, client, regular_user_token):
         response = client.delete(
@@ -1107,7 +1110,7 @@ class TestEventRouteRaceConditionsAndErrors:
         )
         record_id = str(mock_db["events"].find_one({"pet_id": str(test_pet["_id"])})["_id"])
 
-        with patch.object(app.db.events, "delete_one", return_value=MagicMock(deleted_count=0)):
+        with patch.object(app.db.events, "update_one", return_value=MagicMock(matched_count=0)):
             response = client.delete(
                 f"/api/events/{record_id}",
                 headers={"Authorization": f"Bearer {regular_user_token}"},

@@ -63,6 +63,7 @@ ERRORS: Dict[str, ErrorDef] = {
     "not_found": ErrorDef("not_found", "Ресурс не найден", 404),
     "record_not_found": ErrorDef("record_not_found", "Запись не найдена", 404),
     "local_id_taken": ErrorDef("local_id_taken", "Этот идентификатор записи уже занят", 409),
+    "record_deleted": ErrorDef("record_deleted", "Эта запись уже удалена", 409),
     "pet_not_found": ErrorDef("pet_not_found", "Питомец не найден", 404),
     "user_not_found": ErrorDef("user_not_found", "Пользователь не найден", 404),
     "photo_not_found": ErrorDef("photo_not_found", "Фото не найдено", 404),

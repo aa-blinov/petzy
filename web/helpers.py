@@ -268,7 +268,12 @@ def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, usern
         return _entry_now(tz), None
 
 
-def get_record_and_validate_access(record_id, collection_name, username):
+# A deleted event stays in the stand as a tombstone for 30 days, so that the devices that sync can remove it. No
+# ordinary read takes the tombstones: every query on the events collection adds this condition.
+LIVE_EVENT_FILTER = {"is_deleted": {"$ne": True}}
+
+
+def get_record_and_validate_access(record_id, collection_name, username, extra_filter=None):
     """
     Get record by ID and validate user access.
 
@@ -281,7 +286,7 @@ def get_record_and_validate_access(record_id, collection_name, username):
     except (InvalidId, TypeError, ValueError):
         return None, None, error_response("invalid_record_id")
 
-    existing = app.db[collection_name].find_one({"_id": record_id_obj})
+    existing = app.db[collection_name].find_one({"_id": record_id_obj, **(extra_filter or {})})
     if not existing:
         return None, None, error_response("record_not_found")
 

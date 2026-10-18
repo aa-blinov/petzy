@@ -24,7 +24,7 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import pat_allowed, require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import check_pet_access, parse_event_datetime_safe, ru_dose_unit, valid_tz
+from web.helpers import LIVE_EVENT_FILTER, check_pet_access, parse_event_datetime_safe, ru_dose_unit, valid_tz
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -319,9 +319,13 @@ def delete_event_type(key):
     accessible_pet_ids = [str(pet["_id"]) for pet in pets]
     # A record on a pet this person cannot open is someone else's diary entry. Then nothing changes, and the preview
     # refuses too, so no deletion is offered that the delete itself would refuse.
-    if app.db[EVENTS_COLLECTION].find_one({"type": key, "pet_id": {"$nin": accessible_pet_ids}}, {"_id": 1}):
+    if app.db[EVENTS_COLLECTION].find_one(
+        {"type": key, "pet_id": {"$nin": accessible_pet_ids}, **LIVE_EVENT_FILTER}, {"_id": 1}
+    ):
         return error_response("event_type_has_events_elsewhere")
-    count = app.db[EVENTS_COLLECTION].count_documents({"type": key, "pet_id": {"$in": accessible_pet_ids}})
+    count = app.db[EVENTS_COLLECTION].count_documents(
+        {"type": key, "pet_id": {"$in": accessible_pet_ids}, **LIVE_EVENT_FILTER}
+    )
     if _flag("preview"):
         return jsonify({"success": True, "message": "", "events_count": count}), 200
     with_events = _flag("with_events")
@@ -413,6 +417,7 @@ def _same_record_just_saved(pet_id: str, type_key: str, username: str, event_dt:
             "comment": comment,
             "fields": fields,
             "created_at": {"$gte": datetime.now(timezone.utc) - DUPLICATE_EVENT_WINDOW},
+            **LIVE_EVENT_FILTER,
         },
         sort=[("created_at", -1)],
     )
@@ -436,6 +441,12 @@ def _serialize_event(record: dict) -> dict:
     # Left as a datetime, this reached the client as «Sat, 03 Oct 2026 07:52:49 GMT», a
     # web-server date nobody else in the API speaks, next to date_time in the project's own
     # format and next to documents and pets, which already format it.
+    # A tombstone says so, and when it was deleted: a device removes the record from its copy.
+    if record.get("is_deleted"):
+        record["is_deleted"] = True
+        record["deleted_at"] = (
+            _utc_iso(record["deleted_at"]) if isinstance(record.get("deleted_at"), datetime) else None
+        )
     # When the record last changed, to the millisecond and in UTC. A record saved before the field existed has no
     # updated_at: its creation is the last change it had.
     changed = record.get("updated_at") or record.get("created_at")
@@ -509,6 +520,9 @@ def _answer_for_local_id(existing: dict, pet_id: str, type_key: str, local_id: s
     """
     if str(existing.get("pet_id")) != str(pet_id) or existing.get("type") != type_key:
         return error_response("local_id_taken")
+    if existing.get("is_deleted"):
+        # The record was deleted: the device must drop its copy, and a repeat must not bring it back.
+        return error_response("record_deleted")
     return get_message("event_created", status=200, label=label, id=str(existing["_id"]), local_id=local_id)
 
 
@@ -674,6 +688,8 @@ def list_events():
     mongo_query: dict[str, Any] = {"pet_id": pet_id}
     if query_params.type:
         mongo_query["type"] = query_params.type
+    if not query_params.with_deleted:
+        mongo_query.update(LIVE_EVENT_FILTER)
 
     total = app.db[EVENTS_COLLECTION].count_documents(mongo_query)
     skip = 0 if cursor else (page - 1) * page_size
@@ -695,7 +711,7 @@ def list_events():
     resp=Response(HTTP_200=EventItem, HTTP_404=ErrorResponse),
     tags=["events"],
 )
-@require_record_access(EVENTS_COLLECTION)
+@require_record_access(EVENTS_COLLECTION, extra_filter=LIVE_EVENT_FILTER)
 def get_event(record_id):
     """Fetch a single event.
 
@@ -721,7 +737,7 @@ def require_local_event_access(view):
         if auth_error:
             return auth_error[0], auth_error[1]
         local_id = kwargs.get("local_id")
-        record = app.db[EVENTS_COLLECTION].find_one({"local_id": local_id}) if local_id else None
+        record = app.db[EVENTS_COLLECTION].find_one({"local_id": local_id, **LIVE_EVENT_FILTER}) if local_id else None
         if not record or not record.get("pet_id") or not check_pet_access(record["pet_id"], username):
             return error_response("record_not_found")
         g.username = username
@@ -739,7 +755,7 @@ def require_local_event_access(view):
     resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["events"],
 )
-@require_record_access(EVENTS_COLLECTION)
+@require_record_access(EVENTS_COLLECTION, extra_filter=LIVE_EVENT_FILTER)
 def update_event(record_id):
     """Update an event. The event's type cannot change.
 
@@ -820,11 +836,11 @@ def _update_event_record(record: dict):
     resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["events"],
 )
-@require_record_access(EVENTS_COLLECTION)
+@require_record_access(EVENTS_COLLECTION, extra_filter=LIVE_EVENT_FILTER)
 def delete_event(record_id):
     """Delete an event.
 
-    The record goes. Any member of the pet may delete any of its records, whoever wrote it. What was counted from it goes with it, and the day and the totals it was part of close up again.
+    The record is marked deleted, not erased: it leaves every list, total, chart, card and export, and stays for thirty days as a tombstone that a device reads with ``with_deleted``. Any member of the pet may delete any of its records, whoever wrote it. What was counted from it leaves the counts with it, and the day and the totals it was part of close up again.
     """
     return _delete_event_record(g.record)
 
@@ -850,8 +866,11 @@ def _delete_event_record(record: dict):
     event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
     label = event_type["label"] if event_type else "Запись"
 
-    result = app.db[EVENTS_COLLECTION].delete_one({"_id": record["_id"]})
-    if result.deleted_count == 0:
+    # Marked, not erased: the record leaves every ordinary read, and stays as a tombstone for the devices that sync.
+    result = app.db[EVENTS_COLLECTION].update_one(
+        {"_id": record["_id"]}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc)}}
+    )
+    if result.matched_count == 0:
         return error_response("record_not_found")
     app.logger.info(f"Event deleted: record_id={record['_id']}, pet_id={pet_id}, user={username}")
     return get_message("event_deleted", label=label)
@@ -871,7 +890,7 @@ def used_event_types():
 
     A filter over a type with nothing behind it would only show an empty list, so the history offers the types that have records.
     """
-    types = app.db[EVENTS_COLLECTION].distinct("type", {"pet_id": g.pet_id})
+    types = app.db[EVENTS_COLLECTION].distinct("type", {"pet_id": g.pet_id, **LIVE_EVENT_FILTER})
     return jsonify({"types": sorted(t for t in types if isinstance(t, str))})
 
 
@@ -907,6 +926,7 @@ def get_health_stats():
     mongo_query: dict[str, Any] = {"pet_id": pet_id, "date_time": {"$gte": since_date}}
     if collection_name == EVENTS_COLLECTION:
         mongo_query["type"] = record_type
+        mongo_query.update(LIVE_EVENT_FILTER)
     else:
         # A skipped dose isn't a dose given.
         mongo_query["skipped"] = {"$ne": True}
@@ -971,6 +991,8 @@ def get_history_timeline():
         events_query: dict[str, Any] = {"pet_id": pet_id}
         if filter_type and filter_type != "all":
             events_query["type"] = filter_type
+        if not query_params.with_deleted:
+            events_query.update(LIVE_EVENT_FILTER)
         total += app.db[EVENTS_COLLECTION].count_documents(events_query)
         if cursor:
             events_query = {**events_query, **_after_cursor(cursor)}

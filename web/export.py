@@ -33,7 +33,7 @@ from web.security import login_required
 from web.app import api
 from web.decorators import require_pet_access
 from web.errors import error_response
-from web.helpers import valid_tz, wall_clock_in
+from web.helpers import LIVE_EVENT_FILTER, valid_tz, wall_clock_in
 from web.schemas import ErrorResponse, ExportQuery
 
 
@@ -132,7 +132,7 @@ def _build_event_export_spec(event_type: dict) -> ExportSpec:
         collection_name="events",
         title=event_type["label"],
         fields=columns,
-        extra_query={"type": event_type["key"]},
+        extra_query={"type": event_type["key"], **LIVE_EVENT_FILTER},
         enrich=_enrich,
     )
 

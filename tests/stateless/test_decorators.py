@@ -62,7 +62,7 @@ def mock_record_access(monkeypatch):
     """Mock get_record_and_validate_access."""
 
     def _mock_record_access(record=None, pet_id="123", error=None):
-        def mock_func(record_id, collection, username):
+        def mock_func(record_id, collection, username, extra_filter=None):
             return record, pet_id, error
 
         monkeypatch.setattr("web.decorators.get_record_and_validate_access", mock_func)

@@ -288,6 +288,8 @@ def ensure_indexes() -> None:
         (db.events, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "events_pet_date"),
         (db.events, [("pet_id", ASCENDING), ("type", ASCENDING), ("date_time", DESCENDING)], "events_pet_type_date"),
         (db.events, [("local_id", ASCENDING)], "events_local_id_unique", {"unique": True, "sparse": True}),
+        # A tombstone is kept for 30 days, then the database removes it.
+        (db.events, [("deleted_at", ASCENDING)], "events_deleted_ttl", {"expireAfterSeconds": 30 * 24 * 60 * 60}),
         (db.event_types, [("key", ASCENDING)], "event_types_key_unique", {"unique": True}),
         (db.documents, [("pet_id", ASCENDING), ("created_at", DESCENDING)], "documents_pet_created"),
         (

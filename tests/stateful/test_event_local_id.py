@@ -171,7 +171,9 @@ class TestChangingAndRemovingByName:
         response = client.delete("/api/events/local/n1", headers=_auth(regular_user_token))
 
         assert response.status_code == 200
-        assert _named(mock_db, "n1") == []
+        # Marked, not erased: the name stays with the tombstone, and no ordinary read finds the record.
+        [stored] = _named(mock_db, "n1")
+        assert stored["is_deleted"] is True
 
     def test_an_unknown_name_is_not_found(self, client, regular_user_token):
         put = client.put("/api/events/local/nothing", json={"comment": "x"}, headers=_auth(regular_user_token))
