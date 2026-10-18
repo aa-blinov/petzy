@@ -121,6 +121,7 @@ def _post_weight(client, token, pet, **extra):
             "time": "12:00",
             "fields": {"weight": 4.2},
             **extra,
+            "tz": "Asia/Almaty",
         },
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -135,9 +136,18 @@ class TestZoneIsStoredWithTheRecord:
         assert mock_db["events"].find_one({"pet_id": str(test_pet["_id"])})["tz"] == "Asia/Almaty"
 
     @pytest.mark.parametrize("extra", [{}, {"tz": "Not/AZone"}])
-    def test_no_or_bad_zone_stores_none(self, client, mock_db, regular_user_token, test_pet, extra):
-        _post_weight(client, regular_user_token, test_pet, **extra)
-        assert "tz" not in mock_db["events"].find_one({"pet_id": str(test_pet["_id"])})
+    def test_no_or_bad_zone_is_refused_and_nothing_is_saved(self, client, mock_db, regular_user_token, test_pet, extra):
+        body = {
+            "pet_id": str(test_pet["_id"]),
+            "type": "weight",
+            "date": "2026-09-30",
+            "time": "12:00",
+            "fields": {"weight": 4.2},
+            **extra,
+        }
+        response = client.post("/api/events", json=body, headers={"Authorization": f"Bearer {regular_user_token}"})
+        assert response.status_code == 422
+        assert mock_db["events"].count_documents({"pet_id": str(test_pet["_id"])}) == 0
 
     def test_editing_only_the_comment_keeps_the_authors_zone(self, client, mock_db, regular_user_token, test_pet):
         _post_weight(client, regular_user_token, test_pet, tz="Asia/Almaty")
@@ -178,7 +188,7 @@ class TestIntakeZone:
     def _log(self, client, token, med_id, **extra):
         response = client.post(
             f"/api/medications/{med_id}/log",
-            json={"date": "2026-09-30", "time": "12:00", "dose_taken": 1.0, **extra},
+            json={"date": "2026-09-30", "time": "12:00", "dose_taken": 1.0, **extra, "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 201
@@ -197,9 +207,15 @@ class TestIntakeZone:
         rows = list(csv.reader(io.StringIO(response.data.decode("utf-8-sig"))))
         assert rows[1][0] == "30.09.2026 10:00"
 
-    def test_intake_without_a_zone_stores_none(self, client, mock_db, regular_user_token, test_pet):
-        self._log(client, regular_user_token, self._medication(mock_db, test_pet))
-        assert "tz" not in mock_db["medication_intakes"].find_one({})
+    def test_intake_without_a_zone_is_refused(self, client, mock_db, regular_user_token, test_pet):
+        med_id = self._medication(mock_db, test_pet)
+        response = client.post(
+            f"/api/medications/{med_id}/log",
+            json={"date": "2026-09-30", "time": "12:00", "dose_taken": 1.0},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert response.status_code == 422
+        assert mock_db["medication_intakes"].count_documents({}) == 0
 
     def test_moving_an_intake_restamps_only_when_the_clock_moves(self, client, mock_db, regular_user_token, test_pet):
         intake_id = self._log(client, regular_user_token, self._medication(mock_db, test_pet), tz="Asia/Almaty")

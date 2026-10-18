@@ -125,7 +125,7 @@ class TestMarkers:
         assert (
             client.post(
                 f"/api/medications/{medication_id}/log",
-                json={"date": date.today().isoformat(), "time": "08:05", "dose_taken": 1.0},
+                json={"date": date.today().isoformat(), "time": "08:05", "dose_taken": 1.0, "tz": "Asia/Almaty"},
                 headers=_auth(regular_user_token),
             ).status_code
             == 201

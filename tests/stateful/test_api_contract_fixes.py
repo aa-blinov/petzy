@@ -24,6 +24,7 @@ def _event(client, token, pet_id, when, comment=""):
             "date": when.strftime("%Y-%m-%d"),
             "time": when.strftime("%H:%M"),
             "comment": comment,
+            "tz": "Asia/Almaty",
         },
         headers=_auth(token),
     )
@@ -38,12 +39,12 @@ def test_editing_only_the_comment_keeps_the_time(client, mock_db, regular_user_t
     response = client.put(f"/api/events/{record_id}", json={"comment": "ел хорошо"}, headers=_auth(regular_user_token))
     assert response.status_code == 200, response.get_json()
     stored = client.get(f"/api/events/{record_id}", headers=_auth(regular_user_token)).get_json()
-    assert stored["date_time"] == when.strftime("%Y-%m-%d %H:%M")
+    assert stored["date_time"] == when.strftime("%Y-%m-%dT%H:%M:00") + "+05:00"
 
     # One half sent: the other comes from the stored time.
     client.put(f"/api/events/{record_id}", json={"time": "07:15"}, headers=_auth(regular_user_token))
     stored = client.get(f"/api/events/{record_id}", headers=_auth(regular_user_token)).get_json()
-    assert stored["date_time"] == when.strftime("%Y-%m-%d") + " 07:15"
+    assert stored["date_time"] == when.strftime("%Y-%m-%d") + "T07:15:00+05:00"
 
 
 def test_the_common_password_check_answers_a_short_password(client):
@@ -88,7 +89,7 @@ def test_medication_answers_say_success_in_russian(client, mock_db, regular_user
 def test_a_course_comes_with_created_at_in_the_lists_format(client, mock_db, regular_user_token, test_pet):
     course_id = _course(client, regular_user_token, test_pet["_id"])["id"]
     course = client.get(f"/api/medications/{course_id}", headers=_auth(regular_user_token)).get_json()["medication"]
-    assert re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", course["created_at"]), course["created_at"]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", course["created_at"]), course["created_at"]
 
 
 def _climbing(client, token):

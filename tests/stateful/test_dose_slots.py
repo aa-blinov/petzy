@@ -75,14 +75,14 @@ def course(mock_db, test_pet):
 def _log(client, token, med_id, when, **extra):
     return client.post(
         f"/api/medications/{med_id}/log",
-        json={"date": when.strftime("%Y-%m-%d"), "time": when.strftime("%H:%M"), **extra},
+        json={"date": when.strftime("%Y-%m-%d"), "time": when.strftime("%H:%M"), **extra, "tz": "Asia/Almaty"},
         headers=_auth(token),
     )
 
 
 def _upcoming(client, token, pet, now):
     response = client.get(
-        f"/api/medications/upcoming?pet_id={pet['_id']}&client_datetime={now.strftime('%Y-%m-%dT%H:%M:00')}",
+        f"/api/medications/upcoming?pet_id={pet['_id']}&tz=Asia/Almaty&client_datetime={now.strftime('%Y-%m-%dT%H:%M:00')}",
         headers=_auth(token),
     )
     assert response.status_code == 200
@@ -326,7 +326,7 @@ class TestTheCourseList:
         med = client.get(
             f"/api/medications?pet_id={test_pet['_id']}&client_date=2026-10-02", headers=_auth(regular_user_token)
         ).get_json()["medications"][0]
-        assert med["last_taken_at"] == "2026-10-02 08:05" and med["last_taken_tz"] == "Europe/Moscow"
+        assert med["last_taken_at"] == "2026-10-02T08:05:00+03:00" and med["last_taken_tz"] == "Europe/Moscow"
 
     def test_every_slot_closed_leaves_none_open(self, client, regular_user_token, test_pet, course):
         _log(client, regular_user_token, course, at(8, 5))

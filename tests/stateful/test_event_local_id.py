@@ -12,7 +12,14 @@ from bson import ObjectId
 
 import web.events as events
 
-WEIGHT = {"type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.4}, "comment": ""}
+WEIGHT = {
+    "type": "weight",
+    "date": "2026-10-01",
+    "time": "09:00",
+    "fields": {"weight": 12.4},
+    "comment": "",
+    "tz": "Asia/Almaty",
+}
 
 
 def _auth(token):

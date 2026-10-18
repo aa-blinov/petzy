@@ -25,6 +25,7 @@ from web.schemas import (
     ErrorResponse,
 )
 from web.errors import error_response
+from web.helpers import utc_iso
 
 
 users_bp = Blueprint("users", __name__)
@@ -82,7 +83,7 @@ def users_page(query: str, raw_page, per_page: int = USERS_PER_PAGE):
         user["_id"] = str(user["_id"])
         user.pop("password_hash", None)
         if isinstance(user.get("created_at"), datetime):
-            user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+            user["created_at"] = utc_iso(user["created_at"])
 
     return users, total, page, per_page
 
@@ -172,7 +173,7 @@ def get_user_public_profile(username):
 
     created_at = target.get("created_at")
     if isinstance(created_at, datetime):
-        created_at = created_at.strftime("%Y-%m-%d %H:%M")
+        created_at = utc_iso(created_at)
 
     return jsonify(
         {
@@ -226,7 +227,7 @@ def create_user():
         user_data["_id"] = str(result.inserted_id)
         user_data.pop("password_hash", None)
         if isinstance(user_data.get("created_at"), datetime):
-            user_data["created_at"] = user_data["created_at"].strftime("%Y-%m-%d %H:%M")
+            user_data["created_at"] = utc_iso(user_data["created_at"])
 
         logger.info(f"User created: username={user_data['username']}, created_by={current_user}")
         return get_message("user_created", status=201, user=user_data)
@@ -257,7 +258,7 @@ def get_user(username):
     user["_id"] = str(user["_id"])
     user.pop("password_hash", None)
     if isinstance(user.get("created_at"), datetime):
-        user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+        user["created_at"] = utc_iso(user["created_at"])
 
     return jsonify({"user": user})
 

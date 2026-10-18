@@ -12,7 +12,14 @@ import pytest
 from bson import ObjectId
 
 STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
-WEIGHT = {"type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.4}, "comment": ""}
+WEIGHT = {
+    "type": "weight",
+    "date": "2026-10-01",
+    "time": "09:00",
+    "fields": {"weight": 12.4},
+    "comment": "",
+    "tz": "Asia/Almaty",
+}
 
 
 def _auth(token):

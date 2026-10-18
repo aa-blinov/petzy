@@ -8,6 +8,7 @@ Naming Convention:
 from datetime import datetime, timedelta
 import re
 from typing import Optional, List, Annotated, Any, Dict, Literal
+from zoneinfo import ZoneInfo
 from pydantic import (
     BaseModel as PydanticBaseModel,
     BeforeValidator,
@@ -78,6 +79,17 @@ def validate_date_logic(v: str, allow_future: bool = True, max_future_days: int 
 # ============================================================================
 # Common Response Models
 # ============================================================================
+
+
+def _iana_name(value):
+    """A zone the app can read: an IANA name the zone database knows (Asia/Almaty). None passes: the field is optional."""
+    if value is None:
+        return value
+    try:
+        ZoneInfo(value)
+    except (KeyError, ValueError):
+        raise ValueError("Неизвестный часовой пояс: нужно IANA-имя, например Asia/Almaty")
+    return value
 
 
 class SuccessResponse(BaseModel):
@@ -750,7 +762,7 @@ class UserResponse(BaseModel):
                 "full_name": "Иван Иванов",
                 "email": "ivan@example.com",
                 "is_active": True,
-                "created_at": "2024-01-15 14:30",
+                "created_at": "2024-01-15T14:30:00Z",
                 "created_by": "admin",
             }
         },
@@ -772,7 +784,7 @@ class UserResponseWrapper(BaseModel):
                     "email_verified": True,
                     "is_active": True,
                     "is_admin": False,
-                    "created_at": "2026-01-15 12:00",
+                    "created_at": "2026-01-15T12:00:00Z",
                 }
             }
         }
@@ -802,7 +814,7 @@ class UserListResponse(BaseModel):
                         "email_verified": True,
                         "is_active": True,
                         "is_admin": False,
-                        "created_at": "2026-01-15 12:00",
+                        "created_at": "2026-01-15T12:00:00Z",
                     }
                 ],
                 "total": 1,
@@ -886,7 +898,7 @@ class UserPublicProfile(BaseModel):
             "example": {
                 "username": "user2",
                 "full_name": "Мария Петрова",
-                "created_at": "2024-01-15 14:30",
+                "created_at": "2024-01-15T14:30:00Z",
                 "shared_pets": [{"id": "…", "name": "Рекс"}],
             }
         }
@@ -1381,7 +1393,7 @@ class PetResponse(BaseModel):
                 "photo_url": "/api/pets/507f1f77bcf86cd799439011/photo?v=abc12345",
                 "owner": "admin",
                 "shared_with": ["user2"],
-                "created_at": "2024-01-15 14:30",
+                "created_at": "2024-01-15T14:30:00Z",
                 "created_by": "admin",
                 "current_user_is_owner": True,
                 "tiles_settings": {
@@ -1460,7 +1472,7 @@ class PetResponseWrapper(BaseModel):
                     "owner": "demo",
                     "shared_with": [],
                     "created_by": "demo",
-                    "created_at": "2026-10-03 07:52",
+                    "created_at": "2026-10-03T07:52:00Z",
                     "current_user_is_owner": True,
                     "next_owner": None,
                     "form_defaults": {},
@@ -1518,7 +1530,7 @@ class PetListResponse(BaseModel):
                         "health_notes": "",
                         "owner": "demo",
                         "shared_with": [],
-                        "created_at": "2026-10-03 07:52",
+                        "created_at": "2026-10-03T07:52:00Z",
                         "current_user_is_owner": True,
                         "tiles_settings": {"order": ["feeding", "weight"], "visible": {"weight": True}},
                         "look": {"accent": "sun", "backdrop": "stripes", "font": "pacifico", "frame": "rope"},
@@ -1936,11 +1948,16 @@ class EventCreate(HealthRecordBase):
 
     type: str = Field(..., min_length=1, max_length=60, description="Ключ типа события")
     fields: dict[str, Any] = Field(default_factory=dict, description="Значения полей, специфичных для типа")
-    tz: Optional[str] = Field(
-        None,
+    tz: str = Field(
+        ...,
         max_length=64,
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
+
+    @field_validator("tz")
+    @classmethod
+    def _tz_is_a_zone(cls, value):
+        return _iana_name(value)
 
     local_id: Optional[str] = Field(
         None,
@@ -1982,6 +1999,12 @@ class EventUpdate(HealthRecordUpdateBase):
         max_length=64,
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
+
+    @field_validator("tz")
+    @classmethod
+    def _tz_is_a_zone(cls, value):
+        return _iana_name(value)
+
     model_config = ConfigDict(json_schema_extra={"example": {"fields": {"weight": 29.3}, "tz": "Asia/Almaty"}})
 
 
@@ -1999,8 +2022,10 @@ class EventItem(BaseModel):
     fields: dict[str, Any] = Field(default_factory=dict)
     # Optional because records written before the field existed do not have it. Sent in the
     # project's date format like everything else around it; it used to reach the client as a
-    # web-server date, «Sun, 11 Oct 2026 12:18:21 GMT», next to a date_time in «YYYY-MM-DD HH:MM».
-    created_at: Optional[str] = Field(default=None, description="Когда запись создана, UTC, «YYYY-MM-DD HH:MM»")
+    # web-server date, «Sun, 11 Oct 2026 12:18:21 GMT», next to a date_time with its offset.
+    created_at: Optional[str] = Field(
+        default=None, description="Когда запись создана, UTC, до секунды: «2026-10-03T07:52:00Z»"
+    )
     tz: Optional[str] = Field(
         default=None,
         description="IANA-зона, в которой введено время (Asia/Almaty); клиент переводит date_time на свои часы. Нет у старых записей",
@@ -2022,7 +2047,7 @@ class EventItem(BaseModel):
                 "_id": "507f1f77bcf86cd799439011",
                 "pet_id": "507f1e88bf19b6fcdb027c75",
                 "type": "weight",
-                "date_time": "2026-10-04 08:02",
+                "date_time": "2026-10-04T08:02:00+05:00",
                 "username": "demo",
                 "comment": "После прогулки",
                 "fields": {"weight": 29.3},
@@ -2047,7 +2072,7 @@ class EventListResponse(PaginatedResponse):
                         "_id": "507f1f77bcf86cd799439011",
                         "pet_id": "507f1e88bf19b6fcdb027c75",
                         "type": "weight",
-                        "date_time": "2026-10-04 08:02",
+                        "date_time": "2026-10-04T08:02:00+05:00",
                         "username": "demo",
                         "comment": "",
                         "fields": {"weight": 29.3},
@@ -2243,9 +2268,11 @@ class HealthStatsQuery(PetIdQuery):
 class HealthStatsItem(BaseModel):
     """Simplified health record item for charts."""
 
-    date: str = Field(..., description="Время записи, «YYYY-MM-DD HH:MM»")
+    date: str = Field(
+        ..., description="Момент записи: часы, которые ввели, и смещение их зоны, «2026-10-04T08:02:00+05:00»"
+    )
     value: Any = Field(..., description="1 для считаемого типа или значение поля графика")
-    model_config = ConfigDict(json_schema_extra={"example": {"date": "2026-10-04 08:02", "value": 29.3}})
+    model_config = ConfigDict(json_schema_extra={"example": {"date": "2026-10-04T08:02:00+05:00", "value": 29.3}})
 
 
 class HealthStatsResponse(BaseModel):
@@ -2256,8 +2283,8 @@ class HealthStatsResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "data": [
-                    {"date": "2026-10-03 08:10", "value": 29.2},
-                    {"date": "2026-10-04 08:02", "value": 29.3},
+                    {"date": "2026-10-03T08:10:00+05:00", "value": 29.2},
+                    {"date": "2026-10-04T08:02:00+05:00", "value": 29.3},
                 ]
             }
         }
@@ -2322,7 +2349,10 @@ class MedicationListQuery(PetIdQuery):
 class UpcomingDosesQuery(PetIdQuery):
     """Query parameters for upcoming doses with timezone support."""
 
-    client_datetime: Optional[str] = Field(None, description="Client local datetime (ISO format)")
+    client_datetime: Optional[str] = Field(
+        None,
+        description="Момент клиента: ISO 8601 с поясом (2026-10-18T08:12:00+05:00 или Z), либо местное время без пояса вместе с tz",
+    )
     tz: Optional[str] = Field(
         None,
         description="IANA-имя часового пояса человека (Asia/Almaty): без client_datetime «сейчас» берётся по нему. Без него, или если имя неизвестно, UTC",
@@ -2593,11 +2623,16 @@ class MedicationIntakeCreate(BaseModel):
         False,
         description="Записать, даже если такой же приём уже отмечен рядом по времени (ответ 409 duplicate_intake)",
     )
-    tz: Optional[str] = Field(
-        None,
+    tz: str = Field(
+        ...,
         max_length=64,
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
+
+    @field_validator("tz")
+    @classmethod
+    def _tz_is_a_zone(cls, value):
+        return _iana_name(value)
 
     @model_validator(mode="after")
     def dose_is_above_zero(self):
@@ -2624,11 +2659,17 @@ class MedicationIntakeCreate(BaseModel):
 class MedicationIntakeUpdate(BaseModel):
     date: str
     time: str
-    tz: Optional[str] = Field(
-        None,
+    tz: str = Field(
+        ...,
         max_length=64,
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
+
+    @field_validator("tz")
+    @classmethod
+    def _tz_is_a_zone(cls, value):
+        return _iana_name(value)
+
     model_config = ConfigDict(
         json_schema_extra={"example": {"date": "2026-10-06", "time": "09:15", "tz": "Asia/Almaty"}}
     )
@@ -2658,7 +2699,7 @@ class MedicationIntakeItem(BaseModel):
                 "pet_id": "507f1e88bf19b6fcdb027c75",
                 "medication_id": "507f1d77bcf86cd799439012",
                 "medication_name": "Мелоксидил",
-                "date_time": "2026-10-06 08:43",
+                "date_time": "2026-10-06T08:43:00+05:00",
                 "dose_taken": 2.5,
                 "inventory_deducted": 0,
                 "comment": "",
@@ -2680,7 +2721,7 @@ class MedicationIntakeListResponse(PaginatedResponse):
                         "pet_id": "507f1e88bf19b6fcdb027c75",
                         "medication_id": "507f1d77bcf86cd799439012",
                         "medication_name": "Мелоксидил",
-                        "date_time": "2026-10-06 08:43",
+                        "date_time": "2026-10-06T08:43:00+05:00",
                         "dose_taken": 2.5,
                         "inventory_deducted": 0,
                         "comment": "",
@@ -2983,7 +3024,7 @@ class DocumentItem(BaseModel):
                 "original_filename": "passport.pdf",
                 "content_type": "application/pdf",
                 "file_size": 601,
-                "created_at": "2026-10-03 07:52",
+                "created_at": "2026-10-03T07:52:00Z",
                 "medical_record_kinds": ["vaccination"],
                 "record_reminds": True,
                 "medical_records": [],
@@ -3010,7 +3051,7 @@ class DocumentListResponse(PaginatedResponse):
                         "expires_at": None,
                         "record_reminds": True,
                         "medical_record_kinds": ["vaccination"],
-                        "created_at": "2026-10-03 07:52",
+                        "created_at": "2026-10-03T07:52:00Z",
                         "username": "demo",
                     }
                 ],
@@ -3049,7 +3090,7 @@ class DocumentDetailResponse(BaseModel):
                             "diagnosis": None,
                         }
                     ],
-                    "created_at": "2026-10-03 07:52",
+                    "created_at": "2026-10-03T07:52:00Z",
                     "username": "demo",
                 }
             }
@@ -3201,7 +3242,7 @@ class TimelineResponse(PaginatedResponse):
                         "_id": "507f1f77bcf86cd799439011",
                         "pet_id": "507f1e88bf19b6fcdb027c75",
                         "record_type": "medications",
-                        "date_time": "2026-10-06 08:43",
+                        "date_time": "2026-10-06T08:43:00+05:00",
                         "username": "demo",
                         "comment": "",
                         "medication_id": "507f1d77bcf86cd799439012",

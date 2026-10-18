@@ -24,7 +24,15 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import pat_allowed, require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import LIVE_EVENT_FILTER, check_pet_access, parse_event_datetime_safe, ru_dose_unit, utc_iso, valid_tz
+from web.helpers import (
+    LIVE_EVENT_FILTER,
+    check_pet_access,
+    parse_event_datetime_safe,
+    ru_dose_unit,
+    utc_iso,
+    valid_tz,
+    zoned_iso,
+)
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -432,7 +440,7 @@ def _serialize_event(record: dict) -> dict:
     record["username"] = record.get("username", "")
     record["fields"] = record.get("fields", {})
     if isinstance(record.get("date_time"), datetime):
-        record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+        record["date_time"] = zoned_iso(record["date_time"], record.get("tz"))
     # Left as a datetime, this reached the client as «Sat, 03 Oct 2026 07:52:49 GMT», a
     # web-server date nobody else in the API speaks, next to date_time in the project's own
     # format and next to documents and pets, which already format it.
@@ -446,7 +454,7 @@ def _serialize_event(record: dict) -> dict:
     if isinstance(changed, datetime):
         record["updated_at"] = utc_iso(changed)
     if isinstance(record.get("created_at"), datetime):
-        record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
+        record["created_at"] = utc_iso(record["created_at"])
     return record
 
 
@@ -848,6 +856,8 @@ def _update_event_record(record: dict):
         # or an author's time would be read as the editor's.
         if event_dt != record.get("date_time") and valid_tz(data.tz):
             update_data["tz"] = data.tz
+        if not valid_tz(data.tz) and not record.get("tz"):
+            return error_response("validation_error", "Укажите часовой пояс, в котором введено время")
     if data.comment is not None:
         update_data["comment"] = data.comment
     if data.fields is not None:
@@ -973,7 +983,7 @@ def get_health_stats():
     stats_data = []
     for record in records:
         dt = record.get("date_time")
-        date_str = dt.strftime("%Y-%m-%d %H:%M") if isinstance(dt, datetime) else str(dt)
+        date_str = zoned_iso(dt, record.get("tz")) if isinstance(dt, datetime) else str(dt)
 
         if value_field == "count":
             value = 1
@@ -1075,9 +1085,9 @@ def get_history_timeline():
             record["pet_id"] = str(record.get("pet_id", ""))
             record["record_type"] = "medications"
             if isinstance(record.get("date_time"), datetime):
-                record["date_time"] = record["date_time"].strftime("%Y-%m-%d %H:%M")
+                record["date_time"] = zoned_iso(record["date_time"], record.get("tz"))
             if isinstance(record.get("created_at"), datetime):
-                record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
+                record["created_at"] = utc_iso(record["created_at"])
             med = meds.get(record.get("medication_id"))
             if med:
                 record["medication_name"] = med.get("name", "Unknown")

@@ -351,7 +351,7 @@ class TestGetUserPublicProfile:
         data = response.get_json()
         assert data["username"] == "shareuser"
         assert data["full_name"] == "Share User"
-        assert data["created_at"] == "2024-01-15 14:30"
+        assert data["created_at"] == "2024-01-15T14:30:00Z"
         # id and name, so the name can open the pet's medical card.
         assert data["shared_pets"] == [{"id": str(test_pet["_id"]), "name": test_pet["name"]}]
 

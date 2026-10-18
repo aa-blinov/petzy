@@ -51,6 +51,7 @@ class TestMedicationInventoryStateConsistency:
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
             "dose_taken": 1.0,
+            "tz": "Asia/Almaty",
         }
 
         never_matches = MagicMock(matched_count=0)
@@ -96,6 +97,7 @@ class TestMedicationInventoryStateConsistency:
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
             "dose_taken": 1.0,
+            "tz": "Asia/Almaty",
         }
 
         with patch.object(app.db.medication_intakes, "insert_one", side_effect=RuntimeError("simulated write failure")):
@@ -137,6 +139,7 @@ class TestMedicationInventoryStateConsistency:
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
             "dose_taken": 1.0,
+            "tz": "Asia/Almaty",
         }
 
         response = client.post(

@@ -47,6 +47,7 @@ from web.schemas import (
 )
 from web.idempotency import idempotent
 from web.sync import log_deletion, now_utc
+from web.helpers import clock_in_zone, utc_iso, zoned_iso
 
 medications_bp = Blueprint("medications", __name__)
 
@@ -270,13 +271,13 @@ def get_medications():
             # The project's date format, the same documents and pets already send, rather
             # than the web-server date a raw datetime turns into.
             if isinstance(doc.get("created_at"), datetime):
-                doc["created_at"] = doc["created_at"].strftime("%Y-%m-%d %H:%M")
+                doc["created_at"] = utc_iso(doc["created_at"])
             med_id_str = doc["_id"]
 
             last_intake = last_intakes.get(med_id_str)
             if last_intake and last_intake.get("date_time"):
                 dt = last_intake["date_time"]
-                doc["last_taken_at"] = dt.strftime("%Y-%m-%d %H:%M")
+                doc["last_taken_at"] = zoned_iso(dt, last_intake.get("tz"))
                 doc["last_taken_by"] = last_intake.get("username")
                 # The zone of the clock it was marked on, so a phone in another zone shows it on its own clock.
                 doc["last_taken_tz"] = last_intake.get("tz")
@@ -344,7 +345,7 @@ def get_medication(id):
             )
             if last_intake and last_intake.get("date_time"):
                 dt = last_intake["date_time"]
-                record["last_taken_at"] = dt.strftime("%Y-%m-%d %H:%M")
+                record["last_taken_at"] = zoned_iso(dt, last_intake.get("tz"))
             else:
                 record.setdefault("last_taken_at", None)
 
@@ -358,7 +359,7 @@ def get_medication(id):
         _add_stock_status(record)
         # The list's format, not Flask's HTTP date («Tue, 13 Oct 2026 08:00:00 GMT»).
         if isinstance(record.get("created_at"), datetime):
-            record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
+            record["created_at"] = utc_iso(record["created_at"])
         return jsonify({"medication": record})
     except Exception as e:
         app.logger.error(f"Error fetching medication: {e}")
@@ -787,9 +788,9 @@ def get_medication_intakes():
             i["_id"] = str(i["_id"])
             i["medication_name"] = meds.get(i["medication_id"], "Unknown")
             if isinstance(i.get("date_time"), datetime):
-                i["date_time"] = i["date_time"].strftime("%Y-%m-%d %H:%M")
+                i["date_time"] = zoned_iso(i["date_time"], i.get("tz"))
             if isinstance(i.get("created_at"), datetime):
-                i["created_at"] = i["created_at"].strftime("%Y-%m-%d %H:%M")
+                i["created_at"] = utc_iso(i["created_at"])
 
         return jsonify({"intakes": intakes, "page": page, "page_size": page_size, "total": total})
     except Exception as e:
@@ -905,21 +906,16 @@ def get_upcoming_doses():
 
         # Determine "now" and "today" based on client datetime
         if client_datetime_str:
+            # A moment with its zone (the offset, or Z), or a clock without one that comes with its zone in tz.
             try:
-                # Handle ISO format including potentially 'T' and maybe timezone
-                # Simplest is to assume frontend sends ISO string
-                if "T" in client_datetime_str:
-                    now = datetime.fromisoformat(client_datetime_str.replace("Z", "+00:00"))
-                else:
-                    # Fallback or simple format
-                    now = datetime.strptime(client_datetime_str, "%Y-%m-%d %H:%M")
+                moment = datetime.fromisoformat(client_datetime_str.replace("Z", "+00:00"))
             except ValueError:
-                app.logger.warning(
-                    f"Unparseable client_datetime {client_datetime_str!r}; "
-                    "falling back to the clock of tz, or UTC — dose timing will be off "
-                    "by the caller's offset"
+                return error_response(
+                    "validation_error", "Время клиента: ISO 8601 с поясом, например 2026-10-18T08:12:00+05:00"
                 )
-                now = local_now(query_params.tz)
+            if moment.tzinfo is None and not valid_tz(query_params.tz):
+                return error_response("validation_error", "Для времени без пояса укажите часовой пояс tz")
+            now = clock_in_zone(moment, query_params.tz)
         else:
             app.logger.warning(
                 "client_datetime missing; falling back to the clock of tz, or UTC — dose timing will be off by the "

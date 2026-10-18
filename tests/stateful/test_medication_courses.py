@@ -105,7 +105,7 @@ class TestCourseApi:
         med_id = self._course(client, regular_user_token, test_pet, started_on="2024-01-02")
         client.post(
             f"/api/medications/{med_id}/log",
-            json={"date": "2024-01-03", "time": "08:00"},
+            json={"date": "2024-01-03", "time": "08:00", "tz": "Asia/Almaty"},
             headers=_auth(regular_user_token),
         )
         response = client.put(
@@ -169,7 +169,7 @@ class TestCourseApi:
         self._course(client, regular_user_token, test_pet, name="Начнётся завтра", started_on="2024-01-11")
         self._course(client, regular_user_token, test_pet, name="Без дат")
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime=2024-01-10T07:00:00",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime=2024-01-10T07:00:00",
             headers=_auth(regular_user_token),
         )
         doses = response.get_json()["doses"]

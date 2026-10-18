@@ -49,6 +49,7 @@ from web.schemas import (
 )
 from web.idempotency import idempotent
 from web.sync import log_deletion, now_utc, pet_viewers
+from web.helpers import utc_iso
 
 
 pets_bp = Blueprint("pets", __name__)
@@ -153,7 +154,7 @@ def get_pets():
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
         if isinstance(pet.get("created_at"), datetime):
-            pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
+            pet["created_at"] = utc_iso(pet["created_at"])
 
         pet["current_user_is_owner"] = pet.get("owner") == username
         # Who's been invited is the owner's business, not the other members'.
@@ -256,7 +257,7 @@ def create_pet():
         if isinstance(pet_data.get("birth_date"), datetime):
             pet_data["birth_date"] = pet_data["birth_date"].strftime("%Y-%m-%d")
         if isinstance(pet_data.get("created_at"), datetime):
-            pet_data["created_at"] = pet_data["created_at"].strftime("%Y-%m-%d %H:%M")
+            pet_data["created_at"] = utc_iso(pet_data["created_at"])
 
         # Mirror get_pet/get_pets: a photo uploaded on create should come
         # back with a usable photo_url in this same response, not only
@@ -301,7 +302,7 @@ def get_pet(pet_id):
         if isinstance(pet.get("birth_date"), datetime):
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
         if isinstance(pet.get("created_at"), datetime):
-            pet["created_at"] = pet["created_at"].strftime("%Y-%m-%d %H:%M")
+            pet["created_at"] = utc_iso(pet["created_at"])
 
         _expose_photo(pet)
 

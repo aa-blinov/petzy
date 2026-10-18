@@ -58,6 +58,7 @@ class TestErrorHandling:
                 "date": now.strftime("%Y-%m-%d"),
                 "time": now.strftime("%H:%M"),
                 "fields": {"duration": "10 minutes"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -88,6 +89,7 @@ class TestErrorHandling:
                 "date": now.strftime("%Y-%m-%d"),
                 "time": now.strftime("%H:%M"),
                 "fields": {"duration": "10 minutes"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -106,6 +108,7 @@ class TestErrorHandling:
                 "date": "invalid-date",
                 "time": "invalid-time",
                 "fields": {"duration": "5 minutes", "reason": "Stress"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -207,6 +210,7 @@ class TestErrorHandling:
                     "date": now.strftime("%Y-%m-%d"),
                     "time": now.strftime("%H:%M"),
                     "fields": {"duration": "Короткий", "reason": "Stress", "inhalation": "false"},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )

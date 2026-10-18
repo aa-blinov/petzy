@@ -38,6 +38,7 @@ def _record(client, token, pet_id, type_key):
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
             "fields": {"height": 40},
+            "tz": "Asia/Almaty",
         },
         headers=_auth(token),
     )

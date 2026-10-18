@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from bson import ObjectId
 
-WEIGHT = {"type": "weight", "date": "2026-10-01", "fields": {"weight": 12.4}, "comment": ""}
+WEIGHT = {"type": "weight", "date": "2026-10-01", "fields": {"weight": 12.4}, "comment": "", "tz": "Asia/Almaty"}
 FIRST_MOMENT = datetime(2026, 10, 5, 10, 0, 0)
 SECOND_MOMENT = datetime(2026, 10, 6, 10, 0, 0)
 OLD_MOMENT = datetime(2026, 9, 1, 8, 0, 0)
