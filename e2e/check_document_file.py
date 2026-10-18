@@ -64,7 +64,7 @@ async def main():
             # The phone's clock is set to the evening before the document's own day: the moment
             # it was added is then tomorrow here, whatever the real time is, so the check is not
             # left to chance (it used to pass only outside New York's late afternoon and evening).
-            added_utc = datetime.strptime(doc["created_at"], "%Y-%m-%d %H:%M").replace(tzinfo=ZoneInfo("UTC"))
+            added_utc = datetime.strptime(doc["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=ZoneInfo("UTC"))
             almaty = ZoneInfo("Asia/Almaty")
             doc_day = added_utc.astimezone(almaty).date()
             evening_before = datetime.combine(doc_day, time(0, 0), tzinfo=almaty) - timedelta(hours=1)
@@ -77,7 +77,7 @@ async def main():
             line = await card.inner_text()
             # created_at в ответе это метка UTC: время документа считается из неё по его собственной зоне.
             added = (
-                datetime.strptime(doc["created_at"], "%Y-%m-%d %H:%M")
+                datetime.strptime(doc["created_at"], "%Y-%m-%dT%H:%M:%SZ")
                 .replace(tzinfo=ZoneInfo("UTC"))
                 .astimezone(ZoneInfo("Asia/Almaty"))
             )

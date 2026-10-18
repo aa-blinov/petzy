@@ -38,7 +38,14 @@ async def main():
                 pg,
                 "POST",
                 "/events",
-                {"pet_id": pet_id, "date": "2026-10-01", "time": "10:00", "type": "weight", "fields": {"weight": 12.4}},
+                {
+                    "pet_id": pet_id,
+                    "date": "2026-10-01",
+                    "time": "10:00",
+                    "type": "weight",
+                    "fields": {"weight": 12.4},
+                    "tz": "Asia/Almaty",
+                },
             )
             await api(
                 pg,

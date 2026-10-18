@@ -70,7 +70,7 @@ async def main():
                 pg,
                 "POST",
                 f"/medications/{slots}/log",
-                {"date": today, "time": times[0], "slot_date": today, "slot_time": times[0]},
+                {"date": today, "time": times[0], "slot_date": today, "slot_time": times[0], "tz": "Asia/Almaty"},
             )
             check("the first mark of a slot is written", first_mark["status"] == 201, f"status {first_mark['status']}")
 
@@ -79,7 +79,7 @@ async def main():
                 pg,
                 "POST",
                 f"/medications/{slots}/log",
-                {"date": today, "time": late, "slot_date": today, "slot_time": times[0]},
+                {"date": today, "time": late, "slot_date": today, "slot_time": times[0], "tz": "Asia/Almaty"},
             )
             check(
                 "a slot closed hours ago is refused, not written twice",
@@ -96,7 +96,7 @@ async def main():
                 pg,
                 "POST",
                 f"/medications/{slots}/log",
-                {"date": today, "time": late, "slot_date": today, "slot_time": times[1]},
+                {"date": today, "time": late, "slot_date": today, "slot_time": times[1], "tz": "Asia/Almaty"},
             )
             check(
                 "the other slot of the same course is written as usual",
@@ -119,7 +119,7 @@ async def main():
                 pg,
                 "POST",
                 f"/medications/{question}/log",
-                {"date": today, "time": late, "slot_date": today, "slot_time": times[0]},
+                {"date": today, "time": late, "slot_date": today, "slot_time": times[0], "tz": "Asia/Almaty"},
             )
             await pg.get_by_role("button", name=f"В {times[0]}").click()
             await settle(pg, 150)
@@ -141,8 +141,10 @@ async def main():
             )
 
             # A course with no schedule can always be given again, even in the same minute.
-            await api(pg, "POST", f"/medications/{needed}/log", {"date": today, "time": late})
-            again = await api(pg, "POST", f"/medications/{needed}/log", {"date": today, "time": late})
+            await api(pg, "POST", f"/medications/{needed}/log", {"date": today, "time": late, "tz": "Asia/Almaty"})
+            again = await api(
+                pg, "POST", f"/medications/{needed}/log", {"date": today, "time": late, "tz": "Asia/Almaty"}
+            )
             check(
                 "a course given when needed takes another dose at the same minute",
                 again["status"] == 201,

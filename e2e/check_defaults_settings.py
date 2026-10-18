@@ -149,7 +149,14 @@ async def main():
                 pg,
                 "POST",
                 f"/events?pet_id={pid}",
-                {"pet_id": pid, "type": walk_type, "date": "2026-10-01", "time": "09:00", "fields": {}},
+                {
+                    "pet_id": pid,
+                    "type": walk_type,
+                    "date": "2026-10-01",
+                    "time": "09:00",
+                    "fields": {},
+                    "tz": "Asia/Almaty",
+                },
             )
             check("the record for the count is written", record["status"] == 201, str(record)[:160])
             await pg.goto(BASE + "/event-types")

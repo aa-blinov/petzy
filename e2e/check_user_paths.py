@@ -114,7 +114,14 @@ async def main():
                 pg,
                 "POST",
                 "/events",
-                {"pet_id": pid, "date": "2026-10-05", "time": "10:00", "type": "weight", "fields": {"weight": 12.4}},
+                {
+                    "pet_id": pid,
+                    "date": "2026-10-05",
+                    "time": "10:00",
+                    "type": "weight",
+                    "fields": {"weight": 12.4},
+                    "tz": "Asia/Almaty",
+                },
             )
             if noted["status"] == 201:
                 event = noted["json"].get("id")

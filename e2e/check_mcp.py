@@ -65,7 +65,14 @@ async def use_the_tools(token, pet_id):
         is_error, text = await call(
             session,
             "add_event",
-            {"pet_id": pet_id, "type": "weight", "date": "2026-10-01", "time": "09:30", "fields": {"weight": 4.2}},
+            {
+                "pet_id": pet_id,
+                "type": "weight",
+                "date": "2026-10-01",
+                "time": "09:30",
+                "fields": {"weight": 4.2},
+                "tz": "Asia/Almaty",
+            },
         )
         record_id = "" if is_error else json.loads(text).get("id", "")
         check("add_event writes the weight and answers with its id", bool(record_id), "" if record_id else text[:120])
@@ -180,7 +187,14 @@ async def narrow_token_refused(pg, pet_id):
             is_error, text = await call(
                 session,
                 "add_event",
-                {"pet_id": pet_id, "type": "weight", "date": "2026-10-01", "time": "09:30", "fields": {"weight": 4.2}},
+                {
+                    "pet_id": pet_id,
+                    "type": "weight",
+                    "date": "2026-10-01",
+                    "time": "09:30",
+                    "fields": {"weight": 4.2},
+                    "tz": "Asia/Almaty",
+                },
             )
         check(
             "a token without the events scope is refused, and the answer names the checkbox",
