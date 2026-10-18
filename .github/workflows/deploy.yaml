@@ -112,14 +112,15 @@ jobs:
             echo "--- Navigating to project ---"
             cd ~/services/cat-health-control-bot || cd ~/services/cat-health-control || cd ~/cat-health-control || (echo "Project folder not found!" && exit 1)
             echo "--- Deployment ---"
-            # First, before even git: every deploy builds fresh images, and
-            # the old ones and the build cache stayed behind until the 20 GB
-            # disk was full: MongoDB, unable to write, crashed on start (exit
-            # 139), and then git itself couldn't fetch. Clear what a build
-            # can make again: the build cache and images no container uses.
+            # First, before even git: the old images and the build cache used
+            # to pile up until the 20 GB disk was full: MongoDB, unable to
+            # write, crashed on start (exit 139), and then git itself couldn't
+            # fetch. Now the build cache older than three days goes, and the
+            # images no container uses. Recent cache stays, so a layer that did
+            # not change (pip, npm) is reused instead of built from nothing.
             # Never volumes: the database lives in one.
             echo "disk before: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
-            docker builder prune -af >/dev/null 2>&1 || true
+            docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
             docker image prune -f >/dev/null 2>&1 || true
             echo "disk after cleanup: $(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
             # `git pull` fails outright if the server's checkout has ever
