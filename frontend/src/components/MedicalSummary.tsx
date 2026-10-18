@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Building2, Bug, FileText, Pill, Scale, ShieldAlert, Stethoscope, Utensils, type LucideIcon } from 'lucide-react';
+import { Building2, Bug, FlaskConical, Pill, Scale, ShieldAlert, Stethoscope, Utensils, type LucideIcon } from 'lucide-react';
 
 import type { MedicalCard as Card } from '../services/medicalCard.service';
 import type { MedicalRecord } from '../services/medicalRecords.service';
@@ -93,9 +93,9 @@ function tilesOf(card: Card, hidden: ReadonlySet<string>): Tile[] {
     },
     {
       key: 'documents',
-      label: 'Документы',
-      icon: FileText,
-      value: latestDoc ? latestDoc.title : 'Нет документов',
+      label: 'Анализы и заключения',
+      icon: FlaskConical,
+      value: latestDoc ? latestDoc.title : 'Нет анализов',
       note: latestDoc ? { text: formatDate(latestDoc.added), tone: 'none' } : undefined,
     },
     {

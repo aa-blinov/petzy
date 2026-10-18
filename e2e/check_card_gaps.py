@@ -53,10 +53,10 @@ async def main():
             )
             # the documents tile is a part of the card, not a jump out of it
             await pg.goto(BASE + card + "?mode=fill")
-            await pg.locator(".medsum__tile").filter(has_text="Документы").first.click()
+            await pg.locator(".medsum__tile").filter(has_text="Анализы и заключения").first.click()
             body = await wait_until(pg, lambda t: "Все документы" in t)
             check(
-                "«Документы» opens its part of the card, with the way to all documents on it",
+                "«Анализы и заключения» opens its part of the card, with the way to all documents on it",
                 pg.url.endswith("/medical-card/documents") and "Все документы" in body,
                 pg.url.replace(BASE, ""),
             )
