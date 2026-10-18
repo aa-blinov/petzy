@@ -418,6 +418,13 @@ def _same_record_just_saved(pet_id: str, type_key: str, username: str, event_dt:
     )
 
 
+def _utc_iso(moment: datetime) -> str:
+    """The instant in UTC to the millisecond, «2026-10-18T08:12:33.123Z»: the form a sync client compares as text."""
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 def _serialize_event(record: dict) -> dict:
     """Convert an internal Mongo event doc into the JSON-friendly shape."""
     record["_id"] = str(record["_id"])
@@ -429,6 +436,11 @@ def _serialize_event(record: dict) -> dict:
     # Left as a datetime, this reached the client as «Sat, 03 Oct 2026 07:52:49 GMT», a
     # web-server date nobody else in the API speaks, next to date_time in the project's own
     # format and next to documents and pets, which already format it.
+    # When the record last changed, to the millisecond and in UTC. A record saved before the field existed has no
+    # updated_at: its creation is the last change it had.
+    changed = record.get("updated_at") or record.get("created_at")
+    if isinstance(changed, datetime):
+        record["updated_at"] = _utc_iso(changed)
     if isinstance(record.get("created_at"), datetime):
         record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
     return record
@@ -568,6 +580,7 @@ def create_event():
                 deviation_threshold=(field_def or {}).get("deviation_threshold"),
             )
 
+    now = datetime.now(timezone.utc)
     doc = {
         "pet_id": pet_id,
         "type": data.type,
@@ -577,7 +590,9 @@ def create_event():
         "username": username,
         # When the record was written down, apart from the time it happened at: it is what says
         # whether a request that comes again is a repeat (see DUPLICATE_EVENT_WINDOW).
-        "created_at": datetime.now(timezone.utc),
+        "created_at": now,
+        # Stamped again on every save (see _update_event_record): what a device compares with what it last saw.
+        "updated_at": now,
     }
     if data.local_id:
         doc["local_id"] = data.local_id
@@ -753,6 +768,7 @@ def _update_event_record(record: dict):
             return error_response("validation_error", field_error)
         update_data["fields"] = cleaned_fields
 
+    update_data["updated_at"] = datetime.now(timezone.utc)
     result = app.db[EVENTS_COLLECTION].update_one({"_id": record["_id"]}, {"$set": update_data})
     if result.matched_count == 0:
         return error_response("record_not_found")
