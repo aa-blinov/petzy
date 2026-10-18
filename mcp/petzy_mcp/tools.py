@@ -72,7 +72,7 @@ async def add_event(
     time: Any,
     fields: Any,
     comment: Any = "",
-    tz: Any = None,
+    tz: Any,
 ) -> dict[str, Any]:
     pet_id = _pet_id(pet_id)
     key = _type_key(type)
@@ -88,8 +88,7 @@ async def add_event(
         "fields": values,
         "comment": note,
     }
-    if tz:
-        body["tz"] = _tz(tz)
+    body["tz"] = _tz(tz)
     response = await api.post("/api/events", body)
     record_id = response.get("id") if isinstance(response, dict) else None
     if not isinstance(record_id, str) or not record_id:
@@ -164,6 +163,9 @@ def _history_item(item: dict[str, Any]) -> dict[str, Any]:
         value = item.get(key)
         if value is None or value == "" or value == {} or value is False:
             continue
+        if key == "date_time" and isinstance(value, str) and len(value) >= 16 and value[10] == "T":
+            # The clock as typed, the form this tool has always shown; the zone is not part of the answer.
+            value = f"{value[:10]} {value[11:16]}"
         out[key] = value
     return out
 
@@ -243,7 +245,7 @@ def _comment(value: Any) -> str:
 
 
 def _tz(value: Any) -> str:
-    if not isinstance(value, str) or len(value) > TZ_MAX_LENGTH:
+    if not isinstance(value, str) or not value or len(value) > TZ_MAX_LENGTH:
         raise PetzyError(BAD_TZ)
     return value
 

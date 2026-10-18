@@ -37,7 +37,7 @@ def test_the_server_offers_exactly_the_five_tools_with_russian_descriptions():
 def test_add_event_declares_the_fields_a_record_cannot_do_without():
     [add_event] = [t for t in asyncio.run(build_server(BASE_URL).list_tools()) if t.name == "add_event"]
 
-    assert set(add_event.input_schema["required"]) == {"pet_id", "type", "date", "time", "fields"}
+    assert set(add_event.input_schema["required"]) == {"pet_id", "type", "date", "time", "fields", "tz"}
 
 
 def test_the_stdio_token_goes_to_petzy_in_the_authorization_header():
@@ -83,7 +83,7 @@ def test_a_bad_date_is_refused_by_the_tool_before_any_request():
     result = _call(
         server,
         "add_event",
-        {"pet_id": PET_ID, "type": "weight", "date": "2026-02-30", "time": "09:30", "fields": {}},
+        {"pet_id": PET_ID, "type": "weight", "date": "2026-02-30", "time": "09:30", "fields": {}, "tz": "Asia/Almaty"},
     )
 
     assert result.is_error is True
@@ -118,7 +118,14 @@ def test_a_call_without_a_request_uses_the_stdio_token():
         ("list_event_types", {}, "GET", "/api/event-types", "Читать питомцев"),
         (
             "add_event",
-            {"pet_id": PET_ID, "type": "weight", "date": "2026-10-01", "time": "09:30", "fields": {"weight": 4.2}},
+            {
+                "pet_id": PET_ID,
+                "type": "weight",
+                "date": "2026-10-01",
+                "time": "09:30",
+                "fields": {"weight": 4.2},
+                "tz": "Asia/Almaty",
+            },
             "POST",
             "/api/events",
             "Записывать события",
@@ -151,5 +158,5 @@ def test_add_event_tells_the_model_to_ask_for_the_day_and_the_time_and_to_leave_
 
     assert "спросите" in described["date"]["description"]
     assert "не выдумывайте" in described["time"]["description"]
-    assert "не передавайте" in described["tz"]["description"]
+    assert "Обязательно" in described["tz"]["description"]
     assert "50 г" in described["fields"]["description"]

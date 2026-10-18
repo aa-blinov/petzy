@@ -13,6 +13,9 @@ RECORD_ID = "65f0c0ffee0000000000abcd"
 
 
 def _call(petzy, tool, **kwargs):
+    if getattr(tool, "__name__", "") == "add_event":
+        kwargs.setdefault("tz", "Asia/Almaty")  # the zone is required now: the tests add the usual one
+
     async def go():
         async with PetzyClient(BASE_URL, TOKEN, petzy.transport) as api:
             return await tool(api, **kwargs)
@@ -177,6 +180,7 @@ def test_add_event_posts_one_record_and_answers_with_what_was_sent():
         "time": "09:30",
         "fields": {"weight": 12.4},
         "comment": "после прогулки",
+        "tz": "Asia/Almaty",
     }
     assert result == {
         "id": RECORD_ID,
@@ -188,7 +192,8 @@ def test_add_event_posts_one_record_and_answers_with_what_was_sent():
     }
 
 
-def test_the_timezone_is_sent_only_when_it_is_given():
+def test_the_timezone_is_sent_with_every_record():
+    """A clock with no zone is not saved, so the tool sends the zone the person named, every time."""
     petzy = FakePetzy()
     _saved(petzy)
 
@@ -202,11 +207,19 @@ def test_the_timezone_is_sent_only_when_it_is_given():
         fields={},
         tz="Europe/Moscow",
     )
-    _call(petzy, tools.add_event, pet_id=PET_ID, type="weight", date="2026-10-16", time="09:30", fields={})
 
-    with_zone, without_zone = (json.loads(r.content) for r in petzy.requests)
-    assert with_zone["tz"] == "Europe/Moscow"
-    assert "tz" not in without_zone
+    [sent] = petzy.requests
+    assert json.loads(sent.content)["tz"] == "Europe/Moscow"
+
+
+@pytest.mark.parametrize("zone", ["", "Europe/Moscow " * 10])
+def test_a_zone_of_no_shape_is_refused_before_any_request(zone):
+    petzy = FakePetzy()
+
+    with pytest.raises(PetzyError):
+        _call(petzy, tools.add_event, pet_id=PET_ID, type="weight", date="2026-10-16", time="09:30", fields={}, tz=zone)
+
+    assert petzy.requests == []
 
 
 @pytest.mark.parametrize("date", ["2026-02-30", "16.10.2026", "2026-10-1", "2026-10-16T09:30", "", None])
