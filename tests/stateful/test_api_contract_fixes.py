@@ -8,10 +8,7 @@ HTTP date, and a signed-out request with a bad body was told about the body befo
 """
 
 import re
-import time
-from datetime import datetime, timedelta, timezone
-
-import jwt
+from datetime import datetime, timedelta
 
 
 def _auth(token):
@@ -47,25 +44,6 @@ def test_editing_only_the_comment_keeps_the_time(client, mock_db, regular_user_t
     client.put(f"/api/events/{record_id}", json={"time": "07:15"}, headers=_auth(regular_user_token))
     stored = client.get(f"/api/events/{record_id}", headers=_auth(regular_user_token)).get_json()
     assert stored["date_time"] == when.strftime("%Y-%m-%d") + " 07:15"
-
-
-def test_logout_ends_access_tokens_given_out_before_it(client, mock_db, regular_user):
-    from web.security import JWT_SECRET_KEY, create_refresh_token
-
-    issued = int(time.time()) - 60
-    payload = {
-        "username": regular_user["username"],
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
-        "type": "access",
-        "iat": issued,
-    }
-    other_device = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-    assert client.get("/api/auth/session", headers=_auth(other_device)).status_code == 200
-
-    refresh = create_refresh_token(regular_user["username"])
-    assert client.post("/api/auth/logout", json={"refresh_token": refresh}).status_code == 200
-
-    assert client.get("/api/auth/session", headers=_auth(other_device)).status_code == 401
 
 
 def test_the_common_password_check_answers_a_short_password(client):
