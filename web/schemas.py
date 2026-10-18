@@ -1998,6 +1998,10 @@ class EventItem(BaseModel):
         default=None,
         description="IANA-зона, в которой введено время (Asia/Almaty); клиент переводит date_time на свои часы. Нет у старых записей",
     )
+    updated_at: Optional[str] = Field(
+        default=None,
+        description="Когда запись в последний раз сохранена, UTC, с миллисекундами: «2026-10-18T08:12:33.123Z». Для записей до этого поля равно created_at",
+    )
     local_id: Optional[str] = Field(
         default=None, description="Идентификатор, который дало устройство; нет у записей, созданных без него"
     )
