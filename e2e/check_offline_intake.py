@@ -42,7 +42,7 @@ async def main():
                 pg,
                 "POST",
                 f"/medications/{medication_id}/log",
-                {"date": "2026-10-01", "time": "09:00", "dose_taken": 1},
+                {"date": "2026-10-01", "time": "09:00", "dose_taken": 1, "tz": "Asia/Almaty"},
             )
             check("the dose is on the server to begin with", taken["status"] in (200, 201), str(taken["status"]))
 
@@ -55,7 +55,16 @@ async def main():
                     key: 'e2e-409', medicationId: item.id, name: item.name,
                     input: {date: item.date, time: item.time, dose_taken: 1},
                 }]))""",
-                [PENDING_KEY, {"id": medication_id, "name": "Т-проверка 409", "date": "2026-10-01", "time": "09:00"}],
+                [
+                    PENDING_KEY,
+                    {
+                        "id": medication_id,
+                        "name": "Т-проверка 409",
+                        "date": "2026-10-01",
+                        "time": "09:00",
+                        "tz": "Asia/Almaty",
+                    },
+                ],
             )
             await pg.reload()
             # App.tsx sends what is waiting as soon as it sees it.

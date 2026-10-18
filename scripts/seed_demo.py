@@ -134,7 +134,14 @@ def _past(days_ago: int, hhmm: str) -> bool:
 def _event(api: Api, pet_id: str, kind: str, days_ago: int, hhmm: str, fields=None, comment="") -> None:
     if not _past(days_ago, hhmm):
         return
-    body = {"pet_id": pet_id, "type": kind, "date": _day(days_ago), "time": hhmm, "fields": fields or {}}
+    body = {
+        "pet_id": pet_id,
+        "type": kind,
+        "date": _day(days_ago),
+        "time": hhmm,
+        "fields": fields or {},
+        "tz": "Asia/Almaty",
+    }
     if comment:
         body["comment"] = comment
     api.call("POST", "/api/events", body)
@@ -336,7 +343,7 @@ def seed(base: str) -> None:
             demo.call(
                 "POST",
                 f"/api/medications/{med_id}/log",
-                {"date": _day(days_ago), "time": hhmm, "skipped": skipped},
+                {"date": _day(days_ago), "time": hhmm, "skipped": skipped, "tz": "Asia/Almaty"},
             )
 
     for d in range(14, -1, -1):
@@ -413,6 +420,7 @@ def seed(base: str) -> None:
             "time": now.strftime("%H:%M"),
             "fields": {"food_weight": 30},
             "comment": "Дал немного, доест позже",
+            "tz": "Asia/Almaty",
         },
     )
     # A few more days of the family's own entries: who marked what shows on the cards.
@@ -639,7 +647,7 @@ def seed_medical_card(demo: "Api", cat: str, dog: str, rabies_doc: str, blood_do
         },
     )["id"]
     for ago, hhmm in ((13, "19:10"), (9, "08:30"), (4, "20:05")):
-        demo.call("POST", f"/api/medications/{meloxi}/log", {"date": _day(ago), "time": hhmm})
+        demo.call("POST", f"/api/medications/{meloxi}/log", {"date": _day(ago), "time": hhmm, "tz": "Asia/Almaty"})
     chondro = demo.call(
         "POST",
         "/api/medications",
@@ -662,7 +670,7 @@ def seed_medical_card(demo: "Api", cat: str, dog: str, rabies_doc: str, blood_do
             demo.call(
                 "POST",
                 f"/api/medications/{chondro}/log",
-                {"date": _day(ago), "time": "09:05", "skipped": ago in (88, 61)},
+                {"date": _day(ago), "time": "09:05", "skipped": ago in (88, 61), "tz": "Asia/Almaty"},
             )
     demo.call("PUT", f"/api/medications/{chondro}", {"is_active": False, "ended_on": _day(50)})
     print("medical card: profiles, vaccinations, treatments, visits, operations, courses, visit notes")

@@ -25,7 +25,14 @@ async def main():
                 pg,
                 "POST",
                 "/events",
-                {"pet_id": pid, "type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.0}},
+                {
+                    "pet_id": pid,
+                    "type": "weight",
+                    "date": "2026-10-01",
+                    "time": "09:00",
+                    "fields": {"weight": 12.0},
+                    "tz": "Asia/Almaty",
+                },
             )
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
             await settle(pg)

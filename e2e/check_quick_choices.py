@@ -79,7 +79,14 @@ async def main():
             pg,
             "POST",
             "/events",
-            {"pet_id": pid, "type": "weight", "date": "2026-01-15", "time": "10:00", "fields": {"weight": 12.4}},
+            {
+                "pet_id": pid,
+                "type": "weight",
+                "date": "2026-01-15",
+                "time": "10:00",
+                "fields": {"weight": 12.4},
+                "tz": "Asia/Almaty",
+            },
         )
         made = [i for i in await weights() if i not in before]
 

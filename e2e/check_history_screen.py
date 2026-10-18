@@ -38,6 +38,7 @@ async def main():
                         "date": day_text,
                         "time": "09:00",
                         "fields": {"weight": weight},
+                        "tz": "Asia/Almaty",
                     },
                 )
                 check(f"weight of {weight} is on the server", r["status"] in (200, 201), str(r["status"]))

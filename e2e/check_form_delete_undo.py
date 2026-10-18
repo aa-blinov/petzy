@@ -29,7 +29,14 @@ async def main():
                 pg,
                 "POST",
                 f"/events?pet_id={pid}",
-                {"pet_id": pid, "type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12}},
+                {
+                    "pet_id": pid,
+                    "type": "weight",
+                    "date": "2026-10-01",
+                    "time": "09:00",
+                    "fields": {"weight": 12},
+                    "tz": "Asia/Almaty",
+                },
             )
             check("throwaway weight record made", made["status"] == 201, str(made["status"]))
             record_id = made["json"]["id"]
