@@ -610,3 +610,25 @@ def utc_iso(moment: datetime) -> str:
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=timezone.utc)
     return moment.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def zoned_iso(wall: datetime, tz_name) -> str:
+    """A clock a person typed, as an ISO 8601 moment with the offset of its zone: «2026-10-18T08:12:00+05:00».
+
+    The clock is kept as entered; the zone only names the offset. A record with no zone the app knows (saved before a
+    zone was kept) is written with the offset of UTC, and its clock is shown as entered: such a record has no tz.
+    """
+    name = valid_tz(tz_name)
+    zone = ZoneInfo(name) if name else timezone.utc
+    return wall.replace(tzinfo=zone).isoformat(timespec="seconds")
+
+
+def clock_in_zone(moment: datetime, tz_name) -> datetime:
+    """The clock of a zone at an instant, with no zone: the form the schedule and the day limits are read in.
+
+    A moment with no zone already is a clock, and comes back unchanged.
+    """
+    if moment.tzinfo is None:
+        return moment
+    name = valid_tz(tz_name)
+    return moment.astimezone(ZoneInfo(name) if name else moment.tzinfo).replace(tzinfo=None)

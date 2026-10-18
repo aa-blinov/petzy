@@ -18,6 +18,7 @@ def test_too_long_text_says_the_limit(client, regular_user_token, test_pet):
             "date": "2026-01-01",
             "time": "10:00",
             "comment": "к" * 600,
+            "tz": "Asia/Almaty",
         },
         headers=_auth(regular_user_token),
     )

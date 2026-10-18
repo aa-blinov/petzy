@@ -18,14 +18,20 @@ class TestCreateEvent:
     def test_requires_authentication(self, client):
         response = client.post(
             "/api/events",
-            json={"pet_id": "507f1f77bcf86cd799439011", "type": "defecation", "date": "2024-01-01", "time": "12:00"},
+            json={
+                "pet_id": "507f1f77bcf86cd799439011",
+                "type": "defecation",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "tz": "Asia/Almaty",
+            },
         )
         assert response.status_code == 401
 
     def test_requires_pet_id(self, client, regular_user_token):
         response = client.post(
             "/api/events",
-            json={"type": "defecation", "date": "2024-01-01", "time": "12:00"},
+            json={"type": "defecation", "date": "2024-01-01", "time": "12:00", "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
@@ -39,6 +45,7 @@ class TestCreateEvent:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"stool_type": "Обычный", "color": "Коричневый"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -47,7 +54,13 @@ class TestCreateEvent:
     def test_unknown_type_rejected(self, client, mock_db, regular_user_token, test_pet):
         response = client.post(
             "/api/events",
-            json={"pet_id": str(test_pet["_id"]), "type": "nonexistent", "date": "2024-01-01", "time": "12:00"},
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "nonexistent",
+                "date": "2024-01-01",
+                "time": "12:00",
+                "tz": "Asia/Almaty",
+            },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 404
@@ -63,6 +76,7 @@ class TestCreateEvent:
                 "time": now.strftime("%H:%M"),
                 "fields": {"duration": "Короткий", "reason": "Стресс", "inhalation": "true"},
                 "comment": "Test attack",
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -89,6 +103,7 @@ class TestCreateEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -103,6 +118,7 @@ class TestCreateEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {"stool_type": "Не существует", "color": "Коричневый"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -117,6 +133,7 @@ class TestCreateEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {"weight": "not-a-number"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -131,6 +148,7 @@ class TestCreateEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {"weight": -1},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -147,6 +165,7 @@ class TestCreateEvent:
                 # weight's builtin bound is max=100 — a fat-fingered extra
                 # digit like this must not be accepted as a real weight.
                 "fields": {"weight": 5000},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -163,6 +182,7 @@ class TestCreateEvent:
                 # Comfortably above a small pet but still a realistic large
                 # dog breed — and still well under the max=100 bound.
                 "fields": {"weight": 38.5},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -179,6 +199,7 @@ class TestCreateEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {"food_weight": -5},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -193,6 +214,7 @@ class TestCreateEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": {"bogus_field": "x"},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -204,7 +226,13 @@ class TestCreateEvent:
         """`cough` has no extra fields at all."""
         response = client.post(
             "/api/events",
-            json={"pet_id": str(test_pet["_id"]), "type": "cough", "date": "2024-01-15", "time": "14:30"},
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": "cough",
+                "date": "2024-01-15",
+                "time": "14:30",
+                "tz": "Asia/Almaty",
+            },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 201
@@ -256,6 +284,7 @@ class TestCreateEventTrendAlert:
                     "type": "weight",
                     "date": "2024-01-10",
                     "time": "10:00",
+                    "tz": "Asia/Almaty",
                     "fields": {"weight": 6.5},  # +30% vs. the 5.0 average
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
@@ -288,6 +317,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 5.1},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -313,6 +343,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 50.0},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -341,6 +372,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 6.5},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -376,6 +408,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"duration": "Длительный", "inhalation": "true", "reason": "y"},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -403,6 +436,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 6.5},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -432,6 +466,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 6.5},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -460,6 +495,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 6.5},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -489,6 +525,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"weight": 6.5},  # anomalous -> triggers the notification path
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -528,6 +565,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-10",
                     "time": "10:00",
                     "fields": {"food_weight": 120.0},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -543,6 +581,7 @@ class TestCreateEventTrendAlert:
                     "date": "2024-01-11",
                     "time": "10:00",
                     "fields": {"food_weight": 150.0},
+                    "tz": "Asia/Almaty",
                 },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
@@ -657,6 +696,7 @@ class TestGetUpdateDeleteEvent:
                 "date": "2024-01-15",
                 "time": "14:30",
                 "fields": fields or {"weight": 4.5},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -691,7 +731,13 @@ class TestGetUpdateDeleteEvent:
 
         response = client.put(
             f"/api/events/{event_id}",
-            json={"date": "2024-01-16", "time": "10:00", "fields": {"weight": 5.0}, "comment": "updated"},
+            json={
+                "date": "2024-01-16",
+                "time": "10:00",
+                "fields": {"weight": 5.0},
+                "comment": "updated",
+                "tz": "Asia/Almaty",
+            },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 200
@@ -704,7 +750,7 @@ class TestGetUpdateDeleteEvent:
     def test_update_not_found(self, client, regular_user_token):
         response = client.put(
             "/api/events/507f1f77bcf86cd799439011",
-            json={"date": "2024-01-16", "time": "10:00"},
+            json={"date": "2024-01-16", "time": "10:00", "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 404
@@ -738,6 +784,7 @@ class TestCreateEventDatetimeValidation:
                 "date": "not-a-date",
                 "time": "12:00",
                 "fields": {},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -755,6 +802,7 @@ class TestUpdateEventEdgeCases:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -763,7 +811,7 @@ class TestUpdateEventEdgeCases:
 
         response = client.put(
             f"/api/events/{record_id}",
-            json={"date": "not-a-date", "time": "12:00"},
+            json={"date": "not-a-date", "time": "12:00", "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
@@ -777,6 +825,7 @@ class TestUpdateEventEdgeCases:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"weight": 4.5},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -785,7 +834,7 @@ class TestUpdateEventEdgeCases:
 
         response = client.put(
             f"/api/events/{record_id}",
-            json={"date": "2024-01-01", "time": "12:00", "fields": {"weight": "not-a-number"}},
+            json={"date": "2024-01-01", "time": "12:00", "fields": {"weight": "not-a-number"}, "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
@@ -803,6 +852,7 @@ class TestUpdateEventEdgeCases:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -813,7 +863,7 @@ class TestUpdateEventEdgeCases:
 
         response = client.put(
             f"/api/events/{record_id}",
-            json={"date": "2024-01-01", "time": "12:00"},
+            json={"date": "2024-01-01", "time": "12:00", "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 404
@@ -1011,6 +1061,7 @@ class TestEventDatetimeCombinedBoundsCheck:
                 "date": day_after_tomorrow,
                 "time": "23:59",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -1025,6 +1076,7 @@ class TestEventDatetimeCombinedBoundsCheck:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -1034,7 +1086,7 @@ class TestEventDatetimeCombinedBoundsCheck:
         day_after_tomorrow = (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d")
         response = client.put(
             f"/api/events/{record_id}",
-            json={"date": day_after_tomorrow, "time": "23:59"},
+            json={"date": day_after_tomorrow, "time": "23:59", "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 422
@@ -1053,6 +1105,7 @@ class TestEventRouteRaceConditionsAndErrors:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -1080,6 +1133,7 @@ class TestEventRouteRaceConditionsAndErrors:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -1088,7 +1142,7 @@ class TestEventRouteRaceConditionsAndErrors:
         with patch.object(app.db.events, "update_one", return_value=MagicMock(matched_count=0)):
             response = client.put(
                 f"/api/events/{record_id}",
-                json={"date": "2024-01-02", "time": "12:00"},
+                json={"date": "2024-01-02", "time": "12:00", "tz": "Asia/Almaty"},
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
         assert response.status_code == 404
@@ -1105,6 +1159,7 @@ class TestEventRouteRaceConditionsAndErrors:
                 "date": "2024-01-01",
                 "time": "12:00",
                 "fields": {"food_weight": 50},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -1131,6 +1186,7 @@ class TestHardBoundsOfWeightAndFeeding:
                 "date": "2026-10-01",
                 "time": "09:00",
                 "fields": fields,
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -1154,6 +1210,7 @@ class TestCreatingAnEventSaysWhichOne:
                 "date": "2026-10-01",
                 "time": "09:00",
                 "fields": {},
+                "tz": "Asia/Almaty",
             },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
@@ -1173,7 +1230,14 @@ class TestDeletingATypeWithRecords:
         key = created.get_json()["key"]
         client.post(
             "/api/events",
-            json={"pet_id": str(pet["_id"]), "type": key, "date": "2026-10-01", "time": "09:00", "fields": {}},
+            json={
+                "pet_id": str(pet["_id"]),
+                "type": key,
+                "date": "2026-10-01",
+                "time": "09:00",
+                "fields": {},
+                "tz": "Asia/Almaty",
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
         return key

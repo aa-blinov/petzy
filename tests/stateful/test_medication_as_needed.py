@@ -72,7 +72,7 @@ class TestAsNeededSign:
         _insert_course(mock_db, pet_id, "По необходимости", ["08:00"], [0, 1, 2, 3, 4, 5, 6], as_needed=True)
 
         response = client.get(
-            f"/api/medications/upcoming?pet_id={pet_id}&client_datetime=2026-01-05T07:00:00",
+            f"/api/medications/upcoming?pet_id={pet_id}&tz=Asia/Almaty&client_datetime=2026-01-05T07:00:00",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 200
@@ -114,7 +114,7 @@ class TestAsNeededSign:
         for _ in range(2):
             response = client.post(
                 f"/api/medications/{med_id}/log",
-                json={"date": "2026-01-05", "time": "09:00"},
+                json={"date": "2026-01-05", "time": "09:00", "tz": "Asia/Almaty"},
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
             assert response.status_code == 201, response.get_json()

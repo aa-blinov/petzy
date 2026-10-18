@@ -43,7 +43,7 @@ def number_type(client, regular_user_token):
 
 def _record_text(pet_id, type_key, fields):
     """A record as JSON text, with the fields written as they are (NaN, "inf", ...)."""
-    return f'{{"pet_id": "{pet_id}", "type": "{type_key}", "date": "2026-01-01", "time": "10:00", "fields": {fields}}}'
+    return f'{{"pet_id": "{pet_id}", "type": "{type_key}", "date": "2026-01-01", "time": "10:00", "tz": "Asia/Almaty", "fields": {fields}}}'
 
 
 class TestEventNumbers:

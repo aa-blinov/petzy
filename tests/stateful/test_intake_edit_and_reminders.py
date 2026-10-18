@@ -75,7 +75,7 @@ def _due(mock_db, now_utc):
 def _move(client, token, intake_id, local):
     return client.put(
         f"/api/medications/intakes/{intake_id}",
-        json={"date": local.strftime("%Y-%m-%d"), "time": local.strftime("%H:%M")},
+        json={"date": local.strftime("%Y-%m-%d"), "time": local.strftime("%H:%M"), "tz": "Asia/Almaty"},
         headers=_auth(token),
     )
 
@@ -160,7 +160,7 @@ class TestTakingAnIntakeBack:
         """The push went at 08:00; the dose was marked at 08:10 by mistake and taken back at 08:20. The dose is due again
         (the widget says so), but the same slot is not announced twice."""
         mock_db["medication_reminders_sent"].insert_one(
-            {"medication_id": str(course), "date": "2024-01-02", "time": "08:00"}
+            {"medication_id": str(course), "date": "2024-01-02", "time": "08:00", "tz": "Asia/Almaty"}
         )
         intake = _intake(mock_db, course, test_pet, datetime(2024, 1, 2, 8, 10))
         client.delete(f"/api/medications/intakes/{intake}", headers=_auth(regular_user_token))

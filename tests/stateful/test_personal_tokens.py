@@ -15,7 +15,14 @@ from bson import ObjectId
 from web.account import _new_token
 from web.security import PERSONAL_TOKEN_PREFIX, hash_personal_token
 
-EVENT = {"type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.4}, "comment": ""}
+EVENT = {
+    "type": "weight",
+    "date": "2026-10-01",
+    "time": "09:00",
+    "fields": {"weight": 12.4},
+    "comment": "",
+    "tz": "Asia/Almaty",
+}
 ALL_SCOPES = ["pets:read", "events:write", "history:read", "medical:read"]
 
 

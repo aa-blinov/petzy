@@ -33,7 +33,7 @@ def course(mock_db, test_pet):
 def _log(client, token, med_id, when, **extra):
     return client.post(
         f"/api/medications/{med_id}/log",
-        json={"date": when.strftime("%Y-%m-%d"), "time": when.strftime("%H:%M"), **extra},
+        json={"date": when.strftime("%Y-%m-%d"), "time": when.strftime("%H:%M"), **extra, "tz": "Asia/Almaty"},
         headers=_auth(token),
     )
 
@@ -63,14 +63,14 @@ class TestSkip:
         )
         med = response.get_json()["medications"][0]
         assert med["intakes_today"] == 2
-        assert med["last_taken_at"] == (now - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M")
+        assert med["last_taken_at"] == (now - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:00") + "+05:00"
 
     def test_both_slots_handled_leaves_nothing_due_today(self, client, regular_user_token, test_pet, course):
         now = datetime.now()
         _log(client, regular_user_token, course, now, skipped=True)
         _log(client, regular_user_token, course, now, skipped=True)
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={now.strftime('%Y-%m-%dT%H:%M')}:00",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={now.strftime('%Y-%m-%dT%H:%M')}:00",
             headers=_auth(regular_user_token),
         )
         today = now.strftime("%Y-%m-%d")
@@ -111,7 +111,7 @@ class TestIntakeTime:
         given = now - timedelta(hours=3)
         response = client.put(
             f"/api/medications/intakes/{intake_id}",
-            json={"date": given.strftime("%Y-%m-%d"), "time": given.strftime("%H:%M")},
+            json={"date": given.strftime("%Y-%m-%d"), "time": given.strftime("%H:%M"), "tz": "Asia/Almaty"},
             headers=_auth(regular_user_token),
         )
         assert response.status_code == 200
@@ -125,7 +125,7 @@ class TestIntakeTime:
         intake_id = _log(client, regular_user_token, course, datetime.now()).get_json()["id"]
         response = client.put(
             f"/api/medications/intakes/{intake_id}",
-            json={"date": "2026-02-30", "time": "25:00"},
+            json={"date": "2026-02-30", "time": "25:00", "tz": "Asia/Almaty"},
             headers=_auth(regular_user_token),
         )
         assert response.status_code in (400, 422)
@@ -137,7 +137,7 @@ class TestIntakeTime:
         mock_db["users"].insert_one({"username": "stranger", "is_active": True, "password_hash": "x"})
         response = client.put(
             f"/api/medications/intakes/{intake_id}",
-            json={"date": "2026-01-01", "time": "08:00"},
+            json={"date": "2026-01-01", "time": "08:00", "tz": "Asia/Almaty"},
             headers=_auth(create_access_token("stranger")),
         )
         assert response.status_code in (403, 404)
@@ -157,7 +157,7 @@ def test_upcoming_doses_are_in_time_order_across_courses(client, mock_db, regula
     )
     day = datetime.now().strftime("%Y-%m-%d")
     response = client.get(
-        f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={day}T06:00:00",
+        f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={day}T06:00:00",
         headers=_auth(regular_user_token),
     )
     times = [d["time"] for d in response.get_json()["doses"] if d["date"] == day]

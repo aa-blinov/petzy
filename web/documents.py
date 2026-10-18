@@ -55,6 +55,7 @@ from web.picture_links import picture_route, signed_picture_url
 from web.security import is_admin, login_required
 from web.idempotency import idempotent
 from web.sync import log_deletion, now_utc
+from web.helpers import utc_iso
 
 documents_bp = Blueprint("documents", __name__)
 
@@ -227,7 +228,7 @@ def _serialize_document(
     # Where a file sits in the bucket is ours to know, not the client's.
     doc.pop("file_id", None)
     if isinstance(doc.get("created_at"), datetime):
-        doc["created_at"] = doc["created_at"].strftime("%Y-%m-%d %H:%M")
+        doc["created_at"] = utc_iso(doc["created_at"])
     return doc
 
 

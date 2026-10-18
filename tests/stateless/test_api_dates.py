@@ -17,6 +17,8 @@ import pytest
 from bson import ObjectId
 
 PROJECT_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$")
+UTC_INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+MOMENT_WITH_ZONE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$")
 
 
 def dates_in(body, where=""):
@@ -51,7 +53,8 @@ def test_an_event_speaks_the_project_dates(client, mock_db, regular_user_token, 
     )
     assert response.status_code == 200
     item = response.get_json()["items"][0]
-    assert PROJECT_DATE.match(item[date_field]), f"{date_field} is {item[date_field]!r}"
+    pattern = UTC_INSTANT if date_field == "created_at" else MOMENT_WITH_ZONE
+    assert pattern.match(item[date_field]), f"{date_field} is {item[date_field]!r}"
 
 
 def test_a_course_and_an_intake_speak_the_project_dates(client, mock_db, regular_user_token, test_pet):

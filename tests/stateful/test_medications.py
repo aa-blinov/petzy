@@ -1,6 +1,7 @@
 """Tests for medication management endpoints."""
 
 import pytest
+from urllib.parse import quote
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 
@@ -206,6 +207,7 @@ class TestMedicationManagement:
             "time": now.strftime("%H:%M"),
             "dose_taken": 1.0,
             "comment": "Took it well",
+            "tz": "Asia/Almaty",
         }
 
         response = client.post(
@@ -361,6 +363,7 @@ class TestMedicationManagement:
             "time": now.strftime("%H:%M"),
             "dose_taken": 1.0,
             "comment": "Trying to take more than available",
+            "tz": "Asia/Almaty",
         }
 
         response = client.post(
@@ -489,6 +492,7 @@ class TestMedicationManagement:
         log_data = {
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
+            "tz": "Asia/Almaty",
             # dose_taken is missing
         }
 
@@ -573,7 +577,7 @@ class TestMedicationManagement:
         client_dt_mon = "2024-01-01T09:00:00"
 
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_mon}",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={client_dt_mon}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         assert response.status_code == 200
@@ -587,7 +591,7 @@ class TestMedicationManagement:
         # Case 2: Client time is Monday 11:00. Dose visible but overdue?
         client_dt_mon_late = "2024-01-01T11:00:00"
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_mon_late}",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={client_dt_mon_late}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         data = response.get_json()
@@ -601,7 +605,7 @@ class TestMedicationManagement:
         # once-a-week course.
         client_dt_tue = "2024-01-02T09:00:00"
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={client_dt_tue}",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={client_dt_tue}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         data = response.get_json()
@@ -877,7 +881,7 @@ class TestLogIntakeValidation:
 
         response = client.post(
             f"/api/medications/{med_id}/log",
-            json={"date": "not-a-date", "time": "25:99", "dose_taken": 1.0},
+            json={"date": "not-a-date", "time": "25:99", "dose_taken": 1.0, "tz": "Asia/Almaty"},
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -1083,7 +1087,9 @@ class TestGetMedicationDetailWithIntakeHistory:
         response = client.get(f"/api/medications/{med_id}", headers={"Authorization": f"Bearer {regular_user_token}"})
 
         assert response.status_code == 200
-        assert response.get_json()["medication"]["last_taken_at"] == intake_time.strftime("%Y-%m-%d %H:%M")
+        assert (
+            response.get_json()["medication"]["last_taken_at"] == intake_time.strftime("%Y-%m-%dT%H:%M:%S") + "+00:00"
+        )
 
 
 @pytest.mark.medications
@@ -1128,7 +1134,12 @@ class TestLogIntakeRetryLoopEdgeCases:
         ):
             response = client.post(
                 f"/api/medications/{med_id}/log",
-                json={"date": now.strftime("%Y-%m-%d"), "time": now.strftime("%H:%M"), "dose_taken": 1.0},
+                json={
+                    "date": now.strftime("%Y-%m-%d"),
+                    "time": now.strftime("%H:%M"),
+                    "dose_taken": 1.0,
+                    "tz": "Asia/Almaty",
+                },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
 
@@ -1174,7 +1185,12 @@ class TestLogIntakeRetryLoopEdgeCases:
         ):
             response = client.post(
                 f"/api/medications/{med_id}/log",
-                json={"date": now.strftime("%Y-%m-%d"), "time": now.strftime("%H:%M"), "dose_taken": 1.0},
+                json={
+                    "date": now.strftime("%Y-%m-%d"),
+                    "time": now.strftime("%H:%M"),
+                    "dose_taken": 1.0,
+                    "tz": "Asia/Almaty",
+                },
                 headers={"Authorization": f"Bearer {regular_user_token}"},
             )
 
@@ -1193,7 +1209,7 @@ class TestUpcomingDosesEdgeCases:
         assert response.status_code == 200
         assert response.get_json()["doses"] == []
 
-    def test_unparseable_client_datetime_falls_back_to_server_utc(self, client, mock_db, regular_user_token, test_pet):
+    def test_unparseable_client_datetime_is_refused(self, client, mock_db, regular_user_token, test_pet):
         now = datetime.now(timezone.utc)
         mock_db["medications"].insert_one(
             {
@@ -1205,11 +1221,11 @@ class TestUpcomingDosesEdgeCases:
         )
 
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime=garbage",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime=garbage",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 422
 
     def test_medication_with_empty_schedule_is_skipped(self, client, mock_db, regular_user_token, test_pet):
         now = datetime.now(timezone.utc)
@@ -1223,7 +1239,7 @@ class TestUpcomingDosesEdgeCases:
         )
 
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={now.isoformat()}",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={quote(now.isoformat())}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -1242,7 +1258,7 @@ class TestUpcomingDosesEdgeCases:
         )
 
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={now.isoformat()}",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={quote(now.isoformat())}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 
@@ -1269,7 +1285,7 @@ class TestUpcomingDosesEdgeCases:
         )
 
         response = client.get(
-            f"/api/medications/upcoming?pet_id={test_pet['_id']}&client_datetime={now.isoformat()}",
+            f"/api/medications/upcoming?pet_id={test_pet['_id']}&tz=Asia/Almaty&client_datetime={quote(now.isoformat())}",
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
 

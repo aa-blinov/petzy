@@ -11,7 +11,7 @@ from urllib.parse import quote
 import pytest
 from bson import ObjectId
 
-WEIGHT = {"type": "weight", "date": "2026-10-01", "fields": {"weight": 12.4}, "comment": ""}
+WEIGHT = {"type": "weight", "date": "2026-10-01", "fields": {"weight": 12.4}, "comment": "", "tz": "Asia/Almaty"}
 
 
 def _auth(token):

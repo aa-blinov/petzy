@@ -252,7 +252,13 @@ class TestDeleteEventType:
         key = self._create_custom(client, regular_user_token)
         client.post(
             "/api/events",
-            json={"pet_id": str(test_pet["_id"]), "type": key, "date": "2024-01-15", "time": "14:30"},
+            json={
+                "pet_id": str(test_pet["_id"]),
+                "type": key,
+                "date": "2024-01-15",
+                "time": "14:30",
+                "tz": "Asia/Almaty",
+            },
             headers={"Authorization": f"Bearer {regular_user_token}"},
         )
         response = client.delete(f"/api/event-types/{key}", headers={"Authorization": f"Bearer {regular_user_token}"})
@@ -271,7 +277,7 @@ class TestDeleteEventType:
 class TestUsedTypes:
     def test_lists_only_the_types_the_pet_has_records_of(self, client, mock_db, regular_user_token, test_pet):
         headers = {"Authorization": f"Bearer {regular_user_token}"}
-        base = {"pet_id": str(test_pet["_id"]), "date": "2026-10-01", "time": "08:00"}
+        base = {"pet_id": str(test_pet["_id"]), "date": "2026-10-01", "time": "08:00", "tz": "Asia/Almaty"}
         assert (
             client.post(
                 "/api/events", json={**base, "type": "feeding", "fields": {"food_weight": 100}}, headers=headers

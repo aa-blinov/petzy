@@ -16,6 +16,7 @@ EVENT = {
     "time": "09:00",
     "fields": {"weight": 12.4},
     "comment": "",
+    "tz": "Asia/Almaty",
 }
 
 

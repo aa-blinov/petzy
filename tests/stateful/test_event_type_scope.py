@@ -99,6 +99,7 @@ def test_a_record_needs_a_type_the_user_can_see(client, mock_db, walk, stranger)
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
             "fields": {},
+            "tz": "Asia/Almaty",
         },
         headers=_auth(stranger),
     )
@@ -116,6 +117,7 @@ def test_family_can_log_a_record_of_it_on_the_shared_pet(client, walk, family, t
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M"),
             "fields": {},
+            "tz": "Asia/Almaty",
         },
         headers=_auth(family),
     )
@@ -131,7 +133,14 @@ def family_pet(mock_db, family):
 def _log(client, token, pet_id, type_key):
     return client.post(
         f"/api/events?pet_id={pet_id}",
-        json={"pet_id": str(pet_id), "type": type_key, "date": "2026-10-01", "time": "09:00", "fields": {}},
+        json={
+            "pet_id": str(pet_id),
+            "type": type_key,
+            "date": "2026-10-01",
+            "time": "09:00",
+            "fields": {},
+            "tz": "Asia/Almaty",
+        },
         headers=_auth(token),
     )
 

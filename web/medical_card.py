@@ -38,6 +38,7 @@ from web.schemas import (
 )
 from web.decorators import pat_allowed
 from web.security import get_current_user, login_required
+from web.helpers import utc_iso
 
 medical_card_bp = Blueprint("medical_card", __name__)
 
@@ -507,7 +508,7 @@ def put_medical_profile(pet_id):
         body["profile"] = _profile(pet)
         return jsonify(body), status
     # No author is stored: the field would outlive the account it names.
-    profile["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    profile["updated_at"] = utc_iso(datetime.now(timezone.utc))
     profile["version"] = uuid.uuid4().hex
     # Taken only if nobody saved between the read above and now: two saves in the same instant do not both win.
     result = app.db.pets.update_one(
@@ -574,7 +575,7 @@ def put_visit_prep(pet_id):
         result = app.db.pets.update_one(guard, {"$unset": {"visit_prep": ""}})
     else:
         prep = data.model_dump(exclude={"base_version"})
-        prep["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        prep["updated_at"] = utc_iso(datetime.now(timezone.utc))
         prep["version"] = uuid.uuid4().hex
         result = app.db.pets.update_one(guard, {"$set": {"visit_prep": prep}})
     if stored_version is not None and result.matched_count == 0:
