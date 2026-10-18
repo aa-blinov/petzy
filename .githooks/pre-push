@@ -31,8 +31,8 @@ $RUFF format --check .
 [ $? -ne 0 ] && status=1
 
 echo ""
-echo "Running backend test suite before push..."
-$PYTHON -m pytest tests/ --tb=short -q
+echo "Running backend test suite before push (in parallel)..."
+$PYTHON -m pytest tests/ --tb=short -q -n auto
 [ $? -ne 0 ] && status=1
 
 echo ""
