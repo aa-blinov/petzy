@@ -64,8 +64,7 @@ A second copy of the stack on port 3001 (`docker compose -p petzy-local-2`, with
 `docker-compose.local.yml`, seeded by `.venv/bin/python scripts/seed_demo.py --base http://localhost:3001`) lets the
 browser checks run in two lines. The pre-push hook uses it when it answers, and runs one line when it does not.
 
-Browser checks: `.venv/bin/python e2e/run.py [filter]` (Playwright, phone viewport). The demo
-login allows 5 attempts a minute, so use one login per script. The checks create their own
+Browser checks: `.venv/bin/python e2e/run.py [filter]` (Playwright, phone viewport). The sign-in refuses an eleventh wrong password a minute from one address (a right one is not counted), and the checks reset those counts (`POST /api/dev/reset-limits`, local stand only), so one login per script is enough. The checks create their own
 test pet «Тест-М» or read the demo pet «Рекс», and clean up after themselves. Do not alter the
 demo data a person made by hand, and delete any throwaway data a test created.
 
