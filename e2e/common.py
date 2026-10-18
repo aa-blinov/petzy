@@ -38,7 +38,9 @@ async def login(pg, user="demo", pet_prefix="Рекс"):
     await pg.get_by_placeholder("Введите пароль").fill(DEMO_PASSWORD)
     await pg.get_by_role("button", name="Войти").click()
     await pg.wait_for_url(lambda u: "/login" not in u, timeout=20000)
-    await pg.wait_for_timeout(1500)
+    # The app picks a pet on its own once the pets have loaded and writes the choice to the browser; wait for that write,
+    # so that the pet chosen below is the last word (a fixed pause used to stand in for it).
+    await pg.wait_for_function("() => localStorage.getItem('selectedPetId') !== null", timeout=15000)
     pets = await pg.evaluate("fetch('/api/pets').then(r => r.json()).then(d => d.pets.map(p => [p.name, p._id]))")
     name, pet_id = next((n, i) for n, i in pets if n.startswith(pet_prefix))
     # The app opens on the pet chosen last: the pet it was told to be, not whichever the account has newest (a pet added by hand on
