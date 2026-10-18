@@ -4,7 +4,6 @@ catalogue did not come. The links screen counts what is taken. A page opened by 
 apart from a connection that did not come through."""
 
 import asyncio
-import re
 
 from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
 
@@ -122,17 +121,18 @@ async def main():
             # line says one.
             for old in (await api(pg, "GET", f"/pets/{pid}/medical-card/shares"))["json"]["shares"]:
                 await api(pg, "DELETE", f"/pets/{pid}/medical-card/shares/{old['id']}")
-            await pg.goto(BASE + "/settings/medical-links")
-            was = int(
-                re.search(
-                    r"Действующих ссылок: (\d+)", await wait_until(pg, lambda t: "Действующих ссылок" in t)
-                ).group(1)
-            )
+            # The count the links screen should show, taken from the server. The screen counts over the pets it has loaded,
+            # and for a moment after the page opens it can say «0» before they are in: a wait for the label would take that.
+            pets = (await api(pg, "GET", "/pets"))["json"].get("pets", [])
+            was = 0
+            for listed_pet in pets:
+                listed = (await api(pg, "GET", f"/pets/{listed_pet['_id']}/medical-card/shares"))["json"] or {}
+                was += len(listed.get("shares", []))
             # the links screen counts what is taken of what there may be
             share = await api(pg, "POST", f"/pets/{pid}/medical-card/shares", {"days": 7})
             share_id = share["json"]["share"]["id"]
             await pg.goto(BASE + "/settings/medical-links")
-            body = await wait_until(pg, lambda t: "Действующих ссылок" in t)
+            body = await wait_until(pg, lambda t: f"Действующих ссылок: {was + 1}" in t)
             check(
                 "the links screen counts the live links",
                 f"Действующих ссылок: {was + 1}" in body and "Занято 1 из 10 ссылок" in body,
