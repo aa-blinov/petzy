@@ -10,7 +10,7 @@ The link and the pet are deleted afterwards; the demo pet is not touched.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -22,13 +22,13 @@ async def main():
         pid = None
         try:
             await pg.goto(BASE + "/pets/new")
-            await pg.wait_for_timeout(1200)
+            await settle(pg)
             await pg.get_by_role("button", name="Собака").click()
             await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
             await pg.get_by_role("button", name="Добавить", exact=True).click()
-            await pg.wait_for_timeout(2200)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Готово").click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
             # a vaccination whose repeat is long past, so the card has something overdue to say
             made_rec = await api(
@@ -50,7 +50,7 @@ async def main():
 
             ctx2, vet = await new_page(b, width=390, height=844, sw=False)
             await vet.goto(url)
-            await vet.wait_for_timeout(2500)
+            await settle(vet)
             t = await vet.inner_text("body")
             note = await vet.get_by_test_id("share-private").inner_text()
             check(

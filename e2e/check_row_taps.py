@@ -8,7 +8,7 @@ so it does not open the course.
 import asyncio
 import re
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 COURSE = "Тест-Касание"
 TITLE = "Пополнить остаток"
@@ -78,7 +78,7 @@ async def main():
             cancel = pg.locator(".adm-dialog").get_by_text("Отмена", exact=True)
             if await cancel.count():
                 await cancel.first.click(timeout=3000)
-                await pg.wait_for_timeout(400)
+                await settle(pg, 150)
 
             give = card.get_by_role("button", name=re.compile("Дали сейчас"))
             x, y = await centre(give)

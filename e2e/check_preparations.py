@@ -4,7 +4,19 @@ import asyncio
 import re
 import time
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, swipe_wheel, wait_until
+from common import (
+    wheel_settled,
+    BASE,
+    api,
+    async_playwright,
+    check,
+    login,
+    new_page,
+    summary,
+    swipe_wheel,
+    wait_until,
+    settle,
+)
 
 
 async def nav(pg, path, ready=None):
@@ -45,7 +57,7 @@ async def main():
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(300)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         card = f"/pets/{pid}/medical-card"
         try:
@@ -134,7 +146,7 @@ async def main():
             await pg.get_by_text("От чего").first.click()
             # Палец по колесу бьёт по координатам, взятым у него сейчас, поэтому колесо должно
             # не просто появиться, а встать на место: лист с ним подъезжает снизу.
-            await pg.wait_for_timeout(700)
+            await wheel_settled(pg)
             await swipe_wheel(pg, ctx, 0, 1)
             await pg.locator(".adm-picker-header-button", has_text="Готово").last.click()
             # Колесо должно закрыться и отдать выбор форме, иначе «Добавить» уходит раньше.

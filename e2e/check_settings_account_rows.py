@@ -2,7 +2,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -24,7 +24,7 @@ async def main():
                 await pg.get_by_role("button", name="Мой профиль").count() == 1,
             )
             await pg.get_by_role("button", name="Мой профиль").click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check(
                 "она открывает твою карточку",
                 pg.url.endswith("/users/demo"),

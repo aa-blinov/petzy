@@ -7,7 +7,7 @@ Needs the local stack and the demo data. Works on its own test pet «Тест-М
 import asyncio
 import time
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until, settle
 
 COURSE = "Т-проверка напомнить"
 # Аккаунт без питомцев, только чтобы увидеть экран без питомца: у демо-владельца
@@ -51,7 +51,7 @@ async def main():
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(300)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             await api(pg, "POST", f"/pets/{pid}/share", {"username": "demo"})
@@ -152,9 +152,9 @@ async def main():
             await pg.get_by_text("Т-проверка прививка").first.wait_for(timeout=10000)
             # Delete sits behind the row's actions menu, as a swipe-only row is unreachable by keyboard otherwise.
             await pg.get_by_role("button", name="Действия: Т-проверка прививка").click()
-            await pg.wait_for_timeout(700)
+            await settle(pg, 150)
             await pg.locator(".adm-action-sheet-button-item", has_text="Удалить").click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             asked = await pg.inner_text(".adm-dialog")
             check(
                 "deleting from the list says the file is erased for good, as the form does",

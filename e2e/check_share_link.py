@@ -2,7 +2,7 @@
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -12,18 +12,18 @@ async def main():
         rex = await login(pg, "demo", "Рекс")
         card = f"/pets/{rex}/medical-card"
         await pg.goto(BASE + card + "?mode=vet")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         check(
             "the reading view offers «Ссылка для врача»",
             await pg.get_by_role("button", name="Ссылка для врача").count() == 1,
         )
         await pg.get_by_role("button", name="Ссылка для врача").click()
-        await pg.wait_for_timeout(900)
+        await settle(pg, 150)
         t = await pg.inner_text("body")
         check("the sheet says what it is and warns", "без входа и только прочитает" in t and "только врачу" in t)
         await pg.get_by_role("button", name="1 день").click()
         await pg.get_by_role("button", name="Создать ссылку").click()
-        await pg.wait_for_timeout(1500)
+        await settle(pg, 150)
         url = await pg.get_by_test_id("share-url").inner_text()
         check(
             "the link is shown once as an address of this site",
@@ -35,7 +35,7 @@ async def main():
         # a fresh browser: nobody is signed in
         ctx2, vet = await new_page(b, width=390, height=844, sw=False)
         await vet.goto(url)
-        await vet.wait_for_timeout(2500)
+        await settle(vet)
         t = await vet.inner_text("body")
         check(
             "a vet with no account sees the card",
@@ -77,9 +77,9 @@ async def main():
         await vet.screenshot(path="sh_vet.png")
         # take it back
         await pg.get_by_role("button", name="Отозвать").first.click()
-        await pg.wait_for_timeout(1500)
+        await settle(pg, 150)
         await vet.reload()
-        await vet.wait_for_timeout(2000)
+        await settle(vet)
         check(
             "a revoked link says so and shows nothing",
             "Ссылка не действует" in await vet.inner_text("body") and "Нобивак" not in await vet.inner_text("body"),

@@ -6,7 +6,7 @@ Needs the local stack and the demo data. Makes a HEIC file of its own in /tmp an
 import asyncio
 import os
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 HEIC = "/tmp/check_meds_doc_heic.heic"
 
@@ -27,7 +27,7 @@ async def main():
         await login(pg, "demo", "Рекс")
         try:
             await pg.goto(BASE + "/documents/new")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             await pg.locator("#document-file-input").set_input_files(HEIC)
             await pg.wait_for_timeout(3500)
             row = pg.locator("#document-file-input").locator("xpath=..")

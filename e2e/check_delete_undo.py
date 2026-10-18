@@ -13,7 +13,7 @@ stand's five an hour and deleting it is rate limited too.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, new_page, summary
+from common import BASE, api, async_playwright, check, new_page, summary, settle
 
 USER = "e2eundo"
 PASSWORD = "Undo-check-2026"
@@ -69,7 +69,7 @@ async def main():
                 ids.append(r["json"]["pet"]["_id"])
 
             await pg.goto(BASE + "/pets")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
 
             # Two deletions in a row, inside one «Отменить» time.
             await _delete_pet(pg, "Тест-М")
@@ -88,7 +88,7 @@ async def main():
                 await bar.inner_text(),
             )
             await bar.get_by_role("button", name="Отменить").click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             on_server = [q["name"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"]]
             check(
                 "«Отменить» brings both back: the server was never asked",
@@ -103,9 +103,9 @@ async def main():
             # One pet left: deleting it must not answer «no pets» at once.
             await api(pg, "DELETE", f"/pets/{ids[1]}")
             await pg.reload()
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             await _delete_pet(pg, "Тест-М")
-            await pg.wait_for_timeout(500)
+            await pg.locator(".snackbar").get_by_role("button", name="Отменить").first.wait_for(timeout=5000)
             body = await pg.inner_text("body")
             check(
                 "under the bar there is no empty state about the pet that was only just deleted",
@@ -117,7 +117,7 @@ async def main():
                 await pg.locator(".snackbar").get_by_role("button", name="Отменить").count() == 1,
             )
             await pg.locator(".snackbar").get_by_role("button", name="Отменить").click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             check(
                 "and pressing it does",
                 (await api(pg, "GET", "/pets"))["json"]["pets"][0]["name"] == "Тест-М",

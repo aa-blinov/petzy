@@ -13,7 +13,7 @@ Needs the local stack and the demo data. Records only a scratch pet of its own, 
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def records(pg, pet_id: str, type_key: str) -> list[dict]:
@@ -27,13 +27,13 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1200)
+        await settle(pg)
         await pg.get_by_role("button", name="Собака").click()
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
-        await pg.wait_for_timeout(2200)
+        await settle(pg, 150)
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             # The request goes through and is written, the browser is told the connection broke:
@@ -52,15 +52,15 @@ async def main():
             # the leave-at-once a step back in the browser's own history (another document), which reloads the page
             # and drops everything the app had on screen, the bar included.
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             await pg.locator(".app-fab").click()
-            await pg.wait_for_timeout(1000)
+            await settle(pg, 150)
             await pg.get_by_text("Вес", exact=True).first.click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             check("the form of a weighing opened from the feed", "/form/weight" in pg.url, pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
             await pg.get_by_role("button", name="Создать").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             body = await pg.inner_text("body")
             check(
                 "the form stays open and says the server did not answer",
@@ -82,7 +82,7 @@ async def main():
 
             lost["on"] = False
             await pg.get_by_role("button", name="Создать").click()
-            await pg.wait_for_timeout(3000)
+            await settle(pg, 150)
             body = await pg.inner_text("body")
             check(
                 "the repeat is answered as a saved record, not a refusal, and the form lets go",
@@ -108,7 +108,7 @@ async def main():
             await pg.unroute("**/api/events", lose_the_answer)
             await pg.route("**/api/events/*", lose_the_record)
             await pg.goto(BASE + f"/form/weight/{record_id}")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 "the form says on itself that the record did not load",
@@ -127,7 +127,7 @@ async def main():
 
             await pg.unroute("**/api/events/*", lose_the_record)
             await pg.get_by_role("button", name="Повторить").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             check(
                 "«Повторить» loads the record",
                 await pg.get_by_label("Вес (кг)").count() == 1

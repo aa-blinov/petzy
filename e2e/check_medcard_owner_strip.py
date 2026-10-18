@@ -8,7 +8,7 @@ is made for the check and deleted afterwards.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-strip-owner"
 LINK = "Записать повторную прививку"
@@ -38,9 +38,9 @@ async def main():
             check("throwaway pet has an overdue vaccine", record["status"] == 201, str(record["status"]))
 
             await pg.goto(f"{BASE}/pets/{pid}/medical-card")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             await pg.get_by_role("button", name="Врачу").first.click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             on_vet_copy = await pg.get_by_text(LINK).count()
             check("owner sees the repeat link on the vet's copy", on_vet_copy > 0)
             check(
@@ -49,7 +49,7 @@ async def main():
             )
 
             await pg.get_by_role("button", name="Записи").first.click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             check("owner still sees the link in the working copy", await pg.get_by_text(LINK).count() > 0)
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")

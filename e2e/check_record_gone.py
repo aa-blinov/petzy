@@ -7,21 +7,21 @@ there. A record that cannot be reached for another reason keeps its «Повто
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 SCRATCH_PET = "Тест-К"
 
 
 async def make_pet(pg):
     await pg.goto(BASE + "/pets/new")
-    await pg.wait_for_timeout(800)
+    await settle(pg)
     await pg.get_by_role("button", name="Собака").click()
     await pg.get_by_placeholder("Имя питомца").fill(SCRATCH_PET)
     await pg.get_by_role("button", name="Добавить", exact=True).click()
-    await pg.wait_for_timeout(2200)
+    await settle(pg, 150)
     if await pg.get_by_role("button", name="Готово").count():
         await pg.get_by_role("button", name="Готово").click()
-    await pg.wait_for_timeout(800)
+    await settle(pg, 150)
     pets = (await api(pg, "GET", "/pets"))["json"]["pets"]
     return next(q["_id"] for q in pets if q["name"] == SCRATCH_PET)
 
@@ -39,17 +39,17 @@ async def main():
                 [pid, SCRATCH_PET],
             )
             await pg.goto(BASE + "/form/weight")
-            await pg.wait_for_timeout(1000)
+            await settle(pg)
             await pg.get_by_label("Вес (кг)").fill("10,5")
             await pg.get_by_role("button", name="Создать").click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             items = (await api(pg, "GET", f"/events?pet_id={pid}&type=weight"))["json"]["items"]
             rid = items[0]["_id"] if items else None
             check("a weight record was made to delete", rid is not None)
             if rid:
                 await api(pg, "DELETE", f"/events/{rid}")
                 await pg.goto(BASE + f"/form/weight/{rid}")
-                await pg.wait_for_timeout(1800)
+                await settle(pg)
                 text = await pg.inner_text("body")
                 check(
                     "the form of a record that is gone says so",

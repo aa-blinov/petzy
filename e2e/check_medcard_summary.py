@@ -4,7 +4,7 @@ Needs the local stack and the demo data (docker compose -p petzy-local ... up, s
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until, settle
 
 
 async def main():
@@ -61,7 +61,7 @@ async def main():
         tiles = await pg.locator(".medsum__tile").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
         check("the first tile is «Здоровье и аллергии»", tiles[0].startswith("Здоровье и аллергии"), tiles[0])
         await pg.locator(".medsum__tile").first.click()
-        await pg.wait_for_timeout(600)
+        await settle(pg, 150)
         check("its screen has the same title", "Здоровье и аллергии" in (await pg.inner_text("h1")))
         await pg.get_by_role("button", name="Изменить").first.click()
         await pg.wait_for_url(lambda url: "section=allergies" in url, timeout=10000)

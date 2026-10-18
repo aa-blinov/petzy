@@ -5,7 +5,7 @@ Needs the local stack and the demo data. Makes a pet of its own and removes it."
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, new_page, summary, wait_until
+from common import BASE, api, async_playwright, check, new_page, summary, wait_until, settle
 from seed_demo import DEMO_PASSWORD
 
 
@@ -56,12 +56,12 @@ async def main():
             )
 
             await other.goto(BASE + "/users/demo")
-            await other.wait_for_timeout(2500)
+            await settle(other)
             check("the co-owner's card lists the pets in common", "Тест-М" in await other.inner_text("body"))
             link = other.locator("button", has=other.get_by_text("Тест-М", exact=True))
             check("and the name is a way into the medical card", await link.count() == 1)
             await link.first.click()
-            await other.wait_for_timeout(3000)
+            await settle(other, 150)
             check(
                 "which opens the card",
                 other.url.endswith(f"/pets/{pet_id}/medical-card") and "Тест-М" in await other.inner_text("body"),
@@ -93,7 +93,7 @@ async def main():
 
             # Someone the pet already reaches is not offered again.
             await pg.goto(BASE + f"/pets/{pet_id}/edit")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             await pg.get_by_placeholder("Логин пользователя").fill("family")
             await pg.wait_for_timeout(2500)
             check(

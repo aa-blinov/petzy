@@ -18,7 +18,7 @@ Needs the local stack and the demo data. Makes a pet and a course of its own and
 import asyncio
 import json
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 OTHER_PET = "Тест-К"
 COURSE = "Т-проверка курс чужого питомца"
@@ -65,7 +65,7 @@ async def main():
             )
 
             await pg.goto(BASE + f"/medications/{course_id}/edit")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 "курс чужого питомца открывается, а не говорит, что его нет",
@@ -86,7 +86,7 @@ async def main():
 
             # An address the app has no screen for says so instead of quietly becoming the feed.
             await pg.goto(BASE + "/medications/" + course_id)
-            await pg.wait_for_timeout(1200)
+            await settle(pg)
             unknown = await pg.inner_text("body")
             check(
                 "адрес без экрана говорит об этом",

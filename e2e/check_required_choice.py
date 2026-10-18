@@ -7,7 +7,7 @@ all. This check saves such a record without touching a single list.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -16,17 +16,17 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1200)
+        await settle(pg)
         await pg.get_by_role("button", name="Собака").click()
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
-        await pg.wait_for_timeout(2200)
+        await settle(pg, 150)
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             await pg.goto(BASE + "/form/defecation")
-            await pg.wait_for_timeout(2200)
+            await settle(pg)
             check("the form of «Дефекация» opened", "/form/defecation" in pg.url, pg.url.replace(BASE, ""))
             # What the person reads before saving: both required lists say their first option, nothing is a bare «Выберите».
             check(
@@ -35,7 +35,7 @@ async def main():
                 (await pg.inner_text("body"))[:160].replace(chr(10), " | "),
             )
             await pg.get_by_role("button", name="Создать").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             body = await pg.inner_text("body")
             check(
                 "no «Заполните это поле» under a row that shows an answer",
@@ -51,7 +51,7 @@ async def main():
                 str(saved),
             )
             await pg.goto(BASE + "/form/asthma")
-            await pg.wait_for_timeout(2200)
+            await settle(pg)
             # An optional text field stays empty: nothing is written down that the person did not pick.
             check(
                 "a required list there too is drawn with its first option",
@@ -60,7 +60,7 @@ async def main():
             )
             await pg.get_by_label("Причина").fill("Пыль")
             await pg.get_by_role("button", name="Создать").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             events = (await api(pg, "GET", f"/events?pet_id={pid}&type=asthma"))["json"]
             rows = events.get("events") or events.get("items") or []
             saved = rows[-1]["fields"] if rows else {}

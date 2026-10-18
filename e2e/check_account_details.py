@@ -10,7 +10,7 @@ only read, never saved.
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -21,9 +21,9 @@ async def main():
         # An empty field is said under the field, and stays there: a toast is
         # gone before the eye gets back to the form.
         await pg.goto(BASE + "/login")
-        await pg.wait_for_timeout(1200)
+        await settle(pg)
         await pg.get_by_role("button", name="Войти").click()
-        await pg.wait_for_timeout(600)
+        await settle(pg, 150)
         text = await pg.inner_text("body")
         check(
             "an empty sign-in form says under the field what is missing",
@@ -45,9 +45,9 @@ async def main():
         # The same on the recovery screen, plus a way to sign up for someone
         # who has no account yet.
         await pg.goto(BASE + "/forgot-password")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         await pg.get_by_role("button", name="Отправить ссылку").click()
-        await pg.wait_for_timeout(600)
+        await settle(pg, 150)
         check(
             "an empty recovery form says it under the field",
             "Введите логин или почту" in await pg.inner_text("body"),
@@ -59,7 +59,7 @@ async def main():
 
         # The sign-up form asks before it drops five typed fields.
         await pg.goto(BASE + "/register")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         check(
             "the consent links say they open in a new tab",
             await pg.get_by_text("Тексты откроются в новой вкладке").count() == 1,
@@ -67,13 +67,13 @@ async def main():
         await pg.get_by_placeholder("например, vera").fill("e2e-form")
         await pg.wait_for_timeout(300)
         await pg.get_by_role("link", name="Войти").first.click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         check(
             "leaving a filled sign-up form asks first",
             await pg.get_by_text("Выйти без сохранения?").count() == 1,
         )
         await pg.get_by_role("button", name="Остаться").click()
-        await pg.wait_for_timeout(600)
+        await settle(pg, 150)
 
         await login(pg)
 
@@ -81,10 +81,10 @@ async def main():
         # something says how much, and clearing the line leaves open what was
         # opened by hand.
         await pg.goto(BASE + "/help")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         first_item = pg.locator("details.help-item").first
         await first_item.locator("summary").click()
-        await pg.wait_for_timeout(400)
+        await settle(pg, 150)
         was_open = await first_item.evaluate("el => el.open")
         await pg.get_by_label("Поиск по справке").fill("ветеринар")
         await pg.wait_for_timeout(600)
@@ -104,7 +104,7 @@ async def main():
 
         # The email screen: a refusal is said under the field that caused it.
         await pg.goto(BASE + "/settings/email")
-        await pg.wait_for_timeout(1800)
+        await settle(pg)
         # Near the limit the field says how much is left, instead of typing
         # quietly stopping at 254.
         await pg.get_by_label("Адрес почты").fill("a" * 210 + "@example.com")
@@ -118,7 +118,7 @@ async def main():
         await pg.wait_for_timeout(300)
         await pg.get_by_label("Текущий пароль").fill("точно-не-пароль")
         await pg.get_by_role("button", name="Сохранить и подтвердить").click()
-        await pg.wait_for_timeout(1500)
+        await pg.locator(".field-error").first.wait_for(timeout=8000)
         check(
             "a refused save is said under the password field, not only in a toast",
             await pg.locator(".field-error").count() >= 1,
@@ -136,7 +136,7 @@ async def main():
 
         # The password screen: the rules are said, and leaving asks.
         await pg.goto(BASE + "/settings/password")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         # The bound bcrypt keeps is in bytes, but that is a fact about the hash, not about a
         # password: the rules under the field are said the way the server says them.
         rules = await pg.inner_text("body")
@@ -157,7 +157,7 @@ async def main():
         # The privacy policy: the sections are listed, and the edition number
         # of the same day is not lost.
         await pg.goto(BASE + "/privacy")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         check(
             "the policy lists its sections",
             await pg.get_by_role("navigation", name="Разделы политики").count() == 1,

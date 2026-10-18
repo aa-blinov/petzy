@@ -3,7 +3,7 @@ shown, and the person chooses what to keep. The form is opened on a scratch pet 
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 MINE = "Кашляет по ночам"
 THEIRS = "Перестал есть совсем"
@@ -15,18 +15,18 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
         await pg.goto(BASE + "/pets/new")
-        await pg.wait_for_timeout(1200)
+        await settle(pg)
         await pg.get_by_role("button", name="Собака").click()
         await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
         await pg.get_by_role("button", name="Добавить", exact=True).click()
-        await pg.wait_for_timeout(2200)
+        await settle(pg, 150)
         await pg.get_by_role("button", name="Готово").click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
         try:
             await api(pg, "PUT", f"/pets/{pid}/visit-prep", {"complaint": MINE, "checks": {"cough": "changed"}})
             await pg.goto(BASE + f"/pets/{pid}/visit-prep")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             field = pg.get_by_label("Что беспокоит")
             check("the saved note is on the screen", await field.input_value() == MINE, await field.input_value())
 
@@ -35,7 +35,7 @@ async def main():
             await field.fill("Кашель прошёл, но не ест")
             await pg.wait_for_timeout(400)
             await pg.get_by_role("button", name="Сохранить").click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             t = await pg.inner_text("body")
             check(
                 "the save is refused and says the note was changed elsewhere",
@@ -44,7 +44,7 @@ async def main():
             )
             await pg.screenshot(path="vp_conflict.png")
             await pg.get_by_role("button", name="Показать актуальную").click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             shown = await pg.get_by_label("Что беспокоит").input_value()
             check(
                 "the other person's note is shown, and nothing of it is lost",
@@ -57,7 +57,7 @@ async def main():
             # Saving again from the note that is now on the screen goes through.
             await pg.get_by_label("Что беспокоит").fill(MINE)  # from the version that is now on the screen
             await pg.get_by_role("button", name="Сохранить").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
             stored = (await api(pg, "GET", f"/pets/{pid}/medical-card"))["json"]["card"]["visit_prep"]
             check("and the next save from the fresh version is kept", stored["complaint"] == MINE, str(stored))
         finally:

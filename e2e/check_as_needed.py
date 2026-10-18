@@ -5,7 +5,7 @@ Needs the local stack and the demo data. Makes a course of its own and removes i
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 COURSE = "Т-проверка по необходимости"
 
@@ -43,12 +43,12 @@ async def main():
 
             # Switch the mode in the form and save: the schedule comes with it.
             await pg.goto(BASE + f"/medications/{med}/edit")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             before = await days_text(pg)
             await pg.locator(".segmented__item", has_text="По необходимости").click()
-            await pg.wait_for_timeout(1000)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Сохранить").click()
-            await pg.wait_for_timeout(2500)
+            await settle(pg, 150)
 
             stored = (await api(pg, "GET", f"/medications/{med}"))["json"]["medication"]
             check(
@@ -80,13 +80,13 @@ async def main():
 
             # The form reads the sign back: it opens in «по необходимости» with the week still in it.
             await pg.goto(BASE + f"/medications/{med}/edit")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             check(
                 "the form opens in «по необходимости», the stored sign and not the empty schedule",
                 "Без напоминаний" in await pg.locator("body").inner_text(),
             )
             await pg.locator(".segmented__item", has_text="По расписанию").click()
-            await pg.wait_for_timeout(1000)
+            await settle(pg, 150)
             after = await days_text(pg)
             check(
                 "the days and times came back with the mode",

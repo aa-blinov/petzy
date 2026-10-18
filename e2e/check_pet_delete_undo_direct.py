@@ -7,7 +7,7 @@ A throwaway pet is made for the check and removed on «Отменить» or at 
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-petdel-direct"
 
@@ -24,16 +24,16 @@ async def main():
         pid = (await api(pg, "POST", "/pets", {"name": PET, "species": "dog", "gender": "male"}))["json"]["pet"]["_id"]
         try:
             await pg.goto(f"{BASE}/pets/{pid}/edit")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             await pg.get_by_role("button", name="Удалить питомца").first.click()
             await pg.locator(".adm-dialog-button", has_text="Удалить").last.click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
 
             check("the undo bar is shown", await pg.get_by_text("Отменить").count() > 0)
             check("the pet is still on the server while the bar is up", await pet_exists(pg, pid))
 
             await pg.get_by_text("Отменить").first.click()
-            await pg.wait_for_timeout(1000)
+            await settle(pg, 150)
             check("«Отменить» keeps the pet", await pet_exists(pg, pid))
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")

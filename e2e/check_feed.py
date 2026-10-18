@@ -5,7 +5,7 @@ Needs the local stack and the demo data (docker compose -p petzy-local ... up, s
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -27,7 +27,7 @@ async def main():
         made_pets = []
         try:
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
             check("the feed has its h1", await pg.locator("h1").all_inner_texts() == ["Лента"])
             # The block is empty only when nothing is due: the demo pet has a dose at a clock time, so the check
             # uses a pet of its own with no medicines, and goes back to the demo pet afterwards.
@@ -39,7 +39,7 @@ async def main():
                 [empty_id, "qa-feed-empty"],
             )
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             check(
                 "an empty block of notices takes no room",
                 await pg.evaluate("getComputedStyle(document.querySelector('.feed-widgets')).display") == "none",
@@ -49,7 +49,7 @@ async def main():
                 [rex, "Рекс"],
             )
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             # three records arrive while page one is being read: the offsets of the next page move by three
             for i in range(3):
                 r = await api(

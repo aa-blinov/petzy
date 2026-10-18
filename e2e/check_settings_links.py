@@ -8,7 +8,7 @@ check does not take it down to reach its own assertion.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 def count_of(text: str) -> int:
@@ -28,23 +28,23 @@ async def main():
                 r = await api(pg, "POST", f"/pets/{pid}/medical-card/shares", {"days": 7})
                 made.append((pid, r["json"]["share"]["id"]))
             await pg.goto(BASE + "/settings")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 "Settings has a «Медкарта» group with both rows",
                 "Данные для врача" in body and "Ссылки на медкарту" in body and "Медкарта" in body,
             )
             await pg.get_by_text("Данные для врача", exact=True).click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check(
                 "«Данные для врача» opens the profile of the chosen pet",
                 "/medical-profile" in pg.url,
                 pg.url.replace(BASE, ""),
             )
             await pg.goto(BASE + "/settings")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             await pg.get_by_text("Ссылки на медкарту", exact=True).click()
-            await pg.wait_for_timeout(1800)
+            await settle(pg, 150)
             check(
                 "«Ссылки на медкарту» opens its page",
                 pg.url.endswith("/settings/medical-links"),
@@ -62,19 +62,19 @@ async def main():
             rex_row = pg.locator('section[aria-label="Рекс"]').get_by_role("button", name="Отозвать").first
             # taking one back asks first
             await rex_row.click()
-            await pg.wait_for_timeout(700)
+            await settle(pg, 150)
             check("it asks before taking a link back", "Отозвать ссылку?" in await pg.inner_text("body"))
             await pg.get_by_role("button", name="Оставить").click()
-            await pg.wait_for_timeout(500)
+            await settle(pg, 150)
             check(
                 "«Оставить» changes nothing",
                 count_of(await pg.locator('[data-testid="medlinks-count"]').inner_text()) == total
                 and len((await api(pg, "GET", f"/pets/{rex}/medical-card/shares"))["json"]["shares"]) > 0,
             )
             await rex_row.click()
-            await pg.wait_for_timeout(700)
+            await settle(pg, 150)
             await pg.locator(".adm-dialog-button", has_text="Отозвать").last.click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             left = [
                 len((await api(pg, "GET", f"/pets/{pid}/medical-card/shares"))["json"]["shares"]) for pid, _ in made
             ]
@@ -94,7 +94,7 @@ async def main():
             for pid, sid in made:
                 await api(pg, "DELETE", f"/pets/{pid}/medical-card/shares/{sid}")
             await pg.reload()
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             body = await pg.inner_text("body")
             left_total = count_of(await pg.locator('[data-testid="medlinks-count"]').inner_text())
             if left_total == 0:

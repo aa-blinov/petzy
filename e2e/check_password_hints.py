@@ -15,7 +15,7 @@ import asyncio
 import time
 import re
 
-from common import BASE, api, async_playwright, check, new_page, summary
+from common import BASE, api, async_playwright, check, new_page, summary, settle
 
 GUESSED = "password"  # in the server's list of the most guessed
 ORDINARY = "kotik-2026"
@@ -66,7 +66,7 @@ async def main():
         try:
             # The origin the API calls are made from. Nobody signs in here.
             await pg.goto(BASE + "/login")
-            await pg.wait_for_timeout(800)
+            await settle(pg)
             # A limit counts per address, and every check on the stand comes from the same one:
             # five letters and five sign-ups an hour are spent by the first run, and the next one
             # starts on a spent limit and checks nothing at all. The counters are put back to zero
@@ -100,7 +100,7 @@ async def main():
 
             # A link that cannot work: said at once, no form, a way out.
             await pg.goto(BASE + "/reset-password?token=definitely-not-a-real-token")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             text = await pg.inner_text("body")
             check(
                 "a spent link says so right away, and the form is not shown",
@@ -114,12 +114,12 @@ async def main():
             )
             await pg.screenshot(path="reset_dead.png")
             await pg.get_by_role("link", name="Отправить новое письмо").click()
-            await pg.wait_for_timeout(1200)
+            await settle(pg, 150)
             check("that link goes to «Забыли пароль»", "/forgot-password" in pg.url, pg.url.replace(BASE, ""))
 
             # A guessed password is said under the field, nothing sent.
             await pg.goto(BASE + "/register")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             field = pg.get_by_placeholder("Придумайте пароль")
             await field.fill(GUESSED)
             text = await _wait_until(pg, lambda t: "Это один из самых частых паролей" in t)
@@ -193,7 +193,7 @@ async def main():
             letters = (await api(pg, "GET", "/dev/outbox"))["json"].get("letters", [])
             token = _token_of("Petzy: новый пароль", letters, THROWAWAY["email"])
             await pg.goto(BASE + f"/reset-password?token={token}")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             check(
                 "a working link still opens the form",
                 await pg.get_by_role("button", name="Сохранить и войти").count() == 1,

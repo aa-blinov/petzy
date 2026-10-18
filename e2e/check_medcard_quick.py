@@ -4,7 +4,7 @@ Needs the local stack and the demo data (docker compose -p petzy-local ... up, s
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -37,13 +37,13 @@ async def main():
             strip.replace("\n", " | "),
         )
         await pg.get_by_role("button", name="Вес: 29,3 кг, 04.10.2026").click()
-        await pg.wait_for_timeout(800)
+        await settle(pg, 150)
         check(
             "the weight is recorded inside its section, by its own round «+»",
             await pg.locator(".app-fab").count() == 1,
         )
         await pg.goto(BASE + card + "/risks")
-        await pg.wait_for_timeout(800)
+        await settle(pg)
         check(
             "the allergies are changed inside their section",
             await pg.get_by_role("button", name="Изменить", exact=True).count() >= 1,

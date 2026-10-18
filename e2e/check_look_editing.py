@@ -7,7 +7,7 @@ and deleted afterwards; the demo owner's pets are not touched.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 PET = "qa-look-edit"
 
@@ -31,9 +31,9 @@ async def main():
                 [pid, PET],
             )
             await pg.goto(BASE + "/pet-look")
-            await pg.wait_for_timeout(1500)
+            await settle(pg)
             await pg.get_by_role("tab", name="Подпись и шрифт").first.click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             field = pg.locator("#pet-tagline")
             await field.fill("новая")
             await pg.wait_for_timeout(200)
@@ -44,24 +44,24 @@ async def main():
             check("Enter does not save the caption", await saved_tagline(pg, pid) == "старая")
 
             await pg.get_by_role("tab", name="Образы").first.click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Сбросить оформление").first.click()
-            await pg.wait_for_timeout(600)
+            await settle(pg, 150)
             check("reset asks first", await pg.get_by_text("Сбросить оформление?").count() == 1)
             await pg.locator(".adm-dialog-button", has_text="Оставить").first.click()
-            await pg.wait_for_timeout(500)
+            await settle(pg, 150)
             await pg.get_by_role("tab", name="Подпись и шрифт").first.click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             check("«Оставить» keeps the caption as typed", await pg.locator("#pet-tagline").input_value() == "новая")
 
             await pg.get_by_role("tab", name="Образы").first.click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Сбросить оформление").first.click()
-            await pg.wait_for_timeout(600)
+            await settle(pg, 150)
             await pg.locator(".adm-dialog-button", has_text="Сбросить").first.click()
-            await pg.wait_for_timeout(500)
+            await settle(pg, 150)
             await pg.get_by_role("tab", name="Подпись и шрифт").first.click()
-            await pg.wait_for_timeout(300)
+            await settle(pg, 150)
             check("«Сбросить» clears the caption on the screen", await pg.locator("#pet-tagline").input_value() == "")
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")

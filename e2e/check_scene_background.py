@@ -15,7 +15,7 @@
 import asyncio
 import io
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 SCENE = {"accent": "teal", "scene": "dots", "backdrop": "fill"}
 # Край страницы: слева от карточек, где нарисован сам фон, а не содержимое.
@@ -61,7 +61,7 @@ async def main():
                 [made, "Тест-М"],
             )
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(2500)
+            await settle(pg)
 
             # Кто красит сцену: тот, кто вне проявления, или тот, кто внутри него.
             where = await pg.evaluate(
@@ -82,7 +82,7 @@ async def main():
             # Цвет, на котором фон успокаивается, и обычный цвет страницы, которым он быть не должен.
             on_feed = _rgb(await pg.screenshot(clip=POINT))
             await pg.get_by_role("link", name="Документы").click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             on_documents = _rgb(await pg.screenshot(clip=POINT))
             plain = await _colour(pg, await pg.evaluate("() => getComputedStyle(document.body).backgroundColor"))
 

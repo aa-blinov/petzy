@@ -2,7 +2,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary
+from common import BASE, api, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -13,7 +13,7 @@ async def main():
         made = []
         try:
             await pg.goto(BASE + "/settings")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             body = await pg.inner_text("body")
             # Про сам питомца, а не про его отсутствие: подписи переписаны в словах о деле,
             # поэтому проверяем смысл, а не прежнюю формулировку.
@@ -28,13 +28,13 @@ async def main():
             # the Settings tab stays lit on the screens Settings opens
             for path, name in (("/history", "История"), ("/pets", "Мои питомцы")):
                 await pg.goto(BASE + path)
-                await pg.wait_for_timeout(1500)
+                await settle(pg)
                 current = await pg.get_by_role("link", name="Настройки").get_attribute("aria-current")
                 check(f"the Settings tab is lit on {path}", current == "page", str(current))
 
             # History: the pet is named, and a record can be written from here
             await pg.goto(BASE + "/history")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             head = await pg.inner_text("header")
             check("the history screen names the chosen pet", "Рекс" in head, head.replace(chr(10), " | "))
             check(
@@ -43,38 +43,38 @@ async def main():
             )
             await pg.screenshot(path="hist_top.png")
             await pg.get_by_role("button", name="Добавить запись").click()
-            await pg.wait_for_timeout(1200)
+            await settle(pg, 150)
             check("it opens the quick-add sheet", "Все" in await pg.inner_text("body"))
             await pg.keyboard.press("Escape")
             await pg.wait_for_timeout(600)
 
             # the feed leads to the history
             await pg.goto(BASE + "/")
-            await pg.wait_for_timeout(2000)
+            await settle(pg)
             link = await pg.get_by_role("button", name="Вся история").count()
             check("the feed has a way to «Вся история»", link >= 1)
 
             # a pet of our own, to check «Сначала добавьте питомца» is honest and leads somewhere
             await pg.goto(BASE + "/pets/new")
-            await pg.wait_for_timeout(1200)
+            await settle(pg)
             await pg.get_by_role("button", name="Собака").click()
             await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
             await pg.get_by_role("button", name="Добавить", exact=True).click()
-            await pg.wait_for_timeout(2200)
+            await settle(pg, 150)
             await pg.get_by_role("button", name="Готово").click()
-            await pg.wait_for_timeout(800)
+            await settle(pg, 150)
             made.append(
                 next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
             )
             await pg.goto(BASE + "/settings")
-            await pg.wait_for_timeout(1800)
+            await settle(pg)
             body = await pg.inner_text("body")
             check(
                 "with a pet chosen the row keeps its own wording",
                 "Скачать записи питомца таблицей" in body and "Сначала добавьте питомца" not in body,
             )
             await pg.get_by_text("Экспорт записей", exact=True).click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             check(
                 "«Экспорт записей» opens the export sheet",
                 "Экспорт" in await pg.inner_text("body"),

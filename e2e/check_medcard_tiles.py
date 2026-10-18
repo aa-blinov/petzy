@@ -3,7 +3,7 @@
 import asyncio
 import re
 
-from common import BASE, async_playwright, check, login, new_page, summary
+from common import BASE, async_playwright, check, login, new_page, summary, settle
 
 
 async def main():
@@ -13,7 +13,7 @@ async def main():
         rex = await login(pg, "demo", "Рекс")
         card = f"/pets/{rex}/medical-card"
         await pg.goto(BASE + card + "?mode=fill")
-        await pg.wait_for_timeout(2000)
+        await settle(pg)
         tiles = await pg.locator(".medsum__tile").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
         check("eight tiles", len(tiles) == 8, str(len(tiles)))
         rows = await pg.evaluate(
@@ -25,9 +25,9 @@ async def main():
             ("Питание и условия", "life", ["Сухой корм"]),
         ):
             await pg.goto(BASE + card + "?mode=fill")
-            await pg.wait_for_timeout(1200)
+            await settle(pg)
             await pg.locator(".medsum__tile").filter(has_text=re.compile("^" + re.escape(title))).click()
-            await pg.wait_for_timeout(1500)
+            await settle(pg, 150)
             t = await pg.inner_text("body")
             check(
                 f"«{title}» opens /{key} with its content",
@@ -40,7 +40,7 @@ async def main():
             )
         await pg.screenshot(path="split_life.png")
         await pg.goto(BASE + card + "?mode=fill")
-        await pg.wait_for_timeout(1500)
+        await settle(pg)
         await pg.evaluate("window.scrollTo(0, 420)")
         await pg.wait_for_timeout(400)
         await pg.screenshot(path="split_tiles.png")
