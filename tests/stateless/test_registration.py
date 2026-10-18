@@ -10,10 +10,13 @@ from web import auth
 _addresses = itertools.count(1)
 
 
-def _register(client, username="vera", password="kotik-2026", **extra):
+def _register(client, username="vera", password="kotik-2026", browser=False, **extra):
     # Each call from its own address: the sign-up limit is per address and
     # shared by the whole test run.
     who = {"X-Forwarded-For": f"203.0.113.{next(_addresses) % 250 + 1}"}
+    if browser:
+        # A page sends its Origin; the cookies of a session are for a page, not for a native app.
+        who["Origin"] = "https://petzy.duckdns.org"
     return client.post(
         "/api/auth/register",
         json={"username": username, "password": password, "full_name": "Вера", "privacy_consent": True, **extra},
@@ -22,7 +25,7 @@ def _register(client, username="vera", password="kotik-2026", **extra):
 
 
 def test_sign_up_creates_the_account_and_signs_it_in(client, mock_db):
-    response = _register(client, full_name="Вера")
+    response = _register(client, full_name="Вера", browser=True)
     assert response.status_code == 201
     user = mock_db["users"].find_one({"username": "vera"})
     assert user["is_active"] is True and user["created_by"] == "self" and user["full_name"] == "Вера"

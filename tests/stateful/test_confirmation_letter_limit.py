@@ -46,7 +46,8 @@ def _sign_up(client, username, email=ADDRESS):
             "email": email,
             "privacy_consent": True,
         },
-        headers=who,
+        # A page signs up: its session is in cookies, which the letter tests below use as the page does.
+        headers={**who, "Origin": "https://petzy.duckdns.org"},
     )
 
 

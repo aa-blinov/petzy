@@ -28,10 +28,14 @@ def test_no_account_without_consent(client, mock_db):
 
 
 def test_sign_up_records_which_version_was_agreed_to(client, mock_db):
-    assert _register(client, privacy_consent=True).status_code == 201
+    signed_up = _register(client, privacy_consent=True)
+    assert signed_up.status_code == 201
     consent = mock_db["users"].find_one({"username": "vera"})["privacy_consent"]
     assert consent["version"] == legal.PRIVACY_POLICY_VERSION and consent["accepted_at"]
-    assert client.get("/api/me/account").get_json()["privacy_consent_needed"] is False
+    # Signed up without an Origin, the app gets its token in the body; the account answers to it.
+    token = signed_up.get_json()["access_token"]
+    account = client.get("/api/me/account", headers={"Authorization": f"Bearer {token}"})
+    assert account.get_json()["privacy_consent_needed"] is False
 
 
 def test_an_account_without_consent_is_asked_and_can_agree(client, regular_user):
