@@ -60,6 +60,10 @@ The app is at http://localhost:3000. After any UI or backend change rebuild
 really recreated: a failed build leaves the old one running and the browser checks then pass
 against old code.
 
+A second copy of the stack on port 3001 (`docker compose -p petzy-local-2`, with the variables at the top of
+`docker-compose.local.yml`, seeded by `.venv/bin/python scripts/seed_demo.py --base http://localhost:3001`) lets the
+browser checks run in two lines. The pre-push hook uses it when it answers, and runs one line when it does not.
+
 Browser checks: `.venv/bin/python e2e/run.py [filter]` (Playwright, phone viewport). The demo
 login allows 5 attempts a minute, so use one login per script. The checks create their own
 test pet «Тест-М» or read the demo pet «Рекс», and clean up after themselves. Do not alter the
@@ -78,7 +82,8 @@ git config core.hooksPath .githooks
   `ruff check` + `ruff format --check` on staged `*.py` files: fast, per-commit checks.
 - `pre-push` runs `ruff check` + `ruff format --check` over the whole backend, the full backend
   test suite (`pytest tests/`), a full frontend lint (`npm run lint`) and every browser check
-  (`e2e/run.py`, all 44, about ten minutes). Slower, so it runs before push only. The browser
+  (`e2e/run.py`, about eight minutes in one line, about five in two). The suite and the lint run
+  alongside the browser checks. Slower, so it runs before push only. The browser
   checks need the local stand: if it is down the push stops and the hook prints how to start it,
   because a push that silently went without them is worse than one that waited. To push once
   without them: `PETZY_SKIP_E2E=1 git push`, and that skip belongs in the commit message. Never

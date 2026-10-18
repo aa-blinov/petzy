@@ -4,11 +4,13 @@
 # per-commit staged-files-only checks can't (e.g. a file that changed across
 # several commits, or a --no-verify commit).
 #
-# The browser checks need the local stand up and take about half an hour, so
-# they run last and only when the stand answers. If it is down the push stops
-# with the command to start it: a push that silently went without them is worse
-# than one that waited. PETZY_SKIP_E2E=1 skips them for a single push, and that
-# skip belongs in the commit message.
+# The browser checks need the local stand up and take several minutes. The
+# test suite and the lint do not wait on the stand, so they run alongside the
+# browser checks. A second stand (docker-compose.local.yml, port 3001) splits
+# the browser checks into two lines when it answers too. If the first stand is
+# down the push stops with the command to start it: a push that silently went
+# without them is worse than one that waited. PETZY_SKIP_E2E=1 skips them for a
+# single push, and that skip belongs in the commit message.
 # Enabled via: git config core.hooksPath .githooks (one-time per clone).
 
 status=0
@@ -30,18 +32,15 @@ $RUFF check .
 $RUFF format --check .
 [ $? -ne 0 ] && status=1
 
+# The test suite and the frontend lint start now and run next to the browser
+# checks. Their output is shown once they are done.
+LOG_DIR=$(mktemp -d)
 echo ""
-echo "Running backend test suite before push (in parallel)..."
-$PYTHON -m pytest tests/ --tb=short -q -n auto
-[ $? -ne 0 ] && status=1
-
-echo ""
-echo "Running full frontend lint before push..."
-(
-    cd frontend || exit 1
-    npm run lint
-)
-[ $? -ne 0 ] && status=1
+echo "Starting the backend test suite and the frontend lint in the background..."
+( $PYTHON -m pytest tests/ --tb=short -q -n auto ) >"$LOG_DIR/pytest.log" 2>&1 &
+PYTEST_PID=$!
+( cd frontend && npm run lint ) >"$LOG_DIR/lint.log" 2>&1 &
+LINT_PID=$!
 
 # Browser checks: the stand first, then every check against it.
 if [ "$PETZY_SKIP_E2E" = "1" ]; then
@@ -49,6 +48,7 @@ if [ "$PETZY_SKIP_E2E" = "1" ]; then
     echo "PETZY_SKIP_E2E=1 — browser checks skipped for this push (say so in the commit)."
 else
     BASE="${PETZY_E2E_BASE:-http://localhost:3000}"
+    BASE2="${PETZY_E2E_BASE2:-http://localhost:3001}"
     echo ""
     echo "Checking that the local stand answers at $BASE..."
     if ! $PYTHON -c "import sys, urllib.request; urllib.request.urlopen('$BASE/', timeout=5)" 2>/dev/null; then
@@ -58,11 +58,32 @@ else
         echo "Or push once without the browser checks: PETZY_SKIP_E2E=1 git push"
         status=1
     else
-        echo "Running browser checks before push (about half an hour)..."
-        $PYTHON e2e/run.py
+        BASES="$BASE"
+        if $PYTHON -c "import sys, urllib.request; urllib.request.urlopen('$BASE2/', timeout=5)" 2>/dev/null; then
+            BASES="$BASE,$BASE2"
+            echo "The second stand answers at $BASE2: the browser checks run in two lines."
+        else
+            echo "No second stand at $BASE2: the browser checks run in one line (slower)."
+        fi
+        echo "Running browser checks before push..."
+        PETZY_E2E_BASES="$BASES" $PYTHON e2e/run.py
         [ $? -ne 0 ] && status=1
     fi
 fi
+
+# Wait for the background checks, then show what they printed.
+wait $PYTEST_PID
+PYTEST_STATUS=$?
+wait $LINT_PID
+LINT_STATUS=$?
+echo ""
+echo "Backend test suite:"
+cat "$LOG_DIR/pytest.log"
+echo "Frontend lint:"
+cat "$LOG_DIR/lint.log"
+rm -rf "$LOG_DIR"
+[ $PYTEST_STATUS -ne 0 ] && status=1
+[ $LINT_STATUS -ne 0 ] && status=1
 
 if [ $status -ne 0 ]; then
     echo ""
