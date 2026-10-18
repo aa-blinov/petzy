@@ -307,8 +307,8 @@ export function DocumentsList() {
           className="safe-area-padding"
           style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
             marginBottom: 'var(--spacing-lg)',
           }}
         >
@@ -317,6 +317,9 @@ export function DocumentsList() {
               Документы
             </h1>
           </div>
+          <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)', margin: 'var(--spacing-xs) 0 0' }}>
+            Все файлы питомца. Визиты, прививки и обработки ведутся в медкарте
+          </p>
         </div>
 
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-md)' }}>

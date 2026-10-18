@@ -29,7 +29,7 @@ const TITLES: Record<CardSectionKey, string> = {
   prevention: 'Прививки и обработки',
   weight: 'Вес',
   visits: 'Визиты и операции',
-  documents: 'Документы',
+  documents: 'Анализы и заключения',
   clinic: 'Клиника и врачи',
   life: 'Питание и условия',
 };
@@ -160,7 +160,7 @@ function SectionBody({ section, card, petId, hidden, navigate }: { section: Card
       return (
         <Section id="medcard-documents" title="Последние результаты" action={{ label: 'Все документы', onClick: () => navigate('/documents') }}>
           {card.documents.length === 0 ? (
-            <p className="medcard__empty">Анализов и заключений пока нет. Добавьте их в документы, и они появятся здесь</p>
+            <p className="medcard__empty">Анализов и заключений пока нет. Добавьте их в «Документы», и они появятся здесь</p>
           ) : (
             <ul className="medcard__list">
               {card.documents.map((d) => (

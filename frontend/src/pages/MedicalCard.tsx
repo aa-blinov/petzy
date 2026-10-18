@@ -269,7 +269,7 @@ function recordLines(record: MedicalRecord): RowLine[] {
     record.kind === 'vaccination' && record.protects_label ? { label: 'Защита', text: record.protects_label, tier: 'meta' } : null,
     // Attached files ride on the record itself: a third button here put a name before the repeat
     // that the row was opened for, and the row was already pressable.
-    record.documents.length > 0 ? { label: 'Документы', text: record.documents.map((d) => d.title).join(', '), tier: 'meta' } : null,
+    record.documents.length > 0 ? { label: 'Прикреплено', text: record.documents.map((d) => d.title).join(', '), tier: 'meta' } : null,
     record.superseded ? { text: 'Есть более новая запись', tier: 'meta' } : null,
   ];
   return lines.filter((l): l is RowLine => !!l && !!l.text);
