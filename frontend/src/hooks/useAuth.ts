@@ -93,7 +93,7 @@ export function useAuth() {
     }
   };
 
-  const logout = async () => {
+  const logout = async ({ everywhere = false }: { everywhere?: boolean } = {}) => {
     beginSignOut();
     // This browser leaves push first, while the session can still make the request: the logout below ends that
     // session, and the server no longer knows who is asking. Best effort, so it never holds the sign-out up for long.
@@ -103,7 +103,7 @@ export function useAuth() {
       // httpOnly cookies. Must happen before we clear local state —
       // if the request fails (network, server down) we still want
       // the user to land on /login so the local session is gone.
-      await authService.logout();
+      await authService.logout({ everywhere });
     } catch (error) {
       // Don't block the user on a backend hiccup — the local
       // queryClient + storage cleanup below is what really matters
