@@ -1935,6 +1935,23 @@ class EventCreate(HealthRecordBase):
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
 
+    local_id: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="Идентификатор записи, который дало устройство (до 64 символов). Повтор того же запроса с ним отдаёт уже сохранённую запись и ничего не пишет; занятое имя чужого питомца даёт 409 local_id_taken",
+    )
+
+    @field_validator("local_id")
+    @classmethod
+    def validate_local_id(cls, v):
+        """The name is what the device sent, without spaces around it: an empty one names nothing."""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Идентификатор записи не может быть пустым")
+        return v
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -1980,6 +1997,9 @@ class EventItem(BaseModel):
     tz: Optional[str] = Field(
         default=None,
         description="IANA-зона, в которой введено время (Asia/Almaty); клиент переводит date_time на свои часы. Нет у старых записей",
+    )
+    local_id: Optional[str] = Field(
+        default=None, description="Идентификатор, который дало устройство; нет у записей, созданных без него"
     )
     model_config = ConfigDict(
         json_schema_extra={
