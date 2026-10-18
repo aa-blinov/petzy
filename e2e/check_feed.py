@@ -4,8 +4,33 @@ block of medicine notices leaves no gap.
 Needs the local stack and the demo data (docker compose -p petzy-local ... up, scripts/seed_demo.py). Makes three feedings of its own and removes them."""
 
 import asyncio
+import time
+from urllib.parse import parse_qs, urlparse
 
 from common import BASE, api, async_playwright, check, login, new_page, summary, settle
+
+CARD = "[aria-label$=', открыть']"
+
+
+async def cards_match(pg, received, reads, timeout_ms=10_000):
+    """The cards on the screen and the answers they are checked against, once the two agree or the wait is up.
+
+    The answers are read in Python a moment apart from the page, and the page draws each one a few milliseconds after
+    it has it (longer on a busy machine), so the count first waits for the reads still in flight, then for the cards to
+    reach the number of records answered. A record that never reaches the screen keeps the two apart to the end, and
+    the check fails on it.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000
+    while True:
+        busy = [task for task in reads if not task.done()]
+        if busy:
+            await asyncio.gather(*busy, return_exceptions=True)
+            continue
+        answers = list(received)
+        cards = await pg.locator(CARD).count()
+        if cards == len(set(answers)) or time.monotonic() > deadline:
+            return cards, answers
+        await pg.wait_for_timeout(150)
 
 
 async def main():
@@ -14,15 +39,22 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         rex = await login(pg, "demo", "Рекс")
         received: list[str] = []
+        reads: list[asyncio.Task] = []
 
-        async def on_response(r):
-            if "/history/timeline" in r.url and r.status == 200:
-                try:
-                    received.extend(i["_id"] for i in (await r.json())["items"])
-                except Exception:  # a response the page dropped
-                    pass
+        async def read(r):
+            try:
+                received.extend(i["_id"] for i in (await r.json())["items"])
+            except Exception:  # a response the page dropped
+                pass
 
-        pg.on("response", lambda r: asyncio.ensure_future(on_response(r)))
+        def on_response(r):
+            # This pet's feed only. Other pets' feeds are not on this screen: the empty pet this check opens, or one
+            # the app asked for before the switch to Рекс.
+            pet = parse_qs(urlparse(r.url).query).get("pet_id")
+            if "/history/timeline" in r.url and r.status == 200 and pet == [rex]:
+                reads.append(asyncio.ensure_future(read(r)))
+
+        pg.on("response", on_response)
         made = []
         made_pets = []
         try:
@@ -69,11 +101,13 @@ async def main():
             for _ in range(4):
                 await pg.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 await pg.wait_for_timeout(2000)
-            cards = await pg.locator("[aria-label$=', открыть']").count()
+            await settle(pg)
+            cards, answers = await cards_match(pg, received, reads)
+            unique = len(set(answers))
             check(
                 "the page the server repeated shows each record once",
-                cards == len(set(received)) and len(received) > len(set(received)),
-                f"{len(received)} received, {len(set(received))} unique, {cards} cards",
+                cards == unique and len(answers) > unique,
+                f"{len(answers)} received, {unique} unique, {cards} cards",
             )
             check("the round plus steps aside while reading down", await pg.locator(".app-fab--away").count() == 1)
             await pg.evaluate("window.scrollBy(0, -300)")
