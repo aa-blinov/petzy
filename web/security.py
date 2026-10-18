@@ -127,10 +127,13 @@ def ensure_default_admin():
         db["users"].update_one({"username": ADMIN_USERNAME}, {"$set": {"is_admin": True}})
 
 
-def create_access_token(username):
-    """Create JWT access token."""
+def create_access_token(username, family=None):
+    """Create JWT access token. ``family`` names the sign-in it belongs to (the ``sid`` claim): once that sign-in ends,
+    the token stops working (see ``session_is_open``)."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"username": username, "exp": expire, "type": "access", "iat": int(time.time())}
+    if family:
+        payload["sid"] = family
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
@@ -147,13 +150,21 @@ def create_refresh_token(username, family=None):
     """
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     jti = uuid4().hex
-    payload = {"username": username, "exp": expire, "type": "refresh", "jti": jti, "iat": int(time.time())}
+    family = family or jti
+    payload = {
+        "username": username,
+        "exp": expire,
+        "type": "refresh",
+        "jti": jti,
+        "family": family,
+        "iat": int(time.time()),
+    }
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
     db["refresh_tokens"].insert_one(
         {
             "jti": jti,
-            "family": family or jti,
+            "family": family,
             "token_hash": refresh_token_hash(token),
             "username": username,
             "created_at": datetime.now(timezone.utc),
@@ -184,6 +195,33 @@ def revoke_user_sessions(username) -> None:
     right after (fresh cookies from the same request) is issued after it."""
     db["refresh_tokens"].delete_many({"username": username})
     db["users"].update_one({"username": username}, {"$set": {"sessions_valid_after": int(time.time())}})
+
+
+def session_family(refresh_token: str):
+    """The sign-in a refresh token belongs to (its ``family`` claim): the ``sid`` a new access token names."""
+    payload = verify_token(refresh_token, "refresh")
+    return payload.get("family") if payload else None
+
+
+def session_is_open(family) -> bool:
+    """Whether the sign-in an access token names as its ``sid`` still exists, that is, still has refresh tokens on
+    record.
+
+    Ending a sign-in deletes them (a logout on that device, a reused refresh token, every sign-in of the user), so
+    its access tokens stop at once instead of living on for their 15 minutes. A token that names no sign-in is not
+    checked.
+    """
+    if not family:
+        return True
+    return db["refresh_tokens"].find_one({"family": family}, {"_id": 1}) is not None
+
+
+def end_session(family) -> None:
+    """End one sign-in: its refresh tokens go, and with them its access tokens. Other sign-ins of the user stay."""
+    if not family:
+        # A row without a family must not match {"family": None}: that finds every row without one.
+        return
+    db["refresh_tokens"].delete_many({"$or": [{"family": family}, {"jti": family}]})
 
 
 def revoke_personal_tokens(username) -> None:
@@ -323,7 +361,7 @@ def rotate_refresh_token(refresh_token):
         return username, successor
 
     logger.warning(f"Refresh token reused, sign-in revoked: user={username}")
-    db["refresh_tokens"].delete_many({"$or": [{"family": family}, {"jti": family}]})
+    end_session(family)
     return None
 
 
@@ -334,7 +372,7 @@ def try_refresh_access_token():
     if rotated is None:
         return None
     username, refresh_token = rotated
-    return create_access_token(username), refresh_token
+    return create_access_token(username, family=session_family(refresh_token)), refresh_token
 
 
 # Personal access tokens (web/personal_tokens.py): a long-lived secret for a script or an assistant, sent as
@@ -439,6 +477,9 @@ def login_required(f):
 
         if token:
             payload = verify_token(token, "access")
+            if payload and not session_is_open(payload.get("sid")):
+                # Its sign-in has ended: on this device, or on every device after a logout everywhere.
+                payload = None
 
         if not payload and not _bearer_sent():
             # Only a browser's session renews itself, from its cookie. A native app names its token in the header

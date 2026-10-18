@@ -31,6 +31,8 @@ from web.security import (
     create_refresh_token,
     verify_user_credentials,
     revoke_user_sessions,
+    end_session,
+    session_family,
     ADMIN_USERNAME,
 )
 from web.schemas import (
@@ -133,8 +135,8 @@ def is_native_client() -> bool:
 def signed_in_response(message_key: str, signed_in_as: str, status: int = 200, **extra):
     """A success answer that starts a session for ``signed_in_as``: httpOnly
     cookies for the web app, plus the tokens in the body for a native one."""
-    access_token = create_access_token(signed_in_as)
     refresh_token = create_refresh_token(signed_in_as)
+    access_token = create_access_token(signed_in_as, family=session_family(refresh_token))
     tokens = {"access_token": access_token, "refresh_token": refresh_token} if is_native_client() else {}
     response, status = get_message(message_key, status=status, **extra, **tokens)
     # A browser keeps its session in these cookies. A native app keeps the tokens above itself: a cookie it
@@ -357,7 +359,7 @@ def api_refresh():
         return error_response("unauthorized_refresh_token_invalid")
     username, next_refresh_token = rotated
 
-    access_token = create_access_token(username)
+    access_token = create_access_token(username, family=session_family(next_refresh_token))
     # A native app keeps the new refresh token itself; the web app gets it
     # as a cookie only.
     tokens = {"refresh_token": next_refresh_token} if is_native_client() else {}
@@ -375,17 +377,13 @@ def api_refresh():
     tags=["auth"],
 )
 def api_logout():
-    """Logout — invalidate this user's refresh tokens.
+    """Logout: ends this device's sign-in, and only that one.
 
-    Ends every session of the user on every device at once: the refresh tokens are deleted, and access tokens already given out stop working too, as after a password change. A native app sends its refresh token in the body, the web app sends nothing and is identified by its cookie (when both come, the cookie wins). The answer is always 200, with no token or an unknown or expired one too, and both cookies are cleared.
-
-    We delete the specific token the cookie carries, AND any other
-    tokens belonging to the same user. Logging out is supposed to
-    mean "sign me out of everything" — if a user had refresh tokens
-    cached from older devices/sessions and only the current cookie
-    got deleted, a stolen token from a different device would still
-    happily mint access tokens. Deleting by username keeps the
-    invariant "after logout, no refresh token for this user exists".
+    The sign-in the presented refresh token belongs to ends: its refresh tokens are deleted and its access tokens stop
+    at once. The other devices stay signed in. ``{"everywhere": true}`` in the body ends every sign-in of the user on
+    every device, as after a password change. A native app sends its refresh token in the body; the web app sends
+    nothing and is identified by its cookies (when both come, the cookie wins). The answer is always 200, with no token
+    or an unknown or expired one too, and both cookies are cleared.
     """
     # A native app has no cookies: it sends its refresh token in the body. Only a non-empty string is a token: a JSON
     # object there would reach the database as a query operator ({"$ne": null} deleted someone else's row).
@@ -394,23 +392,25 @@ def api_logout():
     refresh_token = request.cookies.get("refresh_token") or body_token
     if not (isinstance(refresh_token, str) and refresh_token):
         refresh_token = None
+    everywhere = isinstance(body, dict) and body.get("everywhere") is True
 
+    # Must see patched app.db in tests
+    from web.security import get_token_from_request, verify_token
+
+    record = None
     if refresh_token:
-        # Must see patched app.db in tests
-        from web.security import verify_token
-
-        # Find the user this token belongs to (verify_token only checks
-        # signature/expiry, doesn't touch the DB).
-        payload = verify_token(refresh_token, "refresh")
-        username = payload.get("username") if payload else None
-
-        if username:
-            # Every session, not only the refresh tokens: access tokens already given out stop at once too,
-            # as after a password change, instead of living on for their 15 minutes.
-            revoke_user_sessions(username)
-        else:
-            # Couldn't decode — fall back to removing the specific token.
-            app.db["refresh_tokens"].delete_one({"token_hash": refresh_token_hash(refresh_token)})
+        record = app.db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(refresh_token)})
+    access = verify_token(get_token_from_request(), "access")
+    if everywhere:
+        owner = (record or verify_token(refresh_token, "refresh") or access or {}).get("username")
+        if owner:
+            revoke_user_sessions(owner)
+    else:
+        if record:
+            end_session(record.get("family") or record.get("jti"))
+            app.db["refresh_tokens"].delete_one({"_id": record["_id"]})
+        if access and access.get("sid"):
+            end_session(access["sid"])
 
     response, status = get_message("auth_logout_success")
     response.set_cookie("access_token", "", max_age=0)

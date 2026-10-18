@@ -220,6 +220,7 @@ def ensure_indexes() -> None:
                                               same wall-clock second)
                           token_hash unique (sha256 of the token: the
                                               token itself is not stored)
+                          family            (a sign-in: ended as a whole)
       push_subscriptions  endpoint unique   (upsert on re-subscribe)
                           username          (list a user's own devices)
       api_tokens          token_hash unique (sha256 of a personal access token: the token
@@ -327,6 +328,7 @@ def ensure_indexes() -> None:
             "verification_mail_log_address",
         ),
         (db.verification_mail_log, [("expires_at", ASCENDING)], "verification_mail_log_ttl", {"expireAfterSeconds": 0}),
+        (db.refresh_tokens, [("family", ASCENDING)], "refresh_token_family"),
         (db.users, [("role", ASCENDING)], "users_role"),
         (
             db.refresh_tokens,

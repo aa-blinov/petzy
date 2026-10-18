@@ -138,11 +138,10 @@ class TestAuthentication:
         assert "error" in data
 
     def test_api_logout(self, client, mock_db, admin_refresh_token):
-        """Test logout removes the user's refresh token (and only theirs).
+        """Test logout ends this device's sign-in: its refresh token goes, and another device's does not.
 
-        Also covers the "logout invalidates every device" invariant: a
-        second refresh token for the same user must be dropped together
-        with the cookie token.
+        A second refresh token for the same user is another sign-in, on another device, and it stays. A logout
+        everywhere is in tests/stateless/test_sign_out.py.
         """
         from uuid import uuid4
         from web.app import db
@@ -166,7 +165,7 @@ class TestAuthentication:
             )
 
         # Insert a SECOND refresh token for the same user (simulates an
-        # older device/session). Logout must drop both.
+        # older device/session). Logout must leave it.
         other_jti = uuid4().hex
         other_token = jwt.encode(
             {
@@ -210,8 +209,8 @@ class TestAuthentication:
 
         # Cookie token gone
         assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(admin_refresh_token)}) is None
-        # Other admin token also gone (logout is "sign out of everything")
-        assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(other_token)}) is None
+        # The other device stays signed in
+        assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash(other_token)}) is not None
         # Other user untouched
         assert db["refresh_tokens"].find_one({"token_hash": refresh_token_hash("other-user-token")}) is not None
 
