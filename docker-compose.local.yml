@@ -7,6 +7,15 @@
 # App: http://localhost:3000 (the same nginx, headers and build as
 # production). API straight: http://localhost:5002.
 #
+# A second stand next to it, so the browser checks can run in two lines. It is its own project, with its
+# own database and files, and its own ports:
+#
+#   PETZY_LOCAL_PORT=3001 PETZY_LOCAL_API_PORT=5003 PETZY_LOCAL_ORIGIN=http://localhost:3001 \
+#     docker compose -p petzy-local-2 -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#   .venv/bin/python scripts/seed_demo.py --base http://localhost:3001
+#
+# The pre-push hook uses it when it answers at http://localhost:3001 (see e2e/README.md).
+#
 # What differs from production, on purpose:
 # - Files go to a local S3 server (Versity Gateway) in its own volume, never
 #   to the production bucket: a .env with real keys can't leak local data
@@ -23,7 +32,7 @@
 x-local-env: &local-env
   S3_ENDPOINT: http://s3:7070
   # The browser uploads through this app's own origin (nginx/local-storage.conf), so links are signed for it.
-  S3_PUBLIC_ENDPOINT: http://localhost:3000
+  S3_PUBLIC_ENDPOINT: ${PETZY_LOCAL_ORIGIN:-http://localhost:3000}
   S3_REGION: us-east-1
   S3_BUCKET: petzy-local
   # Credentials of the local file store only (below); not secrets.
@@ -34,7 +43,7 @@ x-local-env: &local-env
   # The dev routes (/api/dev/outbox, /api/dev/reset-limits) open only with this and MAIL_OUTBOX=memory.
   # Production sets neither.
   PETZY_DEV_TOOLS: "1"
-  APP_BASE_URL: http://localhost:3000
+  APP_BASE_URL: ${PETZY_LOCAL_ORIGIN:-http://localhost:3000}
   # One worker: the in-memory outbox lives in one process. That worker is also the
   # whole backend, so it is not recycled every thousand requests: a recycle drops the
   # request in flight and nginx answers 502, which is how a browser check used to fail
@@ -57,7 +66,7 @@ services:
 
   web:
     ports: !override
-      - "127.0.0.1:5002:5000"
+      - "127.0.0.1:${PETZY_LOCAL_API_PORT:-5002}:5000"
     environment: *local-env
     depends_on:
       s3-init:
@@ -111,6 +120,8 @@ services:
   # The stand's nginx: the production config plus one route, /petzy-local/, that hands uploads to the local storage
   # (nginx/local-storage.conf). Production never mounts this file.
   nginx:
+    ports: !override
+      - "127.0.0.1:${PETZY_LOCAL_PORT:-3000}:80"
     volumes:
       - ./nginx/local-storage.conf:/etc/nginx/conf.d/default.conf:ro
 

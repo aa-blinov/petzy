@@ -18,7 +18,10 @@ def test_the_local_copy_is_the_production_config_plus_the_storage_route_only():
     route, rest = tail.split(ANCHOR, 1)
     assert head + ANCHOR + rest == PROD.replace(ANCHOR, ANCHOR, 1)
     assert "location ^~ /petzy-local/ {" in route
-    assert "proxy_set_header Host localhost:3000;" in route
+    # The storage signs the Host header, so the route hands on the host the browser used: a second stand on another
+    # port then uploads just as the first one does. A fixed port here would break the second stand.
+    assert "proxy_set_header Host $http_host;" in route
+    assert "localhost:3000" not in route
 
 
 def test_the_stand_mounts_the_local_copy_and_production_never_does():
