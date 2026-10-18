@@ -15,3 +15,5 @@ mongomock==4.1.2
 ruff==0.14.9
 moto[s3,server]>=5.0.0
 pypdf==6.19.0
+# Checks the published document against the OpenAPI 3.0 schema: tests/stateless/test_openapi_30.py.
+openapi-spec-validator==0.9.0

@@ -12,6 +12,7 @@ import re
 from flask import Blueprint, Response, jsonify
 
 from web.app import api, app
+from web.openapi_30 import to_openapi_30
 from web.security import PAT_SCOPE_ATTR, PERSONAL_TOKEN_PREFIX
 
 docs_bp = Blueprint("docs", __name__)
@@ -483,6 +484,9 @@ def finish_spec(spec: dict) -> dict:
 
     _say_what_errors_mean(paths, op, error_schema)
     _name_the_params_views_read(op, error_schema)
+    converted = to_openapi_30(spec)  # the rewrite is the last step; api.spec is served from this same object
+    spec.clear()
+    spec.update(converted)
     return spec
 
 
@@ -742,7 +746,7 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
 
 @docs_bp.route("/api/openapi.json", methods=["GET"])
 def openapi_json():
-    """The OpenAPI 3.1 document, for code generators and Postman."""
+    """The OpenAPI 3.0.3 document, for code generators and Postman (web/openapi_30.py says why 3.0)."""
     return jsonify(api.spec)
 
 
