@@ -4306,3 +4306,91 @@ class VaccineCatalogResponse(BaseModel):
             }
         }
     )
+
+
+SYNC_KINDS = Literal["document", "event", "medical_record", "medication", "medication_intake", "pet"]
+SYNC_CURSOR = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?,(document|event|medical_record|medication|medication_intake|pet),[0-9a-f]{24}"
+
+
+class SyncQuery(BaseModel):
+    """GET /api/sync: the changes since a moment, one page at a time."""
+
+    since: Optional[str] = Field(
+        None,
+        description="Момент последней полной синхронизации минус минута, UTC, например 2026-10-18T08:12:33Z. Без него: с самого начала",
+    )
+    after: Optional[str] = Field(None, description="next_cursor предыдущего ответа: следующая страница")
+    page_size: int = Field(200, ge=1, le=500, description="Сколько меток в одном ответе")
+
+    @field_validator("since")
+    @classmethod
+    def _since_is_a_moment(cls, value):
+        if value is not None:
+            try:
+                datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                raise ValueError("since: время в формате ISO 8601, например 2026-10-18T08:12:33Z")
+        return value
+
+    @field_validator("after")
+    @classmethod
+    def _after_is_a_cursor(cls, value):
+        if value is not None and not re.fullmatch(SYNC_CURSOR, value):
+            raise ValueError("after: курсор из next_cursor предыдущего ответа")
+        return value
+
+
+class SyncItem(BaseModel):
+    """One marker: a record that changed, or that is gone (``deleted``)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "kind": "medication",
+                "id": "64f1a2b3c4d5e6f708192a3b",
+                "pet_id": "64f1a2b3c4d5e6f708192a3a",
+                "updated_at": "2026-10-18T08:12:33Z",
+                "deleted": False,
+            }
+        }
+    )
+
+    kind: SYNC_KINDS = Field(..., description="Что изменилось: вид записи")
+    id: str = Field(..., description="Идентификатор записи")
+    pet_id: str = Field(..., description="Питомец, которому принадлежит запись (у питомца совпадает с id)")
+    updated_at: str = Field(
+        ..., description="Когда запись изменилась или удалена, UTC до секунды: «2026-10-18T08:12:33Z»"
+    )
+    deleted: bool = Field(..., description="true: записи больше нет, её надо убрать с устройства")
+
+
+class SyncResponse(BaseModel):
+    """GET /api/sync: a page of markers, and where the next page starts."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "items": [
+                    {
+                        "kind": "medication",
+                        "id": "64f1a2b3c4d5e6f708192a3b",
+                        "pet_id": "64f1a2b3c4d5e6f708192a3a",
+                        "updated_at": "2026-10-18T08:12:33Z",
+                        "deleted": False,
+                    }
+                ],
+                "next_cursor": None,
+                "has_more": False,
+                "reset": False,
+                "sync_at": "2026-10-18T08:12:40Z",
+            }
+        }
+    )
+
+    items: list[SyncItem]
+    next_cursor: Optional[str] = Field(None, description="Передайте как after, пока has_more равно true")
+    has_more: bool
+    reset: bool = Field(
+        False, description="true: устройство отсутствовало дольше, чем хранятся удаления; начните заново без since"
+    )
+    sync_at: str = Field(..., description="Момент ответа на сервере, UTC до секунды")

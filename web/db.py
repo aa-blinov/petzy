@@ -4,6 +4,7 @@ import base64
 import hashlib
 import logging
 import os
+from datetime import timezone
 from functools import lru_cache
 from urllib.parse import quote_plus
 
@@ -186,6 +187,26 @@ def migrate_refresh_token_hashes() -> int:
         result = db.refresh_tokens.update_one({"_id": row["_id"], "token_hash": {"$exists": False}}, change)
         changed += result.modified_count
     return changed
+
+
+CHANGE_STAMPED = ("pets", "documents", "medications", "medication_intakes", "medical_records")
+
+
+def backfill_updated_at() -> int:
+    """Give a record saved before the sync feed its change moment: its creation, the last change it had.
+
+    The feed (web/sync.py) reads updated_at only, so a record without it would never reach a device. Runs at
+    startup and does nothing once every record has the field. Returns how many records got it.
+    """
+    done = 0
+    for name in CHANGE_STAMPED:
+        for row in list(db[name].find({"updated_at": {"$exists": False}}, {"created_at": 1})):
+            moment = row.get("created_at") or row["_id"].generation_time
+            if moment.tzinfo is not None:
+                moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
+            db[name].update_one({"_id": row["_id"], "updated_at": {"$exists": False}}, {"$set": {"updated_at": moment}})
+            done += 1
+    return done
 
 
 def ensure_indexes() -> None:
@@ -439,6 +460,22 @@ def ensure_indexes() -> None:
         coll = db[coll_name]
         declarations.append((coll, [("pet_id", ASCENDING), ("date_time", DESCENDING)], f"{coll_name}_pet_date"))
 
+    for coll_name in ("documents", "medications", "medication_intakes", "medical_records"):
+        declarations.append(
+            (db[coll_name], [("pet_id", ASCENDING), ("updated_at", ASCENDING)], f"{coll_name}_pet_updated")
+        )
+    # The sync feed (web/sync.py): who can see a gone record, and when the record is dropped.
+    declarations.append(
+        (
+            db.sync_deletions,
+            [("viewers", ASCENDING), ("kind", ASCENDING), ("deleted_at", ASCENDING)],
+            "sync_deletions_viewer",
+        )
+    )
+    declarations.append(
+        (db.sync_deletions, [("expires_at", ASCENDING)], "sync_deletions_ttl", {"expireAfterSeconds": 0})
+    )
+
     for spec in declarations:
         coll = spec[0]
         keys = spec[1]
@@ -450,6 +487,11 @@ def ensure_indexes() -> None:
             # Don't fail startup on an index that cannot be built (a unique
             # index over duplicate rows); log and move on.
             logger.warning("Could not create index %s on %s: %s", name, coll.name, exc)
+
+    try:
+        backfill_updated_at()
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning("Could not backfill updated_at: %s", exc)
 
 
 # Export mongo_uri for use in Flask-Limiter
