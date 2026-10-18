@@ -13,10 +13,16 @@ export function formatDate(date: Date): string {
  * («2026-10-02 12:29» in Almaty): what a document list shows, not a time five hours off.
  */
 export function utcStampToLocal(stamp: string): string {
-  const iso = stamp.replace(' ', 'T');
-  const moment = new Date(iso.length === 16 ? `${iso}:00Z` : `${iso}Z`);
+  const moment = utcMoment(stamp);
   if (Number.isNaN(moment.getTime())) return stamp;
   return `${formatDate(moment)} ${formatTime(moment)}`;
+}
+
+/** A stamp the server writes in UTC: «2026-10-02T07:29:00Z» now, «2026-10-02 07:29» before (no zone written). */
+export function utcMoment(stamp: string): Date {
+  const iso = stamp.replace(' ', 'T');
+  if (/(Z|[+-]\d{2}:?\d{2})$/.test(iso)) return new Date(iso);
+  return new Date(iso.length === 16 ? `${iso}:00Z` : `${iso}Z`);
 }
 
 /**

@@ -16,6 +16,7 @@ import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { usePet } from '../hooks/usePet';
 import { toDeviceClock } from '../utils/timezone';
 import { useHiddenRecords } from '../utils/deferredDelete';
+import { zonedNowStamp } from '../utils/timezone';
 
 /**
  * Today's next dose, on the feed. Only today's: marking a dose for a day
@@ -57,11 +58,7 @@ export function NextDoseWidget() {
             // local. Sending UTC shifted every judgement by the viewer's
             // offset, so a dose an hour overdue still read as upcoming
             // (at UTC+5, a five-hour blind window).
-            const now = new Date();
-            return medicationsService.getUpcoming(
-                selectedPetId!,
-                `${formatDate(now)}T${formatTime(now)}:00`,
-            );
+            return medicationsService.getUpcoming(selectedPetId!, zonedNowStamp(new Date()));
         },
         enabled: !!selectedPetId,
         // Another person may have marked this dose: looked at again every half minute and whenever the app comes back to

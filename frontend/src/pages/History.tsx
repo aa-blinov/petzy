@@ -28,6 +28,7 @@ import { SkeletonList } from '../components/Skeletons';
 import { Fab } from '../components/Fab';
 import { QuickAddSheet } from '../components/QuickAddSheet';
 import { hapticFeedback } from '../utils/haptic';
+import { wallDate } from '../utils/timezone';
 
 /** Format a YYYY-MM-DD dateStr as a friendly Russian relative or absolute label. */
 function formatDateHeader(dateStr: string): string {
@@ -168,7 +169,7 @@ export function History() {
     const groupedItems = useMemo(() => {
         const groups: Record<string, HealthRecord[]> = {};
         for (const item of filteredRecords) {
-            const dateStr = String(item.date_time ?? '').split(' ')[0];
+            const dateStr = wallDate(String(item.date_time ?? ''));
             if (!groups[dateStr]) groups[dateStr] = [];
             groups[dateStr].push(item);
         }

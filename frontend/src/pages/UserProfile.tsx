@@ -28,11 +28,9 @@ function sharedPetsOf(profile: UserPublicProfile): SharedPet[] {
   return pets;
 }
 
-/** "2024-01-15 14:30" -> "с января 2024". Only the API's own
- *  "YYYY-MM-DD HH:MM" shape is ever handed to this, so the split is safe
- *  without pulling in the fuller relativeTime date parser. */
+/** "2024-01-15T14:30:00Z" -> "с января 2024". The date is the first ten characters of the API's stamp. */
 function memberSince(createdAt: string): string {
-  const [datePart] = createdAt.split(' ');
+  const datePart = createdAt.slice(0, 10);
   const [year, month] = datePart.split('-').map(Number);
   if (!year || !month) return '';
   const months = [

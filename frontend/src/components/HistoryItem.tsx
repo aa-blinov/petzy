@@ -18,6 +18,7 @@ import { UserAvatar } from './UserAvatar';
 import { CardChevron } from './CardChevron';
 import { IntakeTimePicker } from './IntakeTimePicker';
 import { whenLabel, whenPhrase, type IntakeWhen } from '../utils/intakeWhen';
+import { wallDate, wallTime } from '../utils/timezone';
 
 interface HistoryItemProps {
   item: HistoryItemType;
@@ -41,7 +42,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
   const showAuthor = item.username && item.username !== currentUsername;
   const isIntake = type === 'medications';
   const canEdit = !isIntake;
-  const [intakeDate = '', intakeTime = '00:00'] = String(item.date_time).split(' ');
+  const intakeDate = wallDate(item.date_time);
+  const intakeTime = wallTime(item.date_time) || '00:00';
   const intakeWhen: IntakeWhen = { date: intakeDate, time: intakeTime.slice(0, 5) };
 
   const moveIntake = async (when: IntakeWhen) => {
