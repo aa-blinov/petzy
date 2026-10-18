@@ -1,7 +1,7 @@
 /**
  *Format date+time strings as natural Russian relative time.
 
-Backend stores date_time as ``YYYY-MM-DD HH:MM`` (naive local time).
+The backend sends date_time as the clock a person typed, with the offset of its zone (``YYYY-MM-DDTHH:MM:SS+05:00``).
 This module converts such strings into human-friendly forms:
 
   - "сегодня в 08:00"
@@ -22,7 +22,7 @@ export const MONTHS_GENITIVE = [
 
 
 function _parseDate(dateStr: string): { y: number; m: number; d: number; hh: number; mm: number } | null {
-  // Accept "YYYY-MM-DD HH:MM" or "YYYY-MM-DD" — match what the backend emits.
+  // Accept "YYYY-MM-DD HH:MM", a moment with its zone, or "YYYY-MM-DD": the wall clock is read from the front.
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(dateStr);
   if (!m) return null;
   return {
@@ -39,9 +39,9 @@ function _parseDate(dateStr: string): { y: number; m: number; d: number; hh: num
  * Parse a backend `date_time` string into a Date in the viewer's own
  * timezone.
  *
- * The backend emits a naive local wall clock — `YYYY-MM-DD HH:MM`, or
- * just `YYYY-MM-DD` — so the only correct reading is to build the Date
- * from the parts. Handing either form straight to `new Date()` is wrong
+ * The backend emits the clock a person typed, with its zone's offset, or
+ * just `YYYY-MM-DD` — the wall clock is read from the parts; the offset
+ * does not change what is shown. Handing either form straight to `new Date()` is wrong
  * in a different way for each:
  *
  *   - `new Date("2026-09-16")` is an ISO date-only form, which the spec

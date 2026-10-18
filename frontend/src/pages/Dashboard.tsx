@@ -24,6 +24,7 @@ import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { PendingInvites } from '../components/PendingInvites';
 import { usePetInvites } from '../hooks/usePetInvites';
+import { wallDate } from '../utils/timezone';
 
 /** The next page comes when the end of the list comes near (the button stays, for whoever uses it). */
 function AutoLoadMore({ onVisible, disabled, children }: { onVisible: () => void; disabled: boolean; children: ReactNode }) {
@@ -106,7 +107,7 @@ export function Dashboard() {
 
   const groupedItems = useMemo(() => {
     return allItems.reduce<Record<string, HealthRecord[]>>((acc, item) => {
-      const dateStr = String(item.date_time ?? '').split(' ')[0];
+      const dateStr = wallDate(String(item.date_time ?? ''));
       if (!acc[dateStr]) acc[dateStr] = [];
       acc[dateStr].push(item);
       return acc;

@@ -1,5 +1,5 @@
 import api from './api';
-import { deviceTimeZone, toDeviceClock } from '../utils/timezone';
+import { requiredZone, toDeviceClock } from '../utils/timezone';
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -51,7 +51,7 @@ export interface EventUpdate {
  *  case it. Medications go through their own service instead. */
 export const healthRecordsService = {
   async create(type: string, data: EventCreate): Promise<{ message: string; id?: string }> {
-    const response = await api.post<{ message: string; id?: string }>('/events', { ...data, type, tz: deviceTimeZone() });
+    const response = await api.post<{ message: string; id?: string }>('/events', { ...data, type, tz: requiredZone() });
     return response.data;
   },
 
@@ -68,7 +68,7 @@ export const healthRecordsService = {
   },
 
   async update(recordId: string, data: EventUpdate): Promise<{ message: string }> {
-    const response = await api.put<{ message: string }>(`/events/${recordId}`, { ...data, tz: deviceTimeZone() });
+    const response = await api.put<{ message: string }>(`/events/${recordId}`, { ...data, tz: requiredZone() });
     return response.data;
   },
 

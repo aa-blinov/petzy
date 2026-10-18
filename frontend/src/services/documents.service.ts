@@ -1,5 +1,6 @@
 import api from './api';
 import { utcStampToLocal } from '../utils/dateUtils';
+import { utcMoment } from '../utils/dateUtils';
 
 export type DocumentCategory = 'vaccination' | 'lab_result' | 'conclusion' | 'imaging' | 'insurance' | 'other';
 
@@ -183,8 +184,7 @@ function zoneFormatter(zone: string): Intl.DateTimeFormat | null {
  *  about it. */
 export function documentLocalStamp(doc: Pick<PetDocument, 'created_at' | 'tz'>): string {
   if (doc.tz) {
-    const iso = doc.created_at.replace(' ', 'T');
-    const moment = new Date(iso.length === 16 ? `${iso}:00Z` : `${iso}Z`);
+    const moment = utcMoment(doc.created_at);
     const formatter = Number.isNaN(moment.getTime()) ? null : zoneFormatter(doc.tz);
     if (formatter) {
       const parts = formatter.formatToParts(moment);

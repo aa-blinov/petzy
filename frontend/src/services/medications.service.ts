@@ -1,6 +1,6 @@
 import api from './api';
 import { formatDate } from '../utils/dateUtils';
-import { deviceTimeZone } from '../utils/timezone';
+import { deviceTimeZone, requiredZone } from '../utils/timezone';
 
 export interface MedicationSchedule {
     days: number[]; // 0-6
@@ -168,13 +168,13 @@ export const medicationsService = {
      *  ``id`` is the intake's, for «Отменить». */
     async logIntake(id: string, data: IntakeInput): Promise<{ id: string; ran_out: boolean }> {
         // Fifteen seconds, not thirty: a mark with no answer by then is kept on the phone and sent later.
-        const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, { ...data, tz: deviceTimeZone() }, { timeout: 15_000 });
+        const response = await api.post<{ id: string; ran_out?: boolean }>(`/medications/${id}/log`, { ...data, tz: requiredZone() }, { timeout: 15_000 });
         return { id: response.data.id, ran_out: !!response.data.ran_out };
     },
 
     /** Move a logged dose to when it was really given. */
     async updateIntakeTime(intakeId: string, when: { date: string; time: string }): Promise<void> {
-        await api.put(`/medications/intakes/${intakeId}`, { ...when, tz: deviceTimeZone() });
+        await api.put(`/medications/intakes/${intakeId}`, { ...when, tz: requiredZone() });
     },
 
     /** Delete a logged dose (its stock comes back). Not /events/: intakes

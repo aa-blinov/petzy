@@ -30,6 +30,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { PawPrint } from 'lucide-react';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { wallDate, wallTime } from '../utils/timezone';
 import './HealthRecordForm.css';
 
 /** Builds the field list + title for a registered event type. Date, time
@@ -288,9 +289,8 @@ export function HealthRecordForm() {
     };
 
     if (data.date_time) {
-      const parts = String(data.date_time).split(' ');
-      formData.date = parts[0] || '';
-      formData.time = parts[1] ? String(parts[1]).substring(0, 5) : '';
+      formData.date = wallDate(String(data.date_time));
+      formData.time = wallTime(String(data.date_time));
     } else {
       formData.date = data.date ? String(data.date) : '';
       formData.time = data.time ? String(data.time) : '';
