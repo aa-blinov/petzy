@@ -226,16 +226,15 @@ def test_each_create_a_retry_may_send_again_takes_the_idempotency_key(client):
 
 
 def test_an_enum_that_allows_null_lists_null(client):
-    """OpenAPI 3.1 reads `enum` next to `anyOf: [..., {type: null}]` as the whole answer: a value of null that the enum
-    does not list is invalid, and a generated client takes the enum as the only choices."""
+    """A nullable schema with an enum lists null in the enum too: a null the enum does not list is not a valid value,
+    and a generated client takes the enum as the only choices."""
     schemas = client.get("/api/openapi.json").get_json()["components"]["schemas"]
+    checked = []
 
     def walk(node, where):
         if isinstance(node, dict):
-            allows_null = any(
-                isinstance(option, dict) and option.get("type") == "null" for option in node.get("anyOf", [])
-            )
-            if "enum" in node and allows_null:
+            if "enum" in node and node.get("nullable"):
+                checked.append(where)
                 assert None in node["enum"], where
             for key, value in node.items():
                 walk(value, f"{where}/{key}")
@@ -245,3 +244,4 @@ def test_an_enum_that_allows_null_lists_null(client):
 
     for name, schema in schemas.items():
         walk(schema, name)
+    assert checked, "the nullable enums this test guards are gone: look for another place to guard"
