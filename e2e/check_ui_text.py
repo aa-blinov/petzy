@@ -13,7 +13,7 @@
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until
+from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until, settle, animations_done
 
 PET = "Тест-М"
 BANNED = {"·": "средняя точка", "|": "палочка", "—": "длинное тире", "–": "короткое тире"}
@@ -30,7 +30,8 @@ PAGE_TEXT = """() => {
 async def look(pg, url: str, ready: str) -> list[str]:
     await pg.goto(url)
     await wait_until(pg, lambda t: ready in t, timeout=15_000)
-    await pg.wait_for_timeout(600)
+    await settle(pg)
+    await animations_done(pg)
     return await pg.evaluate(PAGE_TEXT)
 
 
