@@ -22,7 +22,7 @@ from flask_pydantic_spec import Request, Response
 import web.app as app  # db, logger
 from web.app import api, limiter
 from web.errors import error_response
-from web.helpers import check_pet_access, get_pet_and_validate
+from web.helpers import check_pet_access, get_pet_and_validate, utc_iso
 from web.medical_card import _today, build_medical_card
 from web.schemas import (
     ErrorResponse,
@@ -57,8 +57,8 @@ def _item(share: dict) -> dict:
     return {
         "id": str(share["_id"]),
         "username": share.get("username") or "",
-        "created_at": share["created_at"].isoformat() + "Z",
-        "expires_at": share["expires_at"].isoformat() + "Z",
+        "created_at": utc_iso(share["created_at"]),
+        "expires_at": utc_iso(share["expires_at"]),
     }
 
 
@@ -219,7 +219,7 @@ def get_shared_card(token):
         return error_response("not_found")
     today = _today(request.context.query.tz)  # type: ignore[attr-defined]
     card = build_medical_card(pet, "", today)
-    body = {"card": card, "expires_at": share["expires_at"].isoformat() + "Z"}
+    body = {"card": card, "expires_at": utc_iso(share["expires_at"])}
     username = _signed_in_user()
     if username and check_pet_access(str(pet["_id"]), username):
         body["pet_id"] = str(pet["_id"])

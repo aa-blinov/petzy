@@ -24,7 +24,7 @@ from web.app import api
 from web.configs import PUSH_CONFIG
 from web.decorators import pat_allowed, require_pet_access, require_record_access
 from web.errors import error_response
-from web.helpers import LIVE_EVENT_FILTER, check_pet_access, parse_event_datetime_safe, ru_dose_unit, valid_tz
+from web.helpers import LIVE_EVENT_FILTER, check_pet_access, parse_event_datetime_safe, ru_dose_unit, utc_iso, valid_tz
 from web.messages import get_message
 from web.push_delivery import get_pet_push_subscriptions, send_push_to_subscriptions
 from web.trend_alerts import detect_anomaly
@@ -423,13 +423,6 @@ def _same_record_just_saved(pet_id: str, type_key: str, username: str, event_dt:
     )
 
 
-def _utc_iso(moment: datetime) -> str:
-    """The instant in UTC to the millisecond, «2026-10-18T08:12:33.123Z»: the form a sync client compares as text."""
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    return moment.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-
-
 def _serialize_event(record: dict) -> dict:
     """Convert an internal Mongo event doc into the JSON-friendly shape."""
     record["_id"] = str(record["_id"])
@@ -444,14 +437,12 @@ def _serialize_event(record: dict) -> dict:
     # A tombstone says so, and when it was deleted: a device removes the record from its copy.
     if record.get("is_deleted"):
         record["is_deleted"] = True
-        record["deleted_at"] = (
-            _utc_iso(record["deleted_at"]) if isinstance(record.get("deleted_at"), datetime) else None
-        )
-    # When the record last changed, to the millisecond and in UTC. A record saved before the field existed has no
+        record["deleted_at"] = utc_iso(record["deleted_at"]) if isinstance(record.get("deleted_at"), datetime) else None
+    # When the record last changed, to the second and in UTC. A record saved before the field existed has no
     # updated_at: its creation is the last change it had.
     changed = record.get("updated_at") or record.get("created_at")
     if isinstance(changed, datetime):
-        record["updated_at"] = _utc_iso(changed)
+        record["updated_at"] = utc_iso(changed)
     if isinstance(record.get("created_at"), datetime):
         record["created_at"] = record["created_at"].strftime("%Y-%m-%d %H:%M")
     return record

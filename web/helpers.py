@@ -599,3 +599,14 @@ def ru_dose_unit(value) -> str:
         return ""
     unit = value.strip()
     return _DOSE_UNITS.get(unit.lower(), unit)
+
+
+def utc_iso(moment: datetime) -> str:
+    """A moment as the API writes every timestamp: UTC to the second with a Z, «2026-10-18T08:12:33Z».
+
+    A moment without a zone is taken as UTC, which is how the database keeps them. Seconds and no fraction: the default
+    ISO 8601 decoder of Swift reads this form and refuses milliseconds or microseconds.
+    """
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")

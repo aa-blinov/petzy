@@ -21,6 +21,7 @@ from flask_pydantic_spec import Request, Response
 import web.app as app  # db and logger, so the test patches are visible
 from web.app import api, logger
 from web.errors import error_response
+from web.helpers import utc_iso
 from web.schemas import (
     ErrorResponse,
     PersonalTokenCreate,
@@ -49,7 +50,7 @@ def _now() -> datetime:
 
 
 def _iso(moment: datetime) -> str:
-    return moment.isoformat() + "Z"
+    return utc_iso(moment)
 
 
 def _active(now: datetime) -> dict:

@@ -1,7 +1,7 @@
 """``updated_at``: when a record last changed, on the stand's clock, so that a device can tell its copy is out of date.
 
 A device that was offline cannot judge from its own clock whether the stand changed a record meanwhile: the two
-clocks differ. The stand stamps the moment of every save in UTC, to the millisecond. A record saved before the field
+clocks differ. The stand stamps the moment of every save in UTC, and the answer gives it to the second. A record saved before the field
 existed reports its creation as the last change it had.
 """
 
@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from bson import ObjectId
 
-STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 WEIGHT = {"type": "weight", "date": "2026-10-01", "time": "09:00", "fields": {"weight": 12.4}, "comment": ""}
 
 
@@ -31,10 +31,10 @@ def _instant(stamp):
     return datetime.fromisoformat(stamp.replace("Z", "+00:00")).replace(tzinfo=None)
 
 
-def _utc_naive_to_the_millisecond(moment):
+def _utc_naive_to_the_second(moment):
     if moment.tzinfo is not None:
         moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
-    return moment.replace(microsecond=moment.microsecond // 1000 * 1000)
+    return moment.replace(microsecond=0)
 
 
 @pytest.mark.health_records
@@ -46,7 +46,7 @@ class TestUpdatedAt:
         item = client.get(f"/api/events/{record_id}", headers=_auth(regular_user_token)).get_json()
 
         assert STAMP.match(item["updated_at"])
-        assert _instant(item["updated_at"]) == _utc_naive_to_the_millisecond(stored["created_at"])
+        assert _instant(item["updated_at"]) == _utc_naive_to_the_second(stored["created_at"])
         assert stored["updated_at"] == stored["created_at"]
 
     def test_a_change_moves_it_forward_and_leaves_the_creation_alone(
@@ -63,10 +63,10 @@ class TestUpdatedAt:
 
         assert response.status_code == 200
         stored = mock_db["events"].find_one({"_id": ObjectId(record_id)})
-        assert _utc_naive_to_the_millisecond(stored["updated_at"]) > _utc_naive_to_the_millisecond(long_ago)
+        assert _utc_naive_to_the_second(stored["updated_at"]) > _utc_naive_to_the_second(long_ago)
         assert stored["created_at"] == created_before
         item = client.get(f"/api/events/{record_id}", headers=_auth(regular_user_token)).get_json()
-        assert _instant(item["updated_at"]) > _utc_naive_to_the_millisecond(long_ago)
+        assert _instant(item["updated_at"]) > _utc_naive_to_the_second(long_ago)
 
     def test_a_save_that_changes_nothing_is_still_a_save(self, client, mock_db, regular_user_token, test_pet):
         """Every save is stamped, as the field says. A device that finds a stamp it does not know re-reads the record,
@@ -79,7 +79,7 @@ class TestUpdatedAt:
 
         assert response.status_code == 200
         stored = mock_db["events"].find_one({"_id": ObjectId(record_id)})
-        assert _utc_naive_to_the_millisecond(stored["updated_at"]) > _utc_naive_to_the_millisecond(long_ago)
+        assert _utc_naive_to_the_second(stored["updated_at"]) > _utc_naive_to_the_second(long_ago)
 
     def test_a_repeat_of_a_named_record_is_not_a_save(self, client, mock_db, regular_user_token, test_pet):
         record_id = _create(client, regular_user_token, test_pet["_id"], local_id="r1")
@@ -110,7 +110,7 @@ class TestUpdatedAt:
 
         item = client.get(f"/api/events/{result.inserted_id}", headers=_auth(regular_user_token)).get_json()
 
-        assert item["updated_at"] == "2026-09-01T08:30:15.250Z"
+        assert item["updated_at"] == "2026-09-01T08:30:15Z"
 
     def test_the_list_and_the_timeline_carry_it_too(self, client, mock_db, regular_user_token, test_pet):
         _create(client, regular_user_token, test_pet["_id"])

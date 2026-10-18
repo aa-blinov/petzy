@@ -2005,7 +2005,7 @@ class EventItem(BaseModel):
     )
     updated_at: Optional[str] = Field(
         default=None,
-        description="Когда запись в последний раз сохранена, UTC, с миллисекундами: «2026-10-18T08:12:33.123Z». Для записей до этого поля равно created_at",
+        description="Когда запись в последний раз сохранена, UTC, до секунды: «2026-10-18T08:12:33Z». Для записей до этого поля равно created_at",
     )
     local_id: Optional[str] = Field(
         default=None, description="Идентификатор, который дало устройство; нет у записей, созданных без него"
