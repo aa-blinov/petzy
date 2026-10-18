@@ -2025,6 +2025,9 @@ class EventListResponse(PaginatedResponse):
     """List of events with pagination."""
 
     items: List[EventItem]
+    next_cursor: Optional[str] = Field(
+        None, description="Курсор следующей страницы: передайте его как before. Null на последней"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -2132,7 +2135,29 @@ class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
     )
 
 
-class EventListQuery(PetIdPaginationQuery):
+# «дата и время,_id» из next_cursor: the time as isoformat, a comma, the record's id.
+FEED_CURSOR = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?,[0-9a-f]{24}$")
+
+
+class FeedQuery(PetIdPaginationQuery):
+    """Query parameters for a feed of events, newest first: a page by number, or on from a cursor."""
+
+    before: Optional[str] = Field(
+        None,
+        max_length=120,
+        description="Курсор next_cursor из предыдущего ответа: с этой записи лента читается дальше. Когда он задан, page не учитывается, и новые записи не сдвигают страницы",
+    )
+
+    @field_validator("before")
+    @classmethod
+    def validate_before(cls, v):
+        """A cursor is the time and the id the previous answer named; anything else is refused."""
+        if v is not None and not FEED_CURSOR.match(v):
+            raise ValueError("Курсор не разобран: ожидается значение next_cursor из предыдущего ответа")
+        return v
+
+
+class EventListQuery(FeedQuery):
     """Query parameters for listing events, optionally filtered by type."""
 
     type: Optional[str] = Field(None, description="Фильтр по ключу типа события (без него все типы)")
@@ -3086,7 +3111,7 @@ class VapidPublicKeyResponse(BaseModel):
 # ============================================================================
 
 
-class TimelineQuery(PetIdPaginationQuery):
+class TimelineQuery(FeedQuery):
     """Query parameters for timeline with optional filtering by type."""
 
     type: Optional[str] = Field("all", description="Тип записи (all, feeding, asthma и т.д.)")
@@ -3107,6 +3132,9 @@ class TimelineItem(BaseModel):
 
 class TimelineResponse(PaginatedResponse):
     items: List[dict]  # Use dict to allow flexibility of various record types
+    next_cursor: Optional[str] = Field(
+        None, description="Курсор следующей страницы: передайте его как before. Null на последней"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
