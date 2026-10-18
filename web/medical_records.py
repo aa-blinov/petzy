@@ -38,6 +38,7 @@ from web.schemas import (
     SuccessResponse,
 )
 from zoneinfo import ZoneInfo
+from web.idempotency import idempotent
 
 medical_records_bp = Blueprint("medical_records", __name__)
 
@@ -251,6 +252,7 @@ def _stored(data: dict, kind: str) -> dict:
     tags=["medical-records"],
 )
 @require_pet_access
+@idempotent
 def create_medical_record():
     """Add a vaccination, treatment, visit or procedure to a pet's medical card.
 

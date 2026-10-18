@@ -207,3 +207,19 @@ def test_every_error_says_what_it_means_here(client):
         if response.get("description") in generic
     ]
     assert not bare, bare
+
+
+def test_each_create_a_retry_may_send_again_takes_the_idempotency_key(client):
+    spec = client.get("/api/openapi.json").get_json()
+    assert "Idempotency-Key" in spec["info"]["description"]
+    for path in (
+        "/api/pets",
+        "/api/documents",
+        "/api/medical-records",
+        "/api/medications",
+        "/api/medications/{id}/log",
+        "/api/events",
+        "/api/event-types",
+    ):
+        names = [parameter["name"] for parameter in spec["paths"][path]["post"].get("parameters", [])]
+        assert "Idempotency-Key" in names, path

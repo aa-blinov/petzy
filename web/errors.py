@@ -48,6 +48,15 @@ ERRORS: Dict[str, ErrorDef] = {
     "picture_link_invalid": ErrorDef(
         "picture_link_invalid", "Ссылка на картинку не действует или истекла. Обновите питомца или документ", 401
     ),
+    "idempotency_in_progress": ErrorDef(
+        "idempotency_in_progress", "Этот запрос ещё выполняется. Подождите немного и не отправляйте его заново", 409
+    ),
+    "idempotency_key_reused": ErrorDef(
+        "idempotency_key_reused", "Этот ключ запроса уже использован с другими данными", 422
+    ),
+    "idempotency_key_invalid": ErrorDef(
+        "idempotency_key_invalid", "Ключ запроса: до 128 печатных символов ASCII без пробелов", 422
+    ),
     "unauthorized_invalid_credentials": ErrorDef("unauthorized_invalid_credentials", "Неверный логин или пароль", 401),
     "unauthorized_refresh_token_required": ErrorDef(
         "unauthorized_refresh_token_required", "Требуется refresh token", 401

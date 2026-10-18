@@ -47,6 +47,7 @@ from web.schemas import (
     SuccessResponse,
     ErrorResponse,
 )
+from web.idempotency import idempotent
 
 
 pets_bp = Blueprint("pets", __name__)
@@ -183,6 +184,7 @@ def get_pets():
     resp=Response(HTTP_201=PetCreatedResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_500=ErrorResponse),
     tags=["pets"],
 )
+@idempotent
 def create_pet():
     """Create a new pet.
 

@@ -53,6 +53,7 @@ from web.schemas import (
 )
 from web.picture_links import picture_route, signed_picture_url
 from web.security import is_admin, login_required
+from web.idempotency import idempotent
 
 documents_bp = Blueprint("documents", __name__)
 
@@ -236,6 +237,7 @@ def _serialize_document(
     resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
+@idempotent
 def create_document():
     """Attach a new document (image or PDF) to a pet.
 

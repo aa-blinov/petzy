@@ -27,7 +27,14 @@ AUTHORED_COLLECTIONS = ("events", "medication_intakes", "medications", "document
 # when the pet is handed over (below), but a scan of somebody else's pet the user
 # merely had access to is left with nobody able to finish it, and its link stops
 # working at once.
-PERSONAL_COLLECTIONS = ("refresh_tokens", "account_tokens", "push_subscriptions", "document_uploads", "api_tokens")
+PERSONAL_COLLECTIONS = (
+    "refresh_tokens",
+    "account_tokens",
+    "push_subscriptions",
+    "document_uploads",
+    "api_tokens",
+    "idempotency_keys",
+)
 
 
 def was_deleted(username: str) -> bool:

@@ -27,6 +27,7 @@ def test_ensure_indexes_creates_expected_indexes():
         "medication_intakes": ["intakes_pet_date", "intakes_med_date"],
         "users": ["users_username_unique", "users_role"],
         "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique", "refresh_token_family"],
+        "idempotency_keys": ["idempotency_key_unique", "idempotency_keys_ttl"],
         "events": [
             "events_pet_date",
             "events_pet_type_date",
