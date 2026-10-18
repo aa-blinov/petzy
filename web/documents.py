@@ -54,6 +54,7 @@ from web.schemas import (
 from web.picture_links import picture_route, signed_picture_url
 from web.security import is_admin, login_required
 from web.idempotency import idempotent
+from web.sync import log_deletion, now_utc
 
 documents_bp = Blueprint("documents", __name__)
 
@@ -283,6 +284,7 @@ def create_document():
 
         document_data = {
             "pet_id": data.pet_id,
+            "updated_at": now_utc(),
             "username": username,
             "category": data.category,
             "title": data.title,
@@ -460,6 +462,7 @@ def complete_scan_upload(upload_id):
             "content_type": slot["content_type"],
             "file_size": size,
             "created_at": datetime.now(timezone.utc),
+            "updated_at": now_utc(),
         }
         result = app.db.documents.insert_one(document_data)
         app.db.document_uploads.delete_one({"_id": upload_id})
@@ -559,6 +562,7 @@ def update_document(id):
         if document.get("scan") and update_data.get("category", SCAN_CATEGORY) != SCAN_CATEGORY:
             return error_response("scan_category_fixed")
 
+        update_data["updated_at"] = now_utc()
         app.db.documents.update_one({"_id": document["_id"]}, {"$set": update_data})
         return get_message("document_updated")
     except Exception as e:
@@ -612,6 +616,7 @@ def replace_document_file(id):
             {"_id": document["_id"]},
             {
                 "$set": {
+                    "updated_at": now_utc(),
                     "file_id": file_id,
                     "original_filename": prepared["original_filename"],
                     "content_type": prepared["content_type"],
@@ -670,8 +675,10 @@ def cancel_document_upload(upload_id):
 
     try:
         app.db.documents.delete_one({"_id": document["_id"]})
+        log_deletion("document", document["_id"], document["pet_id"])
         app.db.medical_records.update_many(
-            {"document_ids": str(document["_id"])}, {"$pull": {"document_ids": str(document["_id"])}}
+            {"document_ids": str(document["_id"])},
+            {"$pull": {"document_ids": str(document["_id"])}, "$set": {"updated_at": now_utc()}},
         )
         try:
             delete_stored_file(document["file_id"])
@@ -700,9 +707,11 @@ def delete_document(id):
     try:
         document = g.record
         app.db.documents.delete_one({"_id": document["_id"]})
+        log_deletion("document", document["_id"], document["pet_id"])
         # A medical record that pointed at this file no longer does.
         app.db.medical_records.update_many(
-            {"document_ids": str(document["_id"])}, {"$pull": {"document_ids": str(document["_id"])}}
+            {"document_ids": str(document["_id"])},
+            {"$pull": {"document_ids": str(document["_id"])}, "$set": {"updated_at": now_utc()}},
         )
         try:
             delete_stored_file(document["file_id"])

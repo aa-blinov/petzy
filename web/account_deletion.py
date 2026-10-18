@@ -17,6 +17,7 @@ from bson.errors import InvalidId
 import web.app as app
 from web import login_lockout, storage
 from web.helpers import LIVE_EVENT_FILTER
+from web.sync import now_utc
 from web.app import logger
 
 # The records that carry the login of whoever made them.
@@ -131,6 +132,7 @@ def _hand_over(username: str, pet: dict, heir: str, moves: dict) -> None:
     update = {
         "$set": {
             "owner": heir,
+            "updated_at": now_utc(),
             "shared_with": [m for m in pet.get("shared_with") or [] if m not in (heir, username)],
             "share_invites": [m for m in pet.get("share_invites") or [] if m not in (heir, username)],
         },
@@ -190,8 +192,11 @@ def delete_account(username: str) -> dict:
     # Other people's pets: no more access, and no pending invitations.
     app.db.pets.update_many(
         {"$or": [{"shared_with": username}, {"share_invites": username}]},
-        {"$pull": {"shared_with": username, "share_invites": username}},
+        {"$pull": {"shared_with": username, "share_invites": username}, "$set": {"updated_at": now_utc()}},
     )
+    # The gone records this account could see stay for the people who could see them, without its name.
+    app.db.sync_deletions.update_many({"viewers": username}, {"$pull": {"viewers": username}})
+    app.db.sync_deletions.delete_many({"viewers": {"$size": 0}})
 
     remaining_pet_ids = [str(p["_id"]) for p, _ in plan["transferred"]] + [str(p["_id"]) for p in plan["left"]]
     for name in AUTHORED_COLLECTIONS:

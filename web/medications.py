@@ -46,6 +46,7 @@ from web.schemas import (
     UpcomingDosesQuery,
 )
 from web.idempotency import idempotent
+from web.sync import log_deletion, now_utc
 
 medications_bp = Blueprint("medications", __name__)
 
@@ -190,6 +191,7 @@ def add_medication():
             medication_data.pop("as_needed", None)
         medication_data["username"] = username
         medication_data["created_at"] = datetime.now(timezone.utc)
+        medication_data["updated_at"] = now_utc()
 
         result = app.db.medications.insert_one(medication_data)
 
@@ -402,6 +404,7 @@ def update_medication(id):
         if started and ended and ended < started:
             return error_response("validation_error", "Окончание курса раньше его начала")
 
+        update_data["updated_at"] = now_utc()
         app.db.medications.update_one({"_id": medication_id}, {"$set": update_data})
 
         return get_message("medication_updated")
@@ -425,6 +428,7 @@ def delete_medication(id):
         medication = g.record
         medication_id = medication["_id"]
 
+        intake_rows = list(app.db.medication_intakes.find({"medication_id": id}, {"_id": 1, "pet_id": 1}))
         # Atomic deletion: use session-based transaction if replica set is available
         # Otherwise, use best-effort approach with proper error handling
         try:
@@ -471,6 +475,9 @@ def delete_medication(id):
                 # Re-raise if it's not a transaction-related error
                 raise
 
+        for row in intake_rows:
+            log_deletion("medication_intake", row["_id"], row["pet_id"])
+        log_deletion("medication", medication_id, medication["pet_id"])
         return get_message("medication_deleted")
     except Exception as e:
         app.logger.error(f"Error deleting medication: {e}")
@@ -642,7 +649,7 @@ def log_intake(id):
                 # Use atomic update with condition to prevent race conditions
                 result = app.db.medications.update_one(
                     {"_id": medication_id, "inventory_current": current_inventory},
-                    {"$set": {"inventory_current": new_inventory}},
+                    {"$set": {"inventory_current": new_inventory, "updated_at": now_utc()}},
                 )
 
                 if result.matched_count > 0:
@@ -666,6 +673,7 @@ def log_intake(id):
         intake_data = {
             "medication_id": id,
             "pet_id": medication["pet_id"],
+            "updated_at": now_utc(),
             "date_time": event_dt,
             "dose_taken": dose_taken,
             # What actually left the stock (less than the dose when it ran
@@ -694,7 +702,7 @@ def log_intake(id):
             if inventory_decremented_by:
                 app.db.medications.update_one(
                     {"_id": medication_id},
-                    {"$inc": {"inventory_current": inventory_decremented_by}},
+                    {"$inc": {"inventory_current": inventory_decremented_by}, "$set": {"updated_at": now_utc()}},
                 )
                 app.logger.warning(
                     f"Intake insert failed for medication {id}; restored {inventory_decremented_by} to inventory"
@@ -728,13 +736,13 @@ def restock_medication(id):
         if medication.get("inventory_current") is None or not medication.get("inventory_enabled"):
             app.db.medications.update_one(
                 {"_id": medication["_id"]},
-                {"$set": {"inventory_current": amount, "inventory_enabled": True}},
+                {"$set": {"inventory_current": amount, "inventory_enabled": True, "updated_at": now_utc()}},
             )
         else:
             # $inc, not read-add-write: two restocks at once both count.
             app.db.medications.update_one(
                 {"_id": medication["_id"]},
-                {"$inc": {"inventory_current": amount}, "$set": {"inventory_enabled": True}},
+                {"$inc": {"inventory_current": amount}, "$set": {"inventory_enabled": True, "updated_at": now_utc()}},
             )
         updated = app.db.medications.find_one({"_id": medication["_id"]}, {"inventory_current": 1})
         return get_message("stock_added", inventory_current=updated.get("inventory_current"))
@@ -819,6 +827,7 @@ def update_intake(id):
         changes = {"date_time": event_dt}
         if event_dt != intake.get("date_time") and valid_tz(data.tz):
             changes["tz"] = data.tz  # the clock moved: it is now in the editor's zone
+        changes["updated_at"] = now_utc()
         update: dict = {"$set": changes}
         if event_dt != intake.get("date_time"):
             # Said to have been given at another time: it no longer vouches for the slot it was marked for, and
@@ -853,12 +862,13 @@ def delete_intake(id):
 
         # Give back what this intake took from the stock. Intakes from
         # before inventory_deducted was stored took their whole dose.
+        log_deletion("medication_intake", intake_id, intake["pet_id"])
         medication_id = ObjectId(intake["medication_id"])
         to_restore = intake.get("inventory_deducted", intake.get("dose_taken", 0)) or 0
         if to_restore:
             app.db.medications.update_one(
                 {"_id": medication_id, "inventory_enabled": True, "inventory_current": {"$ne": None}},
-                {"$inc": {"inventory_current": to_restore}},
+                {"$inc": {"inventory_current": to_restore}, "$set": {"updated_at": now_utc()}},
             )
 
         return get_message("intake_deleted")

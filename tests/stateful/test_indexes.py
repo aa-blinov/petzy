@@ -23,8 +23,8 @@ def test_ensure_indexes_creates_expected_indexes():
 
     expected = {
         "pets": ["pets_owner_created", "pets_shared"],
-        "medications": ["meds_pet_created"],
-        "medication_intakes": ["intakes_pet_date", "intakes_med_date"],
+        "medications": ["meds_pet_created", "medications_pet_updated"],
+        "medication_intakes": ["intakes_pet_date", "intakes_med_date", "medication_intakes_pet_updated"],
         "users": ["users_username_unique", "users_role"],
         "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique", "refresh_token_family"],
         "idempotency_keys": ["idempotency_key_unique", "idempotency_keys_ttl"],
@@ -36,8 +36,9 @@ def test_ensure_indexes_creates_expected_indexes():
             "events_pet_updated",
         ],
         "event_types": ["event_types_key_unique"],
-        "documents": ["documents_pet_created", "documents_pet_category_created"],
-        "medical_records": ["medical_records_pet_kind_date"],
+        "documents": ["documents_pet_created", "documents_pet_category_created", "documents_pet_updated"],
+        "medical_records": ["medical_records_pet_kind_date", "medical_records_pet_updated"],
+        "sync_deletions": ["sync_deletions_viewer", "sync_deletions_ttl"],
         "medical_shares": ["medical_shares_token_unique", "medical_shares_pet_created", "medical_shares_purge"],
         "push_subscriptions": ["push_subscriptions_endpoint_unique", "push_subscriptions_username"],
         "medication_reminders_sent": ["reminders_sent_slot_unique", "reminders_sent_ttl"],

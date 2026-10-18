@@ -39,6 +39,7 @@ from web.schemas import (
 )
 from zoneinfo import ZoneInfo
 from web.idempotency import idempotent
+from web.sync import log_deletion
 
 medical_records_bp = Blueprint("medical_records", __name__)
 
@@ -350,5 +351,6 @@ def delete_medical_record(id):
     It leaves the card, the PDF and the overdue dot at once. Documents attached to it are not deleted with it: they belong to the pet, not to the record.
     """
     app.db.medical_records.delete_one({"_id": g.record["_id"]})
+    log_deletion("medical_record", g.record["_id"], g.pet_id)
     app.logger.info(f"Medical record deleted: id={id}, pet_id={g.pet_id}, user={g.username}")
     return jsonify({"message": "Запись удалена", "success": True})

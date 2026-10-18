@@ -48,6 +48,7 @@ from web.schemas import (
     ErrorResponse,
 )
 from web.idempotency import idempotent
+from web.sync import log_deletion, now_utc, pet_viewers
 
 
 pets_bp = Blueprint("pets", __name__)
@@ -249,6 +250,7 @@ def create_pet():
         else:
             pet_data["tiles_settings"] = DEFAULT_TILES_SETTINGS
 
+        pet_data["updated_at"] = now_utc()
         result = app.db["pets"].insert_one(pet_data)
         pet_data["_id"] = str(result.inserted_id)
         if isinstance(pet_data.get("birth_date"), datetime):
@@ -443,6 +445,7 @@ def update_pet(pet_id):
         if not update_data:
             return error_response("validation_error_no_update_data")
 
+        update_data["updated_at"] = now_utc()
         update = {"$set": update_data}
         if photo_changed:
             update["$unset"] = {"look.crops": ""}
@@ -514,7 +517,10 @@ def share_pet(pet_id):
         if share_username in (pet.get("share_invites") or []):
             return error_response("share_already_invited")
 
-        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, {"$addToSet": {"share_invites": share_username}})
+        app.db["pets"].update_one(
+            {"_id": ObjectId(pet_id)},
+            {"$addToSet": {"share_invites": share_username}, "$set": {"updated_at": now_utc()}},
+        )
 
         logger.info(f"Pet share invite: id={pet_id}, owner={username}, invited={share_username}")
         return get_message("pet_shared", username=share_username)
@@ -554,8 +560,14 @@ def unshare_pet(pet_id, share_username):
 
         # Takes back access, or an invitation not yet answered.
         app.db["pets"].update_one(
-            {"_id": ObjectId(pet_id)}, {"$pull": {"shared_with": share_username, "share_invites": share_username}}
+            {"_id": ObjectId(pet_id)},
+            {
+                "$pull": {"shared_with": share_username, "share_invites": share_username},
+                "$set": {"updated_at": now_utc()},
+            },
         )
+        if share_username in pet.get("shared_with", []):
+            log_deletion("pet", pet["_id"], pet["_id"], viewers=[share_username])
 
         logger.info(f"Pet unshared: id={pet_id}, owner={username}, unshared_from={share_username}")
         return get_message("pet_unshared", username=share_username)
@@ -593,7 +605,7 @@ def _answer_invite(pet_id, accept: bool):
         pet_oid = ObjectId(pet_id)
     except Exception:
         return error_response("share_invite_not_found")
-    update = {"$pull": {"share_invites": username}}
+    update = {"$pull": {"share_invites": username}, "$set": {"updated_at": now_utc()}}
     if accept:
         update["$addToSet"] = {"shared_with": username}
     result = app.db["pets"].update_one({"_id": pet_oid, "share_invites": username}, update)
@@ -650,7 +662,7 @@ def put_pet_form_defaults(pet_id):
     if access_error:
         return access_error[0], access_error[1]
     form_defaults = request.context.body.form_defaults  # type: ignore[attr-defined]
-    app.db["pets"].update_one({"_id": pet["_id"]}, {"$set": {"form_defaults": form_defaults}})
+    app.db["pets"].update_one({"_id": pet["_id"]}, {"$set": {"form_defaults": form_defaults, "updated_at": now_utc()}})
     return jsonify({"form_defaults": form_defaults})
 
 
@@ -712,9 +724,9 @@ def put_pet_look(pet_id):
     guard = {"_id": pet["_id"], "look.version": stored_version} if stored_version is not None else {"_id": pet["_id"]}
     if look:
         look["version"] = uuid.uuid4().hex
-        update = {"$set": {"look": look}}
+        update = {"$set": {"look": look, "updated_at": now_utc()}}
     else:
-        update = {"$unset": {"look": ""}}
+        update = {"$unset": {"look": ""}, "$set": {"updated_at": now_utc()}}
     result = app.db["pets"].update_one(guard, update)
     if stored_version is not None and result.matched_count == 0:
         return _look_conflict(app.db["pets"].find_one({"_id": pet["_id"]}) or pet)
@@ -736,9 +748,13 @@ def leave_pet(pet_id):
         pet_oid = ObjectId(pet_id)
     except Exception:
         return error_response("share_not_member")
-    result = app.db["pets"].update_one({"_id": pet_oid, "shared_with": username}, {"$pull": {"shared_with": username}})
+    result = app.db["pets"].update_one(
+        {"_id": pet_oid, "shared_with": username},
+        {"$pull": {"shared_with": username}, "$set": {"updated_at": now_utc()}},
+    )
     if result.matched_count == 0:
         return error_response("share_not_member")
+    log_deletion("pet", pet_oid, pet_oid, viewers=[username])
     logger.info(f"Pet left: id={pet_id}, user={username}")
     return get_message("pet_left")
 
@@ -859,6 +875,8 @@ def purge_pet(pet: dict) -> bool:
     # Captured before the record goes
     old_photo_id = pet.get("photo_file_id")
 
+    # Who could see the pet, read before it goes: they are the ones the deletion is for.
+    viewers = pet_viewers(pet_id_obj)
     # Documents' files need the same capture-before-delete
     # treatment as the pet photo — the Mongo rows disappear once
     # collections_to_clean runs, so grab their file_ids now.
@@ -919,6 +937,7 @@ def purge_pet(pet: dict) -> bool:
             # Re-raise if it's not a transaction-related error
             raise
 
+    log_deletion("pet", pet_id_obj, pet_id_obj, viewers=viewers)
     # Delete the photo (outside the transaction: storage isn't part of it)
     if old_photo_id:
         try:
