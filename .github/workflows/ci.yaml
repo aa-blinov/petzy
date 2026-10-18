@@ -81,8 +81,8 @@ jobs:
           args: format --check
           version: 0.14.9
 
-  test-stateless:
-    name: Pytest (stateless)
+  test:
+    name: Pytest
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -95,8 +95,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           pip install mongomock
-      - name: Run stateless tests
-        run: pytest tests/stateless --tb=short --maxfail=1 -q
+      - name: Run tests (one worker per core)
+        run: pytest tests --tb=short --maxfail=1 -q -n auto
         env:
           # Defaults match the values used by tests; real secrets are not needed for mongomock.
           MONGO_USER: test
@@ -127,33 +127,6 @@ jobs:
         run: npm run build
       - name: Lint
         run: npm run lint
-
-  test-stateful:
-    name: Pytest (stateful)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          pip install mongomock
-      - name: Run stateful tests
-        run: pytest tests/stateful --tb=short --maxfail=1 -q
-        env:
-          # Defaults match the values used by tests; real secrets are not needed for mongomock.
-          MONGO_USER: test
-          MONGO_PASS: test
-          MONGO_HOST: localhost
-          MONGO_PORT: "27017"
-          MONGO_DB: cat_health_test
-          FLASK_SECRET_KEY: ci-secret
-          ADMIN_USERNAME: admin
-          ADMIN_PASSWORD_HASH: $2b$12$dummyhashforCIplaceholdervalueXXXXXXXXXXXXXXXXXXXXX
 
   backup:
     name: Backup image (dump, upload, rotate, restore)
