@@ -32,7 +32,7 @@ def _set_changed(mock_db, record_id, moment):
 
 
 def _stamp(moment):
-    return moment.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _read_delta(client, token, url):
@@ -103,7 +103,7 @@ class TestWhatChangedSince:
         client.delete(f"/api/events/{record}", headers=_auth(regular_user_token))
 
         body = client.get(
-            f"/api/events?pet_id={pet}&since={just_before.strftime('%Y-%m-%dT%H:%M:%S.000Z')}",
+            f"/api/events?pet_id={pet}&since={just_before.strftime('%Y-%m-%dT%H:%M:%SZ')}",
             headers=_auth(regular_user_token),
         ).get_json()
 
