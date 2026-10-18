@@ -483,6 +483,46 @@ def _after_cursor(position: tuple) -> dict:
     return {"$or": [{"date_time": {"$lt": moment}}, {"date_time": moment, "_id": {"$lt": record_id}}]}
 
 
+def _parse_since(text: str) -> datetime:
+    """The moment a device last caught up, as the database keeps moments: UTC, without a zone."""
+    moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    return moment
+
+
+def _change_position(record: dict) -> tuple:
+    """Where a record stands in the order of changes: when it last changed, then its id."""
+    return (record["updated_at"], record["_id"])
+
+
+def _after_change(position: tuple) -> dict:
+    """The changes further on than a position: a later change moment, or the same moment and a later id."""
+    moment, record_id = position
+    return {"$or": [{"updated_at": {"$gt": moment}}, {"updated_at": moment, "_id": {"$gt": record_id}}]}
+
+
+def _changes_since(query_params):
+    """What changed since a moment, for a device that keeps its own copy: live records and tombstones alike.
+
+    Oldest change first, each record once. ``since`` is inclusive, so the device may see its last record again;
+    ``after`` takes the next page from the ``next_cursor`` of the previous answer.
+    """
+    page_size = query_params.page_size
+    changes: dict[str, Any] = {"pet_id": g.pet_id, "updated_at": {"$gte": _parse_since(query_params.since)}}
+    if query_params.type:
+        changes["type"] = query_params.type
+    total = app.db[EVENTS_COLLECTION].count_documents(changes)
+    if query_params.after:
+        changes = {**changes, **_after_change(_parse_cursor(query_params.after))}
+    records = list(app.db[EVENTS_COLLECTION].find(changes).sort([("updated_at", 1), ("_id", 1)]).limit(page_size + 1))
+    has_more = len(records) > page_size
+    records = records[:page_size]
+    next_cursor = _cursor_text(_change_position(records[-1])) if has_more and records else None
+    items = [_serialize_event(r) for r in records]
+    return jsonify({"items": items, "page": 1, "page_size": page_size, "total": total, "next_cursor": next_cursor})
+
+
 def _notify_trend_anomaly(pet: dict, event_type_label: str, field_label: str, new_value, anomaly: dict) -> None:
     """Push the pet's subscribers that a reading looks abnormal compared
     to its own recent history. Never raises — a push failure must not
@@ -683,6 +723,8 @@ def list_events():
     pet_id = g.pet_id
     page = query_params.page
     page_size = query_params.page_size
+    if query_params.since:
+        return _changes_since(query_params)
     cursor = _parse_cursor(query_params.before) if query_params.before else None
 
     mongo_query: dict[str, Any] = {"pet_id": pet_id}
@@ -866,9 +908,10 @@ def _delete_event_record(record: dict):
     event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
     label = event_type["label"] if event_type else "Запись"
 
+    deleted_at = datetime.now(timezone.utc)
     # Marked, not erased: the record leaves every ordinary read, and stays as a tombstone for the devices that sync.
     result = app.db[EVENTS_COLLECTION].update_one(
-        {"_id": record["_id"]}, {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc)}}
+        {"_id": record["_id"]}, {"$set": {"is_deleted": True, "deleted_at": deleted_at, "updated_at": deleted_at}}
     )
     if result.matched_count == 0:
         return error_response("record_not_found")

@@ -2167,9 +2167,47 @@ class FeedQuery(PetIdPaginationQuery):
 
 
 class EventListQuery(FeedQuery):
-    """Query parameters for listing events, optionally filtered by type."""
+    """Query parameters for listing events, optionally filtered by type, or the changes since a moment."""
 
     type: Optional[str] = Field(None, description="Фильтр по ключу типа события (без него все типы)")
+    since: Optional[str] = Field(
+        None,
+        max_length=40,
+        description="Синхронизация: записи, изменённые с этого момента (включительно), и надгробия удалённых; UTC, ISO 8601, например 2026-10-18T08:12:33.123Z. Идут от старых изменений к новым",
+    )
+    after: Optional[str] = Field(
+        None,
+        max_length=120,
+        description="Курсор next_cursor предыдущего ответа синхронизации (вместе с since)",
+    )
+
+    @field_validator("since")
+    @classmethod
+    def validate_since(cls, v):
+        """A moment the device read from the stand: ISO 8601, with a zone or without one (UTC then)."""
+        if v is None:
+            return v
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("since: нужен момент в ISO 8601, например 2026-10-18T08:12:33.123Z")
+        return v
+
+    @field_validator("after")
+    @classmethod
+    def validate_after(cls, v):
+        if v is not None and not FEED_CURSOR.match(v):
+            raise ValueError("Курсор не разобран: ожидается значение next_cursor из предыдущего ответа")
+        return v
+
+    @model_validator(mode="after")
+    def check_the_way_of_reading(self):
+        """A page of the feed and the changes since a moment are two ways to read the list, not one."""
+        if self.after and not self.since:
+            raise ValueError("after нужен вместе с since: это курсор синхронизации")
+        if self.since and self.before:
+            raise ValueError("before и since не вместе: это разные способы чтения")
+        return self
 
 
 # The longest period the History chart asks for («Всё время»). A count past
