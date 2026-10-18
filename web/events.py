@@ -49,6 +49,7 @@ from web.schemas import (
 )
 from web.builtin_event_types import BUILTIN_TYPE_ORDER, HARD_BOUNDS
 from web.security import get_current_user, is_admin, login_required
+from web.idempotency import idempotent
 
 
 events_bp = Blueprint("events", __name__)
@@ -186,6 +187,7 @@ def _registry_order(doc: dict) -> tuple:
     tags=["events"],
 )
 @login_required
+@idempotent
 def create_event_type():
     """Create a custom event type.
 
@@ -566,6 +568,7 @@ def _answer_for_local_id(existing: dict, pet_id: str, type_key: str, local_id: s
     tags=["events"],
 )
 @require_pet_access
+@idempotent
 def create_event():
     """Create a new event of any registered type.
 

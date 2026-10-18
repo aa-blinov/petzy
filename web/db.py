@@ -221,6 +221,8 @@ def ensure_indexes() -> None:
                           token_hash unique (sha256 of the token: the
                                               token itself is not stored)
                           family            (a sign-in: ended as a whole)
+      idempotency_keys    username + path + key unique (a retried create gets its first answer)
+                          expires_at        (the database drops a key a day after it was taken)
       push_subscriptions  endpoint unique   (upsert on re-subscribe)
                           username          (list a user's own devices)
       api_tokens          token_hash unique (sha256 of a personal access token: the token
@@ -329,6 +331,13 @@ def ensure_indexes() -> None:
         ),
         (db.verification_mail_log, [("expires_at", ASCENDING)], "verification_mail_log_ttl", {"expireAfterSeconds": 0}),
         (db.refresh_tokens, [("family", ASCENDING)], "refresh_token_family"),
+        (
+            db.idempotency_keys,
+            [("username", ASCENDING), ("path", ASCENDING), ("key", ASCENDING)],
+            "idempotency_key_unique",
+            {"unique": True},
+        ),
+        (db.idempotency_keys, [("expires_at", ASCENDING)], "idempotency_keys_ttl", {"expireAfterSeconds": 0}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (
             db.refresh_tokens,

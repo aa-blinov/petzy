@@ -45,6 +45,7 @@ from web.schemas import (
     MedicationListQuery,
     UpcomingDosesQuery,
 )
+from web.idempotency import idempotent
 
 medications_bp = Blueprint("medications", __name__)
 
@@ -171,6 +172,7 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
     tags=["medications"],
 )
 @require_pet_access
+@idempotent
 def add_medication():
     """Create a new medication course.
 
@@ -545,6 +547,7 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
     tags=["medications"],
 )
 @require_record_access("medications")
+@idempotent
 def log_intake(id):
     """Log a medication intake.
 

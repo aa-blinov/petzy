@@ -98,6 +98,10 @@ API дневника здоровья питомцев Petzy: питомцы, з
 
 Дата `YYYY-MM-DD`, время `HH:MM`, вместе `YYYY-MM-DD HH:MM`. Это время на часах того, кто его ввёл: присылайте его так, как видит человек. Записи событий, приёмы лекарств и документы (кроме сканов) принимают ещё `tz`, IANA-имя зоны устройства (`Asia/Almaty`), и хранят его рядом со временем: так приложение и выгрузка показывают время на часах того, кто смотрит. Без `tz`, или с неизвестным именем зоны (его молча отбрасывают), время ни к какой зоне не привязано. Эндпоинты, которым нужно «сегодня», принимают текущие дату и время устройства (`client_date`, `client_datetime`), а медкарта и её записи принимают `tz`. Без них, и при неизвестной зоне, сервер считает по UTC.
 
+## Повтор создания
+
+Создание питомца, документа, медицинской записи, назначения, приёма, события и типа события можно повторить безопасно. Передайте заголовок `Idempotency-Key` (до 128 печатных символов ASCII без пробелов, например UUID). Повтор с тем же ключом и тем же телом получит первый ответ и не создаст вторую запись. Ключ действует сутки и принадлежит одному пользователю и одному пути. Тот же ключ с другим телом отвечает 422 `idempotency_key_reused`. Пока первый запрос ещё выполняется, повтор получает 409 `idempotency_in_progress`. Ответ с ошибкой ключ не сохраняет, и запрос можно отправить снова.
+
 ## Списки
 
 По страницам (`page` с 1 и `page_size`, в ответе `page`, `page_size` и `total`) отдаются лента событий, история, документы и приёмы лекарств. Остальные списки (питомцы, приглашения, курсы, поиск людей) приходят целиком. Список пользователей у администратора берёт только `page`: страница в 20 аккаунтов, в ответе `per_page`.
@@ -216,6 +220,24 @@ RATE_LIMITS = {
     ("get", "/api/users/search"): "30 в минуту на одного пользователя",
 }
 
+# The creates a retry may send again with an Idempotency-Key (web/idempotency.py).
+IDEMPOTENT_CREATES = {
+    ("post", "/api/pets"),
+    ("post", "/api/documents"),
+    ("post", "/api/medical-records"),
+    ("post", "/api/medications"),
+    ("post", "/api/medications/{id}/log"),
+    ("post", "/api/events"),
+    ("post", "/api/event-types"),
+}
+IDEMPOTENCY_KEY = {
+    "name": "Idempotency-Key",
+    "in": "header",
+    "required": False,
+    "schema": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[!-~]+$"},
+    "description": "Ключ повтора: тот же ключ с тем же телом получит первый ответ и не создаст вторую запись. "
+    "См. раздел «Повтор создания».",
+}
 _METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
 
 _BINARY = {"type": "string", "format": "binary"}
@@ -267,6 +289,8 @@ def finish_spec(spec: dict) -> dict:
         for method, operation in operations.items():
             if method not in _METHODS:
                 continue
+            if (method, path) in IDEMPOTENT_CREATES:
+                operation.setdefault("parameters", []).append(IDEMPOTENCY_KEY)
             if (method, path) in PUBLIC:
                 operation["security"] = []
             else:
