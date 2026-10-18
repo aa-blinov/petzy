@@ -29,7 +29,36 @@ async def new_page(browser, dark=False, width=390, height=844, sw=True, init=Non
     if init:
         await ctx.add_init_script(init)
     pg = await ctx.new_page()
+    _track(pg)
     return ctx, pg
+
+
+_INFLIGHT = {}
+_DOM_QUIET_JS = """() => new Promise((resolve) => {
+    const quietMs = 150;
+    const start = Date.now();
+    let last = Date.now();
+    const observer = new MutationObserver(() => { last = Date.now(); });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    const tick = () => {
+        if (Date.now() - last >= quietMs || Date.now() - start > 3000) {
+            observer.disconnect();
+            resolve(true);
+        } else {
+            setTimeout(tick, 30);
+        }
+    };
+    tick();
+})"""
+
+
+def _track(pg):
+    """Count the requests a page has in flight, so that settle() knows when the page has finished asking the server."""
+    count = [0]
+    _INFLIGHT[pg] = count
+    pg.on("request", lambda _r: count.__setitem__(0, count[0] + 1))
+    pg.on("requestfinished", lambda _r: count.__setitem__(0, max(0, count[0] - 1)))
+    pg.on("requestfailed", lambda _r: count.__setitem__(0, max(0, count[0] - 1)))
 
 
 async def login(pg, user="demo", pet_prefix="Рекс"):
@@ -96,15 +125,25 @@ async def wait_until(pg, done, timeout=15_000):
 
 
 async def settle(pg, lead_ms=0):
-    """Wait until the page has done what it started: no request in flight for half a second, five seconds at most.
+    """Wait until the page has done what it started: no request in flight, and no change to the page for 150 ms.
 
-    A fixed pause after a move or a click waited the same two seconds whether the page needed 100 ms or 1.5 s. This waits
-    for the page itself. `lead_ms` lets a click start its request before the wait asks whether the network is quiet.
+    Five seconds at most. `lead_ms` lets a click start its request before the wait looks at the requests in flight.
+    A page this helper did not open falls back to Playwright's own network-quiet wait.
     """
     if lead_ms:
         await pg.wait_for_timeout(lead_ms)
+    count = _INFLIGHT.get(pg)
+    if count is None:
+        try:
+            await pg.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
+        return
+    deadline = time.monotonic() + 5
+    while count[0] > 0 and time.monotonic() < deadline:
+        await pg.wait_for_timeout(40)
     try:
-        await pg.wait_for_load_state("networkidle", timeout=5000)
+        await pg.wait_for_function(_DOM_QUIET_JS, timeout=4000)
     except Exception:
         pass
 

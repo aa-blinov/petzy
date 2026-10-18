@@ -22,7 +22,7 @@
 
 import asyncio
 
-from common import BASE, async_playwright, check, login, new_page, summary, wait_until
+from common import BASE, async_playwright, check, login, new_page, summary, wait_until, settle, animations_done
 
 # 12px от линии до текста блока. У antd-ряда сверху 12px, у блока вне формы -- то же.
 LINE_TO_TEXT = 12
@@ -120,7 +120,8 @@ async def open_form(pg, path, ready):
     else:
         await pg.goto(BASE + path)
     await wait_until(pg, lambda t: ready in t, timeout=15_000)
-    await pg.wait_for_timeout(600)
+    await settle(pg)
+    await animations_done(pg)
 
 
 async def check_lines(pg, name: str, with_gap: bool = True) -> None:
