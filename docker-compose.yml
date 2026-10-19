@@ -10,6 +10,7 @@ services:
   db:
     logging: *default-logging
     image: mongo:8.2
+    restart: unless-stopped
     ports:
       # Loopback only: the app, backups and reminders reach it over
       # app-network, and nothing outside the host should. For a GUI
