@@ -151,6 +151,44 @@ class TestDataExport:
         assert any("лекарств" in n for n in names)
         assert not any("астма" in n for n in names)
 
+    def test_two_types_with_one_label_keep_both_files(self, client, mock_db, regular_user_token, test_pet):
+        """Two types may carry one label (an old duplicate is still allowed to be
+        saved). Unpacked, the second file must not replace the first: the archive is
+        how a person takes their data with them."""
+        pet_id = str(test_pet["_id"])
+        for key, mark in (("massage", "из первого типа"), ("massage_old", "из второго типа")):
+            mock_db["event_types"].insert_one(
+                {
+                    "key": key,
+                    "label": "Массаж",
+                    "icon": "paw",
+                    "color": "blue",
+                    "fields": [],
+                    "is_builtin": False,
+                    "created_by": "testuser",
+                }
+            )
+            _insert_event(mock_db, pet_id, key, datetime(2024, 1, 15, 14, 30), comment=mark)
+
+        response = client.get(
+            f"/api/export/all/csv?pet_id={pet_id}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        archive = zipfile.ZipFile(io.BytesIO(response.data))
+        names = archive.namelist()
+        assert len(set(names)) == len(names), f"one name for two files: {names}"
+        assert "массаж.csv" in names  # the first one keeps the plain readable name
+        second = [n for n in names if n != "массаж.csv" and n.startswith("массаж_")]
+        assert len(second) == 1, f"the second file must say which type it is: {names}"
+        assert second[0] in ("массаж_massage.csv", "массаж_massage_old.csv")
+        bodies = [archive.read(n).decode("utf-8-sig") for n in ("массаж.csv", *second)]
+        assert any("из первого" in b for b in bodies)
+        assert any("из второго" in b for b in bodies)
+        # Every file holds exactly one type's records, not both and not none.
+        assert all(("из первого" in b) != ("из второго" in b) for b in bodies)
+
     def test_export_custom_type(self, client, mock_db, regular_user_token, test_pet):
         """A user-created event type is exportable immediately — no code change needed."""
         create = client.post(
