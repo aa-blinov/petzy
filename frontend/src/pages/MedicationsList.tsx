@@ -853,6 +853,7 @@ export function MedicationsList() {
             <Dialog
                 visible={!!restock.medication}
                 title="Пополнить остаток"
+                aria-label="Пополнить остаток"
                 content={
                     restock.medication && (
                         <div style={{ textAlign: 'center' }}>
@@ -907,6 +908,7 @@ export function MedicationsList() {
             <Dialog
                 visible={deleteDialog.visible}
                 title="Удаление лекарства"
+                aria-label="Удаление лекарства"
                 content={
                     deleteDialog.medication && (
                         <span>{medicationDeleteText(deleteDialog.medication.name)}</span>

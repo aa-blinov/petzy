@@ -51,6 +51,7 @@ export function FormDangerButton({ label, confirmTitle, confirmContent, onConfir
       <Dialog
         visible={confirmVisible}
         title={confirmTitle}
+        aria-label={confirmTitle}
         content={confirmContent}
         onClose={() => setConfirmVisible(false)}
         getContainer={() => document.body}

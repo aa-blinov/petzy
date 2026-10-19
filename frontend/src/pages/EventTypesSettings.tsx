@@ -204,6 +204,7 @@ export function EventTypesSettings() {
       <Dialog
         visible={!!pending}
         title="Удаление типа события"
+        aria-label="Удаление типа события"
         content={pending && pending.count > 0
           ? `У типа ${pending.count} ${pluralRu(pending.count, 'запись', 'записи', 'записей')}. Они удалятся вместе с ним, вернуть их будет нельзя`
           : 'У этого типа нет записей, он будет удалён'}

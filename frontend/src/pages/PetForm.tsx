@@ -304,6 +304,7 @@ export function PetForm() {
     if ((pet?.shared_with || []).includes(username)) {
       const confirmed = await Dialog.confirm({
         title: 'Закрыть доступ',
+        'aria-label': 'Закрыть доступ',
         content: `${username} больше не увидит «${pet?.name ?? 'питомца'}» и его записи. Доступ закроется после «Сохранить»`,
         confirmText: 'Закрыть доступ',
         cancelText: 'Оставить',

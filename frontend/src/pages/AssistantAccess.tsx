@@ -65,6 +65,7 @@ export function AssistantAccess() {
   const ask = async (token: PersonalToken) => {
     const sure = await Dialog.confirm({
       title: 'Отозвать доступ?',
+      'aria-label': 'Отозвать доступ?',
       content: 'Скрипт или ассистент сразу потеряет доступ, вернуть его нельзя. Новый доступ можно сделать в любой момент',
       confirmText: 'Отозвать',
       cancelText: 'Оставить',
@@ -75,6 +76,7 @@ export function AssistantAccess() {
   const askRemove = async (token: PersonalToken) => {
     const sure = await Dialog.confirm({
       title: 'Убрать доступ из списка?',
+      'aria-label': 'Убрать доступ из списка?',
       content: 'Доступ уже не работает. Запись о нём пропадёт из списка, вернуть её нельзя',
       confirmText: 'Убрать',
       cancelText: 'Оставить',

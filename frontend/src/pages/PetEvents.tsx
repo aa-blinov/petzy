@@ -145,6 +145,7 @@ export function PetEvents() {
 
   const resetToKind = async () => {
     const sure = await Dialog.confirm({
+      'aria-label': 'Вернуть набор событий?',
       content: `Вернуть набор событий для ${species.forWhom}? Порядок и состав станут такими, какими были у нового питомца`,
       confirmText: 'Вернуть',
       cancelText: 'Оставить',

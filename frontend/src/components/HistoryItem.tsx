@@ -36,6 +36,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
   // about a dose, its time (marked late, or by mistake), or deleting it.
   const [intakeInfoVisible, setIntakeInfoVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
+  // antd keeps the title a plain <div>: the name a screen reader says is set here, so both read the same.
+  const intakeTitle = item.skipped ? 'Пропущенный приём' : 'Приём лекарства';
 
   // Hide the author chip when the record was logged by the current user —
   // single-owner households shouldn't see "admin" on every row.
@@ -248,7 +250,8 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
 
       <Dialog
         visible={intakeInfoVisible}
-        title={item.skipped ? 'Пропущенный приём' : 'Приём лекарства'}
+        title={intakeTitle}
+        aria-label={intakeTitle}
         content={
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontWeight: 500 }}>{String(item.medication_name || 'Лекарство')}</div>

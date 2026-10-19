@@ -48,6 +48,7 @@ export function AccountEmail() {
     }
     if (kind === 'remove') {
       const sure = await Dialog.confirm({
+        'aria-label': 'Удалить почту?',
         content: 'Удалить почту? Без неё забытый пароль придётся сбрасывать через администратора',
         confirmText: 'Удалить',
         cancelText: 'Оставить',
