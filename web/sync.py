@@ -4,7 +4,8 @@ and events.
 The feed carries markers, not the records. A marker says which record changed (``kind``, ``id``), its pet, when it
 changed (``updated_at``), and whether it is gone (``deleted``). The device fetches the records it wants through the list
 and detail endpoints, and drops the ones a marker says are gone. A pet's marker covers what is under the pet: when a
-pet is gone, the device takes the pet and everything it had off the device.
+pet is gone, the device takes the pet and everything it had off the device. A type of the records is no one's pet and is
+shared by a whole household, so its marker names the type and leaves the pet empty.
 
 A device asks with ``since`` (the moment it last looked, inclusive) and follows ``next_cursor`` through the pages. The
 order is by change moment, then kind, then id, so each page starts just after the one before, and no change is lost or
@@ -15,6 +16,7 @@ starts again from the beginning.
 from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from flask import Blueprint, jsonify, request
 from flask_pydantic_spec import Response
 
@@ -27,8 +29,10 @@ from web.security import login_required
 sync_bp = Blueprint("sync", __name__)
 
 KINDS = ("document", "event", "medical_record", "medication", "medication_intake", "pet")
-# Gone records of these kinds are noted in DELETIONS. An event leaves a tombstone of its own (is_deleted), kept as long.
-LOGGED_KINDS = ("document", "medical_record", "medication", "medication_intake", "pet")
+# Gone records of these kinds are noted in DELETIONS. An event leaves a tombstone of its own (is_deleted), kept as long, and
+# only comes here when it was erased with the type it belonged to: there was no document left to mark. An event type is
+# named by its key, belongs to no pet, and has no document of its own to leave a tombstone in: it is only ever a deletion.
+LOGGED_KINDS = ("document", "event", "event_type", "medical_record", "medication", "medication_intake", "pet")
 # The collection each kind lives in, and the field that names its pet (none for a pet, which is its own pet).
 LIVE = {
     "document": ("documents", "pet_id"),
@@ -55,7 +59,14 @@ def _naive_utc(moment: datetime) -> datetime:
 
 
 def _object_id(value):
-    return ObjectId(value) if isinstance(value, str) else value
+    """The value as an id the database can order and compare: an ObjectId for a document, and as it is otherwise, since
+    an event type is named by its key, which is free text."""
+    if not isinstance(value, str):
+        return value
+    try:
+        return ObjectId(value)
+    except InvalidId:
+        return value
 
 
 def pet_viewers(pet_id) -> list:
@@ -113,7 +124,7 @@ def _after(time_field: str, id_field: str, kind: str, cursor: tuple) -> dict:
         return {time_field: {"$gt": moment}}
     if kind > cursor_kind:
         return {time_field: {"$gte": moment}}
-    return {"$or": [{time_field: {"$gt": moment}}, {time_field: moment, id_field: {"$gt": ObjectId(cursor_id)}}]}
+    return {"$or": [{time_field: {"$gt": moment}}, {time_field: moment, id_field: {"$gt": _object_id(cursor_id)}}]}
 
 
 def _item(kind: str, record_id, pet_id, moment: datetime, deleted: bool) -> dict:
@@ -166,6 +177,8 @@ def get_sync():
 
     Each marker has ``kind``, ``id``, ``pet_id``, ``updated_at`` (UTC, to the second) and ``deleted``: a record that is gone comes as ``deleted: true`` and the device drops it. The records themselves come from the list and detail endpoints. A pet that is gone takes its records with it, and the feed sends nothing for them.
 
+    A gone event type comes as one marker of kind ``event_type``: ``id`` is the type's key (what the device stored it under) and ``pet_id`` is empty, because a type belongs to no pet and is shared by a whole household. A marker of a kind the device doesn't know is skipped, not applied: an app that predates ``event_type`` leaves its copy of the types alone and reads ``GET /api/event-types`` again when it next goes online.
+
     Ask with ``since`` (the moment of the last complete sync, minus a minute, so that nothing written during it is missed; a repeated marker is harmless) and follow ``next_cursor`` while ``has_more`` is true. ``sync_at`` is the server's moment for this answer. ``reset: true`` means the device was away longer than gone records are kept (30 days): it drops its copy and asks again without ``since``.
     """
     query = request.context.query  # type: ignore[attr-defined]
@@ -183,8 +196,8 @@ def get_sync():
     items = []
     for kind in KINDS:
         items.extend(_changes(kind, username, visible_ids, since, cursor, limit))
-        if kind in LOGGED_KINDS:
-            items.extend(_gone(kind, username, since, cursor, limit))
+    for kind in LOGGED_KINDS:
+        items.extend(_gone(kind, username, since, cursor, limit))
     items.sort(key=lambda item: item["_position"])
 
     page = items[: query.page_size]

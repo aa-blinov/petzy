@@ -4351,8 +4351,11 @@ class VaccineCatalogResponse(BaseModel):
     )
 
 
-SYNC_KINDS = Literal["document", "event", "medical_record", "medication", "medication_intake", "pet"]
-SYNC_CURSOR = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?,(document|event|medical_record|medication|medication_intake|pet),[0-9a-f]{24}"
+SYNC_KINDS = Literal["document", "event", "event_type", "medical_record", "medication", "medication_intake", "pet"]
+# The id part is an ObjectId for a record and a type key for event_type: a builtin
+# key is lowercase words with underscores (web/builtin_event_types.py), a custom one is
+# `custom_` plus ten hex chars (web/events.py:_generate_event_type_key).
+SYNC_CURSOR = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?,(document|event|event_type|medical_record|medication|medication_intake|pet),([0-9a-f]{24}|custom_[0-9a-f]{10}|[a-z_]+)"
 
 
 class SyncQuery(BaseModel):
