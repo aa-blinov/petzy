@@ -750,22 +750,42 @@ def log_intake(id):
 def restock_medication(id):
     """Add a bought pack to the stock (and start tracking it if it wasn't).
 
-    If the course has no stock count yet, or counting was switched off, the amount becomes the stock; otherwise it is added to it. The answer carries the new ``inventory_current``. No dose is recorded, so no reminder moves.
+    If the course has no stock count yet, or counting was switched off, the amount becomes the stock; otherwise it is added to it. Two packs entered at the same moment both count. The answer carries the new ``inventory_current``. No dose is recorded, so no reminder moves.
     """
     try:
         medication = g.record
         amount = request.context.body.amount  # type: ignore[attr-defined]
-        # A count kept while counting was off says nothing about the shelf: the pack starts the count again.
-        if medication.get("inventory_current") is None or not medication.get("inventory_enabled"):
-            app.db.medications.update_one(
-                {"_id": medication["_id"]},
-                {"$set": {"inventory_current": amount, "inventory_enabled": True, "updated_at": now_utc()}},
+        # Compare-and-set, the same way log_intake draws the stock down: the branch below is taken from
+        # the state just read, so the write carries that state in its filter. Two packs entered at the same
+        # moment read the same course; the second one's write matches nothing and the next try adds it to
+        # the count the first one wrote, instead of overwriting it with a pack of its own.
+        for attempt in range(3):
+            current = app.db.medications.find_one(
+                {"_id": medication["_id"]}, {"inventory_current": 1, "inventory_enabled": 1}
             )
+            count = current.get("inventory_current")
+            # A count kept while counting was off says nothing about the shelf: the pack starts the count again.
+            if count is None or not current.get("inventory_enabled"):
+                result = app.db.medications.update_one(
+                    {"_id": medication["_id"], "inventory_current": count},
+                    {"$set": {"inventory_current": amount, "inventory_enabled": True, "updated_at": now_utc()}},
+                )
+            else:
+                # $inc, not read-add-write: two restocks at once both count.
+                result = app.db.medications.update_one(
+                    {"_id": medication["_id"]},
+                    {
+                        "$inc": {"inventory_current": amount},
+                        "$set": {"inventory_enabled": True, "updated_at": now_utc()},
+                    },
+                )
+            if result.matched_count:
+                break
+            app.logger.warning(f"Restock conflict for medication {id}, attempt {attempt + 1}/3")
         else:
-            # $inc, not read-add-write: two restocks at once both count.
-            app.db.medications.update_one(
-                {"_id": medication["_id"]},
-                {"$inc": {"inventory_current": amount}, "$set": {"inventory_enabled": True, "updated_at": now_utc()}},
+            return error_response(
+                "conflict",
+                "Не удалось обновить остаток лекарства: одновременно пришло несколько запросов. Попробуйте снова",
             )
         updated = app.db.medications.find_one({"_id": medication["_id"]}, {"inventory_current": 1})
         return get_message("stock_added", inventory_current=updated.get("inventory_current"))

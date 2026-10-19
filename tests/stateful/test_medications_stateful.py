@@ -240,3 +240,69 @@ class TestOneSlotClosedByTwoPhonesAtOnce:
         assert self._mark(client, regular_user_token, course, force=True).status_code == 201
         assert indexed["medication_intakes"].count_documents({"medication_id": str(course)}) == 2
         assert indexed["medications"].find_one({"_id": course})["inventory_current"] == 28.0
+
+
+@pytest.mark.medications
+class TestTwoPacksEnteredAtOnce:
+    """The first pack of a course starts its count, and the second one must not replace it with its own."""
+
+    def test_a_pack_that_lands_next_to_another_one_is_added_to_it(self, client, mock_db, regular_user_token, test_pet):
+        med_id = ObjectId()
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "type": "Таблетка",
+                "default_dose": 1.0,
+                "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": ["08:00"]},
+                # As a course comes out of the form: counting is off until a pack is entered.
+                "inventory_enabled": False,
+                "inventory_current": None,
+                "owner": "testuser",
+            }
+        )
+        real_update = mock_db["medications"].update_one
+        raced = []
+
+        def other_phone_first(filter, update, **kwargs):
+            if not raced:
+                raced.append(True)
+                # The other phone's pack reaches the database between our reading and our writing.
+                real_update({"_id": med_id}, {"$set": {"inventory_current": 30.0, "inventory_enabled": True}})
+            return real_update(filter, update, **kwargs)
+
+        with patch.object(app.db.medications, "update_one", side_effect=other_phone_first):
+            response = client.post(
+                f"/api/medications/{med_id}/restock",
+                json={"amount": 30},
+                headers={"Authorization": f"Bearer {regular_user_token}"},
+            )
+
+        assert response.status_code == 200
+        assert response.get_json()["inventory_current"] == 60.0
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 60.0
+
+    def test_packs_entered_one_after_another_are_all_counted(self, client, mock_db, regular_user_token, test_pet):
+        med_id = ObjectId()
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "type": "Таблетка",
+                "default_dose": 1.0,
+                "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": ["08:00"]},
+                "inventory_enabled": False,
+                "inventory_current": None,
+                "owner": "testuser",
+            }
+        )
+        headers = {"Authorization": f"Bearer {regular_user_token}"}
+
+        first = client.post(f"/api/medications/{med_id}/restock", json={"amount": 30}, headers=headers)
+        second = client.post(f"/api/medications/{med_id}/restock", json={"amount": 30}, headers=headers)
+
+        assert first.get_json()["inventory_current"] == 30.0
+        assert second.get_json()["inventory_current"] == 60.0
+        assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 60.0
