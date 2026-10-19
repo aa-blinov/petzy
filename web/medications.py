@@ -566,6 +566,36 @@ def _duplicate_answer(existing: dict):
     )
 
 
+def _duplicate_from_slot_key(id: str, data, username: str) -> "dict | None":
+    """The 409 for a slot closed by the unique index when the schedule can no longer name it.
+
+    _already_handled answers from the times the course has now, so it has nothing to say once the
+    dose has been taken off the schedule while a stale copy of it was still on a screen (two phones
+    offline, the evening dose removed between them), or the client named a time the course never
+    had. The index already settled it: the mark holding the key is who closed the slot.
+    """
+    slot = _slot_of_the_mark(data)
+    if slot is None:
+        return None
+    slot_date, slot_time = slot
+    holder = app.db.medication_intakes.find_one(
+        {"slot_key": f"{id}|{slot_date}|{minutes_of_day(slot_time)}"},
+        {"_id": 0, "username": 1},
+    )
+    if not holder:
+        return None
+    return {
+        "error": f"Приём на {slot_time} уже отмечен",
+        "existing": {
+            "date": slot_date,
+            "time": slot_time,
+            "username": holder.get("username"),
+            "own": holder.get("username") == username,
+            "slot": True,
+        },
+    }
+
+
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
 @login_required
 @api.validate(
@@ -730,7 +760,9 @@ def log_intake(id):
                 raise
             # The slot was closed in the moment between the check above and this write, and the
             # unique index caught what the check could not see yet. Answered as the check answers.
-            existing = _already_handled(id, medication, data, event_dt, username)
+            existing = _already_handled(id, medication, data, event_dt, username) or _duplicate_from_slot_key(
+                id, data, username
+            )
             if existing:
                 return _duplicate_answer(existing)
             raise
