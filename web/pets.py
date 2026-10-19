@@ -113,6 +113,16 @@ def get_tiles_settings(pet: dict) -> dict:
     return DEFAULT_TILES_SETTINGS
 
 
+def _trimmed(value: str | None) -> str | None:
+    """A text field without the spaces around it — the one rule every path applies.
+
+    The breed and the health notes used to be trimmed only on a multipart edit:
+    the same words reached the card with and without the spaces the phone form
+    adds, and a JSON client kept them.
+    """
+    return value.strip() if value is not None else None
+
+
 def convert_objectid_to_str(obj):
     """Recursively convert all ObjectId instances to strings."""
     if isinstance(obj, ObjectId):
@@ -228,13 +238,13 @@ def create_pet():
         pet_data = {
             "_id": new_pet_id,
             "name": data.name,
-            "breed": data.breed or "",
+            "breed": _trimmed(data.breed) or "",
             "species": data.species or "",
             "birth_date": birth_date,
             "gender": data.gender or "",
             # None is «не указано», not «нет»: the form shows the difference.
             "is_neutered": data.is_neutered,
-            "health_notes": data.health_notes or "",
+            "health_notes": _trimmed(data.health_notes) or "",
             "owner": username,
             "shared_with": [],
             "created_at": datetime.now(timezone.utc),
@@ -398,7 +408,7 @@ def update_pet(pet_id):
         if data.name is not None:
             update_data["name"] = data.name.strip() if is_multipart else data.name
         if data.breed is not None:
-            update_data["breed"] = data.breed.strip() if is_multipart else data.breed
+            update_data["breed"] = _trimmed(data.breed)
         if birth_date is not None:
             update_data["birth_date"] = birth_date
         if data.gender is not None:
@@ -408,7 +418,7 @@ def update_pet(pet_id):
         if data.is_neutered is not None:
             update_data["is_neutered"] = data.is_neutered
         if data.health_notes is not None:
-            update_data["health_notes"] = data.health_notes.strip() if is_multipart else data.health_notes
+            update_data["health_notes"] = _trimmed(data.health_notes)
         if data.tiles_settings is not None:
             update_data["tiles_settings"] = data.tiles_settings.model_dump()
 
