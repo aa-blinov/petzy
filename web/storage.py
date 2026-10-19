@@ -106,8 +106,10 @@ def _client(public: bool = False):
             # three minutes; a few of those and the whole app stopped
             # answering, feed included. Reaching the bucket takes a TLS
             # handshake and one answer is one small response: 5s and 30s
-            # keep a thread's worst wait inside gunicorn's own 30s request
-            # timeout.
+            # cut that to 105s worst case. It is still longer than
+            # gunicorn's own 30s request timeout, so a dead bucket shows
+            # up as a killed worker before it shows up as an answer; that
+            # is the trade for not hanging every thread on one bucket.
             connect_timeout=5,
             read_timeout=30,
             retries={"max_attempts": 3, "mode": "standard"},

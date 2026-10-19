@@ -750,6 +750,11 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
             "Приём уже отмечен (`duplicate_intake`, в ответе `existing`; повторите с `force: true`, чтобы записать "
             "всё равно), или остаток не удалось списать с трёх попыток (`conflict`)"
         )
+    restock = op("post", "/api/medications/{id}/restock")
+    if restock:
+        restock["responses"]["409"] = answer(
+            "Остаток менялся три попытки подряд (`conflict`): упаковка не записана, остаток как был, попробуйте снова"
+        )
 
 
 @docs_bp.route("/api/openapi.json", methods=["GET"])

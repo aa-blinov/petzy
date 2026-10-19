@@ -1001,6 +1001,9 @@ def get_health_stats():
 
     records = app.db[collection_name].find(mongo_query, projection).sort("date_time", 1)
 
+    # The loop stays even though the heavy field no longer comes along: a point's date is written in the
+    # zone that record was marked in, and the zone is per record, so the days cannot be grouped by the
+    # database. What it reads is now three small fields per point.
     stats_data = []
     for record in records:
         dt = record.get("date_time")
