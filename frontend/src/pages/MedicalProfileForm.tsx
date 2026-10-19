@@ -319,6 +319,7 @@ export function MedicalProfileForm() {
   const resolveConflict = async (current: MedicalProfile) => {
     const showCurrent = await Dialog.confirm({
       title: 'Профиль изменили',
+      'aria-label': 'Профиль изменили',
       content: 'Пока вы правили, другой человек сохранил профиль. Показать, что там сейчас? Ваши правки в этой форме тогда не сохранятся',
       confirmText: 'Показать актуальный',
       cancelText: 'Сохранить моё',

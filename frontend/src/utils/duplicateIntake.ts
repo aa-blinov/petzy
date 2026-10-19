@@ -50,8 +50,10 @@ export async function logIntakeAsking(
     // a clash about the time alone is a dose given minutes apart from this one. Whose it was is
     // said with «вами» or a name, never with the person's gender in the verb.
     const who = existing.own ? ' вами' : `: ${existing.username ?? 'другой человек'}`;
+    const title = existing.slot ? 'Это время уже отмечено' : 'Приём уже отмечен';
     const sure = await Dialog.confirm({
-      title: existing.slot ? 'Это время уже отмечено' : 'Приём уже отмечен',
+      title,
+      'aria-label': title,
       content: existing.slot
         ? `${name}: приём на ${existing.time} уже отмечен${who}. Записать ещё один?`
         : `${name}. Приём уже отмечен${who} в ${existing.time}. Записать ещё один?`,

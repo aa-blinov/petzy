@@ -41,6 +41,7 @@ export function MedicalLinks() {
   const ask = async (petId: string, shareId: string) => {
     const sure = await Dialog.confirm({
       title: 'Отозвать ссылку?',
+      'aria-label': 'Отозвать ссылку?',
       content: 'Врач, у которого она открыта, сразу потеряет доступ к карте. Новую ссылку можно сделать в любой момент',
       confirmText: 'Отозвать',
       cancelText: 'Оставить',

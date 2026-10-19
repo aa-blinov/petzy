@@ -766,6 +766,7 @@ export function DocumentsList() {
       <Dialog
         visible={deleteDialog.visible}
         title="Удаление документа"
+        aria-label="Удаление документа"
         content={deleteDialog.document && <span>{documentDeleteText(deleteDialog.document)}</span>}
         onClose={() => setDeleteDialog((prev) => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, document: null })}

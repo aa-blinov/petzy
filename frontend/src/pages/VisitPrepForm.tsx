@@ -112,6 +112,7 @@ export function VisitPrepForm() {
   const resolveConflict = async (current: VisitPrep | null) => {
     const showCurrent = await Dialog.confirm({
       title: 'Заметку изменили в другом месте',
+      'aria-label': 'Заметку изменили в другом месте',
       content: 'Пока вы её правили, её сохранили с другого устройства или в другой форме. Показать, что там сейчас? Ваши правки в этой форме тогда не сохранятся',
       confirmText: 'Показать актуальную',
       cancelText: 'Сохранить мою',

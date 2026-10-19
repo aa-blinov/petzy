@@ -295,6 +295,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   const waitForShare = async () => {
     const confirmed = await Dialog.confirm({
       title: 'С вами поделятся питомцем?',
+      'aria-label': 'С вами поделятся питомцем?',
       content: (
         <div style={{ textAlign: 'center', lineHeight: 1.5 }}>
           Попросите владельца открыть питомца и выбрать «Поделиться доступом»

@@ -69,6 +69,7 @@ export function PrivacyConsentGate() {
     <Dialog
       visible={needed || accountUnknown}
       title="Согласие на обработку данных"
+      aria-label="Согласие на обработку данных"
       content={
         accountUnknown ? (
           <LoadError what="сведения об аккаунте" onRetry={refetchAccount} compact />

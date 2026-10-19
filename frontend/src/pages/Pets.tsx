@@ -62,6 +62,8 @@ export function Pets() {
     await remove(pet).catch(() => undefined);
   };
   const leaving = !!deleteDialog.pet && !deleteDialog.pet.current_user_is_owner;
+  // antd keeps the title a plain <div>: the name a screen reader says is set here, so both read the same.
+  const deleteTitle = leaving ? 'Выйти из доступа' : 'Удаление питомца';
 
   return (
     <div className="page-container fab-page">
@@ -134,7 +136,8 @@ export function Pets() {
 
       <Dialog
         visible={deleteDialog.visible}
-        title={leaving ? 'Выйти из доступа' : 'Удаление питомца'}
+        title={deleteTitle}
+        aria-label={deleteTitle}
         content={
           !deleteDialog.pet
             ? ''

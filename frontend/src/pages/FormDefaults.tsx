@@ -112,6 +112,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
       return;
     }
     const sure = await Dialog.confirm({
+      'aria-label': 'Закрыть без сохранения?',
       content: 'Введённое значение не сохранится',
       confirmText: 'Закрыть',
       cancelText: 'Остаться',
@@ -135,6 +136,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
 
   const forgetAll = async () => {
     const confirmed = await Dialog.confirm({
+      'aria-label': 'Забыть значения по умолчанию?',
       content: 'Забыть все значения по умолчанию этого питомца? Это коснётся всех, у кого есть к нему доступ. Новые записи будут открываться пустыми',
       confirmText: 'Забыть',
       cancelText: 'Оставить',

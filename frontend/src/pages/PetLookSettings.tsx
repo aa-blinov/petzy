@@ -383,6 +383,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
   const resolveConflict = async (current: PetLook) => {
     const showCurrent = await Dialog.confirm({
       title: 'Оформление изменили в другом месте',
+      'aria-label': 'Оформление изменили в другом месте',
       content: 'Пока вы его правили, его сохранили с другого устройства или другой член семьи. Показать, что там сейчас? Ваши правки в этой форме тогда не сохранятся',
       confirmText: 'Показать актуальное',
       cancelText: 'Сохранить моё',
@@ -652,6 +653,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
       <Dialog
         visible={askReset}
         title="Сбросить оформление?"
+        aria-label="Сбросить оформление?"
         content="Уберутся подпись, цвет, шрифт, рамка, фон и кадрирование фото. Пока не сохранено, закрытие экрана вернёт всё как было"
         getContainer={() => document.body}
         onClose={() => setAskReset(false)}

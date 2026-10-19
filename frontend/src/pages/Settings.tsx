@@ -397,6 +397,7 @@ export function Settings() {
       <Dialog
         visible={logoutDialogVisible}
         title="Выход из аккаунта"
+        aria-label="Выход из аккаунта"
         content="Вы уверены, что хотите выйти?"
         closeOnAction
         onClose={() => setLogoutDialogVisible(false)}
@@ -416,6 +417,7 @@ export function Settings() {
       <Dialog
         visible={logoutEverywhereVisible}
         title="Выход на всех устройствах"
+        aria-label="Выход на всех устройствах"
         content="Войти придётся заново и на этом устройстве, и на остальных"
         closeOnAction
         onClose={() => setLogoutEverywhereVisible(false)}

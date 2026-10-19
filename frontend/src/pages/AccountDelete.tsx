@@ -232,6 +232,7 @@ export function AccountDelete() {
       <Dialog
         visible={confirmVisible}
         title="Удалить аккаунт?"
+        aria-label="Удалить аккаунт?"
         content={summary || 'Это нельзя отменить'}
         onClose={() => setConfirmVisible(false)}
         getContainer={() => document.body}
