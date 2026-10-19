@@ -1,4 +1,4 @@
-"""Stateful tests for medication intake logging.
+"""Stateful tests for medication courses.
 
 Unlike a plain request/response contract check, these assert on how
 *persisted state* evolves across a sequence of operations — specifically
@@ -7,7 +7,8 @@ logic in `log_intake`, which only ever runs when something else already
 went wrong (a lost update race, or the intake insert itself failing).
 Both paths are exercised here by mocking the specific PyMongo call that
 needs to misbehave, since mongomock has no way to simulate a genuine
-concurrent write.
+concurrent write: the same mock stands in for the second phone in the two
+races below (one slot closed twice, one pack entered twice).
 """
 
 import pytest
@@ -16,6 +17,15 @@ from unittest.mock import patch, MagicMock
 from bson import ObjectId
 
 import web.app as app
+from web.db import ensure_indexes
+
+
+@pytest.fixture
+def indexed(mock_db):
+    """The database with the indexes the app declares, so a unique one really bites."""
+    with patch("web.db.db", mock_db):
+        ensure_indexes()
+    return mock_db
 
 
 @pytest.mark.medications
@@ -152,3 +162,81 @@ class TestMedicationInventoryStateConsistency:
         med = mock_db["medications"].find_one({"_id": med_id})
         assert med["inventory_current"] == 8.0
         assert mock_db["medication_intakes"].count_documents({"medication_id": str(med_id)}) == 1
+
+
+@pytest.mark.medications
+class TestOneSlotClosedByTwoPhonesAtOnce:
+    """The check and the write are two moments, and the other phone's mark lands between them.
+
+    Both requests see the slot open and both write it: the unique slot index (web/db.py) is what stops the
+    second one, so it has to be the answer of the check the user already knows.
+    """
+
+    @pytest.fixture
+    def course(self, indexed, test_pet):
+        med_id = ObjectId()
+        indexed["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "type": "Таблетка",
+                "default_dose": 1.0,
+                "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": ["08:00", "20:00"]},
+                "inventory_enabled": True,
+                "inventory_current": 30.0,
+                "owner": "testuser",
+            }
+        )
+        return med_id
+
+    def _mark(self, client, token, med_id, **extra):
+        now = datetime.now(timezone.utc)
+        day = now.strftime("%Y-%m-%d")
+        return client.post(
+            f"/api/medications/{med_id}/log",
+            json={
+                "date": day,
+                "time": now.strftime("%H:%M"),
+                "dose_taken": 1.0,
+                "slot_date": day,
+                "slot_time": "08:00",
+                "tz": "Asia/Almaty",
+                **extra,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def test_the_other_phone_mark_is_answered_not_stored_twice(self, client, indexed, regular_user_token, course):
+        real_insert = indexed["medication_intakes"].insert_one
+
+        def other_phone_first(doc):
+            real_insert({**doc, "username": "anna"})
+            return real_insert(doc)
+
+        with patch.object(app.db.medication_intakes, "insert_one", side_effect=other_phone_first):
+            response = self._mark(client, regular_user_token, course)
+
+        assert response.status_code == 409
+        answer = response.get_json()
+        assert answer["code"] == "duplicate_intake"
+        assert answer["existing"] == {
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "time": "08:00",
+            "username": "anna",
+            "own": False,
+            "slot": True,
+        }
+        assert indexed["medication_intakes"].count_documents({"medication_id": str(course)}) == 1
+        # The dose the refused mark had already taken went back to the shelf.
+        assert indexed["medications"].find_one({"_id": course})["inventory_current"] == 30.0
+
+    def test_a_slot_written_a_second_time_on_purpose_is_still_written(
+        self, client, indexed, regular_user_token, course
+    ):
+        # ``force``: the person was shown who marked that slot and said to record it anyway. The index
+        # leaves those marks out, or the answer would be a 409 to someone who already said yes.
+        assert self._mark(client, regular_user_token, course).status_code == 201
+        assert self._mark(client, regular_user_token, course, force=True).status_code == 201
+        assert indexed["medication_intakes"].count_documents({"medication_id": str(course)}) == 2
+        assert indexed["medications"].find_one({"_id": course})["inventory_current"] == 28.0

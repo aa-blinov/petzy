@@ -24,7 +24,12 @@ def test_ensure_indexes_creates_expected_indexes():
     expected = {
         "pets": ["pets_owner_created", "pets_shared"],
         "medications": ["meds_pet_created", "medications_pet_updated"],
-        "medication_intakes": ["intakes_pet_date", "intakes_med_date", "medication_intakes_pet_updated"],
+        "medication_intakes": [
+            "intakes_pet_date",
+            "intakes_med_date",
+            "intakes_slot_unique",
+            "medication_intakes_pet_updated",
+        ],
         "users": ["users_username_unique", "users_role"],
         "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique", "refresh_token_family"],
         "idempotency_keys": ["idempotency_key_unique", "idempotency_keys_ttl"],
@@ -173,6 +178,35 @@ def test_ensure_indexes_makes_a_refresh_token_hash_unique():
         mock_db.refresh_tokens.insert_one({"token_hash": "f" * 64, "username": "a"})
         with pytest.raises(DuplicateKeyError):
             mock_db.refresh_tokens.insert_one({"token_hash": "f" * 64, "username": "b"})
+
+
+def test_a_slot_is_closed_only_once():
+    """One slot is one mark: a second mark of the same 08:00 dose is refused, whoever makes it.
+
+    The index is sparse and unique over the key log_intake writes, so a mark that names no slot (a dose
+    «по необходимости», one from the list) and a forced mark (the person was asked and said to record
+    it anyway) both leave the key out and stay outside the index.
+    """
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db.medication_intakes.index_information()["intakes_slot_unique"]
+        assert info.get("unique") is True
+        assert info.get("sparse") is True
+        assert [tuple(k) for k in info["key"]] == [("slot_key", 1)]
+
+        slot = {"medication_id": "m", "slot_key": "m|2026-10-02|480"}
+        mock_db.medication_intakes.insert_one(dict(slot))
+        with pytest.raises(DuplicateKeyError):
+            mock_db.medication_intakes.insert_one(dict(slot))
+        mock_db.medication_intakes.insert_one({**slot, "slot_key": "other|2026-10-02|480"})
+        mock_db.medication_intakes.insert_one({**slot, "slot_key": "m|2026-10-02|1200"})
+        # No key, and a forced mark that names the slot but leaves the key out, as log_intake writes
+        # it: the index leaves both alone.
+        mock_db.medication_intakes.insert_one({"medication_id": "m"})
+        mock_db.medication_intakes.insert_one({"medication_id": "m"})
+        mock_db.medication_intakes.insert_one({"medication_id": "m", "slot_time": "08:00", "forced": True})
 
 
 def test_login_failures_expire_with_their_window_or_lock():
