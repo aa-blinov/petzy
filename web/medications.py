@@ -778,7 +778,8 @@ def log_intake(id):
 @login_required
 @api.validate(
     body=Request(MedicationRestock),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
+    # 409 is what the three attempts below end in, and the client is told to try again.
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")

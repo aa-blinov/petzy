@@ -2,7 +2,8 @@
 
 The diagnostic workflows print the web and nginx logs through a mask() shell function. These tests run
 that function, as written in the workflow files, on log lines whose tokens and usernames are invented.
-The access log is read from nginx/nginx.conf; its local copy is checked by test_local_stand_nginx.
+The access log is read from nginx/nginx.conf and from gunicorn.conf.py, the app behind it; nginx's
+local copy is checked by test_local_stand_nginx.
 """
 
 import re
@@ -17,6 +18,7 @@ WORKFLOWS = [
     ROOT / ".github" / "workflows" / "server_diagnose.yaml",
 ]
 NGINX = ROOT / "nginx" / "nginx.conf"
+GUNICORN = ROOT / "gunicorn.conf.py"
 
 # Invented values, shaped like the real ones. None of them is a secret.
 LOG_LINES = "\n".join(
@@ -118,3 +120,22 @@ def test_the_map_cuts_the_query_and_keeps_the_route():
     assert cut.match("/reset-password?token=FAKE-RESET").group(1) == "/reset-password"
     assert cut.match("/api/pets/PET-1?page=2").group(1) == "/api/pets/PET-1"
     assert cut.match("/login").group(1) == "/login"
+
+
+def gunicorn_format() -> str:
+    found = re.search(r"^access_log_format = (.*)$", GUNICORN.read_text(encoding="utf-8"), re.M)
+    assert found, "gunicorn.conf.py has no access_log_format"
+    return found.group(1)
+
+
+def test_the_gunicorn_access_log_keeps_the_route_without_query():
+    """The app must not undo what nginx does: %(r)s is the whole request line, query and all.
+
+    nginx already writes no_query, so the token in the query has to stop here too, or it lands in
+    the container log that the workflows collect.
+    """
+    fmt = gunicorn_format()
+    assert "%(r)s" not in fmt, "the gunicorn access log writes the whole request line, query included"
+    assert "%(U)s" in fmt, "the gunicorn access log no longer writes the path alone"
+    for field in ("%(m)s", "%(H)s", "%(s)s", "%(b)s", "%(f)s", "%(a)s"):
+        assert field in fmt, f"the gunicorn access log lost {field}"
