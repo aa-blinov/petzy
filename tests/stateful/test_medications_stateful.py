@@ -241,6 +241,30 @@ class TestOneSlotClosedByTwoPhonesAtOnce:
         assert indexed["medication_intakes"].count_documents({"medication_id": str(course)}) == 2
         assert indexed["medications"].find_one({"_id": course})["inventory_current"] == 28.0
 
+    def test_a_slot_the_course_no_longer_has_is_still_the_same_dose(self, client, indexed, regular_user_token, course):
+        """The evening dose was taken off the schedule while a stale copy of it was still on a screen.
+
+        The check answers from the times the course has now, so it says nothing about 20:00. The
+        index still knows the slot is closed, and a 500 would be a worse answer than «уже отмечен».
+        """
+        real_insert = indexed["medication_intakes"].insert_one
+
+        def other_phone_first(doc):
+            real_insert({**doc, "username": "anna"})
+            return real_insert(doc)
+
+        indexed["medications"].update_one({"_id": course}, {"$set": {"schedule.times": ["08:00"]}})
+        with patch.object(app.db.medication_intakes, "insert_one", side_effect=other_phone_first):
+            response = self._mark(client, regular_user_token, course, slot_time="20:00")
+
+        assert response.status_code == 409
+        answer = response.get_json()
+        assert answer["code"] == "duplicate_intake"
+        assert answer["existing"]["username"] == "anna"
+        assert answer["existing"]["time"] == "20:00"
+        assert answer["existing"]["slot"] is True
+        assert indexed["medication_intakes"].count_documents({"medication_id": str(course)}) == 1
+
 
 @pytest.mark.medications
 class TestTwoPacksEnteredAtOnce:
