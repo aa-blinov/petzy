@@ -331,6 +331,21 @@ def ensure_indexes() -> None:
         (db.events, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "events_pet_date"),
         (db.events, [("pet_id", ASCENDING), ("type", ASCENDING), ("date_time", DESCENDING)], "events_pet_type_date"),
         (db.events, [("local_id", ASCENDING)], "events_local_id_unique", {"unique": True, "sparse": True}),
+        # The name a device gives a record it made offline (web/offline.py): one record per name in each section.
+        (db.medications, [("local_id", ASCENDING)], "medications_local_id_unique", {"unique": True, "sparse": True}),
+        (
+            db.medical_records,
+            [("local_id", ASCENDING)],
+            "medical_records_local_id_unique",
+            {"unique": True, "sparse": True},
+        ),
+        (db.pets, [("local_id", ASCENDING)], "pets_local_id_unique", {"unique": True, "sparse": True}),
+        (
+            db.medication_intakes,
+            [("local_id", ASCENDING)],
+            "medication_intakes_local_id_unique",
+            {"unique": True, "sparse": True},
+        ),
         (db.events, [("pet_id", ASCENDING), ("updated_at", ASCENDING)], "events_pet_updated"),
         # A tombstone is kept for 30 days, then the database removes it.
         (db.events, [("deleted_at", ASCENDING)], "events_deleted_ttl", {"expireAfterSeconds": 30 * 24 * 60 * 60}),

@@ -16,6 +16,8 @@ one. The card and the reminders read this through ``record_states``.
 from datetime import date, datetime, timezone
 from typing import Optional
 
+from pymongo.errors import DuplicateKeyError
+
 from bson import ObjectId
 from flask import Blueprint, g, jsonify, request
 from flask_pydantic_spec import Request, Response
@@ -39,6 +41,14 @@ from web.schemas import (
 )
 from zoneinfo import ZoneInfo
 from web.idempotency import idempotent
+from web.offline import (
+    conflict_answer,
+    is_stale,
+    record_version,
+    require_local_record_access,
+    tombstone_for_name,
+    version_guard,
+)
 from web.sync import log_deletion
 
 medical_records_bp = Blueprint("medical_records", __name__)
@@ -121,8 +131,12 @@ def _documents_by_id(records: list[dict]) -> dict[str, dict]:
     return {str(d["_id"]): {"id": str(d["_id"]), "title": d.get("title", "")} for d in found}
 
 
-def serialize_records(records: list[dict], today: date) -> list[dict]:
-    """Newest first, each with its state and the titles of its documents."""
+def serialize_records(records: list[dict], today: date, with_version: bool = False) -> list[dict]:
+    """Newest first, each with its state and the titles of its documents.
+
+    ``with_version`` adds what a device that writes offline reads: the version of the record (``updated_at``) and the name
+    it gave the record (``local_id``). The medical card, which is also shown to a vet, leaves them out.
+    """
     states = record_states(records, today)
     docs = _documents_by_id(records)
     out = []
@@ -148,13 +162,14 @@ def serialize_records(records: list[dict], today: date) -> list[dict]:
                 "diagnosis": r.get("diagnosis"),
                 "recommendations": r.get("recommendations"),
                 "documents": [docs[d] for d in r.get("document_ids") or [] if d in docs],
+                **({"updated_at": record_version(r) or None, "local_id": r.get("local_id")} if with_version else {}),
             }
         )
     return out
 
 
-def pet_records(pet_id: str, today: date) -> list[dict]:
-    return serialize_records(list(app.db.medical_records.find({"pet_id": pet_id})), today)
+def pet_records(pet_id: str, today: date, with_version: bool = False) -> list[dict]:
+    return serialize_records(list(app.db.medical_records.find({"pet_id": pet_id})), today, with_version)
 
 
 def document_links(pet_id: str, db=None) -> dict[str, list[str]]:
@@ -245,11 +260,36 @@ def _stored(data: dict, kind: str) -> dict:
     return doc
 
 
+def _record_named(local_id: str) -> Optional[dict]:
+    """The record the device named with ``local_id``. A name is unique on the stand, so there is at most one."""
+    return app.db.medical_records.find_one({"local_id": local_id})
+
+
+def _saved_answer(record_id, local_id: Optional[str], status: int):
+    named = {"local_id": local_id} if local_id else {}
+    return jsonify({"message": "Запись добавлена", "success": True, "id": str(record_id), **named}), status
+
+
+def _answer_for_record_name(existing: Optional[dict], pet_id: str, kind: str, local_id: str):
+    """The answer to a create that names a record: the one already there (200), or why the name cannot be used.
+
+    The same pet and kind: answered as saved, and nothing is written. Another pet's record, or another kind, holds the
+    name: 409 ``local_id_taken``. No record, but a deleted one had the name: 409 ``record_deleted``.
+    """
+    if existing is None:
+        if tombstone_for_name("medical_record", local_id, pet_id):
+            return error_response("record_deleted")
+        return None
+    if str(existing.get("pet_id")) != str(pet_id) or existing.get("kind") != kind:
+        return error_response("local_id_taken")
+    return _saved_answer(existing["_id"], local_id, 200)
+
+
 @medical_records_bp.route("/api/medical-records", methods=["POST"])
 @login_required
 @api.validate(
     body=Request(MedicalRecordCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["medical-records"],
 )
 @require_pet_access
@@ -257,9 +297,13 @@ def _stored(data: dict, kind: str) -> dict:
 def create_medical_record():
     """Add a vaccination, treatment, visit or procedure to a pet's medical card.
 
-    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``target`` a parasite treatment's, ``complaint``, ``diagnosis`` and ``recommendations`` a visit's). Any member of the pet may add, change or delete any of its records.
+    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``target`` a parasite treatment's, ``complaint``, ``diagnosis`` and ``recommendations`` a visit's). Any member of the pet may add, change or delete any of its records. A ``local_id`` the device gives makes the request repeatable: sent again, it is answered with the record it already made (200) and nothing is written twice; a name that belongs to another pet's record is 409 ``local_id_taken``, and a name of a record that was deleted is 409 ``record_deleted``.
     """
     data = request.context.body  # type: ignore[attr-defined]
+    if data.local_id:
+        answer = _answer_for_record_name(_record_named(data.local_id), g.pet_id, data.kind, data.local_id)
+        if answer:
+            return answer
     fields = data.model_dump()
     if not _own_documents(g.pet_id, fields["document_ids"]):
         return error_response("validation_error", "Документ не найден среди документов этого питомца")
@@ -272,9 +316,18 @@ def create_medical_record():
         "created_at": now,
         "updated_at": now,
     }
-    result = app.db.medical_records.insert_one(doc)
+    if data.local_id:
+        doc["local_id"] = data.local_id
+    try:
+        result = app.db.medical_records.insert_one(doc)
+    except DuplicateKeyError:
+        # Two requests naming one record at the same moment: the second one finds what the first one wrote.
+        answer = _answer_for_record_name(_record_named(data.local_id or ""), g.pet_id, data.kind, data.local_id or "")
+        if not data.local_id or not answer:
+            raise
+        return answer
     app.logger.info(f"Medical record added: kind={data.kind}, pet_id={g.pet_id}, user={g.username}")
-    return jsonify({"message": "Запись добавлена", "success": True, "id": str(result.inserted_id)}), 201
+    return _saved_answer(result.inserted_id, data.local_id, 201)
 
 
 @medical_records_bp.route("/api/medical-records", methods=["GET"])
@@ -293,7 +346,7 @@ def list_medical_records():
     query = request.context.query  # type: ignore[attr-defined]
     if query.kind and query.kind not in MEDICAL_KINDS:
         return error_response("validation_error", "Неизвестный вид записи")
-    records = pet_records(g.pet_id, _today(query.tz))
+    records = pet_records(g.pet_id, _today(query.tz), with_version=True)
     if query.kind:
         records = [r for r in records if r["kind"] == query.kind]
     return jsonify({"records": records})
@@ -310,7 +363,7 @@ def get_medical_record(id):
 
     As the card reads it, with the same status (``tz`` in the query decides which day 'today' is). A record of a pet the caller cannot see answers like a missing one; a malformed id answers 422 ``invalid_record_id``.
     """
-    mine = [r for r in pet_records(g.pet_id, _today(request.args.get("tz"))) if r["_id"] == id]
+    mine = [r for r in pet_records(g.pet_id, _today(request.args.get("tz")), with_version=True) if r["_id"] == id]
     return jsonify({"record": mine[0]})
 
 
@@ -318,24 +371,63 @@ def get_medical_record(id):
 @login_required
 @api.validate(
     body=Request(MedicalRecordUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["medical-records"],
 )
-@require_record_access("medical_records")
+@require_record_access("medical_records", deleted_kind="medical_record")
 def update_medical_record(id):
     """Replace a record's contents; its pet and kind stay.
 
-    A full replace: everything in the record can change except which pet it belongs to and what kind of thing it is, and a field left out is cleared, ``document_ids`` included (sent without it, the record lets go of its documents). The rules of creation apply (``target`` for a parasite treatment, fields of another kind dropped). A new repeat date on a vaccination puts the card's answer back to in time, or to close if it is within two weeks, when that date is still ahead and no newer record replaces this one.
+    A full replace: everything in the record can change except which pet it belongs to and what kind of thing it is, and a field left out is cleared, ``document_ids`` included (sent without it, the record lets go of its documents). The rules of creation apply (``target`` for a parasite treatment, fields of another kind dropped). A new repeat date on a vaccination puts the card's answer back to in time, or to close if it is within two weeks, when that date is still ahead and no newer record replaces this one. ``base_version`` is the ``updated_at`` the device last read: a record changed since answers 409 ``conflict`` with the record as it is now in ``record``; without it the change is applied. A record that was deleted answers 409 ``record_deleted``.
     """
+    return _update_record(g.record)
+
+
+@medical_records_bp.route("/api/medical-records/local/<local_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(MedicalRecordUpdate),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse, HTTP_422=ErrorResponse),
+    tags=["medical-records"],
+)
+@require_local_record_access("medical_records", "medical_record")
+def update_medical_record_by_local_id(local_id):
+    """Replace a record by the ``local_id`` the device gave it, for when the device has not got the record's id.
+
+    The same replace as by id, with the same ``base_version`` check. The name stays as it was created.
+    """
+    return _update_record(g.record)
+
+
+def _current(record: dict) -> Optional[dict]:
+    """The record as the card reads it now (what a rejected edit brings back as ``record``)."""
+    mine = [
+        r for r in pet_records(str(record["pet_id"]), _today(None), with_version=True) if r["_id"] == str(record["_id"])
+    ]
+    return mine[0] if mine else None
+
+
+def _update_record(record: dict):
+    """The update of one record found by the access check, by its id or by the local_id the device named."""
     data = request.context.body  # type: ignore[attr-defined]
-    kind = g.record["kind"]
-    fields = data.model_dump()
+    if is_stale(data.base_version, record):
+        return conflict_answer(_current(record))
+    kind = record["kind"]
+    fields = data.model_dump(exclude={"base_version"})
     if kind == "parasite" and not fields.get("target"):
         return error_response("validation_error", "Укажите, от чего обработка")
     if not _own_documents(g.pet_id, fields["document_ids"]):
         return error_response("validation_error", "Документ не найден среди документов этого питомца")
     changes = {**_stored(fields, kind), "updated_at": datetime.now(timezone.utc)}
-    app.db.medical_records.update_one({"_id": g.record["_id"]}, {"$set": changes})
+    result = app.db.medical_records.update_one(
+        {"_id": record["_id"], **version_guard(record, data.base_version)}, {"$set": changes}
+    )
+    if result.matched_count == 0:
+        latest = app.db.medical_records.find_one({"_id": record["_id"]})
+        if latest is None:
+            return error_response("record_deleted")
+        # Saved by someone else between the check above and the write.
+        return conflict_answer(_current(latest))
     return jsonify({"message": "Запись сохранена", "success": True})
 
 
@@ -350,7 +442,26 @@ def delete_medical_record(id):
 
     It leaves the card, the PDF and the overdue dot at once. Documents attached to it are not deleted with it: they belong to the pet, not to the record.
     """
-    app.db.medical_records.delete_one({"_id": g.record["_id"]})
-    log_deletion("medical_record", g.record["_id"], g.pet_id)
-    app.logger.info(f"Medical record deleted: id={id}, pet_id={g.pet_id}, user={g.username}")
+    return _delete_record(g.record)
+
+
+@medical_records_bp.route("/api/medical-records/local/<local_id>", methods=["DELETE"])
+@api.validate(
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
+    tags=["medical-records"],
+)
+@require_local_record_access("medical_records", "medical_record", tell_deleted=False)
+def delete_medical_record_by_local_id(local_id):
+    """Delete a record by the ``local_id`` the device gave it, for when the device has not got the record's id.
+
+    The same delete as by id. An unknown name, a deleted record and someone else's record answer 404 ``record_not_found``.
+    """
+    return _delete_record(g.record)
+
+
+def _delete_record(record: dict):
+    """The delete of one record found by the access check, by its id or by the local_id the device named."""
+    app.db.medical_records.delete_one({"_id": record["_id"]})
+    log_deletion("medical_record", record["_id"], g.pet_id, local_id=record.get("local_id"))
+    app.logger.info(f"Medical record deleted: id={record['_id']}, pet_id={g.pet_id}, user={g.username}")
     return jsonify({"message": "Запись удалена", "success": True})

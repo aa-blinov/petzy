@@ -61,10 +61,9 @@ class TestDeletingKeepsATombstone:
         assert listed["total"] == 1
         assert timeline == [keep]
         assert client.get(f"/api/events/{gone}", headers=_auth(regular_user_token)).status_code == 404
-        assert (
-            client.put(f"/api/events/{gone}", json={"comment": "x"}, headers=_auth(regular_user_token)).status_code
-            == 404
-        )
+        # An edit of a record that is gone is told so (409), apart from a record that never was (404).
+        edited = client.put(f"/api/events/{gone}", json={"comment": "x"}, headers=_auth(regular_user_token))
+        assert (edited.status_code, edited.get_json()["code"]) == (409, "record_deleted")
         assert client.delete(f"/api/events/{gone}", headers=_auth(regular_user_token)).status_code == 404
 
     def test_the_types_in_use_and_the_chart_leave_it_out(self, client, mock_db, regular_user_token, test_pet):

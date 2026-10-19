@@ -77,23 +77,26 @@ def pet_viewers(pet_id) -> list:
     return [pet["owner"], *pet.get("shared_with", [])]
 
 
-def log_deletion(kind: str, record_id, pet_id, viewers=None) -> None:
+def log_deletion(kind: str, record_id, pet_id, viewers=None, local_id=None) -> None:
     """Note that a record is gone, for the people who could see it.
 
     ``viewers`` defaults to the pet's owner and viewers now. Name them when the pet is already gone, or when only one
-    person lost the pet (a pet taken off someone's list is a deletion for that person alone).
+    person lost the pet (a pet taken off someone's list is a deletion for that person alone). ``local_id`` is the name
+    the device gave the record: the note keeps it, so a create or an edit that comes by that name later is told the
+    record was deleted, not made again or lost.
     """
     moment = now_utc()
-    app.db[DELETIONS].insert_one(
-        {
-            "kind": kind,
-            "entity_id": _object_id(record_id),
-            "pet_id": _object_id(pet_id),
-            "viewers": pet_viewers(pet_id) if viewers is None else list(viewers),
-            "deleted_at": moment,
-            "expires_at": moment + KEEP_DELETIONS,
-        }
-    )
+    note = {
+        "kind": kind,
+        "entity_id": _object_id(record_id),
+        "pet_id": _object_id(pet_id),
+        "viewers": pet_viewers(pet_id) if viewers is None else list(viewers),
+        "deleted_at": moment,
+        "expires_at": moment + KEEP_DELETIONS,
+    }
+    if local_id:
+        note["local_id"] = local_id
+    app.db[DELETIONS].insert_one(note)
 
 
 def _visible_pet_ids(username: str) -> list:

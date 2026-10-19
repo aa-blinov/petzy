@@ -58,6 +58,7 @@ from web.schemas import (
 from web.builtin_event_types import BUILTIN_TYPE_ORDER, HARD_BOUNDS
 from web.security import get_current_user, is_admin, login_required
 from web.idempotency import idempotent
+from web.offline import conflict_answer, is_stale, version_guard
 from web.sync import log_deletion
 
 
@@ -786,6 +787,7 @@ def require_local_event_access(view):
     """The same check as ``require_record_access``, for a record the device names by its ``local_id`` in the path.
 
     An unknown name and a record of a pet the caller cannot see answer alike, as they do by id: 404 ``record_not_found``.
+    A record that was deleted is found too, and each action says what it makes of that.
     """
 
     @login_required
@@ -795,7 +797,7 @@ def require_local_event_access(view):
         if auth_error:
             return auth_error[0], auth_error[1]
         local_id = kwargs.get("local_id")
-        record = app.db[EVENTS_COLLECTION].find_one({"local_id": local_id, **LIVE_EVENT_FILTER}) if local_id else None
+        record = app.db[EVENTS_COLLECTION].find_one({"local_id": local_id}) if local_id else None
         if not record or not record.get("pet_id") or not check_pet_access(record["pet_id"], username):
             return error_response("record_not_found")
         g.username = username
@@ -810,14 +812,20 @@ def require_local_event_access(view):
 @login_required
 @api.validate(
     body=Request(EventUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["events"],
 )
-@require_record_access(EVENTS_COLLECTION, extra_filter=LIVE_EVENT_FILTER)
+@require_record_access(EVENTS_COLLECTION)
 def update_event(record_id):
     """Update an event. The event's type cannot change.
 
-    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Without ``date`` and ``time`` the record keeps its time; one of them sent alone is completed from the stored time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float (a true or false is not a number) and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's.
+    The type is fixed once written: a different kind of thing belongs in a new record. Any member of the pet may change any of its records, whoever wrote it. Without ``date`` and ``time`` the record keeps its time; one of them sent alone is completed from the stored time. ``fields`` replaces the whole set, it is not merged. Keys the type does not declare are dropped. A number field becomes a float (a true or false is not a number) and must fit its ``min`` and ``max`` (built-in types also keep fixed limits: weight 0.01-100, feeding ``food_weight`` 0.1-5000, temperature ``temp_c`` 30-45); a choice must be one of its options' ``value``; text is cut to 500 characters. ``date`` with ``time`` is at most a day ahead and at most 50 years back. These answer 422 ``validation_error`` with the reason in ``error``. An unknown or invalid ``tz`` is dropped, and the record is kept without a zone. The zone is restamped only when the clock really moved, or an author's time would come back as the editor's. ``base_version`` is the ``updated_at`` the device last read: a record changed since answers 409 ``conflict`` with the record as it is now in ``record``; without it the change is applied. A record that was deleted answers 409 ``record_deleted``.
     """
     return _update_event_record(g.record)
 
@@ -826,14 +834,20 @@ def update_event(record_id):
 @login_required
 @api.validate(
     body=Request(EventUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_422=ErrorResponse, HTTP_404=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["events"],
 )
 @require_local_event_access
 def update_event_by_local_id(local_id):
     """Update an event by the ``local_id`` the device gave it, for when the device has not got the record's id.
 
-    The same update as by id, on the same record. The name stays as it was created: an update does not change it.
+    The same update as by id, on the same record, with the same ``base_version`` check. The name stays as it was created: an update does not change it.
     """
     return _update_event_record(g.record)
 
@@ -843,6 +857,12 @@ def _update_event_record(record: dict):
     username = g.username
     pet_id = g.pet_id
     data = request.context.body  # type: ignore[attr-defined]
+
+    if record.get("is_deleted"):
+        # Not a missing record: the device made this change on a copy of something that is gone, and it must drop it.
+        return error_response("record_deleted")
+    if is_stale(data.base_version, record):
+        return conflict_answer(_serialize_event(dict(record)))
 
     event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
     if not event_type:
@@ -883,9 +903,19 @@ def _update_event_record(record: dict):
         update_data["fields"] = cleaned_fields
 
     update_data["updated_at"] = datetime.now(timezone.utc)
-    result = app.db[EVENTS_COLLECTION].update_one({"_id": record["_id"]}, {"$set": update_data})
+    result = app.db[EVENTS_COLLECTION].update_one(
+        {"_id": record["_id"], **version_guard(record, data.base_version)}, {"$set": update_data}
+    )
     if result.matched_count == 0:
-        return error_response("record_not_found")
+        latest = app.db[EVENTS_COLLECTION].find_one({"_id": record["_id"]})
+        if latest is None:
+            return error_response("record_not_found")
+        if latest.get("is_deleted"):
+            return error_response("record_deleted")
+        if data.base_version is None:
+            return error_response("record_not_found")
+        # Saved by someone else between the check above and the write.
+        return conflict_answer(_serialize_event(latest))
 
     app.logger.info(f"Event updated: record_id={record['_id']}, pet_id={pet_id}, user={username}")
     return get_message("event_updated", label=event_type["label"])
@@ -923,6 +953,9 @@ def _delete_event_record(record: dict):
     """The delete of one record found by the access check, by its id or by the local_id the device named."""
     username = g.username
     pet_id = g.pet_id
+    if record.get("is_deleted"):
+        # Found by its name, and already gone: as by id, a record that is not there.
+        return error_response("record_not_found")
     event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
     label = event_type["label"] if event_type else "Запись"
 

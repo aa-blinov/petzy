@@ -17,6 +17,7 @@ from pydantic import (
     model_validator,
     ConfigDict,
     StringConstraints,
+    AfterValidator,
 )
 
 
@@ -30,6 +31,26 @@ def _not_a_flag(value: Any) -> Any:
 # A number a client sends. The type refuses NaN and Infinity, so a field needs no bound of its own to refuse them,
 # and it refuses true and false.
 FiniteFloat = Annotated[float, BeforeValidator(_not_a_flag), Field(allow_inf_nan=False)]
+
+
+def _a_name_that_names_something(value: str) -> str:
+    """The name is what the device sent, without spaces around it: an empty one names nothing."""
+    value = value.strip()
+    if not value:
+        raise ValueError("Идентификатор записи не может быть пустым")
+    return value
+
+
+# The name a device gives a record it made offline (web/offline.py).
+LocalIdText = Annotated[str, StringConstraints(max_length=64), AfterValidator(_a_name_that_names_something)]
+LOCAL_ID_NOTE = (
+    "Идентификатор записи, который дало устройство (до 64 символов). Повтор того же запроса с ним отдаёт уже "
+    "сохранённую запись и ничего не пишет; имя, занятое чужой записью, даёт 409 local_id_taken"
+)
+BASE_VERSION_NOTE = (
+    "Версия записи, из которой сделана правка: её updated_at так, как клиент его прочитал. Если запись с тех пор "
+    "изменилась, ответ 409 conflict с текущей записью в record. Без поля правка применяется как есть"
+)
 
 
 def _dose_above_zero(value: Optional[float]) -> Optional[float]:
@@ -1225,6 +1246,7 @@ class PetCreate(BaseModel):
     is_neutered: Optional[bool] = Field(None, description="Кастрирован/Стерилизована")
     health_notes: Optional[str] = Field(None, max_length=1000, description="Особенности здоровья, аллергии")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
+    local_id: Optional[LocalIdText] = Field(None, description=LOCAL_ID_NOTE)
 
     @field_validator("name")
     @classmethod
@@ -1291,6 +1313,7 @@ class PetUpdate(BaseModel):
     health_notes: Optional[str] = Field(None, max_length=1000)
     remove_photo: Optional[bool] = Field(None, description="True, если нужно удалить текущую фотографию")
     tiles_settings: Optional[TilesSettings] = Field(None, description="Настройки тайлов дневника")
+    base_version: Optional[str] = Field(None, description=BASE_VERSION_NOTE)
 
     @field_validator("name")
     @classmethod
@@ -1362,6 +1385,12 @@ class PetResponse(BaseModel):
     # Invited, not yet accepted. Only the owner sees them.
     share_invites: Optional[List[str]] = None
     created_at: Optional[str] = None
+    updated_at: Optional[str] = Field(
+        None, description="Когда карточка питомца последний раз менялась: UTC, до секунды"
+    )
+    local_id: Optional[str] = Field(
+        None, description="Имя, которое дало устройство; нет у питомцев, созданных без него"
+    )
     created_by: Optional[str] = None
     current_user_is_owner: Optional[bool] = None
     look: Optional[Dict[str, Any]] = Field(
@@ -1993,6 +2022,7 @@ class EventCreate(HealthRecordBase):
 class EventUpdate(HealthRecordUpdateBase):
     """Update an existing event."""
 
+    base_version: Optional[str] = Field(None, description=BASE_VERSION_NOTE)
     fields: Optional[dict[str, Any]] = Field(None, description="Значения полей, специфичных для типа")
     tz: Optional[str] = Field(
         None,
@@ -2392,6 +2422,7 @@ class MedicationCreate(PetIdQuery):
     ended_on: Optional[str] = Field(None, description="Окончание курса, " + COURSE_FIELDS_NOTE)
     purpose: Optional[str] = Field(None, max_length=200, description="От чего или для чего назначен")
     prescribed_by: Optional[str] = Field(None, max_length=100, description="Кто назначил (врач, клиника)")
+    local_id: Optional[LocalIdText] = Field(None, description=LOCAL_ID_NOTE)
 
     @field_validator("default_dose")
     @classmethod
@@ -2450,6 +2481,7 @@ class MedicationUpdate(BaseModel):
     ended_on: Optional[str] = Field(None, description="Окончание курса, " + COURSE_FIELDS_NOTE)
     purpose: Optional[str] = Field(None, max_length=200)
     prescribed_by: Optional[str] = Field(None, max_length=100)
+    base_version: Optional[str] = Field(None, description=BASE_VERSION_NOTE)
 
     @field_validator("default_dose")
     @classmethod
@@ -2521,6 +2553,8 @@ class MedicationItem(BaseModel):
     )
     username: Optional[str] = None
     created_at: Optional[str] = Field(None, description="Когда курс создан")
+    updated_at: Optional[str] = Field(None, description="Когда курс последний раз менялся: UTC, до секунды")
+    local_id: Optional[str] = Field(None, description="Имя, которое дало устройство; нет у курсов, созданных без него")
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -2628,6 +2662,10 @@ class MedicationIntakeCreate(BaseModel):
         max_length=64,
         description="IANA-имя часового пояса, в котором введено время (Asia/Almaty): по нему выгрузка показывает время на часах выгружающего",
     )
+    local_id: Optional[LocalIdText] = Field(
+        None,
+        description="Имя отметки, которое дало устройство (до 64 символов). Повтор отметки с ним отдаёт уже сделанную (200), даже если слот закрыт ею же, а не 409 duplicate_intake; имя, занятое чужой отметкой, даёт 409 local_id_taken",
+    )
 
     @field_validator("tz")
     @classmethod
@@ -2692,6 +2730,7 @@ class MedicationIntakeItem(BaseModel):
     slot_time: Optional[str] = Field(None, description="Время этого приёма по расписанию")
     inventory_deducted: Optional[float] = Field(None, description="Сколько списано с остатка")
     created_at: Optional[str] = Field(None, description="Когда отметка сделана")
+    local_id: Optional[str] = Field(None, description="Имя, которое дало устройство; нет у отметок, сделанных без него")
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -3350,6 +3389,7 @@ class MedicalRecordBody(BaseModel):
 
 class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
     kind: str = Field(..., description="vaccination, parasite, visit или procedure")
+    local_id: Optional[LocalIdText] = Field(None, description=LOCAL_ID_NOTE)
 
     @field_validator("kind")
     @classmethod
@@ -3392,6 +3432,8 @@ class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
 class MedicalRecordUpdate(MedicalRecordBody):
     """The whole record again: its pet and kind stay as they were."""
 
+    base_version: Optional[str] = Field(None, description=BASE_VERSION_NOTE)
+
     model_config = ConfigDict(
         json_schema_extra={"example": {"date": "2026-09-23", "title": "Плановый осмотр", "diagnosis": "Без патологии"}}
     )
@@ -3433,6 +3475,8 @@ class MedicalRecordItem(BaseModel):
     diagnosis: Optional[str] = None
     recommendations: Optional[str] = None
     documents: List[MedicalRecordDocument] = Field(default_factory=list)
+    updated_at: Optional[str] = Field(None, description="Когда запись последний раз менялась: UTC, до секунды")
+    local_id: Optional[str] = Field(None, description="Имя, которое дало устройство; нет у записей, созданных без него")
 
     model_config = ConfigDict(
         populate_by_name=True,
