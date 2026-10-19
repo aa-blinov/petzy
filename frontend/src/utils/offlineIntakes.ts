@@ -34,6 +34,9 @@ export interface PendingIntake {
 }
 
 let items: PendingIntake[] = read();
+/** Whether localStorage took the last write. When it did not, this tab's memory is the only copy of the queue
+ *  and reading the storage would hand back nothing to build the next write from. */
+let inStorage = true;
 const listeners = new Set<() => void>();
 
 function read(): PendingIntake[] {
@@ -49,10 +52,18 @@ function set(next: PendingIntake[]) {
   items = next;
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
+    inStorage = true;
   } catch {
     /* storage unavailable: the queue lives until the page closes */
+    inStorage = false;
   }
   listeners.forEach((listener) => listener());
+}
+
+/** The queue a write starts from: what the other tabs of this browser left in the storage, and this tab's own
+ *  memory when there is no storage to leave it in. */
+function current(): PendingIntake[] {
+  return inStorage ? read() : items;
 }
 
 /** The request never got an answer: the phone has no connection, or the server did not reply in time. */
@@ -62,8 +73,10 @@ export function isOffline(err: unknown): boolean {
 
 /** Keeps a dose marked with no connection, for the login it was marked under. */
 export function enqueueIntake(owner: string, medicationId: string, name: string, input: IntakeInput, petName?: string): void {
+  // The queue lives in localStorage, which the other tabs of this browser write too, while `items` is what was
+  // stored when this one loaded: appending to it would drop a dose marked in a tab open longer than this.
   set([
-    ...items,
+    ...current(),
     { key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, owner, medicationId, name, petName, input },
   ]);
 }
@@ -95,6 +108,8 @@ function signedInAs(queryClient: QueryClient): string | null {
 export async function flushPendingIntakes(queryClient: QueryClient): Promise<void> {
   const login = signedInAs(queryClient);
   if (!login || flushing) return;
+  // Another tab may have marked a dose while this one was open: send what is stored now, not the snapshot.
+  set(current());
   // Entries from before owners were recorded belong to the first login that sends them.
   const claimed = claimUnowned(items, login);
   if (claimed !== items) set(claimed);
@@ -121,7 +136,8 @@ export async function flushPendingIntakes(queryClient: QueryClient): Promise<voi
           showToast.failure(`${item.name}: отметку не удалось отправить, отметьте приём ещё раз`);
         }
       }
-      set(items.filter((i) => i.key !== item.key));
+      // The dose leaves the stored queue, which may have grown while the server was thinking.
+      set(current().filter((i) => i.key !== item.key));
     }
   } finally {
     flushing = false;
