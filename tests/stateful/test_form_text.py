@@ -75,3 +75,57 @@ class TestNamesAreOneLine:
         response = _post_pet(client, regular_user_token, name="  Рыжий \r\n  кот  ")
         assert response.status_code == 201, response.get_json()
         assert mock_db["pets"].find_one({"name": "Рыжий кот"}) is not None
+
+
+@pytest.mark.health
+class TestBreedAndHealthNotesAreTrimmedTheSameWayEverywhere:
+    """The spaces around a breed or a note were dropped on a multipart edit only,
+    so the same words read differently depending on how the card was filled in."""
+
+    BREED, NOTES = "  Лабрадор \n", " Аллергия на курицу  "
+
+    def _assert_trimmed(self, pet):
+        assert (pet["breed"], pet["health_notes"]) == ("Лабрадор", "Аллергия на курицу")
+
+    def test_at_creation_over_json(self, client, mock_db, regular_user_token):
+        response = client.post(
+            "/api/pets",
+            json={"name": "Рекс", "breed": self.BREED, "health_notes": self.NOTES},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 201, response.get_json()
+        self._assert_trimmed(mock_db["pets"].find_one({"name": "Рекс"}))
+
+    def test_at_creation_over_multipart(self, client, mock_db, regular_user_token):
+        assert (
+            _post_pet(client, regular_user_token, name="Рекс", breed=self.BREED, health_notes=self.NOTES).status_code
+            == 201
+        )
+
+        self._assert_trimmed(mock_db["pets"].find_one({"name": "Рекс"}))
+
+    @pytest.mark.parametrize("as_json", [True, False])
+    def test_at_an_edit_over_json_and_multipart(self, client, mock_db, regular_user_token, test_pet, as_json):
+        fields = {"breed": self.BREED, "health_notes": self.NOTES}
+        request_kwargs = {"json": fields} if as_json else {"data": fields, "content_type": "multipart/form-data"}
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+            **request_kwargs,
+        )
+
+        assert response.status_code == 200, response.get_json()
+        self._assert_trimmed(mock_db["pets"].find_one({"_id": test_pet["_id"]}))
+
+    def test_a_note_keeps_its_own_line_breaks(self, client, mock_db, regular_user_token, test_pet):
+        """Only the spaces around it go: a note the person broke into lines is theirs."""
+        notes = "Первая строка\nвторая строка"
+        response = client.put(
+            f"/api/pets/{test_pet['_id']}",
+            json={"health_notes": notes},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200, response.get_json()
+        assert mock_db["pets"].find_one({"_id": test_pet["_id"]})["health_notes"] == notes
