@@ -26,7 +26,7 @@ import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { hapticFeedback } from '../utils/haptic';
 import { INTAKE_UNDO_MS, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
-import { refreshAfterIntake } from '../utils/intakeViews';
+import { refreshAfterIntake, refreshMedicationViews } from '../utils/intakeViews';
 import { showUndo } from '../utils/undo';
 import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
@@ -228,10 +228,7 @@ export function MedicationsList() {
     // «Завершить курс» and «Возобновить» from the list: the course is switched off as of today, or on again, and the bar takes it back.
     const toggleCourse = async (med: Medication) => {
         const ended = med.course_status ? med.course_status === 'ended' : !med.is_active;
-        const refresh = async () => {
-            await queryClient.invalidateQueries({ queryKey: ['medications'] });
-            await queryClient.invalidateQueries({ queryKey: ['medical-card'] });
-        };
+        const refresh = () => refreshMedicationViews(queryClient);
         try {
             if (ended) {
                 await medicationsService.update(med._id, { is_active: true, ended_on: '' });

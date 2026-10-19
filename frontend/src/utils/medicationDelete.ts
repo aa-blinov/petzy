@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { Medication } from '../services/medications.service';
 import { deleteWithUndo } from './deferredDelete';
+import { refreshMedicationViews } from './intakeViews';
 
 /** One question for both places a course can be deleted from (the list's swipe and the edit form). */
 export const medicationDeleteText = (name: string) =>
@@ -13,11 +14,6 @@ export function deleteMedicationWithUndo(med: Pick<Medication, '_id' | 'name'>, 
     path: `/medications/${med._id}`,
     message: `Лекарство «${med.name}» удалено`,
     failure: `Не удалось удалить «${med.name}», лекарство на месте`,
-    onDeleted: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['medications'] }),
-        queryClient.invalidateQueries({ queryKey: ['medical-card'] }),
-        queryClient.invalidateQueries({ queryKey: ['timeline'] }),
-      ]),
+    onDeleted: () => refreshMedicationViews(queryClient),
   });
 }
