@@ -985,14 +985,21 @@ def get_health_stats():
 
     since_date = datetime.now(timezone.utc) - timedelta(days=days)
     mongo_query: dict[str, Any] = {"pet_id": pet_id, "date_time": {"$gte": since_date}}
+    # Only what a point is made of: the record's own clock with its zone, and the one field the chart reads. The comment
+    # and the fields the chart does not read would otherwise ride along with every record of the window. The window and
+    # the order come off the existing indexes (pet_id + type + date_time, pet_id + date_time for doses), so the database
+    # answers in order without anything being read to be sorted here.
+    projection: dict[str, Any] = {"_id": 0, "date_time": 1, "tz": 1}
     if collection_name == EVENTS_COLLECTION:
         mongo_query["type"] = record_type
         mongo_query.update(LIVE_EVENT_FILTER)
+        if value_field != "count":
+            projection[f"fields.{value_field}"] = 1
     else:
         # A skipped dose isn't a dose given.
         mongo_query["skipped"] = {"$ne": True}
 
-    records = list(app.db[collection_name].find(mongo_query).sort("date_time", 1))
+    records = app.db[collection_name].find(mongo_query, projection).sort("date_time", 1)
 
     stats_data = []
     for record in records:
