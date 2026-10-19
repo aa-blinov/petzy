@@ -113,13 +113,12 @@ export function clearLocalAuthState() {
 }
 
 /**
- * Drop the service worker's API response caches.
+ * Drop any API response caches left on disk.
  *
- * queryClient.clear() only empties React Query's in-memory cache; the
- * SW keeps its own copy of every /api/* response it has seen. Without
- * this, signing out left the previous user's responses on disk, ready
- * to be served to whoever signs in next on the same device — and to
- * show up briefly before the network answer replaced them.
+ * queryClient.clear() only empties React Query's in-memory cache. Today
+ * every /api request is NetworkOnly, so the worker keeps no copy to
+ * serve; this still wipes storages named api-* left by an older build,
+ * which would otherwise outlive the sign-out that caused them.
  *
  * Fire-and-forget: a failure here must never block signing out.
  */
