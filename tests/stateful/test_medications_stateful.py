@@ -306,3 +306,40 @@ class TestTwoPacksEnteredAtOnce:
         assert first.get_json()["inventory_current"] == 30.0
         assert second.get_json()["inventory_current"] == 60.0
         assert mock_db["medications"].find_one({"_id": med_id})["inventory_current"] == 60.0
+
+
+@pytest.mark.medications
+class TestWhatOneCourseSaysAboutItself:
+    """The form reads ``course_status`` to offer «Возобновить курс»; without it a finished course
+    offers «Завершить курс» instead (frontend/src/pages/MedicationForm.tsx)."""
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [({}, "active"), ({"is_active": False}, "ended"), ({"ended_on": "2020-01-01"}, "ended")],
+    )
+    def test_the_detail_answer_carries_the_course_status(
+        self, client, mock_db, regular_user_token, test_pet, stored, expected
+    ):
+        med_id = ObjectId()
+        mock_db["medications"].insert_one(
+            {
+                "_id": med_id,
+                "pet_id": str(test_pet["_id"]),
+                "name": "Antibiotic",
+                "type": "Таблетка",
+                "default_dose": 1.0,
+                "schedule": {"days": [0, 1, 2, 3, 4, 5, 6], "times": ["08:00"]},
+                "inventory_enabled": False,
+                "is_active": True,
+                "owner": "testuser",
+                **stored,
+            }
+        )
+
+        response = client.get(
+            f"/api/medications/{med_id}?tz=Asia/Almaty",
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.get_json()["medication"]["course_status"] == expected

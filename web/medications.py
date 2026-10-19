@@ -329,13 +329,17 @@ def get_medication(id):
     """Fetch a single medication course by id.
 
     The course with its stock and last dose. Thinner than an item of the list: no ``last_taken_by``,
-    ``last_taken_tz``, ``scheduled_today``, ``open_slots_today`` or ``course_status``; ``intakes_today`` is
-    counted from midnight of the zone ``tz`` names, or UTC without one.
+    ``last_taken_tz``, ``scheduled_today`` or ``open_slots_today``; ``intakes_today`` is counted from
+    midnight of the zone ``tz`` names, or UTC without one.
     """
     try:
         record = g.record
         record["_id"] = str(record["_id"])
         record["as_needed"] = is_as_needed(record)
+        # The list's reading of the course, so the form opened from either screen offers the same
+        # buttons: «Возобновить курс» for a finished one.
+        today_start = local_day_start(request.context.query.tz)  # type: ignore[attr-defined]
+        record["course_status"] = course_status(record, today_start.strftime("%Y-%m-%d"))
         # Mirror the enrichment the list endpoint provides so consumers
         # don't see a stripped shape when switching from list→detail.
         pet_id = record.get("pet_id")
@@ -350,7 +354,6 @@ def get_medication(id):
             else:
                 record.setdefault("last_taken_at", None)
 
-            today_start = local_day_start(request.context.query.tz)  # type: ignore[attr-defined]
             record["intakes_today"] = app.db.medication_intakes.count_documents(
                 {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
             )
