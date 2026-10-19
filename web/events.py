@@ -58,6 +58,7 @@ from web.schemas import (
 from web.builtin_event_types import BUILTIN_TYPE_ORDER, HARD_BOUNDS
 from web.security import get_current_user, is_admin, login_required
 from web.idempotency import idempotent
+from web.sync import log_deletion
 
 
 events_bp = Blueprint("events", __name__)
@@ -313,6 +314,9 @@ def delete_event_type(key):
     ``?preview=true`` counts the records on the pets this person can open and deletes nothing (the answer carries
     ``events_count``), so the question «удалить тип вместе с записями?» is asked once, with the number in it.
     ``preview`` and ``with_events`` take ``true``, ``1``, ``yes`` or ``on``, any case.
+
+    The deletion is told to the devices that sync (``GET /api/sync``): one marker of kind ``event_type`` for the type, and
+    one ``event`` marker for each record erased with it, for everyone in the household.
     """
     # @login_required already guarantees request.current_user is set.
     username, _ = get_current_user()
@@ -346,10 +350,20 @@ def delete_event_type(key):
         body["events_count"] = count
         return jsonify(body), status
     if count > 0:
+        live = {"type": key, "pet_id": {"$in": accessible_pet_ids}, **LIVE_EVENT_FILTER}
+        records = list(app.db[EVENTS_COLLECTION].find(live, {"_id": 1, "pet_id": 1}))
         app.db[EVENTS_COLLECTION].delete_many({"type": key, "pet_id": {"$in": accessible_pet_ids}})
+        for record in records:
+            # A record deleted on its own stays as a tombstone of its own and needs no note here. These are erased, so
+            # the devices that keep their own copy are told another way — the same note every other deletion leaves.
+            log_deletion("event", record["_id"], record["pet_id"])
         app.logger.info(f"Event type records deleted with it: key={key}, count={count}, user={username}")
 
     app.db[EVENT_TYPES_COLLECTION].delete_one({"key": key})
+    # The type is gone from the registry, and a device that has been offline keeps its own copy of it: without this note
+    # it would go on offering a type the server no longer has. Everyone in the household could see it, so everyone in
+    # the household is told.
+    log_deletion("event_type", key, "", viewers=sorted(_household(username)))
     app.logger.info(f"Event type deleted: key={key}, user={username}")
     return get_message("event_type_deleted")
 

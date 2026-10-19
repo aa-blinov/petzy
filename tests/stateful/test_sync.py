@@ -63,6 +63,35 @@ def _share(client, owner_token, pet_id, username, invitee_token):
     assert client.post(f"/api/pets/{pet_id}/invite/accept", headers=_auth(invitee_token)).status_code == 200
 
 
+def _custom_type(client, token, label="Лазание"):
+    """A type of the person's own, as the settings screen makes one."""
+    response = client.post(
+        "/api/event-types",
+        json={"label": label, "icon": "paw", "color": "green", "fields": []},
+        headers=_auth(token),
+    )
+    assert response.status_code == 201, response.get_json()
+    return response.get_json()["key"]
+
+
+def _record_of_type(client, token, pet_id, type_key):
+    now = datetime.now(timezone.utc)
+    response = client.post(
+        f"/api/events?pet_id={pet_id}",
+        json={
+            "pet_id": str(pet_id),
+            "type": type_key,
+            "date": now.strftime("%Y-%m-%d"),
+            "time": now.strftime("%H:%M"),
+            "fields": {},
+            "tz": "Asia/Almaty",
+        },
+        headers=_auth(token),
+    )
+    assert response.status_code == 201, response.get_json()
+    return response.get_json()["id"]
+
+
 def _medication_body(pet_id):
     return {
         "pet_id": str(pet_id),
@@ -151,6 +180,63 @@ class TestMarkers:
         owner_view = _markers(_everything(client, regular_user_token), "pet")
         assert ("pet", pet_id, False) in owner_view
         assert ("pet", pet_id, True) not in owner_view
+
+    def test_deleting_a_type_sends_the_type_and_the_records_it_took_with_it(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
+        key = _custom_type(client, regular_user_token)
+        record_id = _record_of_type(client, regular_user_token, test_pet["_id"], key)
+        before = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=2)
+
+        assert (
+            client.delete(f"/api/event-types/{key}?with_events=true", headers=_auth(regular_user_token)).status_code
+            == 200
+        )
+
+        markers = _markers(_everything(client, regular_user_token, since=_iso(before)))
+        assert ("event_type", key, True) in markers
+        # The records are erased, not marked, so their deletion is a note of its own: a device that had them offline
+        # would otherwise keep them for good.
+        assert ("event", record_id, True) in markers
+
+    def test_a_gone_type_comes_to_everyone_in_the_household(self, client, regular_user_token, admin_token, test_pet):
+        key = _custom_type(client, regular_user_token)
+        _share(client, regular_user_token, str(test_pet["_id"]), "admin", admin_token)
+        before = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=2)
+
+        assert client.delete(f"/api/event-types/{key}", headers=_auth(regular_user_token)).status_code == 200
+
+        assert ("event_type", key, True) in _markers(_everything(client, regular_user_token, since=_iso(before)))
+        assert ("event_type", key, True) in _markers(_everything(client, admin_token, since=_iso(before)))
+
+    def test_the_feed_pages_over_a_gone_type(self, client, mock_db, regular_user_token, test_pet):
+        # A type is named by its key, not by an id of the database: the cursor a page ends with has to carry that key as
+        # it is, or the next page is refused and the device never finishes its sync. A change later than the deletion is
+        # put in by hand, so that a page really does end on the gone type.
+        gone = _custom_type(client, regular_user_token, "Лазание")
+        before = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=2)
+
+        assert client.delete(f"/api/event-types/{gone}", headers=_auth(regular_user_token)).status_code == 200
+        later = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=1)
+        record_id = str(
+            mock_db["events"]
+            .insert_one(
+                {
+                    "pet_id": test_pet["_id"],
+                    "username": "testuser",
+                    "type": "weight",
+                    "date_time": later,
+                    "created_at": later,
+                    "updated_at": later,
+                }
+            )
+            .inserted_id
+        )
+
+        markers = _markers(_everything(client, regular_user_token, since=_iso(before), page_size=1))
+
+        assert ("event_type", gone, True) in markers
+        assert ("event", record_id, False) in markers
 
     def test_deleting_a_pet_sends_its_marker_and_nothing_under_it(
         self, client, regular_user_token, admin_token, test_pet
