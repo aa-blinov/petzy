@@ -45,7 +45,11 @@ errorlog = "-"  # Log to stderr
 # Use LOG_LEVEL from environment, convert to lowercase for Gunicorn (default: info)
 log_level = os.getenv("LOG_LEVEL", "INFO").lower()
 loglevel = log_level if log_level in ["debug", "info", "warning", "error", "critical"] else "info"
-access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
+# No query string, the same reason nginx logs no_query (nginx/nginx.conf): a
+# password-reset or e-mail confirmation link keeps its token there. %(r)s is
+# the whole request line, query included; %(U)s is the path alone, beside the
+# method and the protocol.
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(m)s %(U)s %(H)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process naming
 proc_name = "petzy"
