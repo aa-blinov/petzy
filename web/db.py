@@ -224,6 +224,8 @@ def ensure_indexes() -> None:
       medications         pet_id + created_at (medication list for a pet)
       medication_intakes  pet_id + date_time (intakes timeline per pet)
                           medication_id + date_time (last intake / count today)
+                          medication_id + slot_date + slot_time unique (a slot is closed
+                          once: only marks that name a slot and were not forced)
       events              pet_id + date_time (timeline per pet)
                           pet_id + type + date_time (per-type list/chart)
       event_types         key unique         (registry lookup by type)
@@ -309,6 +311,22 @@ def ensure_indexes() -> None:
         (db.medications, [("pet_id", ASCENDING), ("created_at", DESCENDING)], "meds_pet_created"),
         (db.medication_intakes, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "intakes_pet_date"),
         (db.medication_intakes, [("medication_id", ASCENDING), ("date_time", DESCENDING)], "intakes_med_date"),
+        (
+            db.medication_intakes,
+            [("slot_key", ASCENDING)],
+            "intakes_slot_unique",
+            {
+                "unique": True,
+                # The last line of defence for a slot closed twice: the check in log_intake reads the
+                # day's intakes and then writes, so two phones marking the same 08:00 dose at the
+                # same moment both saw it open and both wrote it, taking the stock twice.
+                # The key is written only by a mark that names the slot it closed, and a forced mark
+                # leaves it out, so it stays out of the index. A sparse unique index is used rather
+                # than a partial one because Mongo refuses a partial filter that excludes a field
+                # ("Expression not supported in partial index: $not").
+                "sparse": True,
+            },
+        ),
         (db.events, [("pet_id", ASCENDING), ("date_time", DESCENDING)], "events_pet_date"),
         (db.events, [("pet_id", ASCENDING), ("type", ASCENDING), ("date_time", DESCENDING)], "events_pet_type_date"),
         (db.events, [("local_id", ASCENDING)], "events_local_id_unique", {"unique": True, "sparse": True}),

@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request, g
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
+from pymongo.errors import DuplicateKeyError
 
 import web.app as app
 from web.security import login_required
@@ -547,6 +548,21 @@ def _already_handled(id: str, medication: dict, data, event_dt: datetime, userna
     }
 
 
+def _duplicate_answer(existing: dict):
+    """The 409 for a dose already recorded: who closed that slot, and when."""
+    return (
+        jsonify(
+            {
+                "success": False,
+                "code": "duplicate_intake",
+                "error": existing["error"],
+                "existing": existing["existing"],
+            }
+        ),
+        409,
+    )
+
+
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
 @login_required
 @api.validate(
@@ -608,17 +624,7 @@ def log_intake(id):
         ):
             existing = _already_handled(id, medication, data, event_dt, username)
             if existing:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "code": "duplicate_intake",
-                            "error": existing["error"],
-                            "existing": existing["existing"],
-                        }
-                    ),
-                    409,
-                )
+                return _duplicate_answer(existing)
 
         # Take the dose from the stock before recording the intake; the
         # insert below gives it back if it fails. A dose is always
@@ -688,14 +694,23 @@ def log_intake(id):
             intake_data["tz"] = data.tz
         if skipped:
             intake_data["skipped"] = True
+        if data.force:
+            # This slot is written a second time on purpose, so the mark stays out of the unique
+            # slot index (web/db.py) that catches two phones marking the same dose at once.
+            intake_data["forced"] = True
         # The slot it was for, when the client knows (the dose widget does): that slot is closed, not the earliest one.
         if data.slot_date and data.slot_time and minutes_of_day(data.slot_time) is not None:
             intake_data["slot_date"] = data.slot_date
             intake_data["slot_time"] = data.slot_time
+            if not data.force:
+                # One key per closed slot, and only for a slot that was closed on purpose: the unique
+                # index over it (web/db.py) turns two phones marking the same dose into one answer.
+                # A forced mark leaves the key out, it was recorded after the person was asked.
+                intake_data["slot_key"] = f"{id}|{data.slot_date}|{minutes_of_day(data.slot_time)}"
 
         try:
             inserted = app.db.medication_intakes.insert_one(intake_data)
-        except Exception:
+        except Exception as insert_error:
             # The stock was already decremented above. Without this the
             # dose would stay spent on an intake that does not exist —
             # the original ordering claimed to be "for consistency" but
@@ -708,6 +723,13 @@ def log_intake(id):
                 app.logger.warning(
                     f"Intake insert failed for medication {id}; restored {inventory_decremented_by} to inventory"
                 )
+            if not isinstance(insert_error, DuplicateKeyError):
+                raise
+            # The slot was closed in the moment between the check above and this write, and the
+            # unique index caught what the check could not see yet. Answered as the check answers.
+            existing = _already_handled(id, medication, data, event_dt, username)
+            if existing:
+                return _duplicate_answer(existing)
             raise
 
         # The id lets the client offer «Отменить» for a dose logged by mistake.
