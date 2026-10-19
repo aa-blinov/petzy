@@ -909,8 +909,9 @@ def update_intake(id):
         update: dict = {"$set": changes}
         if event_dt != intake.get("date_time"):
             # Said to have been given at another time: it no longer vouches for the slot it was marked for, and
-            # closes the one that time is nearest to (see web/dose_slots.py).
-            update["$unset"] = {"slot_date": "", "slot_time": ""}
+            # closes the one that time is nearest to (see web/dose_slots.py). The slot key goes with them, or
+            # the unique index (web/db.py) would keep that slot closed by a mark that no longer names it.
+            update["$unset"] = {"slot_date": "", "slot_time": "", "slot_key": ""}
         app.db.medication_intakes.update_one({"_id": intake["_id"]}, update)
         return get_message("intake_updated")
     except Exception as e:

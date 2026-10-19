@@ -241,6 +241,24 @@ class TestOneSlotClosedByTwoPhonesAtOnce:
         assert indexed["medication_intakes"].count_documents({"medication_id": str(course)}) == 2
         assert indexed["medications"].find_one({"_id": course})["inventory_current"] == 28.0
 
+    def test_moving_a_mark_lets_its_slot_be_marked_again(self, client, indexed, regular_user_token, course):
+        """Correcting the time of a mark gives the slot back.
+
+        Moved to the evening the mark no longer names a slot, so it closes the one nearest its new
+        time, the evening dose. The morning is free again and has to be markable. Had the slot key
+        stayed on the document, the unique index would keep 08:00 closed by a mark that no longer
+        points at it, and the answer would be «уже отмечен» about nothing.
+        """
+        assert self._mark(client, regular_user_token, course).status_code == 201
+        intake_id = indexed["medication_intakes"].find_one({"medication_id": str(course)})["_id"]
+        moved = client.put(
+            f"/api/medications/intakes/{intake_id}",
+            json={"date": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "time": "19:00", "tz": "UTC"},
+            headers={"Authorization": f"Bearer {regular_user_token}"},
+        )
+        assert moved.status_code == 200
+        assert self._mark(client, regular_user_token, course).status_code == 201
+
     def test_a_slot_the_course_no_longer_has_is_still_the_same_dose(self, client, indexed, regular_user_token, course):
         """The evening dose was taken off the schedule while a stale copy of it was still on a screen.
 
