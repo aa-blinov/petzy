@@ -101,6 +101,15 @@ def _client(public: bool = False):
         config=Config(
             signature_version="s3v4",
             s3={"addressing_style": "path"},
+            # botocore waits 60s for both by default and retries three
+            # times, so an unreachable bucket parked a gthread worker for
+            # three minutes; a few of those and the whole app stopped
+            # answering, feed included. Reaching the bucket takes a TLS
+            # handshake and one answer is one small response: 5s and 30s
+            # keep a thread's worst wait inside gunicorn's own 30s request
+            # timeout.
+            connect_timeout=5,
+            read_timeout=30,
             retries={"max_attempts": 3, "mode": "standard"},
         ),
     )
