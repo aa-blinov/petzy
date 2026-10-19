@@ -319,29 +319,49 @@ def _render_export(spec: ExportSpec, pet_id, format_type, serializer, tz_name: O
     return serializer(records, spec.fields)
 
 
+def _zip_entry_name(title: str, key: str, suffix: str, taken: set[str]) -> str:
+    """A name no other file of the same archive already carries.
+
+    Two types can bear one label — an old duplicate is still allowed to be
+    saved (see the rename check in ``web/events.py``) — and a repeated name
+    makes the second file silently replace the first when the archive is
+    unpacked. The type key, which is unique, tells them apart.
+    """
+    # From a user-made label: nothing that could step out of the archive's folder.
+    stem = re.sub(r"[^\w.-]+", "_", title).strip("._").lower() or "records"
+    name = f"{stem}.{suffix}"
+    if name not in taken:
+        return name
+    stem = f"{stem}_{re.sub(r'[^\w.-]+', '_', key).strip('._').lower() or 'type'}"
+    name, number = f"{stem}.{suffix}", 2
+    while name in taken:
+        name, number = f"{stem}_{number}.{suffix}", number + 1
+    return name
+
+
 def _render_all_types_zip(pet_id, format_type, serializer, specs: dict[str, ExportSpec], tz_name: Optional[str] = None):
     """Bundle every type that has records into a single ZIP.
 
-    Each entry keeps its own column set, named after the type's title, so
-    the archive is the "separate exports" the UI offers — just delivered
-    as one download instead of several.
+    Each entry keeps its own column set, named after the type's title (with the
+    type key added when a label is shared), so the archive is the "separate
+    exports" the UI offers — just delivered as one download instead of several.
 
     Returns ``(zip_bytes, included_titles)``; an empty list means the pet
     has no records at all.
     """
     buffer = io.BytesIO()
     included = []
+    taken: set[str] = set()
 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for spec in specs.values():
+        for key, spec in specs.items():
             content, _mimetype, suffix = _render_export(spec, pet_id, format_type, serializer, tz_name)
             if content is None:
                 # Nothing logged for this type — leave it out rather than
                 # shipping an empty file with only a header row.
                 continue
-            # From a user-made label: nothing that could step out of the archive's folder.
-            safe_title = re.sub(r"[^\w.-]+", "_", spec.title).strip("._").lower() or "records"
-            entry_name = f"{safe_title}.{suffix}"
+            entry_name = _zip_entry_name(spec.title, key, suffix, taken)
+            taken.add(entry_name)
             archive.writestr(entry_name, content)
             included.append(spec.title)
 
