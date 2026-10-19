@@ -1,0 +1,57 @@
+# Build context for the two images built from the repository root: the app
+# (Dockerfile) and the daily backup (backup/Dockerfile). Both copy only
+# requirements.txt, web/, gunicorn.conf.py and three files of scripts/ — a few
+# megabytes out of half a gigabyte of context. Everything below is either a
+# secret, a copy of the same file git already keeps, or a tool's local state.
+#
+# The other three services build from their own folder (compose sets context
+# to ./frontend, ./nginx and ./mcp), so what is listed here does not touch them.
+
+# Version history, 57 MB, and it holds every past version of every file.
+.git
+
+# Secrets. The images take no .env (compose passes the values as environment),
+# but the context is uploaded to the daemon and kept in the build cache.
+.env
+.env.*
+
+# Local state of the tools, and the virtualenv the stand runs on (458 MB).
+.venv
+venv/
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Dependencies and build output of the frontend. It is its own build context
+# and the Python images copy nothing from it.
+frontend/
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# Not part of any image: the source of the other services (own contexts), the
+# tests and the checks, and what they leave behind.
+nginx/
+mcp/
+tests/
+e2e/
+docs/
+audit/
+screenshots/
+*.log
+
+# Tool state and agent instructions at the root.
+.githooks/
+.github/
+.claude/
+.impeccable/
+
+# One-off check scripts write their screenshots into the root (see .gitignore).
+/*.png
