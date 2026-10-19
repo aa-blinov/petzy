@@ -22,13 +22,14 @@ def test_ensure_indexes_creates_expected_indexes():
         ensure_indexes()
 
     expected = {
-        "pets": ["pets_owner_created", "pets_shared"],
-        "medications": ["meds_pet_created", "medications_pet_updated"],
+        "pets": ["pets_owner_created", "pets_shared", "pets_local_id_unique"],
+        "medications": ["meds_pet_created", "medications_pet_updated", "medications_local_id_unique"],
         "medication_intakes": [
             "intakes_pet_date",
             "intakes_med_date",
             "intakes_slot_unique",
             "medication_intakes_pet_updated",
+            "medication_intakes_local_id_unique",
         ],
         "users": ["users_username_unique", "users_role"],
         "refresh_tokens": ["refresh_token_jti_unique", "refresh_token_hash_unique", "refresh_token_family"],
@@ -42,7 +43,11 @@ def test_ensure_indexes_creates_expected_indexes():
         ],
         "event_types": ["event_types_key_unique"],
         "documents": ["documents_pet_created", "documents_pet_category_created", "documents_pet_updated"],
-        "medical_records": ["medical_records_pet_kind_date", "medical_records_pet_updated"],
+        "medical_records": [
+            "medical_records_pet_kind_date",
+            "medical_records_pet_updated",
+            "medical_records_local_id_unique",
+        ],
         "sync_deletions": ["sync_deletions_viewer", "sync_deletions_ttl"],
         "medical_shares": ["medical_shares_token_unique", "medical_shares_pet_created", "medical_shares_purge"],
         "push_subscriptions": ["push_subscriptions_endpoint_unique", "push_subscriptions_username"],
@@ -250,6 +255,23 @@ def test_ensure_indexes_makes_a_local_id_unique_and_sparse():
         mock_db.events.insert_one({"pet_id": "p", "type": "weight", "local_id": "same"})
         with pytest.raises(DuplicateKeyError):
             mock_db.events.insert_one({"pet_id": "q", "type": "weight", "local_id": "same"})
+
+
+@pytest.mark.parametrize("collection", ["medications", "medical_records", "pets", "medication_intakes"])
+def test_a_name_a_device_gave_is_unique_in_its_section(collection):
+    """One record per ``local_id`` in each section that takes one; records without a name do not collide."""
+    cm, mock_db = _patched_db()
+    with cm:
+        ensure_indexes()
+
+        info = mock_db[collection].index_information()[f"{collection}_local_id_unique"]
+        assert info.get("unique") is True
+        assert info.get("sparse") is True
+        mock_db[collection].insert_one({"x": 1})
+        mock_db[collection].insert_one({"x": 2})
+        mock_db[collection].insert_one({"x": 3, "local_id": "same"})
+        with pytest.raises(DuplicateKeyError):
+            mock_db[collection].insert_one({"x": 4, "local_id": "same"})
 
 
 def test_ensure_indexes_removes_a_deleted_event_after_thirty_days():

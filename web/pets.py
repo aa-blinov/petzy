@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from flask import Blueprint, jsonify, make_response, request, url_for
+from pymongo.errors import DuplicateKeyError
+from flask import Blueprint, g, jsonify, make_response, request, url_for
 from flask_pydantic_spec import Request, Response
 
 from web.app import api, logger  # shared logger and api
@@ -48,6 +49,15 @@ from web.schemas import (
     ErrorResponse,
 )
 from web.idempotency import idempotent
+from web.offline import (
+    conflict_answer,
+    deleted_by_id_answer,
+    deleted_by_local_id_answer,
+    is_stale,
+    record_version,
+    require_local_record_access,
+    version_guard,
+)
 from web.sync import log_deletion, now_utc, pet_viewers
 from web.helpers import utc_iso
 
@@ -165,6 +175,8 @@ def get_pets():
             pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
         if isinstance(pet.get("created_at"), datetime):
             pet["created_at"] = utc_iso(pet["created_at"])
+        # The version an edit is made from, in the same format as every other timestamp.
+        pet["updated_at"] = record_version(pet) or None
 
         pet["current_user_is_owner"] = pet.get("owner") == username
         # Who's been invited is the owner's business, not the other members'.
@@ -189,11 +201,51 @@ def get_pets():
     return jsonify({"pets": processed_pets})
 
 
+def _pet_named(local_id: str) -> dict | None:
+    """The pet the device named with ``local_id``. A name is unique on the stand, so there is at most one."""
+    return app.db["pets"].find_one({"local_id": local_id})
+
+
+def _created_view(pet: dict) -> dict:
+    """A pet as the answer to its creation says it: the same fields whether it was just made or made earlier."""
+    pet = dict(pet)
+    pet["_id"] = str(pet["_id"])
+    if isinstance(pet.get("birth_date"), datetime):
+        pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
+    if isinstance(pet.get("created_at"), datetime):
+        pet["created_at"] = utc_iso(pet["created_at"])
+    pet["updated_at"] = record_version(pet) or None
+    # Mirror get_pet/get_pets: a photo uploaded on create should come
+    # back with a usable photo_url in this same response, not only
+    # once the caller re-fetches the pet.
+    _expose_photo(pet)
+    return pet
+
+
+def _answer_for_pet_name(existing: dict | None, username: str, local_id: str):
+    """The answer to a create that names a pet: the one already there (200), or why the name cannot be used.
+
+    The caller's own pet: answered as saved, and nothing is written. Somebody else's pet holds the name: 409
+    ``local_id_taken``. No pet, but a deleted one had the name: 409 ``record_deleted``.
+    """
+    if existing is None:
+        return deleted_by_local_id_answer("pet", local_id, username)
+    if existing.get("owner") != username:
+        return error_response("local_id_taken")
+    return get_message("pet_created", status=200, pet=_created_view(existing))
+
+
 @pets_bp.route("/api/pets", methods=["POST"])
 @login_required
 @api.validate(
     body=Request(PetCreate),
-    resp=Response(HTTP_201=PetCreatedResponse, HTTP_422=ErrorResponse, HTTP_401=ErrorResponse, HTTP_500=ErrorResponse),
+    resp=Response(
+        HTTP_201=PetCreatedResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_401=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
     tags=["pets"],
 )
 @idempotent
@@ -202,7 +254,7 @@ def create_pet():
 
     The caller becomes the owner and the pet starts shared with nobody. A photo
     sent in the same request is converted to WebP, at most 1920 px on the longer side; a file that is not a
-    picture is refused (422). A birth date in the future or more than 50 years back is refused.
+    picture is refused (422). A birth date in the future or more than 50 years back is refused. A ``local_id`` the device gives makes the request repeatable: sent again, it is answered with the pet it already made (200) and nothing is written twice, the photo included; a name that belongs to another person's pet is 409 ``local_id_taken``, and a name of a pet that was deleted is 409 ``record_deleted``.
     """
     try:
         # @login_required already guarantees request.current_user is set.
@@ -223,6 +275,13 @@ def create_pet():
         else:
             # JSON request - already validated by @api.validate(body=Request(PetCreate))
             data = request.context.body  # type: ignore[attr-defined]
+
+        if data.local_id:
+            # The device names the pet itself, so the name decides: the same request sent again is the pet that is
+            # already there, and its photo is not stored a second time.
+            answer = _answer_for_pet_name(_pet_named(data.local_id), username, data.local_id)
+            if answer:
+                return answer
 
         # Handle photo file upload (only for multipart/form-data). The id is
         # chosen up front: the photo's storage key includes it.
@@ -262,17 +321,20 @@ def create_pet():
             pet_data["tiles_settings"] = DEFAULT_TILES_SETTINGS
 
         pet_data["updated_at"] = now_utc()
-        result = app.db["pets"].insert_one(pet_data)
-        pet_data["_id"] = str(result.inserted_id)
-        if isinstance(pet_data.get("birth_date"), datetime):
-            pet_data["birth_date"] = pet_data["birth_date"].strftime("%Y-%m-%d")
-        if isinstance(pet_data.get("created_at"), datetime):
-            pet_data["created_at"] = utc_iso(pet_data["created_at"])
-
-        # Mirror get_pet/get_pets: a photo uploaded on create should come
-        # back with a usable photo_url in this same response, not only
-        # once the caller re-fetches the pet.
-        _expose_photo(pet_data)
+        if data.local_id:
+            pet_data["local_id"] = data.local_id
+        try:
+            app.db["pets"].insert_one(pet_data)
+        except DuplicateKeyError:
+            # Two requests naming one pet at the same moment: the second one finds what the first one wrote, and the
+            # photo it stored is not needed.
+            if photo_file_id:
+                delete_stored_file(photo_file_id)
+            answer = _answer_for_pet_name(_pet_named(data.local_id or ""), username, data.local_id or "")
+            if not data.local_id or not answer:
+                raise
+            return answer
+        pet_data = _created_view(pet_data)
 
         logger.info(f"Pet created: id={pet_data['_id']}, owner={username}")
         return get_message("pet_created", status=201, pet=pet_data)
@@ -282,6 +344,29 @@ def create_pet():
     except ValueError as e:
         app.logger.warning(f"Invalid input data for pet creation: user={username}, error={e}")
         return error_response("validation_error", str(e))
+
+
+def _pet_view(pet: dict, username: str) -> dict:
+    """A pet as the detail endpoint reads it: also what a rejected edit brings back as ``record``."""
+    pet = dict(pet)
+    pet["_id"] = str(pet["_id"])
+    if isinstance(pet.get("birth_date"), datetime):
+        pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
+    if isinstance(pet.get("created_at"), datetime):
+        pet["created_at"] = utc_iso(pet["created_at"])
+    # The version an edit is made from, in the same format as every other timestamp.
+    pet["updated_at"] = record_version(pet) or None
+
+    _expose_photo(pet)
+
+    pet["current_user_is_owner"] = pet.get("owner") == username
+    if not pet["current_user_is_owner"]:
+        pet.pop("share_invites", None)
+    _expose_next_owner(pet, username)
+
+    # Ensure tiles_settings is present (use default if missing)
+    pet["tiles_settings"] = get_tiles_settings(pet)
+    return pet
 
 
 @pets_bp.route("/api/pets/<pet_id>", methods=["GET"])
@@ -308,23 +393,7 @@ def get_pet(pet_id):
         if access_error:
             return access_error[0], access_error[1]
 
-        pet["_id"] = str(pet["_id"])
-        if isinstance(pet.get("birth_date"), datetime):
-            pet["birth_date"] = pet["birth_date"].strftime("%Y-%m-%d")
-        if isinstance(pet.get("created_at"), datetime):
-            pet["created_at"] = utc_iso(pet["created_at"])
-
-        _expose_photo(pet)
-
-        pet["current_user_is_owner"] = pet.get("owner") == username
-        if not pet["current_user_is_owner"]:
-            pet.pop("share_invites", None)
-        _expose_next_owner(pet, username)
-
-        # Ensure tiles_settings is present (use default if missing)
-        pet["tiles_settings"] = get_tiles_settings(pet)
-
-        return jsonify({"pet": pet})
+        return jsonify({"pet": _pet_view(pet, username)})
 
     except ValueError as e:
         logger.warning(
@@ -342,6 +411,7 @@ def get_pet(pet_id):
         HTTP_422=ErrorResponse,
         HTTP_403=ErrorResponse,
         HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
         HTTP_500=ErrorResponse,
     ),
     tags=["pets"],
@@ -353,16 +423,50 @@ def update_pet(pet_id):
     action is the owner's. Fields left out keep their value, and ``remove_photo``
     drops the photo without touching the rest. An empty ``birth_date`` keeps the date
     rather than clearing it. A new photo is handled as at creation. A body that changes nothing answers
-    422 ``validation_error_no_update_data``.
+    422 ``validation_error_no_update_data``. ``base_version`` is the ``updated_at`` the device last read: a pet
+    changed since answers 409 ``conflict`` with the pet as it is now in ``record``, and nothing is stored, a photo
+    included; without it the change is applied. A pet that was deleted answers 409 ``record_deleted``.
     """
+    # @login_required already guarantees request.current_user is set.
+    username, _ = get_current_user()
+
     try:
-        # @login_required already guarantees request.current_user is set.
-        username, _ = get_current_user()
-
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
-        if access_error:
-            return access_error[0], access_error[1]
+    except ValueError as e:
+        app.logger.warning(f"Invalid pet_id for pet retrieval: pet_id={pet_id}, user={username}, error={e}")
+        return error_response("validation_error", str(e))
+    if access_error:
+        return deleted_by_id_answer("pet", pet_id, username) or (access_error[0], access_error[1])
+    return _update_pet(pet, username)
 
+
+@pets_bp.route("/api/pets/local/<local_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(PetUpdate),
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_409=ErrorResponse,
+        HTTP_500=ErrorResponse,
+    ),
+    tags=["pets"],
+)
+@require_local_record_access("pets", "pet", owner_only=True)
+def update_pet_by_local_id(local_id):
+    """Update a pet by the ``local_id`` the device gave it, for when the device has not got the pet's id.
+
+    The same update as by id, for the owner, with the same ``base_version`` check. The name stays as it was created.
+    """
+    return _update_pet(g.record, g.username)
+
+
+def _update_pet(pet: dict, username: str):
+    """The update of one pet found by the access check, by its id or by the local_id the device named."""
+    pet_id = str(pet["_id"])
+    try:
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart:
             # @api.validate(body=Request(PetUpdate)) already parses and validates
@@ -374,6 +478,10 @@ def update_pet(pet_id):
         else:
             # JSON request - already validated by @api.validate(body=Request(PetUpdate))
             data = request.context.body  # type: ignore[attr-defined]
+
+        # Before anything is stored: a refused edit leaves no photo behind.
+        if is_stale(data.base_version, pet):
+            return conflict_answer(_pet_view(pet, username))
 
         # Handle photo file upload/removal (only for multipart/form-data)
         #
@@ -460,7 +568,15 @@ def update_pet(pet_id):
         update = {"$set": update_data}
         if photo_changed:
             update["$unset"] = {"look.crops": ""}
-        app.db["pets"].update_one({"_id": ObjectId(pet_id)}, update)
+        result = app.db["pets"].update_one({"_id": ObjectId(pet_id), **version_guard(pet, data.base_version)}, update)
+        if result.matched_count == 0:
+            # Saved by someone else (or deleted) between the check above and the write: the new photo is not needed.
+            if photo_file_id and photo_file_id != pet.get("photo_file_id"):
+                delete_stored_file(photo_file_id)
+            latest = app.db["pets"].find_one({"_id": ObjectId(pet_id)})
+            if latest is None:
+                return error_response("record_deleted")
+            return conflict_answer(_pet_view(latest, username))
         if stale_photo_id and stale_photo_id != update_data.get("photo_file_id", photo_file_id):
             try:
                 delete_stored_file(stale_photo_id)
@@ -800,21 +916,48 @@ def delete_pet(pet_id):
         pet, access_error = get_pet_and_validate(pet_id, username, require_owner=True)
         if access_error:
             return access_error[0], access_error[1]
-
-        try:
-            purged = purge_pet(pet)
-        except PetDeletionFailed:
-            # The pet is still there, and calling this again finishes what is left.
-            return error_response("pet_delete_failed")
-        if not purged:
-            return error_response("pet_not_found")
-
-        logger.info(f"Pet deleted: id={pet_id}, user={username}")
-        return get_message("pet_deleted")
+        return _delete_pet(pet, username)
 
     except ValueError as e:
         logger.warning(f"Invalid pet_id for deletion: id={pet_id}, user={username}, error={e}")
         return error_response("invalid_pet_id")
+
+
+@pets_bp.route("/api/pets/local/<local_id>", methods=["DELETE"])
+@login_required
+@api.validate(
+    resp=Response(
+        HTTP_200=SuccessResponse,
+        HTTP_422=ErrorResponse,
+        HTTP_403=ErrorResponse,
+        HTTP_404=ErrorResponse,
+        HTTP_500=ErrorResponse,
+        HTTP_503=ErrorResponse,
+    ),
+    tags=["pets"],
+)
+@require_local_record_access("pets", "pet", owner_only=True, tell_deleted=False)
+def delete_pet_by_local_id(local_id):
+    """Delete a pet by the ``local_id`` the device gave it, for when the device has not got the pet's id.
+
+    The same cascading delete as by id, for the owner. An unknown name, a deleted pet and someone else's pet answer 404 ``record_not_found``.
+    """
+    return _delete_pet(g.record, g.username)
+
+
+def _delete_pet(pet: dict, username: str):
+    """The delete of one pet found by the access check, by its id or by the local_id the device named."""
+    pet_id = str(pet["_id"])
+    try:
+        purged = purge_pet(pet)
+    except PetDeletionFailed:
+        # The pet is still there, and calling this again finishes what is left.
+        return error_response("pet_delete_failed")
+    if not purged:
+        return error_response("pet_not_found")
+
+    logger.info(f"Pet deleted: id={pet_id}, user={username}")
+    return get_message("pet_deleted")
 
 
 @pets_bp.route("/api/pets/<pet_id>/deletion-impact", methods=["GET"])
@@ -948,7 +1091,7 @@ def purge_pet(pet: dict) -> bool:
             # Re-raise if it's not a transaction-related error
             raise
 
-    log_deletion("pet", pet_id_obj, pet_id_obj, viewers=viewers)
+    log_deletion("pet", pet_id_obj, pet_id_obj, viewers=viewers, local_id=pet.get("local_id"))
     # Delete the photo (outside the transaction: storage isn't part of it)
     if old_photo_id:
         try:

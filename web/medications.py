@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request, g
 from flask_pydantic_spec import Request, Response
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from pymongo.errors import DuplicateKeyError
 
 import web.app as app
@@ -47,6 +48,14 @@ from web.schemas import (
     UpcomingDosesQuery,
 )
 from web.idempotency import idempotent
+from web.offline import (
+    conflict_answer,
+    is_stale,
+    record_version,
+    require_local_record_access,
+    tombstone_for_name,
+    version_guard,
+)
 from web.sync import log_deletion, now_utc
 from web.helpers import clock_in_zone, utc_iso, zoned_iso
 
@@ -167,11 +176,32 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
     return False
 
 
+def _course_named(local_id: str) -> Optional[dict]:
+    """The course the device named with ``local_id``. A name is unique on the stand, so there is at most one."""
+    return app.db.medications.find_one({"local_id": local_id})
+
+
+def _answer_for_course_name(existing: Optional[dict], pet_id: str, local_id: str):
+    """The answer to a create that names a course: the one already there (200), or why the name cannot be used.
+
+    The same pet's course: answered as saved, and nothing is written. A course of another pet holds the name: 409
+    ``local_id_taken``. No course, but a deleted one had the name: 409 ``record_deleted``, so a repeat does not bring
+    the course back.
+    """
+    if existing is None:
+        if tombstone_for_name("medication", local_id, pet_id):
+            return error_response("record_deleted")
+        return None
+    if str(existing.get("pet_id")) != str(pet_id):
+        return error_response("local_id_taken")
+    return get_message("medication_created", status=200, id=str(existing["_id"]), local_id=local_id)
+
+
 @medications_bp.route("/api/medications", methods=["POST"])
 @login_required
 @api.validate(
     body=Request(MedicationCreate),
-    resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse),
+    resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_409=ErrorResponse, HTTP_422=ErrorResponse),
     tags=["medications"],
 )
 @require_pet_access
@@ -179,11 +209,16 @@ def has_overdue_dose(db, pet_id: str, now_local: datetime) -> bool:
 def add_medication():
     """Create a new medication course.
 
-    The course, not the dose. A schedule is days of the week and times of day; a medicine given by occasion is sent with ``as_needed: true`` (or a schedule with no times), and then it has no reminders. If the stock is being counted, the first pack sets it.
+    The course, not the dose. A schedule is days of the week and times of day; a medicine given by occasion is sent with ``as_needed: true`` (or a schedule with no times), and then it has no reminders. If the stock is being counted, the first pack sets it. A ``local_id`` the device gives makes the request repeatable: sent again, it is answered with the course it already made (200) and nothing is written twice; a name that belongs to another pet's course is 409 ``local_id_taken``, and a name of a course that was deleted is 409 ``record_deleted``.
     """
     try:
         data = request.context.body  # type: ignore[attr-defined]
         username = g.username
+
+        if data.local_id:
+            answer = _answer_for_course_name(_course_named(data.local_id), g.pet_id, data.local_id)
+            if answer:
+                return answer
 
         medication_data = data.model_dump()
         # Признак «по необходимости» не подставляем, если клиент его не прислал: так пишет
@@ -191,13 +226,24 @@ def add_medication():
         # должен остаться таким, а не стать расписанием без времени.
         if medication_data.get("as_needed") is None:
             medication_data.pop("as_needed", None)
+        # A course without a name keeps no field: the sparse index over names leaves an absent field out, not a null.
+        if not medication_data.get("local_id"):
+            medication_data.pop("local_id", None)
         medication_data["username"] = username
         medication_data["created_at"] = datetime.now(timezone.utc)
         medication_data["updated_at"] = now_utc()
 
-        result = app.db.medications.insert_one(medication_data)
+        try:
+            result = app.db.medications.insert_one(medication_data)
+        except DuplicateKeyError:
+            # Two requests naming one course at the same moment: the second one finds what the first one wrote.
+            answer = _answer_for_course_name(_course_named(data.local_id), g.pet_id, data.local_id or "")
+            if not data.local_id or not answer:
+                raise
+            return answer
 
-        return get_message("medication_created", status=201, id=str(result.inserted_id))
+        named = {"local_id": data.local_id} if data.local_id else {}
+        return get_message("medication_created", status=201, id=str(result.inserted_id), **named)
     except Exception as e:
         app.logger.error(f"Error adding medication: {e}")
         return error_response("internal_error")
@@ -271,6 +317,8 @@ def get_medications():
             doc["_id"] = str(doc["_id"])
             # The project's date format, the same documents and pets already send, rather
             # than the web-server date a raw datetime turns into.
+            # The version an edit is made from, in the same format as every other timestamp.
+            doc["updated_at"] = record_version(doc) or None
             if isinstance(doc.get("created_at"), datetime):
                 doc["created_at"] = utc_iso(doc["created_at"])
             med_id_str = doc["_id"]
@@ -333,62 +381,90 @@ def get_medication(id):
     midnight of the zone ``tz`` names, or UTC without one.
     """
     try:
-        record = g.record
-        record["_id"] = str(record["_id"])
-        record["as_needed"] = is_as_needed(record)
-        # The list's reading of the course, so the form opened from either screen offers the same
-        # buttons: «Возобновить курс» for a finished one.
-        today_start = local_day_start(request.context.query.tz)  # type: ignore[attr-defined]
-        record["course_status"] = course_status(record, today_start.strftime("%Y-%m-%d"))
-        # Mirror the enrichment the list endpoint provides so consumers
-        # don't see a stripped shape when switching from list→detail.
-        pet_id = record.get("pet_id")
-        if pet_id:
-            last_intake = app.db.medication_intakes.find_one(
-                {"medication_id": str(record["_id"]), **GIVEN_ONLY},
-                sort=[("date_time", -1)],
-            )
-            if last_intake and last_intake.get("date_time"):
-                dt = last_intake["date_time"]
-                record["last_taken_at"] = zoned_iso(dt, last_intake.get("tz"))
-            else:
-                record.setdefault("last_taken_at", None)
-
-            record["intakes_today"] = app.db.medication_intakes.count_documents(
-                {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
-            )
-        # The same reading as in the list, so a course does not change its unit between the two
-        # screens it is opened from.
-        record["dose_unit"] = ru_dose_unit(record.get("dose_unit") or record.get("unit"))
-        _add_stock_status(record)
-        # The list's format, not Flask's HTTP date («Tue, 13 Oct 2026 08:00:00 GMT»).
-        if isinstance(record.get("created_at"), datetime):
-            record["created_at"] = utc_iso(record["created_at"])
-        return jsonify({"medication": record})
+        return jsonify({"medication": _medication_detail(g.record, request.context.query.tz)})  # type: ignore[attr-defined]
     except Exception as e:
         app.logger.error(f"Error fetching medication: {e}")
         return error_response("internal_error")
+
+
+def _medication_detail(record: dict, tz) -> dict:
+    """A course as the detail endpoint reads it: also what a rejected edit brings back as ``record``."""
+    record["_id"] = str(record["_id"])
+    record["as_needed"] = is_as_needed(record)
+    # The list's reading of the course, so the form opened from either screen offers the same
+    # buttons: «Возобновить курс» for a finished one.
+    today_start = local_day_start(tz)
+    record["course_status"] = course_status(record, today_start.strftime("%Y-%m-%d"))
+    # Mirror the enrichment the list endpoint provides so consumers
+    # don't see a stripped shape when switching from list→detail.
+    pet_id = record.get("pet_id")
+    if pet_id:
+        last_intake = app.db.medication_intakes.find_one(
+            {"medication_id": str(record["_id"]), **GIVEN_ONLY},
+            sort=[("date_time", -1)],
+        )
+        if last_intake and last_intake.get("date_time"):
+            dt = last_intake["date_time"]
+            record["last_taken_at"] = zoned_iso(dt, last_intake.get("tz"))
+        else:
+            record.setdefault("last_taken_at", None)
+
+        record["intakes_today"] = app.db.medication_intakes.count_documents(
+            {"medication_id": str(record["_id"]), "date_time": {"$gte": today_start}}
+        )
+    # The same reading as in the list, so a course does not change its unit between the two
+    # screens it is opened from.
+    record["dose_unit"] = ru_dose_unit(record.get("dose_unit") or record.get("unit"))
+    _add_stock_status(record)
+    # The version an edit is made from: as the list says it.
+    record["updated_at"] = record_version(record) or None
+    # The list's format, not Flask's HTTP date («Tue, 13 Oct 2026 08:00:00 GMT»).
+    if isinstance(record.get("created_at"), datetime):
+        record["created_at"] = utc_iso(record["created_at"])
+    return record
 
 
 @medications_bp.route("/api/medications/<id>", methods=["PUT"])
 @login_required
 @api.validate(
     body=Request(MedicationUpdate),
-    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse),
     tags=["medications"],
 )
-@require_record_access("medications")
+@require_record_access("medications", deleted_kind="medication")
 def update_medication(id):
     """Update a medication course.
 
-    Fields left out keep their value; ``null`` means "not sent", and a date is cleared with an empty string. Switching the course back on (``is_active: true``) removes its end date unless a new one is sent. An empty body answers 422 ``validation_error_no_update_data``. Turning a schedule on or off says nothing about what has already been taken: the intakes keep the slots they closed.
+    Fields left out keep their value; ``null`` means "not sent", and a date is cleared with an empty string. Switching the course back on (``is_active: true``) removes its end date unless a new one is sent. An empty body answers 422 ``validation_error_no_update_data``. Turning a schedule on or off says nothing about what has already been taken: the intakes keep the slots they closed. ``base_version`` is the ``updated_at`` the device last read: a course changed since answers 409 ``conflict`` with the course as it is now in ``record``; without it the change is applied. A course that was deleted answers 409 ``record_deleted``.
     """
+    return _update_course(g.record, request.context.body)  # type: ignore[attr-defined]
+
+
+@medications_bp.route("/api/medications/local/<local_id>", methods=["PUT"])
+@login_required
+@api.validate(
+    body=Request(MedicationUpdate),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse),
+    tags=["medications"],
+)
+@require_local_record_access("medications", "medication")
+def update_medication_by_local_id(local_id):
+    """Update a course by the ``local_id`` the device gave it, for when the device has not got the course's id.
+
+    The same update as by id, with the same ``base_version`` check. The name stays as it was created.
+    """
+    return _update_course(g.record, request.context.body)  # type: ignore[attr-defined]
+
+
+def _update_course(medication: dict, data):
+    """The update of one course found by the access check, by its id or by the local_id the device named."""
     try:
-        medication = g.record
         medication_id = medication["_id"]
 
-        data = request.context.body  # type: ignore[attr-defined]
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        if is_stale(data.base_version, medication):
+            return conflict_answer(_medication_detail(dict(medication), None))
+
+        update_data = {k: v for k, v in data.model_dump(exclude={"base_version"}).items() if v is not None}
 
         # A date is cleared with "" (None is «not sent»); it is stored as None.
         for date_field in ("started_on", "ended_on"):
@@ -410,7 +486,15 @@ def update_medication(id):
             return error_response("validation_error", "Окончание курса раньше его начала")
 
         update_data["updated_at"] = now_utc()
-        app.db.medications.update_one({"_id": medication_id}, {"$set": update_data})
+        result = app.db.medications.update_one(
+            {"_id": medication_id, **version_guard(medication, data.base_version)}, {"$set": update_data}
+        )
+        if result.matched_count == 0:
+            latest = app.db.medications.find_one({"_id": medication_id})
+            if latest is None:
+                return error_response("record_deleted")
+            # Saved by someone else between the check above and the write.
+            return conflict_answer(_medication_detail(latest, None))
 
         return get_message("medication_updated")
     except Exception as e:
@@ -429,9 +513,28 @@ def delete_medication(id):
 
     In one transaction where the database supports it; on a standalone server (production) the course goes first and then its intakes, and an intake left behind by a failure there is only logged. The intakes go from the medical card too. There is no undo, so the app asks first.
     """
+    return _delete_course(g.record)
+
+
+@medications_bp.route("/api/medications/local/<local_id>", methods=["DELETE"])
+@api.validate(
+    resp=Response(HTTP_200=SuccessResponse, HTTP_404=ErrorResponse),
+    tags=["medications"],
+)
+@require_local_record_access("medications", "medication", tell_deleted=False)
+def delete_medication_by_local_id(local_id):
+    """Delete a course by the ``local_id`` the device gave it, for when the device has not got the course's id.
+
+    The same delete as by id. An unknown name, a deleted course and someone else's course answer 404 ``record_not_found``.
+    """
+    return _delete_course(g.record)
+
+
+def _delete_course(medication: dict):
+    """The delete of one course found by the access check, by its id or by the local_id the device named."""
     try:
-        medication = g.record
         medication_id = medication["_id"]
+        id = str(medication_id)
 
         intake_rows = list(app.db.medication_intakes.find({"medication_id": id}, {"_id": 1, "pet_id": 1}))
         # Atomic deletion: use session-based transaction if replica set is available
@@ -482,7 +585,7 @@ def delete_medication(id):
 
         for row in intake_rows:
             log_deletion("medication_intake", row["_id"], row["pet_id"])
-        log_deletion("medication", medication_id, medication["pet_id"])
+        log_deletion("medication", medication_id, medication["pet_id"], local_id=medication.get("local_id"))
         return get_message("medication_deleted")
     except Exception as e:
         app.logger.error(f"Error deleting medication: {e}")
@@ -596,11 +699,28 @@ def _duplicate_from_slot_key(id: str, data, username: str) -> "dict | None":
     }
 
 
+def _answer_for_intake_name(existing: dict, medication_id: str, username: str):
+    """The answer to a mark that names an intake which is already there.
+
+    The same course and the same person: this mark sent again, answered as saved (200), and nothing is written, so the
+    stock is taken once. Any other mark holding the name is not this request's: 409 ``local_id_taken``.
+    """
+    if existing.get("medication_id") != medication_id or existing.get("username") != username:
+        return error_response("local_id_taken")
+    return get_message(
+        "intake_logged",
+        status=200,
+        id=str(existing["_id"]),
+        ran_out=bool(existing.get("ran_out")),
+        local_id=existing["local_id"],
+    )
+
+
 @medications_bp.route("/api/medications/<id>/log", methods=["POST"])
 @login_required
 @api.validate(
     body=Request(MedicationIntakeCreate),
-    resp=Response(HTTP_201=SuccessResponse, HTTP_404=ErrorResponse),
+    resp=Response(HTTP_200=SuccessResponse, HTTP_201=SuccessResponse, HTTP_404=ErrorResponse, HTTP_409=ErrorResponse),
     tags=["medications"],
 )
 @require_record_access("medications")
@@ -608,7 +728,7 @@ def _duplicate_from_slot_key(id: str, data, username: str) -> "dict | None":
 def log_intake(id):
     """Log a medication intake.
 
-    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when. With a slot, a slot closed by a skip counts as marked too; without one, «already marked» is a given dose of this course within 30 minutes either side. ``force: true`` records it anyway, and then the new intake closes the nearest other open slot of that day (the evening dose, say). Skips and courses without scheduled times are not checked. A date or time that is invalid or more than 8 days ahead answers 422, and so does a dose of zero or less. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops.
+    Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when. With a slot, a slot closed by a skip counts as marked too; without one, «already marked» is a given dose of this course within 30 minutes either side. ``force: true`` records it anyway, and then the new intake closes the nearest other open slot of that day (the evening dose, say). Skips and courses without scheduled times are not checked. A date or time that is invalid or more than 8 days ahead answers 422, and so does a dose of zero or less. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops. A ``local_id`` the device gives makes the mark repeatable: sent again by the same person for the same course, it is answered with the mark it already made (200, the stock taken once) even though that mark closed the slot, and not with 409 ``duplicate_intake``; a name held by another mark answers 409 ``local_id_taken``. Without ``local_id`` a second mark of a closed slot is still 409 ``duplicate_intake``.
     """
     try:
         medication = g.record
@@ -616,6 +736,13 @@ def log_intake(id):
         username = g.username
 
         data = request.context.body  # type: ignore[attr-defined]
+
+        if data.local_id:
+            # The device names the mark itself, so the name decides, and the checks below do not judge a repeat: the
+            # slot is closed by this very mark, and that is what «already marked» would say about it.
+            named = app.db.medication_intakes.find_one({"local_id": data.local_id})
+            if named:
+                return _answer_for_intake_name(named, id, username)
 
         # +1 beyond the lookahead itself: a dose offered for day+7 can sit
         # at any hour of that day, and the bound below is a rolling window
@@ -723,6 +850,10 @@ def log_intake(id):
             "username": username,
             "created_at": datetime.now(timezone.utc),
         }
+        if data.local_id:
+            intake_data["local_id"] = data.local_id
+            # What the answer to the first send said, for the repeat of it.
+            intake_data["ran_out"] = ran_out
         if valid_tz(data.tz):
             intake_data["tz"] = data.tz
         if skipped:
@@ -758,6 +889,10 @@ def log_intake(id):
                 )
             if not isinstance(insert_error, DuplicateKeyError):
                 raise
+            # Two sends of one mark at the same moment: the second one finds what the first one wrote.
+            named = app.db.medication_intakes.find_one({"local_id": data.local_id}) if data.local_id else None
+            if named:
+                return _answer_for_intake_name(named, id, username)
             # The slot was closed in the moment between the check above and this write, and the
             # unique index caught what the check could not see yet. Answered as the check answers.
             existing = _already_handled(id, medication, data, event_dt, username) or _duplicate_from_slot_key(
@@ -768,7 +903,8 @@ def log_intake(id):
             raise
 
         # The id lets the client offer «Отменить» for a dose logged by mistake.
-        return get_message("intake_logged", status=201, id=str(inserted.inserted_id), ran_out=ran_out)
+        named_by = {"local_id": data.local_id} if data.local_id else {}
+        return get_message("intake_logged", status=201, id=str(inserted.inserted_id), ran_out=ran_out, **named_by)
     except Exception as e:
         app.logger.error(f"Error logging intake: {e}")
         return error_response("internal_error")
@@ -865,6 +1001,8 @@ def get_medication_intakes():
         for i in intakes:
             i["_id"] = str(i["_id"])
             i["medication_name"] = meds.get(i["medication_id"], "Unknown")
+            # What the answer to a repeated mark remembers, not part of the mark.
+            i.pop("ran_out", None)
             if isinstance(i.get("date_time"), datetime):
                 i["date_time"] = zoned_iso(i["date_time"], i.get("tz"))
             if isinstance(i.get("created_at"), datetime):

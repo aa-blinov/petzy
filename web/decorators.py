@@ -80,11 +80,15 @@ def require_pet_access(f):
     return decorated_function
 
 
-def require_record_access(collection_name, extra_filter=None):
+def require_record_access(collection_name, extra_filter=None, deleted_kind=None):
     """
     Decorator to check authentication and access to a specific record.
     The record_id must be the FIRST positional argument or 'id'/'record_id' keyword argument.
     Sets g.username, g.record, g.pet_id upon success.
+
+    ``deleted_kind`` is for the routes that change a record (web/offline.py): the id of a record of this kind that was
+    deleted, for a person who could see it, answers 409 ``record_deleted`` and not 404, because a device that edits a
+    copy of something that is gone must drop the copy.
     """
 
     def decorator(f):
@@ -109,6 +113,12 @@ def require_record_access(collection_name, extra_filter=None):
                 record_id, collection_name, username, extra_filter
             )
             if access_error:
+                if deleted_kind:
+                    from web.offline import deleted_by_id_answer
+
+                    gone = deleted_by_id_answer(deleted_kind, record_id, username)
+                    if gone:
+                        return gone
                 return access_error[0], access_error[1]
 
             # 4. Set Context
