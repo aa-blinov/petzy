@@ -33,6 +33,7 @@ import { DatePickerField } from '../components/DatePickerField';
 import { showUndo } from '../utils/undo';
 import { deleteMedicationWithUndo, medicationDeleteText } from '../utils/medicationDelete';
 import { getCurrentDate } from '../utils/dateUtils';
+import { refreshMedicationViews } from '../utils/intakeViews';
 
 /** A typed amount («0,5» or «0.5») for zod; '' is «not set». */
 const amount = (v: unknown) => (v === '' || v === undefined || v === null ? null : typeof v === 'string' ? v.replace(',', '.') : v);
@@ -317,15 +318,13 @@ export function MedicationForm() {
             await medicationsService.update(id!, { is_active: false, ended_on: getCurrentDate() });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['medications'] });
-            queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+            refreshMedicationViews(queryClient);
             release();
             showUndo({
                 message: `Курс «${med?.name ?? 'лекарства'}» завершён`,
                 onUndo: async () => {
                     await medicationsService.update(id!, { is_active: true });
-                    await queryClient.invalidateQueries({ queryKey: ['medications'] });
-                    await queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+                    await refreshMedicationViews(queryClient);
                 },
             });
             goBack(navigate, '/medications');
@@ -341,15 +340,13 @@ export function MedicationForm() {
             await medicationsService.update(id!, { is_active: true, ended_on: '' });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['medications'] });
-            queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+            refreshMedicationViews(queryClient);
             release();
             showUndo({
                 message: `Курс «${med?.name ?? 'лекарства'}» возобновлён`,
                 onUndo: async () => {
                     await medicationsService.update(id!, { is_active: false, ended_on: med?.ended_on ?? getCurrentDate() });
-                    await queryClient.invalidateQueries({ queryKey: ['medications'] });
-                    await queryClient.invalidateQueries({ queryKey: ['medical-card'] });
+                    await refreshMedicationViews(queryClient);
                 },
             });
             goBack(navigate, '/medications');
@@ -381,7 +378,7 @@ export function MedicationForm() {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['medications'] });
+            refreshMedicationViews(queryClient);
             // Leave at once; the toast lives on over the list (waiting for
             // it to close kept a saved form on screen for two seconds).
             showToast.success(isEditing ? 'Лекарство сохранено' : 'Лекарство добавлено');
