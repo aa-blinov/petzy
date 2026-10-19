@@ -224,8 +224,9 @@ def ensure_indexes() -> None:
       medications         pet_id + created_at (medication list for a pet)
       medication_intakes  pet_id + date_time (intakes timeline per pet)
                           medication_id + date_time (last intake / count today)
-                          medication_id + slot_date + slot_time unique (a slot is closed
-                          once: only marks that name a slot and were not forced)
+                          slot_key unique sparse (a slot is closed once; the key is
+                          course + day + minutes of the slot time, written only by
+                          a mark that names its slot and was not forced)
       events              pet_id + date_time (timeline per pet)
                           pet_id + type + date_time (per-type list/chart)
       event_types         key unique         (registry lookup by type)
