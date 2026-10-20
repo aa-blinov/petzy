@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { FileHeart, Download, Link2 } from 'lucide-react';
+import { FileHeart, Download, Link2, Loader2 } from 'lucide-react';
 
 import { MedicalShareSheet } from '../components/MedicalShareSheet';
 import { CardDocument } from './MedicalCardDocument';
@@ -132,8 +132,12 @@ export function MedicalCard() {
       {/* The file and the link, always within reach: they are what the card is for. */}
       {canHandOver && (
         <div className="medcard__bar">
-          <button type="button" className="medcard__bar-button" onClick={downloadPdf} disabled={saving}>
-            <Download size={18} strokeWidth={2.2} aria-hidden />
+          <button type="button" className="medcard__bar-button" onClick={downloadPdf} disabled={saving} aria-busy={saving}>
+            {saving ? (
+              <Loader2 size={18} strokeWidth={2.2} className="medcard__spin" aria-hidden />
+            ) : (
+              <Download size={18} strokeWidth={2.2} aria-hidden />
+            )}
             Скачать PDF
           </button>
           {isOwner && (

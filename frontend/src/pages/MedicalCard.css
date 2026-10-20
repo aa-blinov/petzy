@@ -117,6 +117,12 @@
     background: var(--app-danger-soft);
 }
 
+/* The one alarm of the card: its heading carries the alarm's colour, so the block reads as one
+    thing and not as a quiet title over a coloured box. */
+.medcard__attention .medcard__zone-title {
+    color: var(--app-danger-text);
+}
+
 .medcard__attention-list {
     list-style: none;
     margin: 0;
@@ -168,7 +174,7 @@
 }
 
 .medcard__attention-note {
-    margin: 0;
+    margin: var(--spacing-sm) 0 0;
     font-size: var(--text-sm);
     color: var(--app-danger-text);
 }
@@ -292,6 +298,14 @@
 
 .medcard__link--quiet {
     color: var(--app-text-secondary);
+}
+
+/* The name of a sheet over the card, in the size the house gives a sheet title. */
+.medcard__sheet-title {
+    margin: 4px 4px 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    color: var(--app-text-primary);
 }
 
 /* The quiet doors under a block: they belong to the block, not to its head. */
@@ -604,19 +618,11 @@
     margin: 0 calc(-1 * var(--spacing-md));
 }
 
-/* The clinic's phone in the reading mode: a call button, not a small link. */
+/* The phone of a clinic: an action like any other, so it is an outlined door and not a slab of
+    colour in the middle of a document. */
 .medcard__call {
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
+    align-self: flex-start;
     margin-top: var(--spacing-sm);
-    padding: 0 14px;
-    font-size: var(--text-md);
-    border-radius: var(--radius-sm);
-    background: var(--app-accent-soft);
-    color: var(--app-accent-deep);
     font-weight: 500;
     text-decoration: none;
 }
@@ -645,9 +651,18 @@
     gap: var(--spacing-sm);
 }
 
+/* The wait is shown where the icon was: the button keeps its place and its words. */
+.medcard__spin {
+    animation: spin 700ms linear infinite;
+}
+
 .medcard__pdf-button {
     width: 100%;
     min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
     border-radius: var(--radius-md);
     border: 1px solid var(--app-accent-deep);
     background: var(--app-card-background);

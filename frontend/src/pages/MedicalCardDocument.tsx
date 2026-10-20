@@ -1,7 +1,7 @@
 import { weightRangeByYear } from '../utils/weightRanges';
 import { useState, type ReactNode } from 'react';
 import { Popup } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Copy, Minus, Plus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Copy, Loader2, Minus, Plus, ShieldAlert } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
@@ -97,10 +97,16 @@ function urgencyRank(r: MedicalRecord): number {
     element, so it stays round. */
 export function Sparkline({ points }: { points: number[] }) {
   if (points.length < 2) return null;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const span = max - min || 1;
-  const y = (v: number) => 36 - ((v - min) / span) * 32;
+  const low = Math.min(...points);
+  const high = Math.max(...points);
+  // The line is scaled to the pet's own weight, not to the spread of the series: a change of a
+  // few hundred grams has to look like a few hundred grams and not like a cliff. The exact range
+  // is written under the line, so the numbers are never read off the drawing.
+  const mean = points.reduce((sum, v) => sum + v, 0) / points.length;
+  const margin = mean * 0.035;
+  const bottom = low - margin;
+  const height = high - low + margin * 2 || 1;
+  const y = (v: number) => 36 - ((v - bottom) / height) * 32;
   const coords = points.map((v, i) => `${(i / (points.length - 1)) * 100},${y(v)}`);
   return (
     <div className="medcard__spark" aria-hidden>
@@ -268,7 +274,7 @@ export function ClinicRow({ clinic }: { clinic: MedicalClinic }) {
         ))}
       </div>
       {clinic.phone && (clinic.phone.replace(/\D/g, '').length >= 5 ? (
-        <a className="medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
+        <a className="medcard__link medcard__call touch-target" href={`tel:${clinic.phone.replace(/[^\d+]/g, '')}`}>
           Позвонить {clinic.phone}
         </a>
       ) : (
@@ -320,7 +326,6 @@ function PrepRows({ prep }: { prep: VisitPrep }) {
  */
 function Passport({ pet, weight, chip, bloodType, photoUrl, canCopy }: { pet: Card['pet']; weight: Card['weight']; chip: string | null; bloodType: string | null; photoUrl?: string | null; canCopy: boolean }) {
   const facts = [pet.species, pet.breed, pet.age_text, pet.gender, pet.neutered_text].filter(Boolean).join(', ');
-  const delta = weight ? weightDelta(weight.series) : null;
   const copyChip = async () => {
     try {
       await navigator.clipboard.writeText(chip ?? '');
@@ -351,7 +356,6 @@ function Passport({ pet, weight, chip, bloodType, photoUrl, canCopy }: { pet: Ca
             <span className="medcard__pet-dim">Вес не указан</span>
           )}
         </div>
-        {weight && delta && <div className="medcard__pet-dim">{delta}</div>}
         {(chip || bloodType) && (
           <div className="medcard__pet-line">
             {chip &&
@@ -406,7 +410,7 @@ function overdueItems(card: Card, hidden: ReadonlySet<string>): OverdueItem[] {
 function AttentionZone({ items, canAct, shared, petId }: { items: OverdueItem[]; canAct: boolean; shared: boolean; petId: string }) {
   if (items.length === 0) return null;
   return (
-    <section className="medcard__attention" aria-labelledby="medcard-attention" role="status">
+    <section className="medcard__attention" aria-labelledby="medcard-attention">
       <h2 id="medcard-attention" className="medcard__zone-title">
         Требует внимания
       </h2>
@@ -426,21 +430,22 @@ function AttentionZone({ items, canAct, shared, petId }: { items: OverdueItem[];
               <div className="medcard__attention-body">
                 <div className="medcard__attention-title">{item.title}</div>
                 <div className="medcard__attention-text">{item.text}</div>
-                {canAct ? (
+                {canAct && (
                   <a className="medcard__attention-link" href={to}>
                     {action}
                   </a>
-                ) : (
-                  // Nobody pressed this on the vet's copy, so it says who can put it right.
-                  <p className="medcard__attention-note">
-                    {shared ? 'Обновить сможет тот, у кого есть доступ к питомцу, в приложении' : 'Обновить сможет владелец питомца'}
-                  </p>
                 )}
               </div>
             </li>
           );
         })}
       </ul>
+      {!canAct && (
+        // Nobody pressed this on the copy of a guest, so it says once, under the list, who can put it right.
+        <p className="medcard__attention-note">
+          {shared ? 'Обновить сможет тот, у кого есть доступ к питомцу, в приложении' : 'Обновит сможет владелец питомца'}
+        </p>
+      )}
     </section>
   );
 }
@@ -546,6 +551,7 @@ function KindSheet({ visible, onClose, title, options, onPick }: { visible: bool
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
       <DraggableSheetBody visible={visible} onClose={onClose} label={title}>
+        <h2 className="medcard__sheet-title">{title}</h2>
         <ul className="medcard__list">
           {options.map((option) => (
             <li key={option.label} className="medcard__row" style={{ padding: 0 }}>
@@ -613,9 +619,12 @@ function RecordsSheet({
     }
   };
   const records = (all.data ?? []).filter((r) => !hidden.has(r._id)).sort((a, b) => urgencyRank(a) - urgencyRank(b));
+  // The sheet names the block it came from, so that the list says what it is.
+  const title = kinds.includes('vaccination') ? 'Все прививки и обработки' : 'Все визиты и операции';
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
-      <DraggableSheetBody visible={visible} onClose={onClose} label="Все записи">
+      <DraggableSheetBody visible={visible} onClose={onClose} label={title}>
+        <h2 className="medcard__sheet-title">{title}</h2>
         {all.isError ? (
           <p className="medcard__empty">Не удалось загрузить записи</p>
         ) : all.isFetching && !all.data ? (
@@ -646,6 +655,7 @@ function WeightSheet({ visible, onClose, series }: { visible: boolean; onClose: 
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
       <DraggableSheetBody visible={visible} onClose={onClose} label="Замеры веса">
+        <h2 className="medcard__sheet-title">Замеры веса</h2>
         {before.length === 0 ? (
           <p className="medcard__empty">Замеров пока нет</p>
         ) : (
@@ -712,6 +722,8 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
   const prevention = [...card.records.vaccination, ...card.records.parasite].filter((r) => !hidden.has(r._id)).sort((a, b) => urgencyRank(a) - urgencyRank(b));
   const visits = [...card.records.visit, ...card.records.procedure].filter((r) => !hidden.has(r._id)).sort((a, b) => urgencyRank(a) - urgencyRank(b));
   const weight = card.weight;
+  // How the weight has moved since the last change of it: it belongs to the weight, not to the passport.
+  const delta = weight ? weightDelta(weight.series) : null;
   const openRecord = (id: string) => {
     setRecordsSheet(null);
     navigate(`/pets/${petId}/medical-records/${id}`);
@@ -748,7 +760,8 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
       {/* The file, on the copy opened by a link: it is what the visitor takes away with them. */}
       {onPdf && !owner && (
         <div className="medcard__topactions">
-          <button type="button" className="medcard__pdf-button" onClick={onPdf} disabled={saving}>
+          <button type="button" className="medcard__pdf-button" onClick={onPdf} disabled={saving} aria-busy={saving}>
+            {saving && <Loader2 size={18} strokeWidth={2.2} className="medcard__spin" aria-hidden />}
             Скачать PDF
           </button>
           <p className="medcard__hint">Скачать заранее: на приёме может не быть связи</p>
@@ -828,7 +841,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
               <span className="medcard__weight-value">{weight.latest.value.toLocaleString('ru-RU')} кг</span>
               <span className="medcard__weight-date">{formatDate(weight.latest.date)}</span>
             </div>
-            {weightDelta(weight.series) && <div className="medcard__row-sub medcard__row-sub--meta">{weightDelta(weight.series)}</div>}
+            {delta && <div className="medcard__row-sub medcard__row-sub--meta">{delta}</div>}
             {weight.series.length > 1 && <Sparkline points={weight.series.map((w) => w.value)} />}
             {weight.series.length > 1 && (
               <div className="medcard__row-sub medcard__row-sub--meta">
@@ -857,7 +870,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
                 label: 'прививку или обработку',
                 onClick: () =>
                   setKindSheet({
-                    title: 'Что добавить',
+                    title: 'Что добавить?',
                     options: [
                       { label: 'Прививка', to: `/pets/${petId}/medical-records/new?kind=vaccination` },
                       { label: 'Обработка от паразитов', to: `/pets/${petId}/medical-records/new?kind=parasite` },
@@ -907,7 +920,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
                 label: 'визит или операцию',
                 onClick: () =>
                   setKindSheet({
-                    title: 'Что добавить',
+                    title: 'Что добавить?',
                     options: [
                       { label: 'Визит', to: `/pets/${petId}/medical-records/new?kind=visit` },
                       { label: 'Операция', to: `/pets/${petId}/medical-records/new?kind=procedure` },

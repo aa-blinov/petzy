@@ -98,7 +98,10 @@ async def main():
         clinic = pg.locator("section:has(h2:text-is('Клиника и врачи'))")
         check(
             "the clinic of the card is a call, not a small link",
-            await clinic.locator(".medcard__call").count() == 1 and "Позвонить" in await clinic.inner_text(),
+            await clinic.locator(".medcard__call").count() == 1
+            and "Позвонить" in await clinic.inner_text()
+            and await clinic.locator(".medcard__call").evaluate("el => getComputedStyle(el).backgroundColor")
+            == "rgba(0, 0, 0, 0)",
         )
         check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
         await b.close()
