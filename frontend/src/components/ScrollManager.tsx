@@ -71,6 +71,10 @@ export function ScrollManager() {
       jumpToTop();
     }
     latestY.current = window.scrollY;
+    // The bars read the visual viewport, and a page that closed by navigating away took its field
+    // with it: that is a change of what the bars should be, whether or not anything resized
+    // (utils/keyboard.ts).
+    window.dispatchEvent(new Event('petzy:navigate'));
   }, [location.key, location.pathname, navigationType]);
 
   return null;
