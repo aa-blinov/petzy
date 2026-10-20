@@ -124,6 +124,10 @@ Russian, calm and direct (see `PRODUCT.md`). The owner has confirmed these rules
   popup or dialog against it.
 - HEIC from a phone: Chrome cannot draw it. Anything that previews a picked file goes through
   `utils/drawableImage.ts` (it asks `POST /api/images/preview` for a WebP and stores nothing).
+- Unit tests of the app's own logic live in `frontend/tests/unit/` and run with `npm test`
+  (vitest, jsdom). Two traps of that setup: Node ships its own inert `localStorage` that
+  shadows the page's, so a test touching it takes `window._localStorage` first; and jsdom
+  gives every element zero size, so a test of an open layer has to stub `getClientRects`.
 
 ## Backend conventions
 
