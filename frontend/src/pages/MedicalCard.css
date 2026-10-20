@@ -69,6 +69,9 @@
 .medcard__weight-chip {
     display: inline-flex;
     align-items: center;
+    /* The day stands apart from the number by the gap, not by a space in the text: an
+       inline-flex container trims the trailing space of its text item. */
+    gap: var(--spacing-xs);
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--app-text-primary);
@@ -249,6 +252,14 @@
     margin: var(--spacing-sm) 0 0;
     font-size: var(--text-sm);
     color: var(--app-text-secondary);
+}
+
+/* The action under the readiness is a row of its own, held off the hint by the hairline the
+   app draws between the rows of a card. */
+.medcard__ready-action-row {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--app-divider-color);
 }
 
 .medcard__ready-action {
