@@ -45,6 +45,7 @@ Frontend, from `frontend/`:
 ```bash
 npx tsc -b        # the real typecheck; `tsc --noEmit -p .` checks nothing here
 npm run lint
+npm test          # vitest: the app's own logic, tests in frontend/tests/unit/
 ```
 
 Local copy of the production stack (same nginx, headers and build; files go to a local S3, never
