@@ -843,7 +843,9 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
           <div className="medcard__weight">
             <div className="medcard__weight-now">
               <span className="medcard__weight-value">{weight.latest.value.toLocaleString('ru-RU')} кг</span>
-              <span className="medcard__weight-date">{formatDate(weight.latest.date)}</span>
+              {/* The day the weighing was taken stands in the weight's own brackets, as in the
+                  passport and on paper: a bare date beside a number reads as another date. */}
+              <span className="medcard__weight-date">({formatDate(weight.latest.date)})</span>
             </div>
             {delta && <div className="medcard__row-sub medcard__row-sub--meta">{delta}</div>}
             {weight.series.length > 1 && <Sparkline points={weight.series.map((w) => w.value)} />}
