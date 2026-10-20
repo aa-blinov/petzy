@@ -141,6 +141,21 @@ async def main():
                 str(target),
             )
 
+            # The vertical rhythm of the document: the gaps between its parts come from the app's
+            # one ladder of spacing, not from numbers written by hand.
+            rhythm = await pg.evaluate(
+                "() => {\n"
+                "  const ladder = [0, 2, 4, 8, 12, 16, 24, 32];\n"
+                "  const parts = [...document.querySelectorAll('.medcard > *')].filter((el) => el.getBoundingClientRect().height > 0);\n"
+                "  return parts.slice(1).map((el, i) => Math.round(el.getBoundingClientRect().top - parts[i].getBoundingClientRect().bottom));\n"
+                "}"
+            )
+            check(
+                "the parts of the document stand on the app's ladder of spacing",
+                bool(rhythm) and all(g in (0, 2, 4, 8, 12, 16, 24, 32) for g in rhythm),
+                str(rhythm),
+            )
+
             # the clinic cap is said, not silently enforced
             saved = await api(
                 pg,
