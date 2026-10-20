@@ -55,6 +55,10 @@ export function useLeavePet() {
       action: {
         label: 'Отменить',
         run: () => {
+          // The list is put back here, in the undo itself: the notice that follows takes the bar
+          // over, and a bar that was taken over is not a decision.
+          queryClient.setQueryData(['pets'], pets);
+          if (wasSelected) selectPet(pets[Math.min(index, pets.length - 1)] ?? null);
           showToast.success('Вы снова видите этого питомца');
         },
       },
@@ -63,13 +67,7 @@ export function useLeavePet() {
         // only given up when the offer is read and closed. Same rule as the queue
         // of deletions in utils/deferredDelete.ts, or leaving shared access would
         // go through silently whenever another message comes along.
-        if (reason === 'replaced') return;
-        if (reason === 'action') {
-          // The list is put back as it was: nothing was ever sent.
-          queryClient.setQueryData(['pets'], pets);
-          if (wasSelected) selectPet(pets[Math.min(index, pets.length - 1)] ?? null);
-          return;
-        }
+        if (reason === 'replaced' || reason === 'action') return;
         try {
           await petsService.leavePet(pet._id);
           queryClient.setQueryData(['pets'], await petsService.getPets());
