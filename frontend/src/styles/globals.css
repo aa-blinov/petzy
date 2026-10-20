@@ -1921,10 +1921,6 @@ button:focus-visible,
     border-radius: 50%;
     background: var(--app-primary-fill);
     color: var(--app-on-primary-fill);
-    /* The pressed state: a 12% layer of the on-primary colour over the fill. */
-    transition:
-        background-color var(--motion-duration-fast) var(--motion-ease-standard),
-        box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
     box-shadow: 0 4px 16px rgba(173, 88, 48, 0.45);
     cursor: pointer;
     transition: transform var(--motion-duration-instant) var(--motion-ease-standard);
