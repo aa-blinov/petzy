@@ -220,4 +220,4 @@ The interface text is Russian, and `AGENTS.md` holds the rules for it, the layou
 
 ## License
 
-MIT, © Alexander Blinov. The text: [the MIT licence](https://opensource.org/license/mit).
+MIT, © Alexander Blinov. See [LICENSE](LICENSE).
