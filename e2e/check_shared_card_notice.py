@@ -44,6 +44,20 @@ async def main():
                 },
             )
             check("the scratch record is saved", made_rec["status"] == 201, str(made_rec["json"])[:120])
+            # and a second one, so that the note about who can put it right is said once and not once per record
+            await api(
+                pg,
+                "POST",
+                "/medical-records",
+                {
+                    "pet_id": pid,
+                    "kind": "parasite",
+                    "title": "Бравекто",
+                    "target": "fleas_ticks",
+                    "date": "2020-04-01",
+                    "next_due": "2020-05-01",
+                },
+            )
             share = await api(pg, "POST", f"/pets/{pid}/medical-card/shares", {"days": 1})
             share_id = share["json"]["share"]["id"]
             url = f"{BASE}/share/medical/{share['json']['token']}"
@@ -64,6 +78,13 @@ async def main():
                 and "доступ к питомцу" in t
                 and await vet.locator(".medcard__attention button, .medcard__attention a").count() == 0,
                 t[:200].replace(chr(10), " | "),
+            )
+            check(
+                "and it says it once, under the list, and not once under every overdue record",
+                await vet.locator(".medcard__attention-note").count() == 1
+                and await vet.locator(".medcard__attention-item").count() >= 2,
+                f"{await vet.locator('.medcard__attention-item').count()} overdue, "
+                f"{await vet.locator('.medcard__attention-note').count()} notes",
             )
             check(
                 "the link ends with a date written the way the app writes it",

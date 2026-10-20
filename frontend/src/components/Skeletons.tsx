@@ -127,7 +127,8 @@ export function SkeletonList({
 
 /**
  * A medical card while it loads: the bar where its title goes (the same row as the real title),
- * then the lines of its first block.
+ * then the passport of the pet and the blocks of the document — the shape that is coming, in the
+ * sheets it comes in, so the page does not jump when the card arrives.
  */
 export function MedicalCardSkeleton({ lines = 5 }: { lines?: number }) {
   return (
@@ -136,8 +137,24 @@ export function MedicalCardSkeleton({ lines = 5 }: { lines?: number }) {
       <div className="screen-head" aria-hidden>
         <div className="skeleton" style={{ height: 24, width: '55%' }} />
       </div>
+      {/* The passport: the round photo of the pet and the lines beside it. */}
+      <div className="card-soft" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'var(--spacing-md)' }} aria-hidden>
+        <div className="skeleton" style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="skeleton" style={{ height: 16, width: '50%' }} />
+          <div className="skeleton" style={{ height: 12, width: '80%' }} />
+          <div className="skeleton" style={{ height: 12, width: '35%' }} />
+        </div>
+      </div>
+      {/* The blocks: a heading and the sheet under it, as in the document itself. */}
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="skeleton" style={{ height: 12, width: `${92 - ((i * 17) % 30)}%` }} />
+        <div key={i} aria-hidden>
+          <div className="skeleton" style={{ height: 20, width: '45%', marginBottom: 8 }} />
+          <div className="card-soft" style={{ padding: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="skeleton" style={{ height: 12, width: `${92 - ((i * 17) % 30)}%` }} />
+            <div className="skeleton" style={{ height: 12, width: `${64 - ((i * 11) % 24)}%` }} />
+          </div>
+        </div>
       ))}
     </div>
   );
