@@ -17,19 +17,24 @@ export function weightDelta(series: { date: string; value: number }[]): string |
   return `${sign}${Math.abs(diff).toLocaleString('ru-RU')} кг с ${formatDate(before.date)}`;
 }
 
-/**
- * The facts of a pet in one case: the breed and the sex are not proper nouns in Russian, so a
- * capital in the middle of the line reads as an artifact. The feed's card and the PDF say it the
- * same way; the species keeps its capital, because it opens the line.
- */
-export function petFacts(pet: {
+type PetFacts = {
   species?: string | null;
   breed?: string | null;
   age_text?: string | null;
   gender?: string | null;
   neutered_text?: string | null;
-}): string {
-  return [pet.species, pet.breed?.toLowerCase(), pet.age_text, pet.gender?.toLowerCase(), pet.neutered_text]
-    .filter(Boolean)
-    .join(', ');
+};
+
+/**
+ * Who the pet is: the kind and the breed. The kind opens the line, the breed is in small letters
+ * (a breed is not a proper noun in Russian, and a capital in the middle of the line reads as an
+ * artifact).
+ */
+export function petIdentity(pet: PetFacts): string {
+  return [pet.species, pet.breed?.toLowerCase()].filter(Boolean).join(', ');
+}
+
+/** What else the record says about the pet: the age, the sex, whether the pet is neutered. */
+export function petFacts(pet: PetFacts): string {
+  return [pet.age_text, pet.gender?.toLowerCase(), pet.neutered_text].filter(Boolean).join(', ');
 }

@@ -20,24 +20,25 @@
     border: 1px solid var(--app-border-color);
 }
 
+/* The photo is a mark of the pet, not a portrait: the feed owns the big one. */
 .medcard__avatar {
     flex: none;
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--app-accent-soft);
     color: var(--app-accent-deep);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     font-weight: 700;
     overflow: hidden;
 }
 
 .medcard__avatar-img {
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
 }
 
@@ -46,13 +47,20 @@
     flex: 1;
 }
 
-/* The passport's line of facts. The name is in the bar, so this is the sheet's own text and it
-   speaks at the size the sheet speaks at. */
+/* The passport's own text. The name is in the bar, so who the pet is stands here: the kind and
+   the breed speak at the size the sheet speaks at, the rest of the facts below them. */
 .medcard__pet-facts {
     font-size: var(--text-md);
     font-weight: 500;
     color: var(--app-text-primary);
     line-height: 1.35;
+}
+
+.medcard__pet-more {
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+    line-height: 1.4;
 }
 
 .medcard__pet-line {
