@@ -6,21 +6,21 @@ colors:
   ginger-deep: "#AD5830"
   copper-ink: "#9C4D28"
   peach-fur: "#E8946A"
-  apricot-wash: "#FBEFE5"
-  cream-paper: "#FAF6EF"
-  milk-card: "#FEFCF6"
+  apricot-wash: "rgba(196, 106, 63, 0.12)"
+  cream-paper: "#FFF8F3"
+  milk-card: "#FFFBF7"
   oat-line: "#EFE9DD"
   oat-divider: "#E5DFD0"
   espresso-ink: "#1F1B16"
   driftwood: "#6A6258"
-  pebble: "#786E62"
+  pebble: "#665E53"
   on-fill: "#FFFFFF"
   alarm-red: "#B3261E"
   amber-note: "#9A5800"
   meadow-green: "#1E7A3C"
   sky-note: "#0062C4"
-  night-hearth: "#1A1714"
-  night-card: "#252220"
+  night-hearth: "#151210"
+  night-card: "#221E1B"
   night-ink: "#F5EFE3"
 typography:
   wordmark:
@@ -128,12 +128,12 @@ components:
     size: "56px"
 ---
 
-# Design System: Petzy
+# Design system: Petzy
 
 ## Overview
 
 **Material 3, with the copper seed.** The app follows Material 3 (M3) in its tokens, shapes, elevation, navigation and
-states. The brand stays: ginger copper is the seed of the primary tonal palette (`--app-primary-text`, `--app-primary-fill`,
+states. The brand stays: ginger copper seeds the primary tonal palette (`--app-primary-text`, `--app-primary-fill`,
 `--app-accent-soft` as primary-container), and the wordmark is the one display face. The sections below that still
 describe the earlier «Warm Notebook» (flat sheets, 12px buttons) are superseded where they conflict with this paragraph.
 
@@ -210,7 +210,7 @@ A warm, single-accent palette: ginger copper on cream, with espresso-brown ink a
 ### Dark theme
 The same roles on a warm night: night-hearth page, night-card sheets, night-ink text; the accent lifts to peach-fur, copper text becomes #F5C9A8 on a #3A2A1F apricot wash, and fills that are light in the dark theme (the accent, the #FF8B82 red) carry espresso-ink text instead of white.
 
-### Named Rules
+### Named rules
 **The One Ink Rule.** Copper is the only accent. A new screen gets its emphasis from copper, weight and size, never from a second brand colour. Record pastels identify a record type; they never mark an action.
 
 **The Deep-for-Text Rule.** Wherever copper carries type or sits under white type, use ginger-deep or copper-ink, never ginger-cat.
@@ -234,7 +234,7 @@ Sizes are written in rem tokens (`--text-xs` to `--text-display`), never in px: 
 - **Secondary** (400, 0.875rem): hints under fields, meta lines, chips.
 - **Label** (600, 0.75rem, +0.4px, uppercase): the tiny tile captions on the pet card («КОРМЛЕНИЕ», «ВЕС»). Uppercase is used there and nowhere else.
 
-### Named Rules
+### Named rules
 **The Units-Beside-Values Rule.** Numbers are Russian-formatted («29,1 кг», «4,8»), with the unit next to the value, in charts, tooltips and chips alike.
 
 **The Whole-Letter Rule.** A pet's name may be set in a hand-written face (Caveat, Marck Script, Bad Script, Pacifico, Neucha, Amatic SC), and these run far past the usual line: a tail of «Щ», the loop of «Д», the dots of «Ё». Each face carries its own `line` (line-height) and `scale` in `PET_FONTS`, measured so that the tallest and the lowest letters of a name sit inside the line box, because the card clamps the name to two lines and cuts anything outside the box. The picker tiles are one height for every face (`3.25rem`, scaling with the text size) with the name in the middle. A new face is added only with its measured `line`.
@@ -276,7 +276,7 @@ One value per kind of gap, taken from the `--spacing-*` tokens, never a raw pixe
 
 Allowed to stay off the ladder, because the label or a fixed neighbour sets them: the padding inside a control (a chip, a badge, a button is sized by its label and its 44px target); the room kept clear for the fixed bars (`calc(env(safe-area-inset-*) + 80px)` and its like); an optical nudge of an icon to the first line of its text; a negative margin that widens a tap target; the miniature product screens on the intro slides.
 
-### Named Rules
+### Named rules
 **The Concentric Rule.** A rounded element inset in a rounded parent takes the radius one rung down the ladder for the spacing between them (a 24px card padded 12px holds 12px children).
 
 ## Elevation & Depth
@@ -285,13 +285,13 @@ Material 3 levels, in the warm shadow colour. Cards sit at level 1 (a hairline o
 on press. Floating layers take level 3 (`--app-shadow-strong`): pickers, dialogs and sheets. The round add button keeps its
 copper glow. In the dark theme the shadows become black at higher opacity, as before.
 
-### Shadow Vocabulary
+### Shadow vocabulary
 - **Sheet** (`box-shadow: 0 2px 8px rgba(60, 40, 20, 0.06)`): cards and the top bar.
 - **Hairline** (`box-shadow: 0 1px 3px rgba(60, 40, 20, 0.04)`): small raised pieces inside a sheet.
 - **Float** (`box-shadow: 0 6px 24px rgba(60, 40, 20, 0.10)`): popups, sheets, dialogs.
 - **Copper glow** (`box-shadow: 0 4px 16px rgba(173, 88, 48, 0.45)`): the add button only.
 
-### Named Rules
+### Named rules
 **The State Layer Rule (M3).** A pressed control takes a 12% wash of its content colour (buttons) and a 0.98 scale; a card
 never animates its elevation on press. Feedback is a state layer, never a lift.
 
@@ -320,7 +320,7 @@ M3 buttons: one primary per screen.
 - **Press:** 0.98 scale and the 12% state layer; no hover lift. A visible focus ring for the keyboard.
 
 ### The round «+»
-One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). What its sheet offers depends on the screen: the feed's is the diary of events («Добавить запись»), the medical card's, in the mode that edits, is «Что записать?» (a vaccination, a treatment, a visit, an allergy, a medicine, a weight, a document). The reading mode of the card has none, because nothing is added there.
+One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). What its sheet holds depends on the screen: the feed's sheet lists the diary of events («Добавить запись»), the medical card's, in the mode that edits, is «Что записать?» (a vaccination, a treatment, a visit, an allergy, a medicine, a weight, a document). The reading mode of the card has none, because nothing is added there.
 
 **One door per screen.** The card's tiles only open their part, and nothing on the card records a thing: the overdue strip says what is due and where it is recorded, and the action sits in that part ("Записать повторную прививку" in «Прививки и обработки», «Записать вес» in «Вес», «Изменить» in the allergies). A screen carries the round «+» only where its blocks carry no door of their own: a block with its own «Добавить», «Записать вес» or «Указать» next to what it adds does not get one as well. A part of the card that asks between two kinds keeps the «+» (it is the only way in) and its blocks carry no door, so a person reads one way to add rather than guessing between two. The card itself keeps its «+» because it is the only way from there to an allergy, a medicine, a weight or a document.
 
@@ -361,7 +361,7 @@ A screen's own tabs (here the six parts of a pet's look) sit in one grid of equa
 
 ### Navigation
 - **Top bar:** milk-card, 64px: the wordmark or a back arrow on the left, the pet picker on the right.
-- **Tab bar (M3 navigation bar):** the current item sits on an active indicator, a pill of primary-container (`--app-accent-soft`) behind its icon. Five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card is the tab of the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
+- **Tab bar (M3 navigation bar):** the current item sits on an active indicator, a pill of primary-container (`--app-accent-soft`) behind its icon. Five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card tab follows the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
 - **The keyboard:** the keys cover the bottom of the page and only the visual viewport shrinks, so the bars fixed to the bottom step aside while the keys are up (the tab bar and the round «+» cannot be pressed under them), the page gets the room the keys cover, and a button that closes a long form rides on the top edge of the keys instead of hiding behind them.
 
 ### Record pill
