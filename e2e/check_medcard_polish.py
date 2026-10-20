@@ -156,6 +156,37 @@ async def main():
                 str(rhythm),
             )
 
+            # The pressed state of the card's own controls: a 12% layer over the surface, the
+            # layer the specification asks for (md.sys.state.pressed-state-layer-opacity).
+            door = pg.locator(".medcard__bar-button").first
+            await door.scroll_into_view_if_needed()
+            await settle(pg, 150)
+            await door.hover()
+            await pg.mouse.down()
+            await pg.wait_for_timeout(120)
+            layer = await door.evaluate("el => getComputedStyle(el).backgroundImage")
+            await pg.mouse.up()
+            check(
+                "the card's own controls take the specification's 12% layer when pressed",
+                "0.12" in layer,
+                layer[:80],
+            )
+            plus = pg.locator(".medcard__add").first
+            await plus.scroll_into_view_if_needed()
+            await settle(pg, 150)
+            await plus.hover()
+            await pg.mouse.down()
+            await pg.wait_for_timeout(120)
+            plus_layer = await plus.evaluate("el => getComputedStyle(el).backgroundImage")
+            await pg.mouse.up()
+            await pg.keyboard.press("Escape")
+            await settle(pg, 150)
+            check(
+                "the round «+» of a block takes it too",
+                "0.12" in plus_layer,
+                plus_layer[:80],
+            )
+
             # the clinic cap is said, not silently enforced
             saved = await api(
                 pg,

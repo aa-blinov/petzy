@@ -138,6 +138,9 @@
     --app-black-20: rgba(0, 0, 0, 0.2);
     --app-black-05: rgba(0, 0, 0, 0.05);
     --app-black-08: rgba(0, 0, 0, 0.08);
+    /* The state layer of a control of the app's own: 12% of its own colour over the surface
+       (Material 3, md.sys.state.pressed-state-layer-opacity). */
+    --app-accent-wash: rgba(196, 106, 63, 0.12);
 
     /* Text on Tile (always dark as tiles are light) */
     --app-text-on-tile: #1F1B16;
@@ -1918,6 +1921,10 @@ button:focus-visible,
     border-radius: 50%;
     background: var(--app-primary-fill);
     color: var(--app-on-primary-fill);
+    /* The pressed state: a 12% layer of the on-primary colour over the fill. */
+    transition:
+        background-color var(--motion-duration-fast) var(--motion-ease-standard),
+        box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
     box-shadow: 0 4px 16px rgba(173, 88, 48, 0.45);
     cursor: pointer;
     transition: transform var(--motion-duration-instant) var(--motion-ease-standard);
