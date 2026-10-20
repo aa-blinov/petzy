@@ -27,6 +27,8 @@ export async function saveBlob(data: BlobPart, filename: string, type?: string):
   document.body.appendChild(link);
   link.click();
   link.parentNode?.removeChild(link);
+  // The address is given back at once: a browser that starts the download later may drop the file.
+  // The download is started by the click itself, so the address is not needed afterwards.
   window.URL.revokeObjectURL(url);
   return true;
 }
@@ -34,5 +36,11 @@ export async function saveBlob(data: BlobPart, filename: string, type?: string):
 /** The file name a response asks for in its Content-Disposition, if any. */
 export function filenameFromResponse(disposition: string | undefined): string | undefined {
   const match = disposition?.match(/filename\*=UTF-8''([^;]+)/i);
-  return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+  if (!match?.[1]) return undefined;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    // A broken percent sequence in the header: the raw name is better than no download at all.
+    return match[1];
+  }
 }
