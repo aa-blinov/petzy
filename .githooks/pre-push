@@ -37,12 +37,15 @@ $RUFF format --check .
 LOG_DIR=$(mktemp -d)
 echo ""
 echo "Starting the backend test suite and the frontend checks in the background..."
-( $PYTHON -m pytest tests/ --tb=short -q -n auto ) >"$LOG_DIR/pytest.log" 2>&1 &
+# Six workers, not one per core: the browser checks run next to this and they
+# are the longer part. The suite finishes in a minute either way, and the
+# machine keeps its breath.
+( $PYTHON -m pytest tests/ --tb=short -q -n 6 ) >"$LOG_DIR/pytest.log" 2>&1 &
 PYTEST_PID=$!
 # The lint and the unit tests take turns, one after the other: the suite already
-# has every core, and the unit tests would otherwise spread over all of them as
-# well. Two workers are set in the runner's config, and the whole set runs in
-# seconds.
+# has its share of the cores, and the unit tests would otherwise spread over all
+# of them as well. Two workers are set in the runner's config, and the whole set
+# runs in seconds.
 ( cd frontend && npm run lint && npm test ) >"$LOG_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 
