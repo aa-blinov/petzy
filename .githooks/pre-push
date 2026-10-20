@@ -37,10 +37,11 @@ $RUFF format --check .
 LOG_DIR=$(mktemp -d)
 echo ""
 echo "Starting the backend test suite and the frontend checks in the background..."
-# Six workers, not one per core: the browser checks run next to this and they
-# are the longer part. The suite finishes in a minute either way, and the
-# machine keeps its breath.
-( $PYTHON -m pytest tests/ --tb=short -q -n 6 ) >"$LOG_DIR/pytest.log" 2>&1 &
+# Four workers, the same number the CI job uses: the machine that runs the checks and
+# the machine that pushes agree on how much of it the suite may take. On a small
+# machine this is the whole of it, on a big one it is a quarter, and the browser
+# checks that run next to it still have room to breathe.
+( $PYTHON -m pytest tests/ --tb=short -q -n 4 ) >"$LOG_DIR/pytest.log" 2>&1 &
 PYTEST_PID=$!
 # The lint and the unit tests take turns, one after the other: the suite already
 # has its share of the cores, and the unit tests would otherwise spread over all
