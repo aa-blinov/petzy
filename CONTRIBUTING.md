@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for looking at repo.
+Thanks for looking at petzy.
 
 ## Before you open a pull request
 
