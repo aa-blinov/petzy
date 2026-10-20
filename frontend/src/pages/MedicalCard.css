@@ -49,12 +49,14 @@
     line-height: 1.4;
 }
 
+/* The lines of the passport stand close together, as the lines of a record stand: the sheet
+   says facts one after another, not in islands. */
 .medcard__pet-line {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-sm);
-    margin-top: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
 }
 
 .medcard__pet-dim {
@@ -72,12 +74,13 @@
     color: var(--app-text-primary);
 }
 
-/* The chip number: copied with one tap, a 44px target. */
+/* The chip number: copied with one tap. The tap target is the 44px the house asks for (the
+   `touch-target` class widens it), but the line itself is drawn at the size of the text, so the
+   number does not leave an empty island under it. */
 .medcard__copy {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: var(--touch-min);
     padding: 0;
     margin: 0;
     border: none;
@@ -89,6 +92,18 @@
     cursor: pointer;
     text-align: left;
     overflow-wrap: anywhere;
+}
+
+/* The chip is the last line of the passport, so its 44px target reaches down into the empty
+   space under it and does not lie over the line above. */
+.medcard__copy::after {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    width: auto;
+    height: var(--touch-min);
+    transform: none;
 }
 
 /* The name of a zone of the card: the things that ask to be done, and the state of the card. */
