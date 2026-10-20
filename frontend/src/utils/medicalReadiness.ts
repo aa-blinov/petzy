@@ -46,7 +46,7 @@ export function readinessChecks(card: MedicalCard, petId = ''): ReadinessCheck[]
     {
       key: 'clinic',
       action: 'Указать клинику',
-      label: 'Клиника и врач',
+      label: 'Клиника',
       hint: 'Название и телефон, чтобы не искать в чатах',
       done: profile.clinics.some((c) => !!(c.name || c.phone || c.doctors.length)),
       to: `/pets/${petId}/medical-profile?section=clinic`,

@@ -1,5 +1,5 @@
-"""What the card says when it has nothing to show: the «Для врача» block is there from the start, the reading mode names the
-empty parts, a record opened without a kind asks which kind it is, and the «От чего» of a vaccine is on the form even when the
+"""What the card says when it has nothing to show: it says what it is and how it is filled in, the empty parts name
+themselves, a record opened without a kind asks which kind it is, and the «От чего» of a vaccine is on the form even when the
 catalogue did not come. The links screen counts what is taken. A page opened by a link says what it is, and tells a dead link
 apart from a connection that did not come through."""
 
@@ -55,6 +55,28 @@ async def main():
                     "(() => { const n = [...document.querySelectorAll('p')].find(e => e.textContent.includes('Не хватает'));"
                     " return n.getBoundingClientRect().top < document.querySelector('#medcard-meds').getBoundingClientRect().top; })()"
                 ),
+            )
+            # The first time on the card: it says what the card is and how it is filled in, because
+            # nobody has written anything yet and the blocks alone would not say what they are for.
+            lead = await pg.locator(".medcard__lead").inner_text()
+            check(
+                "an empty card says what it is and how it is filled in",
+                "врач спросит" in lead and "«+»" in lead,
+                lead.replace(chr(10), " | "),
+            )
+            check(
+                "and the line is above the blocks, not under them",
+                await pg.evaluate(
+                    "(() => { const n = document.querySelector('.medcard__lead');"
+                    " return n.getBoundingClientRect().top < document.querySelector('#medcard-meds').getBoundingClientRect().top; })()"
+                ),
+            )
+            # An empty block is not filled, so the door under it does not say «Изменить».
+            check(
+                "an empty block asks to be filled, not to be changed",
+                await pg.locator("#medcard-risks .medcard__block-links button", has_text="Заполнить").count() == 1
+                and await pg.locator("#medcard-risks .medcard__block-links button", has_text="Изменить").count() == 0,
+                (await pg.locator("#medcard-risks .medcard__block-links").inner_text()).replace(chr(10), " | "),
             )
             # the documents of the card are a block of it, not a jump out of it
             await pg.goto(BASE + card)
@@ -152,6 +174,14 @@ async def main():
             check(
                 "it says this is a copy with no way back",
                 "Это копия медкарты" in body and "нельзя" in body,
+            )
+            # The first line of the card says what it is. On the copy of a guest it stops there: the
+            # guest cannot write into the card, so it must not be told to.
+            vet_lead = await vet.locator(".medcard__lead").inner_text()
+            check(
+                "the copy of a guest says what the card is and not what to press",
+                "врач спросит" in vet_lead and "«+»" not in vet_lead,
+                vet_lead.replace(chr(10), " | "),
             )
             check(
                 "the file is offered up, with the reason to take it now",
