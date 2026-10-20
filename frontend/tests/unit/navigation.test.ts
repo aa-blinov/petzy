@@ -14,8 +14,8 @@ describe('medicalCardPetId', () => {
     expect(medicalCardPetId('/pets/p1/medical-profile')).toBeNull()
   })
 
-  it('на экране внутри медкарты не находит', () => {
-    expect(medicalCardPetId('/pets/p1/medical-card/records')).toBeNull()
+  it('на адресе части медкарты находит того же питомца', () => {
+    expect(medicalCardPetId('/pets/p1/medical-card/records')).toBe('p1')
   })
 
   it('на пустом адресе не находит', () => {

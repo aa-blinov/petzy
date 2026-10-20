@@ -59,8 +59,10 @@ async def main():
                 note,
             )
             check(
-                "the overdue strip says who can put it right, there being nothing to press",
-                "Обновит" in t and "доступ к питомцу" in t and await vet.locator(".medcard__alert button").count() == 0,
+                "the overdue block says who can put it right, there being nothing to press",
+                "Обновит" in t
+                and "доступ к питомцу" in t
+                and await vet.locator(".medcard__attention button, .medcard__attention a").count() == 0,
                 t[:200].replace(chr(10), " | "),
             )
             check(

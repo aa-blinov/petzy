@@ -1,10 +1,23 @@
-"""The medical card's summary and screens: tiles first, the sections, the round «+», a repeat from a record, the weight note.
+"""The medical card as one document: the passport, what is overdue, how ready the card is, the blocks in the order a vet asks in, and the two ways to hand the card over.
 
 Needs the local stack and the demo data (docker compose -p petzy-local ... up, scripts/seed_demo.py)."""
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, wait_until, settle
+from common import BASE, async_playwright, check, login, new_page, summary, settle, wait_until
+
+# The blocks of the card, in the order a vet asks in.
+BLOCKS = [
+    "Здоровье и аллергии",
+    "К приёму",
+    "Лекарства",
+    "Вес",
+    "Прививки и обработки",
+    "Визиты и операции",
+    "Анализы и заключения",
+    "Клиника и врачи",
+    "Питание и условия",
+]
 
 
 async def main():
@@ -13,110 +26,84 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         rex = await login(pg, "demo", "Рекс")
         card = f"/pets/{rex}/medical-card"
-        # a filled-in card opens as the working mode every time, with a switch that says «Записи»; the «+» is in each part
         await pg.goto(BASE + card)
-        await pg.locator(".medcard__mode").first.wait_for(timeout=10000)
+        await wait_until(pg, lambda t: "Готовность к приёму" in t)
+        await settle(pg)
+
         check(
-            "a complete card opens as «Записи», without a round plus of its own (each part has one)",
-            await pg.locator(".app-fab").count() == 0
-            and await pg.locator(".medcard__mode").all_inner_texts() == ["Записи", "Врачу"],
-        )
-        await pg.goto(BASE + card + "?mode=vet")
-        await pg.locator(".medcard__patient").wait_for(timeout=10000)
-        check(
-            "the reading mode shows the weight in the patient's lines, not as a row of the medicines",
-            "Вес " in await pg.locator(".medcard__patient").inner_text()
-            and await pg.locator("#medcard-vet-meds").get_by_text("Вес", exact=True).count() == 0,
+            "the card is one document: no mode switch, no tiles and no round «+» of its own",
+            await pg.locator(".medcard__mode").count() == 0
+            and await pg.locator(".medsum__tile").count() == 0
+            and await pg.locator(".app-fab").count() == 0,
         )
         check(
-            "the file and the link come after the allergies",
+            "the passport names the pet, its breed and its age",
+            "Рекс" in await pg.locator(".medcard__pet-name").inner_text()
+            and "Лабрадор" in await pg.locator(".medcard__pet-facts").inner_text()
+            and "лет" in await pg.locator(".medcard__pet-facts").inner_text(),
+            (await pg.locator(".medcard__pet-facts").inner_text()).replace(chr(10), " | "),
+        )
+        check(
+            "the passport carries the weight the doses are counted from",
+            "кг" in await pg.locator(".medcard__weight-chip").inner_text(),
+            await pg.locator(".medcard__weight-chip").inner_text(),
+        )
+        check(
+            "what is overdue comes before the blocks and says what to do",
             await pg.evaluate(
-                "document.querySelector('.medcard__important').getBoundingClientRect().top < document.querySelector('.medcard__topactions').getBoundingClientRect().top"
+                "(() => { const z = document.querySelector('.medcard__attention'); const b = document.querySelector('#medcard-risks');"
+                " return z && b && z.getBoundingClientRect().top < b.getBoundingClientRect().top; })()"
+            )
+            and await pg.locator(".medcard__attention-link").count() >= 1,
+        )
+        check(
+            "the overdue says the kind of its own action, not one phrase for everything",
+            "Записать повторную прививку" in await pg.locator(".medcard__attention").inner_text()
+            and "Записать повторную обработку" in await pg.locator(".medcard__attention").inner_text(),
+            (await pg.locator(".medcard__attention").inner_text()).replace(chr(10), " | "),
+        )
+        check(
+            "the readiness says how many of the five are filled",
+            "из 5" in await pg.locator(".medcard__ready-count").inner_text(),
+            await pg.locator(".medcard__ready-count").inner_text(),
+        )
+        titles = await pg.locator(".medcard__section-title").all_inner_texts()
+        check("the blocks are in the order a vet asks in", titles == BLOCKS, str(titles))
+        check(
+            "each block adds its own things by the round «+» in its head",
+            await pg.locator(".medcard__add").count() >= 6
+            and (await pg.locator(".medcard__add").first.get_attribute("aria-label")).startswith("Добавить:"),
+            str(await pg.locator(".medcard__add").count()),
+        )
+        bar = pg.locator(".medcard__bar")
+        check(
+            "the file and the link for the vet are within reach, without scrolling",
+            await bar.count() == 1
+            and await pg.get_by_role("button", name="Скачать PDF").count() == 1
+            and await pg.get_by_role("button", name="Ссылка для врача").count() == 1
+            and await bar.is_visible(),
+        )
+        bottom = await bar.evaluate("e => Math.round(innerHeight - e.getBoundingClientRect().bottom)")
+        check("the bar sits above the tab bar", 0 <= bottom <= 90, f"{bottom}px above the bottom")
+        # the address of a part of the card opens the card itself and scrolls to that part
+        await pg.goto(BASE + card + "/prevention")
+        await settle(pg)
+        check(
+            "the address of a part opens the card and scrolls to the part",
+            await pg.locator("#medcard-prevention").count() == 1
+            and await pg.evaluate(
+                "(() => { const a = document.querySelector('#medcard-prevention').getBoundingClientRect().top; return a < innerHeight && a > -10; })()"
+            ),
+            await pg.evaluate(
+                "() => Math.round(document.querySelector('#medcard-prevention').getBoundingClientRect().top)"
             ),
         )
-        await pg.goto(BASE + card + "?mode=fill")
-        await pg.locator(".medsum__tile").first.wait_for(timeout=10000)
-        ty = await pg.evaluate("Math.round(document.querySelector('.medsum__tile').getBoundingClientRect().top)")
-        vis = await pg.evaluate(
-            "[...document.querySelectorAll('.medsum__tile')].filter(t => t.getBoundingClientRect().bottom <= innerHeight - 56).length"
-        )
-        check("tiles start high on the first screen", ty < 420, f"first tile at y={ty}")
-        check("at least four tiles are fully visible without scrolling", vis >= 4, f"{vis} of 8")
-        body = await pg.inner_text("body")
-        check("the summary ends with «Для врача» and two different buttons", "Для врача" in body)
-        pdf = pg.get_by_role("button", name="Скачать PDF")
-        link = pg.get_by_role("button", name="Ссылка для врача")
-        check("one PDF button and one link button on the summary", await pdf.count() == 1 and await link.count() == 1)
-        lo = await pdf.evaluate("e => e.getBoundingClientRect().top")
-        tiles_bottom = await pg.evaluate("document.querySelector('.medsum').getBoundingClientRect().bottom")
-        check("they are below the tiles", lo > tiles_bottom)
-        gap = await pg.evaluate(
-            "(() => { const a = [...document.querySelectorAll('.medcard__forvet .adm-button')].map(b => b.getBoundingClientRect()); return Math.round(a[1].top - a[0].bottom); })()"
-        )
-        check("the buttons are 12px apart", gap == 12, f"{gap}px")
-        order = await pg.evaluate(
-            "(() => { const a = document.querySelector('.medsum').getBoundingClientRect().top, b = [...document.querySelectorAll('h2')].find(h => h.textContent.includes('К приёму')).getBoundingClientRect().top; return a < b; })()"
-        )
-        check("tiles come before «К приёму»", order)
-        tiles = await pg.locator(".medsum__tile").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
-        check("the first tile is «Здоровье и аллергии»", tiles[0].startswith("Здоровье и аллергии"), tiles[0])
-        await pg.locator(".medsum__tile").first.click()
-        await settle(pg, 150)
-        check("its screen has the same title", "Здоровье и аллергии" in (await pg.inner_text("h1")))
-        await pg.get_by_role("button", name="Изменить").first.click()
-        await pg.wait_for_url(lambda url: "section=allergies" in url, timeout=10000)
-        check("«Изменить» opens the profile at the allergies", "section=allergies" in pg.url, pg.url.replace(BASE, ""))
-        # the round plus steps aside on a scroll down and returns on a scroll up
-        await pg.goto(BASE + card + "/prevention")
-        await pg.locator(".app-fab").first.wait_for(timeout=10000)
-        check("the round plus is there at the top", await pg.locator(".app-fab:not(.app-fab--away)").count() == 1)
-        await pg.mouse.wheel(0, 500)
-        await pg.wait_for_timeout(500)
-        await pg.evaluate("window.scrollBy(0, 300)")
-        await pg.wait_for_timeout(500)
-        check("it steps aside on a scroll down", await pg.locator(".app-fab--away").count() == 1)
-        await pg.evaluate("window.scrollBy(0, -200)")
-        await pg.wait_for_timeout(500)
-        check("it comes back on a scroll up", await pg.locator(".app-fab--away").count() == 0)
-        # repeat from an existing record
-        recs = (await api(pg, "GET", f"/medical-records?pet_id={rex}"))["json"]
-        items = recs if isinstance(recs, list) else recs.get("items") or recs.get("records") or []
-        vac = next(r for r in items if r.get("kind") == "vaccination")
-        await pg.goto(BASE + f"/pets/{rex}/medical-records/{vac['_id']}")
-        await pg.get_by_role("button", name="Записать повторную прививку").wait_for(timeout=10000)
-        check(
-            "an existing vaccination offers «Записать повторную прививку»",
-            await pg.get_by_role("button", name="Записать повторную прививку").count() == 1,
-        )
-        await pg.get_by_role("button", name="Записать повторную прививку").click()
-        # Адрес меняется раньше заголовка, поэтому ждём заголовок, а не адрес.
-        await wait_until(pg, lambda t: "Повторная прививка" in t)
-        check("it opens the same-again form", "from=" in pg.url and "Повторная прививка" in await pg.inner_text("h1"))
-        # duplicate weight note
-        await pg.evaluate("new Date().toISOString().slice(0, 10)")
-        await pg.goto(BASE + f"/pets/{rex}/medical-records/new?kind=visit")
-        t = await wait_until(pg, lambda text: "Вес, кг" in text)
-        check(
-            "a visit today with a weight already today says so under the weight field",
-            "уже записан" in t or "Если взвешивали" in t,
-            t[t.find("Вес, кг") :][:140].replace(chr(10), " | "),
-        )
-        # the reasons of a visit: chosen from a sheet, each offered once (what the pet has is not repeated below it)
-        await pg.locator(".adm-list-item[role=button]").first.click()
-        await pg.locator(".prodpick__row").first.wait_for(timeout=10000)
-        names = [n.strip() for n in await pg.locator(".prodpick__row").all_inner_texts()]
-        check(
-            "the reasons of a visit are offered once each",
-            len(names) == len({n.lower() for n in names}) and len(names) >= 8,
-            str(names),
-        )
-        await pg.keyboard.press("Escape")
         check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
-        await pg.goto(BASE + card + "?mode=fill")
-        await pg.locator(".medsum__tile").first.wait_for(timeout=10000)
-        await pg.screenshot(path="c1_summary.png")
+        await pg.goto(BASE + card)
+        await settle(pg)
+        await pg.screenshot(path="c1_document.png")
         await b.close()
-    summary("first batch")
+    summary("the card as a document")
 
 
 asyncio.run(main())

@@ -94,8 +94,8 @@ export function MedicalLinks() {
             <EmptyState
               icon={Link2}
               title="Действующих ссылок нет"
-              description="Ссылку для врача делают в медкарте, в режиме «Врачу»: на день, неделю или месяц"
-              {...(selectedPetId ? { actionLabel: 'Открыть медкарту', onAction: () => navigate(`/pets/${selectedPetId}/medical-card?mode=vet`) } : {})}
+              description="Ссылку для врача делают в медкарте, в самом низу: на день, неделю или месяц"
+              {...(selectedPetId ? { actionLabel: 'Открыть медкарту', onAction: () => navigate(`/pets/${selectedPetId}/medical-card`) } : {})}
             />
           )}
 

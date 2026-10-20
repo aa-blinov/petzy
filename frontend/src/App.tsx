@@ -67,7 +67,6 @@ const PetEvents = lazy(() => import('./pages/PetEvents').then(m => ({ default: m
 const EventTypesSettings = lazy(() => import('./pages/EventTypesSettings').then(m => ({ default: m.EventTypesSettings })));
 const loadMedicalCard = () => import('./pages/MedicalCard');
 const MedicalCard = lazy(() => loadMedicalCard().then(m => ({ default: m.MedicalCard })));
-const MedicalCardSection = lazy(() => import('./pages/MedicalCardSection').then(m => ({ default: m.MedicalCardSection })));
 const MedicalLinks = lazy(() => import('./pages/MedicalLinks').then(m => ({ default: m.MedicalLinks })));
 const AssistantAccess = lazy(() => import('./pages/AssistantAccess').then(m => ({ default: m.AssistantAccess })));
 const AssistantAccessForm = lazy(() => import('./pages/AssistantAccessForm').then(m => ({ default: m.AssistantAccessForm })));
@@ -324,11 +323,12 @@ function AppRoutes() {
                   </ProtectedRoute>
                 }
               />
+              {/* An address of a part of the card opens the card itself and scrolls to that part. */}
               <Route
                 path="/pets/:id/medical-card/:section"
                 element={
                   <ProtectedRoute>
-                    <MedicalCardSection />
+                    <MedicalCard />
                   </ProtectedRoute>
                 }
               />

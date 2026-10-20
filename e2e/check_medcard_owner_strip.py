@@ -1,9 +1,9 @@
-"""The owner can put an overdue repeat right from the strip on the vet's copy too.
+"""The owner can put an overdue repeat right from the block of what asks to be done.
 
-A person who owns the pet sees «Врачу» with the same overdue strip as «Записи». The strip used to offer the
-link only in the working copy, and on the vet's copy told the owner «Открыть раздел и обновить сможет владелец»,
-which is not true for the owner. The link must be there on both copies. A throwaway pet with an overdue vaccine
-is made for the check and deleted afterwards.
+The card is one document now: the same block of what is overdue stands on the owner's copy and
+on the copy a vet opens by a link. The link is there for the owner, and it opens the form of
+the repeat with that record as its base. A throwaway pet with an overdue vaccine is made for
+the check and deleted afterwards.
 """
 
 import asyncio
@@ -39,18 +39,24 @@ async def main():
 
             await pg.goto(f"{BASE}/pets/{pid}/medical-card")
             await settle(pg)
-            await pg.get_by_role("button", name="Врачу").first.click()
-            await settle(pg, 150)
-            on_vet_copy = await pg.get_by_text(LINK).count()
-            check("owner sees the repeat link on the vet's copy", on_vet_copy > 0)
+            zone = pg.locator(".medcard__attention")
+            check("the card says what is overdue", await zone.count() == 1, (await pg.inner_text("body"))[:120])
             check(
-                "owner is not told that only the owner can update it",
+                "the owner sees the repeat link",
+                await zone.get_by_text(LINK).count() == 1,
+                (await zone.inner_text()).replace(chr(10), " | "),
+            )
+            check(
+                "the owner is not told that only the owner can update it",
                 await pg.get_by_text("обновить сможет владелец").count() == 0,
             )
-
-            await pg.get_by_role("button", name="Записи").first.click()
+            await zone.get_by_text(LINK).click()
             await settle(pg, 150)
-            check("owner still sees the link in the working copy", await pg.get_by_text(LINK).count() > 0)
+            check(
+                "the link opens the form of the repeat with that record as its base",
+                "kind=vaccination" in pg.url and "from=" in pg.url,
+                pg.url.replace(BASE, ""),
+            )
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")
         await ctx.close()

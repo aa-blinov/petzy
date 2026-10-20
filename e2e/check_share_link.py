@@ -11,7 +11,7 @@ async def main():
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         rex = await login(pg, "demo", "Рекс")
         card = f"/pets/{rex}/medical-card"
-        await pg.goto(BASE + card + "?mode=vet")
+        await pg.goto(BASE + card)
         await settle(pg)
         check(
             "the reading view offers «Ссылка для врача»",
@@ -46,7 +46,8 @@ async def main():
             "with no tab bar, no edit buttons and no pet switcher",
             await vet.locator(".app-tab-bar, .bottom-tab-bar-container").count() == 0
             and "Добавить" not in t
-            and await vet.locator(".app-fab").count() == 0,
+            and await vet.locator(".app-fab").count() == 0
+            and await vet.locator(".medcard__add").count() == 0,
         )
         check(
             "with a PDF and without the link door",
@@ -56,7 +57,7 @@ async def main():
         check("it says until when", "Ссылка действует до" in t)
         check("the pet's name is the title of the page", (await vet.locator("h1").all_inner_texts()) == ["Рекс"])
         order = await vet.evaluate(
-            "(() => { const top = s => document.querySelector(s)?.getBoundingClientRect().top; return [top('.medcard__stamp'), top('.medcard__alert'), top('.medcard__important')]; })()"
+            "(() => { const top = s => document.querySelector(s)?.getBoundingClientRect().top; return [top('.medcard__stamp'), top('.medcard__attention'), top('#medcard-risks')]; })()"
         )
         check(
             "the date and the end of the link and what is overdue come before the allergies",
@@ -66,7 +67,7 @@ async def main():
         check(
             "the one PDF button comes before the blocks that need a connection",
             await vet.evaluate(
-                "(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.includes('Скачать PDF')); return b.getBoundingClientRect().top < document.querySelector('#medcard-vet-meds').getBoundingClientRect().top; })()"
+                "(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.includes('Скачать PDF')); return b.getBoundingClientRect().top < document.querySelector('#medcard-meds').getBoundingClientRect().top; })()"
             ),
         )
         check("no search engines", await vet.locator("meta[name=robots]").count() == 1)

@@ -1,4 +1,4 @@
-"""The weight screen: «История» in the head, the round «+» to record, and the card follows what the feed records."""
+"""The weight on the card: the block of it, its own round «+» to record, and the figure and the change at once."""
 
 import asyncio
 
@@ -10,7 +10,7 @@ async def main():
         b = await p.chromium.launch(channel="chrome")
         ctx, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
-        # a scratch dog: an existing weight, then a new one from the section
+        # a scratch dog: an existing weight, then a new one from the block
         await pg.goto(BASE + "/pets/new")
         await settle(pg)
         await pg.get_by_role("button", name="Собака").click()
@@ -36,14 +36,17 @@ async def main():
             )
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
             await settle(pg)
+            block = pg.locator("#medcard-weight")
             check(
-                "with a weight there: «История» in the head and the round «+» to record",
-                await pg.get_by_role("button", name="История").count() == 1
-                and await pg.get_by_role("button", name="Записать вес").count() == 0
-                and await pg.locator(".app-fab").count() == 1,
+                "with a weight there: the block of it has its own round «+» and no second door",
+                await pg.get_by_role("button", name="Записать вес").count() == 0
+                and await pg.locator(".app-fab").count() == 0
+                and await block.locator(".medcard__add").count() == 1
+                and "12 кг" in await block.inner_text(),
+                (await block.inner_text()).replace(chr(10), " | "),
             )
             await pg.screenshot(path="wt_section.png")
-            await pg.locator(".app-fab").click()
+            await block.locator(".medcard__add").click()
             await settle(pg, 150)
             check("the «+» opens the feed's weight form", pg.url.endswith("/form/weight"), pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
@@ -58,17 +61,17 @@ async def main():
             )
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
             await settle(pg)
-            t = await pg.inner_text("body")
+            t = await pg.locator("#medcard-weight").inner_text()
             check(
                 "the card shows the new weight and the change at once",
                 "12,4 кг" in t and "+0,4" in t,
-                t[:200].replace(chr(10), " | "),
+                t.replace(chr(10), " | "),
             )
             check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
         finally:
             await api(pg, "DELETE", f"/pets/{pid}")
         await b.close()
-    summary("weight section")
+    summary("weight on the card")
 
 
 asyncio.run(main())
