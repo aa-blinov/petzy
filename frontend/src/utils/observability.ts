@@ -26,20 +26,25 @@ const LINK_SECRET = /(\/shared\/medical-card\/|\/share\/medical\/)[^/?#\s]+/g;
 /** The address with the secret of a medical card link replaced by ***; the rest of the address stays. */
 export const scrubUrl = (url: string): string => url.replace(LINK_SECRET, '$1***');
 
+/** The address with a one-time token in it replaced. A reset or confirmation link carries
+ *  the token in the address, and the address may turn up anywhere: in the name of the event,
+ *  in a breadcrumb, in the url of a span. */
+const scrubToken = (text: string): string => text.replace(/([?&]token=)[^&#\s]*/, '$1[Filtered]');
+
+/** The address with both secrets taken out of it. */
+const scrubAddress = (text: string): string => scrubToken(scrubUrl(text));
+
 /** Belt and braces over dataCollection below: a reset or confirmation
  *  link carries its one-time token in the page URL. */
 function scrub<T extends WithRequest>(event: T): T {
   const request = event.request;
-  if (request?.url) request.url = scrubUrl(request.url);
-  if (event.transaction) event.transaction = scrubUrl(event.transaction);
+  if (request?.url) request.url = scrubAddress(request.url);
+  if (event.transaction) event.transaction = scrubAddress(event.transaction);
   for (const crumb of event.breadcrumbs ?? []) {
-    if (crumb.message) crumb.message = scrubUrl(crumb.message);
+    if (crumb.message) crumb.message = scrubAddress(crumb.message);
     for (const [key, value] of Object.entries(crumb.data ?? {})) {
-      if (typeof value === 'string') crumb.data![key] = scrubUrl(value);
+      if (typeof value === 'string') crumb.data![key] = scrubAddress(value);
     }
-  }
-  if (request?.url && /[?&]token=/.test(request.url)) {
-    request.url = request.url.replace(/([?&]token=)[^&#]*/, '$1[Filtered]');
   }
   if (request && typeof request.query_string === 'string' && /token=/.test(request.query_string)) {
     request.query_string = '[Filtered]';
@@ -50,9 +55,9 @@ function scrub<T extends WithRequest>(event: T): T {
 
 /** A span carries the address too: a page's name is its path, and an API call's name and url attributes hold the whole address. */
 function scrubSpan(span: StreamedSpan): StreamedSpan {
-  span.name = scrubUrl(span.name);
+  span.name = scrubAddress(span.name);
   for (const [key, value] of Object.entries(span.attributes)) {
-    if (typeof value === 'string') span.attributes[key] = scrubUrl(value);
+    if (typeof value === 'string') span.attributes[key] = scrubAddress(value);
   }
   return span;
 }
