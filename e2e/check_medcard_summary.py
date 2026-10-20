@@ -67,6 +67,10 @@ async def main():
             "из 5" in await pg.locator(".medcard__ready-count").inner_text(),
             await pg.locator(".medcard__ready-count").inner_text(),
         )
+        check(
+            "a card that is already filled does not repeat the first-time line",
+            await pg.locator(".medcard__lead").count() == 0,
+        )
         titles = await pg.locator(".medcard__section-title").all_inner_texts()
         check("the blocks are in the order a vet asks in", titles == BLOCKS, str(titles))
         check(

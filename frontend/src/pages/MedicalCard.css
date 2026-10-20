@@ -512,6 +512,16 @@
     background: var(--app-accent-soft);
 }
 
+/* The first line of the card: what it is and how it is filled in. It says it once, while every block is still empty. */
+.medcard__lead {
+    margin: 0;
+    padding: 0 var(--spacing-md);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--app-text-secondary);
+    text-wrap: pretty;
+}
+
 .medcard__empty {
     margin: 0;
     padding: var(--spacing-md);

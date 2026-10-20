@@ -665,6 +665,21 @@ function WeightSheet({ visible, onClose, series }: { visible: boolean; onClose: 
   );
 }
 
+/** Nothing written into the card yet: no record, no course, no measurement, no document. The profile of the
+    pet is not counted: it is one form the readiness block points to anyway, and the card still has to say
+    how it is filled in while the blocks stand empty. */
+function cardHasNoRecords(card: Card): boolean {
+  const records = Object.values(card.record_counts).some((n) => n > 0);
+  return (
+    !card.visit_prep &&
+    card.medications.length === 0 &&
+    card.past_courses.length === 0 &&
+    !card.weight &&
+    !records &&
+    card.documents.length === 0
+  );
+}
+
 /** What the document is made of, in the order a vet asks in. */
 export interface CardDocumentProps {
   card: Card;
@@ -713,10 +728,20 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
   const preventionShown = prevention.slice(0, SHOWN_RECORDS);
   const visitsShown = visits.slice(0, SHOWN_RECORDS);
   const profileTo = `/pets/${petId}/medical-profile`;
+  // The first time: the card says what it is and how it is filled in. Later the blocks say it themselves.
+  const firstTime = cardHasNoRecords(card);
+  const hasRisks = card.profile.allergies.length > 0 || card.profile.allergies_none_known || card.profile.conditions.length > 0 || !!card.pet.health_notes;
 
   return (
     <div className="medcard medcard--document">
       <Passport pet={card.pet} weight={weight} chip={card.profile.chip_number ?? null} bloodType={card.profile.blood_type ?? null} photoUrl={photoUrl} canCopy={owner} />
+
+      {firstTime && (
+        <p className="medcard__lead">
+          Это то, что врач спросит на приёме, в том порядке, в каком спрашивает
+          {owner ? '. Чтобы записать своё, нажмите «+» в нужном блоке' : ''}
+        </p>
+      )}
 
       {afterPassport}
 
@@ -738,7 +763,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
       <DocSection
         id="medcard-risks"
         title="Здоровье и аллергии"
-        links={owner ? [{ label: 'Изменить', onClick: () => navigate(`${profileTo}?section=allergies`) }] : undefined}
+        links={owner ? [{ label: hasRisks ? 'Изменить' : 'Заполнить', onClick: () => navigate(`${profileTo}?section=allergies`) }] : undefined}
       >
         <RisksBlock card={card} />
       </DocSection>
