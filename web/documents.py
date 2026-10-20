@@ -227,8 +227,11 @@ def _serialize_document(
         doc["file_url"] = None
     # Where a file sits in the bucket is ours to know, not the client's.
     doc.pop("file_id", None)
-    if isinstance(doc.get("created_at"), datetime):
-        doc["created_at"] = utc_iso(doc["created_at"])
+    # A row written before the field existed has none, and the answer needs a date either way.
+    created_at = doc.get("created_at")
+    if isinstance(created_at, datetime):
+        created_at = utc_iso(created_at)
+    doc["created_at"] = created_at or ""
     return doc
 
 
