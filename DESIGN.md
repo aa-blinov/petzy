@@ -137,6 +137,39 @@ states. The brand stays: ginger copper is the seed of the primary tonal palette 
 `--app-accent-soft` as primary-container), and the wordmark is the one display face. The sections below that still
 describe the earlier «Warm Notebook» (flat sheets, 12px buttons) are superseded where they conflict with this paragraph.
 
+### Material 3: what follows the specification, and what does not
+
+Checked against the specification's own token files (`material-foundation/material-tokens`: `css/typography.css`, `css/elevation.css`, `css/shape.css`, `css/state.css`, `css/motion.css`), not against a summary of it.
+
+**Follows the specification**
+
+| What | The specification | The app |
+|---|---|---|
+| The three easings | standard (0.2, 0, 0, 1), standard-decelerate (0, 0, 0, 1), emphasized-decelerate (0.05, 0.7, 0.1, 1) | the same three, to the digit (`--motion-ease-standard`, `--motion-ease-decelerate`, `--motion-ease-emphasized`) |
+| The pressed state of a button | a 12% wash of the content colour over the surface, and the thing does not move | the same 12% wash (`globals.css`, the `.adm-button:active` rule) |
+| The FAB | 56×56, round, floating | 56×56 (`components/Fab.tsx`) |
+| The large button | 48px | 48px (`--btn-height`) |
+| The elevation levels | 0–5, cards at 1, floating layers at 3 | cards at 1 (`--app-shadow`), floating at 3 (`--app-shadow-strong`) |
+| The filled text field | the highest surface container as its fill | `--app-field-fill`, the field's own shape |
+| The navigation bar | a bar with an active indicator | the tab bar with the M3 indicator |
+| The type sizes that are left | title-small 14/20, body-large 16/24, title-large 22/28, headline-small 24/32, headline-medium 28/36 | `--text-sm` 14, `--text-md` 16, `--text-lg` 22, `--text-xl` 24, `--text-display` 28 |
+
+**Deviates, and why**
+
+| What | The specification | The app | Why |
+|---|---|---|---|
+| The type scale | 15 roles, display 57/64 down to label 11/16 | seven sizes | A phone of records wants fewer sizes than a spec that also describes a TV; every size that is left is one of the spec's own |
+| The corner radii | 4, 8, 12, 16, 28 | one curve, 12px, everywhere | The house is a notebook: one curve, and the children nest inside it. The spec's scale is for a system with many component families; the app has one family of surfaces |
+| The pressed state of the app's own rows and tabs | a 12% layer over the surface, and the thing does not move | a 5% dim and a scale to 98% | The house's micro-feedback: a card never moves, but a row under the finger answers at once. The buttons (antd's) keep the specification's 12% |
+| The hover | an 8% state layer | a border and a fill change | The same answer, one step louder: the thing the finger is over says so by its edge |
+| The motion durations | 50–600 in steps of 50 | 80 / 160 / 240 / 320 | The app's ladder is one line of its own; the spec's has twelve steps, of which the app would use three |
+| The colour roles | primary, secondary, tertiary and their containers, surface and its five containers, inverse-*, outline-variant | one accent (copper) and its soft and deep, the page, the card, the field, the lines, three steps of text, the danger, the success, the info, the violet | The app has no second and no third accent: the secondary and tertiary roles would have nothing to say. The pet's colour is the one thing that may tint a surface, and it does so on the pet's own card, never on the app's buttons |
+| The components | M3's buttons, cards, chips, lists | antd-mobile's parts, restyled | The look follows M3; the parts are Ant's. Every token they read is overwritten with the app's own |
+
+Two of the easings used to be Material 2's and are now the specification's own; the rest of the table is a decision, not an oversight.
+
+**The medical card** is a surface of the app, so it holds the same rules: its sheets are the app's sheets (12px, a hairline, no shadow, the M3 level 0 for a record that lies on the page), its gaps come from the app's ladder (2/4/8/12/16/24/32), its type from the app's scale, and the only thing of its own is that it does not lie on the pet's scene while it is open.
+
 **Creative North Star: "The Warm Notebook"**
 
 Petzy is a diary someone keeps for the animal they live with: feedings, weight, medicines, the vet's papers. The system reads like that diary kept well. Cream paper (cream-paper) holds milk-white sheets (milk-card). Everything important is written in one ginger copper ink, the colour of a ginger cat (ginger-cat), and nothing on the page competes with it. People open the app on an ordinary morning to tick off a dose, and on a bad night when the pet is ill; the mood holds for both: calm and caring, never loud.

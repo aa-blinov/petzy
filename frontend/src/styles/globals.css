@@ -37,18 +37,22 @@
          - base:     screen and step entrances, route changes
          - slow:     springs back after a drag, illustration entrances
        Four easings (spring below):
-         - standard:  the everyday decelerate curve (close to
-                       cubic-bezier(0.2,0,0,1) — Material 3 "standard")
-         - decelerate: gentler at the end (elements coming in)
-         - emphasized: snappier mid-curve (popups, FAB, primary taps) */
+         - standard:  the everyday decelerate curve (Material 3 "standard")
+         - decelerate: gentler at the end (elements coming in) — Material 3
+                       "standard-decelerate"
+         - emphasized: snappier mid-curve (popups, FAB, primary taps) — Material 3
+                       "emphasized-decelerate"
+
+       The three curves are the specification's own (material-foundation/material-tokens,
+       css/motion.css). Two of them used to be Material 2's. */
     --motion-duration-instant: 80ms;
     --motion-duration-fast:    160ms;
     --motion-duration-base:    240ms;
     --motion-duration-slow:    320ms;
 
     --motion-ease-standard:    cubic-bezier(0.2, 0, 0, 1);
-    --motion-ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
-    --motion-ease-emphasized:  cubic-bezier(0.32, 0.72, 0, 1);
+    --motion-ease-decelerate:  cubic-bezier(0, 0, 0, 1);
+    --motion-ease-emphasized:  cubic-bezier(0.05, 0.7, 0.1, 1);
     /* Overshoots past the target and settles. Only for a thing the finger let go of, which really springs back to rest (the
        swipeable row below its threshold, the sheet that was dragged and not dismissed). Never for something that just
        appears or is selected: that decelerates (--motion-ease-emphasized). */
