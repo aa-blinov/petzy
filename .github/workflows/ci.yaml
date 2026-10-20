@@ -95,8 +95,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           pip install mongomock
-      - name: Run tests (one worker per core)
-        run: pytest tests --tb=short --maxfail=1 -q -n auto
+      - name: Run tests (four workers)
+        # The same number as in the pre-push hook, so the machine that runs the checks
+        # and the machine that pushes agree on how much of it the suite may take.
+        run: pytest tests --tb=short --maxfail=1 -q -n 4
         env:
           # Defaults match the values used by tests; real secrets are not needed for mongomock.
           MONGO_USER: test
