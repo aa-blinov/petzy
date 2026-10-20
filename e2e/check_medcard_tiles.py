@@ -33,6 +33,13 @@ async def main():
 
         for title, wanted in BLOCK_CONTENT.items():
             block = pg.locator(f"section:has(h2:text-is('{title}'))")
+            # The heading shows before the block fills itself, so the check waits for the words it
+            # is about. A block that never gets them is reported below, not waited out.
+            for word in wanted:
+                try:
+                    await block.get_by_text(word, exact=False).first.wait_for(timeout=10_000)
+                except Exception:
+                    break
             t = await block.inner_text()
             check(
                 f"«{title}» holds its own",
@@ -96,6 +103,11 @@ async def main():
 
         # the clinic of the card calls
         clinic = pg.locator("section:has(h2:text-is('Клиника и врачи'))")
+        # The phone comes with the pet's profile, after the block's own heading.
+        try:
+            await clinic.locator(".medcard__call").first.wait_for(timeout=10_000)
+        except Exception:
+            pass
         check(
             "the clinic of the card is a call, not a small link",
             await clinic.locator(".medcard__call").count() == 1
