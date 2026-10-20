@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Button, PullToRefresh } from 'antd-mobile';
+import { Button } from 'antd-mobile';
 import { PawPrint, Notebook } from 'lucide-react';
 
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
@@ -9,8 +9,8 @@ import { useEventTypes } from '../hooks/useEventTypes';
 import { usePet } from '../hooks/usePet';
 import { useSession } from '../hooks/useSession';
 import { hadPets, isOnboardingDismissed, rememberHavingPets } from '../utils/onboarding';
-import { hapticFeedback } from '../utils/haptic';
 import { healthRecordsService, type HealthRecord } from '../services/healthRecords.service';
+import { AppPullToRefresh } from '../components/AppPullToRefresh';
 import { HistoryItem, SwipeHint } from '../components/HistoryItem';
 import { useHiddenRecords } from '../utils/deferredDelete';
 import { uniqueById } from '../utils/uniqueById';
@@ -196,13 +196,7 @@ export function Dashboard() {
           {/* The feed has no visible title (the tab says where you are),
               but a screen reader still needs the page's h1. */}
           <h1 className="sr-only">Лента</h1>
-          <PullToRefresh
-            onRefresh={async () => {
-              hapticFeedback('medium');
-              await refetch();
-            }}
-            headHeight={48}
-          >
+          <AppPullToRefresh onRefresh={() => refetch()}>
 
           {/* Timeline Content */}
           <div className="safe-area-padding" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -299,7 +293,7 @@ export function Dashboard() {
               </>
             )}
           </div>
-          </PullToRefresh>
+          </AppPullToRefresh>
 
         </div>
       </div>

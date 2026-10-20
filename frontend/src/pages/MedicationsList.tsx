@@ -9,12 +9,13 @@ import { usePendingIntakes } from '../utils/offlineIntakes';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Dialog, Input, Popup, PullToRefresh, SearchBar } from 'antd-mobile';
+import { Button, Card, Dialog, Input, Popup, SearchBar } from 'antd-mobile';
 import { ClockCircleOutline } from 'antd-mobile-icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type IntakeInput, type Medication } from '../services/medications.service';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
+import { AppPullToRefresh } from '../components/AppPullToRefresh';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { useSession } from '../hooks/useSession';
@@ -440,6 +441,7 @@ export function MedicationsList() {
                     </div>
                 </div>
 
+                <AppPullToRefresh onRefresh={() => refetch()}>
                 {isLoading ? (
                     <SkeletonList
                         count={3}
@@ -457,13 +459,7 @@ export function MedicationsList() {
                         onAction={() => navigate('/medications/new')}
                     />
                 ) : (
-                    <PullToRefresh
-                        onRefresh={async () => {
-                            hapticFeedback('medium');
-                            await refetch();
-                        }}
-                        headHeight={48}
-                    >
+                    <>
                     <div className="safe-area-padding" style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -753,8 +749,9 @@ export function MedicationsList() {
                             </Button>
                         )}
                     </div>
-                    </PullToRefresh>
+                    </>
                 )}
+                </AppPullToRefresh>
             </div>
 
             {/* The same round «+» as the feed's, the card's and the documents': a medicine is added from the bottom right. */}

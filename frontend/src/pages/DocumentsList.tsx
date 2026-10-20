@@ -3,9 +3,10 @@ import { markSeen, wasSeen } from '../utils/seenImages';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, Dialog, ImageViewer, PullToRefresh, SearchBar } from 'antd-mobile';
+import { Card, Dialog, ImageViewer, SearchBar } from 'antd-mobile';
 import { FileText, Pencil, Trash2, X } from 'lucide-react';
 
+import { AppPullToRefresh } from '../components/AppPullToRefresh';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { hapticFeedback } from '../utils/haptic';
@@ -365,13 +366,7 @@ export function DocumentsList() {
             description="Попробуйте изменить запрос"
           />
         ) : (
-          <PullToRefresh
-            onRefresh={async () => {
-              hapticFeedback('medium');
-              await refetch();
-            }}
-            headHeight={48}
-          >
+          <AppPullToRefresh onRefresh={() => refetch()}>
             <div
               className="safe-area-padding"
               style={{ marginTop: 'var(--spacing-sm)' }}
@@ -572,7 +567,7 @@ export function DocumentsList() {
               ))}
               {shownNote && <p className="docs__more">{shownNote}</p>}
             </div>
-          </PullToRefresh>
+          </AppPullToRefresh>
         )}
       </div>
 

@@ -13,6 +13,7 @@ import { useAdmin } from '../hooks/useAdmin';
 import { SettingsRow } from '../components/SettingsRow';
 import { Segmented } from '../components/Segmented';
 import { ExportModal, ALL_TYPES } from '../components/ExportModal';
+import { AppPullToRefresh } from '../components/AppPullToRefresh';
 import { usePet } from '../hooks/usePet';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -45,7 +46,7 @@ export function Settings() {
   const { theme, setTheme } = useTheme();
   const { logout, username } = useAuth();
   const { isAdmin } = useAdmin();
-  const { data: account, isLoading: accountLoading, isError: accountFailed } = useQuery({
+  const { data: account, isLoading: accountLoading, isError: accountFailed, refetch: refetchAccount } = useQuery({
     queryKey: ACCOUNT_QUERY_KEY,
     queryFn: () => accountService.get(),
   });
@@ -130,6 +131,7 @@ export function Settings() {
   return (
     <div className="page-container">
       <div className="max-width-container">
+        <AppPullToRefresh onRefresh={() => refetchAccount()}>
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
             <h1
@@ -392,6 +394,7 @@ export function Settings() {
             )}
           </Group>
         </div>
+        </AppPullToRefresh>
       </div>
 
       <Dialog
