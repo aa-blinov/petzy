@@ -85,6 +85,30 @@ async def main():
                 await pg.locator(".app-fab").count() == 0,
             )
 
+            # The card is stricter than the feed: a plain ground, flat sheets, no portrait.
+            ground = await pg.evaluate(
+                "() => ({\n"
+                "  image: getComputedStyle(document.querySelector('main#main-content')).backgroundImage,\n"
+                "  sheet: getComputedStyle(document.querySelector('.medcard__block')).boxShadow,\n"
+                "  photo: document.querySelectorAll('.medcard__passport img').length,\n"
+                "})"
+            )
+            check(
+                "the card lies on a plain ground: the pet's pattern gives way while it is open",
+                ground["image"] == "none",
+                ground["image"][:60],
+            )
+            check(
+                "the sheets of the card lie flat: a record is held by its lines, not by a shadow",
+                ground["sheet"] == "none",
+                ground["sheet"],
+            )
+            check(
+                "the passport has no portrait: the name of the pet is in the bar and the facts in the sheet",
+                ground["photo"] == 0,
+                f"{ground['photo']} images",
+            )
+
             # the clinic cap is said, not silently enforced
             saved = await api(
                 pg,
