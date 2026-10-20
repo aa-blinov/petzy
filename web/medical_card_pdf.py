@@ -248,7 +248,9 @@ def draw_header(pdf: _Card, card: dict) -> None:
         # right edge, so the card said one thing and showed another. It wraps instead.
         pdf.multi_cell(0, 8, pet["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    facts = [pet.get("species"), _lower_first(pet["breed"]) if pet.get("breed") else None]
+    # The breed in small letters, as the feed's card and the card on the screen say it: a breed is
+    # not a proper noun in Russian, and a capital in the middle of the line reads as an artifact.
+    facts = [pet.get("species"), pet["breed"].lower() if pet.get("breed") else None]
     if pet.get("birth_date"):
         facts.append(f"родился {_date(pet['birth_date'])}" + (f" ({pet['age_text']})" if pet.get("age_text") else ""))
     if pet.get("gender"):

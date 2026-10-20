@@ -256,7 +256,9 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
               textTransform: "lowercase",
             }}
           >
-            {meta || (!canFillIn && speciesLabel(pet.species))}
+            {/* The line is in small letters, but the species keeps its capital: it opens the line,
+                and the document says it the same way. */}
+            {meta || (!canFillIn && <span style={{ textTransform: "none" }}>{speciesLabel(pet.species)}</span>)}
           </div>
           )}
           {!compact && canFillIn && (

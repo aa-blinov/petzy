@@ -86,6 +86,18 @@ async def main():
                 f"{await vet.locator('.medcard__attention-item').count()} overdue, "
                 f"{await vet.locator('.medcard__attention-note').count()} notes",
             )
+            title = (await vet.locator("h1").inner_text()).strip()
+            passport = await vet.locator(".medcard__passport").inner_text()
+            check(
+                "the copy says what it is: «Медкарта» stands over the name of the pet",
+                "Медкарта" in await vet.locator(".screen-head").inner_text() and title == "Тест-М",
+                (await vet.locator(".screen-head").inner_text()).replace(chr(10), " | "),
+            )
+            check(
+                "and the name is written once: the title names the pet, the passport does not repeat it",
+                bool(title) and title not in passport,
+                (title + " | " + passport[:60]).replace(chr(10), " | "),
+            )
             check(
                 "the link ends with a date written the way the app writes it",
                 "Ссылка действует до " in t and ", " in t.split("Ссылка действует до ")[1][:20],
