@@ -30,4 +30,3 @@ COPY --from=builder /app/dist /static
 # Copy files to mounted volume on startup
 # The volume is mounted at /usr/share/nginx/html
 CMD ["sh", "-c", "cp -r /static/* /usr/share/nginx/html/ && tail -f /dev/null"]
-

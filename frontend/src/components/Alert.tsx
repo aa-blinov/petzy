@@ -46,4 +46,3 @@ export function Alert({ type, message, onClose, duration = 3000 }: AlertProps) {
 
   return null; // Toast is rendered by antd-mobile
 }
-

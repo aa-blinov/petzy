@@ -15,7 +15,7 @@ export function usePetTilesSettings(petId: string | null) {
     if (!petId) return null;
     return pets.find(p => p._id === petId) || null;
   }, [petId, pets]);
-  
+
   // Get tiles settings from pet or use default
   const tilesSettings: TilesSettings = useMemo(() => {
     if (pet?.tiles_settings) {
@@ -89,4 +89,3 @@ export function usePetTilesSettings(petId: string | null) {
     isLoading: updateTilesSettingsMutation.isPending,
   };
 }
-

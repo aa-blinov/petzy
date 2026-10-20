@@ -114,4 +114,3 @@ export const authService = {
     await api.post('/auth/logout', options.everywhere ? { everywhere: true } : undefined);
   }
 };
-

@@ -20,7 +20,7 @@ const LAZY_SCREEN_CHUNKS = [
 export default defineConfig(() => {
   // Use root path everywhere for simplicity
   const basePath = '/';
-  
+
   return {
   // When this bundle was built: shown with the commit in Settings → «Версия».
   define: {

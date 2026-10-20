@@ -21,7 +21,7 @@ export const exportService = {
       // fallback name must not claim the requested text format.
       const fallbackExt = exportType === 'all' ? 'zip' : format;
       let filename = `${exportType}_export.${fallbackExt}`;
-      
+
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/i);
         if (filenameMatch && filenameMatch[1]) {

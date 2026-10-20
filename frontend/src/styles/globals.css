@@ -2745,4 +2745,3 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
 .medcard__row-action--quiet {
     border-color: var(--app-text-secondary) !important;
 }
-

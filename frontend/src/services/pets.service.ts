@@ -198,4 +198,3 @@ export const petsService = {
     return `/api/pets/${petId}/photo`;
   }
 };
-

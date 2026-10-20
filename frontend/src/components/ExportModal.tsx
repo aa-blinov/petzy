@@ -38,7 +38,7 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
     if (visible) setExportType([defaultType]);
   }, [visible, defaultType]);
 
-  
+
   const handleExport = async () => {
     if (!exportType[0] || !format[0]) {
       showToast.info('Выберите тип данных и формат');
@@ -88,11 +88,11 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
       bodyStyle={{ borderTopLeftRadius: 'var(--radius-xl)', borderTopRightRadius: 'var(--radius-xl)' }}
     >
       <div style={{ padding: '16px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '16px' 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px'
         }}>
           <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 500 }}>Экспорт: {pets.find((p) => p._id === petId)?.name ?? 'данные питомца'}</h3>
           <Button fill="none" size="small" onClick={onClose}>Закрыть</Button>
@@ -117,9 +117,9 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
             />
           </Form.Item>
 
-          <Button 
-            block 
-            color="primary" 
+          <Button
+            block
+            color="primary"
             onClick={handleExport}
             loading={loading}
             style={{ marginTop: '16px' }}
@@ -131,4 +131,3 @@ export function ExportModal({ visible, onClose, petId, defaultType = 'feeding' }
     </Popup>
   );
 }
-

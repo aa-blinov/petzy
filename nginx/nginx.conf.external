@@ -6,11 +6,11 @@ server {
     listen 80;
     # Replace with your actual domain
     server_name your-domain.com;
-    
+
     # Path to frontend static files (mounted from docker container)
     root /path/to/cat-health-control/frontend/dist;
     index index.html;
-    
+
     # Error logging
     error_log /var/log/nginx/cat-health-control-error.log warn;
     access_log /var/log/nginx/cat-health-control-access.log;
@@ -90,4 +90,3 @@ server {
         add_header Content-Type text/plain;
     }
 }
-
