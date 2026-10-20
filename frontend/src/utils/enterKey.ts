@@ -63,7 +63,9 @@ function nextField(el: TextField): TextField | null {
 /** What the Return key should read on this field. */
 function hintFor(el: TextField): 'next' | 'go' | 'done' {
   if (nextField(el)) return 'next';
-  return groupOf(el).querySelector('[data-enter-submit]') ? 'go' : 'done';
+  // A button that cannot be pressed is no button: the hint must not promise a step that
+  // Enter will not take.
+  return submitButtonIn(groupOf(el)) ? 'go' : 'done';
 }
 
 function ownedByPage(el: TextField): boolean {
