@@ -1,13 +1,15 @@
 """What lands on a pet's colour has to be readable on every pet's colour.
 
-The card's selected mode chip, the call button, the block of allergies and the title above it all
-sit on the soft accent, and that soft accent is not one colour: the pet's look may replace it with
-any of seven. Checking the default alone is how a 4.481:1 pairing ships with a claim of compliance
-in DESIGN.md: the default failed by a twentieth, and none of the seven pet colours was the default.
+A pet's look may replace the app's accent with any of seven, and the card carries that colour:
+the round «+» of a block is painted in it. Checking the default alone is how a 4.481:1 pairing
+ships with a claim of compliance in DESIGN.md: the default failed by a twentieth, and none of the
+seven pet colours was the default.
 
-Measured on rendered pixels, in both themes, on the card and on the block that carries the tint.
-The bar is 4.5:1, since the largest of these is 16px at weight 700, below the 18.66px bold threshold
-for large text.
+The weight is read too, on the sheet under it: the card is strict, and its numbers stand in ink
+rather than on a tinted chip.
+
+Measured on rendered pixels, in both themes, on the card. The bar is 4.5:1, since the largest of
+these is 16px at weight 700, below the 18.66px bold threshold for large text.
 """
 
 import asyncio
@@ -39,15 +41,30 @@ def ratio(fore: str, back: str) -> float:
 # is about what a person sees on the card, and the seven accents are the ones that can be seen.
 ACCENTS = ["", "sage", "sky", "lilac", "rose", "sun", "teal", "slate"]
 
-# The chip with the weight is drawn on the tinted block and is the only element that is always there on the card.
+# The weight stands in ink on the sheet of the passport, and the round «+» of a block is painted
+# in the pet's own deep colour. Both are always there on the card.
 ELEMENT = ".medcard__weight-chip"
+ELEMENT_ACCENT = ".medcard__add"
 
 APPLY = """
 ([accent, selector]) => {
   if (accent) document.body.setAttribute('data-pet-accent', accent);
   else document.body.removeAttribute('data-pet-accent');
   const el = document.querySelector(selector);
-  return el ? { fg: getComputedStyle(el).color, bg: getComputedStyle(el).backgroundColor } : null;
+  if (!el) return null;
+  // The ground the text stands on: the nearest ancestor that paints something. An element with
+  // no ground of its own is read on the sheet under it.
+  let node = el;
+  let bg = 'rgba(0, 0, 0, 0)';
+  while (node) {
+    const colour = getComputedStyle(node).backgroundColor;
+    if (colour && colour !== 'rgba(0, 0, 0, 0)' && colour !== 'transparent') {
+      bg = colour;
+      break;
+    }
+    node = node.parentElement;
+  }
+  return { fg: getComputedStyle(el).color, bg };
 }
 """
 
@@ -74,6 +91,21 @@ async def main() -> int:
                 r = ratio(got["fg"], got["bg"])
                 check(
                     f"{'тёмная' if dark else 'светлая'} тема, вес на цвете «{accent or 'обычном'}»",
+                    r >= MINIMUM,
+                    f"{r:.3f}:1 (нужно {MINIMUM}), {got['fg']} на {got['bg']}",
+                )
+                # The pet's own colour meets the card in the round «+» of a block.
+                got = await pg.evaluate(APPLY, [accent, ELEMENT_ACCENT])
+                if got is None:
+                    check(
+                        f"{'тёмная' if dark else 'светлая'} тема, «+» на цвете «{accent or 'обычном'}»",
+                        False,
+                        "кнопка не нарисована",
+                    )
+                    continue
+                r = ratio(got["fg"], got["bg"])
+                check(
+                    f"{'тёмная' if dark else 'светлая'} тема, «+» на цвете «{accent or 'обычном'}»",
                     r >= MINIMUM,
                     f"{r:.3f}:1 (нужно {MINIMUM}), {got['fg']} на {got['bg']}",
                 )
