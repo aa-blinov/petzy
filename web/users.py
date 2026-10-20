@@ -82,8 +82,11 @@ def users_page(query: str, raw_page, per_page: int = USERS_PER_PAGE):
     for user in users:
         user["_id"] = str(user["_id"])
         user.pop("password_hash", None)
-        if isinstance(user.get("created_at"), datetime):
-            user["created_at"] = utc_iso(user["created_at"])
+        # A row written before the field existed has none, and the answer needs a date either way.
+        created_at = user.get("created_at")
+        if isinstance(created_at, datetime):
+            created_at = utc_iso(created_at)
+        user["created_at"] = created_at or ""
 
     return users, total, page, per_page
 
@@ -257,8 +260,11 @@ def get_user(username):
 
     user["_id"] = str(user["_id"])
     user.pop("password_hash", None)
-    if isinstance(user.get("created_at"), datetime):
-        user["created_at"] = utc_iso(user["created_at"])
+    # A row written before the field existed has none, and the answer needs a date either way.
+    created_at = user.get("created_at")
+    if isinstance(created_at, datetime):
+        created_at = utc_iso(created_at)
+    user["created_at"] = created_at or ""
 
     return jsonify({"user": user})
 
