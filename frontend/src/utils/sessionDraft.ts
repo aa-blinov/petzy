@@ -151,7 +151,6 @@ export function stashDraftsBeforeSignOut(): void {
     } catch {
       /* sessionStorage may be unavailable: the form is then lost as before */
     }
-    return;
   }
 }
 

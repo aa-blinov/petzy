@@ -32,7 +32,10 @@ export function slugifyFieldName(label: string, existing: string[] = []): string
   let candidate = slug;
   let suffix = 2;
   while (existing.includes(candidate)) {
-    candidate = `${slug}_${suffix}`.slice(0, 50);
+    // The suffix has to fit inside the limit. Cutting "slug_2" back to fifty characters
+    // would leave the same name behind, and the loop would never end.
+    const room = Math.max(1, 50 - String(suffix).length - 1);
+    candidate = `${slug.slice(0, room)}_${suffix}`;
     suffix += 1;
   }
   return candidate;
