@@ -110,11 +110,14 @@
     color: var(--app-text-secondary);
 }
 
-/* What is overdue: the one place on the card that is red, and the way to put it right. */
+/* What is overdue: the one place on the card that is red, and the way to put it right. The alarm
+    is a sheet of its own: the tint is laid over an opaque ground, the way the app lays a tint
+    over a card elsewhere, so the pet's pattern does not show through it. */
 .medcard__attention {
     padding: var(--spacing-md);
     border-radius: var(--radius-lg);
-    background: var(--app-danger-soft);
+    background-color: var(--app-card-background);
+    background-image: linear-gradient(var(--app-danger-soft), var(--app-danger-soft));
 }
 
 /* The one alarm of the card: its heading carries the alarm's colour, so the block reads as one
