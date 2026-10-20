@@ -1,8 +1,8 @@
 #!/bin/sh
-# Runs the full backend test suite, a full frontend lint and the browser
-# checks before allowing a push — catches regressions and drift the fast
-# per-commit staged-files-only checks can't (e.g. a file that changed across
-# several commits, or a --no-verify commit).
+# Runs the full backend test suite, a full frontend lint, the frontend unit
+# tests and the browser checks before allowing a push — catches regressions and
+# drift the fast per-commit staged-files-only checks can't (e.g. a file that
+# changed across several commits, or a --no-verify commit).
 #
 # The browser checks need the local stand up and take several minutes. The
 # test suite and the lint do not wait on the stand, so they run alongside the
@@ -41,6 +41,8 @@ echo "Starting the backend test suite and the frontend lint in the background...
 PYTEST_PID=$!
 ( cd frontend && npm run lint ) >"$LOG_DIR/lint.log" 2>&1 &
 LINT_PID=$!
+( cd frontend && npm test ) >"$LOG_DIR/vitest.log" 2>&1 &
+VITEST_PID=$!
 
 # Browser checks: the stand first, then every check against it.
 if [ "$PETZY_SKIP_E2E" = "1" ]; then
@@ -76,14 +78,19 @@ wait $PYTEST_PID
 PYTEST_STATUS=$?
 wait $LINT_PID
 LINT_STATUS=$?
+wait $VITEST_PID
+VITEST_STATUS=$?
 echo ""
 echo "Backend test suite:"
 cat "$LOG_DIR/pytest.log"
 echo "Frontend lint:"
 cat "$LOG_DIR/lint.log"
+echo "Frontend unit tests:"
+cat "$LOG_DIR/vitest.log"
 rm -rf "$LOG_DIR"
 [ $PYTEST_STATUS -ne 0 ] && status=1
 [ $LINT_STATUS -ne 0 ] && status=1
+[ $VITEST_STATUS -ne 0 ] && status=1
 
 if [ $status -ne 0 ]; then
     echo ""
