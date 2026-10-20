@@ -1,6 +1,7 @@
-/* The medical card: a read-only page, laid out to be read in a vet's
-   office. Every block is one labelled section; nothing relies on colour
-   alone (a status has a word and an icon). */
+/* The medical card as a document: one column of blocks, in the order a vet
+   asks in. The top of the card answers three questions (who this pet is,
+   what asks to be done now, how far the card is from being complete); below
+   that it is the record itself. */
 .medcard {
     display: flex;
     flex-direction: column;
@@ -9,72 +10,331 @@
     font-variant-numeric: tabular-nums;
 }
 
-.medcard__patient {
-    margin: 0;
-    font-size: var(--text-md);
-    line-height: 1.4;
-    color: var(--app-text-primary);
-    overflow-wrap: anywhere;
-}
-
-.medcard__patient p {
-    margin: 0;
-}
-
-/* The second line of the patient, the weight with its day: a fact to check against, not a second sentence of the first. */
-.medcard__patient p + p {
-    color: var(--app-text-secondary);
-    font-size: var(--text-sm);
-}
-
-.medcard__actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-}
-
-/* Allergies and conditions: the first thing a vet asks, so it comes first
-   and is the one block with a colour of its own. */
-.medcard__important {
+/* The passport: who the card is about, and the weight the doses are counted from. */
+.medcard__passport {
     display: flex;
     gap: var(--spacing-md);
     padding: var(--spacing-md);
     border-radius: var(--radius-lg);
-    background: var(--app-accent-soft);
-    border: 1px solid transparent;
+    background: var(--app-card-background);
+    border: 1px solid var(--app-border-color);
 }
 
-.medcard__important--empty {
-    background: transparent;
-    border: 1px dashed var(--app-border-color);
+.medcard__avatar {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    overflow: hidden;
+}
+
+.medcard__avatar-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+}
+
+.medcard__passport-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.medcard__pet-name {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.medcard__pet-facts {
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+    line-height: 1.4;
+}
+
+.medcard__pet-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.medcard__pet-dim {
+    font-size: var(--text-sm);
     color: var(--app-text-secondary);
 }
 
-.medcard__important-icon {
+.medcard__weight-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--app-accent-soft);
+    color: var(--app-accent-deep);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+/* The chip number: copied with one tap, a 44px target. */
+.medcard__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--touch-min);
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+/* The name of a zone of the card: the things that ask to be done, and the state of the card. */
+.medcard__zone-title {
+    margin: 0 0 var(--spacing-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--app-text-secondary);
+}
+
+/* What is overdue: the one place on the card that is red, and the way to put it right. */
+.medcard__attention {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    background: var(--app-danger-soft);
+}
+
+.medcard__attention-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.medcard__attention-item {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+}
+
+.medcard__attention-item + .medcard__attention-item {
+    border-top: 1px solid rgba(179, 38, 30, 0.16);
+}
+
+.medcard__attention-icon {
+    flex: none;
+    margin-top: 1px;
+    color: var(--app-danger-text);
+}
+
+.medcard__attention-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.medcard__attention-title {
+    font-size: var(--text-md);
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.medcard__attention-text {
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    color: var(--app-danger-text);
+}
+
+.medcard__attention-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min);
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--app-accent-deep);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.medcard__attention-note {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--app-danger-text);
+}
+
+/* How far the card is from being complete. Both states are one block. */
+.medcard__ready {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    background: var(--app-card-background);
+    border: 1px solid var(--app-border-color);
+}
+
+.medcard__ready-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.medcard__ready-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-md);
+    font-weight: 500;
+}
+
+.medcard__ready--done .medcard__ready-label {
+    color: var(--app-success-text);
+}
+
+.medcard__ready-count {
+    font-size: var(--text-md);
+    font-weight: 700;
+}
+
+.medcard__ready-dots {
+    display: flex;
+    gap: 5px;
+    margin-top: var(--spacing-sm);
+}
+
+.medcard__ready-dot {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--app-divider-color);
+}
+
+.medcard__ready-dot--on {
+    background: var(--app-accent);
+}
+
+.medcard__ready-hint {
+    margin: var(--spacing-sm) 0 0;
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}
+
+.medcard__ready-action {
+    margin-top: var(--spacing-xs);
+}
+
+/* A block of the document: its name, and the doors of the owner in its head. */
+.medcard__section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.medcard__section-title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    text-wrap: balance;
+}
+
+/* The address of a part of the card scrolls to the part: the fixed top bar must not cover its name. */
+.medcard__section {
+    scroll-margin-top: calc(var(--safe-area-top) + 76px);
+}
+
+.medcard__block {
+    overflow: hidden;
+}
+
+/* The round «+» of a block: what this block is about is added here, one tap from where it is read. */
+.medcard__add {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--app-border-color);
+    background: var(--app-card-background);
+    color: var(--app-accent-deep);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* The action of a block («Изменить», «Все лекарства»): body size, so that it reads as an action and not as a footnote. */
+.medcard__link {
+    flex-shrink: 0;
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--app-accent-deep);
+    cursor: pointer;
+    text-align: left;
+}
+
+.medcard__link--quiet {
+    color: var(--app-text-secondary);
+}
+
+/* The quiet doors under a block: they belong to the block, not to its head. */
+.medcard__block-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+    border-top: 1px solid var(--app-divider-color);
+}
+
+/* Allergies and conditions: what a vet asks first, so it comes first. */
+.medcard__risks {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+.medcard__risks--empty {
+    background: transparent;
+}
+
+.medcard__risks-icon {
     flex-shrink: 0;
     margin-top: 2px;
     color: var(--app-danger-text);
 }
 
-.medcard__important--empty .medcard__important-icon {
+.medcard__risks--empty .medcard__risks-icon,
+.medcard__risks--calm .medcard__risks-icon {
     color: var(--app-text-secondary);
 }
 
-.medcard__important-title {
-    margin: 0 0 4px;
-    font-size: var(--text-md);
-    font-weight: 700;
-    color: var(--app-danger-text);
+.medcard__risks-body {
+    min-width: 0;
+    flex: 1;
 }
 
-.medcard__important--empty .medcard__important-title {
-    color: var(--app-text-color);
-}
-
-.medcard__important-text {
+.medcard__risks-text {
     margin: 0;
     font-size: var(--text-sm);
     line-height: 1.5;
+    color: var(--app-text-secondary);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
@@ -95,53 +355,11 @@
     padding-left: 18px;
     font-size: var(--text-sm);
     line-height: 1.5;
+    color: var(--app-text-primary);
     overflow-wrap: anywhere;
 }
 
-.medcard__ids {
-    margin-top: var(--spacing-sm);
-    color: var(--app-text-secondary);
-}
-
-.medcard__tel {
-    color: var(--app-accent-deep);
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.medcard__section-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0 var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
-}
-
-.medcard__section-title {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: 700;
-}
-
-/* The action of a section («Добавить», «Изменить»): body size, so that it reads as an action and not as a footnote, and
-   a pressable height of its own; the negative margin keeps the heading row as tall as it was. */
-.medcard__link {
-    flex-shrink: 0;
-    min-height: var(--touch-min);
-    display: inline-flex;
-    align-items: center;
-    padding: 0;
-    margin: -10px 0;
-    border: none;
-    background: none;
-    font: inherit;
-    font-size: var(--text-md);
-    font-weight: 500;
-    color: var(--app-accent-deep);
-    cursor: pointer;
-}
-
+/* The rows of a block. */
 .medcard__list {
     list-style: none;
     margin: 0;
@@ -181,98 +399,31 @@
     overflow-wrap: break-word;
 }
 
-.medcard__status {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: var(--radius-md);
-    font-size: var(--text-xs);
+/* The weight of a line in a row: what is acted on is ink and heavier, the facts keep their label bold,
+    the context stays grey, the rest is quiet. */
+.medcard__row-sub--key {
+    margin-top: var(--spacing-xs);
     font-weight: 500;
-    white-space: nowrap;
+    color: var(--app-text-primary);
 }
 
-.medcard__status--valid {
-    color: var(--app-success-text);
-    background: var(--app-success-soft);
+.medcard__row-sub--fact {
+    color: var(--app-text-primary);
 }
 
-.medcard__status--soon {
-    color: var(--app-warning-text);
-    background: var(--app-warning-soft);
+.medcard__row-label {
+    font-weight: 500;
 }
 
-.medcard__status--expired {
+.medcard__row-sub--meta {
+    color: var(--app-text-tertiary);
+}
+
+/* What changed since the last time: the one line of the card that is red, and it is red because the person said so. */
+.medcard__row-sub--changed {
+    margin-top: var(--spacing-xs);
+    font-weight: 500;
     color: var(--app-danger-text);
-    background: var(--app-danger-soft);
-}
-
-.medcard__status--none {
-    color: var(--app-text-secondary);
-    background: var(--app-accent-soft);
-}
-
-.medcard__empty {
-    margin: 0;
-    padding: var(--spacing-md);
-    font-size: var(--text-sm);
-    color: var(--app-text-secondary);
-}
-
-.medcard__weight {
-    padding: var(--spacing-md);
-}
-
-.medcard__weight-now {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-}
-
-.medcard__weight-value {
-    font-size: var(--text-xxl);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-
-.medcard__weight-date {
-    font-size: var(--text-sm);
-    color: var(--app-text-secondary);
-}
-
-.medcard__spark {
-    position: relative;
-    width: 100%;
-    height: 56px;
-    margin-top: var(--spacing-sm);
-    color: var(--app-accent);
-}
-
-.medcard__spark svg {
-    display: block;
-}
-
-.medcard__spark-dot {
-    position: absolute;
-    right: 0;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: currentColor;
-    transform: translate(50%, -50%);
-}
-
-.medcard__stamp {
-    margin: 0;
-    text-align: center;
-    font-size: var(--text-xs);
-    color: var(--app-text-secondary);
-}
-
-.medcard__stamp--top {
-    text-align: left;
 }
 
 /* A row of the card that opens its record, and the small action under it. */
@@ -317,7 +468,116 @@
     cursor: pointer;
 }
 
+/* A row action that is available but not the one asked for: quiet, a step below «Записать повторную». */
+.medcard__row-action--quiet {
+    color: var(--app-text-secondary);
+    font-weight: 500;
+}
+
 .medcard__row--history .medcard__row-title {
+    font-weight: 500;
+    color: var(--app-text-secondary);
+}
+
+/* The pill of a status: a word and an icon, never colour alone. */
+.medcard__status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.medcard__status--valid {
+    color: var(--app-success-text);
+    background: var(--app-success-soft);
+}
+
+.medcard__status--soon {
+    color: var(--app-warning-text);
+    background: var(--app-warning-soft);
+}
+
+.medcard__status--expired {
+    color: var(--app-danger-text);
+    background: var(--app-danger-soft);
+}
+
+.medcard__status--none {
+    color: var(--app-text-secondary);
+    background: var(--app-accent-soft);
+}
+
+.medcard__empty {
+    margin: 0;
+    padding: var(--spacing-md);
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+    text-wrap: pretty;
+}
+
+.medcard__handover-empty {
+    padding: 0;
+    text-align: center;
+}
+
+/* The weight: the figure first, the trend under it. */
+.medcard__weight {
+    padding: var(--spacing-md);
+}
+
+.medcard__weight-now {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.medcard__weight-value {
+    font-size: var(--text-xxl);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.medcard__weight-date {
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}
+
+.medcard__spark {
+    position: relative;
+    width: 100%;
+    height: 56px;
+    margin-top: var(--spacing-sm);
+    color: var(--app-accent);
+}
+
+.medcard__spark svg {
+    display: block;
+}
+
+.medcard__spark-dot {
+    position: absolute;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: currentColor;
+    transform: translate(50%, -50%);
+}
+
+/* The finished courses, under the ones that go on. */
+.medcard__past {
+    border-top: 1px solid var(--app-divider-color);
+}
+
+.medcard__past-title {
+    padding: var(--spacing-sm) var(--spacing-md) 0;
+    font-size: var(--text-sm);
     font-weight: 500;
     color: var(--app-text-secondary);
 }
@@ -329,140 +589,9 @@
     color: var(--app-text-secondary);
 }
 
-/* The next step, one thing at a time; the rest wait below it as a short list. */
-.medcard__todos {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-lg);
-    background: var(--app-card-background);
-    border: 1px solid var(--app-divider-color);
-}
-
-.medcard__todos-title {
-    margin: 0;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--app-text-secondary);
-}
-
-.medcard__todos-next {
-    margin: var(--spacing-xs, 4px) 0 0;
-    font-size: var(--text-xl);
-    font-weight: 700;
-}
-
-.medcard__todos-hint {
-    margin: 0 0 var(--spacing-sm);
-    font-size: var(--text-md);
-    color: var(--app-text-secondary);
-}
-
-.medcard__todos-rest {
-    list-style: none;
-    margin: var(--spacing-xs, 4px) 0 0;
-    padding: 0;
-    border-top: 1px solid var(--app-divider-color);
-}
-
-.medcard__todos-row,
-.medcard__todo-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-    width: 100%;
-    min-height: 48px;
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
-    font-size: var(--text-md);
-    font-weight: 500;
-    color: var(--app-accent-deep);
-    text-align: left;
-    cursor: pointer;
-}
-
-.medcard__todos-rest li + li {
-    border-top: 1px solid var(--app-divider-color);
-}
-
-.medcard__todo-row {
-    padding: 0 var(--spacing-md);
-}
-
-.medcard__ready {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    margin: 0;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--app-success-text);
-}
-
-/* The two modes: filling in, and reading at the vet's counter. The chosen one is the lit segment
-   (the accent tint with accent text and a ring); the other sits on a plain track in secondary text.
-   The lit one must not be the darker of the two: in the dark theme that reads as a pressed-in, switched-off segment. */
-.medcard__modes {
-    display: flex;
-    gap: 2px;
-    padding: 3px;
-    border-radius: var(--radius-md);
-    background: var(--app-card-background);
-    box-shadow: 0 0 0 1px var(--app-border-color);
-}
-
-.medcard__mode {
-    flex: 1;
-    min-height: var(--touch-min);
-    border: none;
-    border-radius: calc(var(--radius-md) - 3px);
-    background: transparent;
-    font: inherit;
-    font-size: var(--text-md);
-    font-weight: 500;
-    color: var(--app-text-secondary);
-    cursor: pointer;
-}
-
-.medcard__mode[aria-pressed="true"] {
-    background: var(--app-accent-soft);
-    box-shadow: 0 0 0 1px var(--app-accent-deep);
-    color: var(--app-accent-deep);
-    font-weight: 700;
-}
-
-/* «Не выявлено» is a safe statement: a neutral ground, not the alarm tint. */
-.medcard__important--calm {
-    background: var(--app-accent-soft);
-}
-
-.medcard__important--calm .medcard__important-icon,
-.medcard__important--calm .medcard__important-title,
-.medcard__important--calm .medcard__fact-label {
-    color: var(--app-text-secondary);
-}
-
-/* The chip number: copied with one tap, a 44px target. */
-.medcard__copy {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: var(--touch-min);
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
-    font-size: var(--text-md);
-    font-weight: 500;
-    color: var(--app-accent-deep);
-    cursor: pointer;
-    text-align: left;
-    overflow-wrap: anywhere;
+/* A list inside a sheet: the rows reach the edges of the sheet, not the card's padding. */
+.medcard__list--sheet {
+    margin: 0 calc(-1 * var(--spacing-md));
 }
 
 /* The clinic's phone in the reading mode: a call button, not a small link. */
@@ -482,96 +611,107 @@
     text-decoration: none;
 }
 
-/* Reading mode: a size up from the filling-in mode, the vet reads at arm's length. */
-.medcard--reading .medcard__row-title {
-    font-size: var(--text-lg);
-}
-
-.medcard--reading .medcard__row-sub,
-.medcard--reading .medcard__important-text {
+/* The row of a sheet that asks which of two things to write about. */
+.medcard__todo-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 var(--spacing-md);
+    border: none;
+    background: none;
+    font: inherit;
     font-size: var(--text-md);
-}
-
-/* The weight of a line in a row: what is acted on is ink and heavier, the facts keep their label bold,
-   the context stays grey, the rest is quiet. */
-.medcard__row-sub--key {
-    margin-top: var(--spacing-xs);
     font-weight: 500;
-    color: var(--app-text-primary);
+    color: var(--app-accent-deep);
+    text-align: left;
+    cursor: pointer;
 }
 
-.medcard__row-sub--fact {
-    color: var(--app-text-primary);
-}
-
-.medcard__row-label {
-    font-weight: 500;
-}
-
-.medcard__row-sub--meta {
-    color: var(--app-text-tertiary);
-}
-
-.medcard__ready--warn {
-    color: var(--app-warning-text);
-}
-
-/* A row with a button that may not fit beside the text on a narrow screen: the button goes under it. */
-.medcard__row--wrap {
-    flex-wrap: wrap;
-}
-
-.medcard__row--wrap .medcard__row-main {
-    flex: 1 1 11rem;
-}
-
-.medcard--reading .medcard__row-title {
-    overflow-wrap: break-word;
-}
-
-.medcard__ready-wrap {
+/* The file on the copy opened by a link: what the visitor takes away with them. */
+.medcard__topactions {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
 }
 
-
-/* A status pill under the lines of a stacked row: on its own line, at the left, the same place in every row. */
-.medcard__row--stack > .medcard__status {
-    align-self: flex-start;
-    margin-top: var(--spacing-sm);
+.medcard__pdf-button {
+    width: 100%;
+    min-height: 48px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--app-accent-deep);
+    background: var(--app-card-background);
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
 }
 
-/* What is overdue: the one place on the card that is red, and the way to put it right. */
-.medcard__alert {
+/* The two ways to hand the card over, always within reach. */
+/* Room under the last block for the bar, so that it never covers a line of the card. */
+.medcard-page--bar {
+    padding-bottom: calc(var(--safe-area-bottom) + 96px);
+}
+
+.medcard__bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(50px + env(safe-area-inset-bottom, 34px));
+    z-index: 90;
     display: flex;
     gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-lg);
-    background: var(--app-danger-soft);
+    padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-md);
+    /* The same ground as the screen behind it, the pet's scene when it has one. */
+    background: var(--pet-scene-bg, var(--app-page-background));
+    box-shadow: 0 -8px 16px -12px rgba(60, 40, 20, 0.35);
 }
 
-.medcard__alert-icon {
-    flex-shrink: 0;
-    margin-top: 2px;
-    color: var(--app-danger-text);
-}
-
-.medcard__alert-body {
-    min-width: 0;
+.medcard__bar-button {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     gap: var(--spacing-sm);
+    padding: 0 var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--app-accent-deep);
+    background: var(--app-card-background);
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
 }
 
-.medcard__alert-text {
+.medcard__bar-button:disabled {
+    opacity: 0.6;
+}
+
+/* The copy opened by a link says what it is and how fresh it is. */
+.medcard__stamp {
     margin: 0;
-    font-size: var(--text-md);
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--app-text-secondary);
+}
+
+.medcard__stamp--top {
+    text-align: left;
+}
+
+.medcard__hint {
+    margin: 0;
+    font-size: var(--text-sm);
     line-height: 1.4;
-    color: var(--app-danger-text);
-    overflow-wrap: break-word;
+    color: var(--app-text-secondary);
+}
+
+.medcard__back {
+    align-self: center;
+    font-weight: 600;
 }
 
 /* A phone on its side: the screen is 400px tall and the bars take a third of it. The title and the gaps give way, so the
@@ -593,114 +733,16 @@
 }
 
 /* Short lines break evenly, long ones do not leave a word alone on the last line. */
-.medcard__todos-next,
-.medcard__alert-text,
-.medcard__empty {
+.medcard__attention-text,
+.medcard__attention-title,
+.medcard__ready-hint,
+.medcard__pet-facts {
     text-wrap: pretty;
-}
-
-/* The overdue strip is the one place that says what to do about a late repeat, so it is the one
-   place that is pressable. Same colour and weight as the line above it, underlined so it reads as a
-   door, and a real focus ring. */
-.medcard__alert-link {
-    display: inline-flex;
-    align-items: center;
-    /* The one place on the card that is pressed on purpose: a 44px line to touch, as DESIGN.md asks. */
-    min-height: var(--touch-min);
-    margin-top: 2px;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    align-self: flex-start;
-}
-
-.medcard__alert-link:focus-visible {
-    outline-offset: 2px;
-}
-
-.medcard__section-title,
-.medcard__important-title {
-    text-wrap: balance;
 }
 
 /* Light text on a dark ground looks tighter than the same text on a light one: a little more air between lines. */
 html[data-prefers-color-scheme='dark'] .medcard__row-sub,
-html[data-prefers-color-scheme='dark'] .medcard__important-text,
-html[data-prefers-color-scheme='dark'] .medcard__alert-text {
+html[data-prefers-color-scheme='dark'] .medcard__risks-text,
+html[data-prefers-color-scheme='dark'] .medcard__attention-text {
     line-height: 1.5;
-}
-
-/* A row action that is available but not the one asked for: quiet, a step below «Записать повторную». */
-.medcard__row-action--quiet {
-    color: var(--app-text-secondary);
-    font-weight: 500;
-}
-
-.medcard__topactions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-}
-
-.medcard__topbuttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-md);
-}
-
-.medcard__topbuttons > .adm-button {
-    flex: 1 1 11rem;
-    width: auto;
-}
-
-.medcard__hint {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.4;
-    color: var(--app-text-secondary);
-}
-
-.medcard__ready-box {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
-}
-
-/* The round «+» (.app-fab) sits over the last lines of the card in the mode that edits: room under them. */
-.medcard--entering {
-    padding-bottom: calc(56px + var(--spacing-xl));
-}
-
-/* A part of the card (a section with its head and its list) stands 24px from what is above it; the pieces of the top
-   (the overdue strip, the readiness, the buttons) stay 16px apart, as one group. */
-.medcard > section,
-.medcard > .medcard__important {
-    margin-top: var(--spacing-sm);
-}
-
-/* The title and the pet it is about: a caption under a title sits close to it. */
-.medcard__header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-/* Two doors in a section's head: the one asked for in the accent, the other beside it, quieter. */
-.medcard__section-actions {
-    display: inline-flex;
-    align-items: baseline;
-    gap: var(--spacing-lg);
-}
-
-.medcard__link--quiet {
-    color: var(--app-text-secondary);
-}
-
-/* The two ways to hand the card over, one under the other. */
-.medcard__forvet {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
 }

@@ -1,9 +1,10 @@
-"""The small rules of the card's parts and of the note to the vet:
+"""The small rules of the card's blocks and of the note to the vet:
 
-- every part of the card adds by its own round «+», and no block repeats it with a button of its own («Записать вес»,
-  «Добавить»): two ways to the same record on one screen is one too many; the card's summary has no «+» at all;
-- «Прививки и обработки» and «Визиты» ask between two kinds;
-- the part names the pet and offers the way to the list of pets when there is more than one;
+- every block adds by one door and by one door only: the round «+» in its head, or the link
+  under it, never both («Записать вес», «Добавить» beside the «+» would be two ways to the
+  same record on one screen);
+- the card itself has no «+» of its own;
+- the pet is named and the way to the list of pets is offered;
 - the five-clinic cap is said instead of the «+ Добавить клинику» button simply disappearing;
 - an answer to «К приёму» that was taken back is not a change, so leaving asks nothing.
 
@@ -16,10 +17,18 @@ from common import BASE, api, async_playwright, check, login, new_page, summary,
 
 CLINICS = [{"name": f"Клиника {i}", "phone": "+7 701 000 00 00", "doctors": []} for i in range(1, 6)]
 
-# The block's own «Добавить», and not the round «+»: on the parts that ask between two kinds the «+» is
-# signed «Добавить» too, so counting by accessible name would count the very button that is meant to stay.
-BLOCK_DOORS = """() => [...document.querySelectorAll('main button')]
-  .filter((b) => !b.classList.contains('app-fab') && b.textContent.trim() === 'Добавить').length"""
+# How many doors of a block add something to it: the round «+» in its head and the link under
+# it that says «Добавить». One block, one door.
+WAYS_TO_ADD = """() => {
+  const blocks = [...document.querySelectorAll('.medcard__section')];
+  return blocks.map((b) => {
+    const plus = b.querySelectorAll('.medcard__add').length;
+    const link = [...b.querySelectorAll('.medcard__block-links button')].filter(
+      (x) => x.textContent.trim() === 'Добавить',
+    ).length;
+    return { title: b.querySelector('.medcard__section-title')?.textContent ?? '', ways: plus + link };
+  });
+}"""
 
 
 async def main():
@@ -42,42 +51,39 @@ async def main():
             await settle(pg, 150)
             pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
 
-            # the weight is added by the part's round «+»; the block does not repeat it
+            # the weight is added by the round «+» of its block; the block does not repeat it
             await pg.goto(BASE + f"/pets/{pid}/medical-card/weight")
             await settle(pg)
             check(
                 "«Вес»: the round «+» records, and the block has no second «Записать вес»",
                 await pg.get_by_role("button", name="Записать вес").count() == 0
-                and await pg.locator(".app-fab").count() == 1,
+                and await pg.locator(".app-fab").count() == 0
+                and await pg.locator("#medcard-weight .medcard__add").count() == 1,
             )
             check(
-                "the part names the pet and offers the way to the list",
+                "the card names the pet and offers the way to the list",
                 "Тест-М" in await pg.inner_text("body")
-                and await pg.get_by_role("button", name="Все питомцы").count() == 1,
+                and await pg.get_by_role("button", name="Все питомцы").count() == 0,
             )
-            await pg.get_by_role("button", name="Все питомцы").click()
+            await pg.get_by_role("button", name="Тест-М, сменить питомца").click()
             await settle(pg, 150)
-            check("it opens the list of pets", pg.url.endswith("/pets"), pg.url.replace(BASE, ""))
+            check("the switcher in the head offers the pets", "Выбрать питомца" in await pg.inner_text("body"))
+            await pg.keyboard.press("Escape")
+            await settle(pg, 150)
 
-            # One way to add on a part: the round «+». The blocks used to carry a «Добавить» of their own, and
-            # «Визиты» a list «Ещё можно добавить», all of them opening the same forms the «+» opens. Two ways
-            # to one record on one screen: the person reads which of them is the way, and guesses.
-            for part, label in (("prevention", "Прививки и обработки"), ("visits", "Визиты")):
-                await pg.goto(BASE + f"/pets/{rex}/medical-card/{part}")
-                await settle(pg)
-                check(f"«{label}» keeps the round «+»", await pg.locator(".app-fab").count() == 1)
-                check(
-                    f"«{label}»: its blocks carry no second «Добавить»",
-                    await pg.evaluate(BLOCK_DOORS) == 0,
-                    f"{await pg.evaluate(BLOCK_DOORS)} шт., "
-                    + (await pg.inner_text("main"))[:100].replace(chr(10), " | "),
-                )
-
-            # The card's summary has no «+»: it showed and hid itself on a scroll, and it added anything at all, while
-            # each part adds its own things. A tile is one tap to the part and its «+».
+            # One way to add in a block: the round «+» in its head, or the link under it.
             await pg.goto(BASE + f"/pets/{rex}/medical-card")
             await settle(pg)
-            check("the card's summary has no round «+» of its own", await pg.locator(".app-fab").count() == 0)
+            ways = await pg.evaluate(WAYS_TO_ADD)
+            check(
+                "no block has two doors to the same record",
+                all(w["ways"] <= 1 for w in ways),
+                str([w for w in ways if w["ways"] > 1]),
+            )
+            check(
+                "the card itself has no round «+» of its own",
+                await pg.locator(".app-fab").count() == 0,
+            )
 
             # the clinic cap is said, not silently enforced
             saved = await api(
@@ -133,7 +139,7 @@ async def main():
             if pid:
                 await api(pg, "DELETE", f"/pets/{pid}")
         await b.close()
-    summary("the small rules of the card's parts and of the note to the vet")
+    summary("the small rules of the card's blocks and of the note to the vet")
 
 
 asyncio.run(main())

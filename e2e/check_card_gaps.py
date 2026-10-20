@@ -9,10 +9,15 @@ from common import BASE, api, async_playwright, check, login, new_page, summary,
 
 PET = "Тест-М"
 
-# The block's own «Добавить», and not the round «+»: on the parts that ask between two kinds the «+» is
-# signed «Добавить» too, so counting by accessible name would count the very button that is meant to stay.
-BLOCK_DOORS = """() => [...document.querySelectorAll('main button')]
-  .filter((b) => !b.classList.contains('app-fab') && b.textContent.trim() === 'Добавить').length"""
+# How many doors of a block add something to it: the round «+» in its head and the link under
+# it that says «Добавить». One block, one door.
+WAYS_TO_ADD = """() => [...document.querySelectorAll('.medcard__section')].map((b) => {
+  const plus = b.querySelectorAll('.medcard__add').length;
+  const link = [...b.querySelectorAll('.medcard__block-links button')].filter(
+    (x) => x.textContent.trim() === 'Добавить',
+  ).length;
+  return { title: b.querySelector('.medcard__section-title')?.textContent ?? '', ways: plus + link };
+})"""
 
 
 async def main():
@@ -26,63 +31,63 @@ async def main():
         share_id = None
         try:
             card = f"/pets/{pid}/medical-card"
-            await pg.goto(BASE + card + "?mode=fill")
+            await pg.goto(BASE + card)
             body = await wait_until(pg, lambda t: "Карта почти пуста" in t)
             check(
-                "an empty card keeps the «Для врача» block and says what it needs",
-                "Для врача" in body and "Карта почти пуста" in body,
+                "an empty card says what it needs and what will come of it",
+                "Карта почти пуста" in body and "ссылка для врача" in body,
                 body[-200:].replace(chr(10), " | "),
             )
             check(
                 "and no PDF of an empty card is offered yet",
-                await pg.get_by_role("button", name="Скачать PDF").count() == 0,
+                await pg.get_by_role("button", name="Скачать PDF").count() == 0
+                and await pg.locator(".medcard__bar").count() == 0,
             )
-            await pg.goto(BASE + card + "?mode=vet")
-            body = await wait_until(pg, lambda t: "Не заполнено:" in t)
+            body = await wait_until(pg, lambda t: "Не хватает:" in t)
             check(
-                "the reading mode names what is empty in one line",
-                "Не заполнено:" in body and "аллергии" in body and "прививки" in body and "вес" in body,
-                [line for line in body.split(chr(10)) if "Не заполнено" in line],
+                "the card names what is empty in one line",
+                "Не хватает:" in body and "аллергии" in body and "прививки" in body and "вес" in body,
+                [line for line in body.split(chr(10)) if "Не хватает" in line],
             )
             check(
                 "and says it before the drugs, not after the whole card",
                 await pg.evaluate(
-                    "(() => { const n = [...document.querySelectorAll('p')].find(e => e.textContent.includes('Не заполнено'));"
-                    " return n.getBoundingClientRect().top < document.querySelector('#medcard-vet-meds').getBoundingClientRect().top; })()"
+                    "(() => { const n = [...document.querySelectorAll('p')].find(e => e.textContent.includes('Не хватает'));"
+                    " return n.getBoundingClientRect().top < document.querySelector('#medcard-meds').getBoundingClientRect().top; })()"
                 ),
             )
-            # the documents tile is a part of the card, not a jump out of it
-            await pg.goto(BASE + card + "?mode=fill")
-            await pg.locator(".medsum__tile").filter(has_text="Анализы и заключения").first.click()
+            # the documents of the card are a block of it, not a jump out of it
+            await pg.goto(BASE + card)
             body = await wait_until(pg, lambda t: "Все документы" in t)
             check(
-                "«Анализы и заключения» opens its part of the card, with the way to all documents on it",
-                pg.url.endswith("/medical-card/documents") and "Все документы" in body,
+                "«Анализы и заключения» is a block of the card, with the way to all documents under it",
+                pg.url.endswith("/medical-card") and "Все документы" in body,
                 pg.url.replace(BASE, ""),
             )
-            # the «+» of a part adds what that part is about
+            # the «+» of a block adds what that block is about
             await pg.goto(BASE + f"/pets/{pid}/medical-card/prevention")
-            await pg.locator(".app-fab").click()
-            body = await wait_until(pg, lambda t: "Прививка" in t)
+            await pg.locator("#medcard-prevention .medcard__add").click()
+            await wait_until(pg, lambda t: "Прививка" in t)
+            sheet = await pg.locator(".adm-popup").last.inner_text()
             check(
                 "the «+» of «Прививки и обработки» offers the vaccine and the parasite treatment and nothing else",
-                "Прививка" in body and "Обработка от паразитов" in body and "Визит" not in body,
-                body[-160:].replace(chr(10), " | "),
+                "Прививка" in sheet and "Обработка от паразитов" in sheet and "Визит" not in sheet,
+                sheet.replace(chr(10), " | "),
             )
-            # An empty part says what is missing and where to put it, rather than a list of doors beside
-            # the «+»: with no records of its own the «+» below is the way in.
+            # An empty block says what is missing and where to put it, rather than a list of doors beside
+            # the «+»: with no records of its own the round «+» in its head is the way in.
             for part, missing in (
                 ("prevention", "Прививок и обработок пока нет"),
                 ("visits", "Визитов и операций пока нет"),
             ):
                 await pg.goto(BASE + f"/pets/{pid}/medical-card/{part}")
                 body = await wait_until(pg, lambda t: "пока нет" in t)
+                ways = await pg.evaluate(WAYS_TO_ADD)
                 check(
-                    f"an empty «{part}» points at the «+» and adds no door of its own",
+                    f"an empty «{part}» says what is missing and has one door to put it",
                     missing in body
-                    and "«+» внизу" in body
-                    and await pg.evaluate(BLOCK_DOORS) == 0
-                    and await pg.locator(".app-fab").count() == 1,
+                    and all(w["ways"] <= 1 for w in ways)
+                    and await pg.locator(f"#medcard-{part} .medcard__add").count() == 1,
                     body[:160].replace(chr(10), " | "),
                 )
             # a record opened without a kind asks which kind
@@ -152,7 +157,7 @@ async def main():
                 "the file is offered up, with the reason to take it now",
                 await vet.evaluate(
                     "(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.includes('Скачать PDF'));"
-                    " const m = document.querySelector('#medcard-vet-meds'); return b.getBoundingClientRect().top < m.getBoundingClientRect().top; })()"
+                    " const m = document.querySelector('#medcard-meds'); return b.getBoundingClientRect().top < m.getBoundingClientRect().top; })()"
                 )
                 and "может не быть связи" in body,
             )

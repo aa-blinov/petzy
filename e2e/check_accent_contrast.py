@@ -39,8 +39,8 @@ def ratio(fore: str, back: str) -> float:
 # is about what a person sees on the card, and the seven accents are the ones that can be seen.
 ACCENTS = ["", "sage", "sky", "lilac", "rose", "sun", "teal", "slate"]
 
-# The chip is drawn on the tinted block and is the only element that is always there on the card.
-ELEMENT = ".medcard__mode[aria-pressed='true']"
+# The chip with the weight is drawn on the tinted block and is the only element that is always there on the card.
+ELEMENT = ".medcard__weight-chip"
 
 APPLY = """
 ([accent, selector]) => {
@@ -68,12 +68,12 @@ async def main() -> int:
                     check(
                         f"{'тёмная' if dark else 'светлая'} тема, цвет {accent or 'обычный'}",
                         False,
-                        "вкладка не отрисована",
+                        "вес не отрисован",
                     )
                     continue
                 r = ratio(got["fg"], got["bg"])
                 check(
-                    f"{'тёмная' if dark else 'светлая'} тема, выбранная вкладка на цвете «{accent or 'обычном'}»",
+                    f"{'тёмная' if dark else 'светлая'} тема, вес на цвете «{accent or 'обычном'}»",
                     r >= MINIMUM,
                     f"{r:.3f}:1 (нужно {MINIMUM}), {got['fg']} на {got['bg']}",
                 )

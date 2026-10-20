@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from 'antd-mobile';
 import { FileHeart } from 'lucide-react';
 
+import { CardDocument } from './MedicalCardDocument';
 import { EmptyState } from '../components/EmptyState';
 import { getApiErrorMessage } from '../utils/apiError';
 import { httpStatus } from '../services/api';
 import { formatShareEnd, medicalShareService } from '../services/medicalShare.service';
 import { showToast } from '../utils/toast';
-import { OverdueStrip, VetView } from './MedicalCard';
 import { MedicalCardSkeleton } from '../components/Skeletons';
 import './MedicalCard.css';
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
 
 /**
- * What a vet opens by the link the owner made: the card as the reading mode shows it, and its PDF, with no sign-in and nothing to
+ * What a vet opens by the link the owner made: the card as it is, and its PDF, with no sign-in and nothing to
  * change. A link that has ended or was taken back says so and tells whom to ask. The page is not offered to search engines.
  *
  * The person who made the link is often the owner, and they open it on their own phone to show it to a vet. The copy itself
@@ -93,44 +92,43 @@ export function SharedMedicalCard() {
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
-        <div className="medcard medcard--reading">
-          {/* The patient is the title: a page opened from a message names who it is about before anything else. */}
-          <div className="screen-head">
-            <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{card.pet.name}</h1>
-          </div>
-          <VetView
-            card={card}
-            hidden={NO_HIDDEN}
-            saving={saving}
-            canPdf
-            onPdf={() => void downloadPdf()}
-            named={false}
-            afterPatient={
-              <>
-                {/* How old the data is, and until when the page lives, where a vet sees it with what is overdue. */}
-                <p className="medcard__stamp medcard__stamp--top">Собрано из записей питомца на {made}. Ссылка действует до {ends}</p>
-                <OverdueStrip card={card} canAct={false} shared hidden={NO_HIDDEN} />
-              </>
-            }
-          />
-          {/* What this page is, once, at the end: a copy. The way back into the app is only for the person who has a session. */}
-          <p className="medcard__hint">
-            {shared.pet_id
-              ? 'Это копия медкарты питомца на момент отправки ссылки. В приложении она живая: там пишут и смотрят'
-              : 'Это копия медкарты питомца на момент отправки ссылки. Вернуться в приложение из неё нельзя'}
-          </p>
-          {shared.pet_id && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
-              <Button block size="large" style={{ minHeight: 'var(--touch-min)' }} onClick={() => navigate(`/pets/${shared.pet_id}/medical-card`)}>
-                Медицинская карта
-              </Button>
-            </div>
-          )}
-          {/* Once, at the very bottom, in the visitor's own words: what the page is and where it must not go. */}
-          <p className="medcard__hint" data-testid="share-private">
-            Это личные данные питомца. Не пересылайте ссылку
-          </p>
+        {/* The patient is the title: a page opened from a message names who it is about before anything else. */}
+        <div className="screen-head">
+          <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{card.pet.name}</h1>
         </div>
+        <CardDocument
+          card={card}
+          petId={shared.pet_id ?? ''}
+          hidden={NO_HIDDEN}
+          owner={false}
+          shared
+          navigate={() => undefined}
+          onPdf={() => void downloadPdf()}
+          saving={saving}
+          afterPassport={
+            <>
+              {/* How old the data is, and until when the page lives, where a vet sees it with what is overdue. */}
+              <p className="medcard__stamp medcard__stamp--top">Собрано из записей питомца на {made}. Ссылка действует до {ends}</p>
+            </>
+          }
+        />
+        {/* What this page is, once, at the end: a copy. The way back into the app is only for the person who has a session. */}
+        <p className="medcard__hint">
+          {shared.pet_id
+            ? 'Это копия медкарты питомца на момент отправки ссылки. В приложении она живая: там пишут и смотрят'
+            : 'Это копия медкарты питомца на момент отправки ссылки. Вернуться в приложение из неё нельзя'}
+        </p>
+        {shared.pet_id && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
+            <button type="button" className="medcard__link medcard__back touch-target" onClick={() => navigate(`/pets/${shared.pet_id}/medical-card`)}>
+              Медицинская карта
+            </button>
+          </div>
+        )}
+        {/* Once, at the very bottom, in the visitor's own words: what the page is and where it must not go. */}
+        <p className="medcard__hint" data-testid="share-private">
+          Это личные данные питомца. Не пересылайте ссылку
+        </p>
       </div>
     </div>
   );

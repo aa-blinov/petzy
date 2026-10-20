@@ -16,17 +16,20 @@ async def main():
         browser = await p.chromium.launch()
         ctx, pg = await new_page(browser)
         pid = await login(pg)
-        await pg.goto(BASE + f"/pets/{pid}/medical-card?mode=fill")
+        await pg.goto(BASE + f"/pets/{pid}/medical-card")
         await settle(pg)
-        # The card's summary has no round plus of its own: each part has one, at the same place, for its own things.
-        check("the card's summary has no round plus", await pg.locator(".app-fab").count() == 0)
-        for part in ("risks", "meds", "prevention", "weight", "visits", "documents", "clinic", "life"):
+        # The card is one document: no round plus of its own, and each block has its own in its head.
+        check("the card has no round plus of its own", await pg.locator(".app-fab").count() == 0)
+        for part in ("meds", "prevention", "weight", "visits", "documents", "clinic", "life"):
             await pg.goto(BASE + f"/pets/{pid}/medical-card/{part}")
             await settle(pg)
-            check(f"«{part}» has its own round plus", await pg.locator(".app-fab").count() == 1)
-        await pg.goto(BASE + f"/pets/{pid}/medical-card?mode=fill")
+            check(
+                f"«{part}» has its own round plus in its head",
+                await pg.locator(f"#medcard-{part} .medcard__add").count() == 1,
+            )
+        await pg.goto(BASE + f"/pets/{pid}/medical-card")
         await settle(pg)
-        link = pg.locator(".medcard__alert-link").first
+        link = pg.locator(".medcard__attention-link").first
         if await link.count():
             box = await link.bounding_box()
             check(

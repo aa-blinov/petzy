@@ -3,8 +3,9 @@ import type { NavigateFunction } from 'react-router-dom';
 /** The bottom tab bar's sections: peers, not steps in a hierarchy. */
 export const MAIN_TAB_PATHS = ['/', '/medications', '/documents', '/settings'];
 
-/** The medical card is a tab of one pet: its own page is a tab, the screens it opens (the profile, a record) are not. */
-const MEDICAL_CARD_PATH = /^\/pets\/([^/]+)\/medical-card\/?$/;
+/** The medical card is a tab of one pet: its own page is a tab, the screens it opens (the profile, a record) are not.
+    An address of a part of the card is the same tab, scrolled to that part. */
+const MEDICAL_CARD_PATH = /^\/pets\/([^/]+)\/medical-card(\/[^/]+)?\/?$/;
 
 /** The id of the pet whose medical card this path is, or null. */
 export function medicalCardPetId(pathname: string): string | null {

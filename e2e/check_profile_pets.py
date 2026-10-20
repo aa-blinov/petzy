@@ -78,9 +78,9 @@ async def main():
             # link is not: it opens the card to anyone with the address, without a sign-in.
             coowner_view = await other.inner_text("body")
             check(
-                "the co-owner sees the block that hands the card over",
+                "the co-owner sees the file to take the card with",
                 "Скачать PDF" in coowner_view,
-                [line for line in coowner_view.split(chr(10)) if "Для врача" in line][:2],
+                [line for line in coowner_view.split(chr(10)) if "Скачать" in line][:2],
             )
             check(
                 "but is not offered the link itself",
@@ -89,7 +89,7 @@ async def main():
             )
             # The owner still gets both doors.
             await pg.goto(BASE + f"/pets/{pet_id}/medical-card")
-            await wait_until(pg, lambda t: "Для врача" in t, timeout=10_000)
+            await wait_until(pg, lambda t: "Скачать PDF" in t, timeout=10_000)
             check(
                 "the owner still has both",
                 await pg.get_by_role("button", name="Скачать PDF").count() == 1
