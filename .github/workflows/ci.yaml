@@ -109,7 +109,7 @@ jobs:
           ADMIN_PASSWORD_HASH: $2b$12$dummyhashforCIplaceholdervalueXXXXXXXXXXXXXXXXXXXXX
 
   frontend:
-    name: Frontend (typecheck + build + lint)
+    name: Frontend (typecheck + build + lint + unit tests)
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -127,6 +127,8 @@ jobs:
         run: npm run build
       - name: Lint
         run: npm run lint
+      - name: Unit tests
+        run: npm test
 
   backup:
     name: Backup image (dump, upload, rotate, restore)
