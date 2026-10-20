@@ -90,6 +90,17 @@ async def main():
                 await heading.inner_text() if await heading.count() else "нет заголовка",
             )
 
+            # The alarm is a sheet of its own: the pet's pattern does not show through it.
+            ground = await alarm.evaluate(
+                "el => { const s = getComputedStyle(el); return s.backgroundColor + '|' + s.backgroundImage; }"
+            )
+            paint = await alarm.evaluate("el => getComputedStyle(el).backgroundColor")
+            check(
+                "the alarm is a sheet of its own: the pet's pattern does not show through it",
+                paint == "rgb(255, 251, 247)" or paint == "rgb(34, 30, 27)",
+                ground,
+            )
+
             # The phone of the clinic: an action in copper, and no slab of colour in the middle of the document.
             clinic = pg.locator("section:has(h2:text-is('Клиника и врачи'))")
             call = clinic.locator(".medcard__call")

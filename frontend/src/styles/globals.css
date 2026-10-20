@@ -1498,7 +1498,8 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 .error-boundary-details {
     margin-top: var(--spacing-xl);
     padding: var(--spacing-md);
-    background: var(--app-danger-soft);
+    background-color: var(--app-card-background);
+    background-image: linear-gradient(var(--app-danger-soft), var(--app-danger-soft));
     border: 1px solid var(--app-danger-soft);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
@@ -2127,10 +2128,13 @@ button.chip::after {
     font-size: var(--text-sm);
 }
 
+/* A banner on the paper is a sheet of its own: the tint over an opaque ground, so the pet's
+   pattern does not show through it. */
 .legal-page__notice {
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
-    background: var(--app-warning-soft);
+    background-color: var(--app-card-background);
+    background-image: linear-gradient(var(--app-warning-soft), var(--app-warning-soft));
     color: var(--app-warning-text);
     font-size: var(--text-sm);
 }
