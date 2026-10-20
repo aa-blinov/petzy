@@ -51,6 +51,20 @@ async def main():
             bool(rest) and all(w[:1].islower() for w in rest),
             more.replace(chr(10), " | "),
         )
+        born = await pg.evaluate(
+            "() => {\n"
+            "  const lines = [...document.querySelectorAll('.medcard__passport-body > *')].map((l) => l.innerText.trim());\n"
+            "  const i = lines.findIndex((t) => t.startsWith('Дата рождения'));\n"
+            "  return { i, before: i > 0 ? lines[i - 1] : '', text: i >= 0 ? lines[i] : '' };\n"
+            "}"
+        )
+        check(
+            "the day the pet was born is a line of its own, right after the age",
+            born["i"] > 0
+            and born["before"].startswith("5 лет")
+            and re.search(r"\d{2}\.\d{2}\.\d{4}", born["text"]) is not None,
+            str(born),
+        )
         check(
             "the name is written once: the bar names the pet, the passport does not repeat it",
             "Рекс" in await pg.locator(".app-navbar").inner_text()

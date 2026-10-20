@@ -23,6 +23,7 @@ type PetFacts = {
   age_text?: string | null;
   gender?: string | null;
   neutered_text?: string | null;
+  birth_date?: string | null;
 };
 
 /**
@@ -37,4 +38,12 @@ export function petIdentity(pet: PetFacts): string {
 /** What else the record says about the pet: the age, the sex, whether the pet is neutered. */
 export function petFacts(pet: PetFacts): string {
   return [pet.age_text, pet.gender?.toLowerCase(), pet.neutered_text].filter(Boolean).join(', ');
+}
+
+/**
+ * The day the pet was born, as the passport says it: a line of its own, right after the age, so
+ * that the age and the day are two facts and not one number with a date hanging on it.
+ */
+export function petBirthDate(pet: PetFacts): string | null {
+  return pet.birth_date ? `Дата рождения: ${formatDate(pet.birth_date)}` : null;
 }
