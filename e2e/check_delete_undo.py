@@ -64,6 +64,11 @@ async def main():
                 str(status),
             )
             ids = []
+            # The account is reused from run to run, so a run that was cut short leaves its pets
+            # behind. Two pets of one name give two buttons of one name, and the check falls over
+            # its own leftovers. What is there is taken away first.
+            for old in (await api(pg, "GET", "/pets"))["json"]["pets"]:
+                await api(pg, "DELETE", f"/pets/{old['_id']}")
             for name in ("Тест-М", "Тест-М-2"):
                 r = await api(pg, "POST", "/pets", {"name": name, "species": "dog", "gender": "male"})
                 ids.append(r["json"]["pet"]["_id"])
