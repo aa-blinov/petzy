@@ -351,18 +351,21 @@ function Passport({ pet, weight, chip, bloodType, canCopy }: { pet: Card['pet'];
             <span className="medcard__pet-dim">Вес не указан</span>
           )}
         </div>
-        {(chip || bloodType) && (
+        {bloodType && (
           <div className="medcard__pet-line">
-            {chip &&
-              (canCopy ? (
-                <button type="button" className="medcard__copy touch-target" onClick={copyChip} aria-label={`Скопировать номер чипа ${chip}`}>
-                  Чип: {chip}
-                  <Copy size={14} strokeWidth={2.2} aria-hidden />
-                </button>
-              ) : (
-                <span className="medcard__pet-dim">Чип: {chip}</span>
-              ))}
-            {bloodType && <span className="medcard__pet-dim">Группа крови: {bloodType}</span>}
+            <span className="medcard__pet-dim">Группа крови: {bloodType}</span>
+          </div>
+        )}
+        {chip && (
+          <div className="medcard__pet-line">
+            {canCopy ? (
+              <button type="button" className="medcard__copy touch-target" onClick={copyChip} aria-label={`Скопировать номер чипа ${chip}`}>
+                Чип: {chip}
+                <Copy size={14} strokeWidth={2.2} aria-hidden />
+              </button>
+            ) : (
+              <span className="medcard__pet-dim">Чип: {chip}</span>
+            )}
           </div>
         )}
       </div>

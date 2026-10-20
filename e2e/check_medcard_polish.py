@@ -109,6 +109,38 @@ async def main():
                 f"{ground['photo']} images",
             )
 
+            # The lines of the passport stand close together, as the lines of a record stand: the
+            # sheet says facts one after another, not in islands.
+            gaps = await pg.evaluate(
+                "() => {\n"
+                "  const lines = [...document.querySelectorAll('.medcard__passport-body > *')];\n"
+                "  return lines.slice(1).map((l, i) => Math.round(l.getBoundingClientRect().top - lines[i].getBoundingClientRect().bottom));\n"
+                "}"
+            )
+            check(
+                "the lines of the passport stand close together, without empty islands between them",
+                bool(gaps) and all(g <= 6 for g in gaps),
+                str(gaps),
+            )
+            # The number of the chip is copied by a tap, and the tap target is the 44px the house
+            # asks for, even though the line is drawn at the size of the text.
+            target = await pg.evaluate(
+                "() => {\n"
+                "  const b = document.querySelector('.medcard__copy');\n"
+                "  if (!b) return null;\n"
+                "  const r = b.getBoundingClientRect();\n"
+                "  const after = getComputedStyle(b, '::after');\n"
+                "  return { drawn: Math.round(r.height), target: after.height, top: after.top };\n"
+                "}"
+            )
+            check(
+                "the chip is copied by a tap of 44px, and the line under it is not an empty island",
+                target is not None
+                and int(target["target"].replace("px", "")) >= 44
+                and target["top"] in ("0px", "auto"),
+                str(target),
+            )
+
             # the clinic cap is said, not silently enforced
             saved = await api(
                 pg,
