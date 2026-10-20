@@ -493,15 +493,18 @@ function ReadinessBlock({ card, petId, canAct, navigate }: { card: Card; petId: 
         <span className="medcard__ready-count">{done} из {checks.length}</span>
       </div>
       <div className="medcard__ready-dots" aria-hidden>
-        {checks.map((c) => (
-          <span key={c.key} className={`medcard__ready-dot${c.done ? ' medcard__ready-dot--on' : ''}`} />
+        {/* The dots are a meter, not a checklist: whatever is done fills them from the first. */}
+        {checks.map((c, i) => (
+          <span key={c.key} className={`medcard__ready-dot${i < done ? ' medcard__ready-dot--on' : ''}`} />
         ))}
       </div>
       <p className="medcard__ready-hint">Не хватает: {listWords(missing.map((c) => c.label.toLowerCase()))}</p>
       {canAct && (
-        <button type="button" className="medcard__link medcard__ready-action touch-target" onClick={() => navigate(next.to)}>
-          {next.action}
-        </button>
+        <div className="medcard__ready-action-row">
+          <button type="button" className="medcard__link medcard__ready-action touch-target" onClick={() => navigate(next.to)}>
+            {next.action}
+          </button>
+        </div>
       )}
     </section>
   );
