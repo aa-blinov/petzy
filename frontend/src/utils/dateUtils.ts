@@ -56,4 +56,3 @@ export function parseDateTime(dateStr: string, timeStr: string): Date {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return new Date(year, month - 1, day, hours, minutes);
 }
-

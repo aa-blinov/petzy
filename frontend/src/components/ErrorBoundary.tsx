@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     private handleReset = () => {
-        // Instead of just resetting state, we should redirect to home 
+        // Instead of just resetting state, we should redirect to home
         // to ensure a clean state if the error was due to specific route data
         window.location.href = '/';
     };

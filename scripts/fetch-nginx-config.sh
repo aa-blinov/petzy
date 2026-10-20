@@ -41,4 +41,3 @@ ssh -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "grep -rl 'cat-health-contro
 done
 
 echo "Configs saved to ./nginx-configs/"
-
