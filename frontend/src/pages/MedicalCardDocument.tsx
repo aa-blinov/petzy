@@ -9,7 +9,7 @@ import { PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type M
 import { VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { listWords, readinessChecks } from '../utils/medicalReadiness';
-import { formatDate, hasLife, petFacts, petIdentity, weightDelta } from '../utils/medicalCardFormat';
+import { formatDate, hasLife, petBirthDate, petFacts, petIdentity, weightDelta } from '../utils/medicalCardFormat';
 import { pluralRu } from '../utils/relativeTime';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
@@ -328,6 +328,7 @@ function PrepRows({ prep }: { prep: VisitPrep }) {
 function Passport({ pet, weight, chip, bloodType, canCopy }: { pet: Card['pet']; weight: Card['weight']; chip: string | null; bloodType: string | null; canCopy: boolean }) {
   const identity = petIdentity(pet);
   const facts = petFacts(pet);
+  const birthDate = petBirthDate(pet);
   const copyChip = async () => {
     try {
       await navigator.clipboard.writeText(chip ?? '');
@@ -341,6 +342,11 @@ function Passport({ pet, weight, chip, bloodType, canCopy }: { pet: Card['pet'];
       <div className="medcard__passport-body">
         {identity && <div className="medcard__pet-facts">{identity}</div>}
         {facts && <div className="medcard__pet-more">{facts}</div>}
+        {birthDate && (
+          <div className="medcard__pet-line">
+            <span className="medcard__pet-dim">{birthDate}</span>
+          </div>
+        )}
         <div className="medcard__pet-line">
           {weight ? (
             <>
