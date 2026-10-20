@@ -36,12 +36,19 @@ async def main():
             and await pg.locator(".medsum__tile").count() == 0
             and await pg.locator(".app-fab").count() == 0,
         )
-        facts = await pg.locator(".medcard__pet-facts").inner_text()
-        words = [w for w in facts.replace(",", " ").split() if w[:1].isalpha()]
+        who = await pg.locator(".medcard__pet-facts").inner_text()
+        more = await pg.locator(".medcard__pet-more").inner_text()
+        words = [w for w in who.replace(",", " ").split() if w[:1].isalpha()]
+        rest = [w for w in more.replace(",", " ").split() if w[:1].isalpha()]
         check(
             "the passport says who the pet is, in one case: the species opens the line, the rest is in small letters",
             bool(words) and words[0][:1].isupper() and all(w[:1].islower() for w in words[1:]),
-            facts.replace(chr(10), " | "),
+            who.replace(chr(10), " | "),
+        )
+        check(
+            "and the rest of the facts says the same way, in small letters",
+            bool(rest) and all(w[:1].islower() for w in rest),
+            more.replace(chr(10), " | "),
         )
         check(
             "the name is written once: the bar names the pet, the passport does not repeat it",

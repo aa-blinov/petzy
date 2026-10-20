@@ -10,7 +10,7 @@ import { PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type M
 import { VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
 import { listWords, readinessChecks } from '../utils/medicalReadiness';
-import { formatDate, hasLife, petFacts, weightDelta } from '../utils/medicalCardFormat';
+import { formatDate, hasLife, petFacts, petIdentity, weightDelta } from '../utils/medicalCardFormat';
 import { pluralRu } from '../utils/relativeTime';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
@@ -327,6 +327,7 @@ function PrepRows({ prep }: { prep: VisitPrep }) {
  * and an old one is seen as old.
  */
 function Passport({ pet, weight, chip, bloodType, photoUrl, canCopy }: { pet: Card['pet']; weight: Card['weight']; chip: string | null; bloodType: string | null; photoUrl?: string | null; canCopy: boolean }) {
+  const identity = petIdentity(pet);
   const facts = petFacts(pet);
   const copyChip = async () => {
     try {
@@ -340,13 +341,14 @@ function Passport({ pet, weight, chip, bloodType, photoUrl, canCopy }: { pet: Ca
     <div className="medcard__passport">
       <div className="medcard__avatar">
         {photoUrl ? (
-          <PetImage src={photoUrl} alt="" size={56} className="medcard__avatar-img" />
+          <PetImage src={photoUrl} alt="" size={44} className="medcard__avatar-img" />
         ) : (
           <span aria-hidden>{pet.name.slice(0, 1).toUpperCase()}</span>
         )}
       </div>
       <div className="medcard__passport-body">
-        {facts && <div className="medcard__pet-facts">{facts}</div>}
+        {identity && <div className="medcard__pet-facts">{identity}</div>}
+        {facts && <div className="medcard__pet-more">{facts}</div>}
         <div className="medcard__pet-line">
           {weight ? (
             <>

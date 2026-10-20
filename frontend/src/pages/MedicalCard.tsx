@@ -19,9 +19,9 @@ import './MedicalCard.css';
 
 /** The two ways to hand the card over are on the card from the start; on an empty one there is nothing to hand, and the
     line under the heading says so instead of the block appearing out of nowhere later. */
-const EMPTY_HANDOVER = 'Карта почти пуста. Заполните её, и здесь появятся PDF и ссылка для врача';
+const EMPTY_HANDOVER = 'Карта почти пуста. Заполните её, и появятся PDF и ссылка для врача';
 /** A co-owner reads the card here already, so the link to give away is closed to them: the file is what is left. */
-const EMPTY_HANDOVER_COOWNER = 'Карта почти пуста. Заполните её, и здесь появится PDF';
+const EMPTY_HANDOVER_COOWNER = 'Карта почти пуста. Заполните её, и появится PDF';
 
 /**
  * A pet's medical card: one document, read from top to bottom.
