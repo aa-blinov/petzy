@@ -5,6 +5,7 @@ blocks, in one scroll, each with the doors of the owner under it. The check read
 pet's card and opens the doors one by one."""
 
 import asyncio
+import time
 
 from common import BASE, async_playwright, check, login, new_page, summary, settle, wait_until
 
@@ -21,6 +22,23 @@ BLOCK_CONTENT = {
 }
 
 
+async def _text_when_ready(pg, block, words, timeout_ms=15_000):
+    """The block's own text once it holds the words, or after the wait is up.
+
+    The heading shows before the block fills itself, so a check that reads the block right away
+    reads an empty one. The block's own text is read, not the page's: a word may sit in another
+    block, and then the wait would be over before the block is ready.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000
+    text = await block.inner_text()
+    while time.monotonic() < deadline:
+        if all(w.lower() in text.lower() for w in words):
+            return text
+        await pg.wait_for_timeout(150)
+        text = await block.inner_text()
+    return text
+
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel="chrome")
@@ -33,14 +51,7 @@ async def main():
 
         for title, wanted in BLOCK_CONTENT.items():
             block = pg.locator(f"section:has(h2:text-is('{title}'))")
-            # The heading shows before the block fills itself, so the check waits for the words it
-            # is about. A block that never gets them is reported below, not waited out.
-            for word in wanted:
-                try:
-                    await block.get_by_text(word, exact=False).first.wait_for(timeout=10_000)
-                except Exception:
-                    break
-            t = await block.inner_text()
+            t = await _text_when_ready(pg, block, wanted)
             check(
                 f"«{title}» holds its own",
                 all(w.lower() in t.lower() for w in wanted),
@@ -104,10 +115,7 @@ async def main():
         # the clinic of the card calls
         clinic = pg.locator("section:has(h2:text-is('Клиника и врачи'))")
         # The phone comes with the pet's profile, after the block's own heading.
-        try:
-            await clinic.locator(".medcard__call").first.wait_for(timeout=10_000)
-        except Exception:
-            pass
+        await _text_when_ready(pg, clinic, ["Позвонить"])
         check(
             "the clinic of the card is a call, not a small link",
             await clinic.locator(".medcard__call").count() == 1
