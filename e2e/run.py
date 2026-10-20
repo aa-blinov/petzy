@@ -110,6 +110,7 @@ for base in BASES:
 
 results_lock = threading.Lock()
 failed: list[str] = []
+skips: list[str] = []
 took: list[tuple[float, str]] = []
 
 
@@ -131,13 +132,19 @@ def lane(base: str) -> None:
         result = subprocess.run([sys.executable, str(path)], capture_output=True, text=True, env=env)
         seconds = time.monotonic() - started
         lines = [line for line in result.stdout.splitlines() if line.startswith(("PASS", "FAIL", "==", "SKIP", "NOTE"))]
+        # A check that says it skipped is not a failure: it refuses by design and says why (the
+        # medications check will not run at a day's edge). Counted as a failure it stopped the push
+        # hook every night between 23:55 and 00:05.
+        skipped = any(line.startswith("SKIP") for line in lines)
         bad = (
             result.returncode != 0
             or any(line.startswith("FAIL") for line in lines)
-            or not any("ALL PASS" in line for line in lines)
+            or not (skipped or any("ALL PASS" in line for line in lines))
         )
         with results_lock:
             took.append((seconds, path.name))
+            if skipped:
+                skips.append(path.name)
             print(f"## {path.name}  ({seconds:.1f}s)" + (f"  [{base}]" if multi else ""), flush=True)
             print("\n".join(lines) or result.stdout[-400:], flush=True)
             if bad:
@@ -155,5 +162,10 @@ for thread in threads:
 elapsed = time.monotonic() - started_all
 print(f"\n== {len(checks)} checks in {elapsed:.0f}s" + (f" on {len(BASES)} stands" if multi else ""))
 print("== slowest: " + ", ".join(f"{name} {seconds:.0f}s" for seconds, name in sorted(took, reverse=True)[:5]))
-print("FAILED: " + ", ".join(failed) if failed else "ALL PASS")
+if failed:
+    print("FAILED: " + ", ".join(failed))
+elif skips:
+    print("ALL PASS, skipped: " + ", ".join(sorted(skips)))
+else:
+    print("ALL PASS")
 sys.exit(1 if failed else 0)
