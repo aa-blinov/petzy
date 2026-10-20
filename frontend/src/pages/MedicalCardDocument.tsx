@@ -344,8 +344,9 @@ function Passport({ pet, weight, chip, bloodType, canCopy }: { pet: Card['pet'];
         <div className="medcard__pet-line">
           {weight ? (
             <>
-              <span className="medcard__weight-chip">{weight.latest.value.toLocaleString('ru-RU')} кг</span>
-              <span className="medcard__pet-dim">{formatDate(weight.latest.date)}</span>
+              <span className="medcard__weight-chip">
+                {weight.latest.value.toLocaleString('ru-RU')} кг <span className="medcard__pet-dim">({formatDate(weight.latest.date)})</span>
+              </span>
             </>
           ) : (
             <span className="medcard__pet-dim">Вес не указан</span>

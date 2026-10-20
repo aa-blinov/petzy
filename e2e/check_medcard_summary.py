@@ -3,6 +3,7 @@
 Needs the local stack and the demo data (docker compose -p petzy-local ... up, scripts/seed_demo.py)."""
 
 import asyncio
+import re
 
 from common import BASE, async_playwright, check, login, new_page, summary, settle, wait_until
 
@@ -63,6 +64,11 @@ async def main():
         check(
             "the passport carries the weight the doses are counted from",
             "кг" in await pg.locator(".medcard__weight-chip").inner_text(),
+            await pg.locator(".medcard__weight-chip").inner_text(),
+        )
+        check(
+            "and the day it was weighed stands in the weight's own brackets, as on paper: a bare date beside a number reads as another date",
+            re.search(r"кг\s*\(.*\)", await pg.locator(".medcard__weight-chip").inner_text()) is not None,
             await pg.locator(".medcard__weight-chip").inner_text(),
         )
         check(
