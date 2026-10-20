@@ -116,12 +116,15 @@ async def main():
         clinic = pg.locator("section:has(h2:text-is('Клиника и врачи'))")
         # The phone comes with the pet's profile, after the block's own heading.
         await _text_when_ready(pg, clinic, ["Позвонить"])
+        # One clinic or two (the demo pet has both on a freshly seeded stand), but every phone is
+        # the same door: a copper link with no ground of its own.
+        calls = clinic.locator(".medcard__call")
+        count = await calls.count()
+        grounds = [await calls.nth(i).evaluate("el => getComputedStyle(el).backgroundColor") for i in range(count)]
         check(
             "the clinic of the card is a call, not a small link",
-            await clinic.locator(".medcard__call").count() == 1
-            and "Позвонить" in await clinic.inner_text()
-            and await clinic.locator(".medcard__call").evaluate("el => getComputedStyle(el).backgroundColor")
-            == "rgba(0, 0, 0, 0)",
+            count >= 1 and "Позвонить" in await clinic.inner_text() and all(g == "rgba(0, 0, 0, 0)" for g in grounds),
+            f"{count} calls, {grounds}",
         )
         check("no horizontal scroll", await pg.evaluate("document.documentElement.scrollWidth - innerWidth") == 0)
         await b.close()
