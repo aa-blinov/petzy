@@ -86,6 +86,11 @@ async def main():
             await pg.locator(".medcard__weight-chip").inner_text(),
         )
         check(
+            "and the block of the weight says it the same way",
+            re.search(r"кг\s*\(.*\)", await pg.locator(".medcard__weight-now").inner_text()) is not None,
+            await pg.locator(".medcard__weight-now").inner_text(),
+        )
+        check(
             "what is overdue comes before the blocks and says what to do",
             await pg.evaluate(
                 "(() => { const z = document.querySelector('.medcard__attention'); const b = document.querySelector('#medcard-risks');"

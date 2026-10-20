@@ -564,8 +564,7 @@
 .medcard__weight-now {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    gap: var(--spacing-md);
+    gap: var(--spacing-xs);
 }
 
 .medcard__weight-value {
