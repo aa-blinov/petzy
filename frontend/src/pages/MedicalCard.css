@@ -1,7 +1,11 @@
 /* The medical card as a document: one column of blocks, in the order a vet
    asks in. The top of the card answers three questions (who this pet is,
    what asks to be done now, how far the card is from being complete); below
-   that it is the record itself. */
+   that it is the record itself.
+
+   The card is stricter than the feed: its sheets lie flat, defined by a line
+   and not by a shadow, and the colour is kept for the things that mean
+   something: the overdue, the call, the action. */
 .medcard {
     display: flex;
     flex-direction: column;
@@ -10,36 +14,18 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* The sheets of the card have no shadow: the record is a page, and a page is
+   held by its lines. */
+.medcard .card-soft {
+    box-shadow: none;
+}
+
 /* The passport: who the card is about, and the weight the doses are counted from. */
 .medcard__passport {
-    display: flex;
-    gap: var(--spacing-md);
     padding: var(--spacing-md);
     border-radius: var(--radius-lg);
     background: var(--app-card-background);
     border: 1px solid var(--app-border-color);
-}
-
-/* The photo is a mark of the pet, not a portrait: the feed owns the big one. */
-.medcard__avatar {
-    flex: none;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: var(--app-accent-soft);
-    color: var(--app-accent-deep);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--text-lg);
-    font-weight: 700;
-    overflow: hidden;
-}
-
-.medcard__avatar-img {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
 }
 
 .medcard__passport-body {
@@ -76,15 +62,14 @@
     color: var(--app-text-secondary);
 }
 
+/* The weight is the number the doses are counted from: it stands in ink, the
+   colour of the card is kept for what asks to be done. */
 .medcard__weight-chip {
     display: inline-flex;
     align-items: center;
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: var(--app-accent-soft);
-    color: var(--app-accent-deep);
     font-size: var(--text-sm);
     font-weight: 600;
+    color: var(--app-text-primary);
 }
 
 /* The chip number: copied with one tap, a 44px target. */
@@ -232,7 +217,7 @@
 }
 
 .medcard__ready-dot--on {
-    background: var(--app-accent);
+    background: var(--app-text-primary);
 }
 
 .medcard__ready-hint {

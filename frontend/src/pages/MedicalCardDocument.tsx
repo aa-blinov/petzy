@@ -5,7 +5,6 @@ import { AlertTriangle, CheckCircle2, Clock, Copy, Loader2, Minus, Plus, ShieldA
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
-import { PetImage } from '../components/PetImage';
 import { PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
@@ -326,7 +325,7 @@ function PrepRows({ prep }: { prep: VisitPrep }) {
  * The weight comes with it and with the day it was taken: it is what the doses are counted from,
  * and an old one is seen as old.
  */
-function Passport({ pet, weight, chip, bloodType, photoUrl, canCopy }: { pet: Card['pet']; weight: Card['weight']; chip: string | null; bloodType: string | null; photoUrl?: string | null; canCopy: boolean }) {
+function Passport({ pet, weight, chip, bloodType, canCopy }: { pet: Card['pet']; weight: Card['weight']; chip: string | null; bloodType: string | null; canCopy: boolean }) {
   const identity = petIdentity(pet);
   const facts = petFacts(pet);
   const copyChip = async () => {
@@ -339,13 +338,6 @@ function Passport({ pet, weight, chip, bloodType, photoUrl, canCopy }: { pet: Ca
   };
   return (
     <div className="medcard__passport">
-      <div className="medcard__avatar">
-        {photoUrl ? (
-          <PetImage src={photoUrl} alt="" size={44} className="medcard__avatar-img" />
-        ) : (
-          <span aria-hidden>{pet.name.slice(0, 1).toUpperCase()}</span>
-        )}
-      </div>
       <div className="medcard__passport-body">
         {identity && <div className="medcard__pet-facts">{identity}</div>}
         {facts && <div className="medcard__pet-more">{facts}</div>}
@@ -709,12 +701,11 @@ export interface CardDocumentProps {
   /** Under the passport: what the page is and how fresh it is. */
   afterPassport?: ReactNode;
   /** The pet's photo, when the app knows it. */
-  photoUrl?: string | null;
   /** The copy opened by a link: it says who may put right what is overdue. */
   shared?: boolean;
 }
 
-export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, saving, afterPassport, photoUrl, shared }: CardDocumentProps) {
+export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, saving, afterPassport, shared }: CardDocumentProps) {
   const [kindSheet, setKindSheet] = useState<null | { title: string; options: { label: string; to: string }[] }>(null);
   const [recordsSheet, setRecordsSheet] = useState<null | MedicalKind[]>(null);
   const [weightSheet, setWeightSheet] = useState(false);
@@ -749,7 +740,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
 
   return (
     <div className="medcard medcard--document">
-      <Passport pet={card.pet} weight={weight} chip={card.profile.chip_number ?? null} bloodType={card.profile.blood_type ?? null} photoUrl={photoUrl} canCopy={owner} />
+      <Passport pet={card.pet} weight={weight} chip={card.profile.chip_number ?? null} bloodType={card.profile.blood_type ?? null} canCopy={owner} />
 
       {firstTime && (
         <p className="medcard__lead">
