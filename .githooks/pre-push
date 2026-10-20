@@ -32,17 +32,19 @@ $RUFF check .
 $RUFF format --check .
 [ $? -ne 0 ] && status=1
 
-# The test suite and the frontend lint start now and run next to the browser
+# The test suite and the frontend checks start now and run next to the browser
 # checks. Their output is shown once they are done.
 LOG_DIR=$(mktemp -d)
 echo ""
-echo "Starting the backend test suite and the frontend lint in the background..."
+echo "Starting the backend test suite and the frontend checks in the background..."
 ( $PYTHON -m pytest tests/ --tb=short -q -n auto ) >"$LOG_DIR/pytest.log" 2>&1 &
 PYTEST_PID=$!
-( cd frontend && npm run lint ) >"$LOG_DIR/lint.log" 2>&1 &
-LINT_PID=$!
-( cd frontend && npm test ) >"$LOG_DIR/vitest.log" 2>&1 &
-VITEST_PID=$!
+# The lint and the unit tests take turns, one after the other: the suite already
+# has every core, and the unit tests would otherwise spread over all of them as
+# well. Two workers are set in the runner's config, and the whole set runs in
+# seconds.
+( cd frontend && npm run lint && npm test ) >"$LOG_DIR/frontend.log" 2>&1 &
+FRONTEND_PID=$!
 
 # Browser checks: the stand first, then every check against it.
 if [ "$PETZY_SKIP_E2E" = "1" ]; then
@@ -76,21 +78,16 @@ fi
 # Wait for the background checks, then show what they printed.
 wait $PYTEST_PID
 PYTEST_STATUS=$?
-wait $LINT_PID
-LINT_STATUS=$?
-wait $VITEST_PID
-VITEST_STATUS=$?
+wait $FRONTEND_PID
+FRONTEND_STATUS=$?
 echo ""
 echo "Backend test suite:"
 cat "$LOG_DIR/pytest.log"
-echo "Frontend lint:"
-cat "$LOG_DIR/lint.log"
-echo "Frontend unit tests:"
-cat "$LOG_DIR/vitest.log"
+echo "Frontend lint and unit tests:"
+cat "$LOG_DIR/frontend.log"
 rm -rf "$LOG_DIR"
 [ $PYTEST_STATUS -ne 0 ] && status=1
-[ $LINT_STATUS -ne 0 ] && status=1
-[ $VITEST_STATUS -ne 0 ] && status=1
+[ $FRONTEND_STATUS -ne 0 ] && status=1
 
 if [ $status -ne 0 ]; then
     echo ""
