@@ -1,5 +1,9 @@
 """The top bar stays on the screen while a field is typed in and iOS pans the viewport to show it.
 
+A pan that outlives the keyboard is a leftover and the bars come home from it: a form closed by a
+navigation takes its field away without a focusout, and following the pan it left dragged the tab
+bar off the bottom edge and the header under the notch.
+
 With the keyboard up, iOS pans the visual viewport so that the field shows above the keys. A top bar fixed in place floats
 out of the screen by that pan, so utils/keyboard.ts moves it by `--vv-shift` the same as without a keyboard. The tab bar
 and the add button are hidden while the keyboard is up. While the keyboard is still coming up, the tab bar follows the pan
@@ -84,6 +88,29 @@ async def main():
             str(read),
         )
         check("and the top bar is still on the top", abs(read["headerTop"]) <= 1, str(read))
+
+        # The page that had the field is left by navigating away: the field disappears with it, no
+        # focusout ever comes, and the pan the keyboard left stays. The bars must not follow it.
+        await pg.goto(BASE + "/pets/new")
+        await pg.wait_for_timeout(700)
+        field = pg.locator("input:not([readonly]):not([type=checkbox]):not([type=radio])").first
+        await field.click()
+        await pg.evaluate(VIEWPORT, [PAN, KEYBOARD])
+        await pg.wait_for_timeout(250)
+        await pg.evaluate(VIEWPORT, [PAN, 0])
+        await pg.go_back()
+        await pg.wait_for_timeout(900)
+        read = await pg.evaluate(READ)
+        check(
+            "a form left by going back takes its pan with it: no shift is left behind",
+            read["shift"] == "0px" and not read["open"],
+            str(read),
+        )
+        check(
+            "and the bars are home again, not dragged down by the leftover pan",
+            abs(read["headerTop"]) <= 1 and read["barBottom"] == read["visibleBottom"],
+            str(read),
+        )
 
         await browser.close()
     summary("the top bar with the keyboard up")

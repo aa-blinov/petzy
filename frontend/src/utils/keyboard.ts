@@ -33,6 +33,8 @@ export function installKeyboardWatch() {
   // What is written on <html> now: a write of the same value still makes the browser restyle the whole page, and
   // this runs on every scroll frame.
   let shift = 0;
+  // The keyboard has been open: what is left of it after it closes is a leftover to undo.
+  let hadKeyboard = false;
   const written = new Map<string, string>();
   const write = (name: string, value: string) => {
     if (written.get(name) === value) return;
@@ -63,8 +65,21 @@ export function installKeyboardWatch() {
     // which makes the browser put the viewport back where it belongs. A field being typed in is no exception: iOS pans
     // the visual viewport to show the field, and a fixed top bar left in place floats out of the screen by that much.
     // The tab bar and the add button are hidden while the keyboard is up, so only the header follows then.
+    if (open) hadKeyboard = true;
     const offset = Math.max(0, Math.round(viewport.offsetTop));
     let panned = viewport.scale <= 1.01 ? offset : 0;
+    // A pan that outlives the keyboard is a leftover, not a place. iOS keeps the visual viewport
+    // where the keyboard left it when the page it belonged to goes away: a form is closed by a
+    // navigation, the field disappears with it, and no focusout ever comes. Following that pan
+    // then dragged both bars off the screen: the tab bar away from the bottom edge, the header
+    // under the notch. The bars go home and the page is nudged once, which is what makes the
+    // browser put the viewport back. A pan the browser left after the app was in the background
+    // has no keyboard behind it and keeps its shift: it is real.
+    const leftover = !open && hadKeyboard;
+    if (leftover) {
+      hadKeyboard = false;
+      panned = 0;
+    }
     // But only as far as the bar actually floats. The nudge above cannot always put the viewport back
     // (at the end of the page there is nowhere to go, and a slight pinch-zoom leaves it panned too),
     // and a stale offset is not a harmless leftover: a bottom-fixed bar moved down by it leaves the
@@ -85,6 +100,16 @@ export function installKeyboardWatch() {
     if (panned > 0 && !scrolling && !isTextField(document.activeElement)) {
       window.requestAnimationFrame(() => window.scrollTo(window.scrollX, window.scrollY));
     }
+    // Same coordinates do nothing on iOS, so the page moves by a pixel and back: that is the nudge
+    // the browser answers by putting the visual viewport home.
+    if (leftover && !scrolling) {
+      window.requestAnimationFrame(() => {
+        const x = window.scrollX;
+        const y = window.scrollY;
+        window.scrollTo(x, Math.max(0, y - 1));
+        window.scrollTo(x, y);
+      });
+    }
     if (root.classList.contains('keyboard-open') !== open) root.classList.toggle('keyboard-open', open);
     write('--keyboard-inset', open ? `${covered}px` : '0px');
     // How far up a bar fixed to the bottom must sit to clear the keyboard.
@@ -100,6 +125,10 @@ export function installKeyboardWatch() {
   document.addEventListener('focusout', () => setTimeout(full, 60));
   // Back from another app: this is when the viewport is left panned without any resize.
   window.addEventListener('pageshow', full);
+  // A route change can take the field away without a focusout (a form closed by navigation), so
+  // the bars are re-read whenever the page is not the one they were read on.
+  window.addEventListener('popstate', full);
+  window.addEventListener('petzy:navigate', full);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') setTimeout(full, 60);
   });
