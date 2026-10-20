@@ -10,7 +10,7 @@ export function Fab({ label, onClick, popup = false }: { label: string; onClick:
   const away = useFabAway();
   return createPortal(
     <button type="button" className={`app-fab${away ? ' app-fab--away' : ''}`} aria-label={label} aria-haspopup={popup ? 'dialog' : undefined} onClick={onClick}>
-      <AddOutline fontSize={28} aria-hidden />
+      <AddOutline fontSize={24} aria-hidden />
     </button>,
     document.body,
   );

@@ -74,6 +74,16 @@
     color: var(--app-text-primary);
 }
 
+/* The pressed state of the card's own controls: a 12% layer of the accent over the surface
+   (Material 3, md.sys.state.pressed-state-layer-opacity), the way antd's buttons take it. The
+   text keeps its colour: the layer lies under it. */
+.medcard__link:active,
+.medcard__add:active,
+.medcard__copy:active,
+.medcard__bar-button:active {
+    background-image: linear-gradient(var(--app-accent-wash), var(--app-accent-wash));
+}
+
 /* The chip number: copied with one tap. The tap target is the 44px the house asks for (the
    `touch-target` class widens it), but the line itself is drawn at the size of the text, so the
    number does not leave an empty island under it. */
