@@ -16,3 +16,20 @@ export function weightDelta(series: { date: string; value: number }[]): string |
   const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
   return `${sign}${Math.abs(diff).toLocaleString('ru-RU')} кг с ${formatDate(before.date)}`;
 }
+
+/**
+ * The facts of a pet in one case: the breed and the sex are not proper nouns in Russian, so a
+ * capital in the middle of the line reads as an artifact. The feed's card and the PDF say it the
+ * same way; the species keeps its capital, because it opens the line.
+ */
+export function petFacts(pet: {
+  species?: string | null;
+  breed?: string | null;
+  age_text?: string | null;
+  gender?: string | null;
+  neutered_text?: string | null;
+}): string {
+  return [pet.species, pet.breed?.toLowerCase(), pet.age_text, pet.gender?.toLowerCase(), pet.neutered_text]
+    .filter(Boolean)
+    .join(', ');
+}

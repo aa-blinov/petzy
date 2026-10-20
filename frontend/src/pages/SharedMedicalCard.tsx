@@ -92,9 +92,14 @@ export function SharedMedicalCard() {
   return (
     <div className="page-container">
       <div className="max-width-container safe-area-padding">
-        {/* The patient is the title: a page opened from a message names who it is about before anything else. */}
-        <div className="screen-head">
-          <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>{card.pet.name}</h1>
+        {/* The patient is the title: a page opened from a message names who it is about before anything else.
+            And what the page is, once, over the name: the copy has no bar to name the pet, so the name
+            stands in the title, and the kind of document says itself above it. */}
+        <div className="screen-head" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--app-accent-deep)', marginBottom: 'var(--spacing-xs)' }}>
+            Медкарта
+          </div>
+          <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-display)', fontWeight: 700, margin: 0 }}>{card.pet.name}</h1>
         </div>
         <CardDocument
           card={card}

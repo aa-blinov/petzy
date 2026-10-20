@@ -36,12 +36,22 @@ async def main():
             and await pg.locator(".medsum__tile").count() == 0
             and await pg.locator(".app-fab").count() == 0,
         )
+        facts = await pg.locator(".medcard__pet-facts").inner_text()
+        words = [w for w in facts.replace(",", " ").split() if w[:1].isalpha()]
         check(
-            "the passport names the pet, its breed and its age",
-            "Рекс" in await pg.locator(".medcard__pet-name").inner_text()
-            and "Лабрадор" in await pg.locator(".medcard__pet-facts").inner_text()
-            and "лет" in await pg.locator(".medcard__pet-facts").inner_text(),
-            (await pg.locator(".medcard__pet-facts").inner_text()).replace(chr(10), " | "),
+            "the passport says who the pet is, in one case: the species opens the line, the rest is in small letters",
+            bool(words) and words[0][:1].isupper() and all(w[:1].islower() for w in words[1:]),
+            facts.replace(chr(10), " | "),
+        )
+        check(
+            "the name is written once: the bar names the pet, the passport does not repeat it",
+            "Рекс" in await pg.locator(".app-navbar").inner_text()
+            and "Рекс" not in await pg.locator(".medcard__passport").inner_text(),
+            (
+                await pg.locator(".app-navbar").inner_text()
+                + " || "
+                + await pg.locator(".medcard__passport").inner_text()
+            )[:150].replace(chr(10), " | "),
         )
         check(
             "the passport carries the weight the doses are counted from",

@@ -46,17 +46,13 @@
     flex: 1;
 }
 
-.medcard__pet-name {
-    font-size: var(--text-lg);
-    font-weight: 700;
-    line-height: 1.2;
-}
-
+/* The passport's line of facts. The name is in the bar, so this is the sheet's own text and it
+   speaks at the size the sheet speaks at. */
 .medcard__pet-facts {
-    margin-top: 2px;
-    font-size: var(--text-sm);
-    color: var(--app-text-secondary);
-    line-height: 1.4;
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--app-text-primary);
+    line-height: 1.35;
 }
 
 .medcard__pet-line {
