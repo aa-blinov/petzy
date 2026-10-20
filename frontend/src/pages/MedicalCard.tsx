@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FileHeart, Download, Link2, Loader2 } from 'lucide-react';
 
 import { MedicalShareSheet } from '../components/MedicalShareSheet';
+import { AppPullToRefresh } from '../components/AppPullToRefresh';
 import { CardDocument } from './MedicalCardDocument';
 import { medicalCardQuery, medicalCardService } from '../services/medicalCard.service';
 import { readinessChecks } from '../utils/medicalReadiness';
@@ -116,18 +117,20 @@ export function MedicalCard() {
           <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-display)', fontWeight: 700, margin: 0 }}>Медкарта</h1>
         </div>
 
-        <CardDocument
-          card={card}
-          petId={id!}
-          hidden={hidden}
-          owner
-          navigate={(to) => navigate(to)}
-          saving={saving}
-        />
+        <AppPullToRefresh onRefresh={() => query.refetch()}>
+          <CardDocument
+            card={card}
+            petId={id!}
+            hidden={hidden}
+            owner
+            navigate={(to) => navigate(to)}
+            saving={saving}
+          />
 
-        {!canHandOver && (
-          <p className="medcard__empty medcard__handover-empty">{isOwner ? EMPTY_HANDOVER : EMPTY_HANDOVER_COOWNER}</p>
-        )}
+          {!canHandOver && (
+            <p className="medcard__empty medcard__handover-empty">{isOwner ? EMPTY_HANDOVER : EMPTY_HANDOVER_COOWNER}</p>
+          )}
+        </AppPullToRefresh>
       </div>
 
       {/* The file and the link, always within reach: they are what the card is for. */}
