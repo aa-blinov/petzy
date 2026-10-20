@@ -43,7 +43,7 @@
 }
 
 .medcard__pet-more {
-    margin-top: 2px;
+    margin-top: var(--spacing-2xs);
     font-size: var(--text-sm);
     color: var(--app-text-secondary);
     line-height: 1.4;
@@ -143,7 +143,7 @@
 }
 
 .medcard__attention-item + .medcard__attention-item {
-    border-top: 1px solid rgba(179, 38, 30, 0.16);
+    border-top: 1px solid var(--app-danger-soft);
 }
 
 .medcard__attention-icon {
@@ -164,7 +164,7 @@
 }
 
 .medcard__attention-text {
-    margin-top: 2px;
+    margin-top: var(--spacing-2xs);
     font-size: var(--text-sm);
     color: var(--app-danger-text);
 }
@@ -220,7 +220,7 @@
 
 .medcard__ready-dots {
     display: flex;
-    gap: 5px;
+    gap: var(--spacing-xs);
     margin-top: var(--spacing-sm);
 }
 
@@ -309,7 +309,7 @@
 
 /* The name of a sheet over the card, in the size the house gives a sheet title. */
 .medcard__sheet-title {
-    margin: 4px 4px 0;
+    margin: var(--spacing-xs) var(--spacing-xs) 0;
     font-size: 1.25rem;
     line-height: 1.2;
     color: var(--app-text-primary);
@@ -337,7 +337,7 @@
 
 .medcard__risks-icon {
     flex-shrink: 0;
-    margin-top: 2px;
+    margin-top: var(--spacing-2xs);
     color: var(--app-danger-text);
 }
 
@@ -372,7 +372,7 @@
 }
 
 .medcard__plain-list {
-    margin: 2px 0 0;
+    margin: var(--spacing-2xs) 0 0;
     padding-left: 18px;
     font-size: var(--text-sm);
     line-height: 1.5;
@@ -505,8 +505,8 @@
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) 10px;
     border-radius: var(--radius-md);
     font-size: var(--text-xs);
     font-weight: 500;
@@ -696,7 +696,8 @@
     padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-md);
     /* The same ground as the screen behind it, the pet's scene when it has one. */
     background: var(--pet-scene-bg, var(--app-page-background));
-    box-shadow: 0 -8px 16px -12px rgba(60, 40, 20, 0.35);
+    /* The bar is held off the page by a line, the way the tab bar under it is. */
+    border-top: 1px solid var(--app-border-color);
 }
 
 .medcard__bar-button {
