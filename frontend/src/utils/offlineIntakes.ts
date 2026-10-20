@@ -60,6 +60,16 @@ function set(next: PendingIntake[]) {
   listeners.forEach((listener) => listener());
 }
 
+// Another tab of this browser marked a dose: the storage is now the truth, and the person has to
+// see it here too, without waiting for this tab to write something of its own.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== KEY || !inStorage) return;
+    items = read();
+    listeners.forEach((listener) => listener());
+  });
+}
+
 /** The queue a write starts from: what the other tabs of this browser left in the storage, and this tab's own
  *  memory when there is no storage to leave it in. */
 function current(): PendingIntake[] {
