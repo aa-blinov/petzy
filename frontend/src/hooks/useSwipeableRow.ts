@@ -200,6 +200,12 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
     setDragging(false);
   }, []);
 
+  // The browser took the gesture away: it started scrolling, or the window lost the pointer.
+  // Such a gesture is not a swipe, so nothing is fired: a cancelled one must not delete a row.
+  const onPointerCancel = useCallback(() => {
+    reset();
+  }, [reset]);
+
   return {
     offset,
     dragging,
@@ -208,8 +214,8 @@ export function useSwipeableRow({ onSwipeLeft, onSwipeRight, disabled }: UseSwip
       onPointerMove,
       onPointerUp,
       // A cancelled pointer (browser gesture, window blur) must not
-      // leave the row stuck mid-swipe.
-      onPointerCancel: onPointerUp,
+      // leave the row stuck mid-swipe, and must not fire the action.
+      onPointerCancel,
       onClickCapture: (e: ReactMouseEvent) => {
         if (!draggedRef.current) return;
         draggedRef.current = false;
