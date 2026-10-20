@@ -2437,8 +2437,10 @@ html.keyboard-open body:has(.app-fab) .snackbar {
     background: linear-gradient(to bottom, transparent, var(--pet-scene-bg, var(--app-page-background)) 24%);
 }
 
+/* The button that closes a long form rides above the keys, not behind them: the keys cover
+   `--keyboard-fixed-offset` of the screen, and the button sits on their top edge. */
 html.keyboard-open .form-sticky-action {
-    bottom: var(--spacing-sm);
+    bottom: calc(var(--keyboard-fixed-offset, 0px) + var(--spacing-sm));
 }
 
 @media (min-width: 1024px) {

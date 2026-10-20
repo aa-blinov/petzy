@@ -328,6 +328,7 @@ A screen's own tabs (here the six parts of a pet's look) sit in one grid of equa
 ### Navigation
 - **Top bar:** milk-card, 64px: the wordmark or a back arrow on the left, the pet picker on the right.
 - **Tab bar (M3 navigation bar):** the current item sits on an active indicator, a pill of primary-container (`--app-accent-soft`) behind its icon. Five sections (Лента, Лекарства, Медкарта, Документы, Настройки; the medical card is the tab of the pet chosen in the top bar, and the card's own page has the wordmark, not a back arrow), icon over an 11px label, driftwood at rest, ginger-deep and a slightly larger icon when current. On wide screens the same items stand in the left rail, the current one on an apricot wash.
+- **The keyboard:** the keys cover the bottom of the page and only the visual viewport shrinks, so the bars fixed to the bottom step aside while the keys are up (the tab bar and the round «+» cannot be pressed under them), the page gets the room the keys cover, and a button that closes a long form rides on the top edge of the keys instead of hiding behind them.
 
 ### Record pill
 The signature of the feed: a 44px tile with the common 12px corner in the record type's pastel (tile-orange for weight, tile-brown for feeding, tile-purple for medicines…) with the type's icon in espresso-ink, left of the record's time and values. The pastel names the type; it never signals state.
