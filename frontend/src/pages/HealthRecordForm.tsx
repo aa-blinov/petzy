@@ -84,8 +84,6 @@ export function HealthRecordForm() {
 
   const eventType = type ? eventTypesByKey[type] : undefined;
   const fields = useMemo(() => (eventType ? buildFields(eventType) : []), [eventType]);
-  // The field a new record starts at: the first thing it asks to be typed (the portion, the weight), with the keyboard open.
-  const firstAskedField = useMemo(() => fields.find((f) => f.required && (f.type === 'number' || f.type === 'text'))?.name, [fields]);
   // The last few values of each number field for this pet: «195, 200» for a portion is one tap.
   const lastRecords = useQuery({
     queryKey: ['recent-values', selectedPetId, type],
@@ -637,10 +635,13 @@ export function HealthRecordForm() {
               <FormField field={{ name: 'time', type: 'time', label: 'Время', required: true, id: 'event-time' }} defaultValue={defaultValues.time} />
               {fields.map((field) => (
                 <Fragment key={field.id}>
+                  {/* No field opens the keyboard by itself. On a phone the form then arrives with the
+                      keys up: half the screen is covered, the page is already scrolled, and iOS pans the
+                      visual viewport to show the field, which is what left the header under the clock and
+                      the tab bar off its edge. The person taps the field they want to fill. */}
                   <FormField
                     field={field}
                     defaultValue={defaultValues[field.name]}
-                    autoFocus={!isEditing && field.name === firstAskedField}
                   />
                   {field.name === filledFromDefaults[filledFromDefaults.length - 1]?.name && (
                     // Under the last field that came filled, so that a value already there is not a surprise: where it came from and where to change it.
