@@ -39,3 +39,14 @@
     font-size: var(--text-sm);
     color: var(--app-text-secondary);
 }
+
+/* The kind of file in the place of its picture: the same 56px, the same corner, the same colours the row uses
+   when there is no picture at all. */
+.docs__thumb--kind {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
