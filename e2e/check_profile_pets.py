@@ -11,8 +11,8 @@ from seed_demo import DEMO_PASSWORD
 
 async def sign_in(pg, user):
     await pg.goto(BASE + "/login")
-    await pg.get_by_placeholder("Введите логин").fill(user)
-    await pg.get_by_placeholder("Введите пароль").fill(DEMO_PASSWORD)
+    await pg.get_by_label("Логин").fill(user)
+    await pg.get_by_label("Пароль").fill(DEMO_PASSWORD)
     await pg.get_by_role("button", name="Войти").click()
     await pg.wait_for_url(lambda u: "/login" not in u, timeout=20000)
     await pg.wait_for_timeout(1500)

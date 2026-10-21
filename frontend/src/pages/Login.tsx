@@ -159,10 +159,11 @@ export function Login() {
               name="username"
               description={shows('username') && usernameError ? <FieldError message={usernameError} /> : undefined}
             >
-              {/* The placeholder says what the field wants, and the error repeats it word for word: the two
-                  together read as «Введите логин» twice. Where the error shows, the placeholder goes. */}
+              {/* An example, not an instruction: the error under the field already says «Введите логин», and
+                  the two together read as the same sentence twice. The example also leaves the line a height,
+                  so an empty field shows a caret instead of a gap. */}
               <Input
-                placeholder={shows('username') && usernameError ? undefined : 'Введите логин'}
+                placeholder="например, demo"
                 value={username}
                 onChange={(val) => setUsername(val)}
                 onBlur={touch('username')}
@@ -180,9 +181,10 @@ export function Login() {
               name="password"
               description={shows('password') && passwordError ? <FieldError message={passwordError} /> : undefined}
             >
+              {/* No placeholder here: the label says «Пароль», and the error under the field says what to do. */}
               <Input
                 type="password"
-                placeholder={shows('password') && passwordError ? undefined : 'Введите пароль'}
+                placeholder={undefined}
                 value={password}
                 onChange={(val) => setPassword(val)}
                 onBlur={touch('password')}
