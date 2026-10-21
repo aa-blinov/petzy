@@ -333,7 +333,8 @@ Filled text fields, rounded on all four corners. Every form row (`.adm-form-item
 surface-container-highest) and the app's 12px corner (`--radius-md`), like every other filled surface here: a field is a
 box, not a sheet of paper. The focused row takes the 2px copper ring (`--app-accent`) all round and its label the
 deeper copper. Rows are told apart by the gap of their fills, and the hairline between them is gone. The label sits
-above the value, as before.
+above the value, as before. A field that stands outside a form row (the event type's name, `input-row`) is the same box:
+the fill, the app's corner, the copper ring when focused, and no underline of its own.
 
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.
