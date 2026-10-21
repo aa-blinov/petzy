@@ -111,6 +111,17 @@ async def main():
             abs(read["headerTop"]) <= 1 and read["barBottom"] == read["visibleBottom"],
             str(read),
         )
+        # The pan is still reported after the page that had the field is gone (iOS keeps it), so a
+        # scroll of the feed must not pick it up again: the leftover holds until the viewport comes
+        # home by itself.
+        await pg.evaluate("() => window.scrollBy(0, 240)")
+        await pg.wait_for_timeout(400)
+        read = await pg.evaluate(READ)
+        check(
+            "и прокрутка ленты не подхватывает оставшуюся панораму снова",
+            read["shift"] == "0px" and abs(read["headerTop"]) <= 1 and read["barBottom"] == read["visibleBottom"],
+            str(read),
+        )
 
         await browser.close()
     summary("the top bar with the keyboard up")

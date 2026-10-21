@@ -34,7 +34,12 @@ export function installKeyboardWatch() {
   // this runs on every scroll frame.
   let shift = 0;
   // The keyboard has been open: what is left of it after it closes is a leftover to undo.
-  let hadKeyboard = false;
+
+  // A pan left by the keyboard stays a leftover until the viewport actually comes home: iOS can keep
+  // reporting it after the page it belonged to is gone (a form closed by a navigation), and one clean
+  // update is not enough. Without this the next scroll reported the same pan again and the bars went
+  // off once more, which is precisely the bug the person reported.
+  let panLeftover = false;
   // The header's own shift. Chrome on iPhone collapses its toolbar as the page is read, and that
   // moves the visual viewport once and reports it as a scroll, not as a resize: the layout viewport
   // stays where it was, so a fixed header ends up above the visible area, under the clock (Chromium
@@ -73,21 +78,18 @@ export function installKeyboardWatch() {
     // which makes the browser put the viewport back where it belongs. A field being typed in is no exception: iOS pans
     // the visual viewport to show the field, and a fixed top bar left in place floats out of the screen by that much.
     // The tab bar and the add button are hidden while the keyboard is up, so only the header follows then.
-    if (open) hadKeyboard = true;
     const offset = Math.max(0, Math.round(viewport.offsetTop));
     let panned = viewport.scale <= 1.01 ? offset : 0;
-    // A pan that outlives the keyboard is a leftover, not a place. iOS keeps the visual viewport
-    // where the keyboard left it when the page it belonged to goes away: a form is closed by a
-    // navigation, the field disappears with it, and no focusout ever comes. Following that pan
-    // then dragged both bars off the screen: the tab bar away from the bottom edge, the header
-    // under the notch. The bars go home and the page is nudged once, which is what makes the
-    // browser put the viewport back. A pan the browser left after the app was in the background
-    // has no keyboard behind it and keeps its shift: it is real.
-    const leftover = !open && hadKeyboard;
-    if (leftover) {
-      hadKeyboard = false;
-      panned = 0;
-    }
+    // A pan that outlives the page that made it is a leftover, not a place. iOS keeps the visual
+    // viewport where the keyboard left it when a form is closed by a navigation: the field
+    // disappears with the page, no focusout ever comes, and following that pan dragged both bars off
+    // the screen (the tab bar away from the bottom edge, the header under the notch). The leftover is
+    // set by the navigation itself (below), and it holds until the viewport comes home, so a later
+    // scroll cannot pick the same stale pan up again. A pan with no navigation behind it — Chrome's
+    // own toolbar, the app returning from the background — is real and is followed as before.
+    if (panLeftover && offset === 0) panLeftover = false;
+    if (panLeftover) panned = 0;
+    const leftover = panLeftover;
     // But only as far as the bar actually floats. The nudge above cannot always put the viewport back
     // (at the end of the page there is nowhere to go, and a slight pinch-zoom leaves it panned too),
     // and a stale offset is not a harmless leftover: a bottom-fixed bar moved down by it leaves the
@@ -107,7 +109,7 @@ export function installKeyboardWatch() {
     write('--vv-shift', `${panned}px`);
     // The header, on its own: at once when nothing is scrolling (the keyboard coming up, the app
     // returning), and after the pan settles when the page is being read.
-    const topWanted = viewport.scale <= 1.01 && !leftover ? offset : 0;
+    const topWanted = viewport.scale <= 1.01 && !panLeftover ? offset : 0;
     if (!scrolling) {
       window.clearTimeout(topTimer);
       shiftTop = topWanted;
@@ -151,6 +153,24 @@ export function installKeyboardWatch() {
   // the bars are re-read whenever the page is not the one they were read on.
   window.addEventListener('popstate', full);
   window.addEventListener('petzy:navigate', full);
+  // A form is closed by a navigation, and its field goes with the page: no blur, no focusout, and iOS
+  // keeps the visual viewport where the keyboard left it. A pan that outlives the page that made it
+  // is a leftover, not a place, so the bars come home and the page is nudged once. A pan with no
+  // navigation behind it is real (Chrome's own toolbar, the app returning from the background) and
+  // is followed as before.
+  const dropLeftover = () => {
+    if (viewport.offsetTop <= 0 || isTextField(document.activeElement)) return;
+    panLeftover = true;
+    full();
+    window.requestAnimationFrame(() => {
+      const x = window.scrollX;
+      const y = window.scrollY;
+      window.scrollTo(x, Math.max(0, y - 1));
+      window.scrollTo(x, y);
+    });
+  };
+  window.addEventListener('popstate', dropLeftover);
+  window.addEventListener('petzy:navigate', dropLeftover);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') setTimeout(full, 60);
   });
