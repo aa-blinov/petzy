@@ -35,7 +35,9 @@ async def main():
             await pg.get_by_label("Логин").first.get_attribute("aria-invalid") == "true",
         )
         # The message survives what comes next on the page, which a toast did not.
-        await pg.get_by_placeholder("Введите логин").fill("demo")
+        # By the label, not by the placeholder: an empty submit shows the field's error, and the error
+        # says the same words the placeholder did, so the placeholder is gone while it stands.
+        await pg.get_by_label("Логин").fill("demo")
         await pg.wait_for_timeout(400)
         check(
             "and it is still there after the next change",
