@@ -121,16 +121,27 @@ async def main():
             and (await pg.locator(".medcard__add").first.get_attribute("aria-label")).startswith("Добавить:"),
             str(await pg.locator(".medcard__add").count()),
         )
-        bar = pg.locator(".medcard__bar")
+        # The file and the link stand in the document, under the passport, where the passport is
+        # read: no bar pinned over the card any more.
         check(
-            "the file and the link for the vet are within reach, without scrolling",
-            await bar.count() == 1
+            "the file and the link for the vet stand under the passport, in the document",
+            await pg.locator(".medcard__bar").count() == 0
             and await pg.get_by_role("button", name="Скачать PDF").count() == 1
-            and await pg.get_by_role("button", name="Ссылка для врача").count() == 1
-            and await bar.is_visible(),
+            and await pg.get_by_role("button", name="Ссылка для врача").count() == 1,
         )
-        bottom = await bar.evaluate("e => Math.round(innerHeight - e.getBoundingClientRect().bottom)")
-        check("the bar sits above the tab bar", 0 <= bottom <= 90, f"{bottom}px above the bottom")
+        handover = await pg.evaluate(
+            """() => {
+                const pdf = [...document.querySelectorAll('.medcard__pdf-button')].find((b) => b.textContent.includes('Скачать PDF'));
+                const passport = document.querySelector('.medcard__passport') || document.querySelector('.card-soft');
+                if (!pdf || !passport) return null;
+                return Math.round(pdf.getBoundingClientRect().top - passport.getBoundingClientRect().bottom);
+            }"""
+        )
+        check(
+            "and they sit right under it, before the first block of the card",
+            handover is not None and handover < 120,
+            f"{handover}px под паспортом",
+        )
         # the address of a part of the card opens the card itself and scrolls to that part
         await pg.goto(BASE + card + "/prevention")
         await settle(pg)

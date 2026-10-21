@@ -1,7 +1,7 @@
 import { weightRangeByYear } from '../utils/weightRanges';
 import { useState, type ReactNode } from 'react';
 import { Popup } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Copy, Loader2, Minus, Plus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Copy, Download, Link2, Loader2, Minus, Plus, ShieldAlert } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
@@ -710,6 +710,7 @@ export interface CardDocumentProps {
   navigate: (to: string) => void;
   /** The file: the owner's copy has it in the bar at the foot, the guest's under the date. */
   onPdf?: () => void;
+  onShare?: () => void;
   saving?: boolean;
   /** Under the passport: what the page is and how fresh it is. */
   afterPassport?: ReactNode;
@@ -718,7 +719,7 @@ export interface CardDocumentProps {
   shared?: boolean;
 }
 
-export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, saving, afterPassport, shared }: CardDocumentProps) {
+export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onShare, saving, afterPassport, shared }: CardDocumentProps) {
   const [kindSheet, setKindSheet] = useState<null | { title: string; options: { label: string; to: string }[] }>(null);
   const [recordsSheet, setRecordsSheet] = useState<null | MedicalKind[]>(null);
   const [weightSheet, setWeightSheet] = useState(false);
@@ -763,6 +764,31 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, savi
       )}
 
       {afterPassport}
+
+      {/* The file and the link, on the owner's card: the same place as on the copy a vet opens,
+          under the passport. They used to sit in a bar pinned over the document, which cost a tenth
+          of the screen forever and made a quiet document look like a tool. */}
+      {onPdf && owner && (
+        <div className="medcard__topactions">
+          <div className="medcard__handover">
+            <button type="button" className="medcard__pdf-button" onClick={onPdf} disabled={saving} aria-busy={saving}>
+              {saving ? (
+                <Loader2 size={18} strokeWidth={2.2} className="medcard__spin" aria-hidden />
+              ) : (
+                <Download size={18} strokeWidth={2.2} aria-hidden />
+              )}
+              Скачать PDF
+            </button>
+            {onShare && (
+              <button type="button" className="medcard__pdf-button" onClick={onShare}>
+                <Link2 size={18} strokeWidth={2.2} aria-hidden />
+                Ссылка для врача
+              </button>
+            )}
+          </div>
+          <p className="medcard__hint">Скачать заранее: на приёме может не быть связи</p>
+        </div>
+      )}
 
       {/* The file, on the copy opened by a link: it is what the visitor takes away with them. */}
       {onPdf && !owner && (

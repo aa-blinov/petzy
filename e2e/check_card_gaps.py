@@ -40,8 +40,7 @@ async def main():
             )
             check(
                 "and no PDF of an empty card is offered yet",
-                await pg.get_by_role("button", name="Скачать PDF").count() == 0
-                and await pg.locator(".medcard__bar").count() == 0,
+                await pg.get_by_role("button", name="Скачать PDF").count() == 0,
             )
             body = await wait_until(pg, lambda t: "Не хватает:" in t)
             check(

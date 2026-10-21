@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { FileHeart, Download, Link2, Loader2 } from 'lucide-react';
+import { FileHeart } from 'lucide-react';
 
 import { MedicalShareSheet } from '../components/MedicalShareSheet';
 import { AppPullToRefresh } from '../components/AppPullToRefresh';
@@ -103,16 +103,17 @@ export function MedicalCard() {
 
   const checks = readinessChecks(card, id!);
   const doneCount = checks.filter((c) => c.done).length;
-  // The two ways to hand the card over: the file, and a link that opens with
-  // no sign-in. They are there from the start: on an empty card the bar is not
-  // there yet, and the line at the foot says what is missing instead. The link
-  // is the owner's door alone: it opens the card to anyone with the address.
+  // The two ways to hand the card over: the file, and a link that opens with no sign-in. They
+  // stand under the passport, the same place as on the copy a vet opens: the file is downloaded
+  // before the visit, and the link is given when the vet asks. On a card that is still nearly
+  // empty they are not offered at all, and the line at the foot says what is missing instead.
+  // The link is the owner's door alone: it opens the card to anyone with the address.
   const canHandOver = doneCount >= 2;
   const isOwner = card.can_edit;
 
   return (
     <div className="page-container">
-      <div className={`max-width-container safe-area-padding${canHandOver ? ' medcard-page--bar' : ''}`}>
+      <div className="max-width-container safe-area-padding">
         <div className="screen-head">
           <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-display)', fontWeight: 700, margin: 0 }}>Медкарта</h1>
         </div>
@@ -125,6 +126,8 @@ export function MedicalCard() {
             owner
             navigate={(to) => navigate(to)}
             saving={saving}
+            onPdf={canHandOver ? downloadPdf : undefined}
+            onShare={canHandOver && isOwner ? () => setShareOpen(true) : undefined}
           />
 
           {!canHandOver && (
@@ -132,26 +135,6 @@ export function MedicalCard() {
           )}
         </AppPullToRefresh>
       </div>
-
-      {/* The file and the link, always within reach: they are what the card is for. */}
-      {canHandOver && (
-        <div className="medcard__bar">
-          <button type="button" className="medcard__bar-button" onClick={downloadPdf} disabled={saving} aria-busy={saving}>
-            {saving ? (
-              <Loader2 size={18} strokeWidth={2.2} className="medcard__spin" aria-hidden />
-            ) : (
-              <Download size={18} strokeWidth={2.2} aria-hidden />
-            )}
-            Скачать PDF
-          </button>
-          {isOwner && (
-            <button type="button" className="medcard__bar-button" onClick={() => setShareOpen(true)}>
-              <Link2 size={18} strokeWidth={2.2} aria-hidden />
-              Ссылка для врача
-            </button>
-          )}
-        </div>
-      )}
 
       <MedicalShareSheet visible={shareOpen} petId={id!} petName={card.pet.name} onClose={() => setShareOpen(false)} />
     </div>
