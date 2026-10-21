@@ -2745,3 +2745,24 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
 .medcard__row-action--quiet {
     border-color: var(--app-text-secondary) !important;
 }
+
+/* The numbers behind the bars, for a phone that shows the fault: `?diag=1`. Small, at the bottom
+   left, above the tab bar, and never in the way of a thumb. */
+.diag {
+    position: fixed;
+    left: var(--spacing-sm);
+    bottom: calc(50px + var(--safe-area-bottom) + var(--spacing-sm));
+    z-index: 1000;
+    max-width: calc(100vw - 2 * var(--spacing-sm));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--spacing-2xs) var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    line-height: 1.35;
+    pointer-events: none;
+}
