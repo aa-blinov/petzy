@@ -285,9 +285,6 @@ export function Dashboard() {
                 {/* One way out of the feed to everything it does not show: the feed is today and what is next,
                     the History screen is everything and the charts. Settings had a row to it, so the only way
                     there from the feed was a detour through Settings. */}
-                <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 'var(--spacing-xl)' }}>
-                  
-                </div>
               </>
             )}
           </div>
