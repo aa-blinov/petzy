@@ -159,8 +159,10 @@ export function Login() {
               name="username"
               description={shows('username') && usernameError ? <FieldError message={usernameError} /> : undefined}
             >
+              {/* The placeholder says what the field wants, and the error repeats it word for word: the two
+                  together read as «Введите логин» twice. Where the error shows, the placeholder goes. */}
               <Input
-                placeholder="Введите логин"
+                placeholder={shows('username') && usernameError ? undefined : 'Введите логин'}
                 value={username}
                 onChange={(val) => setUsername(val)}
                 onBlur={touch('username')}
@@ -180,7 +182,7 @@ export function Login() {
             >
               <Input
                 type="password"
-                placeholder="Введите пароль"
+                placeholder={shows('password') && passwordError ? undefined : 'Введите пароль'}
                 value={password}
                 onChange={(val) => setPassword(val)}
                 onBlur={touch('password')}

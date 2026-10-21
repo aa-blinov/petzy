@@ -13,6 +13,25 @@ async def main():
         # One sign-in for the whole check: the demo login allows five a minute.
         await pg.goto(BASE + "/login")
         await settle(pg)
+
+        # An empty sign-in: the error under a field must not repeat the placeholder word for word, or the
+        # same sentence stands twice in one box.
+        await pg.get_by_role("button", name="Войти").click()
+        await settle(pg, 300)
+        await pg.wait_for_timeout(500)
+        doubled = await pg.evaluate(
+            """() => [...document.querySelectorAll('.adm-form-item')]
+                .filter((item) => {
+                    const text = item.innerText.split('\\n').map((line) => line.trim()).filter(Boolean);
+                    return text.length !== new Set(text).size;
+                })
+                .map((item) => item.innerText.replace(/\\n/g, ' | '))"""
+        )
+        check(
+            "ошибка под полем не повторяет плейсхолдер слово в слово",
+            doubled == [],
+            str(doubled),
+        )
         h1 = pg.get_by_role("heading", level=1)
         check(
             "the sign-in screen names itself in the h1, not the product",
