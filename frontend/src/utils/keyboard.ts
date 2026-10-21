@@ -35,6 +35,14 @@ export function installKeyboardWatch() {
   let shift = 0;
   // The keyboard has been open: what is left of it after it closes is a leftover to undo.
   let hadKeyboard = false;
+  // The header's own shift. Chrome on iPhone collapses its toolbar as the page is read, and that
+  // moves the visual viewport once and reports it as a scroll, not as a resize: the layout viewport
+  // stays where it was, so a fixed header ends up above the visible area, under the clock (Chromium
+  // issues 504094431 and 417426570). The pan is followed, but only once it has stopped changing: the
+  // spring-back at the end of a page reports a pan for a moment, and following that would make the
+  // header jump. 90ms is longer than a spring-back and shorter than a finger's pause.
+  let shiftTop = 0;
+  let topTimer = 0;
   const written = new Map<string, string>();
   const write = (name: string, value: string) => {
     if (written.get(name) === value) return;
@@ -97,6 +105,20 @@ export function installKeyboardWatch() {
     }
     shift = panned;
     write('--vv-shift', `${panned}px`);
+    // The header, on its own: at once when nothing is scrolling (the keyboard coming up, the app
+    // returning), and after the pan settles when the page is being read.
+    const topWanted = viewport.scale <= 1.01 && !leftover ? offset : 0;
+    if (!scrolling) {
+      window.clearTimeout(topTimer);
+      shiftTop = topWanted;
+      write('--vv-shift-top', `${shiftTop}px`);
+    } else if (topWanted !== shiftTop) {
+      window.clearTimeout(topTimer);
+      topTimer = window.setTimeout(() => {
+        shiftTop = topWanted;
+        write('--vv-shift-top', `${shiftTop}px`);
+      }, 90);
+    }
     if (panned > 0 && !scrolling && !isTextField(document.activeElement)) {
       window.requestAnimationFrame(() => window.scrollTo(window.scrollX, window.scrollY));
     }
