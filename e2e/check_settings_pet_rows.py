@@ -26,33 +26,18 @@ async def main():
             await pg.screenshot(path="set_rows.png")
 
             # the Settings tab stays lit on the screens Settings opens
-            for path, name in (("/history", "История"), ("/pets", "Мои питомцы")):
+            for path, name in (("/pets", "Мои питомцы"),):
                 await pg.goto(BASE + path)
                 await settle(pg)
                 current = await pg.get_by_role("link", name="Настройки").get_attribute("aria-current")
                 check(f"the Settings tab is lit on {path}", current == "page", str(current))
 
-            # History: the pet is named, and a record can be written from here
-            await pg.goto(BASE + "/history")
-            await settle(pg)
-            head = await pg.inner_text("header")
-            check("the history screen names the chosen pet", "Рекс" in head, head.replace(chr(10), " | "))
-            check(
-                "the round «+» is there, as on every list",
-                await pg.get_by_role("button", name="Добавить запись").count() == 1,
-            )
-            await pg.screenshot(path="hist_top.png")
-            await pg.get_by_role("button", name="Добавить запись").click()
-            await settle(pg, 150)
-            check("it opens the quick-add sheet", "Все" in await pg.inner_text("body"))
-            await pg.keyboard.press("Escape")
-            await pg.wait_for_timeout(600)
-
-            # the feed leads to the history
+            # The history screen is gone: the feed is the history, and nothing on it leads to a second
+            # list of the same records.
             await pg.goto(BASE + "/")
             await settle(pg)
             link = await pg.get_by_role("button", name="Вся история").count()
-            check("the feed has a way to «Вся история»", link >= 1)
+            check("на ленте нет второй «Всей истории»: лента и есть история", link == 0, str(link))
 
             # a pet of our own, to check «Сначала добавьте питомца» is honest and leads somewhere
             await pg.goto(BASE + "/pets/new")

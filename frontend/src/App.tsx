@@ -51,8 +51,6 @@ const loadDashboard = () => import('./pages/Dashboard');
 if (typeof window !== 'undefined' && window.location.pathname === '/') void loadDashboard();
 const Dashboard = lazy(() => loadDashboard().then(m => ({ default: m.Dashboard })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
-const loadHistory = () => import('./pages/History');
-const History = lazy(() => loadHistory().then(m => ({ default: m.History })));
 const loadHealthRecordForm = () => import('./pages/HealthRecordForm');
 const HealthRecordForm = lazy(() => loadHealthRecordForm().then(m => ({ default: m.HealthRecordForm })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
@@ -87,7 +85,7 @@ const Help = lazy(() => import('./pages/Help').then(m => ({ default: m.Help })))
 /** The bottom tabs' pages and the record form (opened from the feed and
  *  history), fetched ahead of the first tap (see PrefetchTabs). */
 const TAB_PAGE_LOADERS = [
-  loadDashboard, loadMedicationsList, loadDocumentsList, loadHistory, loadSettings, loadHealthRecordForm, loadMedicalCard,
+  loadDashboard, loadMedicationsList, loadDocumentsList, loadSettings, loadHealthRecordForm, loadMedicalCard,
 ];
 
 const queryClient = new QueryClient({
@@ -282,14 +280,6 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute>
                     <MedicalCardEntry />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/history"
-                element={
-                  <ProtectedRoute>
-                    <History />
                   </ProtectedRoute>
                 }
               />

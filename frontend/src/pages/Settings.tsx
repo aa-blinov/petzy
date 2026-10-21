@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { Dialog, Switch } from 'antd-mobile';
-import { Bell, Bot, CircleHelp, HeartPulse, Link2, Compass, Download, History as HistoryIcon, KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Tag, Trash2, UserRound, Users } from 'lucide-react';
+import { Bell, Bot, CircleHelp, HeartPulse, Link2, Compass, Download, History as KeyRound, Mail, SlidersHorizontal, LayoutGrid, Palette, LogOut, PawPrint, ShieldCheck, Sparkles, Tag, Trash2, UserRound, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { accountService, ACCOUNT_QUERY_KEY, type Account } from '../services/account.service';
@@ -233,13 +233,7 @@ export function Settings() {
 
           {/* The history screen is not a tab: this row and the card's «Вес» lead to it. */}
           <Group title="Записи">
-            <SettingsRow
-              icon={<HistoryIcon size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="История записей"
-              description="Всё за всё время, фильтр по типу и графики"
-              chevron
-              onClick={() => navigate('/history')}
-            />
+            
             <SettingsRow
               icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Экспорт записей"

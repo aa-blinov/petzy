@@ -476,7 +476,7 @@ export function HealthRecordForm() {
       // position and all, instead of assuming History every time an id is
       // present.
       release();
-      goBack(navigate, id ? '/history' : '/');
+      goBack(navigate, '/');
 
       // Everything from here is not the save itself: the lists the person lands on get
       // fresh data, and what they asked to remember goes to the pet. It used to run before
@@ -542,7 +542,7 @@ export function HealthRecordForm() {
             actionLabel="Повторить"
             onAction={retryLoad}
           >
-            <Button block size="large" onClick={() => goBack(navigate, '/history')}>
+            <Button block size="large" onClick={() => goBack(navigate, '/')}>
               Назад
             </Button>
           </EmptyState>
@@ -719,7 +719,7 @@ export function HealthRecordForm() {
             <Button
               block
               size="large"
-              onClick={() => goBack(navigate, id ? '/history' : '/')}
+              onClick={() => goBack(navigate, '/')}
             >
               Отмена
             </Button>
@@ -745,7 +745,7 @@ export function HealthRecordForm() {
                   // document, and going back to it unloads this one. The page's exit then sends the delete at once,
                   // with no «Отменить» left to offer. The bar lives in the app and survives this move.
                   release();
-                  navigate('/history', { replace: true });
+                  navigate('/', { replace: true });
                 }}
                 style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
               >
