@@ -31,6 +31,18 @@ async def main():
         await pg.wait_for_url(lambda u: "/form/weight" in u, timeout=10000)
         await pg.get_by_label("Вес (кг)").wait_for(timeout=8000)
         check("after the sign-in the person is back on that form", "/form/weight" in pg.url, pg.url)
+        # The draft goes in once the form knows which pet it is about, which is a hair after the field
+        # appears: reading the value at the first frame read an empty field and called it a lost draft.
+        try:
+            await pg.wait_for_function(
+                """() => {
+                    const el = document.querySelector('input');
+                    return !!el && el.value.trim() !== '';
+                }""",
+                timeout=5000,
+            )
+        except Exception:
+            pass
         value = await pg.evaluate(
             "document.querySelector('input#weight') ? document.querySelector('input#weight').value : null"
         )
