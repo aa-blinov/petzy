@@ -1,0 +1,30 @@
+/* The aside of a course: the rare doors of the card, on one line, quieter than the dose that is
+   due. They were three full-width blocks per course, which made the list read as a panel of
+   buttons; the record itself is what the eye should land on. */
+.med-card__aside-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2xs) var(--spacing-md);
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--app-divider-color);
+}
+
+.med-card__aside {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.med-card__aside:disabled {
+    color: var(--app-text-secondary);
+    cursor: default;
+}

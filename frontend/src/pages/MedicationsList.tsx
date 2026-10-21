@@ -16,6 +16,7 @@ import { Pill, Droplets, Syringe, Pencil, Trash2 } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type IntakeInput, type Medication } from '../services/medications.service';
 import { IntakeDeclined, logIntakeAsking } from '../utils/duplicateIntake';
 import { AppPullToRefresh } from '../components/AppPullToRefresh';
+import './MedicationsList.css';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
 import { useSession } from '../hooks/useSession';
@@ -697,46 +698,45 @@ export function MedicationsList() {
                                             >
                                                 {awaitingSend(med) ? 'Не отправлено' : doneToday(med) ? 'На сегодня всё' : `Дали сейчас (${formatAmount(med.default_dose || 1)} ${med.dose_unit || ''})`}
                                             </Button>
-                                            {!doneToday(med) && (
-                                                // The common case is one tap; another time or another amount is a step aside.
-                                                <Button
-                                                    block
-                                                    fill="none"
-                                                    onClick={() => handleLogIntake(med)}
-                                                    disabled={awaitingSend(med)}
-                                                    aria-label={`Другое время или доза: ${med.name}`}
-                                                    style={{ marginTop: 'var(--spacing-sm)', color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
-                                                >
-                                                    Другое время или доза
-                                                </Button>
-                                            )}
-                                            {doneToday(med) && (
-                                                // Every dose of the day is handled, and one more was given (a vet said so, a missed
-                                                // one made up): written down on purpose, not through a stale screen.
-                                                <Button
-                                                    block
-                                                    fill="none"
-                                                    onClick={() => handleLogIntake(med)}
-                                                    aria-label={`Записать дополнительный приём: ${med.name}`}
-                                                    style={{ marginTop: 'var(--spacing-sm)', color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
-                                                >
-                                                    Записать дополнительный приём
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
-                                    {(med.course_status ? med.course_status !== 'planned' : true) && (
-                                        // Ended or going: the course is finished or taken up again from the list, not only from the bottom of its form.
-                                        <div style={{ marginTop: 'var(--spacing-md)', paddingTop: 'var(--spacing-xs)', borderTop: '1px solid var(--app-divider-color)' }} onClick={(e) => e.stopPropagation()}>
-                                            <Button
-                                                block
-                                                fill="none"
-                                                onClick={() => void toggleCourse(med)}
-                                                aria-label={`${(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить' : 'Завершить'} курс: ${med.name}`}
-                                                style={{ color: 'var(--app-accent-deep)' }}
-                                            >
-                                                {(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить курс' : 'Завершить курс'}
-                                            </Button>
+                                            {/* The card keeps one button: the dose that is due. The other two are rare
+                                                and used to stand as loud as it did, three full-width blocks to a course,
+                                                which turned the list into a panel of buttons. As quiet doors on one line
+                                                they are still one tap away, and the record stays the loudest thing. */}
+                                            <div className="med-card__aside-row" onClick={(e) => e.stopPropagation()}>
+                                                {!doneToday(med) && (
+                                                    <button
+                                                        type="button"
+                                                        className="med-card__aside touch-target"
+                                                        onClick={() => handleLogIntake(med)}
+                                                        disabled={awaitingSend(med)}
+                                                        aria-label={`Другое время или доза: ${med.name}`}
+                                                    >
+                                                        Другое время или доза
+                                                    </button>
+                                                )}
+                                                {doneToday(med) && (
+                                                    // Every dose of the day is handled, and one more was given (a vet said so, a missed
+                                                    // one made up): written down on purpose, not through a stale screen.
+                                                    <button
+                                                        type="button"
+                                                        className="med-card__aside touch-target"
+                                                        onClick={() => handleLogIntake(med)}
+                                                        aria-label={`Записать дополнительный приём: ${med.name}`}
+                                                    >
+                                                        Ещё приём
+                                                    </button>
+                                                )}
+                                                {(med.course_status ? med.course_status !== 'planned' : true) && (
+                                                    <button
+                                                        type="button"
+                                                        className="med-card__aside touch-target"
+                                                        onClick={() => void toggleCourse(med)}
+                                                        aria-label={`${(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить' : 'Завершить'} курс: ${med.name}`}
+                                                    >
+                                                        {(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить курс' : 'Завершить курс'}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

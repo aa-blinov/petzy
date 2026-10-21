@@ -6,6 +6,41 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Dialog, ImageViewer, SearchBar } from 'antd-mobile';
 import { FileText, Pencil, Trash2, X } from 'lucide-react';
 
+/**
+ * The badge of a document: its picture when there is one, its kind when there is not.
+ *
+ * A photograph is known by its picture, so the row shows the server's small version of it. A file whose scan
+ * was never made, and an image whose bytes are gone, left a pale empty square the size of a photo: a hole in
+ * the row that says nothing. The kind of file stands in that square instead, in the same colours the row
+ * uses when there is no picture at all.
+ */
+function DocThumb({ url, label, bg, fg }: { url: string | null; label: string; bg: string; fg: string }) {
+    const [broken, setBroken] = useState(false);
+    if (!url || broken) {
+        return (
+            <div
+                aria-hidden
+                className="docs__thumb docs__thumb--kind"
+                style={{ background: bg, color: fg }}
+            >
+                {label}
+            </div>
+        );
+    }
+    return (
+        <img
+            src={url}
+            alt=""
+            aria-hidden
+            loading={wasSeen(url) ? 'eager' : 'lazy'}
+            onLoad={() => markSeen(url)}
+            onError={() => setBroken(true)}
+            decoding="async"
+            className="docs__thumb"
+        />
+    );
+}
+
 import { AppPullToRefresh } from '../components/AppPullToRefresh';
 import { usePet } from '../hooks/usePet';
 import { useAuth } from '../hooks/useAuth';
@@ -418,15 +453,11 @@ export function DocumentsList() {
                             <div style={{ padding: 'var(--spacing-lg)', paddingRight: 48, display: 'flex', gap: 'var(--spacing-md)' }}>
                               {doc.content_type.startsWith('image/') && !doc.scan ? (
                                 // A photo is known by its picture: the server's own small version (cached, WebP), not the 10 MB original.
-                                <img
-                                  src={`${documentsService.getFileUrl(doc._id)}?w=128&h=128`}
-                                  alt=""
-                                  aria-hidden
-                                  // Seen before in this session: drawn at once, not left for the lazy loader to pop in.
-                                  loading={wasSeen(`${documentsService.getFileUrl(doc._id)}?w=128&h=128`) ? 'eager' : 'lazy'}
-                                  onLoad={() => markSeen(`${documentsService.getFileUrl(doc._id)}?w=128&h=128`)}
-                                  decoding="async"
-                                  className="docs__thumb"
+                                <DocThumb
+                                  url={`${documentsService.getFileUrl(doc._id)}?w=128&h=128`}
+                                  label={badge.label}
+                                  bg={badge.bg}
+                                  fg={badge.fg}
                                 />
                               ) : (
                                 <div
