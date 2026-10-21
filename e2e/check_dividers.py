@@ -105,6 +105,36 @@ FORMS = [
 ]
 
 
+# Поле — коробка, как любая залитая поверхность приложения: полный радиус дома (12px) и никакой
+# линии по нижнему краю. Линия была частью залитого поля Material 3, а на экране читалась как
+# обрезанное поле со случайной чертой под подписью, поэтому её нет.
+FIELDS = """() => {
+  // A field lives in a form row, or stands on its own (`input-row`, the event type's name): both are
+  // the same box now, and both are measured the same way.
+  const items = [...document.querySelectorAll('.adm-form-item, .adm-input.input-row')];
+  if (!items.length) return null;
+  const bad = items.filter((el) => {
+    const cs = getComputedStyle(el);
+    const corners = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomLeftRadius, cs.borderBottomRightRadius]
+      .map((v) => parseFloat(v) || 0);
+    const underline = cs.borderBottomWidth !== '0px' && cs.borderBottomColor !== 'rgba(0, 0, 0, 0)';
+    return corners.some((c) => c < 11.5) || cs.boxShadow.includes('-1px') || underline;
+  }).length;
+  return { count: items.length, bad };
+}"""
+
+
+async def check_fields(pg, name: str) -> None:
+    got = await pg.evaluate(FIELDS)
+    if not got:
+        return
+    check(
+        f"{name}: поля — коробки с радиусом дома, без линии по нижнему краю",
+        got["bad"] == 0,
+        f"полей {got['count']}, не тех {got['bad']}",
+    )
+
+
 async def open_form(pg, path, ready):
     if path == "@profile":
         pet = await pg.evaluate("JSON.parse(localStorage.getItem('selectedPetId'))")
@@ -159,10 +189,15 @@ async def main() -> None:
 
         # 320px: самое узкое, где линия должна уместиться и не поехать по горизонтали.
         ctx, pg = await new_page(b, width=320, height=568, sw=False)
+        # Экран входа — до всего: его поля человек встречает первыми, и до входа его не открыть.
+        await pg.goto(BASE + "/login")
+        await settle(pg)
+        await check_fields(pg, "вход")
         await login(pg, "demo", "Рекс")
         for name, path, ready in FORMS:
             await open_form(pg, path, ready)
             await check_lines(pg, name)
+            await check_fields(pg, name)
         await ctx.close()
 
         # 390px: та же длина в расчёте на другую ширину экрана, на трёх формах с разной
