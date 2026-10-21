@@ -158,7 +158,7 @@ async def main():
 
             # The pressed state of the card's own controls: a 12% layer over the surface, the
             # layer the specification asks for (md.sys.state.pressed-state-layer-opacity).
-            door = pg.locator(".medcard__bar-button").first
+            door = pg.locator(".medcard__pdf-button").first
             await door.scroll_into_view_if_needed()
             await settle(pg, 150)
             await door.hover()

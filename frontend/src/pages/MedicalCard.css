@@ -83,7 +83,7 @@
 .medcard__link:active,
 .medcard__add:active,
 .medcard__copy:active,
-.medcard__bar-button:active {
+.medcard__pdf-button:active {
     background-image: linear-gradient(var(--app-accent-wash), var(--app-accent-wash));
 }
 
@@ -700,47 +700,23 @@
     cursor: pointer;
 }
 
-/* The two ways to hand the card over, always within reach. */
-/* Room under the last block for the bar, so that it never covers a line of the card. */
-.medcard-page--bar {
-    padding-bottom: calc(var(--safe-area-bottom) + 96px);
-}
-
-.medcard__bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(50px + env(safe-area-inset-bottom, 34px));
-    z-index: 90;
+/* The two ways to hand the card over stay in the document itself, under the passport: a bar pinned
+   over it cost a tenth of the screen and made a document read like a tool. Side by side they take
+   one row, and each keeps a 48px target of its own. */
+.medcard__handover {
     display: flex;
-    gap: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-md);
-    /* The same ground as the screen behind it, the pet's scene when it has one. */
-    background: var(--pet-scene-bg, var(--app-page-background));
-    /* The bar is held off the page by a line, the way the tab bar under it is. */
-    border-top: 1px solid var(--app-border-color);
-}
-
-.medcard__bar-button {
-    flex: 1;
-    min-height: 48px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     gap: var(--spacing-sm);
-    padding: 0 var(--spacing-md);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--app-accent-deep);
-    background: var(--app-card-background);
-    color: var(--app-accent-deep);
-    font: inherit;
-    font-size: var(--text-md);
-    font-weight: 600;
-    cursor: pointer;
 }
 
-.medcard__bar-button:disabled {
-    opacity: 0.6;
+.medcard__handover .medcard__pdf-button {
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--spacing-sm);
+    /* Two doors side by side: one line each, at the size the card's own doors speak in, so that
+       «Ссылка для врача» does not wrap into a taller button than its neighbour. */
+    font-size: var(--text-sm);
+    white-space: nowrap;
 }
 
 /* The copy opened by a link says what it is and how fresh it is. */
