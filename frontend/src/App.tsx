@@ -10,6 +10,7 @@ import { Navbar } from './components/Navbar';
 import { BottomTabBar } from './components/BottomTabBar';
 import { PrivacyConsentGate } from './components/PrivacyConsentGate';
 import { ScrollManager } from './components/ScrollManager';
+import { DiagOverlay } from './components/DiagOverlay';
 import { PetLookTheme } from './components/PetLookTheme';
 import { ThemeProvider } from './components/ThemeProvider';
 import { LoadingSpinner } from './components/LoadingSpinner';
@@ -246,6 +247,7 @@ function AppRoutes() {
       <PetLookTheme />
       <Navbar />
       <RouteFocus />
+      <DiagOverlay />
       <ScrollManager />
       <main id="main-content">
         <Suspense fallback={<LoadingSpinner />}>
