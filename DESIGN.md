@@ -149,7 +149,7 @@ Checked against the specification's own files, and every value below is taken fr
 | The state layer of a control | `md.sys.state.pressed-state-layer-opacity` = 12% over the surface | the same 12%: antd's buttons (the `.adm-button:active` rule) and the app's own controls (`--app-accent-wash`: the card's doors, its «+», its chip, its bottom bar) |
 | The FAB | `md.comp.fab.primary.container.height` and `.width` = 56px, `icon-size` 24px | 56×56, icon 24px (`components/Fab.tsx`) |
 | The elevation | six levels, `md.sys.elevation.level0…level5` = 0, 1, 3, 6, 8, 12; cards at 1, floating layers at 3 | cards at 1 (`--app-shadow`), floating at 3 (`--app-shadow-strong`) |
-| The filled text field | the highest surface container as its fill | `--app-field-fill` |
+| The filled text field | the highest surface container as its fill | `--app-field-fill`, with the app's 12px corner all round |
 | The type sizes that are left | `md.sys.typescale.body-small.size` 12, `title-small.size` 14, `body-large.size` 16, `title-large.size` 22, `headline-small.size` 24, `headline-medium.size` 28 | `--text-xs` 12, `--text-sm` 14, `--text-md` 16, `--text-lg` 22, `--text-xl` 24, `--text-display` 28 |
 
 **Deviates, and why**
@@ -163,6 +163,7 @@ Checked against the specification's own files, and every value below is taken fr
 | The pressed thing moves | the specification keeps it still | the controls scale to 98% and dim to 85%, the round «+» to 94% | The house's micro-feedback: a card never moves, but a control under the finger answers at once. The layer itself is the specification's 12% |
 | The hover | `md.sys.state.hover-state-layer-opacity` = 8% | a border and a fill change | The same answer, one step louder: the thing the finger is over says so by its edge |
 | The rows of the record | a list item has no state layer of its own | the card's records open a record and do not answer the touch | The record is the card's text; the doors under it are what answer |
+| The filled field's shape | the filled text field keeps its square bottom corners and a 1px indicator line along the bottom edge (`md.comp.filled-text-field`) | a fill, the app's 12px corner all four sides, and the copper ring when focused | The flat bottom and the line were read as a field that had been cut off, with a stray line under the label: the app's own surfaces are rounded on every side, and a field is one of them |
 | The motion durations | 50–600 in steps of 50 | 80 / 160 / 240 / 320 | The app's ladder is one line of its own; the spec's has twelve steps, of which the app would use three |
 | The colour roles | `md.sys.color.primary`, `secondary`, `tertiary` and their containers, `surface` and its five containers, `inverse-surface`, `outline-variant` | one accent (copper) and its soft and deep, the page, the card, the field, the lines, three steps of text, the danger, the success, the info, the violet | The app has no second and no third accent: the secondary and tertiary roles would have nothing to say. The pet's colour is the one thing that may tint a surface, and it does so on the pet's own card, never on the app's buttons |
 | The components | M3's buttons, cards, chips, lists | antd-mobile's parts, restyled | The look follows M3; the parts are Ant's. Every token they read is overwritten with the app's own |
@@ -328,10 +329,11 @@ One way to add on the screens that fill a diary: the round copper button bottom 
 Dialogs and sheets: the common 12px corner, the floating shadow (level 3), the title in the large size.
 
 ### Fields
-Material 3 filled text fields. Every form row (`.adm-form-item`) holds a fill (`--app-field-fill`, surface-container-highest),
-with a 4px top corner and the 1px outline line (`--app-text-secondary`) on its bottom edge. The focused row takes the 2px
-primary indicator and its label the accent. Rows are told apart by the gap of their fills, and the hairline between them is
-gone. The label sits above the value, as before.
+Filled text fields, rounded on all four corners. Every form row (`.adm-form-item`) holds a fill (`--app-field-fill`,
+surface-container-highest) and the app's 12px corner (`--radius-md`), like every other filled surface here: a field is a
+box, not a sheet of paper. The focused row takes the 2px copper ring (`--app-accent`) all round and its label the
+deeper copper. Rows are told apart by the gap of their fills, and the hairline between them is gone. The label sits
+above the value, as before.
 
 ### Chips
 - **Style:** transparent with an oat border and driftwood text; selected fills ginger-deep with white 600 text (weekday chips, choices in forms). Plain selectors mark the choice with copper-ink on the apricot wash.

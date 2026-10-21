@@ -1712,8 +1712,10 @@ textarea:focus-visible,
 
 /* A form row says it has the cursor: the label turns accent (above) and a line under the row does too, so that
    keyboard focus is seen without boxing the field on every tap. */
+/* The focus ring of a rounded field: the copper outline all round, the way every other box of the app answers a
+   finger. The old 2px bottom indicator belonged to the flat-bottomed Material 3 field that is no longer there. */
 .adm-form-item:focus-within {
-    box-shadow: inset 0 -2px 0 var(--app-accent);
+    box-shadow: inset 0 0 0 2px var(--app-accent);
 }
 
 /* SearchBar keeps its own focus indicator: library CSS turns
@@ -2682,16 +2684,17 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
 }
 
 /* Material 3 filled text fields: every form row (the element antd-mobile gives .adm-form-item, which is a list item itself)
-   holds a fill, and its bottom edge is the 1px outline line. Rows are separated by the gap of their fills, not by hairlines.
-   The focused row takes the 2px primary indicator (see .adm-form-item:focus-within above). */
+   holds a fill. A field is a rounded box on all four corners, like every other filled surface of the app: the
+   Material 3 filled field's flat bottom and its 1px indicator line were read as a stray line under the label, and
+   the square bottom corners read as a field that had been cut off. The focused row takes the 2px primary ring
+   instead of the indicator (see .adm-form-item:focus-within above). Rows are told apart by the gap of their fills. */
 .adm-form-item.adm-list-item {
     --border-inner: none !important;
     --border-top: none !important;
     --border-bottom: none !important;
     background: var(--app-field-fill) !important;
-    border-radius: var(--radius-xs) var(--radius-xs) 0 0;
-    box-shadow: inset 0 -1px 0 var(--app-text-secondary);
-    margin-bottom: var(--spacing-2xs);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-xs);
 }
 
 /* Every action of the app is an outlined button, not a bare text link: the header actions of a section, the actions of a row,
