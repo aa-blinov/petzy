@@ -831,9 +831,9 @@ export function MedicalRecordForm() {
                   label="Вес в этот день"
                   clickable
                   arrow
-                  description="Записан отдельно, в дневнике. Открыть историю веса"
+                  description="Записан отдельно, в дневнике. Открыть вес"
                   extra={`${formatAmount(weightThatDay)} кг`}
-                  onClick={() => navigate('/history?type=weight')}
+                  onClick={() => navigate('/form/weight')}
                 />
               )}
               {!isEditing && (

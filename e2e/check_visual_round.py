@@ -57,7 +57,7 @@ async def main():
         ctx, pg = await new_page(browser)
         await login(pg)
         await ctx.set_offline(True)
-        await pg.goto(BASE + "/history", wait_until="commit")
+        await pg.goto(BASE + "/medications", wait_until="commit")
         await pg.get_by_text("Нет связи с интернетом").first.wait_for(timeout=8000)
         check(
             "offline, the page says there is no connection rather than a server fault",
