@@ -233,7 +233,7 @@ export function Settings() {
 
           {/* The history screen is not a tab: this row and the card's «Вес» lead to it. */}
           <Group title="Записи">
-            
+
             <SettingsRow
               icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Экспорт записей"
