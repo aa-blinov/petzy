@@ -14,6 +14,12 @@ separate question, asked of the pixels by e2e/check_tab_bar.py.
 
 The pan case from the keyboard is a separate check (e2e/check_bar_stays.py):
 headless Chromium never pans the visual viewport, so it can only be faked.
+
+Chrome's toolbar does not only change the height: when it collapses, the visual viewport is panned
+too, and the page hears a scroll rather than a resize (Chromium issues 504094431 and 417426570). A
+fixed header left in place then sits above the visible area, under the clock. That pan is one jump
+and then it stays, which is what tells it apart from the spring-back at the end of a page: the
+header follows it once it has settled.
 """
 
 import asyncio
@@ -55,6 +61,24 @@ async def resize(cdp, width, height):
     )
 
 
+PANNED = 60
+
+PAN = """(offset) => {
+  if (window.__realVvHeight === undefined) window.__realVvHeight = window.visualViewport.height;
+  const real = window.__realVvHeight;
+  Object.defineProperty(VisualViewport.prototype, 'offsetTop', { get: () => offset, configurable: true });
+  Object.defineProperty(VisualViewport.prototype, 'height', { get: () => real - offset, configurable: true });
+  window.visualViewport.dispatchEvent(new Event('scroll'));
+}
+"""
+
+HEADER_TOP = """() => {
+  const vv = window.visualViewport;
+  return Math.round(document.querySelector('header').getBoundingClientRect().top - vv.offsetTop);
+}
+"""
+
+
 async def main() -> int:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -92,6 +116,33 @@ async def main() -> int:
                 got["below"] <= 0,
                 f"уходит за край на {got['below']} px, сдвиг {got['shift']}, в самом низу: {got['atEnd']}",
             )
+
+        # Chrome's toolbar gone and the visual viewport left panned by it: the header must be at the
+        # top of what a person sees, not above it under the clock.
+        await pg.goto(BASE + "/")
+        await pg.wait_for_timeout(700)
+        await pg.evaluate(PAN, PANNED)
+        await pg.wait_for_timeout(400)
+        shifted = await pg.evaluate(HEADER_TOP)
+        check(
+            "шапка догоняет панораму Chrome и стоит на верхнем краю видимой области",
+            abs(shifted) <= 2,
+            f"шапка на {shifted} px от видимого верха (панорама {PANNED})",
+        )
+        # The spring-back at the end of a page reports a pan for a moment, and the header must not
+        # chase it: it may not move before the value has settled.
+        await pg.evaluate(PAN, 0)
+        await pg.wait_for_timeout(120)
+        await pg.evaluate(PAN, 25)
+        await pg.wait_for_timeout(30)
+        chase = await pg.evaluate(
+            "() => getComputedStyle(document.documentElement).getPropertyValue('--vv-shift-top').trim()"
+        )
+        check(
+            "отскок в конце страницы шапку не дёргает: сдвиг ставится только когда панорама устоялась",
+            chase != "25px",
+            f"сдвиг {chase}",
+        )
 
         await ctx.close()
         await browser.close()
