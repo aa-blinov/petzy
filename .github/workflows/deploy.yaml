@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       # Full history: the decide step compares the commit with the one in production.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0

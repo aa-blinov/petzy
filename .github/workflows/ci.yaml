@@ -11,7 +11,7 @@ jobs:
     name: nginx config
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: nginx -t for every config
         run: |
           set -euo pipefail
@@ -71,12 +71,12 @@ jobs:
     name: Ruff
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/ruff-action@v1
+      - uses: actions/checkout@v7
+      - uses: astral-sh/ruff-action@v3
         with:
           args: check --output-format=github
           version: 0.14.9
-      - uses: astral-sh/ruff-action@v1
+      - uses: astral-sh/ruff-action@v3
         with:
           args: format --check
           version: 0.14.9
@@ -85,8 +85,8 @@ jobs:
     name: Pytest
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -117,8 +117,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -136,7 +136,7 @@ jobs:
     name: Backup image (dump, upload, rotate, restore)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The same script runs locally: Docker only, never the real bucket.
       - name: Four backups against MongoDB and an in-memory S3, the newest restored
         run: scripts/backup_e2e.sh
