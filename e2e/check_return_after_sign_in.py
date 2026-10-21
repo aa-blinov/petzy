@@ -23,10 +23,10 @@ async def main():
         await pg.get_by_role("button", name="Создать").click()
         await settle(pg, 150)
         check("the session that ended sends the person to the sign-in screen", "/login" in pg.url, pg.url)
-        await pg.get_by_placeholder("Введите логин").fill("demo")
+        await pg.get_by_label("Логин").fill("demo")
         from common import DEMO_PASSWORD
 
-        await pg.get_by_placeholder("Введите пароль").fill(DEMO_PASSWORD)
+        await pg.get_by_label("Пароль").fill(DEMO_PASSWORD)
         await pg.get_by_role("button", name="Войти").click()
         await pg.wait_for_url(lambda u: "/form/weight" in u, timeout=10000)
         await pg.get_by_label("Вес (кг)").wait_for(timeout=8000)

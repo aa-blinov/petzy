@@ -63,8 +63,8 @@ def _track(pg):
 
 async def login(pg, user="demo", pet_prefix="Рекс"):
     await pg.goto(BASE + "/login")
-    await pg.get_by_placeholder("Введите логин").fill(user)
-    await pg.get_by_placeholder("Введите пароль").fill(DEMO_PASSWORD)
+    await pg.get_by_label("Логин").fill(user)
+    await pg.get_by_label("Пароль").fill(DEMO_PASSWORD)
     await pg.get_by_role("button", name="Войти").click()
     await pg.wait_for_url(lambda u: "/login" not in u, timeout=20000)
     # The app picks a pet on its own once the pets have loaded and writes the choice to the browser; wait for that write,
