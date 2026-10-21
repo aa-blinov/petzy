@@ -10,7 +10,8 @@ import { useEffect, useState } from 'react';
  *
  * It appears only when the address carries `?diag=1`, and stays for the rest of the session: a route
  * change drops the query string, and the moment worth reading is on the form, not on the page the
- * address was typed on.
+ * address was typed on. A narrow strip at the very top, in the colours of the theme, as if the phone
+ * had dropped it down.
  */
 
 const KEY = 'petzy:diag';
@@ -48,6 +49,8 @@ function read(): Numbers {
     };
 }
 
+const dash = (value: number | null) => (value === null ? 'нет' : String(value));
+
 export function DiagOverlay() {
     const [seen, setSeen] = useState<Numbers | null>(null);
 
@@ -62,11 +65,36 @@ export function DiagOverlay() {
     if (!seen) return null;
     return (
         <div className="diag" role="status" aria-live="off">
-            <span>vv {seen.vvHeight} top {seen.vvTop}</span>
-            <span>ih {seen.innerHeight} sy {seen.scrollY}</span>
-            <span>shift {seen.shift} top {seen.shiftTop}</span>
-            <span>kb {String(seen.keyboard)} safe {seen.safeTop}</span>
-            <span>hdr {seen.headerTop ?? '-'} bar {seen.barBottom ?? '-'}</span>
+            <span>
+                экран <b>{seen.innerHeight}</b>
+            </span>
+            <span>
+                видно <b>{seen.vvHeight}</b>
+            </span>
+            <span>
+                панорама <b>{seen.vvTop}</b>
+            </span>
+            <span>
+                прокрутка <b>{seen.scrollY}</b>
+            </span>
+            <span>
+                сдвиг низа <b>{seen.shift}</b>
+            </span>
+            <span>
+                сдвиг верха <b>{seen.shiftTop}</b>
+            </span>
+            <span>
+                шапка <b>{dash(seen.headerTop)}</b>
+            </span>
+            <span>
+                низ полосы <b>{dash(seen.barBottom)}</b>
+            </span>
+            <span>
+                клавиатура <b>{seen.keyboard ? 'да' : 'нет'}</b>
+            </span>
+            <span>
+                запас сверху <b>{seen.safeTop}</b>
+            </span>
         </div>
     );
 }

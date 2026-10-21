@@ -35,8 +35,11 @@ async def main():
             await pg.wait_for_timeout(700)
             shown = await pg.locator(".diag").inner_text()
             check(
-                "по ?diag=1 плашка показывает цифры полос",
-                all(word in shown for word in ("vv", "top", "shift", "kb", "hdr", "bar")),
+                "по ?diag=1 полоска показывает цифры полос",
+                all(
+                    word in shown
+                    for word in ("экран", "видно", "панорама", "сдвиг низа", "сдвиг верха", "шапка", "клавиатура")
+                ),
                 shown.replace("\n", " | "),
             )
 
