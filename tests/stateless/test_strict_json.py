@@ -29,9 +29,12 @@ def test_ordinary_numbers_and_the_words_nan_and_infinity_read_as_before():
 
 def test_a_json_part_of_a_form_is_read_strictly_and_text_stays_text():
     with pytest.raises(NonFiniteNumber):
-        form_value(['{"x": NaN}'])
-    assert form_value(['{"x": 1}']) == {"x": 1}
+        form_value(['{"x": NaN}'], "tiles_settings")
+    assert form_value(['{"x": 1}'], "tiles_settings") == {"x": 1}
     assert form_value(["7"]) == "7"
+    # Only a field declared as an object is decoded: elsewhere JSON-looking text is text.
+    assert form_value(['{"x": 1}'], "name") == '{"x": 1}'
+    assert form_value(["[1]"], "title") == "[1]"
 
 
 def test_the_library_reads_its_own_json_strictly():

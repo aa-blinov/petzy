@@ -485,7 +485,7 @@ def _update_course(medication: dict, data):
         if started and ended and ended < started:
             return error_response("validation_error", "Окончание курса раньше его начала")
 
-        update_data["updated_at"] = now_utc()
+        update_data["updated_at"] = update_data["edited_at"] = now_utc()
         result = app.db.medications.update_one(
             {"_id": medication_id, **version_guard(medication, data.base_version)}, {"$set": update_data}
         )
@@ -597,6 +597,18 @@ def _slot_of_the_mark(data) -> "tuple[str, str] | None":
     if not data.slot_date or not data.slot_time or minutes_of_day(data.slot_time) is None:
         return None
     return data.slot_date, data.slot_time
+
+
+def _stock_stamp(course: dict) -> dict:
+    """What a write of the stock alone sets: ``updated_at`` moves (the feed tells the devices the course changed), but the
+    course's version does not. The version is ``edited_at``; a course that never had one keeps the version it had so far,
+    so that a device editing it is not refused because a dose was marked meanwhile."""
+    stamp = {"updated_at": now_utc()}
+    if course.get("edited_at") is None:
+        kept = course.get("updated_at") or course.get("created_at")
+        if kept is not None:
+            stamp["edited_at"] = kept
+    return stamp
 
 
 def _already_handled(id: str, medication: dict, data, event_dt: datetime, username: str) -> "dict | None":
@@ -816,7 +828,7 @@ def log_intake(id):
                 # Use atomic update with condition to prevent race conditions
                 result = app.db.medications.update_one(
                     {"_id": medication_id, "inventory_current": current_inventory},
-                    {"$set": {"inventory_current": new_inventory, "updated_at": now_utc()}},
+                    {"$set": {"inventory_current": new_inventory, **_stock_stamp(medication)}},
                 )
 
                 if result.matched_count > 0:
@@ -882,7 +894,10 @@ def log_intake(id):
             if inventory_decremented_by:
                 app.db.medications.update_one(
                     {"_id": medication_id},
-                    {"$inc": {"inventory_current": inventory_decremented_by}, "$set": {"updated_at": now_utc()}},
+                    {
+                        "$inc": {"inventory_current": inventory_decremented_by},
+                        "$set": _stock_stamp(medication),
+                    },
                 )
                 app.logger.warning(
                     f"Intake insert failed for medication {id}; restored {inventory_decremented_by} to inventory"
@@ -933,14 +948,21 @@ def restock_medication(id):
         # the count the first one wrote, instead of overwriting it with a pack of its own.
         for attempt in range(3):
             current = app.db.medications.find_one(
-                {"_id": medication["_id"]}, {"inventory_current": 1, "inventory_enabled": 1}
+                {"_id": medication["_id"]},
+                {
+                    "inventory_current": 1,
+                    "inventory_enabled": 1,
+                    "updated_at": 1,
+                    "edited_at": 1,
+                    "created_at": 1,
+                },
             )
             count = current.get("inventory_current")
             # A count kept while counting was off says nothing about the shelf: the pack starts the count again.
             if count is None or not current.get("inventory_enabled"):
                 result = app.db.medications.update_one(
                     {"_id": medication["_id"], "inventory_current": count},
-                    {"$set": {"inventory_current": amount, "inventory_enabled": True, "updated_at": now_utc()}},
+                    {"$set": {"inventory_current": amount, "inventory_enabled": True, **_stock_stamp(current)}},
                 )
             else:
                 # $inc, not read-add-write: two restocks at once both count.
@@ -948,7 +970,7 @@ def restock_medication(id):
                     {"_id": medication["_id"]},
                     {
                         "$inc": {"inventory_current": amount},
-                        "$set": {"inventory_enabled": True, "updated_at": now_utc()},
+                        "$set": {"inventory_enabled": True, **_stock_stamp(current)},
                     },
                 )
             if result.matched_count:
@@ -1085,9 +1107,12 @@ def delete_intake(id):
         medication_id = ObjectId(intake["medication_id"])
         to_restore = intake.get("inventory_deducted", intake.get("dose_taken", 0)) or 0
         if to_restore:
+            course = app.db.medications.find_one(
+                {"_id": medication_id}, {"updated_at": 1, "edited_at": 1, "created_at": 1}
+            )
             app.db.medications.update_one(
                 {"_id": medication_id, "inventory_enabled": True, "inventory_current": {"$ne": None}},
-                {"$inc": {"inventory_current": to_restore}, "$set": {"updated_at": now_utc()}},
+                {"$inc": {"inventory_current": to_restore}, "$set": _stock_stamp(course or {})},
             )
 
         return get_message("intake_deleted")
