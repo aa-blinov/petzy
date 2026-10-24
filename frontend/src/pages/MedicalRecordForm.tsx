@@ -329,11 +329,9 @@ export function MedicalRecordForm() {
     }
     if (!card.data || (fromId && !source) || ((docId || renewId) && !sourceDoc && documents.isPending)) return;
     filled.current = true;
-    // The clinic the pet was last taken to, else the main one in its profile.
-    const last = Object.values(card.data.records).flat().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.clinic || r.vet);
-    const main = card.data.profile.clinics[0];
-    const clinic = last?.clinic ?? main?.name ?? card.data.profile.clinic?.name ?? '';
-    const vet = last?.vet ?? main?.doctors[0]?.name ?? card.data.profile.clinic?.vet ?? '';
+    // The clinic and the doctor are chosen from the list, not carried over from the last record.
+    const clinic = '';
+    const vet = '';
     // A vaccination or a treatment is nearly always repeated: the usual interval is put in (a year, three months),
     // so that skipping the field does not switch the reminder off. It follows the date until it is touched, and is one tap from gone.
     // «Ещё одну» after a save brings the date and the clinic of the one just saved: a paper passport lists several shots
@@ -436,24 +434,31 @@ export function MedicalRecordForm() {
   const vetValue = useWatch({ control, name: 'vet' });
   const profileClinics = card.data?.profile.clinics ?? [];
   const sameText = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
-  const clinicChips = profileClinics.map((c) => c.name).filter((n): n is string => !!n);
+  const recordList = Object.values(card.data?.records ?? {}).flat();
+  const withCurrent = (names: (string | null | undefined)[], current?: string | null) => {
+    const out: string[] = [];
+    for (const n of [...names, current]) {
+      const name = n?.trim();
+      if (name && !out.some((o) => sameText(o, name))) out.push(name);
+    }
+    return out;
+  };
   const chosenClinic = profileClinics.find((c) => sameText(c.name, clinicValue));
-  const doctorChips = (chosenClinic ? [chosenClinic] : profileClinics).flatMap((c) =>
-    c.doctors.map((d) => ({
-      name: d.name,
-      clinic: c.name ?? '',
-      label: [d.name, d.specialty ? d.specialty.toLowerCase() : null].filter(Boolean).join(', ') + (!chosenClinic && profileClinics.length > 1 && c.name ? ` (${c.name})` : ''),
-    })),
-  );
+  const clinicOptions = withCurrent([...profileClinics.map((c) => c.name), ...recordList.map((r) => r.clinic)], clinicValue).map((n) => ({ label: n, value: n }));
+  const doctorOptions = withCurrent(
+    [...(chosenClinic ? [chosenClinic] : profileClinics).flatMap((c) => c.doctors.map((d) => d.name)), ...recordList.map((r) => r.vet)],
+    vetValue,
+  ).map((n) => ({ label: n, value: n }));
   const pickClinic = (name: string) => {
     setValue('clinic', name, { shouldDirty: true });
     // A doctor of another clinic does not stay next to this one.
-    const other = profileClinics.find((c) => !sameText(c.name, name) && c.doctors.some((d) => sameText(d.name, vetValue)));
-    if (other && !profileClinics.find((c) => sameText(c.name, name))?.doctors.some((d) => sameText(d.name, vetValue))) setValue('vet', '', { shouldDirty: true });
+    const next = profileClinics.find((c) => sameText(c.name, name));
+    if (vetValue && profileClinics.some((c) => c.doctors.some((d) => sameText(d.name, vetValue))) && !next?.doctors.some((d) => sameText(d.name, vetValue))) setValue('vet', '', { shouldDirty: true });
   };
-  const pickDoctor = (name: string, clinic: string) => {
+  const pickDoctor = (name: string) => {
     setValue('vet', name, { shouldDirty: true });
-    if (clinic && !sameText(clinic, clinicValue)) setValue('clinic', clinic, { shouldDirty: true });
+    const owner = profileClinics.find((c) => c.doctors.some((d) => sameText(d.name, name)));
+    if (owner?.name && !sameText(owner.name, clinicValue)) setValue('clinic', owner.name, { shouldDirty: true });
   };
   const repeatChoices = kind ? REPEAT_CHOICES[kind] ?? [] : [];
 
@@ -850,8 +855,7 @@ export function MedicalRecordForm() {
             </>
           )}
 
-          {/* Series, clinic, doctor and a note are optional and mostly filled in already (the clinic and the doctor from the
-              last record): one row says what is there, and opens them. */}
+          {/* Series, clinic, doctor and a note are optional and chosen from a list: one row says what is there, and opens them. */}
           <Form.Item
             label={kind === 'vaccination' ? 'Серия, клиника, врач и заметка' : 'Клиника, врач и заметка'}
             clickable
@@ -872,42 +876,32 @@ export function MedicalRecordForm() {
                   )}
                 />
               )}
-              <Controller
-                name="clinic"
-                control={control}
-                render={({ field }) => (
-                  <Form.Item label="Клиника">
-                    <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
-                    {clinicChips.length > 1 && (
-                      <ChoiceChips label="Клиники из профиля">
-                        {clinicChips.map((name) => (
-                          <ChoiceChip key={name} pressed={sameText(name, clinicValue)} onClick={() => pickClinic(name)}>
-                            {name}
-                          </ChoiceChip>
-                        ))}
-                      </ChoiceChips>
-                    )}
-                  </Form.Item>
-                )}
-              />
-              <Controller
-                name="vet"
-                control={control}
-                render={({ field }) => (
-                  <Form.Item label="Врач">
-                    <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
-                    {doctorChips.length > 1 && (
-                      <ChoiceChips label="Врачи из профиля">
-                        {doctorChips.map((d) => (
-                          <ChoiceChip key={`${d.clinic}-${d.name}`} pressed={sameText(d.name, vetValue)} onClick={() => pickDoctor(d.name, d.clinic)}>
-                            {d.label}
-                          </ChoiceChip>
-                        ))}
-                      </ChoiceChips>
-                    )}
-                  </Form.Item>
-                )}
-              />
+              {clinicOptions.length > 0 ? (
+                <PickerField label="Клиника" value={clinicValue ?? ''} options={clinicOptions} placeholder="Необязательно" empty="Не указана" onChange={pickClinic} />
+              ) : (
+                <Controller
+                  name="clinic"
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Item label="Клиника">
+                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                    </Form.Item>
+                  )}
+                />
+              )}
+              {doctorOptions.length > 0 ? (
+                <PickerField label="Врач" value={vetValue ?? ''} options={doctorOptions} placeholder="Необязательно" empty="Не указан" onChange={pickDoctor} />
+              ) : (
+                <Controller
+                  name="vet"
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Item label="Врач">
+                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                    </Form.Item>
+                  )}
+                />
+              )}
               <Controller
                 name="note"
                 control={control}
