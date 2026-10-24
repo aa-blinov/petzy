@@ -288,6 +288,21 @@
     margin-top: var(--spacing-xs);
 }
 
+/* The words that stand on the screen itself, not inside a sheet, lie on a plate of the page's colour: the pet's pattern
+   (dots, paws) must not run behind a line of running text. */
+.medcard .medcard__section-title,
+.medcard .medcard__lead,
+.medcard .medcard__hint {
+    width: fit-content;
+    max-width: 100%;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin-inline: calc(var(--spacing-sm) * -1);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--app-page-background) 94%, transparent);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
 /* A block of the document: its name, and the doors of the owner in its head. */
 .medcard__section-head {
     display: flex;
@@ -739,6 +754,23 @@
        «Ссылка для врача» does not wrap into a taller button than its neighbour. */
     font-size: var(--text-sm);
     white-space: nowrap;
+}
+
+/* A narrow phone (under 340px) and a page zoomed to 200%: two doors side by side leave each 130px or less, and
+   «Ссылка для врача» touched the border of its button. They stand one under the other, at 12px, and may wrap. */
+@media (max-width: 339px) {
+    .medcard__handover {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .medcard__handover .medcard__pdf-button {
+        flex: none;
+        width: 100%;
+        padding: var(--spacing-sm) var(--spacing-md);
+        white-space: normal;
+        text-align: center;
+    }
 }
 
 /* The copy opened by a link says what it is and how fresh it is. */
