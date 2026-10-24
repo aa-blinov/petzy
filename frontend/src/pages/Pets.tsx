@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, ImageViewer, PullToRefresh } from 'antd-mobile';
-import { Pencil, Scale, Trash2, Cat, LogOut, FileHeart, Palette } from 'lucide-react';
+import { Pencil, Scale, Trash2, Cat, LogOut, FileHeart, Palette, Share2 } from 'lucide-react';
 import { type Pet } from '../services/pets.service';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { usePet } from '../hooks/usePet';
@@ -22,6 +22,7 @@ import { LoadError } from '../components/LoadError';
 import { UserAvatar } from '../components/UserAvatar';
 import { Fab } from '../components/Fab';
 import { formatAmount } from '../utils/stock';
+import { PetShareSheet } from '../components/PetShareSheet';
 import { PetDeleteSummary } from '../components/PetDeleteSummary';
 import { useHiddenRecords } from '../utils/deferredDelete';
 
@@ -37,6 +38,8 @@ export function Pets() {
     visible: false,
     image: null,
   });
+
+  const [shareFor, setShareFor] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -123,6 +126,7 @@ export function Pets() {
                   pet={pet}
                   onEdit={() => handleEditPet(pet)}
                   onDelete={() => handleDeleteClick(pet)}
+                  onShare={() => setShareFor(pet._id)}
                   onImageTap={(url) => setImageViewer({ visible: true, image: url })}
                 />
               ))}
@@ -162,6 +166,8 @@ export function Pets() {
         ]}
       />
 
+      <PetShareSheet visible={shareFor !== null} petId={shareFor} onClose={() => setShareFor(null)} />
+
       <ImageViewer
         image={imageViewer.image || ''}
         visible={imageViewer.visible}
@@ -181,11 +187,13 @@ function PetCard({
   pet,
   onEdit,
   onDelete,
+  onShare,
   onImageTap,
 }: {
   pet: Pet;
   onEdit: () => void;
   onDelete: () => void;
+  onShare: () => void;
   onImageTap: (url: string) => void;
 }) {
   const navigate = useNavigate();
@@ -415,6 +423,32 @@ function PetCard({
                 >
                   <Palette size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
                   Оформление
+                </button>
+              )}
+              {/* Sharing is the owner's: the door is on the row, the invitation is not hunted for in the edit form. */}
+              {pet.current_user_is_owner && (
+                <button
+                  type="button"
+                  className="chip chip--action"
+                  aria-label={`Поделиться: ${pet.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare();
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  <Share2 size={13} strokeWidth={2.2} style={{ display: 'block' }} aria-hidden />
+                  Поделиться
                 </button>
               )}
             {/* Nothing indicated a pet was shared anywhere outside its own

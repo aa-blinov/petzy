@@ -1,0 +1,127 @@
+.pshare__title {
+    margin: 4px 4px 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    color: var(--app-text-primary);
+}
+
+.pshare__lead {
+    margin: var(--spacing-sm) 4px 0;
+    color: var(--app-text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+.pshare__form {
+    margin-top: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.pshare__label {
+    margin: 0 4px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--app-text-secondary);
+}
+
+.pshare__input {
+    min-height: var(--touch-min);
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--app-border-color);
+    border-radius: var(--radius-md);
+    background: var(--app-page-background);
+    display: flex;
+    align-items: center;
+}
+
+.pshare__error {
+    margin: 0 4px;
+    font-size: var(--text-sm);
+    color: var(--app-danger-color);
+}
+
+.pshare__hint {
+    margin: 0 4px;
+    font-size: var(--text-sm);
+    color: var(--app-text-secondary);
+}
+
+.pshare__suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.pshare__button {
+    margin-top: var(--spacing-sm);
+}
+
+.pshare__list {
+    margin-top: var(--spacing-xl);
+}
+
+.pshare__list-title {
+    margin: 0 4px var(--spacing-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--app-text-secondary);
+}
+
+.pshare__list ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--app-border-color);
+    border-radius: var(--radius-md);
+}
+
+.pshare__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: var(--touch-min);
+}
+
+.pshare__item + .pshare__item {
+    border-top: 1px solid var(--app-border-color);
+}
+
+.pshare__who {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+.pshare__name {
+    display: block;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.pshare__status {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--app-text-secondary);
+}
+
+.pshare__remove {
+    flex-shrink: 0;
+    min-height: var(--touch-min);
+    padding: 0 var(--spacing-sm);
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--app-danger-color);
+    cursor: pointer;
+}
+
+.pshare__remove:disabled {
+    opacity: 0.5;
+}

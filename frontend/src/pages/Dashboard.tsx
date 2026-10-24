@@ -25,6 +25,7 @@ import { LoadError } from '../components/LoadError';
 import { PendingInvites } from '../components/PendingInvites';
 import { usePetInvites } from '../hooks/usePetInvites';
 import { wallDate } from '../utils/timezone';
+import { readDenseFeedCard } from '../utils/feedDensity';
 
 /** The next page comes when the end of the list comes near (the button stays, for whoever uses it). */
 function AutoLoadMore({ onVisible, disabled, children }: { onVisible: () => void; disabled: boolean; children: ReactNode }) {
@@ -53,6 +54,8 @@ export function Dashboard() {
   const historyConfig = useMemo(() => buildEventDisplayConfigs(eventTypes), [eventTypes]);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  // After the first week the pet's card is one line: the history starts higher for someone who knows the card by heart.
+  const [denseCard] = useState(readDenseFeedCard);
   const invites = usePetInvites();
   useEffect(() => {
     if (pets.length > 0) rememberHavingPets(username);
@@ -203,7 +206,7 @@ export function Dashboard() {
             <PendingInvites />
             {/* Pet at-a-glance summary */}
             {getSelectedPet && (
-              <PetSummaryCard pet={getSelectedPet} />
+              <PetSummaryCard pet={getSelectedPet} dense={denseCard} />
             )}
 
             {/* Widget for upcoming medication block */}

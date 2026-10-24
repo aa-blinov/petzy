@@ -14,8 +14,6 @@ import {
   FileHeart,
   FileText,
   Fish,
-  Frame,
-  Palette,
   PawPrint,
   Pill,
   Scale,
@@ -31,7 +29,7 @@ import { useSession } from '../hooks/useSession';
 import { petsService, type Pet } from '../services/pets.service';
 import { getPushSubscriptionState, isPushSupported, needsHomeScreenForPush, subscribeToPush } from '../utils/pushNotifications';
 import { computePetAge, MONTHS_GENITIVE } from '../utils/relativeTime';
-import { dismissOnboarding } from '../utils/onboarding';
+import { dismissOnboarding, resumeIndex } from '../utils/onboarding';
 import { goBack } from '../utils/navigation';
 import { getApiErrorMessage } from '../utils/apiError';
 import { newFormKey } from '../utils/idempotency';
@@ -40,13 +38,16 @@ import { showToast } from '../utils/toast';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LoadError } from '../components/LoadError';
 import { PhotoCropModal } from '../components/PhotoCropModal';
-import { PET_ACCENTS } from '../utils/petLook';
 import { MORE_SPECIES, TILE_SPECIES, defaultTilesFor, getSpecies, type SpeciesKey } from '../utils/species';
 import './Onboarding.css';
 
-type StepId = 'welcome' | 'diary' | 'care' | 'family' | 'look' | 'species' | 'name' | 'notify' | 'install' | 'done';
+type StepId = 'welcome' | 'diary' | 'family' | 'species' | 'name' | 'notify' | 'install' | 'done';
 
-const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'care', 'family', 'look'];
+/** Three slides, no more: the app is shown in the time it takes to read the strongest line of each. */
+const INTRO_STEPS: StepId[] = ['welcome', 'diary', 'family'];
+/** The steps a reload may come back to. After the name the pet exists, and the steps that follow are not asked again. */
+const RESUMABLE_STEPS: StepId[] = [...INTRO_STEPS, 'species', 'name'];
+const STEP_KEY = 'petzy:onboardingStep';
 
 
 const MONTHS_NOMINATIVE = [
@@ -130,25 +131,25 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         'done',
       ];
 
-  // A reload in the middle of the introduction goes back to the slide the person was on, not to the first one.
+  // A reload goes back to the step the person was on (a slide, the species or the name), not to the first slide.
   const [index, setIndex] = useState(() => {
     if (replay) return 0;
     try {
-      const saved = Number(sessionStorage.getItem('petzy:onboardingStep'));
-      return Number.isInteger(saved) && saved > 0 && saved < INTRO_STEPS.length ? saved : 0;
+      return resumeIndex(steps, sessionStorage.getItem(STEP_KEY), RESUMABLE_STEPS);
     } catch {
       return 0;
     }
   });
+  const step = steps[Math.min(index, steps.length - 1)];
   useEffect(() => {
+    if (replay) return;
     try {
-      if (index > 0 && index < INTRO_STEPS.length) sessionStorage.setItem('petzy:onboardingStep', String(index));
-      else sessionStorage.removeItem('petzy:onboardingStep');
+      if (index > 0 && RESUMABLE_STEPS.includes(step)) sessionStorage.setItem(STEP_KEY, step);
+      else sessionStorage.removeItem(STEP_KEY);
     } catch {
       /* the step is not remembered: back to the first slide on a reload */
     }
-  }, [index]);
-  const step = steps[Math.min(index, steps.length - 1)];
+  }, [index, step, replay]);
 
   const [species, setSpecies] = useState<SpeciesKey | null>(() => readStepDraft().species);
   const [morePickerVisible, setMorePickerVisible] = useState(false);
@@ -226,7 +227,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     const dy = t.clientY - start.y;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
     if (dx < 0) {
-      if (step === 'look') finishIntro();
+      if (step === INTRO_STEPS[INTRO_STEPS.length - 1]) finishIntro();
       else next();
     } else {
       back();
@@ -302,7 +303,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       'aria-label': 'С вами поделятся питомцем?',
       content: (
         <div style={{ textAlign: 'center', lineHeight: 1.5 }}>
-          Попросите владельца открыть питомца и выбрать «Поделиться доступом»
+          Попросите владельца открыть питомца и нажать «Поделиться» на карточке питомца
           Ваш логин: <strong>{username}</strong>. Питомец появится у вас сам
         </div>
       ),
@@ -348,26 +349,14 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       break;
     case 'diary':
       art = <DiaryArt />;
-      title = 'Вся жизнь питомца в одной ленте';
-      lead = 'Кормление, вес и уход записываются в пару касаний, а лекарство отмечается одним нажатием «Дали сейчас»';
-      cta = ctaButton('Дальше', next);
-      break;
-    case 'care':
-      art = <CareArt />;
-      title = 'Напомнит о лекарствах и прививках';
-      lead = 'Напомним о лекарствах и прививках и сообщим, если вес или порция корма резко изменились';
+      title = 'Вся жизнь питомца в одной ленте';
+      lead = 'Кормление, вес и уход записываются в пару касаний, а лекарство отмечается одним нажатием «Дали сейчас». Напомним о лекарствах и прививках';
       cta = ctaButton('Дальше', next);
       break;
     case 'family':
       art = <FamilyArt />;
-      title = 'Медкарта для врача и семья рядом';
-      lead = 'Медкарта собирается сама из записей: покажите её на приёме или отдайте PDF. Близкие тоже видят записи';
-      cta = ctaButton('Дальше', next);
-      break;
-    case 'look':
-      art = <LookArt />;
-      title = 'Сделайте карточку по-своему';
-      lead = 'Цвет, рамка для фото, шрифт имени и фон ленты. Меняет владелец, видит вся семья';
+      title = 'Медкарта для врача и семья рядом';
+      lead = 'Медкарта собирается сама из записей: покажите её на приёме или отдайте PDF. Близкие тоже видят записи';
       cta = ctaButton(replay ? 'Понятно' : 'Добавить питомца', finishIntro);
       break;
     case 'species':
@@ -597,7 +586,9 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
       break;
   }
 
-  const progressSteps = steps.filter((s) => s !== 'done');
+  // The bar counts the steps up to the name, and no further: what follows the pet's creation (reminders, the iPhone hint)
+  // is an epilogue that may or may not exist, and a bar that grows a segment once the push check answers lies about its length.
+  const progressSteps = steps.filter((s) => RESUMABLE_STEPS.includes(s));
 
   return (
     <div className="onb" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -740,59 +731,6 @@ function NotificationMock({ title, body, delay, extra }: { title: string; body: 
       <div className="onb-notif__title">{title}</div>
       <div className="onb-notif__body">{body}</div>
       {extra}
-    </div>
-  );
-}
-
-function CareArt() {
-  return (
-    <div className="onb-stack" aria-hidden>
-      <NotificationMock delay={0} title="Пора дать лекарство" body="Синулокс, 08:00" />
-      <NotificationMock delay={160} title="Скоро прививка" body="Мурзик: Нобивак Rabies, через 10 дней" />
-      <span className="onb-chip onb-float" style={floatDelay(320)}>
-        <Pill size={14} strokeWidth={2.2} /> Осталось 12 таблеток
-      </span>
-    </div>
-  );
-}
-
-function LookArt() {
-  return (
-    <div className="onb-stack" aria-hidden>
-      <div className="onb-card onb-float" style={floatDelay(0)}>
-        <span className="onb-card__tile" style={{ background: 'var(--tile-pink)' }}>
-          <PawPrint size={20} strokeWidth={2.2} />
-        </span>
-        <span className="onb-card__body">
-          <span className="onb-card__title">Мурзик</span>
-          <span className="onb-card__meta">Хозяин дивана</span>
-        </span>
-        <span className="onb-chip">Сторис</span>
-      </div>
-      <div className="onb-card onb-float" style={floatDelay(150)}>
-        <span className="onb-card__tile" style={{ background: 'var(--tile-purple)' }}>
-          <Palette size={20} strokeWidth={2.2} />
-        </span>
-        <span className="onb-card__body">
-          <span className="onb-card__title">Цвет и фон экранов</span>
-          <span className="onb-card__meta">Свои для каждого питомца</span>
-        </span>
-        <span className="onb-avatars">
-          {PET_ACCENTS.filter((a) => ['sage', 'sky', 'rose'].includes(a.key)).map((a) => (
-            <span key={a.key} style={{ background: a.swatch }} />
-          ))}
-        </span>
-      </div>
-      <div className="onb-card onb-float" style={floatDelay(300)}>
-        <span className="onb-card__tile" style={{ background: 'var(--tile-yellow)' }}>
-          <Frame size={20} strokeWidth={2.2} />
-        </span>
-        <span className="onb-card__body">
-          <span className="onb-card__title">Рамка для фото</span>
-          <span className="onb-card__meta">Полароид, золото, сердце</span>
-        </span>
-        <span className="onb-chip">19 рамок</span>
-      </div>
     </div>
   );
 }
