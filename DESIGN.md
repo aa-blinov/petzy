@@ -259,7 +259,7 @@ One value per kind of gap, taken from the `--spacing-*` tokens, never a raw pixe
 
 | Between | Gap |
 |---|---|
-| Two full-width buttons, one under another | 12px (`md`) |
+| Two full-width buttons, one under another | 12px (`md`), also under a sticky main button (`.form-sticky-action` pads 8px itself, so `.form-actions` after it adds 4px) |
 | A button and a text-only button under it («Готово», «Вернуть набор») | 8px (`sm`); the text button's 44px target gives it the rest |
 | Cards, rows or tiles in a list | 12px (`md`) |
 | Chips, tiles or an icon and its label in a row | 8px (`sm`) |
