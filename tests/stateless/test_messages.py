@@ -74,3 +74,13 @@ def test_generic_errors_and_success_texts_are_in_the_dictionary():
     assert MESSAGES["pet_updated"].message == "Питомец сохранён"
     assert MESSAGES["push_subscribed"].message == "Напоминания включены"
     assert MESSAGES["user_password_reset"].message == "Пароль изменён"
+
+
+def test_no_user_text_says_event():
+    """The product says «запись» and «тип записи»: the word «событие» is retired from what people read."""
+    from web.errors import ERRORS
+    from web.messages import MESSAGES
+
+    texts = [e.message for e in ERRORS.values()] + [m.message for m in MESSAGES.values()]
+    assert texts
+    assert [t for t in texts if "событи" in t.lower()] == []
