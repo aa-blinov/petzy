@@ -1,4 +1,5 @@
-import { utcStampToLocal } from '../utils/dateUtils';
+import { stampToRu } from '../utils/recordStamp';
+import { isMissing } from '../utils/notFound';
 import { Fragment, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { isAxiosError } from 'axios';
 import { showToast } from '../utils/toast';
@@ -168,7 +169,7 @@ export function HealthRecordForm() {
   const [notFound, setNotFound] = useState(false);
   // Both flags are set together, so a failure after a missing record cannot leave «not found» on the screen.
   const markLoadFailed = (err: unknown) => {
-    const gone = isAxiosError(err) && err.response?.status === 404;
+    const gone = isMissing(err);
     setNotFound(gone);
     setLoadError(!gone);
   };
@@ -332,7 +333,7 @@ export function HealthRecordForm() {
           reset(normalizeData(data));
           setRecordPetId(data.pet_id || null);
           setRecordedBy(data.username ?? null);
-          setRecordedAt(typeof data.created_at === 'string' ? utcStampToLocal(data.created_at) : null);
+          setRecordedAt(typeof data.created_at === 'string' ? stampToRu(data.created_at) : null);
           setLoadError(false);
           setNotFound(false);
         } catch (err) {
@@ -363,7 +364,7 @@ export function HealthRecordForm() {
         reset(normalizeData(data));
         setRecordPetId(data.pet_id || null);
         setRecordedBy(data.username ?? null);
-        setRecordedAt(typeof data.created_at === 'string' ? utcStampToLocal(data.created_at) : null);
+        setRecordedAt(typeof data.created_at === 'string' ? stampToRu(data.created_at) : null);
       })
       .catch((err) => {
         console.error('Error loading record:', err);

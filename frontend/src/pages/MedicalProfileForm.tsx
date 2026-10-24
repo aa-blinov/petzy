@@ -15,7 +15,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { fieldNote } from '../components/FieldNote';
-import { httpStatus } from '../services/api';
+import { isPetGone } from '../utils/notFound';
 import { usePet } from '../hooks/usePet';
 import { useSessionDraft } from '../hooks/useSessionDraft';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
@@ -354,7 +354,7 @@ export function MedicalProfileForm() {
   if (query.isError) {
     // A pet that is gone and a screen that did not load are different: one asks the person to go back to the list,
     // the other to try once more.
-    const gone = [403, 404].includes(httpStatus(query.error) ?? 0);
+    const gone = isPetGone(query.error);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">

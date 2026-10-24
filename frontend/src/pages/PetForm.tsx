@@ -4,6 +4,7 @@ import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { isAxiosError } from 'axios';
+import { isMissing } from '../utils/notFound';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { usePet } from '../hooks/usePet';
@@ -470,7 +471,7 @@ export function PetForm() {
   }
   // An address of a pet that is not there, or not the person's: said so, not an empty form to fill in. A failed
   // request is not that: it never got an answer, so the screen offers to ask again.
-  const petGone = isAxiosError(petError) && petError.response?.status === 404;
+  const petGone = isMissing(petError);
   if (isEditing && !pet && petFailed && !petGone) {
     return (
       <div className="page-container">

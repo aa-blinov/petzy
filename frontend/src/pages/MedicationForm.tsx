@@ -18,7 +18,7 @@ import { Segmented } from '../components/Segmented';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
-import { isAxiosError } from 'axios';
+import { isMissing } from '../utils/notFound';
 import { Pill } from 'lucide-react';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
@@ -426,7 +426,7 @@ export function MedicationForm() {
     // message): the request answered and refused. That is now the only way to get here, so the
     // words are true. Before, the form looked for the course in the chosen pet's list and said
     // this about any course of another pet. A request that never got an answer is not that: it offers to ask again.
-    const medGone = isAxiosError(medErr) && medErr.response?.status === 404;
+    const medGone = isMissing(medErr);
     if (isEditing && !!id && !isLoadingMed && (medError || !med)) {
         if (medError && !medGone) {
             return (
