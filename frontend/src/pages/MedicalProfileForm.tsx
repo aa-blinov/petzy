@@ -27,6 +27,7 @@ import { confirmWithProgress } from '../utils/medicalReadiness';
 import { getApiErrorMessage } from '../utils/apiError';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import './MedicalCard.css';
+import './MedicalRecordForm.css';
 
 const currentYear = new Date().getFullYear();
 
@@ -378,8 +379,11 @@ export function MedicalProfileForm() {
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Данные для врача</h1>
           </div>
+          <p className="medrec__pet">
+            Питомец: <strong className="pet-name" style={{ color: 'var(--app-text-primary)' }}>{query.data.pet.name}</strong>
+          </p>
           <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Это видят все, у кого есть доступ к питомцу {query.data.pet.name}, и врач в PDF
+            Это видят все, у кого есть доступ к питомцу, и врач в PDF
           </p>
         </div>
 

@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { showSnackbar } from '../utils/snackbar';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
 import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
-import { parseRecordDate } from '../utils/relativeTime';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
@@ -39,6 +38,8 @@ import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
 import { takePendingDocumentFile } from '../utils/pendingDocumentFile';
 import { drawableImage } from '../utils/drawableImage';
+import { DatePickerField } from '../components/DatePickerField';
+import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
 
 const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -88,8 +89,6 @@ export function DocumentForm() {
   const queryClient = useQueryClient();
 
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
-  const [expiryPickerVisible, setExpiryPickerVisible] = useState(false);
-  const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
   // The file itself isn't a react-hook-form field — it's a one-shot pick:
   // the file a new document is made of, or, while editing, the file that
   // will replace the one the document has (null = keep it).
@@ -134,63 +133,14 @@ export function DocumentForm() {
   // useWatch (a proper subscribing hook) instead of methods.watch(name) —
   // the latter is what the React Compiler flags as an "incompatible
   // library" API and opts the whole component out of memoization for.
-  const expiresAtValue = useWatch({ control, name: 'expires_at' });
   const categoryValue = useWatch({ control, name: 'category' });
   const isImaging = categoryValue === 'imaging';
   // An archive goes straight to storage (up to 500 MB); photos and PDFs,
   // scans included, take the ordinary upload.
   const fileIsArchive = !!file && isScanFilename(file.name);
 
-  // Documents don't all expire on the same kind of schedule as a birth
-  // date (which only ever looks backward) — an already-expired policy
-  // can legitimately be logged for the record, and a fresh one can be
-  // valid many years out, so the year range runs a couple of years back
-  // and comfortably far forward instead of only backward like PetForm's.
-  const expiryDateColumns = useMemo(() => {
-    let month = new Date().getMonth();
-    let year = new Date().getFullYear();
-
-    if (internalPickerDate.length === 3) {
-      month = parseInt(internalPickerDate[1]);
-      year = parseInt(internalPickerDate[2]);
-    } else if (expiresAtValue) {
-      const d = parseRecordDate(expiresAtValue);
-      if (d) {
-        month = d.getMonth();
-        year = d.getFullYear();
-      }
-    }
-
-    const daysCount = new Date(year, month + 1, 0).getDate();
-    const days = Array.from({ length: daysCount }, (_, i) => ({
-      label: String(i + 1).padStart(2, '0'),
-      value: String(i + 1),
-    }));
-    const months = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-    ].map((m, i) => ({ label: m, value: String(i) }));
-    const currentYear = new Date().getFullYear();
-    // Mirrors the backend's own cap (web/schemas.py, validate_expires_at:
-    // max_future_days=3650) so the picker can't offer a date the server
-    // will then reject with a 422 at submit time. `new Date()` + setDate,
-    // not Date.now() — the compiler treats the latter as an impure call
-    // during render.
-    const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + 3650);
-    const maxYear = maxDate.getFullYear();
-    // `year` above already accounts for an existing document's own expiry
-    // year (possibly well in the past, e.g. an intentionally-kept expired
-    // record) — the range must stretch to include it, or the picker has no
-    // matching option and silently snaps to whatever it defaults to.
-    const minYearBound = Math.min(currentYear - 2, year);
-    const maxYearBound = Math.max(maxYear, year);
-    const years = Array.from({ length: maxYearBound - minYearBound + 1 }, (_, i) => {
-      const y = minYearBound + i;
-      return { label: String(y), value: String(y) };
-    });
-    return [days, months, years];
-  }, [internalPickerDate, expiresAtValue]);
+  // A typed date that is unfinished or impossible is not in the form's value: saving would keep the older one in silence.
+  const typedDates = useTypedDateProblems();
 
   const {
     data: document,
@@ -412,7 +362,7 @@ export function DocumentForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] });
-      showToast.success('Документ обновлён');
+      showToast.success('Документ сохранён');
       release();
       goBack(navigate, '/documents');
     },
@@ -442,12 +392,13 @@ export function DocumentForm() {
   // A missing file used to be reported by a toast, and only after every
   // other field had passed, so a user fixed one thing and hit the next.
   const submit = () => {
+    typedDates.refuse();
     const missingFile = !isEditing && !file ? (isImaging ? 'Выберите снимки: фото, PDF или архив' : scansEnabled ? 'Выберите фото, PDF или архив' : 'Выберите фото или PDF') : undefined;
     // A file that was refused on the pick keeps its reason here; «no file» is said only when there is none.
     setFileError((current) => (file ? undefined : current ?? missingFile));
     const fileErrors = missingFile ? { file: { type: 'required', message: missingFile } } : {};
     handleSubmit(
-      (data) => (missingFile ? onInvalidSubmit(fileErrors as FieldErrors) : onSubmit(data)),
+      (data) => (missingFile ? onInvalidSubmit(fileErrors as FieldErrors) : typedDates.blocked ? undefined : onSubmit(data)),
       (errors) => onInvalidSubmit({ ...errors, ...fileErrors } as FieldErrors),
     )();
   };
@@ -461,7 +412,7 @@ export function DocumentForm() {
     <div style={{ marginBottom: '16px', padding: '0 max(16px, env(safe-area-inset-left))' }}>
       <div className="screen-head">
         <h1 className="screen-title" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-          {isEditing ? 'Редактировать документ' : 'Новый документ'}
+          {isEditing ? 'Изменить документ' : 'Новый документ'}
         </h1>
       </div>
     </div>
@@ -772,90 +723,27 @@ export function DocumentForm() {
             <Controller
               name="expires_at"
               control={control}
-              render={({ field: { value, onChange } }) => {
-                const displayDate = value ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value) : '';
-                let pickerValue: string[] = [];
-                if (value) {
-                  const d = parseRecordDate(value);
-                  if (d) pickerValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
-                } else {
-                  const now = new Date();
-                  pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
-                }
-                return (
-                  <Form.Item
-                    label="Действует до"
-                    clickable
-                    arrow
-                    onClick={() => {
-                      setInternalPickerDate(pickerValue);
-                      setExpiryPickerVisible(true);
-                    }}
-                    extra={
-                      value && (
-                        // A plain click target, not a Button — the row
-                        // is already clickable to open the picker, and a
-                        // full-width Button here would visually compete
-                        // with that instead of reading as a small aside.
-                        <button
-                          type="button"
-                          aria-label="Убрать срок действия"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onChange('');
-                          }}
-                          style={{
-                            padding: '8px 0 8px 8px',
-                            border: 'none',
-                            background: 'none',
-                            color: 'var(--app-danger-text)',
-                            fontFamily: 'inherit',
-                            fontSize: 'var(--text-sm)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Убрать
-                        </button>
-                      )
-                    }
-                  >
-                    <PickerValue value={displayDate} placeholder="Не указано (например, для прививок и страховки)" />
-                    <Picker
-                      columns={expiryDateColumns}
-                      visible={expiryPickerVisible}
-                      onClose={() => setExpiryPickerVisible(false)}
-                      value={internalPickerDate.length ? internalPickerDate : pickerValue}
-                      onSelect={(val) => setInternalPickerDate(val as string[])}
-                      onConfirm={(val) => {
-                        const day = val[0];
-                        const month = parseInt(val[1] as string);
-                        const year = val[2];
-                        const monthStr = String(month + 1).padStart(2, '0');
-                        const dayStr = String(day).padStart(2, '0');
-                        onChange(`${year}-${monthStr}-${dayStr}`);
-                        setExpiryPickerVisible(false);
-                        setInternalPickerDate([]);
-                      }}
-                      cancelText="Отмена"
-                      confirmText="Готово"
-                    />
-                  </Form.Item>
-                );
-              }}
+              render={({ field }) => (
+                <DatePickerField
+                  label="Действует до"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  onTypedProblem={typedDates.report('expires_at')}
+                  refusals={typedDates.refusals}
+                  // The server takes a date up to ten years ahead (validate_expires_at); an expired one can be logged for the record.
+                  yearsBack={2}
+                  yearsForward={10}
+                  clearLabel="Убрать срок действия"
+                  placeholder="Не указано"
+                  description="Например, для прививок и страховки"
+                />
+              )}
             />
           </Form>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              marginTop: '24px',
-              paddingBottom: '24px',
-              marginLeft: '12px',
-              marginRight: '12px',
-            }}
-          >
+          {/* A long form: the main button stays above the tab bar, not three screens down. */}
+          <div className="form-sticky-action safe-area-padding">
             <button
               style={{ display: 'none' }}
               type="submit"
@@ -864,9 +752,11 @@ export function DocumentForm() {
                 submit();
               }}
             />
-            <SpinnerButton loading={isLoading} onClick={() => submit()} style={{ borderRadius: '12px', fontWeight: 500 }}>
+            <SpinnerButton loading={isLoading} onClick={() => submit()}>
               {isEditing ? 'Сохранить' : isUploading ? 'Загружаем…' : 'Добавить'}
             </SpinnerButton>
+          </div>
+          <div className="safe-area-padding form-actions" style={{ paddingBottom: 'var(--spacing-xl)' }}>
             <Button
               block
               size="large"

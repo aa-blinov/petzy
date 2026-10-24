@@ -1,0 +1,4 @@
+.required-mark {
+    color: var(--app-danger-text);
+    font-weight: 700;
+}

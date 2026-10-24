@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { drawableImage } from '../utils/drawableImage';
-import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { isAxiosError } from 'axios';
@@ -46,13 +45,17 @@ import { PetDeleteSummary } from '../components/PetDeleteSummary';
 import { showUndo } from '../utils/undo';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { fieldNote } from '../components/FieldNote';
-import { PickerValue } from '../components/PickerValue';
+import { FieldError } from '../components/FieldError';
+import { DatePickerField } from '../components/DatePickerField';
+import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
+import { notInFuture, FUTURE_DATE_MESSAGE } from '../utils/birthDate';
 
 const petSchema = z.object({
   name: z.string().trim().min(1, 'Введите имя питомца'),
   breed: z.string().optional(),
   species: z.string().optional(),
-  birth_date: z.string().optional(),
+  // A pet is not born in the future: said on the field, whether the date was wheeled to or typed.
+  birth_date: z.string().optional().refine((v) => notInFuture(v), FUTURE_DATE_MESSAGE),
   gender: z.string().optional(),
   is_neutered: z.boolean().optional(),
   health_notes: z.string().optional(),
@@ -79,14 +82,12 @@ export function PetForm() {
   const [fileList, setFileList] = useState<PetPhotoItem[]>([]);
   const [cropTarget, setCropTarget] = useState<{ src: string; filename: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [neuteredPickerVisible, setNeuteredPickerVisible] = useState(false);
   // A new pet starts with the few things it needs; the rest of the form opens on a tap (an existing pet shows all of it).
   const [showMore, setShowMore] = useState(false);
   // The pet just added: what its «+» starts with and what to do next, before leaving the form.
   const [addedPet, setAddedPet] = useState<Pet | null>(null);
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
-  const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
 
   // State for Image Viewer to avoid imperative ImageViewer.show()
   const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null }>({
@@ -102,7 +103,7 @@ export function PetForm() {
   const breedInputRef = useRef<InputRef>(null);
   const healthNotesInputRef = useRef<TextAreaRef>(null);
 
-  const { control, handleSubmit, reset, watch, getValues, formState: { isDirty } } = useForm<PetFormData>({
+  const { control, handleSubmit, reset, getValues, formState: { isDirty } } = useForm<PetFormData>({
     // onInvalidSubmit scrolls to and focuses the first error in page order;
     // RHF's own focus picked the first registered ref instead.
     // Validated when a field is left, and after that as it changes: an error
@@ -136,7 +137,6 @@ export function PetForm() {
   // results arrive, and it must not itself count as an unsaved change.
   const alreadyThereRef = useRef<string[]>([]);
 
-  const birthDateValue = watch('birth_date');
   // Fields that depend on the species and gender: what «Порода» is called,
   // and whether (and how) neutering is asked about.
   const speciesValue = useWatch({ control, name: 'species' });
@@ -206,43 +206,12 @@ export function PetForm() {
   // Нового питомца ещё нет: у такой формы своего питомца нет, и черновик адресован только пути /pets/new.
   useSessionDraft({ dirty: isDirty, petId: pet?._id ?? null, getValues, reset, ready: !isEditing || !!pet, release });
 
-  const dateColumns = useMemo(() => {
-    let month = new Date().getMonth();
-    let year = new Date().getFullYear();
-
-    if (internalPickerDate.length === 3) {
-      month = parseInt(internalPickerDate[1]);
-      year = parseInt(internalPickerDate[2]);
-    } else if (birthDateValue) {
-      // "YYYY-MM-DD" parsed by new Date() is UTC midnight; the local
-      // getters below would then report the previous day west of UTC.
-      const d = parseRecordDate(birthDateValue);
-      if (d) {
-        month = d.getMonth();
-        year = d.getFullYear();
-      }
-    }
-
-    // A pet is not born in the future: in the current month the wheel stops at today, so there is nothing
-    // to refuse afterwards. The same bound as the onboarding step and the same 50 years back.
-    const today = new Date();
-    const thisMonth = year === today.getFullYear() && month === today.getMonth();
-    const daysCount = thisMonth ? today.getDate() : new Date(year, month + 1, 0).getDate();
-    const days = Array.from({ length: daysCount }, (_, i) => ({
-      label: String(i + 1).padStart(2, '0'),
-      value: String(i + 1),
-    }));
-    const months = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-    ].map((m, i) => ({ label: m, value: String(i) }));
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 51 }, (_, i) => {
-      const y = currentYear - 50 + i;
-      return { label: String(y), value: String(y) };
-    });
-    return [days, months, years];
-  }, [internalPickerDate, birthDateValue]);
+  // A typed date that is unfinished or impossible is not in the form's value: saving would keep the older one in silence.
+  const typedDates = useTypedDateProblems();
+  const submit = () => {
+    typedDates.refuse();
+    void handleSubmit((values) => (typedDates.blocked ? undefined : onSubmit(values)), onInvalidSubmit)();
+  };
 
   // Looked up once typing pauses: only a whole login matches, so asking
   // after every letter would only flash «не найден» mid-word.
@@ -422,7 +391,7 @@ export function PetForm() {
       }
       // Leave at once; the toast lives on over the list.
       // An invitation has its own message with «Отменить»: a second one would take its place at once.
-      if (invited.length === 0) showToast.success('Питомец обновлён');
+      if (invited.length === 0) showToast.success('Питомец сохранён');
 
       // Who the server says already has the access is not a refusal to report, and
       // naming them is what tells the person why nobody needs an invitation.
@@ -512,7 +481,7 @@ export function PetForm() {
         }}>
           <div className="screen-head">
             <h1 className="screen-title" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {isEditing ? 'Редактировать питомца' : 'Добавить питомца'}
+              {isEditing ? 'Изменить питомца' : 'Новый питомец'}
             </h1>
           </div>
         </div>
@@ -681,7 +650,7 @@ export function PetForm() {
                     color: 'var(--adm-color-text-secondary)',
                     textAlign: 'center'
                   }}>
-                    Добавить
+                    Выбрать фото
                   </span>
                 </label>
               )}
@@ -724,63 +693,23 @@ export function PetForm() {
             <Controller
               name="birth_date"
               control={control}
-              render={({ field: { value, onChange } }) => {
-                let pickerValue: string[] = [];
-                if (value) {
-                  const d = parseRecordDate(value);
-                  if (d) {
-                    pickerValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
-                  }
-                } else {
-                  const now = new Date();
-                  pickerValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
-                }
-
-                const displayDate = value
-                  ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value)
-                  : '';
-                return (
-                  <Form.Item
-                    label="Дата рождения"
-                    clickable
-                    onClick={() => {
-                      setInternalPickerDate(pickerValue);
-                      setDatePickerVisible(true);
-                    }}
-                    arrow
-                  >
-                    <PickerValue id="birth_date" value={displayDate} placeholder="Выберите дату" />
-                    <Picker
-                      columns={dateColumns}
-                      visible={datePickerVisible}
-                      onClose={() => setDatePickerVisible(false)}
-                      value={internalPickerDate.length ? internalPickerDate : pickerValue}
-                      onSelect={(val) => setInternalPickerDate(val as string[])}
-                      onConfirm={(val) => {
-                        const day = val[0];
-                        const month = parseInt(val[1] as string);
-                        const year = val[2];
-                        const monthStr = String(month + 1).padStart(2, '0');
-                        const dayStr = String(day).padStart(2, '0');
-                        const picked = `${year}-${monthStr}-${dayStr}`;
-                        // The wheel offers the months still to come this year; a pet is not born in the future.
-                        const today = new Date();
-                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                        if (picked > todayStr) {
-                          showToast.info('Дата рождения не может быть позже сегодняшней');
-                          onChange(todayStr);
-                        } else {
-                          onChange(picked);
-                        }
-                        setDatePickerVisible(false);
-                        setInternalPickerDate([]);
-                      }}
-                      cancelText="Отмена"
-                      confirmText="Готово"
-                    />
-                  </Form.Item>
-                );
-              }}
+              render={({ field, fieldState: { error } }) => (
+                <DatePickerField
+                  id="birth_date"
+                  label="Дата рождения"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  onTypedProblem={typedDates.report('birth_date')}
+                  refusals={typedDates.refusals}
+                  // The same 50 years back as the onboarding step; a pet is not born in the future.
+                  yearsBack={50}
+                  yearsForward={0}
+                  clearLabel="Убрать дату рождения"
+                  placeholder="Не указано"
+                  description={error?.message ? <FieldError message={error.message} /> : undefined}
+                />
+              )}
             />
 
             <Controller
@@ -912,7 +841,7 @@ export function PetForm() {
                     setSearchResults([]);
                   }}
                 />
-                {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
+                {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск…</div>}
                 {/* Only an exact login matches (web/users.py), so say when none does. A search that failed says so. */}
                 {searchShown && searchFailed && (
                   <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
@@ -1044,29 +973,20 @@ export function PetForm() {
 
 
 
-          <div className="safe-area-padding" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--spacing-md)',
-            marginTop: 'var(--spacing-xl)',
-            paddingBottom: 'var(--spacing-xl)',
-          }}>
-            {!readOnly && (
-              <>
-                <button
-                  style={{ display: 'none' }}
-                  type="submit"
-                  onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
-                />
-                <SpinnerButton
-                  loading={loading}
-                  onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
-                  style={{ borderRadius: 'var(--radius-md)', fontWeight: 500 }}
-                >
-                  {isEditing ? 'Сохранить' : 'Добавить'}
-                </SpinnerButton>
-              </>
-            )}
+          {/* A long form: the main button stays above the tab bar, not three screens down. */}
+          {!readOnly && (
+            <div className="form-sticky-action safe-area-padding">
+              <button
+                style={{ display: 'none' }}
+                type="submit"
+                onClick={(e) => { e.preventDefault(); submit(); }}
+              />
+              <SpinnerButton loading={loading} onClick={submit}>
+                {isEditing ? 'Сохранить' : 'Добавить'}
+              </SpinnerButton>
+            </div>
+          )}
+          <div className="safe-area-padding form-actions" style={{ paddingBottom: 'var(--spacing-xl)' }}>
             <Button
               block
               size="large"

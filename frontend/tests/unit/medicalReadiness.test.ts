@@ -2,8 +2,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import type { MedicalCard, MedicalCardVaccination } from '../../src/services/medicalCard.service'
 import type { MedicalRecord } from '../../src/services/medicalRecords.service'
-import { getSnackbar } from '../../src/utils/snackbar'
-import { cardStatusLine, confirmWithProgress, listWords, missingReadiness, readinessChecks } from '../../src/utils/medicalReadiness'
+import { getSnackbar, runSnackbarAction } from '../../src/utils/snackbar'
+import { cardStatusLine, confirmWithProgress, listWords, missingReadiness, progressMessage, readinessChecks } from '../../src/utils/medicalReadiness'
 
 const get = vi.fn()
 vi.mock('../../src/services/medicalCard.service', () => ({
@@ -230,5 +230,52 @@ describe('confirmWithProgress', () => {
     get.mockRejectedValue(new Error('сервер не ответил'))
     await confirmWithProgress(new QueryClient(), 'p1', 'Прививка добавлена')
     expect(getSnackbar()?.message).toBe('Прививка добавлена')
+  })
+})
+
+describe('progressMessage', () => {
+  it('говорит, сколько заполнено, когда запись это изменила', () => {
+    expect(progressMessage('Запись добавлена', 3, 5, 2)).toBe('Запись добавлена. Заполнено 3 из 5')
+  })
+
+  it('молчит о счёте, когда запись его не изменила', () => {
+    expect(progressMessage('Запись добавлена', 2, 5, 2)).toBe('Запись добавлена')
+  })
+
+  it('говорит, что главное заполнено, когда запись закрыла последнее', () => {
+    expect(progressMessage('Запись добавлена', 5, 5, 4)).toBe('Запись добавлена. Главное для врача заполнено')
+  })
+
+  it('без счёта до записи говорит как раньше', () => {
+    expect(progressMessage('Запись добавлена', 2, 5)).toBe('Запись добавлена. Заполнено 2 из 5')
+  })
+})
+
+describe('confirmWithProgress, «Отменить» и «Ещё одну»', () => {
+  it('счёт не повторяется, когда он не изменился', async () => {
+    get.mockResolvedValue(card({ record_counts: { vaccination: 2, parasite: 0, visit: 0, procedure: 0 } }))
+    await confirmWithProgress(new QueryClient(), 'p1', 'Запись добавлена', undefined, { before: 1 })
+    expect(getSnackbar()?.message).toBe('Запись добавлена')
+  })
+
+  it('рядом с «Ещё одну» стоит «Отменить», и он забирает запись обратно', async () => {
+    get.mockResolvedValue(card())
+    const undo = vi.fn().mockResolvedValue(undefined)
+    const again = vi.fn()
+    await confirmWithProgress(new QueryClient(), 'p1', 'Запись добавлена', { label: 'Ещё одну', run: again }, { before: 0, undo })
+    const bar = getSnackbar()!
+    expect(bar.action?.label).toBe('Ещё одну')
+    expect(bar.secondaryAction?.label).toBe('Отменить')
+    await runSnackbarAction(bar.id, 'secondary')
+    expect(undo).toHaveBeenCalledTimes(1)
+    expect(again).not.toHaveBeenCalled()
+  })
+
+  it('без «Ещё одну» «Отменить» один на строке', async () => {
+    get.mockResolvedValue(card())
+    await confirmWithProgress(new QueryClient(), 'p1', 'Запись добавлена', undefined, { undo: async () => undefined })
+    const bar = getSnackbar()!
+    expect(bar.action?.label).toBe('Отменить')
+    expect(bar.secondaryAction).toBeUndefined()
   })
 })

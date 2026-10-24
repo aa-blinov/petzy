@@ -90,11 +90,6 @@
     cursor: pointer;
 }
 
-.medrec__required {
-    color: var(--app-danger-text);
-    font-weight: 700;
-}
-
 .medrec__pet {
     /* 4px, the gap the spacing table gives a title and the line it is about. */
     margin: var(--spacing-xs) 0 0;

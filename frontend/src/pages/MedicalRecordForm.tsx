@@ -46,7 +46,7 @@ import { showToast } from '../utils/toast';
 import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
 import { weightOfDay } from '../utils/visitWeight';
 import { isMissing, isPetGone } from '../utils/notFound';
-import { confirmWithProgress } from '../utils/medicalReadiness';
+import { confirmWithProgress, readinessChecks } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileHeart, FileText, X } from 'lucide-react';
 import { DownOutline, UpOutline } from 'antd-mobile-icons';
@@ -54,6 +54,7 @@ import './MedicalRecordForm.css';
 // The rows of the card itself: the kind picker and the «От чего» fallback read like the card they belong to.
 import './MedicalCard.css';
 import { ChoiceChip } from '../components/ChoiceChips';
+import { RequiredLabel } from '../components/RequiredLabel';
 
 /** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -109,9 +110,17 @@ function StagedRow({ item, onRemove }: { item: StagedFile; onRemove: () => void 
 const KINDS: MedicalKind[] = ['vaccination', 'parasite', 'visit', 'procedure'];
 const isKind = (v: string | null): v is MedicalKind => !!v && (KINDS as string[]).includes(v);
 
-const schema = z
+/** What the empty name asks for, by what is being written down. */
+const TITLE_REQUIRED: Record<MedicalKind, string> = {
+  vaccination: 'Выберите вакцину',
+  parasite: 'Выберите препарат',
+  visit: 'Выберите повод визита',
+  procedure: 'Выберите процедуру',
+};
+
+const buildSchema = (kind: MedicalKind | null) => z
   .object({
-    title: z.string().trim().min(1, 'Заполните это поле').max(100),
+    title: z.string().trim().min(1, kind ? TITLE_REQUIRED[kind] : 'Выберите').max(100),
     date: z.string().min(1, 'Укажите дату'),
     next_due: z.string().optional(),
     target: z.string().optional(),
@@ -135,7 +144,7 @@ const schema = z
     }
   });
 
-type FormData = z.infer<typeof schema>;
+type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 /** The date field is named for what it dates: a visit is not «сделано». */
 const DATE_LABELS: Partial<Record<MedicalKind, string>> = {
@@ -144,16 +153,6 @@ const DATE_LABELS: Partial<Record<MedicalKind, string>> = {
   visit: 'Дата визита',
   procedure: 'Дата операции',
 };
-
-/** A label of a field that must be filled in: a red star the screen readers skip (the field itself says it is required). */
-function RequiredLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      {children}
-      <span className="medrec__required" aria-hidden="true"> *</span>
-    </>
-  );
-}
 
 const left = { style: { '--text-align': 'left' } as React.CSSProperties };
 
@@ -245,6 +244,7 @@ export function MedicalRecordForm() {
   const repeating = kind === 'vaccination' || kind === 'parasite';
 
   const today = getCurrentDate();
+  const schema = useMemo(() => buildSchema(kind), [kind]);
   const { control, handleSubmit, reset, setValue, getValues, formState: { isDirty, isSubmitting } } = useForm<FormData>({
     mode: 'onTouched',
     shouldFocusError: false,
@@ -542,9 +542,10 @@ export function MedicalRecordForm() {
         }
         input.document_ids.push(id);
       }
+      let createdId: string | undefined;
       if (isEditing) await medicalRecordsService.update(recordId!, input);
       else {
-        await medicalRecordsService.create(petId!, kind!, input, formKey.current);
+        createdId = await medicalRecordsService.create(petId!, kind!, input, formKey.current);
         // Saved: the next record from this same screen («Ещё одну») is a new request, even with the same words.
         formKey.current = newFormKey();
       }
@@ -572,8 +573,9 @@ export function MedicalRecordForm() {
           showToast.failure('Визит сохранён, а вес не записался. Добавьте его в ленте');
         }
       }
+      return createdId;
     },
-    onSuccess: (_result, saved) => {
+    onSuccess: (createdId, saved) => {
       if (weightSaved.current) {
         queryClient.invalidateQueries({
           predicate: (query) => ['timeline', 'history-timeline', 'stats', 'pet-summary'].includes(query.queryKey[0] as string),
@@ -588,7 +590,26 @@ export function MedicalRecordForm() {
         const again = new URLSearchParams({ kind: kind!, date: saved.date });
         if (saved.clinic?.trim()) again.set('clinic', saved.clinic.trim());
         if (saved.vet?.trim()) again.set('vet', saved.vet.trim());
-        void confirmWithProgress(queryClient, petId!, 'Запись добавлена', repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined);
+        // «Отменить» takes the record just added back (a stray tap, the wrong kind); the count of the card is said only when this save moved it.
+        const before = card.data ? readinessChecks(card.data).filter((c) => c.done).length : undefined;
+        void confirmWithProgress(
+          queryClient,
+          petId!,
+          'Запись добавлена',
+          repeating ? { label: 'Ещё одну', run: () => navigate(`/pets/${petId}/medical-records/new?${again.toString()}`) } : undefined,
+          {
+            before,
+            undo: createdId
+              ? async () => {
+                  await medicalRecordsService.delete(createdId);
+                  await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ['medical-card', petId] }),
+                    queryClient.invalidateQueries({ queryKey: ['documents', petId] }),
+                  ]);
+                }
+              : undefined,
+          },
+        );
       }
       release();
       goBack(navigate, cardPath);
@@ -625,7 +646,7 @@ export function MedicalRecordForm() {
   const onSubmit = (data: FormData) => {
     if (typedDates.blocked) return;
     if (kind === 'parasite' && !data.target) {
-      setTargetError('Укажите, от чего обработка');
+      setTargetError('Выберите, от чего обработка');
       return;
     }
     save.mutate(data);
@@ -668,7 +689,7 @@ export function MedicalRecordForm() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <EmptyState icon={FileText} title="Не выбрано, что записать" description="Выберите вид записи, и откроется форма" />
+          <EmptyState icon={FileText} title="Что записать?" description="Выберите вид записи, и откроется форма" />
           <ul className="medcard__list">
             {KINDS.map((k) => (
               <li key={k} className="medcard__row" style={{ padding: 0 }}>
@@ -691,10 +712,14 @@ export function MedicalRecordForm() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {isEditing ? labels!.one : fromId ? (kind === 'parasite' ? 'Повторная обработка' : 'Повторная прививка') : `Новая запись: ${labels!.one.toLowerCase()}`}
+              {isEditing ? `Изменить запись: ${labels!.one.toLowerCase()}` : fromId ? (kind === 'parasite' ? 'Повторная обработка' : 'Повторная прививка') : `Новая запись: ${labels!.one.toLowerCase()}`}
             </h1>
           </div>
-          {pet && <p className="medrec__pet">{pet.name}</p>}
+          {pet && (
+            <p className="medrec__pet">
+              Питомец: <strong className="pet-name" style={{ color: 'var(--app-text-primary)' }}>{pet.name}</strong>
+            </p>
+          )}
         </div>
 
         <Form layout="vertical" mode="card">
@@ -830,7 +855,7 @@ export function MedicalRecordForm() {
                     refusals={typedDates.refusals}
                     yearsBack={0}
                     yearsForward={10}
-                    placeholder="Повтор не нужен"
+                    placeholder="Без повтора"
                     chips={<>
                       <ChoiceChip
                         pressed={!nextDue}
@@ -880,7 +905,7 @@ export function MedicalRecordForm() {
                 name="complaint"
                 control={control}
                 render={({ field }) => (
-                  <Form.Item label="С чем пришли" layout="vertical" description={fieldNote({ value: field.value, max: 500 })}>
+                  <Form.Item label="Жалобы" layout="vertical" description={fieldNote({ value: field.value, max: 500 })}>
                     <TextArea value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={500} rows={2} autoSize={{ minRows: 2, maxRows: 6 }} />
                   </Form.Item>
                 )}
@@ -919,7 +944,7 @@ export function MedicalRecordForm() {
                   name="weight"
                   control={control}
                   render={({ field, fieldState }) => (
-                    <Form.Item label="Вес, кг" description={fieldState.error ? <FieldError message={fieldState.error.message} /> : weightThatDay !== undefined ? `За этот день вес уже записан: ${formatAmount(weightThatDay)} кг. Запишется ещё одно взвешивание` : 'Если взвешивали, запишется и в вес питомца'}>
+                    <Form.Item label="Вес (кг)" description={fieldState.error ? <FieldError message={fieldState.error.message} /> : weightThatDay !== undefined ? `За этот день вес уже записан: ${formatAmount(weightThatDay)} кг. Запишется ещё одно взвешивание` : 'Если взвешивали, запишется и в вес питомца'}>
                       <Input {...left} type="text" inputMode="decimal" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={6} />
                     </Form.Item>
                   )}
@@ -1153,7 +1178,7 @@ export function MedicalRecordForm() {
             </>
           )}
           <Button block color="primary" size="large" style={{ marginTop: 'var(--spacing-md)' }} onClick={() => setDocsOpen(false)}>
-            Готово
+            Выбрать
           </Button>
         </DraggableSheetBody>
       </Popup>

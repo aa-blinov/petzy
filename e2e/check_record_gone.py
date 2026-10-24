@@ -41,7 +41,7 @@ async def main():
             await pg.goto(BASE + "/form/weight")
             await settle(pg)
             await pg.get_by_label("Вес (кг)").fill("10,5")
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
             items = (await api(pg, "GET", f"/events?pet_id={pid}&type=weight"))["json"]["items"]
             rid = items[0]["_id"] if items else None

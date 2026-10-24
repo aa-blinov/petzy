@@ -50,7 +50,7 @@ async def main():
             await settle(pg, 150)
             check("the «+» opens the feed's weight form", pg.url.endswith("/form/weight"), pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
             events = (await api(pg, "GET", f"/events?pet_id={pid}&type=weight"))["json"]
             rows = events.get("events") or events.get("items") or []
