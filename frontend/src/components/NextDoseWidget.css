@@ -1,0 +1,18 @@
+/* The quiet steps under the main «Дали сейчас» of the dose card: text, not a second button. */
+.dose-card__link {
+    align-self: center;
+    min-height: var(--touch-min);
+    padding: 0 var(--spacing-md);
+    border: none;
+    background: none;
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dose-card__link:disabled {
+    color: var(--app-text-secondary);
+    cursor: default;
+}
