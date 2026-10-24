@@ -37,7 +37,7 @@ const ORIGINAL: BuiltinEvent[] = ['feeding', 'weight', 'defecation', 'litter', '
 
 /**
  * What a new pet starts with: a handful that matter from the first day, in the order they are most often needed, so that the
- * «+» is not a wall on the first look. Everything else is one tap away in the pet's events («Добавить событие»), where the
+ * «+» is not a wall on the first look. Everything else is one tap away in the pet's record types («Добавить тип записи»), where the
  * ones that suit its kind of animal come first (SUGGESTED).
  */
 const STARTER: Record<SpeciesKey, BuiltinEvent[]> = {

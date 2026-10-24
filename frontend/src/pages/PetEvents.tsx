@@ -1,9 +1,9 @@
 /**
- * «События питомца»: which records the pet's «+» offers and in what order. The one place for it, and it is the pet's own:
+ * «Типы записей питомца»: which records the pet's «+» offers and in what order. The one place for it, and it is the pet's own:
  * a litter tray for a cat, a water change for a fish.
  *
  * The list is what is on the «+», in its order, with a handle to drag and a cross to take one off. The rest of the catalogue
- * is not a wall of switches but a sheet to pick from («Добавить событие»), searched and grouped, with what suits this kind of
+ * is not a wall of switches but a sheet to pick from («Добавить тип записи»), searched and grouped, with what suits this kind of
  * animal first. Every change is saved at once, as it is made.
  */
 import { createElement, useMemo, useState } from 'react';
@@ -145,8 +145,8 @@ export function PetEvents() {
 
   const resetToKind = async () => {
     const sure = await Dialog.confirm({
-      'aria-label': 'Вернуть набор событий?',
-      content: `Вернуть набор событий для ${species.forWhom}? Порядок и состав станут такими, какими были у нового питомца`,
+      'aria-label': 'Вернуть набор типов записей?',
+      content: `Вернуть набор типов записей для ${species.forWhom}? Порядок и состав станут такими, какими были у нового питомца`,
       confirmText: 'Вернуть',
       cancelText: 'Оставить',
     });
@@ -166,7 +166,7 @@ export function PetEvents() {
       <div className="max-width-container">
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
-            <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>События питомца</h1>
+            <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Типы записей питомца</h1>
           </div>
           {getSelectedPet && (
             <>
@@ -185,14 +185,14 @@ export function PetEvents() {
         {petsLoading ? (
           <LoadingSpinner />
         ) : petsError ? (
-          <LoadError what="события питомца" onRetry={() => void refetchPets()} />
+          <LoadError what="типы записей питомца" onRetry={() => void refetchPets()} />
         ) : !selectedPetId ? (
-          <EmptyState icon={LayoutGrid} title="Сначала выберите питомца" description="События настраиваются отдельно для каждого питомца" actionLabel="К питомцам" onAction={() => navigate('/pets')} />
+          <EmptyState icon={LayoutGrid} title="Сначала выберите питомца" description="Типы записей настраиваются отдельно для каждого питомца" actionLabel="К питомцам" onAction={() => navigate('/pets')} />
         ) : (
           <div style={{ padding: '0 var(--spacing-md)' }}>
             {readOnly && (
               <p role="note" style={{ margin: '0 0 var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
-                События меняет владелец питомца
+                Типы записей меняет владелец питомца
               </p>
             )}
             <div {...(readOnly ? { inert: '' } : {})} style={readOnly ? { opacity: 0.7 } : undefined}>
@@ -201,7 +201,7 @@ export function PetEvents() {
               </h2>
               <div className="card-soft" style={{ overflow: 'hidden' }}>
                 {shown.length === 0 ? (
-                  <p style={{ margin: 0, padding: 16, color: 'var(--app-text-secondary)' }}>Пока ничего. Добавьте события, которые вы записываете чаще всего</p>
+                  <p style={{ margin: 0, padding: 16, color: 'var(--app-text-secondary)' }}>Пока ничего. Добавьте типы записей, которые вы добавляете чаще всего</p>
                 ) : (
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={shownKeys} strategy={verticalListSortingStrategy}>
@@ -222,7 +222,7 @@ export function PetEvents() {
                 style={{ width: '100%', minHeight: 'var(--btn-height)', marginTop: 'var(--spacing-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 'var(--radius-md)', border: '1px solid var(--app-primary-fill)', background: 'var(--app-primary-fill, var(--app-accent))', color: 'var(--app-text-on-dark)', fontFamily: 'inherit', fontSize: 'var(--text-md)', fontWeight: 500, cursor: 'pointer' }}
               >
                 <Plus size={18} strokeWidth={2.4} aria-hidden />
-                Добавить событие
+                Добавить тип записи
               </button>
 
               <button
