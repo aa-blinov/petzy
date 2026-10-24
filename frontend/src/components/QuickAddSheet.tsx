@@ -11,7 +11,7 @@
  */
 
 import { Popup, Grid } from 'antd-mobile';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { buildTiles, byTileOrder, isTileShown } from '../utils/tilesConfig';
@@ -40,51 +40,20 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
     buildTiles(eventTypes).filter((t) => t.isTile !== false && isTileShown(tilesSettings, t.id)),
     tilesSettings,
   );
+  // The types this pet does not show as tiles: a one-off record of one of them is logged from here, without adding the type to
+  // the pet first.
+  const others = buildTiles(eventTypes).filter((t) => t.isTile !== false && !isTileShown(tilesSettings, t.id));
+  const [othersOpen, setOthersOpen] = useState(false);
+  const isOwner = getSelectedPet?.current_user_is_owner !== false;
+  // The list of the others closes with the sheet: the next opening starts with the pet's own tiles.
+  const close = () => {
+    setOthersOpen(false);
+    onClose();
+  };
 
-  return (
-    <Popup
-      visible={visible}
-      onMaskClick={onClose}
-      position="bottom"
-      closeOnSwipe
-      bodyStyle={{ background: 'transparent' }}
-    >
-      {/* Sized to its tiles; many event types scroll inside, same cap as
-          HistoryFilterSheet. */}
-      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh" label="Что записать?">
-
-        {/* Title */}
-        <h2
-          className="section-header"
-          style={{
-            marginBottom: 'var(--spacing-lg)',
-            paddingLeft: 4,
-            fontSize: '1.125rem',
-          }}
-        >
-          Что записать?
-        </h2>
-
-        {tiles.length === 0 && (
-          // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
-          <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
-            <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте события питомца</p>
-            <button
-              type="button"
-              className="touch-target"
-              style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
-              onClick={() => {
-                onClose();
-                navigate('/pet-events');
-              }}
-            >
-              Добавить события
-            </button>
-          </div>
-        )}
-
+  const renderTiles = (list: typeof tiles) => (
         <Grid columns={2} gap={12}>
-          {tiles.map(tile => {
+          {list.map(tile => {
             const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
             const Icon = displayConfigs[tile.id]?.icon;
             return (
@@ -93,7 +62,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                   type="button"
                   onClick={() => {
                     hapticFeedback('light');
-                    onClose();
+                    close();
                     navigate(`/form/${tile.id}`);
                   }}
                   style={{
@@ -151,19 +120,84 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
             );
           })}
         </Grid>
+  );
 
-        {/* A new pet starts with a few events; the rest of the catalogue is one tap from here, for whoever may change them. */}
-        {tiles.length > 0 && getSelectedPet?.current_user_is_owner !== false && (
+  return (
+    <Popup
+      visible={visible}
+      onMaskClick={close}
+      position="bottom"
+      closeOnSwipe
+      bodyStyle={{ background: 'transparent' }}
+    >
+      {/* Sized to its tiles; many event types scroll inside, same cap as
+          HistoryFilterSheet. */}
+      <DraggableSheetBody visible={visible} onClose={close} maxHeight="75vh" label="Что записать?">
+
+        {/* Title */}
+        <h2
+          className="section-header"
+          style={{
+            marginBottom: 'var(--spacing-lg)',
+            paddingLeft: 4,
+            fontSize: '1.125rem',
+          }}
+        >
+          Что записать?
+        </h2>
+
+        {tiles.length === 0 && (
+          // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
+          <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
+            <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте события питомца</p>
+            <button
+              type="button"
+              className="touch-target"
+              style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+              onClick={() => {
+                close();
+                navigate('/pet-events');
+              }}
+            >
+              Добавить события
+            </button>
+          </div>
+        )}
+
+        {renderTiles(tiles)}
+
+        {/* A new pet starts with a few events; the rest of the catalogue is here, one tap from a record, for whoever may log. */}
+        {tiles.length > 0 && others.length > 0 && !othersOpen && (
+          <button
+            type="button"
+            className="tap-feedback"
+            aria-expanded={false}
+            onClick={() => setOthersOpen(true)}
+            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+          >
+            Другие события
+          </button>
+        )}
+        {(othersOpen || (tiles.length === 0 && others.length > 0)) && (
+          <>
+            <h3 className="section-header" style={{ margin: 'var(--spacing-lg) 0 var(--spacing-sm)', paddingLeft: 4, fontSize: 'var(--text-md)' }}>
+              Другие события
+            </h3>
+            {renderTiles(others)}
+          </>
+        )}
+        {/* Which events stay in this window is the owner's to change. */}
+        {tiles.length > 0 && isOwner && (
           <button
             type="button"
             className="tap-feedback"
             onClick={() => {
-              onClose();
+              close();
               navigate('/pet-events');
             }}
             style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
           >
-            Другие события
+            Настроить события питомца
           </button>
         )}
       </DraggableSheetBody>

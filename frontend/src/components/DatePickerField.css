@@ -1,0 +1,27 @@
+/* DatePickerField with a label beside its value (a horizontal form): the hint under the value spans the whole row instead
+   of the narrow column of the value, which wrapped it to a few letters a line. */
+.datefield .adm-form-item-horizontal > .adm-list-item-content {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+.datefield .adm-form-item-horizontal .adm-list-item-content-main {
+    display: contents;
+}
+.datefield .adm-form-item-horizontal .adm-list-item-content-prefix {
+    grid-column: 1;
+    grid-row: 1;
+}
+.datefield .adm-form-item-horizontal .adm-form-item-child {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+}
+.datefield .adm-form-item-horizontal .adm-list-item-content-arrow {
+    grid-column: 3;
+    grid-row: 1;
+}
+.datefield .adm-form-item-horizontal .adm-list-item-description {
+    grid-column: 1 / -1;
+    grid-row: 2;
+}
