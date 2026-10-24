@@ -14,6 +14,10 @@ from web.errors import error_response
 
 T = TypeVar("T", bound=BaseModel)
 
+# The fields of a multipart form that carry an object or a list (JSON text), by name. Every other value is text, even one
+# that looks like JSON: a pet named «[1]» or a document titled «[2025]» is that name, not a list.
+STRUCTURED_FORM_FIELDS = frozenset({"tiles_settings"})
+
 
 def validate_request_data(
     request: Request, model_class: Type[T], context: str = ""
@@ -49,7 +53,11 @@ def validate_request_data(
             data_dict = request.form.to_dict()
             # Parse JSON strings in form data (e.g., tiles_settings)
             for key, value in data_dict.items():
-                if isinstance(value, str) and (value.startswith("{") or value.startswith("[")):
+                if (
+                    key in STRUCTURED_FORM_FIELDS
+                    and isinstance(value, str)
+                    and (value.startswith("{") or value.startswith("["))
+                ):
                     try:
                         data_dict[key] = strict_json.loads(value)
                     except (json.JSONDecodeError, ValueError):
@@ -85,17 +93,17 @@ def validate_request_data(
         return None, error_response("validation_error", str(e))
 
 
-def form_value(values: list):
+def form_value(values: list, key: str = ""):
     """One field of a multipart form as the model should get it.
 
     The library that validates the request read every single value as JSON (``json.loads``), so a pet named «7», a document
     titled «2025» or a note of «true» or «null» arrived as a number, a boolean or nothing and was refused with a generic
-    message. Text stays text; only what is plainly an object or a list («{…}», «[…]», the tiles of a pet) is decoded.
+    message. Text stays text; only a field declared as an object or a list (``STRUCTURED_FORM_FIELDS``, the tiles of a pet) is decoded.
     """
     if len(values) != 1:
         return values
     value = values[0]
-    if isinstance(value, str) and value.startswith(("{", "[")):
+    if key in STRUCTURED_FORM_FIELDS and isinstance(value, str) and value.startswith(("{", "[")):
         try:
             return strict_json.loads(value)
         except (json.JSONDecodeError, ValueError):
@@ -105,7 +113,7 @@ def form_value(values: list):
 
 def parse_multi_dict_as_text(input) -> dict:
     """``flask_pydantic_spec.utils.parse_multi_dict`` with text left as text (see ``form_value``)."""
-    return {key: form_value(values) for key, values in input.to_dict(flat=False).items()}
+    return {key: form_value(values, key) for key, values in input.to_dict(flat=False).items()}
 
 
 def keep_form_text_as_text() -> None:

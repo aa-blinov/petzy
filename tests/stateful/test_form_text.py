@@ -25,7 +25,9 @@ def _post_pet(client, token, **fields):
 
 @pytest.mark.health
 class TestPetsNamedLikeNumbers:
-    @pytest.mark.parametrize("name", ["7", "123", "1.5", "1e3", "true", "null", "007", "2025"])
+    @pytest.mark.parametrize(
+        "name", ["7", "123", "1.5", "1e3", "true", "null", "007", "2025", "[1]", "{}", '["x"]', "[2025]", "{a}"]
+    )
     def test_the_name_is_kept_as_it_was_typed(self, client, mock_db, regular_user_token, name):
         response = _post_pet(client, regular_user_token, name=name)
         assert response.status_code == 201, response.get_json()
@@ -48,7 +50,7 @@ class TestPetsNamedLikeNumbers:
 
 @pytest.mark.documents
 class TestDocumentsTitledLikeNumbers:
-    @pytest.mark.parametrize("title", ["2025", "7", "1.5", "true", "null"])
+    @pytest.mark.parametrize("title", ["2025", "7", "1.5", "true", "null", "[2025]", "[1]", "{}", '["x"]'])
     def test_the_title_and_the_note_are_kept_as_typed(
         self, client, mock_db, regular_user_token, test_pet, s3_storage, title
     ):
