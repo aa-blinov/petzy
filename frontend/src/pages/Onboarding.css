@@ -46,7 +46,9 @@
 .onb__top {
     position: relative;
     display: grid;
-    grid-template-columns: 44px 1fr 88px;
+    /* The two outer columns take what their buttons need, never less than a touch target: «Пропустить» sits in its own
+       column, so it cannot lie over the end of the bar (a fixed 88px column did when the text was wider). */
+    grid-template-columns: var(--touch-min) minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-lg) 0;
@@ -108,7 +110,9 @@
     justify-self: end;
     border: none;
     background: transparent;
+    min-height: var(--touch-min);
     padding: 8px 4px;
+    white-space: nowrap;
     color: var(--app-text-secondary);
     font-family: var(--font-display);
     font-size: var(--text-sm);

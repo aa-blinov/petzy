@@ -20,6 +20,13 @@ export function dismissOnboarding(username: string | null): void {
 }
 
 
+/** Where a reload of the onboarding comes back to: the saved step if it is one of those that can be resumed and is in this
+ *  flow, otherwise the first one. */
+export function resumeIndex(steps: readonly string[], saved: string | null, resumable: readonly string[]): number {
+  const at = saved ? steps.indexOf(saved) : -1;
+  return at > 0 && resumable.includes(steps[at]) ? at : 0;
+}
+
 /** The person has had a pet in their list on this device. One who has none now, after that, was not sent away to
  *  «learn the app» again: the owner closed the access, or the pet was deleted, and onboarding would explain nothing. */
 const hadKey = (username: string | null) => `petzy:hadPets:${username ?? ''}`;
