@@ -30,7 +30,6 @@ import { hapticFeedback } from '../utils/haptic';
 import { INTAKE_UNDO_MS, formatAmount, isAmountDraft, parseAmount, stockSummary } from '../utils/stock';
 import { refreshAfterIntake, refreshMedicationViews } from '../utils/intakeViews';
 import { showUndo } from '../utils/undo';
-import { CardChevron } from '../components/CardChevron';
 import { SwipeableRow } from '../components/SwipeableRow';
 import { IntakeTimePicker } from '../components/IntakeTimePicker';
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
@@ -56,8 +55,11 @@ function todayProgress(med: Medication): string {
     const now = formatTime(new Date());
     const missed = open.filter((t) => t <= now);
     const next = open.find((t) => t > now);
+    // More doses than the schedule has (a vet said so, a missed one made up): said, not hidden behind «1 из 1».
+    const extra = open.length === 0 ? (med.intakes_today ?? 0) - total : 0;
     return [
         `Сегодня ${total - open.length} из ${total}`,
+        extra > 0 ? `ещё приёмов: ${extra}` : '',
         missed.length > 0 ? `не отмечено в ${missed.join(', ')}` : '',
         next ? `дальше в ${next}` : '',
     ]
@@ -239,7 +241,7 @@ export function MedicationsList() {
             }
             await refresh();
             showUndo({
-                message: ended ? `Курс «${med.name}» возобновлён` : `Курс «${med.name}» завершён`,
+                message: ended ? `${med.name}: курс возобновлён` : `${med.name}: курс завершён`,
                 onUndo: async () => {
                     await medicationsService.update(med._id, ended ? { is_active: false, ended_on: med.ended_on ?? getCurrentDate() } : { is_active: true, ended_on: med.ended_on ?? '' });
                     await refresh();
@@ -375,7 +377,7 @@ export function MedicationsList() {
     }, [restockId, otherPetCourse.data]);
     useEffect(() => {
         if (!restockId || !otherPetCourse.isError) return;
-        showToast.failure(getApiErrorMessage(otherPetCourse.error, 'Не удалось открыть курс'));
+        showToast.failure(getApiErrorMessage(otherPetCourse.error, 'Не удалось открыть лекарство'));
         clearRestockLink();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [restockId, otherPetCourse.isError]);
@@ -481,6 +483,14 @@ export function MedicationsList() {
                             <SwipeableRow
                                 key={med._id}
                                 itemLabel={med.name}
+                                // The kebab is on every touch screen: ending a course lives in this menu, not on the card.
+                                menuVisible
+                                menuTop
+                                extraActions={
+                                    (med.course_status ? med.course_status !== 'planned' : true)
+                                        ? [{ label: isEnded(med) ? 'Возобновить курс' : 'Завершить курс', onTrigger: () => void toggleCourse(med) }]
+                                        : []
+                                }
                                 leftAction={{
                                     icon: <Pencil size={20} strokeWidth={2.4} />,
                                     label: 'Изменить',
@@ -632,7 +642,8 @@ export function MedicationsList() {
                                     </div>
                                     {/* Centred on the details, not the whole card: beside the
                                         «Отметить приём» button it would read as the button's. */}
-                                    <CardChevron />
+                                    {/* The room of the actions button in the corner, where the chevron stood */}
+                                    <span aria-hidden style={{ width: 32, flexShrink: 0, alignSelf: 'stretch' }} />
                                     </div>
                                     {/* The stock is the width of the whole card, like the buttons below it: «Пополнить» ends where «Дали сейчас» does,
                                         not at the chevron's column. */}
@@ -726,16 +737,6 @@ export function MedicationsList() {
                                                         Ещё приём
                                                     </button>
                                                 )}
-                                                {(med.course_status ? med.course_status !== 'planned' : true) && (
-                                                    <button
-                                                        type="button"
-                                                        className="med-card__aside touch-target"
-                                                        onClick={() => void toggleCourse(med)}
-                                                        aria-label={`${(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить' : 'Завершить'} курс: ${med.name}`}
-                                                    >
-                                                        {(med.course_status ? med.course_status === 'ended' : !med.is_active) ? 'Возобновить курс' : 'Завершить курс'}
-                                                    </button>
-                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -745,7 +746,7 @@ export function MedicationsList() {
                         ))}
                         {!needle && endedCount > 0 && endedCount < orderedMedications.length && (
                             <Button block fill="none" onClick={() => setShowEnded((v) => !v)} aria-expanded={showEnded} style={{ color: 'var(--app-text-secondary)' }}>
-                                {showEnded ? 'Скрыть завершённые' : `Завершённые курсы: ${endedCount}`}
+                                {showEnded ? 'Скрыть завершённые' : `Завершённые: ${endedCount}`}
                             </Button>
                         )}
                     </div>
@@ -801,7 +802,6 @@ export function MedicationsList() {
                                     </ChoiceChip>
                                 )}
                                 {[
-                                    { label: '15 минут назад', when: () => minutesAgo(15) },
                                     { label: 'Час назад', when: () => minutesAgo(60) },
                                     { label: 'Вчера вечером', when: yesterdayEvening },
                                 ].map((ago) => (

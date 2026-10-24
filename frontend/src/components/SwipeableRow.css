@@ -160,6 +160,12 @@
     transition: opacity var(--motion-duration-instant) linear;
 }
 
+/* A tall card: the button stands in the top right corner, clear of the buttons that close the card. */
+.swipeable-row--menu-top .swipeable-row__menu {
+    top: 4px;
+    transform: none;
+}
+
 /* It stays put while the row slides, so it steps aside meanwhile. */
 .swipeable-row--menu-visible.swipeable-row--revealed .swipeable-row__menu {
     opacity: 0;
