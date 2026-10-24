@@ -69,7 +69,7 @@ export function missingReadiness(card: MedicalCard): string[] {
   return readinessChecks(card).filter((c) => !c.done).map((c) => c.label.toLowerCase());
 }
 
-/** «аллергии, прививки и вес»: one line that reads as a list, without «·» between the parts. */
+/** «аллергии, прививки и вес»: one line that reads as a list, with no dot between the parts. */
 export function listWords(items: string[]): string {
   if (items.length <= 1) return items[0] ?? '';
   if (items.length === 2) return `${items[0]} и ${items[1]}`;

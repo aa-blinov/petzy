@@ -841,7 +841,7 @@ export function PetForm() {
                     setSearchResults([]);
                   }}
                 />
-                {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск...</div>}
+                {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск…</div>}
                 {/* Only an exact login matches (web/users.py), so say when none does. A search that failed says so. */}
                 {searchShown && searchFailed && (
                   <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
