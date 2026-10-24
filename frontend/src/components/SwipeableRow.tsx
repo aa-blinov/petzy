@@ -30,6 +30,12 @@ interface SwipeableRowProps {
   /** Show the actions button to everyone, not only keyboard users: for
       rows whose tap opens something other than the edit form. */
   menuVisible?: boolean;
+  /** The button stands in the row's top right corner instead of its middle: for a tall card whose bottom holds
+      full-width buttons that the middle would cover. */
+  menuTop?: boolean;
+  /** Further actions of the menu between «Изменить» and the destructive one, with no swipe of their own
+      (ending a course). */
+  extraActions?: { label: string; onTrigger: () => void }[];
 }
 
 /**
@@ -46,7 +52,7 @@ interface SwipeableRowProps {
  * Uses the `useSwipeableRow` hook for touch tracking. CSS handles the
  * translation so it stays on the compositor (no re-renders per frame).
  */
-export function SwipeableRow({ leftAction, rightAction, children, disabled, itemLabel, openAction, menuVisible }: SwipeableRowProps) {
+export function SwipeableRow({ leftAction, rightAction, children, disabled, itemLabel, openAction, menuVisible, menuTop, extraActions }: SwipeableRowProps) {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const handleLeft = () => {
     hapticFeedback('medium');
@@ -64,6 +70,7 @@ export function SwipeableRow({ leftAction, rightAction, children, disabled, item
   const menuActions = [
     openAction && { key: 'open', text: openAction.label, onClick: openAction.onTrigger },
     leftAction && { key: 'left', text: leftAction.label, onClick: leftAction.onTrigger },
+    ...(extraActions ?? []).map((a, i) => ({ key: `extra-${i}`, text: a.label, onClick: a.onTrigger })),
     rightAction && {
       key: 'right',
       text: rightAction.label,
@@ -117,6 +124,7 @@ export function SwipeableRow({ leftAction, rightAction, children, disabled, item
         // position, so nothing underneath can peek out on a press.
         offset !== 0 ? 'swipeable-row--revealed' : '',
         menuVisible ? 'swipeable-row--menu-visible' : '',
+        menuTop ? 'swipeable-row--menu-top' : '',
       ].filter(Boolean).join(' ')}
     >
       {/* Action layers — sit behind the row, fixed to the row's edges. */}
