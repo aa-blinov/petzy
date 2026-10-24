@@ -171,6 +171,22 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
 
         {renderTiles(tiles)}
 
+        {/* The clinical records (a vaccination, a treatment, a visit) are part of the pet's life too, and the diary's window is where a
+            person looks first: one door to their own chooser, the medical card's records, not another tile among the diary's. */}
+        {selectedPetId && (
+          <button
+            type="button"
+            className="tap-feedback"
+            onClick={() => {
+              close();
+              navigate(`/pets/${selectedPetId}/medical-records/new`);
+            }}
+            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
+          >
+            Прививка, визит или обработка
+          </button>
+        )}
+
         {/* A new pet starts with a few events; the rest of the catalogue is here, one tap from a record, for whoever may log. */}
         {tiles.length > 0 && others.length > 0 && !othersOpen && (
           <button
