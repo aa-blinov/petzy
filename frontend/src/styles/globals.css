@@ -290,14 +290,6 @@ main#main-content {
     background: var(--pet-scene-bg, var(--app-page-background));
 }
 
-/* A document on a plain desk. The medical card is a record: it is read, not looked at, and the
-   pattern of the feed under it only makes the sheet harder to read. The scene is set inline on
-   <body> (components/PetLookTheme.tsx), so the plain ground has to be marked important to win
-   over it: the chosen pet may change under the card, and the theme sets the scene again then. */
-body[data-plain-ground] {
-    --pet-scene-bg: var(--app-page-background) !important;
-}
-
 .page-container {
     min-height: var(--app-vh);
     padding-top: var(--page-padding-top);
@@ -2579,6 +2571,25 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
     position: static;
 }
 
+
+/* A date, its choices and the date typed in are one block: the lines between them go, and the block has one edge. Two such blocks that
+   belong together (a date and the repeat date, the start and the end of a course) sit in one `.datepair`. */
+.datefield-group > .adm-list-item,
+.datefield-group > .datefield + .adm-list-item {
+    border-top: none;
+}
+.datefield-group > .datefield > .adm-list-item {
+    border-top: none;
+}
+.datepair {
+    margin: var(--spacing-sm) 0;
+    border: 1px solid var(--app-divider-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.datepair > .datefield-group + .datefield-group {
+    border-top: 1px solid var(--app-divider-color);
+}
 
 /* DatePickerField: the row that opens the picker, and «Убрать» laid over its right edge, outside the row's own button. */
 .datefield {

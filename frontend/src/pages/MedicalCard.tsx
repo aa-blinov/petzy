@@ -9,7 +9,6 @@ import { CardDocument } from './MedicalCardDocument';
 import { medicalCardQuery, medicalCardService } from '../services/medicalCard.service';
 import { readinessChecks } from '../utils/medicalReadiness';
 import { useHiddenRecords } from '../utils/deferredDelete';
-import { usePlainGround } from '../utils/plainGround';
 import { usePet } from '../hooks/usePet';
 import { LoadError } from '../components/LoadError';
 import { EmptyState } from '../components/EmptyState';
@@ -34,8 +33,6 @@ const EMPTY_HANDOVER_COOWNER = 'Карта почти пуста. Заполни
  * of the owner in its head.
  */
 export function MedicalCard() {
-  // The card is a record, not a scene: the pet's pattern gives way to a plain ground while it is open.
-  usePlainGround();
   const { id, section } = useParams<{ id: string; section?: string }>();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
