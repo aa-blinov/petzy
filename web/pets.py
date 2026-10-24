@@ -55,6 +55,7 @@ from web.offline import (
     deleted_by_id_answer,
     deleted_by_local_id_answer,
     is_stale,
+    next_stamp,
     record_version,
     require_local_record_access,
     version_guard,
@@ -574,7 +575,7 @@ def _update_pet(pet: dict, username: str):
         if not update_data:
             return error_response("validation_error_no_update_data")
 
-        update_data["updated_at"] = now_utc()
+        update_data["updated_at"] = next_stamp(pet)
         update = {"$set": update_data}
         if photo_changed:
             update["$unset"] = {"look.crops": ""}
