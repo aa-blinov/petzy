@@ -12,6 +12,7 @@ import { hapticFeedback } from '../utils/haptic';
 import { goBack } from '../utils/navigation';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { deletionSummary } from '../utils/accountDeletion';
 
 /** The push subscription dies with the account on the server; drop this
     browser's copy too, so it doesn't sit there subscribed to nothing. */
@@ -114,11 +115,7 @@ export function AccountDelete() {
   const keepsRecords = !!preview && (preview.transferred.length > 0 || preview.left.length > 0);
   // What the confirmation says, in the words of the plan above it: pets
   // gone with their records, pets handed over, access ended.
-  const summary = preview
-    ? `Удалятся: ${preview.deleted.length ? preview.deleted.map(p => `«${p.name}»`).join(', ') : 'ничьи питомцы'}, вместе с записями, лекарствами и документами. ` +
-      (preview.transferred.length ? `Перейдут другим: ${preview.transferred.map(p => `«${p.name}»`).join(', ')}. ` : '') +
-      (preview.left.length ? `Пропадёт доступ к ${preview.left.length} питомцам других людей.` : '')
-    : '';
+  const summary = preview ? deletionSummary(preview) : '';
 
   return (
     <div className="page-container">
@@ -170,24 +167,36 @@ export function AccountDelete() {
 
           {preview?.can_delete && (
             <>
-              <p style={{ color: 'var(--app-text-color)', marginTop: 'var(--spacing-md)', marginBottom: 0 }}>
+              <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)', lineHeight: 1.5, marginTop: 'var(--spacing-md)', marginBottom: 0 }}>
                 Аккаунт {username} удалится насовсем, восстановить его не получится
               </p>
 
               <PetGroup
-                title="Удалятся"
-                note="Их больше никто не ведёт, поэтому они удалятся вместе с записями, лекарствами и документами"
+                title={preview.deleted.length === 1 ? 'Удалится' : 'Удалятся'}
+                note={
+                  preview.deleted.length === 1
+                    ? 'Его больше никто не ведёт, поэтому он удалится вместе с записями, лекарствами и документами'
+                    : 'Их больше никто не ведёт, поэтому они удалятся вместе с записями, лекарствами и документами'
+                }
                 pets={preview.deleted}
               />
               <PetGroup
-                title="Перейдут другим"
-                note="Вы делились ими, поэтому они останутся со всей историей у того, кому вы дали доступ первым"
+                title={preview.transferred.length === 1 ? 'Перейдёт другому' : 'Перейдут другим'}
+                note={
+                  preview.transferred.length === 1
+                    ? 'Вы делились им, поэтому он останется со всей историей у того, кому вы дали доступ первым'
+                    : 'Вы делились ими, поэтому они останутся со всей историей у того, кому вы дали доступ первым'
+                }
                 pets={preview.transferred}
                 detail={pet => `Владельцем станет ${pet.new_owner}`}
               />
               <PetGroup
                 title="Пропадёт доступ"
-                note="Этими питомцами делятся с вами. У владельцев они останутся"
+                note={
+                  preview.left.length === 1
+                    ? 'Этим питомцем делятся с вами. У владельца он останется'
+                    : 'Этими питомцами делятся с вами. У владельцев они останутся'
+                }
                 pets={preview.left}
                 detail={pet => `Питомец ${pet.owner}`}
               />

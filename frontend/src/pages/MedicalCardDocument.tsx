@@ -756,7 +756,8 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
     <div className="medcard medcard--document">
       <Passport pet={card.pet} weight={weight} chip={card.profile.chip_number ?? null} bloodType={card.profile.blood_type ?? null} canCopy={owner} />
 
-      {firstTime && (
+      {/* The doctor's copy is a record, not a coaching text: the hints for the owner are not on it. */}
+      {firstTime && !shared && (
         <p className="medcard__lead">
           Это то, что врач спросит на приёме, в том порядке, в каком спрашивает
           {owner ? '. Чтобы записать своё, нажмите «+» в нужном блоке' : ''}
@@ -803,7 +804,8 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
 
       <AttentionZone items={items} canAct={canAct} shared={!!shared} petId={petId} />
 
-      <ReadinessBlock card={card} petId={petId} canAct={canAct} navigate={navigate} />
+      {/* How far the owner is from a complete card is the owner's business: the doctor opens a copy, not a task list. */}
+      {!shared && <ReadinessBlock card={card} petId={petId} canAct={canAct} navigate={navigate} />}
 
       {/* What could harm comes first: allergies and conditions are read before anything else on the card. */}
       <DocSection
@@ -811,7 +813,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
         title="Здоровье и аллергии"
         links={owner ? [{ label: hasRisks ? 'Изменить' : 'Заполнить', onClick: () => navigate(`${profileTo}?section=allergies`) }] : undefined}
       >
-        <RisksBlock card={card} />
+        <RisksBlock card={card} shared={!!shared} />
       </DocSection>
 
       <DocSection
@@ -824,7 +826,9 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
             <PrepRows prep={card.visit_prep} />
           </ul>
         ) : (
-          <p className="medcard__empty">Что беспокоит и что изменилось: врач увидит это первой строкой</p>
+          <p className="medcard__empty">
+            {shared ? 'Не заполнено' : 'Что беспокоит и что изменилось: врач увидит это первой строкой'}
+          </p>
         )}
       </DocSection>
 
@@ -867,7 +871,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
         links={weight && weight.series.length > 1 ? [{ label: 'Все замеры', onClick: () => setWeightSheet(true) }] : undefined}
       >
         {!weight ? (
-          <p className="medcard__empty">Вес не записан. Врач считает по нему дозы</p>
+          <p className="medcard__empty">{shared ? 'Вес не записан' : 'Вес не записан. Врач считает по нему дозы'}</p>
         ) : (
           <div className="medcard__weight">
             <div className="medcard__weight-now">
@@ -1007,7 +1011,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
         add={owner ? { label: 'клинику и врачей', onClick: () => navigate(`${profileTo}?section=clinic`) } : undefined}
       >
         {card.profile.clinics.length === 0 ? (
-          <p className="medcard__empty">Клиника не указана. Её телефон врач увидит в карте</p>
+          <p className="medcard__empty">{shared ? 'Клиника не указана' : 'Клиника не указана. Её телефон врач увидит в карте'}</p>
         ) : (
           <ul className="medcard__list">
             {card.profile.clinics.map((c, i) => (
@@ -1028,7 +1032,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
             <LifeRows profile={card.profile} />
           </ul>
         ) : (
-          <p className="medcard__empty">Чем кормят и где живёт: помогает врачу, когда причина не ясна</p>
+          <p className="medcard__empty">{shared ? 'Не заполнено' : 'Чем кормят и где живёт: помогает врачу, когда причина не ясна'}</p>
         )}
       </DocSection>
 
@@ -1050,7 +1054,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
 }
 
 /** Allergies, chronic conditions and the notes: what a vet asks first. */
-function RisksBlock({ card }: { card: Card }) {
+function RisksBlock({ card, shared }: { card: Card; shared: boolean }) {
   const { profile, pet } = card;
   const hasAllergies = profile.allergies.length > 0;
   const filled = hasAllergies || profile.allergies_none_known || profile.conditions.length > 0 || !!pet.health_notes;
@@ -1059,7 +1063,11 @@ function RisksBlock({ card }: { card: Card }) {
     <div className={`medcard__risks${filled ? '' : ' medcard__risks--empty'}${calm ? ' medcard__risks--calm' : ''}`}>
       <ShieldAlert className="medcard__risks-icon" size={22} strokeWidth={2} aria-hidden />
       <div className="medcard__risks-body">
-        {!filled && <p className="medcard__risks-text">Не указаны. Аллергии и особенности здоровья врач спросит первыми</p>}
+        {!filled && (
+          <p className="medcard__risks-text">
+            {shared ? 'Не указаны' : 'Не указаны. Аллергии и особенности здоровья врач спросит первыми'}
+          </p>
+        )}
         {!hasAllergies && !profile.allergies_none_known && pet.health_notes && (
           <div className="medcard__fact">
             <span className="medcard__fact-label">Аллергии</span>
