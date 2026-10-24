@@ -128,7 +128,7 @@ def test_a_call_without_a_request_uses_the_stdio_token():
             },
             "POST",
             "/api/events",
-            "Записывать события",
+            "Добавлять записи",
         ),
         ("get_history", {"pet_id": PET_ID}, "GET", "/api/history/timeline", "Читать ленту и историю"),
         ("get_medical_card", {"pet_id": PET_ID}, "GET", f"/api/pets/{PET_ID}/medical-card", "Читать медкарту"),
