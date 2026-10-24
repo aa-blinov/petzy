@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
 import { beginSignOut, clearApiCaches, clearLocalAuthState, resetSessionExpired } from '../services/api';
-import { unsubscribeBeforeSignOut } from '../utils/pushNotifications';
+import { currentPushEndpoint, unsubscribeBeforeSignOut } from '../utils/pushNotifications';
 import { SESSION_QUERY_KEY, useSession } from './useSession';
 import type { LoginRequest, RegisterRequest } from '../services/auth.service';
 
@@ -97,13 +97,16 @@ export function useAuth() {
     beginSignOut();
     // This browser leaves push first, while the session can still make the request: the logout below ends that
     // session, and the server no longer knows who is asking. Best effort, so it never holds the sign-out up for long.
+    // Its address is read first: the logout below names it, so the server drops the subscription even if the wait for the
+    // browser to unsubscribe runs out.
+    const pushEndpoint = await currentPushEndpoint();
     await unsubscribeBeforeSignOut();
     try {
       // Tell the backend to revoke the refresh_token and clear the
       // httpOnly cookies. Must happen before we clear local state —
       // if the request fails (network, server down) we still want
       // the user to land on /login so the local session is gone.
-      await authService.logout({ everywhere });
+      await authService.logout({ everywhere, pushEndpoint });
     } catch (error) {
       // Don't block the user on a backend hiccup — the local
       // queryClient + storage cleanup below is what really matters

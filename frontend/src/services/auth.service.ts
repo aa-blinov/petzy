@@ -104,13 +104,19 @@ export const authService = {
     return response.data;
   },
 
-  async logout(options: { everywhere?: boolean } = {}): Promise<void> {
+  async logout(options: { everywhere?: boolean; pushEndpoint?: string } = {}): Promise<void> {
     // Tell the backend to invalidate the refresh_token row in
     // MongoDB and clear the httpOnly cookies. Without this call the
     // tokens remain valid until the TTL expires — a security issue
     // (stolen cookies stay usable after "logout") and a UX issue (a
     // re-login right after logout can re-use the old refresh_token).
     // Without `everywhere` the backend ends this device's sign-in only; with it, every device's.
-    await api.post('/auth/logout', options.everywhere ? { everywhere: true } : undefined);
+    // `pushEndpoint` names this browser's reminders subscription: the server drops that row with the sign-in, even when the
+    // browser could not be taken off push in time.
+    const body = {
+      ...(options.everywhere ? { everywhere: true } : {}),
+      ...(options.pushEndpoint ? { push_endpoint: options.pushEndpoint } : {}),
+    };
+    await api.post('/auth/logout', Object.keys(body).length ? body : undefined);
   }
 };
