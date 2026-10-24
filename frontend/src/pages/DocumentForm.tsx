@@ -25,7 +25,7 @@ import {
   isUploadCancelled,
   type DocumentCategory,
 } from '../services/documents.service';
-import { httpStatus } from '../services/api';
+import { isMissing } from '../utils/notFound';
 import { deviceTimeZone } from '../utils/timezone';
 import { formatFileSize } from '../utils/fileSize';
 import { usePet } from '../hooks/usePet';
@@ -470,7 +470,7 @@ export function DocumentForm() {
   // Without the document the form would open empty, and «Сохранить» would write an empty note and expiry over the saved
   // ones. So the form is not drawn at all: the screen says what happened and offers a way on.
   if (isEditing && !document) {
-    const gone = httpStatus(documentError) === 404;
+    const gone = isMissing(documentError);
     return (
       <div style={PAGE_STYLE}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
