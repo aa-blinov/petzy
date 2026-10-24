@@ -69,11 +69,11 @@ def _enrich_medication_names(_record: dict, records: list[dict]) -> None:
     if not med_ids:
         return
     meds = {
-        str(m["_id"]): m.get("name", "Unknown")
+        str(m["_id"]): m.get("name", "Неизвестный курс")
         for m in app.db.medications.find({"_id": {"$in": [ObjectId(mid) for mid in med_ids]}})
     }
     for r in records:
-        r["medication_name"] = meds.get(r.get("medication_id"), "Unknown")
+        r["medication_name"] = meds.get(r.get("medication_id"), "Неизвестный курс")
         if r.get("skipped"):
             r["dose_taken"] = "пропущен"
 

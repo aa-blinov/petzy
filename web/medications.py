@@ -1000,7 +1000,7 @@ def get_medication_intakes():
 
         for i in intakes:
             i["_id"] = str(i["_id"])
-            i["medication_name"] = meds.get(i["medication_id"], "Unknown")
+            i["medication_name"] = meds.get(i["medication_id"], "Неизвестный курс")
             # What the answer to a repeated mark remembers, not part of the mark.
             i.pop("ran_out", None)
             if isinstance(i.get("date_time"), datetime):

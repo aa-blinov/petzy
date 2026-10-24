@@ -164,14 +164,30 @@ class TestRepeatsAreMerged:
             ("Дисплазия", None, None),
         ]
 
-    def test_the_joined_reaction_stays_within_its_length(self, client, mock_db, regular_user_token, test_pet):
+    def test_a_joined_reaction_that_would_not_fit_is_refused_not_cut(
+        self, client, mock_db, regular_user_token, test_pet
+    ):
         body = {
             **FULL,
             "allergies": [{"substance": "Корм", "reaction": "а" * 150}, {"substance": "корм", "reaction": "б" * 150}],
         }
+        assert _put(client, regular_user_token, test_pet, body).status_code == 422
+
+    def test_a_joined_reaction_that_fits_is_kept_whole(self, client, mock_db, regular_user_token, test_pet):
+        body = {
+            **FULL,
+            "allergies": [{"substance": "Корм", "reaction": "а" * 90}, {"substance": "корм", "reaction": "б" * 90}],
+        }
         assert _put(client, regular_user_token, test_pet, body).status_code == 200
         reaction = _card(client, regular_user_token, test_pet)["profile"]["allergies"][0]["reaction"]
-        assert len(reaction) <= 200 and reaction.startswith("а" * 150)
+        assert reaction == "а" * 90 + ", " + "б" * 90
+
+    def test_joined_condition_notes_over_the_limit_are_refused(self, client, mock_db, regular_user_token, test_pet):
+        body = {
+            **FULL,
+            "conditions": [{"name": "Гастрит", "note": "а" * 200}, {"name": "гастрит", "note": "б" * 200}],
+        }
+        assert _put(client, regular_user_token, test_pet, body).status_code == 422
 
     def test_different_allergens_are_all_kept(self, client, mock_db, regular_user_token, test_pet):
         body = {**FULL, "allergies": [{"substance": "Курица"}, {"substance": "Курица в соусе"}, {"substance": "Рыба"}]}

@@ -1109,7 +1109,8 @@ def _same_text(value: str) -> str:
 
 
 def _joined(parts: List[Optional[str]], separator: str, limit: int) -> Optional[str]:
-    """The distinct non-empty parts in order, cut to the field's length (never cut in the middle of the join's own text)."""
+    """The distinct non-empty parts in order. Longer than the field allows is refused: cutting it would lose, without a
+    word, what the person wrote about an allergy or a condition."""
     seen: set = set()
     kept: List[str] = []
     for part in parts:
@@ -1120,7 +1121,11 @@ def _joined(parts: List[Optional[str]], separator: str, limit: int) -> Optional[
             seen.add(key)
             kept.append(part)
     text = separator.join(kept)
-    return text[:limit] or None
+    if len(text) > limit:
+        raise ValueError(
+            f"Записи об одном и том же вместе длиннее {limit} знаков: сократите текст или оставьте одну запись"
+        )
+    return text or None
 
 
 def _merged_allergies(items: List["Allergy"]) -> List["Allergy"]:
@@ -2363,9 +2368,21 @@ class HealthStatsResponse(BaseModel):
 # ============================================================================
 
 
+# More doses than this a day is not a schedule a person follows (a dose every hour round the clock).
+MAX_DOSE_TIMES_PER_DAY = 24
+
+
 class MedicationSchedule(BaseModel):
-    days: List[int] = Field(..., description="Дни недели (0-6, где 0 - Пн, 6 - Вс)")
-    times: List[str] = Field(..., description="Время приема (HH:mm)")
+    days: List[Annotated[int, Field(ge=0, le=6, strict=True)]] = Field(
+        ..., max_length=14, description="Дни недели (0-6, где 0 - Пн, 6 - Вс), каждый один раз"
+    )
+    times: List[str] = Field(..., max_length=MAX_DOSE_TIMES_PER_DAY, description="Время приема (HH:mm), не больше 24")
+
+    @field_validator("days")
+    @classmethod
+    def days_are_weekdays_without_repeats(cls, v):
+        """A day given twice is one day: the stock estimate and the due slots count each weekday once."""
+        return sorted(set(v))
 
     @field_validator("times")
     @classmethod
@@ -2447,6 +2464,27 @@ class UpcomingDosesQuery(PetIdQuery):
     )
 
 
+def _course_name(value):
+    """A course name is one line without the spaces around it; «   » names nothing."""
+    if value is None:
+        return value
+    value = " ".join(value.split())
+    if not value:
+        raise ValueError("Название не может быть пустым")
+    return value
+
+
+def _stock_within_total(total, current):
+    if total is not None and current is not None and current > total:
+        raise ValueError("Остаток не может быть больше всего в упаковке")
+
+
+def _schedule_names_days(schedule, as_needed):
+    """Times with no weekday at all would never be due, and the estimate of the stock would be off."""
+    if schedule is not None and schedule.times and not schedule.days and not as_needed:
+        raise ValueError("Выберите дни недели для приёма по расписанию")
+
+
 class MedicationCreate(PetIdQuery):
     name: str = Field(..., max_length=100)
     type: str = Field(..., max_length=50, description="Ингаляция, Таблетка, Капли и т.д.")
@@ -2483,6 +2521,11 @@ class MedicationCreate(PetIdQuery):
     def validate_default_dose(cls, v):
         return _dose_above_zero(v)
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        return _course_name(v)
+
     @field_validator("started_on", "ended_on")
     @classmethod
     def validate_course_dates(cls, v):
@@ -2492,6 +2535,8 @@ class MedicationCreate(PetIdQuery):
     def validate_course_order(self):
         if self.started_on and self.ended_on and self.ended_on < self.started_on:
             raise ValueError("Окончание курса раньше его начала")
+        _stock_within_total(self.inventory_total, self.inventory_current)
+        _schedule_names_days(self.schedule, self.as_needed)
         return self
 
     model_config = ConfigDict(
@@ -2542,6 +2587,11 @@ class MedicationUpdate(BaseModel):
     def validate_default_dose(cls, v):
         return _dose_above_zero(v)
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        return _course_name(v)
+
     @field_validator("started_on", "ended_on")
     @classmethod
     def validate_course_dates(cls, v):
@@ -2551,6 +2601,8 @@ class MedicationUpdate(BaseModel):
     def validate_course_order(self):
         if self.started_on and self.ended_on and self.ended_on < self.started_on:
             raise ValueError("Окончание курса раньше его начала")
+        _stock_within_total(self.inventory_total, self.inventory_current)
+        _schedule_names_days(self.schedule, self.as_needed)
         return self
 
     model_config = ConfigDict(
@@ -3403,7 +3455,8 @@ class MedicalRecordBody(BaseModel):
     @field_validator("title", mode="before")
     @classmethod
     def strip_title(cls, v):
-        return v.strip() if isinstance(v, str) else v
+        # A title is one line, like every other name: a line break or a run of spaces inside is one space.
+        return " ".join(v.split()) if isinstance(v, str) else v
 
     @field_validator(
         "clinic",
