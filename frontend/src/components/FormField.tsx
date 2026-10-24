@@ -140,7 +140,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
 
               return (
                 <>
-                  <PickerValue id={field.name} value={displayDate} placeholder="Выберите дату" />
+                  <PickerValue id={field.name} value={displayDate} placeholder="Выберите" />
                   <Picker
                     columns={dateColumns(value)}
                     visible={datePickerVisible}
@@ -181,7 +181,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
 
               return (
                 <>
-                  <PickerValue id={field.name} value={displayTime} placeholder="Выберите время" />
+                  <PickerValue id={field.name} value={displayTime} placeholder="Выберите" />
                   <Picker
                     columns={getTimeColumns(currentDateForTime, currentTimeSelection)}
                     visible={pickerVisible}
@@ -232,7 +232,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
               const selectedOption = options.find(opt => String(opt.value) === String(value));
               return (
                 <>
-                  <PickerValue id={field.name} value={selectedOption?.label} placeholder="Выберите..." />
+                  <PickerValue id={field.name} value={selectedOption?.label} placeholder="Выберите" />
                   {value !== '' && value !== undefined && value === defaultVal && (
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)', marginTop: '4px', fontStyle: 'italic', textAlign: 'left' }}>
                       Значение по умолчанию

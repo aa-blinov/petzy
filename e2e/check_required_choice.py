@@ -34,7 +34,7 @@ async def main():
                 await pg.get_by_text("Обычный", exact=True).count() >= 1,
                 (await pg.inner_text("body"))[:160].replace(chr(10), " | "),
             )
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
             body = await pg.inner_text("body")
             check(
@@ -59,7 +59,7 @@ async def main():
                 (await pg.inner_text("body"))[:160].replace(chr(10), " | "),
             )
             await pg.get_by_label("Причина").fill("Пыль")
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
             events = (await api(pg, "GET", f"/events?pet_id={pid}&type=asthma"))["json"]
             rows = events.get("events") or events.get("items") or []

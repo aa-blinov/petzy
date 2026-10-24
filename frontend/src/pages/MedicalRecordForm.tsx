@@ -54,6 +54,7 @@ import './MedicalRecordForm.css';
 // The rows of the card itself: the kind picker and the «От чего» fallback read like the card they belong to.
 import './MedicalCard.css';
 import { ChoiceChip } from '../components/ChoiceChips';
+import { RequiredLabel } from '../components/RequiredLabel';
 
 /** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -144,16 +145,6 @@ const DATE_LABELS: Partial<Record<MedicalKind, string>> = {
   visit: 'Дата визита',
   procedure: 'Дата операции',
 };
-
-/** A label of a field that must be filled in: a red star the screen readers skip (the field itself says it is required). */
-function RequiredLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      {children}
-      <span className="medrec__required" aria-hidden="true"> *</span>
-    </>
-  );
-}
 
 const left = { style: { '--text-align': 'left' } as React.CSSProperties };
 
