@@ -1,5 +1,4 @@
 import { useState, useRef, type Ref } from 'react';
-import { parseRecordDate } from '../utils/relativeTime';
 import { showToast } from '../utils/toast';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input, TextArea, Picker, Form } from 'antd-mobile';
@@ -8,76 +7,27 @@ import type { FormField as FormFieldType } from '../utils/formsConfig';
 import { getCurrentDate, getCurrentTime, parseDateTime } from '../utils/dateUtils';
 import { fieldNote } from './FieldNote';
 import { PickerValue } from './PickerValue';
+import { DatePickerField } from './DatePickerField';
 
 interface FormFieldProps {
   field: FormFieldType;
   defaultValue?: string;
   /** The cursor starts here (the one thing a new record asks for, with the keyboard already open). */
   autoFocus?: boolean;
+  /** A date field only: told whenever the digits typed into it are not a date the form can take (see useTypedDateProblems). */
+  onTypedProblem?: (message: string) => void;
+  /** A date field only: the form refused to save, so an unfinished typed date shows its message now. */
+  refusals?: number;
 }
 
-export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
+export function FormField({ field, defaultValue, autoFocus, onTypedProblem, refusals }: FormFieldProps) {
   const { control, getValues } = useFormContext();
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [internalPickerDate, setInternalPickerDate] = useState<string[]>([]);
   const inputRef = useRef<InputRef | TextAreaRef | null>(null);
 
   // Use provided defaultValue or fallback to first option for select
   const defaultVal = defaultValue || (field.options && field.options.length > 0 ? field.options[0].value : '');
-
-  // Generate date columns dynamically [Day, Month, Year]
-  const dateColumns = (currentValue: string) => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const currentDay = now.getDate();
-
-    let selectedMonth = now.getMonth();
-    let selectedYear = now.getFullYear();
-
-    if (internalPickerDate.length === 3) {
-      selectedMonth = parseInt(internalPickerDate[1]);
-      selectedYear = parseInt(internalPickerDate[2]);
-    } else if (currentValue) {
-      // Form date values are "YYYY-MM-DD". new Date() reads that as ISO,
-      // i.e. UTC midnight, and the local getters below then report the
-      // previous day for anyone west of UTC.
-      const d = parseRecordDate(currentValue);
-      if (d) {
-        selectedMonth = d.getMonth();
-        selectedYear = d.getFullYear();
-      }
-    }
-
-    // Years: from 10 years ago up to current year
-    const years = Array.from({ length: 11 }, (_, i) => {
-      const y = currentYear - 10 + i;
-      return { label: String(y), value: String(y) };
-    });
-
-    // Months: if current year, only up to current month
-    const monthNames = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-    ];
-    const months = monthNames
-      .map((m, i) => ({ label: m, value: String(i) }))
-      .filter(m => selectedYear < currentYear || parseInt(m.value) <= currentMonth);
-
-    // Days: if current year and month, only up to current day
-    const daysCount = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const days = Array.from({ length: daysCount }, (_, i) => ({
-      label: String(i + 1).padStart(2, '0'),
-      value: String(i + 1),
-    })).filter(d =>
-      selectedYear < currentYear ||
-      selectedMonth < currentMonth ||
-      parseInt(d.value) <= currentDay
-    );
-
-    return [days, months, years];
-  };
 
   // Generate time columns dynamically (restricted if date is today)
   const getTimeColumns = (dateValue: string, currentTimeSelection: string[]) => {
@@ -103,19 +53,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
   };
 
   const handleRowClick = () => {
-    if (field.type === 'date') {
-      const currentVal = getValues(field.name);
-      let pValue: string[] = [];
-      if (currentVal) {
-        const d = parseRecordDate(currentVal) ?? new Date();
-        pValue = [String(d.getDate()), String(d.getMonth()), String(d.getFullYear())];
-      } else {
-        const now = new Date();
-        pValue = [String(now.getDate()), String(now.getMonth()), String(now.getFullYear())];
-      }
-      setInternalPickerDate(pValue);
-      setDatePickerVisible(true);
-    } else if (field.type === 'time') {
+    if (field.type === 'time') {
       const currentVal = getValues(field.name) || defaultValue || getCurrentTime();
       setInternalPickerDate(currentVal.split(':'));
       setPickerVisible(true);
@@ -131,48 +69,36 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
       name={field.name}
       control={control}
       render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
+        // A date is the same control as every other date of the app: the wheel, and «Ввести цифрами» for a date that is far
+        // back. The quick choices of the feed form («Сейчас», «Вчера в это время») sit above it and set date and time together.
+        if (field.type === 'date') {
+          return (
+            <DatePickerField
+              id={field.name}
+              label={field.label}
+              required={field.required}
+              value={value ?? ''}
+              placeholder="Выберите"
+              yearsBack={10}
+              onChange={(next) => {
+                // Not in the future: what the wheel here never offered, and the typed or wheeled date of this year may reach.
+                const today = getCurrentDate();
+                if (next > today) {
+                  showToast.failure('Дата не может быть в будущем');
+                  onChange(today);
+                } else {
+                  onChange(next);
+                }
+              }}
+              onBlur={onBlur}
+              onTypedProblem={onTypedProblem}
+              refusals={refusals}
+              description={fieldNote({ error: error ? (error.message as string) : undefined })}
+            />
+          );
+        }
         const renderInput = () => {
           switch (field.type) {
-            case 'date': {
-              const displayDate = value
-                ? (parseRecordDate(value)?.toLocaleDateString('ru-RU') ?? value)
-                : '';
-
-              return (
-                <>
-                  <PickerValue id={field.name} value={displayDate} placeholder="Выберите" />
-                  <Picker
-                    columns={dateColumns(value)}
-                    visible={datePickerVisible}
-                    onClose={() => setDatePickerVisible(false)}
-                    value={internalPickerDate.length ? internalPickerDate : []}
-                    onSelect={(val) => setInternalPickerDate(val as string[])}
-                    onConfirm={(val) => {
-                      const day = val[0];
-                      const month = parseInt(val[1] as string);
-                      const year = parseInt(val[2] as string);
-                      const monthStr = String(month + 1).padStart(2, '0');
-                      const dayStr = String(day).padStart(2, '0');
-                      const formattedDate = `${year}-${monthStr}-${dayStr}`;
-
-                      const todayStr = getCurrentDate();
-                      if (formattedDate > todayStr) {
-                        showToast.failure('Дата не может быть в будущем');
-                        onChange(todayStr);
-                      } else {
-                        onChange(formattedDate);
-                      }
-
-                      setDatePickerVisible(false);
-                      setInternalPickerDate([]);
-                    }}
-                    cancelText="Отмена"
-                    confirmText="Готово"
-                  />
-                </>
-              );
-            }
-
             case 'time': {
               const timeValue = value ? value.split(':') : (defaultValue ? defaultValue.split(':') : []);
               const displayTime = value || '';
@@ -297,7 +223,7 @@ export function FormField({ field, defaultValue, autoFocus }: FormFieldProps) {
           <Form.Item
             clickable
             onClick={handleRowClick}
-            arrow={['date', 'time', 'select'].includes(field.type)}
+            arrow={['time', 'select'].includes(field.type)}
             label={field.label}
             required={field.required}
             layout={field.type === 'textarea' ? 'vertical' : undefined}
