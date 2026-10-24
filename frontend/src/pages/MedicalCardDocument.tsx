@@ -756,8 +756,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
     <div className="medcard medcard--document">
       <Passport pet={card.pet} weight={weight} chip={card.profile.chip_number ?? null} bloodType={card.profile.blood_type ?? null} canCopy={owner} />
 
-      {/* The doctor's copy is a record, not a coaching text: the hints for the owner are not on it. */}
-      {firstTime && !shared && (
+      {firstTime && (
         <p className="medcard__lead">
           Это то, что врач спросит на приёме, в том порядке, в каком спрашивает
           {owner ? '. Чтобы записать своё, нажмите «+» в нужном блоке' : ''}

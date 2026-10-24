@@ -31,13 +31,12 @@ async def drop_pet(pg, pid):
 
 
 async def make_record(pg, pid, kind, title, day, **more):
-    """A medical record by the API, and its id (the card lists the newest first)."""
+    """A medical record by the API, and its id."""
     answer = await api(
         pg, "POST", "/medical-records", {"pet_id": pid, "kind": kind, "title": title, "date": day, **more}
     )
     assert answer["status"] in (200, 201), answer
-    card = (await api(pg, "GET", f"/pets/{pid}/medical-card"))["json"]
-    return card["records"][kind][0]["_id"]
+    return answer["json"]["id"]
 
 
 def add_months(day: date, months: int) -> date:
