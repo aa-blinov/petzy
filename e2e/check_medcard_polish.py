@@ -177,7 +177,7 @@ async def main():
             await plus.hover()
             await pg.mouse.down()
             await pg.wait_for_timeout(120)
-            plus_layer = await plus.evaluate("el => getComputedStyle(el).backgroundImage")
+            plus_layer = await plus.evaluate("el => getComputedStyle(el, '::before').backgroundImage")
             await pg.mouse.up()
             await pg.keyboard.press("Escape")
             await settle(pg, 150)

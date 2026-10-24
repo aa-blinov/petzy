@@ -56,6 +56,11 @@ APPLY = """
   // no ground of its own is read on the sheet under it.
   let node = el;
   let bg = 'rgba(0, 0, 0, 0)';
+  // A round control may draw its disc in ::before (the box to press is larger than the disc): that disc is its ground.
+  const before = getComputedStyle(el, '::before');
+  if (before.content !== 'none' && before.backgroundColor !== 'rgba(0, 0, 0, 0)' && before.backgroundColor !== 'transparent') {
+    return { fg: getComputedStyle(el).color, bg: before.backgroundColor };
+  }
   while (node) {
     const colour = getComputedStyle(node).backgroundColor;
     if (colour && colour !== 'rgba(0, 0, 0, 0)' && colour !== 'transparent') {
