@@ -40,9 +40,11 @@ def clean_local_id(value: Optional[str]) -> Optional[str]:
 def record_version(record: dict) -> str:
     """The version of a record: when it last changed, as the API writes every timestamp.
 
-    A record from before ``updated_at`` existed has its creation as the last change it had.
+    A record from before ``updated_at`` existed has its creation as the last change it had. A course keeps its own
+    ``edited_at``: the stock moves with every dose and every pack (``updated_at``, which the feed reports), but it is not
+    an edit of the course, and a device editing the course must not be told «изменили» because a dose was marked.
     """
-    changed = record.get("updated_at") or record.get("created_at")
+    changed = record.get("edited_at") or record.get("updated_at") or record.get("created_at")
     if isinstance(changed, datetime):
         return utc_iso(changed)
     # Already written the API's way (a record that has been through its serializer).
@@ -70,7 +72,8 @@ def version_guard(record: dict, base_version: Optional[str]) -> dict:
     """
     if base_version is None:
         return {}
-    return {"updated_at": record.get("updated_at")}
+    field = "edited_at" if record.get("edited_at") is not None else "updated_at"
+    return {field: record.get(field)}
 
 
 def _tombstone(kind: str, username: str, **match) -> Optional[dict]:
