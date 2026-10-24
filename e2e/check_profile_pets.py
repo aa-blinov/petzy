@@ -1,5 +1,5 @@
-"""The pets in a co-owner's card: each name opens the medical card, and the search for someone to
-share with does not offer a person the pet already reaches.
+"""The pets in a co-owner's card: each name opens the medical card, and the sharing block of the form
+refuses a person the pet already reaches.
 
 Needs the local stack and the demo data. Makes a pet of its own and removes it."""
 
@@ -98,15 +98,16 @@ async def main():
             )
             check("no horizontal scroll", not await other.evaluate("document.documentElement.scrollWidth > innerWidth"))
 
-            # Someone the pet already reaches is not offered again.
+            # Someone the pet already reaches is not invited again, and the form says so by name.
             await pg.goto(BASE + f"/pets/{pet_id}/edit")
             await settle(pg)
-            await pg.get_by_placeholder("Логин пользователя").fill("family")
-            await pg.wait_for_timeout(2500)
+            await pg.get_by_label("Логин человека").fill("family")
+            await pg.get_by_role("button", name="Пригласить").click()
+            await settle(pg, 300)
             check(
-                "a person the pet already reaches is not offered again",
-                await pg.get_by_text("У этого человека уже есть доступ").count() == 1,
-                (await pg.inner_text("body"))[:120].replace(chr(10), " | "),
+                "a person the pet already reaches is not invited again",
+                await pg.get_by_text("У family уже есть доступ").count() >= 1,
+                (await pg.inner_text("body"))[-200:].replace(chr(10), " | "),
             )
             await ctx2.close()
         finally:
