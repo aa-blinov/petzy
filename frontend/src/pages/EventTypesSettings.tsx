@@ -1,5 +1,5 @@
 /**
- * "Фабрика событий" — the registry of event types (builtin + custom).
+ * "Фабрика записей" — the registry of event types (builtin + custom).
  *
  * Builtin types can be relabelled/recolored/re-iconed here too (nothing
  * about them is special once everything is data-driven), but not deleted.
@@ -41,7 +41,7 @@ export function EventTypesSettings() {
   // changes them, so for everyone else a list of thirty rows to look at and not touch is only noise.
   const listed = [...eventTypes.filter((t) => !t.is_builtin), ...(isAdmin ? eventTypes.filter((t) => t.is_builtin) : [])];
 
-  // The empty state carries its own «Добавить тип события», as every other list in the app does. With the button
+  // The empty state carries its own «Добавить тип записи», as every other list in the app does. With the button
   // under it as well, the screen offered the same action twice, which reads as two different things to do.
   const empty = !isLoading && !error && listed.length === 0;
 
@@ -63,9 +63,9 @@ export function EventTypesSettings() {
     try {
       await eventTypesService.remove(target.key, target.count > 0);
       invalidate();
-      showToast.success('Тип события удалён');
+      showToast.success('Тип записи удалён');
     } catch (deleteError) {
-      const message = getApiErrorMessage(deleteError, 'Не удалось удалить тип события');
+      const message = getApiErrorMessage(deleteError, 'Не удалось удалить тип записи');
       showToast.failure(message);
     } finally {
       setDeletingKey(null);
@@ -79,14 +79,14 @@ export function EventTypesSettings() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              Типы событий
+              Типы записей
             </h1>
           </div>
           <p style={{ margin: 'var(--spacing-xs) 0 0 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
             Свои типы можно создать с нуля, набор полей вы задаёте сами. Их видят те, с кем вы делитесь питомцем.{' '}
             {isAdmin
               ? 'Встроенные типы в списке ниже, меняет их администратор'
-              : 'Встроенных типов здесь нет, добавляются они питомцу в «События питомца»'}
+              : 'Встроенных типов здесь нет, добавляются они питомцу в «Типы записей питомца»'}
           </p>
         </div>
 
@@ -94,13 +94,13 @@ export function EventTypesSettings() {
           <SkeletonList count={3} />
         ) : error ? (
           // «У вас ничего нет» after a failed request is a lie the person acts on: they start creating types again.
-          <LoadError what="типы событий" onRetry={() => refetch()} compact />
+          <LoadError what="типы записей" onRetry={() => refetch()} compact />
         ) : listed.length === 0 ? (
           <EmptyState
             icon={Sparkles}
-            title="Здесь будут ваши типы событий"
-            description="Добавьте тип события, чтобы записывать что-то своё. Готовые события добавляются в «События питомца»"
-            actionLabel="Добавить тип события"
+            title="Здесь будут ваши типы записей"
+            description="Добавьте тип записи, чтобы записывать что-то своё. Готовые типы добавляются в «Типы записей питомца»"
+            actionLabel="Добавить тип записи"
             onAction={() => navigate('/event-types/new')}
           />
         ) : (
@@ -195,7 +195,7 @@ export function EventTypesSettings() {
               onClick={() => navigate('/event-types/new')}
             >
               <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-              Добавить тип события
+              Добавить тип записи
             </Button>
           </div>
         )}
@@ -203,8 +203,8 @@ export function EventTypesSettings() {
 
       <Dialog
         visible={!!pending}
-        title="Удалить тип события?"
-        aria-label="Удалить тип события?"
+        title="Удалить тип записи?"
+        aria-label="Удалить тип записи?"
         content={pending && pending.count > 0
           ? `У типа ${pending.count} ${pluralRu(pending.count, 'запись', 'записи', 'записей')}. Они удалятся вместе с ним, вернуть их будет нельзя`
           : 'У этого типа нет записей'}

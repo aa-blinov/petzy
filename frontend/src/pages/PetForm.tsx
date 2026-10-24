@@ -828,7 +828,7 @@ export function PetForm() {
               fontSize: 'var(--text-sm)',
               color: 'var(--app-text-secondary)',
             }}>
-              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет смотреть и добавлять записи и данные для врача. Менять карточку питомца, события и доступ сможете только вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
+              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет смотреть и добавлять записи и данные для врача. Менять карточку питомца, типы записей и доступ сможете только вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
             </p>
             <Form.Item layout="vertical">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -959,7 +959,7 @@ export function PetForm() {
           // One place for the pet's events: its own screen. This row takes the person there for this pet.
           <Form layout="horizontal" mode="card">
             <Form.Item
-              label="События питомца"
+              label="Типы записей питомца"
               description="Какие записи предлагает «+» и в каком порядке"
               clickable
               arrow

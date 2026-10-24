@@ -149,7 +149,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
         {tiles.length === 0 && (
           // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
           <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
-            <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте события питомца</p>
+            <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте типы записей питомца</p>
             <button
               type="button"
               className="touch-target"
@@ -159,7 +159,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
                 navigate('/pet-events');
               }}
             >
-              Добавить события
+              Добавить типы записей
             </button>
           </div>
         )}
@@ -175,13 +175,13 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
             onClick={() => setOthersOpen(true)}
             style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
           >
-            Другие события
+            Другие записи
           </button>
         )}
         {(othersOpen || (tiles.length === 0 && others.length > 0)) && (
           <>
             <h3 className="section-header" style={{ margin: 'var(--spacing-lg) 0 var(--spacing-sm)', paddingLeft: 4, fontSize: 'var(--text-md)' }}>
-              Другие события
+              Другие записи
             </h3>
             {renderTiles(others)}
           </>
@@ -197,7 +197,7 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
             }}
             style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
           >
-            Настроить события питомца
+            Настроить типы записей
           </button>
         )}
       </DraggableSheetBody>
