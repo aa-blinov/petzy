@@ -13,7 +13,7 @@ Own scratch pet «Тест-М», deleted afterwards; the demo pet is only read.
 
 import asyncio
 
-from common import BASE, api, async_playwright, check, login, new_page, summary, settle
+from common import BASE, api, async_playwright, check, login, new_page, settle, summary
 
 CLINICS = [{"name": f"Клиника {i}", "phone": "+7 701 000 00 00", "doctors": []} for i in range(1, 6)]
 
@@ -34,7 +34,7 @@ WAYS_TO_ADD = """() => {
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel="chrome")
-        ctx, pg = await new_page(b, width=390, height=844, sw=False)
+        _, pg = await new_page(b, width=390, height=844, sw=False)
         await login(pg, "demo", "Рекс")
         # The pet with records in them: the rule is about a block that has something to put a door on, and
         # an empty block draws none, so the scratch pet of this check would pass it without trying.
@@ -85,18 +85,18 @@ async def main():
                 await pg.locator(".app-fab").count() == 0,
             )
 
-            # The card is stricter than the feed: a plain ground, flat sheets, no portrait.
+            # The card is stricter than the feed: flat sheets, no portrait. It keeps the pet's scene under it, like every other screen.
             ground = await pg.evaluate(
                 "() => ({\n"
-                "  image: getComputedStyle(document.querySelector('main#main-content')).backgroundImage,\n"
+                "  plain: document.body.hasAttribute('data-plain-ground'),\n"
                 "  sheet: getComputedStyle(document.querySelector('.medcard__block')).boxShadow,\n"
                 "  photo: document.querySelectorAll('.medcard__passport img').length,\n"
                 "})"
             )
             check(
-                "the card lies on a plain ground: the pet's pattern gives way while it is open",
-                ground["image"] == "none",
-                ground["image"][:60],
+                "the card keeps the pet's scene under it, like the other screens",
+                ground["plain"] is False,
+                str(ground["plain"]),
             )
             check(
                 "the sheets of the card lie flat: a record is held by its lines, not by a shadow",
