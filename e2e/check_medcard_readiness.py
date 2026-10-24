@@ -40,7 +40,7 @@ async def main():
             await pg.goto(BASE + f"/form/weight?pet={pid}")
             await settle(pg, 200)
             await pg.get_by_label("Вес (кг)").fill("12,4")
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 300)
             await pg.wait_for_timeout(600)
 

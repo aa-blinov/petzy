@@ -81,4 +81,9 @@ export const medicalRecordsService = {
   async update(id: string, data: MedicalRecordInput): Promise<void> {
     await api.put(`/medical-records/${id}`, data);
   },
+
+  /** Takes a record away at once: «Отменить» after it was just added. */
+  async delete(id: string): Promise<void> {
+    await api.delete(`/medical-records/${id}`);
+  },
 };

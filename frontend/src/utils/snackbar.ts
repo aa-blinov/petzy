@@ -37,6 +37,8 @@ export interface SnackbarRequest {
   duration?: number;
   /** One button; its label is short, «Отменить». A rejected `run` keeps the bar. */
   action?: { label: string; run: () => Promise<void> | void };
+  /** A second button, to the left of the first («Отменить» next to «Ещё одну»). Only with an `action`. */
+  secondaryAction?: { label: string; run: () => Promise<void> | void };
   onDismiss?: (reason: DismissReason) => void;
 }
 
@@ -93,12 +95,13 @@ export function showSnackbar(request: SnackbarRequest): SnackbarHandle {
 
 /** Press the bar's action. Ends the message afterwards unless the action
     itself put a newer one up. Resolves false when the action failed. */
-export async function runSnackbarAction(id: number): Promise<boolean> {
+export async function runSnackbarAction(id: number, which: 'action' | 'secondary' = 'action'): Promise<boolean> {
   const snackbar = current;
-  if (!snackbar || snackbar.id !== id || !snackbar.action) return false;
+  const chosen = which === 'secondary' ? snackbar?.secondaryAction : snackbar?.action;
+  if (!snackbar || snackbar.id !== id || !chosen) return false;
   clearTimer();
   try {
-    await snackbar.action.run();
+    await chosen.run();
   } catch {
     // Keep the bar for another try, with a fresh timer.
     if (current?.id === id) timer = setTimeout(() => dismiss(id, 'timeout'), durationFor(snackbar, snackbar.tone));

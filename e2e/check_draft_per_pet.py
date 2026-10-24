@@ -26,7 +26,7 @@ async def _write_draft(pg, pet_id: str, weight: str) -> None:
     await pg.wait_for_timeout(600)
     # Сессия кончилась: следующий запрос получит 401, и приложение спрячет черновик.
     await pg.context.clear_cookies()
-    await pg.get_by_role("button", name="Создать").click()
+    await pg.get_by_role("button", name="Добавить", exact=True).click()
     await pg.wait_for_url(lambda u: "/login" in u, timeout=20000)
 
 

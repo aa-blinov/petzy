@@ -74,13 +74,13 @@ async def main():
             )
 
             # P-23: the label toggles the row
-            switch = pg.get_by_role("switch", name="Учёт остатков")
+            switch = pg.get_by_role("switch", name="Следить за остатком")
             before = await switch.get_attribute("aria-checked")
-            await pg.get_by_text("Включить", exact=True).click()
+            await pg.get_by_text("Следить за остатком", exact=True).click()
             await settle(pg, 150)
             after = await switch.get_attribute("aria-checked")
-            check("a tap on the word «Включить» toggles the stock", before != after, f"{before} -> {after}")
-            await pg.get_by_text("Включить", exact=True).click()
+            check("a tap on the label «Следить за остатком» toggles the stock", before != after, f"{before} -> {after}")
+            await pg.get_by_text("Следить за остатком", exact=True).click()
             await settle(pg, 150)
             check("and again back", await switch.get_attribute("aria-checked") == before)
 

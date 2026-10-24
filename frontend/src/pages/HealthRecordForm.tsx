@@ -152,7 +152,7 @@ export function HealthRecordForm() {
           acc[field.name] = field.required ? baseSchema : baseSchema.optional().nullable();
         } else {
           acc[field.name] = field.required
-            ? z.string().min(1, 'Заполните это поле')
+            ? z.string().min(1, field.type === 'select' ? 'Выберите' : 'Введите')
             : z.string().optional();
         }
         return acc;
@@ -448,7 +448,7 @@ export function HealthRecordForm() {
           : await healthRecordsService.create(type, payload);
       } catch (err) {
         // The record did reach the server, its answer did not, and the person pressed
-        // «Создать» again: the server found the very same record and points at it. That is a
+        // «Добавить» again: the server found the very same record and points at it. That is a
         // saved record, not a refusal, so the form behaves as it does after a save.
         const already = savedByResponse(err);
         if (!id && already) response = already;
@@ -481,7 +481,7 @@ export function HealthRecordForm() {
 
       // Everything from here is not the save itself: the lists the person lands on get
       // fresh data, and what they asked to remember goes to the pet. It used to run before
-      // leaving, so the «Создать» button kept spinning for as long as four lists and a pet
+      // leaving, so the «Добавить» button kept spinning for as long as four lists and a pet
       // update took, and a second press could come in the meantime.
       void finishSave(data);
     } catch (error) {
@@ -574,7 +574,7 @@ export function HealthRecordForm() {
         }}>
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {id ? `${eventType.label}: правка` : `Записать: ${eventType.label}`}
+              {`${id ? 'Изменить запись' : 'Новая запись'}: ${eventType.label.toLowerCase()}`}
             </h1>
           </div>
         </div>
@@ -592,7 +592,7 @@ export function HealthRecordForm() {
             )}
             {isEditing && recordedBy && (
               <p style={{ margin: petName ? 'var(--spacing-2xs)' : 0 }}>
-                Записал(а): <strong style={{ color: 'var(--app-text-primary)' }}>{recordedBy}</strong>
+                Записал: <strong style={{ color: 'var(--app-text-primary)' }}>{recordedBy}</strong>
                 {recordedAt ? `, ${recordedAt}` : ''}
               </p>
             )}
@@ -690,19 +690,14 @@ export function HealthRecordForm() {
                 </Fragment>
               ))}
               <FormField
-                field={{ name: 'comment', type: 'textarea', label: 'Комментарий (необязательно)', rows: 2, id: 'event-comment' }}
+                field={{ name: 'comment', type: 'textarea', label: 'Заметка', placeholder: 'Необязательно', rows: 2, id: 'event-comment' }}
                 defaultValue={defaultValues.comment}
               />
             </Form>
           </FormProvider>
 
-          <div className="safe-area-padding" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--spacing-md)',
-            marginTop: 'var(--spacing-xl)',
-            paddingBottom: 'var(--spacing-xl)',
-          }}>
+          {/* A long form: the main button stays above the tab bar (the hidden submit keeps Enter working). */}
+          <div className="form-sticky-action safe-area-padding">
             <button
               style={{ display: 'none' }}
               type="submit"
@@ -715,8 +710,10 @@ export function HealthRecordForm() {
               onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
               loading={isSubmitting}
             >
-              {id ? 'Сохранить' : 'Создать'}
+              {id ? 'Сохранить' : 'Добавить'}
             </Button>
+          </div>
+          <div className="safe-area-padding form-actions" style={{ paddingBottom: 'var(--spacing-xl)' }}>
             <Button
               block
               size="large"

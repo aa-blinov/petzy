@@ -59,7 +59,7 @@ async def main():
             await settle(pg, 150)
             check("the form of a weighing opened from the feed", "/form/weight" in pg.url, pg.url.replace(BASE, ""))
             await pg.get_by_label("Вес (кг)").fill("12,4")
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
             body = await pg.inner_text("body")
             check(
@@ -81,7 +81,7 @@ async def main():
             )
 
             lost["on"] = False
-            await pg.get_by_role("button", name="Создать").click()
+            await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
             body = await pg.inner_text("body")
             check(

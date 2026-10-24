@@ -20,7 +20,7 @@ async def main():
         await pg.get_by_label("Вес (кг)").fill("9,9")
         await pg.wait_for_timeout(300)
         await ctx.clear_cookies()
-        await pg.get_by_role("button", name="Создать").click()
+        await pg.get_by_role("button", name="Добавить", exact=True).click()
         await settle(pg, 150)
         check("the session that ended sends the person to the sign-in screen", "/login" in pg.url, pg.url)
         await pg.get_by_label("Логин").fill("demo")
