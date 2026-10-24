@@ -65,13 +65,13 @@ export function EventCatalogSheet({
 
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
-      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="88vh" label="Добавить событие">
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="88vh" label="Добавить тип записи">
         <h2 className="section-header" style={{ marginBottom: 'var(--spacing-md)', paddingLeft: 4, fontSize: '1.125rem' }}>
-          Добавить событие
+          Добавить тип записи
         </h2>
 
         <label style={{ position: 'relative', display: 'block', marginBottom: 'var(--spacing-md)' }}>
-          <span className="sr-only">Найти событие</span>
+          <span className="sr-only">Найти тип записи</span>
           <Search size={18} strokeWidth={2} aria-hidden style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--app-text-secondary)' }} />
           <input
             type="text"
@@ -79,7 +79,7 @@ export function EventCatalogSheet({
             enterKeyHint="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Найти событие"
+            placeholder="Найти тип записи"
             autoComplete="off"
             style={{
               width: '100%',
@@ -98,7 +98,7 @@ export function EventCatalogSheet({
 
         {groups.length === 0 && (
           <p style={{ margin: '0 4px var(--spacing-md)', color: 'var(--app-text-secondary)' }}>
-            {needle ? 'Ничего не нашлось. Можно создать своё событие' : 'Всё, что есть, уже в окне «+». Можно создать своё событие'}
+            {needle ? 'Ничего не нашлось. Можно создать свой тип записи' : 'Всё, что есть, уже в окне «+». Можно создать свой тип записи'}
           </p>
         )}
 
@@ -159,7 +159,7 @@ export function EventCatalogSheet({
           }}
           style={{ width: '100%', minHeight: 'var(--touch-min)', margin: '0 0 var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-md)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
         >
-          Создать своё событие
+          Создать свой тип записи
         </button>
       </DraggableSheetBody>
     </Popup>

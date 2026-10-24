@@ -30,7 +30,7 @@ export function PetAddedSheet({
   const starter = defaultTilesFor(pet.species).order;
   const labels = starter.map((key) => eventTypesByKey[key]?.label).filter((l): l is string => !!l);
   const first = starter[0];
-  const firstLabel = eventTypesByKey[first]?.label ?? 'событие';
+  const firstLabel = eventTypesByKey[first]?.label ?? 'запись';
 
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
@@ -48,7 +48,7 @@ export function PetAddedSheet({
         </div>
 
         <p style={{ margin: '0 4px var(--spacing-lg)', color: 'var(--app-text-secondary)', lineHeight: 1.5 }}>
-          В окне «+» уже есть: {labels.join(', ').toLowerCase()}. Остальное добавляется в «События питомца», когда понадобится
+          В окне «+» уже есть: {labels.join(', ').toLowerCase()}. Остальное добавляется в «Типы записей питомца», когда понадобится
         </p>
 
         <button

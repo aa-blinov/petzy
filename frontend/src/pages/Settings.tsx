@@ -165,7 +165,7 @@ export function Settings() {
             />
             <SettingsRow
               icon={<LayoutGrid size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="События питомца"
+              label="Типы записей питомца"
               description={
                 getSelectedPet && getSelectedPet.current_user_is_owner === false
                   ? 'Меняет только владелец питомца'
@@ -243,11 +243,11 @@ export function Settings() {
           </Group>
 
           {/* The types of record themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. They
-              are the household's, not one pet's: they are added to a pet in «События питомца». */}
+              are the household's, not one pet's: they are added to a pet in «Типы записей питомца». */}
           <Group title="Новые записи">
             <SettingsRow
               icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Типы событий"
+              label="Типы записей"
               description="Свои типы записей со своими полями"
               chevron
               onClick={() => navigate('/event-types')}
