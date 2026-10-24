@@ -916,9 +916,11 @@ export function PetForm() {
                 )}
                 {searchShown && !searchFailed && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
                   <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                    {alreadyReached
-                      ? 'У этого человека уже есть доступ'
-                      : 'Пользователь с таким логином не найден'}
+                    {searchTerm.trim().toLowerCase() === (localStorage.getItem('username') ?? '').toLowerCase()
+                      ? 'Это ваш логин'
+                      : alreadyReached
+                        ? 'У этого человека уже есть доступ'
+                        : 'Пользователь с таким логином не найден'}
                   </div>
                 )}
                 {searchShown && searchResults.length > 0 && (
@@ -982,6 +984,7 @@ export function PetForm() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '8px',
+                      minHeight: 'var(--touch-min)',
                       background: 'none',
                       border: 'none',
                       padding: 0,
