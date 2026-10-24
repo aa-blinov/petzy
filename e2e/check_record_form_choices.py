@@ -51,7 +51,11 @@ async def main():
             await pg.wait_for_url(lambda u: u.rstrip("/").endswith("/medical-card"), timeout=15000)
             await settle(pg, 200)
             check("a saved repeat ends on the medical card", pg.url.endswith(card), pg.url)
-            records = (await api(pg, "GET", f"/pets/{pid}/medical-card"))["json"]["records"]["vaccination"]
+            records = [
+                r
+                for r in (await api(pg, "GET", f"/medical-records?pet_id={pid}"))["json"]["records"]
+                if r["kind"] == "vaccination"
+            ]
             check("and it is a new record beside the old one", len(records) == 2, str(len(records)))
 
             # P-06: the visit's weight row
@@ -106,6 +110,10 @@ async def main():
                 "Лапка" in body and "поставлена по врачу" in body,
                 body[-300:].replace("\n", " | "),
             )
+            # The closed doctor wheel stays in the page, hidden: the clinic wheel is the only one left to turn.
+            await pg.evaluate(
+                "() => document.querySelectorAll('.adm-popup').forEach(p => { if (getComputedStyle(p).display === 'none') p.remove(); })"
+            )
             await pg.get_by_text("Клиника", exact=True).click()
             await settle(pg, 150)
             items = await pg.locator(".adm-picker-view-column-item").all_inner_texts()
@@ -122,16 +130,18 @@ async def main():
             # P-13: the «+» sheet lists the other event types
             await pg.goto(BASE + "/")
             await settle(pg)
-            await pg.get_by_role("button", name="Добавить запись").click()
+            await pg.locator(".app-fab").click()
             sheet = pg.locator(".adm-popup").filter(has_text="Что записать?")
-            await sheet.wait_for(timeout=10000)
+            await sheet.get_by_text("Другие события").first.wait_for(state="visible", timeout=10000)
             before = await sheet.locator("button").count()
             await sheet.get_by_role("button", name="Другие события").click()
             await settle(pg, 150)
             after = await sheet.locator("button").count()
             check("«Другие события» lists more types in the sheet", after > before, f"{before} -> {after}")
             check("and does not leave for the settings", "/pet-events" not in pg.url, pg.url)
-            tile = sheet.locator("button").nth(after - 1)
+            tile = (
+                sheet.locator("button").filter(has_not_text="Настроить").nth(before - 1)
+            )  # the first of the added types
             await tile.click()
             await settle(pg, 200)
             check("a tap on one of them opens its form", "/form/" in pg.url, pg.url)

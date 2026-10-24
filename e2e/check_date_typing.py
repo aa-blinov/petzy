@@ -43,8 +43,8 @@ async def main():
             url = f"{BASE}/pets/{pid}/medical-records/{rid}"
 
             async def record():
-                card = (await api(pg, "GET", f"/pets/{pid}/medical-card"))["json"]
-                return card["records"]["vaccination"][0]
+                rows = (await api(pg, "GET", f"/medical-records?pet_id={pid}"))["json"]["records"]
+                return next(r for r in rows if r["kind"] == "vaccination")
 
             await pg.goto(url)
             await settle(pg)
