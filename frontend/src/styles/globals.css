@@ -2470,6 +2470,11 @@ html.keyboard-open .form-sticky-action {
     margin-top: var(--spacing-xl);
 }
 
+/* The sticky button already pads itself 8px below: the buttons that follow it keep the usual 12px, not 24px on top of that. */
+.form-sticky-action + .form-actions {
+    margin-top: calc(var(--spacing-md) - var(--spacing-sm));
+}
+
 /* A pet's own colour (utils/petLook.ts): re-tints the soft and deep accent inside whatever carries data-pet-accent,
    the pet card and its chip in the switcher. Light and dark are separate sets, each deep tone 5:1 on its soft one. */
 [data-pet-accent='sage'] {
