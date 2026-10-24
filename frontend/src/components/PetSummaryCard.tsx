@@ -9,6 +9,7 @@
  */
 
 import { createElement, useEffect, useState, type KeyboardEvent } from 'react';
+import { Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PhotoViewer } from './PhotoViewer';
 
@@ -18,16 +19,19 @@ import { genderLabel } from '../utils/constants';
 import { getSpecies, speciesLabel } from '../utils/species';
 import { useAuth } from '../hooks/useAuth';
 import { PetPhotoFill } from './PetPhotoFill';
+import { PetShareSheet } from './PetShareSheet';
 import { loadPetFont, petAccentAttr, petFontOf, petFontStyle, petBackdropKey, petBackdropStyle, petCropOf, petFrameStyle, petLookOf, petAccentHex, type PetLook } from '../utils/petLook';
 
 
 
 
 /** `look` shows a draft in place of the saved one: the settings page previews it on this same card. */
-export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { pet: Pet; look?: PetLook; compact?: boolean }) {
+export function PetSummaryCard({ pet, look: lookOverride, compact = false, dense = false }: { pet: Pet; look?: PetLook; compact?: boolean; dense?: boolean }) {
+  // `dense` is the feed's one-line card for someone who has seen the full one for a while (see utils/feedDensity.ts):
+  // a thumb, the name and the age, so the history starts higher. The look (colour, backdrop, frame) stays.
   // The compact card is the same card in miniature, for a place where it is pinned over something else (the look settings):
   // a smaller picture with its frame scaled to match, the name and the line, no age and breed.
-  const slot = compact ? 72 : 112;
+  const slot = dense ? 44 : compact ? 72 : 112;
   const look = lookOverride ?? petLookOf(pet);
   const accentAttr = petAccentAttr(look);
   const font = petFontOf(look);
@@ -72,6 +76,9 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
   const navigate = useNavigate();
   // The photo opens at full size; a pet with no photo has a picture of its species there, nothing to enlarge.
   const [photoOpen, setPhotoOpen] = useState(false);
+  // Sharing is the owner's: the door is on the card, so the invitation is not hunted for at the foot of the edit form.
+  const [shareOpen, setShareOpen] = useState(false);
+  const canShare = !compact && (pet.current_user_is_owner ?? pet.owner === username);
   // Nothing known yet: the owner (only they can edit the pet) is asked to
   // fill it in; someone it's shared with sees at least what animal it is.
   const canFillIn = !meta && (pet.current_user_is_owner ?? pet.owner === username);
@@ -87,7 +94,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
         overflow: "hidden",
         position: "relative",
         marginBottom: compact ? 0 : "var(--spacing-md)",
-        padding: compact ? "12px 16px" : "16px",
+        padding: dense ? "8px 12px" : compact ? "12px 16px" : "16px",
         // What lies behind the card: the owner's choice, else a tint of the pet's colour, else the plain card.
         ...petBackdropStyle(backdrop, petAccentHex(look)),
       }}
@@ -120,7 +127,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
           position: "relative",
           display: "flex",
           alignItems: "center",
-          gap: "var(--spacing-md)",
+          gap: dense ? "var(--spacing-sm)" : "var(--spacing-md)",
           marginBottom: compact ? 0 : "var(--spacing-md)",
         }}
       >
@@ -187,8 +194,44 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
         </div>
         </div>
 
+        {dense && (
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              alignItems: "baseline",
+              gap: "var(--spacing-sm)",
+              ...(backdrop === "photo"
+                ? { textShadow: "0 0 3px var(--app-card-background), 0 0 7px var(--app-card-background)" }
+                : {}),
+            }}
+          >
+            <span
+              className="display-headline"
+              style={{
+                fontSize: "var(--text-lg)",
+                fontWeight: 700,
+                color: "var(--app-text-primary)",
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                ...petFontStyle(font, "var(--text-lg)"),
+                ...(fontReady ? {} : { visibility: "hidden" }),
+              }}
+            >
+              {pet.name}
+            </span>
+            {age && (
+              <span style={{ flexShrink: 0, fontSize: "var(--text-sm)", color: "var(--app-text-secondary)" }}>{age}</span>
+            )}
+          </div>
+        )}
+
         {/* Right column — name and the age, breed and gender line.
             minWidth: 0 lets flex children ellipsis correctly. */}
+        {!dense && (
         <div
           style={{
             flex: 1,
@@ -282,9 +325,55 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
               Добавить возраст и породу
             </button>
           )}
+          {canShare && (
+            <button
+              type="button"
+              className="chip chip--action"
+              aria-label={`Поделиться: ${pet.name}`}
+              onClick={() => setShareOpen(true)}
+              style={{
+                alignSelf: "flex-start",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "var(--text-xs)",
+                fontWeight: 500,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              <Share2 size={13} strokeWidth={2.2} style={{ display: "block" }} aria-hidden />
+              Поделиться
+            </button>
+          )}
         </div>
+        )}
+        {dense && canShare && (
+          <button
+            type="button"
+            aria-label={`Поделиться: ${pet.name}`}
+            onClick={() => setShareOpen(true)}
+            style={{
+              flexShrink: 0,
+              width: "var(--touch-min)",
+              height: "var(--touch-min)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "none",
+              background: "none",
+              color: "var(--app-accent-deep)",
+              cursor: "pointer",
+            }}
+          >
+            <Share2 size={20} strokeWidth={2} style={{ display: "block" }} aria-hidden />
+          </button>
+        )}
       </div>
 
+      {canShare && <PetShareSheet visible={shareOpen} petId={pet._id} onClose={() => setShareOpen(false)} />}
       {pet.photo_url && <PhotoViewer image={pet.photo_url} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </div>
   );

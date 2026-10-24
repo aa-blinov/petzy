@@ -2,15 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { drawableImage } from '../utils/drawableImage';
 import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
-import { isAxiosError } from 'axios';
 import { isMissing } from '../utils/notFound';
 import { useNavigate, useParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
 import { usePet } from '../hooks/usePet';
 import { useSessionDraft } from '../hooks/useSessionDraft';
-import { Button, Dialog, Form, Input, Picker, TextArea, SearchBar, ImageViewer } from 'antd-mobile';
+import { Button, Form, Input, Picker, TextArea, ImageViewer } from 'antd-mobile';
 import type { InputRef, TextAreaRef } from 'antd-mobile';
-import { UserAddOutline, DeleteOutline } from 'antd-mobile-icons';
 import { Camera } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch, Controller } from 'react-hook-form';
@@ -25,8 +23,7 @@ const NEUTERED_OPTIONS = [
 ];
 
 import { petsService, type Pet } from '../services/pets.service';
-import { usersService } from '../services/users.service';
-import { UserAvatar } from '../components/UserAvatar';
+import { PetSharePanel } from '../components/PetShareSheet';
 import { GENDER_OPTIONS } from '../utils/constants';
 import { defaultTilesFor, getSpecies, neuteringLabel } from '../utils/species';
 import { SpeciesTiles } from '../components/SpeciesTiles';
@@ -42,7 +39,6 @@ import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { useDeletePet, useLeavePet } from '../hooks/useDeletePet';
 import { PetDeleteSummary } from '../components/PetDeleteSummary';
-import { showUndo } from '../utils/undo';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { fieldNote } from '../components/FieldNote';
 import { FieldError } from '../components/FieldError';
@@ -122,21 +118,6 @@ export function PetForm() {
     }
   });
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<{ username: string }[]>([]);
-  // The search found this person and the pet already reaches them: they are in
-  // the list below, so the empty line says which it is.
-  const [alreadyReached, setAlreadyReached] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-  // The search itself failed: said under the box, and nothing from the search before is shown with it.
-  const [searchFailed, setSearchFailed] = useState(false);
-
-  const [localSharedWith, setLocalSharedWith] = useState<string[]>([]);
-  // People the server has said need no invitation from us (they already have the
-  // access, or a standing one). A ref, not state: it is only read when the search
-  // results arrive, and it must not itself count as an unsaved change.
-  const alreadyThereRef = useRef<string[]>([]);
-
   // Fields that depend on the species and gender: what «Порода» is called,
   // and whether (and how) neutering is asked about.
   const speciesValue = useWatch({ control, name: 'species' });
@@ -159,13 +140,10 @@ export function PetForm() {
   // Someone it is shared with sees the card but cannot change it (the server refuses): so the screen does not offer to.
   const readOnly = isEditing && !!pet && !pet.current_user_is_owner;
 
-  // Anything typed, a photo picked or removed, or a change to who has access
-  // is unsaved until «Сохранить».
-  const sharedBefore = [...(pet?.shared_with || []), ...(pet?.share_invites || [])];
-  const sharingChanged =
-    localSharedWith.length !== sharedBefore.length || localSharedWith.some(u => !sharedBefore.includes(u));
+  // Anything typed, or a photo picked or removed, is unsaved until «Сохранить». Sharing is not part of it: an invitation
+  // goes out at once, on its own «Пригласить» (components/PetShareSheet.tsx).
   const photoChanged = fileList[0]?.file instanceof File || (fileList.length === 0 && !!pet?.photo_url);
-  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || sharingChanged || photoChanged);
+  const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty || photoChanged);
 
   useEffect(() => {
     if (pet && initializedPetId.current !== pet._id) {
@@ -181,8 +159,6 @@ export function PetForm() {
         is_neutered: pet.is_neutered ?? undefined,
         health_notes: pet.health_notes || '',
       });
-      // Members and people invited but not yet answered, in one list.
-      setLocalSharedWith([...(pet.shared_with || []), ...(pet.share_invites || [])]);
       if (pet.photo_url) {
         setFileList([{ url: pet.photo_url }]);
       } else {
@@ -198,7 +174,6 @@ export function PetForm() {
         is_neutered: undefined,
         health_notes: '',
       });
-      setLocalSharedWith([]);
       setFileList([]);
     }
   }, [pet, isEditing, reset]);
@@ -213,92 +188,7 @@ export function PetForm() {
     void handleSubmit((values) => (typedDates.blocked ? undefined : onSubmit(values)), onInvalidSubmit)();
   };
 
-  // Looked up once typing pauses: only a whole login matches, so asking
-  // after every letter would only flash «не найден» mid-word.
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [searchedTerm, setSearchedTerm] = useState('');
-  const handleSearch = (val: string) => {
-    setSearchTerm(val);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (val.trim().length < 2) {
-      setSearchResults([]);
-      setAlreadyReached(false);
-      setSearchFailed(false);
-      setSearchedTerm('');
-      return;
-    }
-    searchTimer.current = setTimeout(async () => {
-      setSearchLoading(true);
-      try {
-        const results = await usersService.searchUsers(val.trim());
-        const currentUsername = localStorage.getItem('username');
-        // Not offered anyone the pet already reaches: a member, a standing
-        // invitation, somebody already added in this visit, or somebody the
-        // server has just said needs no invitation from us at all.
-        const unreachable = new Set([
-          ...(pet?.shared_with || []),
-          ...(pet?.share_invites || []),
-          ...localSharedWith,
-          ...alreadyThereRef.current,
-        ]);
-        setSearchResults(results.filter(u => u.username !== currentUsername && !unreachable.has(u.username)));
-        // Somebody who was found and then put away is not somebody who does not
-        // exist: an empty list here would say «не найден» of a person standing
-        // right there in the list below.
-        setAlreadyReached(results.some(u => unreachable.has(u.username)));
-        setSearchFailed(false);
-        setSearchedTerm(val);
-      } catch (error) {
-        console.error('Search error:', error);
-        // Whatever the term before found is not left under this one: the list is cleared, and the failure is said.
-        setSearchResults([]);
-        setAlreadyReached(false);
-        setSearchFailed(true);
-        setSearchedTerm(val);
-      } finally {
-        setSearchLoading(false);
-      }
-    }, 500);
-  };
-
-  // The box shows the results of the term in it, and nothing while that term is being looked up.
-  const searchShown = !searchLoading && searchedTerm === searchTerm;
-
-  const handleAddSharedUser = (username: string) => {
-    if (!localSharedWith.includes(username)) {
-      setLocalSharedWith(prev => [...prev, username]);
-      setSearchTerm('');
-      setSearchResults([]);
-    }
-  };
-
-  const handleRemoveSharedUser = async (username: string) => {
-    // Taking access from someone who has it is not undone by a tap on the bin: ask. A pending invitation is only withdrawn.
-    if ((pet?.shared_with || []).includes(username)) {
-      const confirmed = await Dialog.confirm({
-        title: 'Закрыть доступ',
-        'aria-label': 'Закрыть доступ',
-        content: `${username} больше не увидит «${pet?.name ?? 'питомца'}» и его записи. Доступ закроется после «Сохранить»`,
-        confirmText: 'Закрыть доступ',
-        cancelText: 'Оставить',
-      });
-      if (!confirmed) return;
-    }
-    setLocalSharedWith(prev => prev.filter(u => u !== username));
-  };
-
   const onSubmit = async (values: PetFormData) => {
-    // Who was invited, and whose access did not change. Kept outside the try below: the card
-    // and the access are two different things, and one refused invitation does not undo a card
-    // the server has already saved.
-    let invited: string[] = [];
-    // One refusal out of several: who it was, whether it was an invitation or a
-    // closed access, and what the server said about it.
-    let sharingFailed: { username: string; added: boolean; said?: string; code?: string }[] = [];
-    // People the server says need no invitation from us: they already have the
-    // access, or a standing one. They leave the list, so the next visit does not
-    // offer them the very same thing again.
-    let alreadyThere: string[] = [];
     try {
       setLoading(true);
       const hasNewFile = fileList[0]?.file instanceof File;
@@ -325,55 +215,6 @@ export function PetForm() {
         createdPet = newPet;
       }
 
-      if (petId) {
-        const initialShared = [...(pet?.shared_with || []), ...(pet?.share_invites || [])];
-        const toAdd = localSharedWith.filter(u => !initialShared.includes(u));
-        const toRemove = initialShared.filter(u => !localSharedWith.includes(u));
-
-        // Each person on their own: one refusal (the server already has their access, say) does
-        // not throw away the invitations that did go out, and is said by name afterwards.
-        const settled = await Promise.all([
-          ...toAdd.map((username) => ({ username, added: true, work: () => petsService.sharePet(petId as string, username) })),
-          ...toRemove.map((username) => ({ username, added: false, work: () => petsService.unsharePet(petId as string, username) })),
-        ].map(async ({ username, added, work }) => {
-          try {
-            await work();
-            return { username, added, ok: true };
-          } catch (err) {
-            console.error('Sharing error:', err);
-            // What the server said about it («Доступ уже предоставлен этому пользователю»),
-            // kept for the message below when there is a single refusal to explain.
-            // Its code too: «уже есть доступ» and «приглашение уже отправлено» are not
-            // failures to argue with, the person simply needs no invitation, so they
-            // leave the list instead of being offered again on the next visit.
-            const code = isAxiosError<{ code?: string }>(err) ? err.response?.data?.code : undefined;
-            return { username, added, ok: false, said: getApiErrorMessage(err, ''), code };
-          }
-        }));
-        invited = settled.filter((r) => r.added && r.ok).map((r) => r.username);
-        sharingFailed = settled.filter((r) => !r.ok).map(({ username, added, said, code }) => ({ username, added, said, code }));
-        alreadyThere = sharingFailed
-          .filter((f) => f.added && (f.code === 'validation_error_already_shared' || f.code === 'share_already_invited'))
-          .map((f) => f.username);
-        if (alreadyThere.length > 0) {
-          alreadyThereRef.current = [...new Set([...alreadyThereRef.current, ...alreadyThere])];
-          setLocalSharedWith(prev => prev.filter(u => !alreadyThere.includes(u)));
-        }
-
-        // Opened to the wrong person: take it back right away.
-        if (invited.length > 0) {
-          const sharedPetId = petId;
-          showUndo({
-            message: `Приглашение отправлено: ${invited.join(', ')}`,
-            onUndo: async () => {
-              await Promise.all(invited.map(username => petsService.unsharePet(sharedPetId, username)));
-              await queryClient.invalidateQueries({ queryKey: ['pets'] });
-              await queryClient.invalidateQueries({ queryKey: ['pet', sharedPetId] });
-            },
-          });
-        }
-      }
-
       // Invalidate cache BEFORE navigating to ensure fresh data
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
       if (petId) {
@@ -390,46 +231,7 @@ export function PetForm() {
         return;
       }
       // Leave at once; the toast lives on over the list.
-      // An invitation has its own message with «Отменить»: a second one would take its place at once.
-      if (invited.length === 0) showToast.success('Питомец сохранён');
-
-      // Who the server says already has the access is not a refusal to report, and
-      // naming them is what tells the person why nobody needs an invitation.
-      if (alreadyThere.length > 0) {
-        showToast.failure(
-          alreadyThere.length === 1
-            ? `У ${alreadyThere[0]} уже есть доступ`
-            : `Доступ уже есть у ${alreadyThere.join(', ')}`,
-        );
-      } else if (sharingFailed.length > 0) {
-        // The card is saved, so this is said about the access only. Every refusal is
-        // named: one unnamed «что-то не отправилось» leaves the person guessing whose
-        // invitation it was and whether to send it again.
-        const notSent = sharingFailed.filter((f) => f.added).map((f) => f.username);
-        const notClosed = sharingFailed.filter((f) => !f.added).map((f) => f.username);
-        const about: string[] = [];
-        if (notSent.length > 0) {
-          about.push(
-            notSent.length === 1
-              ? `приглашение для ${notSent[0]} не отправилось`
-              : `приглашения для ${notSent.join(', ')} не отправились`,
-          );
-        }
-        if (notClosed.length > 0) {
-          about.push(
-            notClosed.length === 1
-              ? `доступ для ${notClosed[0]} не изменился`
-              : `доступ для ${notClosed.join(', ')} не изменился`,
-          );
-        }
-        // One refusal with a reason of its own («Пользователь отключён») says more in the
-        // server's own words, with the name in front of it: who, and why.
-        const only = sharingFailed.length === 1 ? sharingFailed[0] : null;
-        const aboutOne = only
-          ? `${only.added ? 'приглашение' : 'доступ'} для ${only.username} ${only.added ? 'не отправилось' : 'не изменился'}${only.said ? `: ${only.said}` : ''}`
-          : about.join(', ');
-        showToast.failure(`Карточка сохранена, ${aboutOne}`);
-      }
+      showToast.success('Питомец сохранён');
       goBack(navigate, '/pets');
     } catch (error) {
       const errorMessage = getApiErrorMessage(error, 'Не удалось сохранить');
@@ -812,144 +614,20 @@ export function PetForm() {
             )}
           </Form>
 
-          {/* Sharing is an owner-only capability — the backend already
-              rejects a non-owner's attempt to add/remove access, but the
-              legacy app also kept the whole section out of a shared
-              user's view (and never showed it while creating a new pet,
-              since ownership only exists once the pet does). Showing it
-              unconditionally here let a shared user see who else has
-              access and try owner-only actions the old app deliberately
-              hid from them. */}
+          {/* Sharing is an owner-only capability: the backend already rejects a non-owner's attempt to add or remove access,
+              and a shared user is not shown who else has it. A new pet has no owner yet, so the section waits for it.
+              The same piece as the «Поделиться» sheet of the feed and of the list of pets: its own «Пригласить» sends the
+              invitation at once, «Сохранить» below is for the card. */}
           {isEditing && pet?.current_user_is_owner && (
-          <Form layout="horizontal" mode="card">
-            <Form.Header>Поделиться доступом</Form.Header>
-            <p style={{
-              margin: '0 var(--spacing-md) var(--spacing-sm)',
-              fontSize: 'var(--text-sm)',
-              color: 'var(--app-text-secondary)',
-            }}>
-              Человек получит приглашение и увидит питомца, когда примет его. Тогда он сможет смотреть и добавлять записи и данные для врача. Менять карточку питомца, типы записей и доступ сможете только вы. Подсказываем тех, с кем вы уже делитесь питомцами; остальных найдём по полному логину
-            </p>
-            <Form.Item layout="vertical">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <SearchBar
-                  placeholder="Логин пользователя"
-                  value={searchTerm}
-                  onChange={handleSearch}
-                  onClear={() => {
-                    setSearchTerm('');
-                    setSearchResults([]);
-                  }}
-                />
-                {searchLoading && <div style={{ padding: '8px', textAlign: 'center' }}>Поиск…</div>}
-                {/* Only an exact login matches (web/users.py), so say when none does. A search that failed says so. */}
-                {searchShown && searchFailed && (
-                  <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                    Не удалось найти, попробуйте ещё раз
-                  </div>
-                )}
-                {searchShown && !searchFailed && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
-                  <div style={{ padding: '4px 8px', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                    {searchTerm.trim().toLowerCase() === (localStorage.getItem('username') ?? '').toLowerCase()
-                      ? 'Это ваш логин'
-                      : alreadyReached
-                        ? 'У этого человека уже есть доступ'
-                        : 'Пользователь с таким логином не найден'}
-                  </div>
-                )}
-                {searchShown && searchResults.length > 0 && (
-                  <div style={{
-                    marginTop: '4px',
-                    border: '1px solid var(--app-border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    backgroundColor: 'var(--app-page-background)'
-                  }}>
-                    {searchResults.map(u => (
-                      <button
-                        type="button"
-                        key={u.username}
-                        onClick={() => handleAddSharedUser(u.username)}
-                        style={{
-                          padding: '12px',
-                          border: 'none',
-                          borderBottom: '1px solid var(--app-border-color)',
-                          background: 'transparent',
-                          textAlign: 'left',
-                          width: '100%',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          color: 'inherit',
-                          font: 'inherit',
-                        }}
-                      >
-                        <span style={{ fontWeight: 500 }}>{u.username}</span>
-                        <UserAddOutline color='var(--adm-color-primary)' fontSize={20} />
-                      </button>
-                    ))}
-                  </div>
-                )}
+            <section aria-label="Поделиться доступом" style={{ marginTop: 'var(--spacing-lg)' }}>
+              <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)' }}>Поделиться доступом</h2>
+              <div className="card-soft" style={{ padding: 'var(--spacing-md)' }}>
+                <PetSharePanel pet={pet} />
+                <p style={{ margin: 'var(--spacing-md) 4px 0', fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
+                  Приглашение уходит сразу, по кнопке «Пригласить»: «Сохранить» для него не нужно
+                </p>
               </div>
-            </Form.Item>
-
-            {localSharedWith.length > 0 && localSharedWith.map(username => (
-              <Form.Item
-                key={username}
-                extra={
-                  <Button
-                    size="mini"
-                    color="danger"
-                    onClick={() => handleRemoveSharedUser(username)}
-                    aria-label={(pet?.shared_with || []).includes(username) ? `Закрыть доступ для ${username}` : `Отменить приглашение для ${username}`}
-                  >
-                    <DeleteOutline fontSize={20} aria-hidden />
-                  </Button>
-                }
-              >
-                {(pet?.shared_with || []).includes(username) ? (
-                  <>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/users/${username}`)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      minHeight: 'var(--touch-min)',
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      color: 'inherit',
-                    }}
-                  >
-                    <UserAvatar username={username} size={24} />
-                    <span style={{ fontWeight: 500 }}>{username}</span>
-                  </button>
-                  {username === pet?.next_owner && (
-                    // The family is an order: if the owner's account goes, the pet goes to the first of them.
-                    <span style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-xs)', color: 'var(--app-text-secondary)' }}>
-                      Станет владельцем, если вы удалите аккаунт
-                    </span>
-                  )}
-                  </>
-                ) : (
-                  // Invited, not a member yet: no profile to open.
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <UserAvatar username={username} size={24} />
-                    <span style={{ fontWeight: 500 }}>{username}</span>
-                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-                      {(pet?.share_invites || []).includes(username) ? 'ждёт ответа' : 'приглашение уйдёт при сохранении'}
-                    </span>
-                  </span>
-                )}
-              </Form.Item>
-            ))}
-          </Form>
+            </section>
           )}
         </div>
 
