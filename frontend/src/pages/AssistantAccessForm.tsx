@@ -143,12 +143,14 @@ export function AssistantAccessForm() {
                 control={control}
                 render={({ field }) => (
                   <Form.Item label="Срок действия">
-                    <Segmented
-                      label="Срок действия"
-                      value={String(field.value)}
-                      options={DAY_OPTIONS}
-                      onChange={(value) => field.onChange(Number(value) as FormValues['days'])}
-                    />
+                    <div className="assist__days">
+                      <Segmented
+                        label="Срок действия"
+                        value={String(field.value)}
+                        options={DAY_OPTIONS}
+                        onChange={(value) => field.onChange(Number(value) as FormValues['days'])}
+                      />
+                    </div>
                   </Form.Item>
                 )}
               />

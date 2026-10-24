@@ -184,7 +184,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
 
           {/* What it is (the title) and when (the date, at the top right, where the chevron's edge is); an icon alone does not
               say «Смена лотка». */}
-          <div style={{ gridColumn: '2 / span 2', gridRow: 1, minWidth: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
+          <div style={{ gridColumn: '2 / span 2', gridRow: 1, minWidth: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--spacing-md)' }}>
             <span className="display-headline" style={{ minWidth: 0, fontSize: 'var(--text-md)', fontWeight: 500 }}>
               {config.displayName}
             </span>

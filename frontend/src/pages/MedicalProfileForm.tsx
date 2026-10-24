@@ -392,6 +392,7 @@ export function MedicalProfileForm() {
             render={({ field }) => (
               <Form.Item
                 layout="horizontal"
+                className="form-item--switch-note"
                 label="Аллергий нет"
                 description="Включите, если аллергий нет: врач увидит «не выявлено», а не «не указаны»"
                 extra={
