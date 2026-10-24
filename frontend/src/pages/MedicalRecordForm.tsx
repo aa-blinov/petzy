@@ -33,6 +33,7 @@ import { ProductPickerSheet, type ProductGroup } from '../components/ProductPick
 import { catalogSpecies, inferProtects, useVaccineCatalog } from '../hooks/useVaccineCatalog';
 import { getApiErrorMessage } from '../utils/apiError';
 import { newFormKey } from '../utils/idempotency';
+import { clinicNames, doctorNames } from '../utils/placeOptions';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { medicationsListQuery } from '../services/medications.service';
@@ -462,27 +463,15 @@ export function MedicalRecordForm() {
   const profileClinics = card.data?.profile.clinics ?? [];
   const sameText = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
   const recordList = Object.values(card.data?.records ?? {}).flat();
-  const withCurrent = (names: (string | null | undefined)[], current?: string | null) => {
-    const out: string[] = [];
-    for (const n of [...names, current]) {
-      const name = n?.trim();
-      if (name && !out.some((o) => sameText(o, name))) out.push(name);
-    }
-    return out;
-  };
-  const chosenClinic = profileClinics.find((c) => sameText(c.name, clinicValue));
-  const clinicOptions = withCurrent([...profileClinics.map((c) => c.name), ...recordList.map((r) => r.clinic)], clinicValue).map((n) => ({ label: n, value: n }));
-  const clinicOf = (doctor: string) => profileClinics.find((c) => c.doctors.some((d) => sameText(d.name, doctor)));
+  // Every clinic and doctor already named for the pets of this person, not only those of the last ten records of this pet.
+  const places = useQuery({ queryKey: ['medical-places'], queryFn: () => medicalRecordsService.places(), staleTime: 60_000 });
+  const knownClinics = places.data?.clinics ?? [];
+  const knownDoctors = places.data?.doctors ?? [];
+  const sources = { profileClinics, records: recordList, knownClinics, knownDoctors, clinicValue, vetValue };
+  const clinicOptions = clinicNames(sources).map((n) => ({ label: n, value: n }));
+  const doctorOptions = doctorNames(sources).map((n) => ({ label: n, value: n }));
   const clinicChosen = !!clinicValue?.trim();
-  // With a clinic chosen only its own doctors are offered (a one-off clinic has none of the profile's), so a doctor never
-  // changes a clinic that was picked: the clinic follows the doctor only when none was chosen, and says so.
-  const doctorOptions = withCurrent(
-    [
-      ...(clinicChosen ? (chosenClinic ? chosenClinic.doctors : []) : profileClinics.flatMap((c) => c.doctors)).map((d) => d.name),
-      ...recordList.map((r) => r.vet).filter((v) => !clinicChosen || !chosenClinic || !clinicOf(v ?? '') || sameText(clinicOf(v ?? '')?.name, chosenClinic.name)),
-    ],
-    vetValue,
-  ).map((n) => ({ label: n, value: n }));
+  const clinicOf = (doctor: string) => profileClinics.find((c) => c.doctors.some((d) => sameText(d.name, doctor)));
   // «Другая…» and «Другой…»: a clinic or a doctor that is not in the lists is typed in this row, no detour to the profile.
   const OTHER = '__other__';
   const [clinicOther, setClinicOther] = useState(false);
@@ -511,10 +500,11 @@ export function MedicalRecordForm() {
       return;
     }
     setValue('vet', name, { shouldDirty: true });
-    const owner = clinicOf(name);
-    if (owner?.name && !clinicChosen) {
-      setValue('clinic', owner.name, { shouldDirty: true });
-      setLinkNote(`Клиника «${owner.name}» поставлена по врачу`);
+    // The clinic of the doctor: the profile's, else the one he was seen at for another pet.
+    const ownerName = clinicOf(name)?.name ?? knownDoctors.find((d) => sameText(d.name, name))?.clinic;
+    if (ownerName && !clinicChosen) {
+      setValue('clinic', ownerName, { shouldDirty: true });
+      setLinkNote(`Клиника «${ownerName}» поставлена по врачу`);
     }
   };
   const repeatChoices = kind ? REPEAT_CHOICES[kind] ?? [] : [];
@@ -602,6 +592,7 @@ export function MedicalRecordForm() {
         });
       }
       queryClient.invalidateQueries({ queryKey: ['medical-card', petId] });
+      queryClient.invalidateQueries({ queryKey: ['medical-places'] });
       queryClient.invalidateQueries({ queryKey: ['medical-record', recordId] });
       // The Documents list names the record that holds a file («Из записи: …»).
       queryClient.invalidateQueries({ queryKey: ['documents', petId] });

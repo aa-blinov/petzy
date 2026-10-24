@@ -1,9 +1,10 @@
-"""The button that closes a long form stays above the keys.
+"""The button that closes a long form does not jump with the keyboard.
 
 A phone's keyboard covers the bottom of the page and only the visual viewport shrinks: the layout
 viewport stays as tall as the screen, and a button held to the bottom of it (position: sticky)
-ends up behind the keys, where it cannot be pressed. utils/keyboard.ts writes how much the keys
-cover into `--keyboard-fixed-offset`, and the button rides on the top edge of the keys.
+ends up behind the keys. Floating it on the top edge of the keys made it follow every step of the keyboard's
+animation and jump, so while the keys are up it stays in the flow, where the form ends, and the page has the room
+to scroll it above the keys; with the keys gone it is sticky again.
 
 Headless Chromium shows no keyboard, so the visual viewport is faked, as in check_bar_keyboard_pan:
 its height loses the rows of the keys, and the page's own field takes the focus that opens them.
@@ -76,17 +77,34 @@ async def main():
         await pg.wait_for_timeout(300)
         read = await pg.evaluate(READ)
         check("with the keyboard up, the page knows it", read["open"], str(read))
+        check("the tab bar steps aside while the keys are up", read["tabBarShown"] is False, str(read))
         check(
-            "and the button is above the keys, not behind them",
+            "the button stops floating while the keys are up: it stays where the form ends",
+            await pg.evaluate("() => getComputedStyle(document.querySelector('.form-sticky-action')).position")
+            == "static",
+        )
+
+        # The keyboard animates: its height takes several values on the way. The button moves with none of them.
+        tops = []
+        for height in (120, 260, 300, 200, 300):
+            await pg.evaluate(VIEWPORT, [height])
+            await pg.wait_for_timeout(60)
+            tops.append(
+                await pg.evaluate(
+                    "() => Math.round(document.querySelector('.form-sticky-action').getBoundingClientRect().top + scrollY)"
+                )
+            )
+        check("and it does not move while the keyboard changes its height", len(set(tops)) == 1, str(tops))
+
+        # It can be reached: scrolled to the end, it stands above the keys.
+        await pg.evaluate("() => window.scrollTo(0, 1e6)")
+        await pg.wait_for_timeout(300)
+        read = await pg.evaluate(READ)
+        check(
+            "scrolled to the end of the form, the button is above the keys",
             read["buttonBottom"] <= read["visibleBottom"],
             str(read),
         )
-        check(
-            "and the field being typed in is above the keys too",
-            read["fieldBottom"] <= read["visibleBottom"],
-            str(read),
-        )
-        check("the tab bar steps aside while the keys are up", read["tabBarShown"] is False, str(read))
 
         await pg.evaluate("() => document.activeElement && document.activeElement.blur()")
         await pg.evaluate(VIEWPORT, [0])
