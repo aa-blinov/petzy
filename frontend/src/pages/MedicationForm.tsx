@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { showToast } from '../utils/toast';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
@@ -20,6 +20,7 @@ import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { isMissing } from '../utils/notFound';
 import { Pill } from 'lucide-react';
+import { newFormKey } from '../utils/idempotency';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
@@ -366,6 +367,8 @@ export function MedicationForm() {
         },
     });
 
+    // One key per opening of the form: a retry after a lost answer does not store the course twice.
+    const formKey = useRef(newFormKey());
     const mutation = useMutation({
         mutationFn: async ({ data, stockEdited }: { data: MedicationFormData; stockEdited: boolean }) => {
             const payload: MedicationCreate = {
@@ -384,7 +387,8 @@ export function MedicationForm() {
             if (isEditing && id) {
                 await medicationsService.update(id, payload);
             } else {
-                await medicationsService.create(payload);
+                await medicationsService.create(payload, formKey.current);
+                formKey.current = newFormKey();
             }
         },
         onSuccess: () => {

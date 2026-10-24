@@ -37,6 +37,7 @@ import { SpinnerButton } from '../components/SpinnerButton';
 import { EmptyState } from '../components/EmptyState';
 import { LoadError } from '../components/LoadError';
 import { PawPrint } from 'lucide-react';
+import { newFormKey } from '../utils/idempotency';
 import { PhotoCropModal } from '../components/PhotoCropModal';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
@@ -65,6 +66,8 @@ interface PetPhotoItem {
 }
 
 export function PetForm() {
+  // One key per opening of the form: a retry after a lost answer does not add the pet twice.
+  const createKey = useRef(newFormKey());
   const navigate = useNavigate();
   const { selectPet } = usePet();
   const deletePet = useDeletePet();
@@ -347,7 +350,8 @@ export function PetForm() {
       } else {
         // A new pet starts with the events that make sense for its species
         // (no litter or tooth brushing for a fish); all can be turned on later.
-        const newPet = await petsService.createPet({ ...petData, tiles_settings: defaultTilesFor(values.species) });
+        const newPet = await petsService.createPet({ ...petData, tiles_settings: defaultTilesFor(values.species) }, createKey.current);
+        createKey.current = newFormKey();
         petId = newPet._id;
         createdPet = newPet;
       }

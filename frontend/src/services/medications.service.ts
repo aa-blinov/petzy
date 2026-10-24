@@ -1,4 +1,5 @@
 import api from './api';
+import { idempotencyHeaders } from '../utils/idempotency';
 import { formatDate } from '../utils/dateUtils';
 import { deviceTimeZone, requiredZone } from '../utils/timezone';
 
@@ -144,8 +145,8 @@ export const medicationsService = {
         return response.data.medications;
     },
 
-    async create(data: MedicationCreate): Promise<string> {
-        const response = await api.post<{ id: string }>('/medications', data);
+    async create(data: MedicationCreate, formKey?: string): Promise<string> {
+        const response = await api.post<{ id: string }>('/medications', data, { headers: idempotencyHeaders(formKey, data) });
         return response.data.id;
     },
 
