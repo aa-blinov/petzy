@@ -1,16 +1,8 @@
 /**
- * Bottom sheet listing all record types in a 2-column grid.
- *
- * Replaces the older ActionSheet (vertical list of titles) with a
- * grid of icon-tiles so the user can see all options at a glance and
- * tap the one they want in a single gesture.
- *
- * Uses antd-mobile `Popup` rather than `ActionSheet` — ActionSheet
- * ignores children and only renders the `actions` array, so any custom
- * body content has to live inside a Popup.
+ * The feed's «+»: the pet's record types as tiles, plus the doors to the clinical records, the rest of the catalogue and the
+ * settings of the window. It is the shared AddSheet, the same look as the medical card's and the Documents'.
  */
 
-import { Popup, Grid } from 'antd-mobile';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,10 +12,7 @@ import { getSpecies, suggestedFirst } from '../utils/species';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { usePet } from '../hooks/usePet';
-import { hapticFeedback } from '../utils/haptic';
-import { pastelColorMap } from '../utils/constants';
-import { DraggableSheetBody } from './DraggableSheetBody';
-
+import { AddLink, AddSheet, AddTile, AddTiles } from './AddSheet';
 
 interface QuickAddSheetProps {
   visible: boolean;
@@ -57,171 +46,78 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
   };
 
   const renderTiles = (list: typeof tiles) => (
-        <Grid columns={2} gap={12}>
-          {list.map(tile => {
-            const bg = pastelColorMap[tile.color] ?? 'var(--tile-blue)';
-            const Icon = displayConfigs[tile.id]?.icon;
-            return (
-              <Grid.Item key={tile.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    hapticFeedback('light');
-                    close();
-                    navigate(`/form/${tile.id}`);
-                  }}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-md)',
-                    padding: '12px',
-                    height: '56px',
-                    width: '100%',
-                    background: bg,
-                    border: 'none',
-                    // Concentric with the sheet's own 24px corner, 12px
-                    // (--spacing-md) in from it: 24 − 12 = 12.
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--app-text-on-tile)',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    boxShadow: 'var(--app-shadow-light)',
-                  }}
-                >
-                  {Icon && (
-                    <Icon
-                      size={20}
-                      strokeWidth={2}
-                      style={{ display: 'block', flexShrink: 0, color: 'var(--app-text-on-tile)' }}
-                    />
-                  )}
-                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, textAlign: 'left' }}>
-                    <span
-                      style={{
-                        fontSize: 'var(--text-sm)',
-                        fontWeight: 500,
-                        lineHeight: 1.25,
-                        letterSpacing: '-0.01em',
-                        overflow: 'hidden',
-                        // Two lines before a cut: «Приступ астмы» on a narrow phone is not «Приступ аст…».
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflowWrap: 'anywhere',
-                        minWidth: 0,
-                        textAlign: 'left',
-                      }}
-                    >
-                      {tile.title}
-                    </span>
-                    {/* Outside the clamp: a long name must not push the mark that says the type is the person's own out of sight. */}
-                    {tile.custom && (
-                      <span style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 400, opacity: 0.75, marginTop: 2 }}>Свой</span>
-                    )}
-                  </span>
-                </button>
-              </Grid.Item>
-            );
-          })}
-        </Grid>
+    <AddTiles>
+      {list.map((tile) => (
+        <AddTile
+          key={tile.id}
+          label={tile.title}
+          icon={displayConfigs[tile.id]?.icon}
+          color={tile.color}
+          badge={tile.custom ? 'Свой' : undefined}
+          onClick={() => {
+            close();
+            navigate(`/form/${tile.id}`);
+          }}
+        />
+      ))}
+    </AddTiles>
   );
 
   return (
-    <Popup
-      visible={visible}
-      onMaskClick={close}
-      position="bottom"
-      closeOnSwipe
-      bodyStyle={{ background: 'transparent' }}
-    >
-      {/* Sized to its tiles; many event types scroll inside, same cap as
-          HistoryFilterSheet. */}
-      <DraggableSheetBody visible={visible} onClose={close} maxHeight="75vh" label="Что записать?">
-
-        {/* Title */}
-        <h2
-          className="section-header"
-          style={{
-            marginBottom: 'var(--spacing-lg)',
-            paddingLeft: 4,
-            fontSize: '1.125rem',
-          }}
-        >
-          Что записать?
-        </h2>
-
-        {tiles.length === 0 && (
-          // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
-          <div style={{ padding: 'var(--spacing-md) 4px var(--spacing-lg)', color: 'var(--app-text-secondary)' }}>
-            <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте типы записей питомца</p>
-            <button
-              type="button"
-              className="touch-target"
-              style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
-              onClick={() => {
-                close();
-                navigate('/pet-events');
-              }}
-            >
-              Добавить типы записей
-            </button>
-          </div>
-        )}
-
-        {renderTiles(tiles)}
-
-        {/* The clinical records (a vaccination, a treatment, a visit) are part of the pet's life too, and the diary's window is where a
-            person looks first: one door to their own chooser, the medical card's records, not another tile among the diary's. */}
-        {selectedPetId && (
-          <button
-            type="button"
-            className="tap-feedback"
-            onClick={() => {
-              close();
-              navigate(`/pets/${selectedPetId}/medical-records/new`);
-            }}
-            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
-          >
-            Прививка, визит или обработка
-          </button>
-        )}
-
-        {/* A new pet starts with a few events; the rest of the catalogue is here, one tap from a record, for whoever may log. */}
-        {tiles.length > 0 && others.length > 0 && !othersOpen && (
-          <button
-            type="button"
-            className="tap-feedback"
-            aria-expanded={false}
-            onClick={() => setOthersOpen(true)}
-            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
-          >
-            Другие записи
-          </button>
-        )}
-        {(othersOpen || (tiles.length === 0 && others.length > 0)) && (
-          <>
-            <h3 className="section-header" style={{ margin: 'var(--spacing-lg) 0 var(--spacing-sm)', paddingLeft: 4, fontSize: 'var(--text-md)' }}>
-              Другие записи
-            </h3>
-            {renderTiles(others)}
-          </>
-        )}
-        {/* Which events stay in this window is the owner's to change. */}
-        {tiles.length > 0 && isOwner && (
-          <button
-            type="button"
-            className="tap-feedback"
+    <AddSheet visible={visible} onClose={close}>
+      {tiles.length === 0 && (
+        // Every tile is hidden in the settings: said, with the way back, not an empty sheet.
+        <div className="addsheet__note">
+          <p style={{ margin: '0 0 var(--spacing-md)' }}>В окне «+» ничего нет: добавьте типы записей питомца</p>
+          <AddLink
             onClick={() => {
               close();
               navigate('/pet-events');
             }}
-            style={{ width: '100%', minHeight: 'var(--touch-min)', marginTop: 'var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-accent-deep)', cursor: 'pointer' }}
           >
-            Настроить типы записей
-          </button>
-        )}
-      </DraggableSheetBody>
-    </Popup>
+            Добавить типы записей
+          </AddLink>
+        </div>
+      )}
+
+      {renderTiles(tiles)}
+
+      {/* The clinical records (a vaccination, a treatment, a visit) are part of the pet's life too, and the diary's window is where a
+          person looks first: one door to their own chooser, the medical card's records, not another tile among the diary's. */}
+      {selectedPetId && (
+        <AddLink
+          onClick={() => {
+            close();
+            navigate(`/pets/${selectedPetId}/medical-records/new`);
+          }}
+        >
+          Прививка, визит или обработка
+        </AddLink>
+      )}
+
+      {/* A new pet starts with a few events; the rest of the catalogue is here, one tap from a record, for whoever may log. */}
+      {tiles.length > 0 && others.length > 0 && !othersOpen && (
+        <AddLink expanded={false} onClick={() => setOthersOpen(true)}>
+          Другие записи
+        </AddLink>
+      )}
+      {(othersOpen || (tiles.length === 0 && others.length > 0)) && (
+        <>
+          <h3 className="addsheet__subtitle">Другие записи</h3>
+          {renderTiles(others)}
+        </>
+      )}
+      {/* Which events stay in this window is the owner's to change. */}
+      {tiles.length > 0 && isOwner && (
+        <AddLink
+          onClick={() => {
+            close();
+            navigate('/pet-events');
+          }}
+        >
+          Настроить типы записей
+        </AddLink>
+      )}
+    </AddSheet>
   );
 }

@@ -149,7 +149,7 @@ async def main():
             await pg.locator("#medcard-prevention .medcard__add").click()
             await settle(pg, 200)
             sheet = pg.locator(".adm-popup").last
-            sheet_title = sheet.locator(".medcard__sheet-title")
+            sheet_title = sheet.locator(".addsheet__title")
             check(
                 "the sheet that asks what to add names itself",
                 await sheet_title.count() == 1 and "Что добавить" in await sheet_title.inner_text(),

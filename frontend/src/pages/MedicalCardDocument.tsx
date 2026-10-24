@@ -1,13 +1,15 @@
 import { weightRangeByYear } from '../utils/weightRanges';
 import { useState, type ReactNode } from 'react';
 import { Popup } from 'antd-mobile';
-import { AlertTriangle, CheckCircle2, Clock, Copy, Download, Link2, Loader2, Minus, Plus, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Bug, CheckCircle2, Clock, Copy, Download, Link2, Loader2, Minus, Plus, Scissors, ShieldAlert, Stethoscope, Syringe, type LucideIcon } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DraggableSheetBody } from '../components/DraggableSheetBody';
+import { AddSheet, AddTile, AddTiles } from '../components/AddSheet';
 import { PARASITE_TARGET_LABELS, medicalRecordsService, type MedicalKind, type MedicalRecord } from '../services/medicalRecords.service';
 import { VISIT_CHECKS, VISIT_CHECK_LABELS, type MedicalCard as Card, type MedicalCardCourse, type MedicalCardVaccination, type MedicalClinic, type VisitPrep } from '../services/medicalCard.service';
 import { DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
+import { recordToInput } from '../utils/documentRecords';
 import { listWords, readinessChecks } from '../utils/medicalReadiness';
 import { formatDate, hasLife, petBirthDate, petFacts, petIdentity, weightDelta } from '../utils/medicalCardFormat';
 import { pluralRu } from '../utils/relativeTime';
@@ -554,23 +556,24 @@ function DocSection({
   );
 }
 
-/** The sheet that asks which of the two kinds to write about. */
-function KindSheet({ visible, onClose, title, options, onPick }: { visible: boolean; onClose: () => void; title: string; options: { label: string; to: string }[]; onPick: (to: string) => void }) {
+/** One choice of the sheet that asks which of the two kinds to write about. */
+interface KindOption {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+  color: string;
+}
+
+/** The sheet that asks which of the two kinds to write about: the shared «Что добавить?» with a tile for each. */
+function KindSheet({ visible, onClose, options, onPick }: { visible: boolean; onClose: () => void; options: KindOption[]; onPick: (to: string) => void }) {
   return (
-    <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
-      <DraggableSheetBody visible={visible} onClose={onClose} label={title}>
-        <h2 className="medcard__sheet-title">{title}</h2>
-        <ul className="medcard__list">
-          {options.map((option) => (
-            <li key={option.label} className="medcard__row" style={{ padding: 0 }}>
-              <button type="button" className="medcard__row-button medcard__todo-row" onClick={() => onPick(option.to)}>
-                <span className="medcard__row-title">{option.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </DraggableSheetBody>
-    </Popup>
+    <AddSheet visible={visible} onClose={onClose}>
+      <AddTiles>
+        {options.map((option) => (
+          <AddTile key={option.label} label={option.label} icon={option.icon} color={option.color} onClick={() => onPick(option.to)} />
+        ))}
+      </AddTiles>
+    </AddSheet>
   );
 }
 
@@ -607,10 +610,8 @@ function RecordsSheet({
     staleTime: 0,
   });
   const stopTracking = async (r: MedicalRecord) => {
-    const input = {
-      date: r.date, title: r.title, next_due: null as string | null, clinic: r.clinic, vet: r.vet, note: r.note, batch: r.batch, target: r.target,
-      complaint: r.complaint, diagnosis: r.diagnosis, recommendations: r.recommendations, document_ids: r.documents.map((d) => d.id),
-    };
+    // The whole record again (the replace clears what is left out: the vaccine's «От чего», the visit's weighing), no repeat date.
+    const input = { ...recordToInput(r), next_due: null as string | null, base_version: null };
     const refresh = () => queryClient.invalidateQueries({ queryKey: ['medical-card', petId] });
     try {
       await medicalRecordsService.update(r._id, input);
@@ -722,7 +723,7 @@ export interface CardDocumentProps {
 }
 
 export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onShare, handoverBlocked, saving, afterPassport, shared }: CardDocumentProps) {
-  const [kindSheet, setKindSheet] = useState<null | { title: string; options: { label: string; to: string }[] }>(null);
+  const [kindSheet, setKindSheet] = useState<null | KindOption[]>(null);
   const [recordsSheet, setRecordsSheet] = useState<null | MedicalKind[]>(null);
   const [weightSheet, setWeightSheet] = useState(false);
   const items = overdueItems(card, hidden);
@@ -909,13 +910,10 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
             ? {
                 label: 'прививку или обработку',
                 onClick: () =>
-                  setKindSheet({
-                    title: 'Что добавить?',
-                    options: [
-                      { label: 'Прививка', to: `/pets/${petId}/medical-records/new?kind=vaccination` },
-                      { label: 'Обработка от паразитов', to: `/pets/${petId}/medical-records/new?kind=parasite` },
-                    ],
-                  }),
+                  setKindSheet([
+                    { label: 'Прививка', to: `/pets/${petId}/medical-records/new?kind=vaccination`, icon: Syringe, color: 'green' },
+                    { label: 'Обработка от паразитов', to: `/pets/${petId}/medical-records/new?kind=parasite`, icon: Bug, color: 'orange' },
+                  ]),
               }
             : undefined
         }
@@ -959,13 +957,10 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
             ? {
                 label: 'визит или операцию',
                 onClick: () =>
-                  setKindSheet({
-                    title: 'Что добавить?',
-                    options: [
-                      { label: 'Визит', to: `/pets/${petId}/medical-records/new?kind=visit` },
-                      { label: 'Операция', to: `/pets/${petId}/medical-records/new?kind=procedure` },
-                    ],
-                  }),
+                  setKindSheet([
+                    { label: 'Визит', to: `/pets/${petId}/medical-records/new?kind=visit`, icon: Stethoscope, color: 'blue' },
+                    { label: 'Операция', to: `/pets/${petId}/medical-records/new?kind=procedure`, icon: Scissors, color: 'purple' },
+                  ]),
               }
             : undefined
         }
@@ -1037,7 +1032,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
         )}
       </DocSection>
 
-      {kindSheet && <KindSheet visible title={kindSheet.title} options={kindSheet.options} onClose={() => setKindSheet(null)} onPick={addTo} />}
+      {kindSheet && <KindSheet visible options={kindSheet} onClose={() => setKindSheet(null)} onPick={addTo} />}
       {recordsSheet && (
         <RecordsSheet
           visible

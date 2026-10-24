@@ -691,9 +691,9 @@ export function MedicalRecordForm() {
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
           {recordGone ? (
-            <EmptyState icon={FileText} title="Запись не найдена" description="Возможно, её удалили" actionLabel="К медкарте" onAction={() => navigate(cardPath, { replace: true })} />
+            <EmptyState icon={FileText} title="Запись не найдена" description="Возможно, её удалили или у вас нет к ней доступа" actionLabel="К медкарте" onAction={() => navigate(cardPath, { replace: true })} />
           ) : petGone ? (
-            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или закрыли вам доступ" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
+            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или у вас нет к нему доступа" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
           ) : (
             <LoadError what="запись" onRetry={() => Promise.all([record.refetch(), card.refetch()])} />
           )}
@@ -709,7 +709,7 @@ export function MedicalRecordForm() {
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          <EmptyState icon={FileText} title="Что записать?" description="Выберите вид записи, и откроется форма" />
+          <EmptyState icon={FileText} title="Что добавить?" description="Выберите вид записи, и откроется форма" />
           <ul className="medcard__list">
             {KINDS.map((k) => (
               <li key={k} className="medcard__row" style={{ padding: 0 }}>

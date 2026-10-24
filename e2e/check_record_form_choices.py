@@ -131,7 +131,7 @@ async def main():
             await pg.goto(BASE + "/")
             await settle(pg)
             await pg.locator(".app-fab").click()
-            sheet = pg.locator(".adm-popup").filter(has_text="Что записать?")
+            sheet = pg.locator(".adm-popup").filter(has_text="Что добавить?")
             await sheet.get_by_text("Другие записи").first.wait_for(state="visible", timeout=10000)
             before = await sheet.locator("button").count()
             await sheet.get_by_role("button", name="Другие записи").click()

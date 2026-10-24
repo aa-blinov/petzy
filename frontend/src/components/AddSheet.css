@@ -1,0 +1,102 @@
+/* The one «Что добавить?» sheet: the feed's «+», the medical card's blocks and the Documents list all open it. */
+.addsheet__title {
+    margin: var(--spacing-xs) var(--spacing-xs) var(--spacing-lg);
+    font-size: 1.25rem;
+    line-height: 1.2;
+    color: var(--app-text-primary);
+}
+
+.addsheet__subtitle {
+    margin: var(--spacing-lg) var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--app-text-primary);
+}
+
+.addsheet__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+}
+
+.addsheet__grid--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* The feed's tile is the house style: a pastel fill, dark text, a light shadow. */
+.addsheet__tile {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    min-height: 56px;
+    padding: var(--spacing-md);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--app-shadow-light);
+    color: var(--app-text-on-tile);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-align: left;
+    cursor: pointer;
+}
+
+.addsheet__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    color: var(--app-text-on-tile);
+}
+
+.addsheet__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.addsheet__label {
+    min-width: 0;
+    overflow: hidden;
+    /* Two lines before a cut: «Приступ астмы» on a narrow phone is not «Приступ аст…». */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow-wrap: anywhere;
+}
+
+.addsheet__badge {
+    margin-top: 2px;
+    font-size: var(--text-xs);
+    font-weight: 400;
+    opacity: 0.75;
+}
+
+/* A quiet copper line under the tiles: «Другие записи», «Настроить типы записей». */
+.addsheet__link {
+    width: 100%;
+    min-height: var(--touch-min);
+    margin-top: var(--spacing-md);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.addsheet__note {
+    margin: 0 var(--spacing-xs) var(--spacing-md);
+    color: var(--app-text-secondary);
+}
+
+/* Two columns need the width for a label like «Обработка от паразитов» on one or two lines; a narrower phone gets one. */
+@media (max-width: 359px) {
+    .addsheet__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

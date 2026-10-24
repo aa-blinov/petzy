@@ -23,7 +23,7 @@ async def main():
         await settle(pg, 150)
         check(
             "the sheet has the camera and one files tile, with no tile of its own for scans",
-            await pg.locator(".recsheet__label").all_inner_texts()
+            await pg.locator(".addsheet__label").all_inner_texts()
             == ["Сфотографировать", "Фото, PDF или архив из файлов"],
         )
         await pg.locator('input[aria-label="Выбрать файл"]').set_input_files(

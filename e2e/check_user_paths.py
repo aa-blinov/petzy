@@ -28,7 +28,7 @@ SCREENS = [
     ("@pet/medical-card/life", ["Питание и условия"]),
     ("@pet/medical-profile", ["Данные для врача", "Аллергий нет"]),
     ("@pet/visit-prep", ["К приёму", "Что беспокоит"]),
-    ("@pet/medical-records/new", ["Что записать?"]),
+    ("@pet/medical-records/new", ["Что добавить?"]),
     ("@record", ["Название вакцины", "Нобивак DHPPi"]),
     ("/form/weight", ["Новая запись: вес"]),
     ("@event", ["Изменить запись", "Питомец"]),
