@@ -2709,29 +2709,9 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
     border-top: 1px solid var(--app-divider-color);
 }
 
-/* DatePickerField: the row that opens the picker, and «Убрать» laid over its right edge, outside the row's own button. */
+/* DatePickerField: the row that opens the picker. */
 .datefield {
     position: relative;
-}
-
-.datefield__clear {
-    position: absolute;
-    top: 50%;
-    right: calc(var(--spacing-lg) + 28px);
-    z-index: 1;
-    transform: translateY(-50%);
-    padding: var(--spacing-sm) 0 var(--spacing-sm) var(--spacing-sm);
-    border: none;
-    background: none;
-    color: var(--app-accent-deep);
-    font-family: inherit;
-    font-size: var(--text-sm);
-    cursor: pointer;
-}
-
-/* A description under the value stops short of «Убрать», which lies over the row's edge and not in its layout. */
-.datefield:has(.datefield__clear) .adm-list-item-description {
-    padding-right: 72px;
 }
 
 /* «Отметить приём»: the sheet that logs a dose at another time or in another amount. */
