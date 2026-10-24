@@ -111,7 +111,7 @@ export function ForgotPassword() {
             </Button>
             {!status.isSuccess && !status.isError && (
               <p role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
-                Проверяем, работает ли восстановление по почте
+                Проверяем, работает ли восстановление по почте…
               </p>
             )}
             {(locked || status.isError) && (

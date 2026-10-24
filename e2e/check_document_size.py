@@ -20,8 +20,8 @@ async def make_pet(pg):
     await pg.get_by_placeholder("Имя питомца").fill(SCRATCH_PET)
     await pg.get_by_role("button", name="Добавить", exact=True).click()
     await settle(pg, 150)
-    if await pg.get_by_role("button", name="Готово").count():
-        await pg.get_by_role("button", name="Готово").click()
+    if await pg.get_by_role("button", name="Закрыть").last.count():
+        await pg.get_by_role("button", name="Закрыть").last.click()
     await settle(pg, 150)
     pets = (await api(pg, "GET", "/pets"))["json"]["pets"]
     return next(q["_id"] for q in pets if q["name"] == SCRATCH_PET)

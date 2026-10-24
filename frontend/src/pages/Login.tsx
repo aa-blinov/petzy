@@ -119,7 +119,7 @@ export function Login() {
                   border: '1px solid var(--app-primary-fill)',
                 }}
               >
-                {isLoading ? 'Вход...' : locked ? `Ещё ${retryLeft} с` : 'Войти'}
+                {isLoading ? 'Входим…' : locked ? `Ещё ${retryLeft} с` : 'Войти'}
               </Button>
               {retryText && (
                 <p role="status" style={{ margin: 'var(--spacing-sm) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, textAlign: 'center', color: 'var(--app-text-secondary)' }}>

@@ -119,7 +119,7 @@ export function MedicalShareSheet({ visible, petId, petName, onClose }: { visibl
                 <li key={share.id} className="shsheet__item">
                   <span>
                     До {formatEnd(share.expires_at)}
-                    {share.username && <span className="shsheet__by">Сделал {share.username}</span>}
+                    {share.username && <span className="shsheet__by">Кто: {share.username}</span>}
                   </span>
                   <Button size="small" color="danger" loading={revoke.isPending && revoke.variables === share.id} onClick={() => revoke.mutate(share.id)}>
                     Отозвать

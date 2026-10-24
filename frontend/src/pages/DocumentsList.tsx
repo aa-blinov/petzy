@@ -504,7 +504,7 @@ export function DocumentsList() {
                                         fontFamily: 'inherit',
                                       }}
                                     >
-                                      Оформить в медкарте
+                                      Оформить как запись
                                     </button>
                                   )}
                                   {expiry && (
@@ -584,7 +584,7 @@ export function DocumentsList() {
                                     }}
                                   >
                                     <UserAvatar username={doc.username} size={16} />
-                                    Добавил(а) {doc.username}
+                                    Добавил: {doc.username}
                                   </button>
                                 )}
                               </div>

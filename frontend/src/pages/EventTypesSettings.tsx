@@ -120,7 +120,7 @@ export function EventTypesSettings() {
                   ? (isAdmin ? 'Встроенный' : 'Встроенный, меняет администратор')
                   : mine
                     ? `Свой, ${eventType.fields.length} ${pluralRu(eventType.fields.length, 'поле', 'поля', 'полей')}`
-                    : `Добавил(а) ${eventType.created_by}`;
+                    : `Добавил: ${eventType.created_by}`;
                 return (
                   <div
                     key={eventType.key}
