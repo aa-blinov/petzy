@@ -41,8 +41,8 @@ class ErrorDef:
 
 ERRORS: Dict[str, ErrorDef] = {
     # Generic errors
-    "validation_error": ErrorDef("validation_error", "Неверные данные", 422),
-    "internal_error": ErrorDef("internal_error", "Внутренняя ошибка сервера", 500),
+    "validation_error": ErrorDef("validation_error", "Проверьте введённые данные", 422),
+    "internal_error": ErrorDef("internal_error", "Что-то пошло не так, попробуйте позже", 500),
     # Auth / access (401)
     "unauthorized": ErrorDef("unauthorized", "Сессия закончилась. Войдите заново", 401),
     "picture_link_invalid": ErrorDef(
@@ -59,20 +59,20 @@ ERRORS: Dict[str, ErrorDef] = {
     ),
     "unauthorized_invalid_credentials": ErrorDef("unauthorized_invalid_credentials", "Неверный логин или пароль", 401),
     "unauthorized_refresh_token_required": ErrorDef(
-        "unauthorized_refresh_token_required", "Требуется refresh token", 401
+        "unauthorized_refresh_token_required", "Сессия закончилась. Войдите заново", 401
     ),
     "unauthorized_refresh_token_invalid": ErrorDef(
-        "unauthorized_refresh_token_invalid", "Неверный или истекший refresh token", 401
+        "unauthorized_refresh_token_invalid", "Сессия закончилась. Войдите заново", 401
     ),
     "unauthorized_refresh_token_not_found": ErrorDef(
-        "unauthorized_refresh_token_not_found", "Refresh token не найден", 401
+        "unauthorized_refresh_token_not_found", "Сессия закончилась. Войдите заново", 401
     ),
     # Forbidden (403)
     "forbidden": ErrorDef("forbidden", "Нет доступа к этому ресурсу", 403),
     "forbidden_admin_only": ErrorDef("forbidden_admin_only", "Доступ только для администратора", 403),
     "owner_action_forbidden": ErrorDef("owner_action_forbidden", "Это действие доступно только владельцу", 403),
     # Not found (404)
-    "not_found": ErrorDef("not_found", "Ресурс не найден", 404),
+    "not_found": ErrorDef("not_found", "Не найдено", 404),
     "record_not_found": ErrorDef("record_not_found", "Запись не найдена", 404),
     "local_id_taken": ErrorDef("local_id_taken", "Этот идентификатор записи уже занят", 409),
     "record_deleted": ErrorDef("record_deleted", "Эта запись уже удалена", 409),
@@ -80,17 +80,17 @@ ERRORS: Dict[str, ErrorDef] = {
     "user_not_found": ErrorDef("user_not_found", "Пользователь не найден", 404),
     "photo_not_found": ErrorDef("photo_not_found", "Фото не найдено", 404),
     # Validation errors (422)
-    "invalid_pet_id": ErrorDef("invalid_pet_id", "Неверный формат pet_id", 422),
-    "invalid_record_id": ErrorDef("invalid_record_id", "Неверный формат record_id", 422),
-    "validation_error_pet_id_required": ErrorDef("validation_error_pet_id_required", "pet_id обязателен", 422),
+    "invalid_pet_id": ErrorDef("invalid_pet_id", "Не удалось определить питомца", 422),
+    "invalid_record_id": ErrorDef("invalid_record_id", "Не удалось найти запись", 422),
+    "validation_error_pet_id_required": ErrorDef(
+        "validation_error_pet_id_required", "Не удалось определить питомца", 422
+    ),
     "validation_error_invalid_record": ErrorDef("validation_error_invalid_record", "Неверная запись", 422),
     "validation_error_no_update_data": ErrorDef("validation_error_no_update_data", "Нет данных для обновления", 422),
     "validation_error_admin_deactivation": ErrorDef(
         "validation_error_admin_deactivation", "Нельзя деактивировать администратора", 422
     ),
-    "validation_error_username_required": ErrorDef(
-        "validation_error_username_required", "Имя пользователя обязательно", 422
-    ),
+    "validation_error_username_required": ErrorDef("validation_error_username_required", "Логин обязателен", 422),
     "validation_error_self_share": ErrorDef("validation_error_self_share", "Нельзя поделиться с самим собой", 422),
     "account_wrong_password": ErrorDef("account_wrong_password", "Неверный текущий пароль", 422),
     "privacy_consent_required": ErrorDef(
@@ -142,7 +142,7 @@ ERRORS: Dict[str, ErrorDef] = {
     ),
     "export_invalid_type": ErrorDef("export_invalid_type", "Неверный тип экспорта", 422),
     "export_invalid_format": ErrorDef("export_invalid_format", "Неверный тип формата", 422),
-    "user_exists": ErrorDef("user_exists", "Пользователь с таким именем уже существует", 422),
+    "user_exists": ErrorDef("user_exists", "Пользователь с таким логином уже существует", 422),
     "invalid_type": ErrorDef("invalid_type", "Неподдерживаемый тип записи", 422),
     "event_type_not_found": ErrorDef("event_type_not_found", "Тип события не найден", 404),
     "event_type_builtin_admin_only": ErrorDef(
@@ -206,10 +206,10 @@ ERRORS: Dict[str, ErrorDef] = {
     # Push notifications
     "push_subscription_taken": ErrorDef(
         "push_subscription_taken",
-        "Эта подписка на уведомления принадлежит другому аккаунту",
+        "Эта подписка на напоминания принадлежит другому аккаунту",
         422,
     ),
-    "push_not_configured": ErrorDef("push_not_configured", "Push-уведомления не настроены на сервере", 422),
+    "push_not_configured": ErrorDef("push_not_configured", "Напоминания пока не настроены на сервере", 422),
     # Personal access tokens (web/personal_tokens.py, checked in web/security.py before each request)
     "token_invalid": ErrorDef("token_invalid", "Доступ не найден, отозван или его срок истёк", 401),
     "token_not_allowed": ErrorDef("token_not_allowed", "Личный доступ не работает для этого действия", 403),
@@ -227,11 +227,11 @@ ERRORS: Dict[str, ErrorDef] = {
     "no_data_for_export": ErrorDef("no_data_for_export", "У этого питомца пока нет записей для выгрузки", 404),
     "upload_error": ErrorDef("upload_error", "Не удалось загрузить файл", 404),
     # Rate limit (429)
-    "rate_limit_exceeded": ErrorDef("rate_limit_exceeded", "Превышен лимит запросов", 429),
+    "rate_limit_exceeded": ErrorDef("rate_limit_exceeded", "Слишком много запросов, попробуйте через минуту", 429),
     # Conflict (409)
     "conflict": ErrorDef("conflict", "Конфликт при обновлении данных", 409),
     # Method not allowed (405)
-    "method_not_allowed": ErrorDef("method_not_allowed", "Метод не разрешен", 405),
+    "method_not_allowed": ErrorDef("method_not_allowed", "Это действие здесь недоступно", 405),
 }
 
 

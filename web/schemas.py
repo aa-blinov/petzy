@@ -10,7 +10,13 @@ import re
 from typing import Optional, List, Annotated, Any, Dict, Literal
 from zoneinfo import ZoneInfo
 
-from web.ru_text import is_strict_date, is_strict_time, too_far_ahead_text, too_far_back_text
+from web.ru_text import (
+    BIRTH_FUTURE_TEXT,
+    is_strict_date,
+    is_strict_time,
+    too_far_ahead_text,
+    too_far_back_text,
+)
 from pydantic import (
     BaseModel as PydanticBaseModel,
     BeforeValidator,
@@ -72,24 +78,30 @@ class BaseModel(PydanticBaseModel):
 ObjectIdString = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{24}$")]
 
 
-def validate_date_logic(v: str, allow_future: bool = True, max_future_days: int = 1, max_past_years: int = 50):
+def validate_date_logic(
+    v: str,
+    allow_future: bool = True,
+    max_future_days: int = 1,
+    max_past_years: int = 50,
+    future_text: str = "Дата не может быть в будущем",
+):
     """Common logic for date validation."""
     if not v:
         return v
     # Exactly YYYY-MM-DD: strptime alone takes «2026-1-5», and a date is compared as text later (the latest record,
     # the order of a course), where «2026-9-1» would come after «2026-10-01».
     if not is_strict_date(v):
-        raise ValueError("Неверный формат даты. Используйте YYYY-MM-DD")
+        raise ValueError("Неверный формат даты")
     try:
         dt = datetime.strptime(v, "%Y-%m-%d")
     except ValueError:
-        raise ValueError("Неверный формат даты. Используйте YYYY-MM-DD")
+        raise ValueError("Неверный формат даты")
 
     now = datetime.now()
     # The server runs in UTC and the app sends its own calendar date: a phone east of UTC is a day ahead for hours
     # every day. One day of slack, as for an event's date, keeps «today» valid wherever the person is.
     if not allow_future and dt.date() > now.date() + timedelta(days=1):
-        raise ValueError("Дата не может быть в будущем")
+        raise ValueError(future_text)
 
     if allow_future:
         max_future = now + timedelta(days=max_future_days)
@@ -369,7 +381,7 @@ class RegistrationStatusResponse(BaseModel):
 class AuthLoginRequest(BaseModel):
     """Login request model."""
 
-    username: str = Field(..., min_length=1, max_length=50, description="Имя пользователя")
+    username: str = Field(..., min_length=1, max_length=50, description="Логин")
     password: str = Field(..., min_length=1, description="Пароль")
 
     model_config = ConfigDict(
@@ -425,7 +437,7 @@ class AuthRefreshResponse(BaseModel):
     """Access token refresh response."""
 
     success: bool = True
-    message: str = Field("Токен обновлён", description="Текст для человека")
+    message: str = Field("Сессия продлена", description="Текст для человека")
     access_token: str
     refresh_token: Optional[str] = Field(
         None,
@@ -436,7 +448,7 @@ class AuthRefreshResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "success": True,
-                "message": "Токен обновлён",
+                "message": "Сессия продлена",
                 "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
             }
         }
@@ -742,7 +754,7 @@ class UserSearchResponse(BaseModel):
 class UserCreate(BaseModel):
     """User creation request model."""
 
-    username: str = Field(..., min_length=1, max_length=50, description="Имя пользователя")
+    username: str = Field(..., min_length=1, max_length=50, description="Логин")
     password: str = Field(..., min_length=6, max_length=100, description="Пароль")
     full_name: Optional[str] = Field(None, max_length=100, description="Полное имя")
     email: Optional[str] = Field(None, max_length=100, description="Email")
@@ -1293,7 +1305,7 @@ class PetCreate(BaseModel):
     @classmethod
     def validate_birth_date(cls, v):
         """Validate birth date format and logic (no future dates)."""
-        return validate_date_logic(v, allow_future=False)
+        return validate_date_logic(v, allow_future=False, future_text=BIRTH_FUTURE_TEXT)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -1360,7 +1372,7 @@ class PetUpdate(BaseModel):
     @classmethod
     def validate_birth_date(cls, v):
         """Validate birth date format and logic (no future dates)."""
-        return validate_date_logic(v, allow_future=False)
+        return validate_date_logic(v, allow_future=False, future_text=BIRTH_FUTURE_TEXT)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -1609,7 +1621,9 @@ class PetListResponse(BaseModel):
 class PetShareRequest(BaseModel):
     """Pet sharing request model."""
 
-    username: str = Field(..., min_length=1, max_length=50, description="Имя пользователя для предоставления доступа")
+    username: str = Field(
+        ..., min_length=1, max_length=50, description="Логин пользователя, которому открывается доступ"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -1667,7 +1681,7 @@ class HealthRecordBase(BaseModel):
         if not v:
             return v
         if not is_strict_time(v):
-            raise ValueError("Неверный формат времени. Используйте HH:MM")
+            raise ValueError("Неверный формат времени")
         return v
 
 
@@ -1693,7 +1707,7 @@ class HealthRecordUpdateBase(BaseModel):
         if not v:
             return v
         if not is_strict_time(v):
-            raise ValueError("Неверный формат времени. Используйте HH:MM")
+            raise ValueError("Неверный формат времени")
         return v
 
 
@@ -1745,7 +1759,7 @@ class EventTypeField(BaseModel):
     @model_validator(mode="after")
     def validate_select_has_options(self):
         if self.type == "select" and not self.options:
-            raise ValueError("Для поля типа select нужно указать варианты")
+            raise ValueError("Для выбора из списка нужно указать варианты")
         return self
 
     @model_validator(mode="after")
@@ -1792,7 +1806,7 @@ class EventChartConfig(BaseModel):
     @classmethod
     def validate_kind(cls, v):
         if v not in ("count", "value"):
-            raise ValueError("kind должен быть 'count' или 'value'")
+            raise ValueError("Вид графика: количество или значения")
         return v
 
     model_config = ConfigDict(
@@ -3294,7 +3308,7 @@ def _validate_push_endpoint(v: str) -> str:
 
     parsed = urlparse(v)
     if parsed.scheme != "https" or not parsed.hostname:
-        raise ValueError("Endpoint должен быть https-адресом известного push-сервиса")
+        raise ValueError("Адрес подписки должен быть https-адресом известного сервиса напоминаний")
 
     host = parsed.hostname
     try:
@@ -3303,10 +3317,10 @@ def _validate_push_endpoint(v: str) -> str:
     except ValueError:
         is_ip_literal = False
     if is_ip_literal:
-        raise ValueError("Endpoint не может быть IP-адресом")
+        raise ValueError("Адрес подписки не может быть IP-адресом")
 
     if not any(host == suffix or host.endswith(f".{suffix}") for suffix in _ALLOWED_PUSH_ENDPOINT_SUFFIXES):
-        raise ValueError("Endpoint не относится к известному push-сервису")
+        raise ValueError("Адрес подписки не относится к известному сервису напоминаний")
 
     return v
 

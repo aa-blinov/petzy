@@ -83,7 +83,7 @@ def test_a_pack_after_counting_was_off_starts_the_count_again(client, mock_db, r
 def test_medication_answers_say_success_in_russian(client, mock_db, regular_user_token, test_pet):
     created = _course(client, regular_user_token, test_pet["_id"])
     assert created["success"] is True
-    assert created["message"] == "Курс добавлен"
+    assert created["message"] == "Лекарство добавлено"
 
 
 def test_a_course_comes_with_created_at_in_the_lists_format(client, mock_db, regular_user_token, test_pet):

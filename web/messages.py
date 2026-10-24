@@ -27,18 +27,18 @@ MESSAGES: Dict[str, MessageDef] = {
     "account_email_verified": MessageDef("Почта подтверждена"),
     "account_verification_sent": MessageDef("Письмо отправлено ещё раз"),
     "auth_logout_success": MessageDef("Вы вышли"),
-    "auth_refresh_success": MessageDef("Токен обновлён"),
+    "auth_refresh_success": MessageDef("Сессия продлена"),
     # Medication messages
-    "medication_created": MessageDef("Курс добавлен"),
-    "medication_updated": MessageDef("Курс сохранён"),
-    "medication_deleted": MessageDef("Курс и его приёмы удалены"),
+    "medication_created": MessageDef("Лекарство добавлено"),
+    "medication_updated": MessageDef("Лекарство сохранено"),
+    "medication_deleted": MessageDef("Лекарство и его приёмы удалены"),
     "intake_logged": MessageDef("Приём отмечен"),
     "stock_added": MessageDef("Остаток пополнен"),
     "intake_updated": MessageDef("Приём изменён"),
     "intake_deleted": MessageDef("Приём удалён"),
     # Pet messages
     "pet_created": MessageDef("Питомец создан"),
-    "pet_updated": MessageDef("Данные питомца обновлены"),
+    "pet_updated": MessageDef("Питомец сохранён"),
     "pet_deleted": MessageDef("Питомец удалён"),
     "pet_shared": MessageDef("Приглашение отправлено пользователю {username}"),
     "pet_invite_accepted": MessageDef("Приглашение принято"),
@@ -47,23 +47,23 @@ MESSAGES: Dict[str, MessageDef] = {
     "pet_unshared": MessageDef("Доступ убран у пользователя {username}"),
     # User messages
     "user_created": MessageDef("Пользователь создан"),
-    "user_updated": MessageDef("Пользователь обновлён"),
+    "user_updated": MessageDef("Пользователь сохранён"),
     "user_deactivated": MessageDef("Пользователь деактивирован"),
-    "user_password_reset": MessageDef("Пароль изменен"),
+    "user_password_reset": MessageDef("Пароль изменён"),
     # Events (generic engine — one message per action, parametrized by the
     # event type's own label, since "запись" is feminine regardless of what
     # kind of event it is).
     "event_created": MessageDef("Запись «{label}» добавлена"),
-    "event_updated": MessageDef("Запись «{label}» обновлена"),
-    "event_deleted": MessageDef("Запись «{label}» удалена"),
+    "event_updated": MessageDef("Запись «{label}» сохранена"),
+    "event_deleted": MessageDef("Запись удалена"),
     "event_type_deleted": MessageDef("Тип события удалён"),
     # Documents
     "document_created": MessageDef("Документ добавлен"),
-    "document_updated": MessageDef("Документ обновлён"),
+    "document_updated": MessageDef("Документ сохранён"),
     "document_deleted": MessageDef("Документ удалён"),
     # Push notifications
-    "push_subscribed": MessageDef("Уведомления включены"),
-    "push_unsubscribed": MessageDef("Уведомления отключены"),
+    "push_subscribed": MessageDef("Напоминания включены"),
+    "push_unsubscribed": MessageDef("Напоминания отключены"),
 }
 
 

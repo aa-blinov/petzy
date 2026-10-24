@@ -49,7 +49,7 @@ def test_a_check_that_failed_without_a_list_of_problems_answers_in_general():
 
     assert status == 422
     assert body["code"] == "validation_error"
-    assert body["error"] == "Неверные данные"
+    assert body["error"] == "Проверьте введённые данные"
 
 
 def test_an_empty_list_of_problems_answers_in_general():
@@ -57,7 +57,7 @@ def test_an_empty_list_of_problems_answers_in_general():
 
     assert status == 422
     assert body["code"] == "validation_error"
-    assert body["error"] == "Неверные данные"
+    assert body["error"] == "Проверьте введённые данные"
 
 
 def test_the_problem_of_a_field_is_answered_as_it_is():

@@ -22,7 +22,7 @@ class TestAccessHelpers:
         assert status == 422
         data = response.get_json()
         assert "error" in data
-        assert "pet_id" in data["error"]
+        assert data["error"] == "Не удалось определить питомца"
 
     def test_validate_pet_access_invalid_pet_id_format(self, client, mock_db, regular_user_token):
         """validate_pet_access should fail on invalid pet_id format."""
@@ -36,7 +36,7 @@ class TestAccessHelpers:
         response, status = error_response
         assert status == 422
         data = response.get_json()
-        assert "Неверный формат pet_id" in data["error"]
+        assert "Не удалось определить питомца" in data["error"]
 
     def test_validate_pet_access_no_access(self, client, mock_db, regular_user_token, admin_pet):
         """validate_pet_access should fail when user has no access to pet."""
@@ -129,7 +129,7 @@ class TestParseEventDateTimeSafe:
         response, status = error_response
         assert status == 422
         data = response.get_json()
-        assert "Неверный формат даты/времени" in data["error"]
+        assert "Неверный формат даты или времени" in data["error"]
         assert data["code"] == "validation_error"
 
     def test_parse_event_datetime_safe_half_given_is_refused(self, client, mock_db, regular_user_token, test_pet):
