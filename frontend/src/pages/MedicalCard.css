@@ -283,8 +283,19 @@
     border-top: 1px solid var(--app-divider-color);
 }
 
-.medcard__ready-action {
+/* The one primary call on the card: the readiness block points at the next missing item with a filled button, and the
+   other blocks keep their quiet «+». */
+.medcard__link.medcard__ready-action {
     margin-top: var(--spacing-xs);
+    width: 100%;
+    justify-content: center;
+    padding: 0 var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: var(--app-primary-fill);
+    color: var(--app-on-primary-fill);
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-align: center;
 }
 
 /* The words that stand on the screen itself, not inside a sheet, lie on a plate of the page's colour: the pet's pattern
@@ -628,11 +639,6 @@
     text-wrap: pretty;
 }
 
-.medcard__handover-empty {
-    padding: 0;
-    text-align: center;
-}
-
 /* The weight: the figure first, the trend under it. */
 .medcard__weight {
     padding: var(--spacing-md);
@@ -754,6 +760,11 @@
     font-size: var(--text-md);
     font-weight: 600;
     cursor: pointer;
+}
+
+.medcard__pdf-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* The two ways to hand the card over stay in the document itself, under the passport: a bar pinned

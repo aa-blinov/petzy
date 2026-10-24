@@ -18,11 +18,11 @@ import { isPetGone } from '../utils/notFound';
 import { MedicalCardSkeleton } from '../components/Skeletons';
 import './MedicalCard.css';
 
-/** The two ways to hand the card over are on the card from the start; on an empty one there is nothing to hand, and the
-    line under the heading says so instead of the block appearing out of nowhere later. */
-const EMPTY_HANDOVER = 'Карта почти пуста. Заполните её, и появятся PDF и ссылка для врача';
+/** The two ways to hand the card over are on the card from the start; on an empty one they are disabled, and the line
+    under them says why. */
+const EMPTY_HANDOVER = 'Карта почти пуста. Заполните её, и PDF и ссылка для врача станут доступны';
 /** A co-owner reads the card here already, so the link to give away is closed to them: the file is what is left. */
-const EMPTY_HANDOVER_COOWNER = 'Карта почти пуста. Заполните её, и появится PDF';
+const EMPTY_HANDOVER_COOWNER = 'Карта почти пуста. Заполните её, и PDF станет доступен';
 
 /**
  * A pet's medical card: one document, read from top to bottom.
@@ -103,7 +103,7 @@ export function MedicalCard() {
   // The two ways to hand the card over: the file, and a link that opens with no sign-in. They
   // stand under the passport, the same place as on the copy a vet opens: the file is downloaded
   // before the visit, and the link is given when the vet asks. On a card that is still nearly
-  // empty they are not offered at all, and the line at the foot says what is missing instead.
+  // empty they stay on the page, disabled, and the line under them says what is missing.
   // The link is the owner's door alone: it opens the card to anyone with the address.
   const canHandOver = doneCount >= 2;
   const isOwner = card.can_edit;
@@ -123,13 +123,10 @@ export function MedicalCard() {
             owner
             navigate={(to) => navigate(to)}
             saving={saving}
-            onPdf={canHandOver ? downloadPdf : undefined}
-            onShare={canHandOver && isOwner ? () => setShareOpen(true) : undefined}
+            onPdf={downloadPdf}
+            onShare={isOwner ? () => setShareOpen(true) : undefined}
+            handoverBlocked={canHandOver ? undefined : isOwner ? EMPTY_HANDOVER : EMPTY_HANDOVER_COOWNER}
           />
-
-          {!canHandOver && (
-            <p className="medcard__empty medcard__handover-empty">{isOwner ? EMPTY_HANDOVER : EMPTY_HANDOVER_COOWNER}</p>
-          )}
         </AppPullToRefresh>
       </div>
 
