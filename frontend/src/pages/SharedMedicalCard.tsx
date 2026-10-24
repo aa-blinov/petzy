@@ -78,7 +78,7 @@ export function SharedMedicalCard() {
     if (saving) return;
     setSaving(true);
     try {
-      if (await medicalShareService.downloadPdf(token!, card.pet.name)) showToast.success('PDF сохранён');
+      if (await medicalShareService.downloadPdf(token!, card.pet.name)) showToast.success('Файл сохранён');
     } catch (err) {
       showToast.failure(getApiErrorMessage(err, 'Не удалось сформировать PDF'));
     } finally {
