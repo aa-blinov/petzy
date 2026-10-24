@@ -397,7 +397,7 @@ export function DocumentsList() {
         ) : searchedDocuments.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="Ничего не найдено"
+            title="Ничего не нашлось"
             description="Попробуйте изменить запрос"
           />
         ) : (

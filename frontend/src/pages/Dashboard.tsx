@@ -137,7 +137,7 @@ export function Dashboard() {
   // wait for a shared pet instead gets a plain explanation, not a feed
   // that offers to log events for a pet that doesn't exist.
   // The roster didn't load: that says nothing about whether there are
-  // pets, so no onboarding and no «Питомцев пока нет».
+  // pets, so no onboarding and no «Здесь будут ваши питомцы».
   if (petsFailed) {
     return (
       <div className="page-container">
@@ -160,7 +160,7 @@ export function Dashboard() {
             <h1 className="sr-only">Лента</h1>
             <PendingInvites />
             <Button block fill="none" onClick={() => navigate('/welcome')}>
-              Добавить своего питомца
+              Добавить питомца
             </Button>
           </div>
         </div>
@@ -174,13 +174,13 @@ export function Dashboard() {
           <h1 className="sr-only">Лента</h1>
           <EmptyState
             icon={PawPrint}
-            title={lostAccess ? 'Доступ к питомцу закрыт' : 'Питомцев пока нет'}
+            title={lostAccess ? 'Доступ к питомцу закрыт' : 'Здесь будут ваши питомцы'}
             description={
               lostAccess
                 ? `Владелец закрыл вам доступ или удалил питомца. Если с вами поделятся снова, он появится здесь. Ваш логин: ${username ?? ''}`
                 : `Когда с вами поделятся питомцем, он появится здесь. Ваш логин: ${username ?? ''}`
             }
-            actionLabel="Добавить своего"
+            actionLabel="Добавить питомца"
             onAction={() => navigate('/welcome')}
           />
         </div>
@@ -227,7 +227,7 @@ export function Dashboard() {
                 // The round «+» is right there and does the same thing. The button is here anyway:
                 // an empty state that only says what to do elsewhere leaves someone who does not
                 // see the corner (or cannot press it) with nothing to press.
-                actionLabel="Записать событие"
+                actionLabel="Добавить запись"
                 onAction={() => setActionSheetVisible(true)}
               />
             ) : (

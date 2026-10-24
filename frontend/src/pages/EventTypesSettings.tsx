@@ -41,7 +41,7 @@ export function EventTypesSettings() {
   // changes them, so for everyone else a list of thirty rows to look at and not touch is only noise.
   const listed = [...eventTypes.filter((t) => !t.is_builtin), ...(isAdmin ? eventTypes.filter((t) => t.is_builtin) : [])];
 
-  // The empty state carries its own «Создать тип события», as every other list in the app does. With the button
+  // The empty state carries its own «Добавить тип события», as every other list in the app does. With the button
   // under it as well, the screen offered the same action twice, which reads as two different things to do.
   const empty = !isLoading && !error && listed.length === 0;
 
@@ -98,9 +98,9 @@ export function EventTypesSettings() {
         ) : listed.length === 0 ? (
           <EmptyState
             icon={Sparkles}
-            title="Своих типов пока нет"
-            description="Создайте тип события, чтобы записывать что-то своё. Готовые события добавляются в «События питомца»"
-            actionLabel="Создать тип события"
+            title="Здесь будут ваши типы событий"
+            description="Добавьте тип события, чтобы записывать что-то своё. Готовые события добавляются в «События питомца»"
+            actionLabel="Добавить тип события"
             onAction={() => navigate('/event-types/new')}
           />
         ) : (
@@ -195,7 +195,7 @@ export function EventTypesSettings() {
               onClick={() => navigate('/event-types/new')}
             >
               <Plus size={18} strokeWidth={2.4} style={{ verticalAlign: 'middle', marginRight: 'var(--spacing-sm)' }} />
-              Создать тип события
+              Добавить тип события
             </Button>
           </div>
         )}
