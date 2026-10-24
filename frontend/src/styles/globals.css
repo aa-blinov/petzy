@@ -372,6 +372,13 @@ main#main-content {
     border: 1px solid transparent;
 }
 
+.chip--action {
+    /* A chip that is a button: the 44px target is its own height, since the invisible area of
+       `touch-target` is covered by the neighbours of a chip standing in a row of chips. */
+    min-height: var(--touch-min);
+    padding-inline: var(--spacing-md);
+}
+
 /* Soft card — warm off-white card with subtle warm shadow on cream.
    Hover and active states add a 1-px lift + tighter shadow so the
    card feels tactile on desktop / iPad / pointer-equipped devices
@@ -1479,6 +1486,8 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 .adm-dialog-content {
     overflow-y: auto;
     min-height: 0;
+    /* A pet's name typed as one long word must wrap inside the dialog, not run out of it. */
+    overflow-wrap: anywhere;
 }
 
 /* Error Boundary Styles */
