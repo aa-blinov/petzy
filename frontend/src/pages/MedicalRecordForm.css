@@ -8,6 +8,12 @@
     gap: var(--spacing-md);
 }
 
+/* The pet's pattern runs behind the whole screen: an outlined button is filled with the page's own colour, or the dots show through it. */
+.medrec__add-files .adm-button,
+.medrec__link {
+    background-color: var(--app-page-background);
+}
+
 .medrec__add-hint {
     margin: var(--spacing-sm) 0 var(--spacing-md);
     font-size: var(--text-xs);
