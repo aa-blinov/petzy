@@ -46,6 +46,11 @@ async def main() -> int:
             await pg.wait_for_selector(".bottom-tab-bar-container", timeout=20000)
             await pg.wait_for_selector(".app-tab-bar__item--active", timeout=20000)
             await pg.wait_for_timeout(800)
+            # The swipe hint is a banner of the same apricot as the indicator and may stand right above the bar on a short feed:
+            # it is content, not paint that spilled over, so it is dismissed before the strip above the bar is read.
+            if await pg.get_by_role("button", name="Понятно").count():
+                await pg.get_by_role("button", name="Понятно").click()
+                await pg.wait_for_timeout(500)
 
             bar_top, centre = await pg.evaluate("""() => {
               const bar = document.querySelector('.bottom-tab-bar-container').getBoundingClientRect();
