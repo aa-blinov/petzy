@@ -904,8 +904,8 @@ export function MedicationsList() {
 
             <Dialog
                 visible={deleteDialog.visible}
-                title="Удаление лекарства"
-                aria-label="Удаление лекарства"
+                title="Удалить лекарство?"
+                aria-label="Удалить лекарство?"
                 content={
                     deleteDialog.medication && (
                         <span>{medicationDeleteText(deleteDialog.medication.name)}</span>

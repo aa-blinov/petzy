@@ -48,10 +48,11 @@ export function AccountEmail() {
     }
     if (kind === 'remove') {
       const sure = await Dialog.confirm({
+        title: 'Удалить почту?',
         'aria-label': 'Удалить почту?',
-        content: 'Удалить почту? Без неё забытый пароль придётся сбрасывать через администратора',
+        content: 'Без неё забытый пароль придётся сбрасывать через администратора',
         confirmText: 'Удалить',
-        cancelText: 'Оставить',
+        cancelText: 'Отмена',
       });
       if (!sure) return;
     }
@@ -164,7 +165,7 @@ export function AccountEmail() {
                 Удалить почту
               </Button>
               <Button block fill="none" onClick={() => goBack(navigate, '/settings')}>
-                Назад
+                Отмена
               </Button>
             </div>
           </>

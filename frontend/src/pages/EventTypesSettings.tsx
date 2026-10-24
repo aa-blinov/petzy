@@ -203,11 +203,11 @@ export function EventTypesSettings() {
 
       <Dialog
         visible={!!pending}
-        title="Удаление типа события"
-        aria-label="Удаление типа события"
+        title="Удалить тип события?"
+        aria-label="Удалить тип события?"
         content={pending && pending.count > 0
           ? `У типа ${pending.count} ${pluralRu(pending.count, 'запись', 'записи', 'записей')}. Они удалятся вместе с ним, вернуть их будет нельзя`
-          : 'У этого типа нет записей, он будет удалён'}
+          : 'У этого типа нет записей'}
         closeOnAction
         onClose={() => setPending(null)}
         actions={[
@@ -215,11 +215,10 @@ export function EventTypesSettings() {
             {
               key: 'confirm',
               text: pending && pending.count > 0 ? 'Удалить тип и записи' : 'Удалить',
-              bold: true,
               danger: true,
               onClick: () => { if (pending) handleDelete(pending); },
             },
-            { key: 'cancel', text: 'Оставить', onClick: () => setPending(null) },
+            { key: 'cancel', text: 'Отмена', onClick: () => setPending(null) },
           ],
         ]}
       />
