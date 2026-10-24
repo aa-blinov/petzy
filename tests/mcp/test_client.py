@@ -81,7 +81,11 @@ def test_the_api_path_joins_the_base_address_without_a_double_slash():
         ),
         (422, {"success": False, "code": "validation_error"}, REJECTED_DATA),
         (429, {"success": False, "code": "rate_limit_exceeded", "error": "Слишком много попыток"}, RATE_LIMITED),
-        (500, {"success": False, "code": "internal_error", "error": "Внутренняя ошибка сервера"}, SERVER_FAILED),
+        (
+            500,
+            {"success": False, "code": "internal_error", "error": "Что-то пошло не так, попробуйте позже"},
+            SERVER_FAILED,
+        ),
         (
             409,
             {"success": False, "code": "duplicate_event", "error": "Такая запись уже сохранена на 09:30"},

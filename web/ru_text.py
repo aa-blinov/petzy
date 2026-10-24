@@ -16,6 +16,9 @@ def plural_ru(n: int, one: str, few: str, many: str) -> str:
     return many
 
 
+BIRTH_FUTURE_TEXT = "Дата рождения не может быть в будущем"
+
+
 def too_far_ahead_text(days: int) -> str:
     if days <= 0:
         return "Дата не может быть в будущем"

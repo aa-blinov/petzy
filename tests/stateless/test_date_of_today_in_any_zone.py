@@ -23,5 +23,12 @@ def test_a_birth_date_a_day_ahead_of_the_server_is_accepted():
 
 def test_a_birth_date_two_days_ahead_is_refused():
     too_far = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
-    with pytest.raises(ValueError, match="Дата не может быть в будущем"):
+    with pytest.raises(ValueError, match="Дата рождения не может быть в будущем"):
         PetCreate(name="Рекс", birth_date=too_far)
+
+
+def test_a_future_date_that_is_not_a_birthday_says_plain_future():
+    from web.schemas import validate_date_logic
+
+    with pytest.raises(ValueError, match="^Дата не может быть в будущем$"):
+        validate_date_logic("2999-01-01", allow_future=False)

@@ -569,7 +569,7 @@ def _delete_course(medication: dict):
                 # This way, if intakes deletion fails, orphaned intakes won't affect functionality
                 med_result = app.db.medications.delete_one({"_id": medication_id})
                 if med_result.deleted_count == 0:
-                    return error_response("not_found")
+                    return error_response("not_found", "Лекарство не найдено")
 
                 try:
                     intakes_result = app.db.medication_intakes.delete_many({"medication_id": id})
@@ -815,7 +815,7 @@ def log_intake(id):
                 if retry_attempt > 0:
                     medication = app.db.medications.find_one({"_id": medication_id})
                     if not medication:
-                        return error_response("not_found")
+                        return error_response("not_found", "Лекарство не найдено")
                     if not medication.get("inventory_enabled") or medication.get("inventory_current") is None:
                         # Inventory was disabled during retry, skip inventory update
                         inventory_updated = True
@@ -1099,7 +1099,7 @@ def delete_intake(id):
         # dose back, and the other answers as for a mark that is not there.
         intake = app.db.medication_intakes.find_one_and_delete({"_id": intake_id})
         if intake is None:
-            return error_response("record_not_found")
+            return error_response("record_not_found", "Приём не найден")
 
         # Give back what this intake took from the stock. Intakes from
         # before inventory_deducted was stored took their whole dose.
@@ -1157,7 +1157,7 @@ def get_upcoming_doses():
                     "validation_error", "Время клиента: ISO 8601 с поясом, например 2026-10-18T08:12:00+05:00"
                 )
             if moment.tzinfo is None and not valid_tz(query_params.tz):
-                return error_response("validation_error", "Для времени без пояса укажите часовой пояс tz")
+                return error_response("validation_error", "Для времени без пояса укажите часовой пояс")
             now = clock_in_zone(moment, query_params.tz)
         else:
             app.logger.warning(

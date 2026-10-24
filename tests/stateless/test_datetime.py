@@ -33,21 +33,19 @@ class TestDateTimeParsing:
         """Test parsing with invalid date format."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("2024/01/15", "14:30")
-        assert "Неверный формат даты/времени" in str(exc_info.value)
-        assert "YYYY-MM-DD HH:MM" in str(exc_info.value)
+        assert "Неверный формат даты или времени" in str(exc_info.value)
 
     def test_parse_datetime_invalid_time_format(self):
         """Test parsing with invalid time format."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("2024-01-15", "14:30:00")
-        assert "Неверный формат даты/времени" in str(exc_info.value)
+        assert "Неверный формат даты или времени" in str(exc_info.value)
 
     def test_parse_datetime_invalid_date_only_format(self):
         """Test parsing date only with invalid format."""
         with pytest.raises(ValueError) as exc_info:
             parse_datetime("2024/01/15")
         assert "Неверный формат даты" in str(exc_info.value)
-        assert "YYYY-MM-DD" in str(exc_info.value)
 
     def test_parse_datetime_empty_date_string(self):
         """Test parsing with empty date string."""

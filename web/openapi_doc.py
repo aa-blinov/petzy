@@ -650,7 +650,7 @@ def _say_what_errors_mean(paths: dict, op, error_schema: dict) -> None:
                 responses["422"] = answer("Нет новой почты, ждущей подтверждения (`account_no_pending_email`)")
             elif responses.get("422", {}).get("description") in ("Validation Error", "Unprocessable Entity"):
                 responses["422"] = answer(
-                    "Неверные данные. `code` называет причину; ошибка проверки схемы (`validation_error`) "
+                    "Проверьте введённые данные. `code` называет причину; ошибка проверки схемы (`validation_error`) "
                     "добавляет `details` с полями"
                 )
             if responses.get("404", {}).get("description") == "Not Found":

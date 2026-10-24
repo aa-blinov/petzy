@@ -109,7 +109,7 @@ class TestPetManagement:
         assert response.status_code == 422
         data = response.get_json()
         assert "error" in data or isinstance(data, list)
-        assert "Неверный формат" in data["error"] or "format" in data["error"].lower()
+        assert data["error"] == "Не удалось определить питомца"
 
     def test_get_pet_no_access(self, client, mock_db, regular_user_token, admin_pet):
         """Test getting pet without access."""

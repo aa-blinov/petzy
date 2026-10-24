@@ -956,8 +956,6 @@ def _delete_event_record(record: dict):
     if record.get("is_deleted"):
         # Found by its name, and already gone: as by id, a record that is not there.
         return error_response("record_not_found")
-    event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record["type"]})
-    label = event_type["label"] if event_type else "Запись"
 
     deleted_at = datetime.now(timezone.utc)
     # Marked, not erased: the record leaves every ordinary read, and stays as a tombstone for the devices that sync.
@@ -967,7 +965,7 @@ def _delete_event_record(record: dict):
     if result.matched_count == 0:
         return error_response("record_not_found")
     app.logger.info(f"Event deleted: record_id={record['_id']}, pet_id={pet_id}, user={username}")
-    return get_message("event_deleted", label=label)
+    return get_message("event_deleted")
 
 
 # ---------------------------------------------------------------------------

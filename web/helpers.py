@@ -27,7 +27,7 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     pass
 
-from web.ru_text import is_strict_date, is_strict_time, too_far_ahead_text, too_far_back_text
+from web.ru_text import BIRTH_FUTURE_TEXT, is_strict_date, is_strict_time, too_far_ahead_text, too_far_back_text
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
 from web import storage
 from web.errors import error_response
@@ -43,7 +43,9 @@ warnings.simplefilter("error", Image.DecompressionBombWarning)
 logger = app.logger
 
 
-def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1, max_past_years=50, tz=None):
+def parse_datetime(
+    date_str, time_str=None, allow_future=True, max_future_days=1, max_past_years=50, tz=None, future_text=None
+):
     """
     Safely parse datetime from date and optional time strings.
 
@@ -74,11 +76,9 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
             dt = datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         if time_str:
-            raise ValueError(
-                f"Неверный формат даты/времени. Ожидается YYYY-MM-DD HH:MM, получено '{date_str} {time_str}'"
-            )
+            raise ValueError("Неверный формат даты или времени")
         else:
-            raise ValueError(f"Неверный формат даты. Ожидается YYYY-MM-DD, получено '{date_str}'")
+            raise ValueError("Неверный формат даты")
 
     # The naive clock of the zone the value was typed in, or the server's own (see _entry_now).
     now = _entry_now(tz)
@@ -86,7 +86,7 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
     max_past = now - timedelta(days=max_past_years * 365)
 
     if dt > max_future:
-        raise ValueError(too_far_ahead_text(max_future_days))
+        raise ValueError(future_text or too_far_ahead_text(max_future_days))
 
     if dt < max_past:
         raise ValueError(too_far_back_text(max_past_years))
@@ -120,6 +120,7 @@ def parse_date(date_str, allow_future=False, max_past_years=50, tz=None):
         max_future_days=0,
         max_past_years=max_past_years,
         tz=tz,
+        future_text=BIRTH_FUTURE_TEXT,
     )
 
 
@@ -289,6 +290,14 @@ def parse_event_datetime_safe(
 LIVE_EVENT_FILTER = {"is_deleted": {"$ne": True}}
 
 
+# What a missing record is called to the person, by collection: «<Объект> не найден(а/о)». The code stays record_not_found.
+_NOT_FOUND_TEXT = {
+    "documents": "Документ не найден",
+    "medications": "Лекарство не найдено",
+    "medication_intakes": "Приём не найден",
+}
+
+
 def get_record_and_validate_access(record_id, collection_name, username, extra_filter=None):
     """
     Get record by ID and validate user access.
@@ -304,7 +313,7 @@ def get_record_and_validate_access(record_id, collection_name, username, extra_f
 
     existing = app.db[collection_name].find_one({"_id": record_id_obj, **(extra_filter or {})})
     if not existing:
-        return None, None, error_response("record_not_found")
+        return None, None, error_response("record_not_found", _NOT_FOUND_TEXT.get(collection_name))
 
     pet_id = existing.get("pet_id")
     if not pet_id:
@@ -312,7 +321,7 @@ def get_record_and_validate_access(record_id, collection_name, username, extra_f
 
     # Like a missing record: someone else's mustn't be told apart from none.
     if not check_pet_access(pet_id, username):
-        return None, None, error_response("record_not_found")
+        return None, None, error_response("record_not_found", _NOT_FOUND_TEXT.get(collection_name))
 
     return existing, pet_id, None
 
