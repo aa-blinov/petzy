@@ -3465,6 +3465,9 @@ class MedicalRecordBody(BaseModel):
     document_ids: List[ObjectIdString] = Field(
         default_factory=list, max_length=10, description="Документы этого питомца"
     )
+    weight_event_id: Optional[ObjectIdString] = Field(
+        None, description="Запись веса из ленты, сказанного на этом приёме (визит); пусто, если вес не записывали"
+    )
 
     @field_validator("title", mode="before")
     @classmethod
@@ -3539,6 +3542,7 @@ class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
             self.protects = None
         if self.kind != "visit":
             self.complaint = self.diagnosis = self.recommendations = None
+            self.weight_event_id = None
         if self.kind == "parasite":
             if not self.target:
                 raise ValueError("Выберите, от чего обработка")

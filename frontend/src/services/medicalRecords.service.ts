@@ -41,6 +41,8 @@ export interface MedicalRecord {
   complaint: string | null;
   diagnosis: string | null;
   recommendations: string | null;
+  /** The weighing in the feed that was said at this visit (a visit's only). */
+  weight_event_id?: string | null;
   documents: { id: string; title: string }[];
 }
 
@@ -57,6 +59,8 @@ export interface MedicalRecordInput {
   complaint: string | null;
   diagnosis: string | null;
   recommendations: string | null;
+  /** A visit names the weighing said at it; an edit sends it again, or the full replace clears it. */
+  weight_event_id?: string | null;
   document_ids: string[];
 }
 

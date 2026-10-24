@@ -257,3 +257,16 @@ export function defaultTilesFor(value?: string | null): { order: string[]; visib
 /** The most common kinds get a tile when a pet is added; the rest are one tap away in «Другой». */
 export const TILE_SPECIES: SpeciesKey[] = ['cat', 'dog', 'rabbit', 'bird', 'fish'];
 export const MORE_SPECIES = SPECIES.filter((s) => !TILE_SPECIES.includes(s.key)).map((s) => ({ label: s.label, value: s.key }));
+
+/** The tiles in the order that suits a kind of animal: the ones the species suggests first, in the order it lists them, then
+ *  the rest as they were. Nothing is hidden: a rabbit's owner can still reach the aquarium's records, only below the own. */
+export function suggestedFirst<T extends { id: string }>(tiles: T[], suggested: readonly string[]): T[] {
+  const rank = (id: string) => {
+    const at = suggested.indexOf(id);
+    return at === -1 ? suggested.length : at;
+  };
+  return tiles
+    .map((tile, index) => ({ tile, index }))
+    .sort((a, b) => rank(a.tile.id) - rank(b.tile.id) || a.index - b.index)
+    .map(({ tile }) => tile);
+}

@@ -175,6 +175,7 @@ def serialize_records(records: list[dict], today: date, with_version: bool = Fal
                 "complaint": r.get("complaint"),
                 "diagnosis": r.get("diagnosis"),
                 "recommendations": r.get("recommendations"),
+                "weight_event_id": r.get("weight_event_id"),
                 "documents": [docs[d] for d in r.get("document_ids") or [] if d in docs],
                 **({"updated_at": record_version(r) or None, "local_id": r.get("local_id")} if with_version else {}),
             }
@@ -254,6 +255,13 @@ def _own_documents(pet_id: str, ids: list[str]) -> bool:
     )
 
 
+def _own_weight(pet_id: str, event_id: Optional[str]) -> bool:
+    """The weight a visit points at is a weighing of this pet: a record can't point into another pet's diary."""
+    if not event_id:
+        return True
+    return app.db.events.count_documents({"_id": ObjectId(event_id), "pet_id": pet_id, "type": "weight"}, limit=1) == 1
+
+
 def _stored(data: dict, kind: str) -> dict:
     """The fields a record of this kind keeps."""
     doc = {
@@ -270,6 +278,7 @@ def _stored(data: dict, kind: str) -> dict:
         "complaint": data.get("complaint") if kind == "visit" else None,
         "diagnosis": data.get("diagnosis") if kind == "visit" else None,
         "recommendations": data.get("recommendations") if kind == "visit" else None,
+        "weight_event_id": data.get("weight_event_id") if kind == "visit" else None,
     }
     return doc
 
@@ -312,7 +321,7 @@ def _answer_for_record_name(existing: Optional[dict], pet_id: str, kind: str, lo
 def create_medical_record():
     """Add a vaccination, treatment, visit or procedure to a pet's medical card.
 
-    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``target`` a parasite treatment's, ``complaint``, ``diagnosis`` and ``recommendations`` a visit's). Any member of the pet may add, change or delete any of its records. A ``local_id`` the device gives makes the request repeatable: sent again, it is answered with the record it already made (200) and nothing is written twice; a name that belongs to another pet's record is 409 ``local_id_taken``, and a name of a record that was deleted is 409 ``record_deleted``.
+    One of the four kinds the card is built from. The repeat date is what makes the card answer later, and only documents belonging to this pet may be attached. ``date`` is at most a day ahead and at most 50 years back; ``next_due`` is not before ``date`` and at most 10 years ahead. A parasite treatment needs ``target``. Fields that do not belong to the kind are dropped (``batch`` and ``protects`` are a vaccination's, ``target`` a parasite treatment's, ``complaint``, ``diagnosis``, ``recommendations`` and ``weight_event_id`` a visit's; the last names the weighing in the feed that was said at the visit, and it has to be this pet's). Any member of the pet may add, change or delete any of its records. A ``local_id`` the device gives makes the request repeatable: sent again, it is answered with the record it already made (200) and nothing is written twice; a name that belongs to another pet's record is 409 ``local_id_taken``, and a name of a record that was deleted is 409 ``record_deleted``.
     """
     data = request.context.body  # type: ignore[attr-defined]
     if data.local_id:
@@ -322,6 +331,8 @@ def create_medical_record():
     fields = data.model_dump()
     if not _own_documents(g.pet_id, fields["document_ids"]):
         return error_response("validation_error", "Документ не найден среди документов этого питомца")
+    if not _own_weight(g.pet_id, fields.get("weight_event_id")):
+        return error_response("validation_error", "Запись веса не найдена среди записей этого питомца")
     now = datetime.now(timezone.utc)
     doc = {
         "pet_id": g.pet_id,
@@ -433,6 +444,8 @@ def _update_record(record: dict):
         return error_response("validation_error", "Выберите, от чего обработка")
     if not _own_documents(g.pet_id, fields["document_ids"]):
         return error_response("validation_error", "Документ не найден среди документов этого питомца")
+    if not _own_weight(g.pet_id, fields.get("weight_event_id")):
+        return error_response("validation_error", "Запись веса не найдена среди записей этого питомца")
     changes = {**_stored(fields, kind), "updated_at": next_stamp(record)}
     result = app.db.medical_records.update_one(
         {"_id": record["_id"], **version_guard(record, data.base_version)}, {"$set": changes}
