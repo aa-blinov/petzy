@@ -71,7 +71,7 @@ export function Login() {
       if (isAxiosError<{ error?: string; message?: string }>(err)) {
         const status = err.response?.status;
         const data = err.response?.data;
-        if (status === 422) errorMessage = data?.error || data?.message || 'Неверные данные';
+        if (status === 422) errorMessage = data?.error || data?.message || 'Проверьте введённые данные';
         else if (status === 401) errorMessage = data?.error || data?.message || 'Неверный логин или пароль';
         else if (status === 429) {
           lockAfterRefusal(err);
