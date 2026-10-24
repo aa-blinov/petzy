@@ -6,7 +6,7 @@ Three rules this checks, each of which used to be silent:
   waits, and says so when the request failed.
 - The caption's counter counted the space at the end of the line, while the saved line is
   trimmed: it now counts what is stored.
-- Someone a pet is shared with opens the pet's card and finds «События питомца» and «Выйти из
+- Someone a pet is shared with opens the pet's card and finds «Типы записей питомца» and «Выйти из
   доступа» outside the dimmed part of the form, so the way out of the screen and into the pet's
   events both take a tap.
 
@@ -91,7 +91,7 @@ async def main():
             )
             check(
                 "and the events of the pet are on the screen once they are",
-                "В окне «+»" in late and "События питомца" in late,
+                "В окне «+»" in late and "Типы записей питомца" in late,
                 late[:160].replace(chr(10), " | "),
             )
 
@@ -108,9 +108,9 @@ async def main():
                 "меняет владелец" in t,
                 t[:140].replace(chr(10), " | "),
             )
-            events_row = other.get_by_text("События питомца", exact=True)
+            events_row = other.get_by_text("Типы записей питомца", exact=True)
             check(
-                "«События питомца» is offered to someone the pet is shared with",
+                "«Типы записей питомца» is offered to someone the pet is shared with",
                 await events_row.count() == 1,
                 t[:140].replace(chr(10), " | "),
             )
@@ -120,7 +120,7 @@ async def main():
                 check(
                     "and takes that person to the events of the pet",
                     other.url.endswith("/pet-events")
-                    and "События меняет владелец питомца" in await other.inner_text("body"),
+                    and "Записи меняет владелец питомца" in await other.inner_text("body"),
                     other.url.replace(BASE, ""),
                 )
                 await other.goto(BASE + f"/pets/{pet_id}/edit")

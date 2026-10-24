@@ -3,7 +3,7 @@
 P-07: «Записать повторную прививку» then «Добавить» ends on the medical card, never back on the record it repeats.
 P-06: «Вес в этот день» of a visit shows the weight of that day (the last one) and opens the weight history.
 P-09: the clinic and the doctor can be «Другая…» / «Другой…», typed in the row; a doctor does not change a chosen clinic.
-P-13: «Другие события» in the «+» sheet lists the other event types, and a tap on one opens its form.
+P-13: «Другие записи» in the «+» sheet lists the other event types, and a tap on one opens its form.
 
 Needs the local stack and the demo data. Makes a scratch pet of its own and removes it.
 """
@@ -132,12 +132,12 @@ async def main():
             await settle(pg)
             await pg.locator(".app-fab").click()
             sheet = pg.locator(".adm-popup").filter(has_text="Что записать?")
-            await sheet.get_by_text("Другие события").first.wait_for(state="visible", timeout=10000)
+            await sheet.get_by_text("Другие записи").first.wait_for(state="visible", timeout=10000)
             before = await sheet.locator("button").count()
-            await sheet.get_by_role("button", name="Другие события").click()
+            await sheet.get_by_role("button", name="Другие записи").click()
             await settle(pg, 150)
             after = await sheet.locator("button").count()
-            check("«Другие события» lists more types in the sheet", after > before, f"{before} -> {after}")
+            check("«Другие записи» lists more types in the sheet", after > before, f"{before} -> {after}")
             check("and does not leave for the settings", "/pet-events" not in pg.url, pg.url)
             tile = (
                 sheet.locator("button").filter(has_not_text="Настроить").nth(before - 1)
@@ -148,7 +148,7 @@ async def main():
         finally:
             await drop_pet(pg, pid)
             await b.close()
-    return summary("форма записи: выборы, выходы, «Другие события»")
+    return summary("форма записи: выборы, выходы, «Другие записи»")
 
 
 asyncio.run(main())

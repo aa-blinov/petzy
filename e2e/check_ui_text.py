@@ -78,10 +78,10 @@ async def main() -> None:
                 ("почта", "/settings/email", "Почта"),
                 ("пароль", "/settings/password", "Текущий пароль"),
                 ("значения по умолчанию", "/form-defaults", "Значения по умолчанию"),
-                ("события питомца", "/pet-events", "События питомца"),
+                ("типы записей питомца", "/pet-events", "Типы записей питомца"),
                 ("оформление", "/pet-look", "Фон карточки"),
-                ("типы событий", "/event-types", "Типы событий"),
-                ("новый тип события", "/event-types/new", "Поля"),
+                ("типы записей", "/event-types", "Типы записей"),
+                ("новый тип записи", "/event-types/new", "Поля"),
             ]
             for name, path, ready in screens:
                 lines = await look(pg, BASE + path, ready)
