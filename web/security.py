@@ -197,6 +197,12 @@ def revoke_user_sessions(username) -> None:
     db["users"].update_one({"username": username}, {"$set": {"sessions_valid_after": int(time.time())}})
 
 
+def revoke_push_subscriptions(username) -> None:
+    """Forget every browser this person subscribed for push: after a logout everywhere, a deactivation or a password
+    reset, the devices must stop hearing about the pets of an account that no longer signs in there."""
+    db["push_subscriptions"].delete_many({"username": username})
+
+
 def session_family(refresh_token: str):
     """The sign-in a refresh token belongs to (its ``family`` claim): the ``sid`` a new access token names."""
     payload = verify_token(refresh_token, "refresh")

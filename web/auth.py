@@ -30,6 +30,7 @@ from web.security import (
     create_access_token,
     create_refresh_token,
     verify_user_credentials,
+    revoke_push_subscriptions,
     revoke_user_sessions,
     end_session,
     session_family,
@@ -405,12 +406,19 @@ def api_logout():
         owner = (record or verify_token(refresh_token, "refresh") or access or {}).get("username")
         if owner:
             revoke_user_sessions(owner)
+            revoke_push_subscriptions(owner)
     else:
         if record:
             end_session(record.get("family") or record.get("jti"))
             app.db["refresh_tokens"].delete_one({"_id": record["_id"]})
         if access and access.get("sid"):
             end_session(access["sid"])
+        # This browser's push subscription goes with its sign-in, when the app names it (it knows its own endpoint, the
+        # server does not link a subscription to a session). Only the signed-out person's own row is touched.
+        owner = (record or access or {}).get("username")
+        endpoint = body.get("push_endpoint") if isinstance(body, dict) else None
+        if owner and isinstance(endpoint, str) and endpoint:
+            app.db["push_subscriptions"].delete_one({"endpoint": endpoint, "username": owner})
 
     response, status = get_message("auth_logout_success")
     response.set_cookie("access_token", "", max_age=0)

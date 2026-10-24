@@ -9,7 +9,14 @@ from flask_pydantic_spec import Request, Response
 
 from web.app import api, limiter, logger  # shared logger and api
 from web.configs import RATE_LIMIT_CONFIG  # per-route limits overridable via env
-from web.security import login_required, admin_required, is_admin, revoke_personal_tokens, revoke_user_sessions
+from web.security import (
+    login_required,
+    admin_required,
+    is_admin,
+    revoke_personal_tokens,
+    revoke_push_subscriptions,
+    revoke_user_sessions,
+)
 import web.app as app  # to access patched app.db in tests
 from web.security import ADMIN_USERNAME
 from web.messages import get_message
@@ -325,6 +332,7 @@ def update_user(username):
         if data.password is not None or data.is_active is False:
             revoke_user_sessions(username)
             revoke_personal_tokens(username)
+            revoke_push_subscriptions(username)
 
         logger.info(f"User updated: username={username}, updated_by={getattr(request, 'current_user', 'admin')}")
         return get_message("user_updated")
@@ -368,6 +376,7 @@ def delete_user(username):
             return error_response("user_not_found")
         revoke_user_sessions(username)
         revoke_personal_tokens(username)
+        revoke_push_subscriptions(username)
 
         logger.info(
             f"User deactivated: username={username}, deactivated_by={getattr(request, 'current_user', 'admin')}"
@@ -415,6 +424,7 @@ def reset_user_password(username):
             return error_response("user_not_found")
         revoke_user_sessions(username)
         revoke_personal_tokens(username)
+        revoke_push_subscriptions(username)
 
         logger.info(f"Password reset: username={username}, reset_by={getattr(request, 'current_user', 'admin')}")
         return get_message("user_password_reset")
