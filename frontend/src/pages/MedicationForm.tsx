@@ -36,6 +36,7 @@ import { showUndo } from '../utils/undo';
 import { deleteMedicationWithUndo, medicationDeleteText } from '../utils/medicationDelete';
 import { getCurrentDate } from '../utils/dateUtils';
 import { refreshMedicationViews } from '../utils/intakeViews';
+import { ALL_WEEKDAYS, newCourseDefaults } from '../utils/medicationDefaults';
 
 /** A typed amount («0,5» or «0.5») for zod; '' is «not set». */
 const amount = (v: unknown) => (v === '' || v === undefined || v === null ? null : typeof v === 'string' ? v.replace(',', '.') : v);
@@ -131,7 +132,7 @@ const DAYS_OF_WEEK = [
 
 const COMMON_TYPES = ['Таблетка', 'Капсула', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Гель', 'Сироп', 'Суспензия', 'Порошок', 'Спрей', 'Паста'];
 /** The last line of the picker: a form that is not in the list is written in. */
-const OTHER_TYPE = 'Другое...';
+const OTHER_TYPE = 'Другое…';
 
 /** Units counted in pieces, and how «сколько … давать» says them. */
 const PIECES_WORD: Record<string, string> = { 'таб': 'таблеток', 'капс': 'капсул', 'шт': 'штук' };
@@ -169,6 +170,8 @@ export function MedicationForm() {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
     const minutes = Array.from({ length: 60 }, (_, i) => ({ label: i.toString().padStart(2, '0'), value: i.toString().padStart(2, '0') }));
 
+    // A new course is daily and begins today; narrowing the week or moving the start is the optional part.
+    const course = newCourseDefaults(getCurrentDate());
     const { control, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting, isDirty, dirtyFields } } = useForm<MedicationFormInput, unknown, MedicationFormData>({
         // onInvalidSubmit scrolls to and focuses the first error in page order;
         // RHF's own focus picked the first registered ref instead.
@@ -186,15 +189,14 @@ export function MedicationForm() {
             dose_unit: '',
             default_dose: 1,
             schedule: {
-                // None chosen: the person says on which days.
-                days: [],
+                days: course.days,
                 times: ['08:00'],
             },
             inventory_enabled: false,
             inventory_warning_days: 3,
             is_active: true,
             comment: '',
-            started_on: '',
+            started_on: course.started_on,
             ended_on: '',
             purpose: '',
             prescribed_by: '',
@@ -502,7 +504,7 @@ export function MedicationForm() {
                                         errors.name?.message ? (
                                             <FieldError message={errors.name.message} />
                                         ) : (
-                                            fieldNote({ hint: 'Впишите название в поиске шторки, если его нет в списке' })
+                                            fieldNote({ hint: 'Не нашли в списке? Впишите название в поиске' })
                                         )
                                     }
                                 >
@@ -517,14 +519,14 @@ export function MedicationForm() {
                             render={({ field }) => (
                                 <>
                                     <Form.Item
-                                        label="Форма"
+                                        label="Форма выпуска"
                                         required
                                         onClick={() => setTypePickerVisible(true)}
                                         description={errors.type?.message ? <FieldError message={errors.type.message} /> : undefined}
                                         style={{ cursor: 'pointer' }}
                                         arrow
                                     >
-                                        <PickerValue value={field.value} placeholder="Выберите форму" />
+                                        <PickerValue value={field.value} placeholder="Выберите" />
                                     </Form.Item>
                                     {(showCustomType || (!!field.value && !COMMON_TYPES.includes(field.value))) && (
                                         <Form.Item label="Какая форма" required>
@@ -577,7 +579,7 @@ export function MedicationForm() {
                                         onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
-                                        placeholder="Напр. 300 мг или 0,5 мг/мл"
+                                        placeholder="Например, 300 мг или 0,5 мг/мл"
                                         maxLength={50}
                                     />
                                 </Form.Item>
@@ -648,7 +650,7 @@ export function MedicationForm() {
                                                     >
                                                         <PickerValue
                                                             value={unitField.value}
-                                                            placeholder="таб/мл"
+                                                            placeholder="Единица"
                                                             style={{ textAlign: 'center', color: 'var(--app-primary-text)', lineHeight: '24px' }}
                                                         />
                                                     </button>
@@ -688,7 +690,7 @@ export function MedicationForm() {
                                             setValue('schedule.times', ['08:00'], { shouldDirty: true });
                                         }
                                         if ((getValues('schedule.days') ?? []).length === 0) {
-                                            setValue('schedule.days', [0, 1, 2, 3, 4, 5, 6], { shouldDirty: true });
+                                            setValue('schedule.days', [...ALL_WEEKDAYS], { shouldDirty: true });
                                         }
                                     }}
                                 />
@@ -813,20 +815,19 @@ export function MedicationForm() {
                             )}
                         </Form.Item>
 
-                        <Form.Header>Учёт остатков</Form.Header>
                         <Controller
                             name="inventory_enabled"
                             control={control}
                             render={({ field }) => (
                                 <Form.Item
-                                    label="Включить"
+                                    label="Следить за остатком"
                                     // The whole row toggles, not only the small switch (which stops its own tap from reaching the row).
                                     clickable
                                     arrow={false}
                                     onClick={() => field.onChange(!field.value)}
                                     extra={
                                         <span onClick={(event) => event.stopPropagation()}>
-                                            <Switch aria-label="Учёт остатков" checked={field.value} onChange={field.onChange} />
+                                            <Switch aria-label="Следить за остатком" checked={field.value} onChange={field.onChange} />
                                         </span>
                                     }
                                     description={field.value ? `Будем списывать по ${formatAmount(parseAmount(String(watchedDefaultDose)) || 1)} ${doseUnit} за приём` : undefined}
@@ -933,7 +934,7 @@ export function MedicationForm() {
                                         onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
-                                        placeholder="Например, цистит"
+                                        placeholder="Необязательно"
                                         maxLength={200}
                                         style={{ '--text-align': 'left' }}
                                     />
@@ -949,7 +950,7 @@ export function MedicationForm() {
                                         onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
-                                        placeholder="Врач или клиника"
+                                        placeholder="Необязательно"
                                         maxLength={100}
                                         style={{ '--text-align': 'left' }}
                                     />
@@ -999,12 +1000,12 @@ export function MedicationForm() {
                             name="comment"
                             control={control}
                             render={({ field }) => (
-                                <Form.Item label="Комментарий" description={fieldNote({ value: field.value, max: 500 })}>
+                                <Form.Item label="Заметка" description={fieldNote({ value: field.value, max: 500 })}>
                                     <Input
                                         onBlur={field.onBlur}
                                         value={field.value}
                                         onChange={field.onChange}
-                                        placeholder="Напр. от кашля"
+                                        placeholder="Например, давать с едой"
                                         maxLength={500}
                                         style={{ '--text-align': 'left' }}
                                     />
@@ -1013,25 +1014,18 @@ export function MedicationForm() {
                         />
                     </Form>
 
-                    <div style={{
-                        marginTop: 'var(--spacing-xl)',
-                        paddingBottom: 'var(--spacing-xl)',
-                        marginLeft: 'var(--spacing-md)',
-                        marginRight: 'var(--spacing-md)'
-                    }}>
-                        <SpinnerButton
-                            loading={mutation.isPending || isSubmitting}
-                            onClick={submit}
-                            style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
-                        >
+                    {/* A long form: the main button stays above the tab bar, not three screens down. */}
+                    <div className="form-sticky-action safe-area-padding">
+                        <SpinnerButton loading={mutation.isPending || isSubmitting} onClick={submit}>
                             {/* «Добавить» for a new course, as on the document form («Сохранить» while editing). */}
                             {isEditing ? 'Сохранить' : 'Добавить'}
                         </SpinnerButton>
+                    </div>
+                    <div className="safe-area-padding form-actions" style={{ paddingBottom: 'var(--spacing-xl)' }}>
                         <Button
                             block
                             size="large"
                             onClick={() => goBack(navigate, '/medications')}
-                            style={{ marginBottom: 'var(--spacing-md)' }}
                         >
                             Отмена
                         </Button>
@@ -1044,7 +1038,6 @@ export function MedicationForm() {
                                     loading={finishCourse.isPending}
                                     disabled={finishCourse.isPending}
                                     onClick={() => finishCourse.mutate()}
-                                    style={{ marginBottom: 'var(--spacing-md)' }}
                                 >
                                     Завершить курс
                                 </Button>
@@ -1056,7 +1049,6 @@ export function MedicationForm() {
                                     loading={resumeCourse.isPending}
                                     disabled={resumeCourse.isPending}
                                     onClick={() => resumeCourse.mutate()}
-                                    style={{ marginBottom: 'var(--spacing-md)' }}
                                 >
                                     Возобновить курс
                                 </Button>
