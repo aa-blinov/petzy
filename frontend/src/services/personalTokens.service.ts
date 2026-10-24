@@ -7,7 +7,7 @@ export type TokenScope = (typeof TOKEN_SCOPES)[number];
 /** What each area lets a token do, as the form and the list say it. */
 export const SCOPE_LABELS: Record<TokenScope, string> = {
   'pets:read': 'Читать питомцев',
-  'events:write': 'Записывать события',
+  'events:write': 'Добавлять записи',
   'history:read': 'Читать ленту и историю',
   'medical:read': 'Читать медкарту',
 };

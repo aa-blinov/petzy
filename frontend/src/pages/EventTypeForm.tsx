@@ -307,11 +307,11 @@ export function EventTypeForm() {
         await eventTypesService.create(payload);
       }
       invalidate();
-      showToast.success(isEditing ? 'Тип события сохранён' : 'Тип события добавлен');
+      showToast.success(isEditing ? 'Тип записи сохранён' : 'Тип записи добавлен');
       release();
       goBack(navigate, '/event-types');
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Не удалось сохранить тип события');
+      const message = getApiErrorMessage(error, 'Не удалось сохранить тип записи');
       showToast.failure(message);
     } finally {
       setIsSaving(false);
@@ -319,12 +319,12 @@ export function EventTypeForm() {
   };
 
   if (isEditing && eventTypesError) {
-    // The registry didn't load: «Тип события не найден» after a failed request sends the person off to create a
+    // The registry didn't load: «Тип записи не найден» after a failed request sends the person off to create a
     // second copy of a type that is already there.
     return (
       <div className="page-container">
         <div className="safe-area-padding">
-          <LoadError what="типы событий" onRetry={() => refetchEventTypes()} />
+          <LoadError what="типы записей" onRetry={() => refetchEventTypes()} />
           <Button block onClick={() => goBack(navigate, '/event-types')}>
             К списку типов
           </Button>
@@ -342,10 +342,10 @@ export function EventTypeForm() {
   if (isEditing && !existing) {
     return (
       <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center' }}>
-        <p>Тип события не найден</p>
+        <p>Тип записи не найден</p>
         {/* Straight to the list, not back through history: this screen was opened from a link, so «назад»
             led wherever the person came from, which may be a screen this one has nothing to do with. */}
-        <Button onClick={() => navigate('/event-types')}>К типам событий</Button>
+        <Button onClick={() => navigate('/event-types')}>К типам записей</Button>
       </div>
     );
   }
@@ -361,7 +361,7 @@ export function EventTypeForm() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {isEditing ? 'Изменить тип' : 'Новый тип события'}
+              {isEditing ? 'Изменить тип записи' : 'Новый тип записи'}
             </h1>
           </div>
           {/* Someone else's type: the form below is there to read, not to fill in. Without this the person
