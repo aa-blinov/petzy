@@ -77,6 +77,30 @@ class TestRules:
         assert states[str(vaccine["_id"])]["status"] == "overdue"
         assert states[str(treatment["_id"])]["status"] == "ok"
 
+    def _treatment(self, target, day, next_due):
+        record = self._rec("parasite", "Обработка", day, next_due)
+        record["target"] = target
+        return record
+
+    def test_a_newer_treatment_against_both_replaces_older_fleas_and_worms(self):
+        fleas = self._treatment("fleas_ticks", "2024-01-01", iso(-10))
+        worms = self._treatment("worms", "2024-01-02", iso(-9))
+        both = self._treatment("both", "2024-03-01", iso(60))
+        states = record_states([fleas, worms, both], TODAY)
+        assert states[str(fleas["_id"])]["superseded"] and states[str(fleas["_id"])]["status"] == "none"
+        assert states[str(worms["_id"])]["superseded"]
+        assert not states[str(both["_id"])]["superseded"] and states[str(both["_id"])]["status"] == "ok"
+
+    def test_an_older_both_does_not_replace_newer_single_treatments(self):
+        both = self._treatment("both", "2024-01-01", iso(-10))
+        fleas_newer = self._treatment("fleas_ticks", "2024-03-01", iso(20))
+        worms_newer_than_both = self._treatment("worms", "2024-04-01", iso(20))
+        states = record_states([both, fleas_newer, worms_newer_than_both], TODAY)
+        # Neither single treatment is replaced by the older «both», and «both» stays on its own line.
+        assert not states[str(fleas_newer["_id"])]["superseded"]
+        assert not states[str(worms_newer_than_both["_id"])]["superseded"]
+        assert not states[str(both["_id"])]["superseded"]
+
     def test_visits_are_never_replaced(self):
         a, b = self._rec("visit", "Осмотр", "2024-01-01"), self._rec("visit", "Осмотр", "2025-01-01")
         assert not any(s["superseded"] for s in record_states([a, b], TODAY).values())

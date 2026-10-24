@@ -111,11 +111,23 @@ def record_states(records: list[dict], today: date) -> dict[str, dict]:
         key = group_key(record)
         if key not in latest or _latest_key(record) > _latest_key(latest[key]):
             latest[key] = record
+    # A treatment against both fleas/ticks and worms also covers each of them: a newer «both» replaces an older
+    # «fleas_ticks» and an older «worms», or the old one would stay overdue and keep sending alerts.
+    both = latest.get(("parasite", "target", "both"))
+
+    def covered_by_both(record: dict) -> bool:
+        return (
+            both is not None
+            and record.get("kind") == "parasite"
+            and record.get("target") in ("fleas_ticks", "worms")
+            and _latest_key(both) > _latest_key(record)
+        )
+
     states = {}
     for record in records:
         rid = str(record["_id"])
         kind = record.get("kind")
-        if kind in REPEATING_KINDS and latest[group_key(record)]["_id"] != record["_id"]:
+        if kind in REPEATING_KINDS and (latest[group_key(record)]["_id"] != record["_id"] or covered_by_both(record)):
             states[rid] = {"status": "none", "days_left": None, "superseded": True}
             continue
         status, days_left = due_status(kind, record.get("next_due"), today)
