@@ -40,7 +40,7 @@
 ```mermaid
 graph TD
   настройки["/settings"]
-  события["/pet-events"]
+  типыЗаписей["/pet-events"]
   медкарта["/pets/:id/medical-card"]
   header["шапка на вкладке: «Управление питомцами»"]
   pets["/pets"]
@@ -53,7 +53,7 @@ graph TD
   pets --> edit["/pets/:id/edit"]
   pets --> card["/pets/:id/medical-card"]
   pets -->|"кнопка «Оформление», сначала выбирает питомца"| look["/pet-look"]
-  pets --> события
+  pets --> типыЗаписей
 
   pets -. "кнопка «назад» в шапке: маршрут не вкладка" .-> назад["куда пришли"]
 ```
@@ -185,7 +185,7 @@ graph TD
 
 - [pet-form.md](pet-form.md), форма питомца, куда ведут карточка, «+» и свайп вправо
 - [pet-look-settings.md](pet-look-settings.md), оформление, кнопка «Оформление» на карточке
-- [pet-events.md](pet-events.md), события питомца, кнопка «К питомцам»
+- [pet-events.md](pet-events.md), типы записей питомца, кнопка «К питомцам»
 - [medical-card.md](medical-card.md), медкарта, кнопка «Медкарта» на карточке
 - [settings.md](settings.md), настройки, откуда открывается список
 - [dashboard.md](dashboard.md), лента, один из входов и место, куда уходит удаление
