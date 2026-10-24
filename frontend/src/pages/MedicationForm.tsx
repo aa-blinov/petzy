@@ -818,6 +818,7 @@ export function MedicationForm() {
                                     label="Включить"
                                     // The whole row toggles, not only the small switch (which stops its own tap from reaching the row).
                                     clickable
+                                    arrow={false}
                                     onClick={() => field.onChange(!field.value)}
                                     extra={
                                         <span onClick={(event) => event.stopPropagation()}>
