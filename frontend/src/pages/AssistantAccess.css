@@ -17,6 +17,11 @@
     gap: var(--spacing-xl);
 }
 
+.assist__body > .form-actions {
+    /* The column's own 24px gap is already the space above the buttons. */
+    margin-top: 0;
+}
+
 .assist__note {
     margin: var(--spacing-sm) 0 0;
     color: var(--app-text-secondary);

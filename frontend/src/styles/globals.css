@@ -2444,7 +2444,8 @@ html.keyboard-open body:has(.app-fab) .snackbar {
     position: sticky;
     bottom: calc(var(--safe-area-bottom) + 50px + var(--spacing-sm));
     z-index: 5;
-    margin-top: var(--spacing-xl);
+    /* 24px to the button itself: the 8px of padding above it is part of the 24. */
+    margin-top: calc(var(--spacing-xl) - var(--spacing-sm));
     padding-block: var(--spacing-sm);
     /* The same ground as the screen behind it, the pet's scene when it has one: a bar of the plain page colour showed as a dark band. */
     background: linear-gradient(to bottom, transparent, var(--pet-scene-bg, var(--app-page-background)) 24%);
