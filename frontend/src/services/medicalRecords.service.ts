@@ -48,6 +48,12 @@ export interface MedicalRecord {
   updated_at?: string | null;
 }
 
+/** The clinics and doctors the person has named for the pets they can reach (every record, not the last few). */
+export interface KnownPlaces {
+  clinics: string[];
+  doctors: { name: string; clinic: string | null }[];
+}
+
 export interface MedicalRecordInput {
   date: string;
   title: string;
@@ -78,6 +84,11 @@ export const medicalRecordsService = {
   async list(petId: string, kind?: MedicalKind): Promise<MedicalRecord[]> {
     const response = await api.get<{ records: MedicalRecord[] }>('/medical-records', { params: { pet_id: petId, kind, tz: deviceTimeZone() } });
     return response.data.records;
+  },
+
+  async places(): Promise<KnownPlaces> {
+    const response = await api.get<KnownPlaces>('/medical-records/places');
+    return response.data;
   },
 
   async create(petId: string, kind: MedicalKind, data: MedicalRecordInput, formKey?: string): Promise<string> {

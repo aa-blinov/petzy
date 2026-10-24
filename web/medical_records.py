@@ -378,6 +378,53 @@ def list_medical_records():
     return jsonify({"records": records})
 
 
+def _distinct(names: list[Optional[str]]) -> list[str]:
+    """The names without repeats (case and spaces do not make a second one), in the order they came."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for name in names:
+        text = " ".join(name.split()) if isinstance(name, str) else ""
+        if text and text.lower() not in seen:
+            seen.add(text.lower())
+            out.append(text)
+    return out
+
+
+@medical_records_bp.route("/api/medical-records/places", methods=["GET"])
+@login_required
+def known_places():
+    """The clinics and the doctors a person already named for the pets they can reach, to choose from in a record's form.
+
+    From every record of every pet the person owns or is shared, and from those pets' medical profiles; not only the last
+    few records of one pet. The most recent use comes first. ``doctors`` says the clinic each was seen at when a record or a
+    profile says so.
+    """
+    username = request.current_user  # type: ignore[attr-defined]
+    pets = list(app.db["pets"].find({"$or": [{"owner": username}, {"shared_with": username}]}))
+    pet_ids = [str(p["_id"]) for p in pets]
+    records = list(app.db.medical_records.find({"pet_id": {"$in": pet_ids}}, {"clinic": 1, "vet": 1, "date": 1}))
+    records.sort(key=lambda r: r.get("date") or "", reverse=True)
+    clinics = [r.get("clinic") for r in records]
+    doctors: list[dict] = []
+    seen_doctors: set[str] = set()
+    for r in records:
+        vet = " ".join(r["vet"].split()) if isinstance(r.get("vet"), str) else ""
+        if vet and vet.lower() not in seen_doctors:
+            seen_doctors.add(vet.lower())
+            doctors.append({"name": vet, "clinic": " ".join(r["clinic"].split()) if r.get("clinic") else None})
+    for pet in pets:
+        for clinic in (pet.get("medical_profile") or {}).get("clinics") or []:
+            clinics.append(clinic.get("name"))
+            for doctor in clinic.get("doctors") or []:
+                name = " ".join(doctor.get("name").split()) if isinstance(doctor.get("name"), str) else ""
+                if name and name.lower() not in seen_doctors:
+                    seen_doctors.add(name.lower())
+                    doctors.append(
+                        {"name": name, "clinic": " ".join(clinic["name"].split()) if clinic.get("name") else None}
+                    )
+    return jsonify({"clinics": _distinct(clinics), "doctors": doctors})
+
+
 @medical_records_bp.route("/api/medical-records/<id>", methods=["GET"])
 @api.validate(
     resp=Response(HTTP_200=MedicalRecordResponse, HTTP_404=ErrorResponse),

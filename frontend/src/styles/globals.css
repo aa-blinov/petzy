@@ -2560,10 +2560,13 @@ html.keyboard-open body:has(.app-fab) .snackbar {
     background: linear-gradient(to bottom, transparent, var(--pet-scene-bg, var(--app-page-background)) 24%);
 }
 
-/* The button that closes a long form rides above the keys, not behind them: the keys cover
-   `--keyboard-fixed-offset` of the screen, and the button sits on their top edge. */
+/* While the keys are up the button that closes a long form does not float: it stays where the form ends, behind the keys,
+   and can be scrolled to above them (the page has the room the keys cover). Floating it on the top edge of the keys made it
+   follow every step of the keyboard's animation and jump; in the flow it moves with nothing, and when the keys go it is
+   sticky again at once. */
 html.keyboard-open .form-sticky-action {
-    bottom: calc(var(--keyboard-fixed-offset, 0px) + var(--spacing-sm));
+    position: static;
+    background: none;
 }
 
 @media (min-width: 1024px) {
