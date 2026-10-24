@@ -1152,6 +1152,30 @@ select {
     font-size: 11px;
     line-height: 15px;
     font-weight: 500;
+    /* A page zoomed to 200% is 195px wide: five tabs of 39px. A label may be cut with an ellipsis, but its tab stays. */
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-tab-bar__item {
+    min-width: 0;
+}
+
+@media (max-width: 239px) {
+    .app-tab-bar__item {
+        padding-inline: 0;
+    }
+
+    .app-tab-bar__title {
+        font-size: 9px;
+        letter-spacing: -0.02em;
+    }
+
+    .app-tab-bar__icon::before {
+        width: 36px;
+    }
 }
 
 /* 320-359px phones: five tabs of 64px each, and «Документы» at 11px
