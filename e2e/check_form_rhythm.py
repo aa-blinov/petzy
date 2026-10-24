@@ -142,7 +142,7 @@ async def main() -> None:
               // Not `previousElementSibling`: an empty box for the field list stands between the
               // text and the button, and measuring from an empty box reads the button's own margin.
               const note = [...document.querySelectorAll('main p')]
-                .find((el) => el.textContent.includes('Дата, время и комментарий'));
+                .find((el) => el.textContent.includes('Дата, время и заметка'));
               if (!btn || !note) return null;
               return Math.round((btn.getBoundingClientRect().top - note.getBoundingClientRect().bottom) * 10) / 10;
             }"""

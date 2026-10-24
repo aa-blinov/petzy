@@ -427,7 +427,7 @@ def _update_record(record: dict):
     kind = record["kind"]
     fields = data.model_dump(exclude={"base_version"})
     if kind == "parasite" and not fields.get("target"):
-        return error_response("validation_error", "Укажите, от чего обработка")
+        return error_response("validation_error", "Выберите, от чего обработка")
     if not _own_documents(g.pet_id, fields["document_ids"]):
         return error_response("validation_error", "Документ не найден среди документов этого питомца")
     changes = {**_stored(fields, kind), "updated_at": datetime.now(timezone.utc)}

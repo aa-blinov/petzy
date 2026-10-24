@@ -192,10 +192,10 @@ async def main():
             await pg.keyboard.press("Enter")
             await wait_until(pg, lambda t: "Что-то своё" in t and "Препарат" in t)
             await pg.get_by_role("button", name="Добавить", exact=True).click()
-            body = await wait_until(pg, lambda t: "Укажите, от чего обработка" in t)
+            body = await wait_until(pg, lambda t: "Выберите, от чего обработка" in t)
             check(
                 "a typed treatment without «От чего» is not saved and says so",
-                "Укажите, от чего обработка" in body and "medical-records/new" in pg.url,
+                "Выберите, от чего обработка" in body and "medical-records/new" in pg.url,
             )
             # ---- a medicine
             await pg.goto(BASE + "/medications")

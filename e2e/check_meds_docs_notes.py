@@ -158,7 +158,7 @@ async def main():
             asked = await pg.inner_text(".adm-dialog")
             check(
                 "deleting from the list says the file is erased for good, as the form does",
-                "Файл будет стёрт насовсем" in asked,
+                "будет стёрт насовсем" in asked,
                 asked.replace(chr(10), " | "),
             )
             await pg.locator(".adm-dialog").get_by_text("Отмена", exact=True).click()

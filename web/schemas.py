@@ -3541,7 +3541,7 @@ class MedicalRecordCreate(MedicalRecordBody, PetIdQuery):
             self.complaint = self.diagnosis = self.recommendations = None
         if self.kind == "parasite":
             if not self.target:
-                raise ValueError("Укажите, от чего обработка")
+                raise ValueError("Выберите, от чего обработка")
         else:
             self.target = None
         return self
