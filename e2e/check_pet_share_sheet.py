@@ -45,7 +45,7 @@ async def main():
             sheet = pg.get_by_role("dialog", name="Поделиться питомцем")
             check(
                 "it opens a sheet with the login field and its own button",
-                await sheet.get_by_label("Логин человека").count() == 1
+                await sheet.get_by_role("textbox", name="Логин человека").count() == 1
                 and await sheet.get_by_role("button", name="Пригласить").count() == 1,
             )
 
@@ -55,7 +55,7 @@ async def main():
             check("an empty login is refused in words", "Введите логин человека" in await sheet.inner_text())
 
             # The invitation goes out at once, without any «Сохранить»
-            await sheet.get_by_label("Логин человека").fill("family")
+            await sheet.get_by_role("textbox", name="Логин человека").fill("family")
             await sheet.get_by_role("button", name="Пригласить").click()
             await settle(pg, 500)
             invites = (await api(pg, "GET", f"/pets/{pet_id}"))["json"]["pet"].get("share_invites", [])
@@ -68,7 +68,7 @@ async def main():
             )
 
             # Again: said by name, per person
-            await sheet.get_by_label("Логин человека").fill("family")
+            await sheet.get_by_role("textbox", name="Логин человека").fill("family")
             await sheet.get_by_role("button", name="Пригласить").click()
             await settle(pg, 300)
             check(

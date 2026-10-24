@@ -101,7 +101,7 @@ async def main():
             # Someone the pet already reaches is not invited again, and the form says so by name.
             await pg.goto(BASE + f"/pets/{pet_id}/edit")
             await settle(pg)
-            await pg.get_by_label("Логин человека").fill("family")
+            await pg.get_by_role("textbox", name="Логин человека").fill("family")
             await pg.get_by_role("button", name="Пригласить").click()
             await settle(pg, 300)
             check(

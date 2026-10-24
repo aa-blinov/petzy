@@ -15,11 +15,10 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(channel="chrome")
         _ctx, pg = await new_page(b, width=390, height=844, sw=False)
-        await login(pg, "demo", "Рекс")
         pid = await login(pg, "demo", "Рекс")
         mid = None
         now = datetime.now()
-        if not "00:10" < now.strftime("%H:%M") < "23:50":
+        if not "10:00" < now.strftime("%H:%M") < "23:50":
             print("SKIP the clock is at a day's edge")
             return
         today = now.strftime("%Y-%m-%d")
@@ -54,10 +53,10 @@ async def main():
                 str(box),
             )
 
-            # one dose, then three more written by the API (the screen asks before a twin): the card says so
+            # one dose, then three more written by the API (a twin within half an hour is refused, so they are hours apart): the card says so
             await card.get_by_role("button", name="Дали сейчас").click()
             await settle(pg, 300)
-            for minute in ("00:20", "00:30", "00:40"):
+            for minute in ("03:00", "06:00", "09:00"):
                 await api(pg, "POST", f"/medications/{mid}/log", {"date": today, "time": minute, "tz": "Asia/Almaty"})
             await pg.reload()
             await settle(pg)
