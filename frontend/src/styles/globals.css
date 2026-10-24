@@ -2266,25 +2266,9 @@ button.chip::after {
     color: var(--app-text-placeholder);
 }
 
-/* A narrow phone (320-359px): the label took 40% of the row and left a value 150px, so
-   «Не указано (например, для прививок и страховки)» and «Выберите категорию» were cut. The label
-   stands over its value instead, and a placeholder may wrap rather than lose its end. */
+/* A narrow phone (320-359px): a placeholder or a value may wrap rather than lose its end
+   («Не указано (например, для прививок и страховки)»). The rows keep their one rhythm. */
 @media (max-width: 359px) {
-    .adm-form .adm-form-item-horizontal > .adm-list-item-content {
-        flex-wrap: wrap;
-    }
-
-    .adm-form .adm-form-item-horizontal .adm-list-item-content-prefix {
-        width: 100%;
-        padding-right: 0;
-        padding-top: var(--spacing-sm);
-    }
-
-    .adm-form .adm-form-item-horizontal .adm-list-item-content-main {
-        flex: 1 1 100%;
-        padding-top: 0;
-    }
-
     .picker-value {
         white-space: normal;
         overflow-wrap: anywhere;
