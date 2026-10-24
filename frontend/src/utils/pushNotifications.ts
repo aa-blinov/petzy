@@ -95,16 +95,16 @@ export function rememberPushState(state: PushSupportState): void {
  *  caller can't distinguish from a transient error without this. */
 export async function subscribeToPush(): Promise<void> {
   if (!isPushSupported()) {
-    throw new Error('Этот браузер не поддерживает push-уведомления');
+    throw new Error('Этот браузер не поддерживает напоминания');
   }
 
   if (Notification.permission === 'denied') {
-    throw new Error('Уведомления заблокированы в настройках браузера');
+    throw new Error('Напоминания заблокированы в настройках браузера');
   }
 
   const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
   if (permission !== 'granted') {
-    throw new Error('Уведомления не разрешены');
+    throw new Error('Напоминания не разрешены');
   }
 
   const publicKey = await pushService.getVapidPublicKey();

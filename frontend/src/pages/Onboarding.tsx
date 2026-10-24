@@ -287,10 +287,10 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     setEnablingPush(true);
     try {
       await subscribeToPush();
-      showToast.success('Уведомления включены');
+      showToast.success('Напоминания включены');
       next();
     } catch (err) {
-      showToast.failure(getApiErrorMessage(err, 'Не удалось включить уведомления'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось включить напоминания'));
     } finally {
       setEnablingPush(false);
     }
@@ -509,7 +509,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
           />
         </div>
       );
-      title = 'Включить уведомления?';
+      title = 'Включить напоминания?';
       lead = 'Напомним о лекарствах, прививках и истекающих документах, сообщим о необычных показателях';
       cta = ctaButton('Включить', enablePush, { loading: enablingPush });
       secondary = (
@@ -532,7 +532,7 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         </div>
       );
       title = 'Напоминания на iPhone';
-      lead = 'Safari присылает уведомления только приложениям с экрана «Домой». Добавьте туда Petzy, и напоминания заработают';
+      lead = 'Safari присылает напоминания только приложениям с экрана «Домой». Добавьте туда Petzy, и напоминания заработают';
       body = (
         <ol className="onb-howto">
           <li>

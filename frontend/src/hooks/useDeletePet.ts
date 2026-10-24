@@ -18,7 +18,7 @@ export function useDeletePet() {
     deleteWithUndo({
       id: pet._id,
       path: `/pets/${pet._id}`,
-      message: `«${pet.name}» удалён`,
+      message: 'Питомец удалён',
       failure: `Не удалось удалить «${pet.name}», питомец на месте`,
       onUndo: () => {
         if (wasSelected) selectPet(pet);

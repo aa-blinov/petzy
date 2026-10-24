@@ -663,7 +663,7 @@ function PetLookFor({ pet }: { pet: Pet }) {
         actions={[
           // Destructive action first, cancel second: the app's dialog order.
           { key: 'reset', text: 'Сбросить', danger: true, onClick: () => { setAskReset(false); reset(); } },
-          { key: 'keep', text: 'Оставить', bold: true, onClick: () => setAskReset(false) },
+          { key: 'keep', text: 'Отмена', onClick: () => setAskReset(false) },
         ]}
       />
       {cropping && pet.photo_url && (

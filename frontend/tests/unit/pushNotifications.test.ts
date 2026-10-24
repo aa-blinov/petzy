@@ -126,17 +126,17 @@ describe('состояние push', () => {
 })
 
 describe('подписка на push', () => {
-  it('уведомления заблокированы в настройках браузера', async () => {
+  it('напоминания заблокированы в настройках браузера', async () => {
     enablePush()
     permission = 'denied'
-    await expect(subscribeToPush()).rejects.toThrow('Уведомления заблокированы в настройках браузера')
+    await expect(subscribeToPush()).rejects.toThrow('Напоминания заблокированы в настройках браузера')
   })
 
   it('разрешения не дали', async () => {
     enablePush()
     permission = 'default'
     askedPermission = 'denied'
-    await expect(subscribeToPush()).rejects.toThrow('Уведомления не разрешены')
+    await expect(subscribeToPush()).rejects.toThrow('Напоминания не разрешены')
   })
 
   it('браузер вернул подписку без ключей', async () => {

@@ -54,7 +54,7 @@ export function AssistantAccess() {
     mutationFn: (token: PersonalToken) => personalTokenService.remove(token),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PERSONAL_TOKENS_KEY });
-      showToast.success('Доступ убран из списка');
+      showToast.success('Доступ убран');
     },
     onError: (err: unknown) => {
       void queryClient.invalidateQueries({ queryKey: PERSONAL_TOKENS_KEY });

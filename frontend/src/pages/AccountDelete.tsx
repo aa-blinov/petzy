@@ -246,7 +246,7 @@ export function AccountDelete() {
         onClose={() => setConfirmVisible(false)}
         getContainer={() => document.body}
         actions={[
-          { key: 'confirm', text: 'Удалить', danger: true, bold: true, disabled: busy, onClick: remove },
+          { key: 'confirm', text: 'Удалить', danger: true, disabled: busy, onClick: remove },
           { key: 'cancel', text: 'Отмена', onClick: () => setConfirmVisible(false) },
         ]}
       />

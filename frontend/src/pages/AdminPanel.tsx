@@ -367,8 +367,8 @@ export function AdminPanel() {
 
       <Dialog
         visible={deleteDialog.visible}
-        title="Деактивация пользователя"
-        aria-label="Деактивация пользователя"
+        title="Деактивировать пользователя?"
+        aria-label="Деактивировать пользователя?"
         content={deleteDialog.username
           // The server ends every open session of that account (revoke_user_sessions), so the question says so:
           // otherwise a person is told «потеряет доступ» and their phone keeps working until the token expires.

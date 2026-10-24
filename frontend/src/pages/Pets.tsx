@@ -63,7 +63,7 @@ export function Pets() {
   };
   const leaving = !!deleteDialog.pet && !deleteDialog.pet.current_user_is_owner;
   // antd keeps the title a plain <div>: the name a screen reader says is set here, so both read the same.
-  const deleteTitle = leaving ? 'Выйти из доступа' : 'Удаление питомца';
+  const deleteTitle = leaving ? 'Выйти из доступа?' : 'Удалить питомца?';
 
   return (
     <div className="page-container fab-page">
@@ -142,7 +142,7 @@ export function Pets() {
           !deleteDialog.pet
             ? ''
             : leaving
-              ? `Больше не видеть «${deleteDialog.pet.name}»? Его записи останутся у владельца, он сможет пригласить вас снова`
+              ? `«${deleteDialog.pet.name}» пропадёт из вашего списка, а записи останутся у владельца. Он сможет пригласить вас снова`
               : <PetDeleteSummary pet={deleteDialog.pet} />
         }
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
@@ -150,7 +150,7 @@ export function Pets() {
         actions={[
           {
             key: 'delete',
-            text: leaving ? 'Выйти' : 'Удалить',
+            text: leaving ? 'Выйти из доступа' : 'Удалить',
             danger: true,
             onClick: confirmDelete,
           },
