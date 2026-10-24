@@ -115,10 +115,10 @@ async def main():
                 )
             # a record opened without a kind asks which kind
             await pg.goto(BASE + f"/pets/{pid}/medical-records/new")
-            body = await wait_until(pg, lambda t: "Что записать?" in t)
+            body = await wait_until(pg, lambda t: "Что добавить?" in t)
             check(
                 "a record without a kind asks which one instead of failing to load",
-                "Что записать?" in body and "Не удалось загрузить" not in body,
+                "Что добавить?" in body and "Не удалось загрузить" not in body,
                 body[:160].replace(chr(10), " | "),
             )
             for kind in ("Прививка", "Обработка от паразитов", "Визит", "Операция"):

@@ -55,7 +55,7 @@ async def open_weight_form(pg):
     # sheet opens, so waiting for the text alone passes before the sheet has even arrived. Waiting on
     # `.adm-popup` itself does not work either — the wrapper has no box of its own, so it reads as
     # hidden while the sheet stands there fully drawn; the button inside it does have a box.
-    sheet = pg.locator(".adm-popup").filter(has_text="Что записать?")
+    sheet = pg.locator(".adm-popup").filter(has_text="Что добавить?")
     weight_in_sheet = sheet.get_by_text("Вес", exact=True).first
     await weight_in_sheet.wait_for(state="visible", timeout=8000)
     await weight_in_sheet.click()

@@ -46,7 +46,7 @@ async def main():
         await settle(pg, 150)
         check(
             "it opens a sheet with the camera and the files, archives among them",
-            await pg.locator(".recsheet__label").all_inner_texts()
+            await pg.locator(".addsheet__label").all_inner_texts()
             == ["Сфотографировать", "Фото, PDF или архив из файлов"],
         )
         await pg.keyboard.press("Escape")

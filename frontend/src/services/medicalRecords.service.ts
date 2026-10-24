@@ -44,6 +44,8 @@ export interface MedicalRecord {
   /** The weighing in the feed that was said at this visit (a visit's only). */
   weight_event_id?: string | null;
   documents: { id: string; title: string }[];
+  /** The version of the record (what `base_version` of an edit names); only the record's own routes bring it. */
+  updated_at?: string | null;
 }
 
 export interface MedicalRecordInput {
@@ -62,6 +64,8 @@ export interface MedicalRecordInput {
   /** A visit names the weighing said at it; an edit sends it again, or the full replace clears it. */
   weight_event_id?: string | null;
   document_ids: string[];
+  /** The version the edit was made from: a record changed since answers 409 instead of being overwritten. */
+  base_version?: string | null;
 }
 
 export const medicalRecordsService = {
@@ -70,8 +74,8 @@ export const medicalRecordsService = {
     return response.data.record;
   },
 
-  /** Every record of a kind (the card shows the latest ten), newest first. */
-  async list(petId: string, kind: MedicalKind): Promise<MedicalRecord[]> {
+  /** Every record of a kind (the card shows the latest ten), newest first; without a kind, the pet's records of every kind. */
+  async list(petId: string, kind?: MedicalKind): Promise<MedicalRecord[]> {
     const response = await api.get<{ records: MedicalRecord[] }>('/medical-records', { params: { pet_id: petId, kind, tz: deviceTimeZone() } });
     return response.data.records;
   },
