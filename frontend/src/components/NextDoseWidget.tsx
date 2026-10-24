@@ -8,6 +8,7 @@ import { showToast } from '../utils/toast';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate } from 'react-router-dom';
 import { Button } from 'antd-mobile';
+import './NextDoseWidget.css';
 import { Check, Pill, TriangleAlert } from 'lucide-react';
 import { medicationsListQuery, medicationsService, type UpcomingDose } from '../services/medications.service';
 import { useAuth } from '../hooks/useAuth';
@@ -260,8 +261,7 @@ export function NextDoseWidget() {
                 </div>
             )}
 
-            {/* The same three levels as the actions of a course on the Medicines screen: the main button, a tonal one for the step
-                aside, and under a hairline a quiet text button for the decision that closes the dose. */}
+            {/* One main button, then quiet text links: the step aside, and under a hairline the decision that closes the dose. */}
             <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                 <Button
                     block
@@ -282,17 +282,16 @@ export function NextDoseWidget() {
                     Дали сейчас
                 </Button>
                 {minutesUntil < 0 && (
-                    // The slot has passed: whoever gave the dose on time and marks it only now puts it where it belongs.
-                    <Button
-                        fill="none"
-                        block
-                        style={{ color: 'var(--app-accent-deep)', background: 'var(--app-accent-soft)' }}
+                    // The slot has passed: whoever gave the dose on time and marks it only now puts it where it belongs. A quiet
+                    // text link under the one main button, so the two do not read as twins.
+                    <button
+                        type="button"
+                        className="dose-card__link touch-target"
                         onClick={() => intakeMutation.mutate({ dose: nextDose, kind: 'scheduled' })}
-                        loading={pendingKind === 'scheduled'}
                         disabled={busy}
                     >
-                        Дали вовремя, в {nextDose.time}{nextDose.carried_over ? ' вчера' : ''}
-                    </Button>
+                        {pendingKind === 'scheduled' ? 'Отмечаем…' : `Дали вовремя, в ${nextDose.time}${nextDose.carried_over ? ' вчера' : ''}`}
+                    </button>
                 )}
                 {due && (
                     // Apart from the buttons above and quiet: a skip closes the dose and stops its reminder, and a

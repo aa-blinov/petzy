@@ -29,6 +29,7 @@ import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
 import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
+import { FormChoiceSheet } from '../components/FormChoiceSheet';
 import { ProductPickerSheet } from '../components/ProductPickerSheet';
 import { MEDICINE_GROUPS } from '../utils/medicineCatalog';
 import { DatePickerField } from '../components/DatePickerField';
@@ -333,7 +334,7 @@ export function MedicationForm() {
             refreshMedicationViews(queryClient);
             release();
             showUndo({
-                message: `Курс «${med?.name ?? 'лекарства'}» завершён`,
+                message: `${med?.name ?? 'Лекарство'}: курс завершён`,
                 onUndo: async () => {
                     // The end date the course had before (a planned one) comes back with it, not only the switch.
                     await medicationsService.update(id!, { is_active: true, ended_on: endedBefore });
@@ -356,7 +357,7 @@ export function MedicationForm() {
             refreshMedicationViews(queryClient);
             release();
             showUndo({
-                message: `Курс «${med?.name ?? 'лекарства'}» возобновлён`,
+                message: `${med?.name ?? 'Лекарство'}: курс возобновлён`,
                 onUndo: async () => {
                     await medicationsService.update(id!, { is_active: false, ended_on: med?.ended_on ?? getCurrentDate() });
                     await refreshMedicationViews(queryClient);
@@ -533,15 +534,15 @@ export function MedicationForm() {
                                             <Input value={field.value} onChange={field.onChange} placeholder="Например, ушные капли" maxLength={50} clearable />
                                         </Form.Item>
                                     )}
-                                    <Picker
-                                        columns={[[...COMMON_TYPES, OTHER_TYPE].map(t => ({ label: t === OTHER_TYPE ? 'Другое' : t, value: t }))]}
+                                    {/* A list, not a wheel: a tap chooses and closes, and «Готово» cannot accept the first line unseen. */}
+                                    <FormChoiceSheet
                                         visible={typePickerVisible}
+                                        title="Форма выпуска"
+                                        options={[...COMMON_TYPES, OTHER_TYPE].map((t) => ({ label: t === OTHER_TYPE ? 'Другое' : t, value: t }))}
                                         onClose={() => setTypePickerVisible(false)}
-                                        // A saved form that is not in the list stands on «Другое»: opening the wheel and pressing «Выбрать»
-                                        // must not turn it into the first line.
-                                        value={[showCustomType || (!!field.value && !COMMON_TYPES.includes(field.value)) ? OTHER_TYPE : field.value]}
-                                        onConfirm={(val) => {
-                                            const selected = val[0] as string;
+                                        // A saved form that is not in the list stands on «Другое».
+                                        value={showCustomType || (!!field.value && !COMMON_TYPES.includes(field.value)) ? OTHER_TYPE : field.value}
+                                        onSelect={(selected) => {
                                             if (selected === OTHER_TYPE) {
                                                 setShowCustomType(true);
                                                 if (COMMON_TYPES.includes(field.value)) field.onChange('');
@@ -556,8 +557,6 @@ export function MedicationForm() {
                                             }
                                             setTypePickerVisible(false);
                                         }}
-                                        cancelText="Отмена"
-                                        confirmText="Готово"
                                     />
                                 </>
                             )}
