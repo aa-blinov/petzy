@@ -1,0 +1,43 @@
+/* The records that hold the document: each opens its record, and lets the file go. */
+.doc-links__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.doc-links__open {
+    flex: 1;
+    min-width: 0;
+    min-height: var(--touch-min);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--app-text-primary);
+    font: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.doc-links__detach,
+.doc-links__attach {
+    min-height: var(--touch-min);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--app-accent-deep);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.doc-links__detach {
+    flex-shrink: 0;
+}
+
+.doc-links__detach:disabled {
+    opacity: 0.5;
+    cursor: default;
+}

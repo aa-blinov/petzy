@@ -321,7 +321,7 @@ M3 buttons: one primary per screen.
 - **Press:** 0.98 scale and the 12% state layer; no hover lift. A visible focus ring for the keyboard.
 
 ### The round «+»
-One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). What its sheet holds depends on the screen: the feed's sheet lists the diary of events («Добавить запись»), the medical card's, in the mode that edits, is «Что записать?» (a vaccination, a treatment, a visit, an allergy, a medicine, a weight, a document). The reading mode of the card has none, because nothing is added there.
+One way to add on the screens that fill a diary: the round copper button bottom right, above the tab bar (`.app-fab`, 56px, in a portal). Its sheet is one component, `AddSheet` (`components/AddSheet.tsx`), titled «Что добавить?» everywhere and drawn the way the feed's was: coloured tiles (`AddTile`, 56px, two columns, one on a narrow phone or for a single long choice), and quiet copper lines under them (`AddLink`: «Прививка, визит или обработка», «Другие записи», «Настроить типы записей»). What it holds depends on the screen: the feed's lists the pet's types of records, the medical card's blocks ask between two kinds (a vaccination or a treatment, a visit or an operation), the Documents' offers the camera and the files. Nobody draws a sheet of their own for the same job. The reading mode of the card has none, because nothing is added there.
 
 **One door per screen.** The card's tiles only open their part, and nothing on the card records a thing: the overdue strip says what is due and where it is recorded, and the action sits in that part ("Записать повторную прививку" in «Прививки и обработки», «Записать вес» in «Вес», «Изменить» in the allergies). A screen carries the round «+» only where its blocks carry no door of their own: a block with its own «Добавить», «Записать вес» or «Указать» next to what it adds does not get one as well. A part of the card that asks between two kinds keeps the «+» (it is the only way in) and its blocks carry no door, so a person reads one way to add rather than guessing between two. The card itself keeps its «+» because it is the only way from there to an allergy, a medicine, a weight or a document.
 
@@ -343,6 +343,11 @@ One word for one act, on every screen. The product owner's dictionary:
 
 ### Dialogs and sheets
 Dialogs and sheets: the common 12px corner, the floating shadow (level 3), the title in the large size.
+
+A fixed list of a few choices (a category, a form of a medicine) is a list sheet, not a wheel: `ChoiceSheetField` shows the choice in the row, a tap on a row of the sheet chooses it and closes the sheet, the chosen row is marked. A wheel with «Готово» is for dates and times only, because on a wheel the first item is already under the finger and «Готово» accepts it without a choice having been made.
+
+### Opening an object
+One convention for every list of objects (a document, a medicine, a record, a pet). A tap on the row opens the object's own screen, and that screen carries a visible «Изменить». A file's own screen is its viewer: the photo or the PDF in full, with «Изменить» at the top and «Закрыть» beside it. The swipe and the «Действия» button are shortcuts to the same acts (open, change, delete, and the object's own: «Прикрепить к записи» on a document), never the only way to one of them.
 
 ### Fields
 Filled text fields, rounded on all four corners. Every form row (`.adm-form-item`) holds a fill (`--app-field-fill`,

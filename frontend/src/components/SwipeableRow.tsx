@@ -27,6 +27,8 @@ interface SwipeableRowProps {
   /** The row's own tap action, when it has one (open a document), so
       the actions menu can offer it to people who can't tap the card. */
   openAction?: { label: string; onTrigger: () => void };
+  /** More shortcuts for the actions menu (not for the swipe), between the row's open action and its edit: «Прикрепить к записи». */
+  extraActions?: { label: string; onTrigger: () => void }[];
   /** Show the actions button to everyone, not only keyboard users: for
       rows whose tap opens something other than the edit form. */
   menuVisible?: boolean;
@@ -46,7 +48,7 @@ interface SwipeableRowProps {
  * Uses the `useSwipeableRow` hook for touch tracking. CSS handles the
  * translation so it stays on the compositor (no re-renders per frame).
  */
-export function SwipeableRow({ leftAction, rightAction, children, disabled, itemLabel, openAction, menuVisible }: SwipeableRowProps) {
+export function SwipeableRow({ leftAction, rightAction, children, disabled, itemLabel, openAction, extraActions, menuVisible }: SwipeableRowProps) {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const handleLeft = () => {
     hapticFeedback('medium');
@@ -63,6 +65,7 @@ export function SwipeableRow({ leftAction, rightAction, children, disabled, item
   // gets keyboard focus, and that screen readers always reach.
   const menuActions = [
     openAction && { key: 'open', text: openAction.label, onClick: openAction.onTrigger },
+    ...(extraActions ?? []).map((action, index) => ({ key: `extra-${index}`, text: action.label, onClick: action.onTrigger })),
     leftAction && { key: 'left', text: leftAction.label, onClick: leftAction.onTrigger },
     rightAction && {
       key: 'right',

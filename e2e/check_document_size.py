@@ -43,7 +43,7 @@ async def main():
             await settle(pg)
             await pg.get_by_text("Выберите категорию").first.click()
             await settle(pg, 150)
-            await pg.get_by_role("button", name="Готово").last.click()
+            await pg.get_by_role("option", name="Другое").click()
             await settle(pg, 150)
             await pg.get_by_placeholder("Например, Прививка от бешенства").fill("Большой файл")
             await pg.locator("#document-file-input").set_input_files(

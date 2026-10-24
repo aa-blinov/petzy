@@ -32,7 +32,7 @@ async def main():
         await says("/pets/nope/medical-card", "Питомец не найден", "a malformed pet id on the card")
         await says("/pets/nope/edit", "Питомец не найден", "a malformed pet id on its form")
         await says("/medications/zzz/edit", "Такого лекарства нет", "a malformed medication id")
-        await says("/documents/zzz/edit", "Такого документа нет", "a malformed document id")
+        await says("/documents/zzz/edit", "Документ не найден", "a malformed document id")
         await says(
             f"/pets/{pet_id}/medical-records/zzz",
             "Запись не найдена",
