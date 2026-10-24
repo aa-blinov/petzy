@@ -112,9 +112,10 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
       return;
     }
     const sure = await Dialog.confirm({
-      'aria-label': 'Закрыть без сохранения?',
-      content: 'Введённое значение не сохранится',
-      confirmText: 'Закрыть',
+      title: 'Не сохранить изменения?',
+      'aria-label': 'Не сохранить изменения?',
+      content: 'Введённое значение пропадёт',
+      confirmText: 'Не сохранять',
       cancelText: 'Остаться',
     });
     if (sure) setEditing(null);
@@ -136,10 +137,11 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
 
   const forgetAll = async () => {
     const confirmed = await Dialog.confirm({
+      title: 'Забыть значения по умолчанию?',
       'aria-label': 'Забыть значения по умолчанию?',
-      content: 'Забыть все значения по умолчанию этого питомца? Это коснётся всех, у кого есть к нему доступ. Новые записи будут открываться пустыми',
+      content: 'Это коснётся всех, у кого есть доступ к питомцу. Новые записи будут открываться пустыми',
       confirmText: 'Забыть',
-      cancelText: 'Оставить',
+      cancelText: 'Отмена',
     });
     if (confirmed) await persist({}, 'Забыто');
   };
@@ -166,8 +168,11 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
           <div className="screen-head">
             <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Значения по умолчанию</h1>
           </div>
-          <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: <span className="pet-name">{pet.name}</span>. Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запоминать значения». Здесь их можно поправить или забыть. У обязательного поля с вариантами, когда значение не запомнено, выбран первый вариант
+          <p className="pet-subline">
+            Питомец: <strong className="pet-name">{pet.name}</strong>
+          </p>
+          <p style={{ margin: 'var(--spacing-2xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+            Подставляются в новые записи этого питомца и одинаковы для всех, у кого есть к нему доступ. Запомнить значение проще всего в форме новой записи, под полем: «Запоминать значения». Здесь их можно поправить или забыть. У обязательного поля с вариантами, когда значение не запомнено, выбран первый вариант
           </p>
         </div>
 

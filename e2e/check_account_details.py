@@ -72,7 +72,7 @@ async def main():
         await settle(pg, 150)
         check(
             "leaving a filled sign-up form asks first",
-            await pg.get_by_text("Выйти без сохранения?").count() == 1,
+            await pg.get_by_text("Не сохранить изменения?").count() == 1,
         )
         await pg.get_by_role("button", name="Остаться").click()
         await settle(pg, 150)

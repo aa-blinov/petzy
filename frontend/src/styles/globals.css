@@ -2291,6 +2291,18 @@ button.chip::after {
     overflow-wrap: anywhere;
 }
 
+/* «Питомец: Рекс» on a line of its own under a screen title, the name in ink; the sentence that
+   explains the screen comes in its own paragraph after it. */
+.pet-subline {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--app-text-secondary);
+}
+.pet-subline .pet-name {
+    color: var(--app-text-primary);
+}
+
 /* Text that can be as long as the server allows (a 100-character name, a
    500-character comment): cut to one line or a few, and break a single
    long word instead of pushing it past the edge. */

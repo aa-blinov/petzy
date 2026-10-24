@@ -405,8 +405,11 @@ function PetLookFor({ pet }: { pet: Pet }) {
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>Оформление питомца</h1>
           </div>
-          <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-            Питомец: <span className="pet-name">{pet.name}</span>. Оформление меняют и видят все, у кого есть доступ к питомцу: что сохраните, увидят и остальные
+          <p className="pet-subline">
+            Питомец: <strong className="pet-name">{pet.name}</strong>
+          </p>
+          <p style={{ margin: 'var(--spacing-2xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+            Оформление меняют и видят все, у кого есть доступ к питомцу: что сохраните, увидят и остальные
           </p>
         </div>
 

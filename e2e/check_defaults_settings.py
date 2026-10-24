@@ -69,10 +69,10 @@ async def main():
                 await pg.get_by_placeholder("Значение").count() == 1,
             )
             await pg.get_by_role("button", name="Закрыть без сохранения").click()
-            dialog = await wait_until(pg, lambda t: "Введённое значение не сохранится" in t)
+            dialog = await wait_until(pg, lambda t: "Введённое значение пропадёт" in t)
             check(
                 "closing asks about the value that is not saved",
-                "Введённое значение не сохранится" in dialog and "Остаться" in dialog,
+                "Введённое значение пропадёт" in dialog and "Остаться" in dialog,
                 dialog[-200:].replace(chr(10), " | "),
             )
             await pg.get_by_role("button", name="Остаться").click()

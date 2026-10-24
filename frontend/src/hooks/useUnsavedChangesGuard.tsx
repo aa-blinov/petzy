@@ -8,7 +8,7 @@ import { Dialog } from 'antd-mobile';
  * Nothing did: the edge swipe, the back arrow, a tab in the bar or the
  * browser's own back all dropped what had been typed, without a word. While
  * `dirty`, leaving the screen (to another page, by any of those ways) shows
- * «Выйти без сохранения?» and waits; closing or reloading the tab gets the
+ * «Не сохранить изменения?» and waits; closing or reloading the tab gets the
  * browser's own warning.
  *
  * Returns the dialog to render once in the form, and `release`: call it
@@ -40,15 +40,15 @@ export function useUnsavedChangesGuard(dirty: boolean): { dialog: ReactNode; rel
   const dialog = (
     <Dialog
       visible={blocker.state === 'blocked'}
-      title="Выйти без сохранения?"
-      aria-label="Выйти без сохранения?"
+      title="Не сохранить изменения?"
+      aria-label="Не сохранить изменения?"
       content="То, что вы ввели, пропадёт"
       getContainer={() => document.body}
       onClose={() => blocker.reset?.()}
       actions={[
         // Destructive action first, cancel second: the app's dialog order.
-        { key: 'leave', text: 'Выйти', danger: true, onClick: () => blocker.proceed?.() },
-        { key: 'stay', text: 'Остаться', bold: true, onClick: () => blocker.reset?.() },
+        { key: 'leave', text: 'Не сохранять', danger: true, onClick: () => blocker.proceed?.() },
+        { key: 'stay', text: 'Остаться', onClick: () => blocker.reset?.() },
       ]}
     />
   );
