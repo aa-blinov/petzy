@@ -144,16 +144,16 @@ ERRORS: Dict[str, ErrorDef] = {
     "export_invalid_format": ErrorDef("export_invalid_format", "Неверный тип формата", 422),
     "user_exists": ErrorDef("user_exists", "Пользователь с таким логином уже существует", 422),
     "invalid_type": ErrorDef("invalid_type", "Неподдерживаемый тип записи", 422),
-    "event_type_not_found": ErrorDef("event_type_not_found", "Тип события не найден", 404),
+    "event_type_not_found": ErrorDef("event_type_not_found", "Тип записи не найден", 404),
     "event_type_builtin_admin_only": ErrorDef(
         "event_type_builtin_admin_only", "Встроенный тип общий для всех, его меняет администратор", 403
     ),
     "event_type_label_taken": ErrorDef(
-        "event_type_label_taken", "Тип события с таким названием уже есть. Назовите свой тип иначе", 422
+        "event_type_label_taken", "Тип записи с таким названием уже есть. Назовите свой тип иначе", 422
     ),
     "event_type_not_yours": ErrorDef("event_type_not_yours", "Этот тип создал другой пользователь", 403),
     "event_type_builtin_immutable": ErrorDef(
-        "event_type_builtin_immutable", "Встроенный тип события нельзя удалить", 422
+        "event_type_builtin_immutable", "Встроенный тип записи нельзя удалить", 422
     ),
     "event_type_has_events": ErrorDef("event_type_has_events", "У этого типа есть записи. Сначала удалите их", 422),
     "event_type_has_events_elsewhere": ErrorDef(

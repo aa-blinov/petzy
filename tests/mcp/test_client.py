@@ -71,7 +71,7 @@ def test_the_api_path_joins_the_base_address_without_a_double_slash():
         (404, {"success": False, "code": "pet_not_found", "error": "Питомец не найден"}, NOT_FOUND),
         (
             404,
-            {"success": False, "code": "event_type_not_found", "error": "Тип события не найден"},
+            {"success": False, "code": "event_type_not_found", "error": "Тип записи не найден"},
             EVENT_TYPE_NOT_FOUND,
         ),
         (
@@ -215,7 +215,7 @@ def test_an_address_that_would_send_the_token_in_the_clear_is_refused(value):
     "scope, label",
     [
         ("pets:read", "Читать питомцев"),
-        ("events:write", "Записывать события"),
+        ("events:write", "Добавлять записи"),
         ("history:read", "Читать ленту и историю"),
         ("medical:read", "Читать медкарту"),
     ],

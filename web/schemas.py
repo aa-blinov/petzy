@@ -1859,7 +1859,7 @@ def _validate_field_names(fields: List[EventTypeField]) -> List[EventTypeField]:
 class EventTypeCreate(BaseModel):
     """Create a new (always custom) event type."""
 
-    label: str = Field(..., min_length=1, max_length=100, description="Название типа события")
+    label: str = Field(..., min_length=1, max_length=100, description="Название типа записи")
     icon: str = Field(
         ..., min_length=1, max_length=50, description="Ключ иконки", json_schema_extra={"pattern": "^[a-z0-9_-]{1,50}$"}
     )
@@ -2021,7 +2021,7 @@ class EventTypeListResponse(BaseModel):
 class EventCreate(HealthRecordBase):
     """Create a new event of any registered type."""
 
-    type: str = Field(..., min_length=1, max_length=60, description="Ключ типа события")
+    type: str = Field(..., min_length=1, max_length=60, description="Ключ типа записи")
     fields: dict[str, Any] = Field(default_factory=dict, description="Значения полей, специфичных для типа")
     tz: str = Field(
         ...,
@@ -2202,7 +2202,7 @@ class PetIdQuery(BaseModel):
 class UsedEventTypesResponse(BaseModel):
     """The event types a pet has at least one record of."""
 
-    types: List[str] = Field(..., description="Ключи типов событий, по алфавиту")
+    types: List[str] = Field(..., description="Ключи типов записей, по алфавиту")
 
     model_config = ConfigDict(json_schema_extra={"example": {"types": ["feeding", "walk", "weight"]}})
 
@@ -2210,7 +2210,7 @@ class UsedEventTypesResponse(BaseModel):
 class PetDeletionImpactResponse(BaseModel):
     """What deleting a pet takes with it, counted."""
 
-    events: int = Field(..., description="Записи событий")
+    events: int = Field(..., description="Записи ленты")
     medications: int = Field(..., description="Курсы лекарств")
     documents: int = Field(..., description="Документы")
     medical_records: int = Field(..., description="Записи медкарты")
@@ -2287,7 +2287,7 @@ class FeedQuery(PetIdPaginationQuery):
 class EventListQuery(FeedQuery):
     """Query parameters for listing events, optionally filtered by type, or the changes since a moment."""
 
-    type: Optional[str] = Field(None, description="Фильтр по ключу типа события (без него все типы)")
+    type: Optional[str] = Field(None, description="Фильтр по ключу типа записи (без него все типы)")
     since: Optional[str] = Field(
         None,
         max_length=40,
