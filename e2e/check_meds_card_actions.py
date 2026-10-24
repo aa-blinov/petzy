@@ -91,9 +91,9 @@ async def main():
             await pg.get_by_text("Форма выпуска").first.click()
             await settle(pg, 300)
             check("the list has no «Готово»", await pg.get_by_role("button", name="Готово").count() == 0)
-            await pg.get_by_role("button", name="Сироп", exact=True).click()
+            await pg.get_by_role("option", name="Сироп", exact=True).click()
             await settle(pg, 300)
-            check("a tap closes the list", await pg.get_by_role("button", name="Сироп", exact=True).count() == 0)
+            check("a tap closes the list", await pg.get_by_role("option", name="Сироп", exact=True).count() == 0)
             check("the chosen form stands in the row", await pg.get_by_text("Сироп").count() > 0)
         finally:
             if mid:

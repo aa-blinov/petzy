@@ -38,6 +38,41 @@ export function ChoiceList({ options, value, onPick }: { options: ChoiceOption[]
   );
 }
 
+/** The sheet alone, for a row that keeps its own state (a form of a medicine with a typed «Другое» beside it): a tap on a line
+    chooses it and closes the sheet. */
+export function ChoiceSheet({
+  visible,
+  title,
+  options,
+  value,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  title: string;
+  options: ChoiceOption[];
+  /** The line that is chosen now, marked in the list. */
+  value?: string;
+  onClose: () => void;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <Popup visible={visible} onMaskClick={onClose} position="bottom" closeOnSwipe bodyStyle={{ background: 'transparent' }}>
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="75vh" label={title}>
+        <h2 className="choice-sheet__title">{title}</h2>
+        <ChoiceList
+          options={options}
+          value={value ?? ''}
+          onPick={(next) => {
+            hapticFeedback('light');
+            onSelect(next);
+          }}
+        />
+      </DraggableSheetBody>
+    </Popup>
+  );
+}
+
 /**
  * A row of a form that shows its choice and opens a list of the few fixed choices there are (a category, a form of a medicine):
  * a tap on a row chooses it and closes the list. A wheel with «Готово» is for dates and times only: on a wheel the first item is
@@ -82,20 +117,17 @@ export function ChoiceSheetField({
       >
         <PickerValue value={shown} placeholder={placeholder} />
       </Form.Item>
-      <Popup visible={open} onMaskClick={close} position="bottom" closeOnSwipe bodyStyle={{ background: 'transparent' }}>
-        <DraggableSheetBody visible={open} onClose={close} maxHeight="75vh" label={name}>
-          <h2 className="choice-sheet__title">{name}</h2>
-          <ChoiceList
-            options={options}
-            value={value}
-            onPick={(next) => {
-              hapticFeedback('light');
-              onChange(next);
-              close();
-            }}
-          />
-        </DraggableSheetBody>
-      </Popup>
+      <ChoiceSheet
+        visible={open}
+        title={name}
+        options={options}
+        value={value}
+        onClose={close}
+        onSelect={(next) => {
+          onChange(next);
+          close();
+        }}
+      />
     </>
   );
 }

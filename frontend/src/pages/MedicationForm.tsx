@@ -29,7 +29,7 @@ import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
 import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
 import { PickerValue } from '../components/PickerValue';
-import { FormChoiceSheet } from '../components/FormChoiceSheet';
+import { ChoiceSheet } from '../components/ChoiceSheetField';
 import { ProductPickerSheet } from '../components/ProductPickerSheet';
 import { MEDICINE_GROUPS } from '../utils/medicineCatalog';
 import { DatePickerField } from '../components/DatePickerField';
@@ -535,7 +535,7 @@ export function MedicationForm() {
                                         </Form.Item>
                                     )}
                                     {/* A list, not a wheel: a tap chooses and closes, and «Готово» cannot accept the first line unseen. */}
-                                    <FormChoiceSheet
+                                    <ChoiceSheet
                                         visible={typePickerVisible}
                                         title="Форма выпуска"
                                         options={[...COMMON_TYPES, OTHER_TYPE].map((t) => ({ label: t === OTHER_TYPE ? 'Другое' : t, value: t }))}

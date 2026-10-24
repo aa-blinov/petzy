@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ChoiceList } from '../../src/components/ChoiceSheetField'
+import { ChoiceList, ChoiceSheet } from '../../src/components/ChoiceSheetField'
 
 afterEach(cleanup)
 
@@ -28,5 +28,24 @@ describe('список фиксированных вариантов', () => {
     render(<ChoiceList options={OPTIONS} value="" onPick={() => {}} />)
     expect(screen.queryByText('Готово')).toBeNull()
     expect(screen.getAllByRole('option')).toHaveLength(OPTIONS.length)
+  })
+})
+
+describe('лист выбора, которым управляет форма', () => {
+  it('нажатие на строку выбирает её, без кнопки «Готово»', () => {
+    const onSelect = vi.fn()
+    render(<ChoiceSheet visible title="Форма выпуска" options={OPTIONS} value="vaccination" onClose={() => undefined} onSelect={onSelect} />)
+    expect(screen.queryByText('Готово')).toBeNull()
+    fireEvent.click(screen.getByRole('option', { name: 'Анализы' }))
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith('lab_result')
+  })
+
+  it('отмечает выбранную строку, а если ничего не выбрано, не отмечает никакую', () => {
+    const { unmount } = render(<ChoiceSheet visible title="Форма выпуска" options={OPTIONS} value="other" onClose={() => undefined} onSelect={() => undefined} />)
+    expect(screen.getAllByRole('option').filter((o) => o.getAttribute('aria-selected') === 'true').map((o) => o.textContent)).toEqual(['Другое'])
+    unmount()
+    render(<ChoiceSheet visible title="Форма выпуска" options={OPTIONS} onClose={() => undefined} onSelect={() => undefined} />)
+    expect(screen.getAllByRole('option').filter((o) => o.getAttribute('aria-selected') === 'true')).toHaveLength(0)
   })
 })
