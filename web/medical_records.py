@@ -41,6 +41,7 @@ from web.schemas import (
 )
 from zoneinfo import ZoneInfo
 from web.idempotency import idempotent
+from web.save_lock import single_flight
 from web.offline import (
     conflict_answer,
     is_stale,
@@ -305,6 +306,7 @@ def _answer_for_record_name(existing: Optional[dict], pet_id: str, kind: str, lo
     tags=["medical-records"],
 )
 @require_pet_access
+@single_flight
 @idempotent
 def create_medical_record():
     """Add a vaccination, treatment, visit or procedure to a pet's medical card.

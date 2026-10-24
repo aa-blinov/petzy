@@ -247,6 +247,8 @@ def ensure_indexes() -> None:
                           family            (a sign-in: ended as a whole)
       idempotency_keys    username + path + key unique (a retried create gets its first answer)
                           expires_at        (the database drops a key a day after it was taken)
+      recent_saves        _id unique (the lock of a save in progress, so two identical requests
+                          at one instant save once), expires_at (a dead holder's row is dropped)
       push_subscriptions  endpoint unique   (upsert on re-subscribe)
                           username          (list a user's own devices)
       api_tokens          token_hash unique (sha256 of a personal access token: the token
@@ -393,6 +395,9 @@ def ensure_indexes() -> None:
             {"unique": True},
         ),
         (db.idempotency_keys, [("expires_at", ASCENDING)], "idempotency_keys_ttl", {"expireAfterSeconds": 0}),
+        # The lock of a save in progress (web/save_lock.py): its _id is the unique key, and a row a holder
+        # that died left behind is dropped once its lease is over.
+        (db.recent_saves, [("expires_at", ASCENDING)], "recent_saves_ttl", {"expireAfterSeconds": 0}),
         (db.users, [("role", ASCENDING)], "users_role"),
         (
             db.refresh_tokens,
