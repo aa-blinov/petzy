@@ -50,7 +50,7 @@ import { DownOutline, UpOutline } from 'antd-mobile-icons';
 import './MedicalRecordForm.css';
 // The rows of the card itself: the kind picker and the «От чего» fallback read like the card they belong to.
 import './MedicalCard.css';
-import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
+import { ChoiceChip } from '../components/ChoiceChips';
 
 /** A file added in the form: a photo or a PDF, up to the size the Documents accept. */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -727,6 +727,7 @@ export function MedicalRecordForm() {
             />
           )}
 
+          <div className="datepair">
           <Controller
             name="date"
             control={control}
@@ -758,16 +759,7 @@ export function MedicalRecordForm() {
                     yearsBack={0}
                     yearsForward={10}
                     placeholder="Повтор не нужен"
-                    description={
-                      error?.message ? (
-                        <FieldError message={error.message} />
-                      ) : (
-                        repeatHint(kind!, !!nextDue, !!autoDue.current && nextDue === autoDue.current)
-                      )
-                    }
-                  />
-                  <Form.Item>
-                    <ChoiceChips label="Повторить через">
+                    chips={<>
                       <ChoiceChip
                         pressed={!nextDue}
                         onClick={() => {
@@ -792,13 +784,21 @@ export function MedicalRecordForm() {
                           </ChoiceChip>
                         );
                       })}
-                    </ChoiceChips>
-                  </Form.Item>
-                  {nextDue && <PushNote />}
+                    </>}
+                    description={
+                      error?.message ? (
+                        <FieldError message={error.message} />
+                      ) : (
+                        repeatHint(kind!, !!nextDue, !!autoDue.current && nextDue === autoDue.current)
+                      )
+                    }
+                  />
                 </>
               )}
             />
           )}
+          </div>
+          {repeating && nextDue && <PushNote />}
 
 
           {kind === 'visit' && (

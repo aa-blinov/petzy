@@ -31,6 +31,12 @@ interface DatePickerFieldProps {
   /** «Сегодня», «Вчера» and «Цифрами» under the field: a recent date is a tap, an old one (the paper passport) is typed
       instead of wheeled to. Only for dates that are not in the future. */
   quick?: boolean;
+  /** «Ввести цифрами» under the field: any date can be typed instead of wheeled to, in the past or the future alike, as far
+      as the years allow. On unless switched off. */
+  typeable?: boolean;
+  /** Choices of the field's own (a repeat in a month, in a year), in the same row as «Ввести цифрами»: the field, its
+      choices and its typed value are one block. */
+  chips?: ReactNode;
 }
 
 const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -59,6 +65,8 @@ export function DatePickerField({
   onBlur,
   id,
   quick = false,
+  typeable = true,
+  chips,
 }: DatePickerFieldProps) {
   const [visible, setVisible] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -111,8 +119,10 @@ export function DatePickerField({
     }
   };
 
+  const chipRow = quick || typeable || !!chips;
+
   return (
-    <>
+    <div className="datefield-group">
     {/* The «Убрать» button is not inside the row that opens the picker (a button in a button cannot be told apart by a screen
         reader, nor focused apart): it lies over the row's right edge, next to the arrow. */}
     <div className="datefield">
@@ -153,16 +163,23 @@ export function DatePickerField({
       />
     </Form.Item>
     </div>
-    {quick && (
+    {chipRow && (
       <Form.Item>
         <ChoiceChips label={`${label}: быстрый выбор`}>
-          <ChoiceChip pressed={value === todayIso} onClick={() => { onChange(todayIso); onBlur?.(); setTyping(false); }}>Сегодня</ChoiceChip>
-          <ChoiceChip pressed={value === yesterdayIso} onClick={() => { onChange(yesterdayIso); onBlur?.(); setTyping(false); }}>Вчера</ChoiceChip>
-          <ChoiceChip pressed={typing} onClick={() => { setTyping((on) => !on); setTyped(''); setTypedError(''); }}>Ввести цифрами</ChoiceChip>
+          {quick && (
+            <>
+              <ChoiceChip pressed={value === todayIso} onClick={() => { onChange(todayIso); onBlur?.(); setTyping(false); }}>Сегодня</ChoiceChip>
+              <ChoiceChip pressed={value === yesterdayIso} onClick={() => { onChange(yesterdayIso); onBlur?.(); setTyping(false); }}>Вчера</ChoiceChip>
+            </>
+          )}
+          {chips}
+          {typeable && (
+            <ChoiceChip pressed={typing} onClick={() => { setTyping((on) => !on); setTyped(''); setTypedError(''); }}>Ввести цифрами</ChoiceChip>
+          )}
         </ChoiceChips>
       </Form.Item>
     )}
-    {quick && typing && (
+    {typeable && typing && (
       <Form.Item label="Дата цифрами" description={typedError ? <FieldError message={typedError} /> : 'День, месяц и год подряд, точки поставятся сами'}>
         <Input
           aria-label={`${label}, цифрами`}
@@ -176,6 +193,6 @@ export function DatePickerField({
         />
       </Form.Item>
     )}
-    </>
+    </div>
   );
 }
