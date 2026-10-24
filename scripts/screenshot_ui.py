@@ -139,7 +139,7 @@ def main() -> int:
         # The event catalogue: the sheet the pet-events screen opens to add an event kind.
         page.goto(f"{FRONTEND}/pet-events", wait_until="networkidle")
         page.wait_for_timeout(800)
-        page.get_by_role("button", name="Добавить событие").click()
+        page.get_by_role("button", name="Добавить тип записи").click()
         page.wait_for_timeout(1500)
         page.screenshot(path=str(OUTPUT_DIR / "event_catalog.png"), full_page=False)
         print("  captured event_catalog (pet events sheet)")

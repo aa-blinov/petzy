@@ -19,7 +19,7 @@ def _source(name: str) -> str:
 
 @pytest.mark.parametrize(
     "label",
-    ["Читать питомцев", "Записывать события", "Читать ленту и историю", "Читать медкарту"],
+    ["Читать питомцев", "Добавлять записи", "Читать ленту и историю", "Читать медкарту"],
 )
 def test_each_area_is_named_as_the_owner_asked(label):
     assert f"'{label}'" in _source(SERVICE)
