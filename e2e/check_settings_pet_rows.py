@@ -46,7 +46,7 @@ async def main():
             await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
             await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
-            await pg.get_by_role("button", name="Готово").click()
+            await pg.get_by_role("button", name="Закрыть").last.click()
             await settle(pg, 150)
             made.append(
                 next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")

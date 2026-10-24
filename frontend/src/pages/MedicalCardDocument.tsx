@@ -189,7 +189,7 @@ function RecordPill({ record }: { record: MedicalRecord }) {
 /** What a screen reader says for the row: the title and what the eye takes from the pill, not only «открыть запись». */
 function recordAriaLabel(record: MedicalRecord): string {
   const parts = [record.title];
-  if (record.status !== 'none') parts.push(recordStatusText(record.status, record.days_left));
+  if (record.status !== 'none') parts.push(recordStatusText(record.status, record.days_left).toLowerCase());
   else if (!record.superseded && (record.kind === 'vaccination' || record.kind === 'parasite')) parts.push('без напоминания');
   if (record.next_due && !record.superseded && (record.kind === 'vaccination' || record.kind === 'parasite')) parts.push(`следующая ${formatDate(record.next_due)}`);
   else parts.push(formatDate(record.date));
@@ -636,7 +636,7 @@ function RecordsSheet({
         {all.isError ? (
           <p className="medcard__empty">Не удалось загрузить записи</p>
         ) : all.isFetching && !all.data ? (
-          <p className="medcard__empty">Загружаем записи</p>
+          <p className="medcard__empty">Загружаем записи…</p>
         ) : records.length === 0 ? (
           <p className="medcard__empty">Записей пока нет</p>
         ) : (

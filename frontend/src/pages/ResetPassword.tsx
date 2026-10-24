@@ -91,7 +91,7 @@ export function ResetPassword() {
     return (
       <AuthShell title="Новый пароль">
         <p role="status" style={{ margin: 0, textAlign: 'center', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-          Проверяем ссылку
+          Проверяем ссылку…
         </p>
       </AuthShell>
     );

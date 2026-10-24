@@ -345,7 +345,7 @@ function PetCard({
               }}
             >
               {/* Nothing known yet: at least what animal it is, not a lone dash. */}
-              {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
+              {[age, pet.breed?.toLowerCase(), genderLabel(pet.gender).toLowerCase()].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
             </div>
             {/* Every chip of the pet on a line that wraps: two to a row where they fit, not one under another. */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>

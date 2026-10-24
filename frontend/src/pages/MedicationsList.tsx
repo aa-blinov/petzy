@@ -578,7 +578,7 @@ export function MedicationsList() {
                                             <div style={{ marginBottom: 'var(--spacing-sm)' }}>
                                                 <span>
                                                     Сегодня давали: {med.intakes_today} {pluralRu(med.intakes_today ?? 0, 'раз', 'раза', 'раз')}
-                                                    {markedTodayByOther(med, currentUsername) && `, отметил(а) ${med.last_taken_by}`}
+                                                    {markedTodayByOther(med, currentUsername) && `, отметил: ${med.last_taken_by}`}
                                                 </span>
                                             </div>
                                         )}
@@ -593,7 +593,7 @@ export function MedicationsList() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
                                                 <span>
                                                     Последний приём: {formatRelativeTime(toDeviceClock(med.last_taken_at, med.last_taken_tz).replace(' ', 'T'))}
-                                                    {markedTodayByOther(med, currentUsername) && `, отметил(а) ${med.last_taken_by}`}
+                                                    {markedTodayByOther(med, currentUsername) && `, отметил: ${med.last_taken_by}`}
                                                 </span>
                                             </div>
                                         )}
@@ -623,7 +623,7 @@ export function MedicationsList() {
                                                 }}
                                             >
                                                 <UserAvatar username={med.username} size={16} />
-                                                Добавил(а) {med.username}
+                                                Добавил: {med.username}
                                             </button>
                                         )}
 
