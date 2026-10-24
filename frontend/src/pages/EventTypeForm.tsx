@@ -332,7 +332,9 @@ export function EventTypeForm() {
     );
   }
 
-  if (isEditing && (eventTypesLoading || !loadedExisting)) {
+  // The registry has answered and holds no such type: said at once. Waiting for the form to be filled (which never happens for
+  // a type that is not there) left «Загружаем…» on the screen for good.
+  if (isEditing && eventTypesLoading) {
     return <LoadingSpinner />;
   }
 
@@ -345,6 +347,11 @@ export function EventTypeForm() {
         <Button onClick={() => navigate('/event-types')}>К типам событий</Button>
       </div>
     );
+  }
+
+  // The type is there and the form is being filled from it (one render).
+  if (isEditing && !loadedExisting) {
+    return <LoadingSpinner />;
   }
 
   return (

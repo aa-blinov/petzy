@@ -14,7 +14,7 @@ import { LoadError } from '../components/LoadError';
 import { EmptyState } from '../components/EmptyState';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
-import { httpStatus } from '../services/api';
+import { isPetGone } from '../utils/notFound';
 import { MedicalCardSkeleton } from '../components/Skeletons';
 import './MedicalCard.css';
 
@@ -74,7 +74,7 @@ export function MedicalCard() {
   };
 
   if (query.isError) {
-    const gone = [403, 404].includes(httpStatus(query.error) ?? 0);
+    const gone = isPetGone(query.error);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">

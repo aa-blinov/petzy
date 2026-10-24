@@ -17,7 +17,6 @@ import {
   type ParasiteTarget,
 } from '../services/medicalRecords.service';
 import { documentLocalStamp, documentsListQuery, documentsService, listedDocuments, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '../services/documents.service';
-import { httpStatus } from '../services/api';
 import { usePet } from '../hooks/usePet';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
@@ -45,6 +44,7 @@ import { addInterval, daysBetween, DEFAULT_REPEAT, PARASITE_PRODUCTS, parasiteTa
 import { showToast } from '../utils/toast';
 import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
 import { weightOfDay } from '../utils/visitWeight';
+import { isMissing, isPetGone } from '../utils/notFound';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileHeart, FileText, X } from 'lucide-react';
@@ -636,11 +636,15 @@ export function MedicalRecordForm() {
   if (card.isError || (isEditing && record.isError)) {
     // A pet that is gone and a screen that did not load are different: one asks the person to go back to the list,
     // the other to try once more. «Повторить» on a deleted pet never helps.
-    const gone = [403, 404].includes(httpStatus(card.error ?? record.error) ?? 0);
+    // The pet and the record are told apart: a record that is not there under a pet that is must not say the pet is gone.
+    const petGone = card.isError && isPetGone(card.error);
+    const recordGone = !card.isError && record.isError && isMissing(record.error);
     return (
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
-          {gone ? (
+          {recordGone ? (
+            <EmptyState icon={FileText} title="Запись не найдена" description="Возможно, её удалили" actionLabel="К медкарте" onAction={() => navigate(cardPath, { replace: true })} />
+          ) : petGone ? (
             <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или закрыли вам доступ" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
           ) : (
             <LoadError what="запись" onRetry={() => Promise.all([record.refetch(), card.refetch()])} />
