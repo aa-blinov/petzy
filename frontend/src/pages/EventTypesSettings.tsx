@@ -135,7 +135,7 @@ export function EventTypesSettings() {
                       // nothing at all, so neither the type nor the reason it can't be opened is ever said.
                       // The reason is the second line of the row, and this button reads it out with the name.
                       aria-disabled={!editable}
-                      aria-label={editable ? `Изменить тип ${eventType.label}` : undefined}
+                      aria-label={editable ? `Изменить тип записи ${eventType.label}` : undefined}
                       onClick={() => { if (editable) navigate(`/event-types/${eventType.key}/edit`); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0,
