@@ -16,7 +16,8 @@ interface FormDangerButtonProps {
 /**
  * The destructive action at the foot of an edit form. Cards open their
  * edit form on tap, so this is where delete lives for anyone who never
- * swipes; it asks the same question the swipe does.
+ * swipes; it asks the same question the swipe does. An outline button set
+ * apart from the buttons that close the form.
  */
 export function FormDangerButton({ label, confirmTitle, confirmContent, onConfirm, disabled }: FormDangerButtonProps) {
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -36,10 +37,15 @@ export function FormDangerButton({ label, confirmTitle, confirmContent, onConfir
 
   return (
     <>
+      {/* An outline, not a solid red block: the screen's one filled button is «Сохранить», and a filled red one right under
+          «Отмена» was as loud as it. It stands apart from the pair (24px, not the 12px between buttons) so a thumb aiming
+          at «Отмена» does not land on it. */}
       <Button
         block
         size="large"
         color="danger"
+        fill="outline"
+        className="form-danger"
         disabled={disabled || pending}
         onClick={() => {
           hapticFeedback('medium');
