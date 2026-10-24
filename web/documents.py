@@ -54,6 +54,7 @@ from web.schemas import (
 from web.picture_links import picture_route, signed_picture_url
 from web.security import is_admin, login_required
 from web.idempotency import idempotent
+from web.save_lock import single_flight
 from web.sync import log_deletion, now_utc
 from web.helpers import utc_iso
 
@@ -242,6 +243,7 @@ def _serialize_document(
     resp=Response(HTTP_404=ErrorResponse, HTTP_201=SuccessResponse, HTTP_422=ErrorResponse),
     tags=["documents"],
 )
+@single_flight
 @idempotent
 def create_document():
     """Attach a new document (image or PDF) to a pet.

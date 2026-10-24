@@ -58,6 +58,7 @@ from web.schemas import (
 from web.builtin_event_types import BUILTIN_TYPE_ORDER, HARD_BOUNDS
 from web.security import get_current_user, is_admin, login_required
 from web.idempotency import idempotent
+from web.save_lock import acquire, release
 from web.offline import conflict_answer, is_stale, version_guard
 from web.sync import log_deletion
 
@@ -623,100 +624,111 @@ def create_event():
         return dt_error[0], dt_error[1]
 
     comment = data.comment or ""
-    if data.local_id:
-        # The device names the record itself, so the name decides, and the guard below does not judge it: the same
-        # request sent again is the record that is already there, whatever the guard would make of it.
-        existing = _record_with_local_id(data.local_id)
-        if existing:
-            return _answer_for_local_id(existing, pet_id, data.type, data.local_id, event_type["label"])
-        twin = None
-    else:
-        # The same request sent twice (the answer to the first never came, so the person presses
-        # «Создать» again) is the one record, not two: the second request is answered with the
-        # record that is already there. The client treats this answer as a saved record.
-        twin = _same_record_just_saved(pet_id, data.type, username, event_dt, comment, cleaned_fields)
-    if twin:
-        app.logger.info(f"Event not written again: type={data.type}, pet_id={pet_id}, user={username}")
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "code": "duplicate_event",
-                    "error": f"Такая запись уже сохранена на {event_dt.strftime('%H:%M')}",
-                    "existing": {
-                        "id": str(twin["_id"]),
-                        "date": event_dt.strftime("%Y-%m-%d"),
-                        "time": event_dt.strftime("%H:%M"),
-                        "username": twin.get("username"),
-                        "own": True,
-                    },
-                }
-            ),
-            409,
-        )
-
-    # Checked against history BEFORE inserting the new record — the value
-    # being judged must never be part of its own baseline. Skipped
-    # entirely (no history query at all) when push isn't configured on
-    # this deployment — an anomaly here only ever leads to a push, so
-    # there's nothing to detect it for.
-    chart = event_type.get("chart") or {}
-    anomaly = None
-    field_def = None
-    value_field = chart.get("value_field") if chart.get("kind") == "value" else None
-    if value_field is not None and PUSH_CONFIG.get("vapid_private_key"):
-        new_value = cleaned_fields.get(value_field)
-        if isinstance(new_value, (int, float)):
-            field_def = next((f for f in event_type.get("fields", []) if f["name"] == value_field), None)
-            anomaly = detect_anomaly(
-                app.db,
-                pet_id,
-                data.type,
-                value_field,
-                new_value,
-                deviation_threshold=(field_def or {}).get("deviation_threshold"),
+    # Two identical requests at the same instant would both pass the check below before either has written: the
+    # lock lets one of them through at a time, and the other runs its check after the first has written.
+    lock_parts = ("event", username, pet_id, data.type, event_dt, comment, repr(sorted(cleaned_fields.items())))
+    lock_token = None if data.local_id else acquire(lock_parts)
+    if lock_token is None and not data.local_id:
+        return error_response("idempotency_in_progress")
+    try:
+        if data.local_id:
+            # The device names the record itself, so the name decides, and the guard below does not judge it: the same
+            # request sent again is the record that is already there, whatever the guard would make of it.
+            existing = _record_with_local_id(data.local_id)
+            if existing:
+                return _answer_for_local_id(existing, pet_id, data.type, data.local_id, event_type["label"])
+            twin = None
+        else:
+            # The same request sent twice (the answer to the first never came, so the person presses
+            # «Создать» again) is the one record, not two: the second request is answered with the
+            # record that is already there. The client treats this answer as a saved record.
+            twin = _same_record_just_saved(pet_id, data.type, username, event_dt, comment, cleaned_fields)
+        if twin:
+            app.logger.info(f"Event not written again: type={data.type}, pet_id={pet_id}, user={username}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "code": "duplicate_event",
+                        "error": f"Такая запись уже сохранена на {event_dt.strftime('%H:%M')}",
+                        "existing": {
+                            "id": str(twin["_id"]),
+                            "date": event_dt.strftime("%Y-%m-%d"),
+                            "time": event_dt.strftime("%H:%M"),
+                            "username": twin.get("username"),
+                            "own": True,
+                        },
+                    }
+                ),
+                409,
             )
 
-    now = datetime.now(timezone.utc)
-    doc = {
-        "pet_id": pet_id,
-        "type": data.type,
-        "date_time": event_dt,
-        "fields": cleaned_fields,
-        "comment": comment,
-        "username": username,
-        # When the record was written down, apart from the time it happened at: it is what says
-        # whether a request that comes again is a repeat (see DUPLICATE_EVENT_WINDOW).
-        "created_at": now,
-        # Stamped again on every save (see _update_event_record): what a device compares with what it last saw.
-        "updated_at": now,
-    }
-    if data.local_id:
-        doc["local_id"] = data.local_id
-    # The zone the entered clock is in: an export moves the time onto the
-    # exporter's clock. Absent for old records and clients that don't say.
-    if valid_tz(data.tz):
-        doc["tz"] = data.tz
-    from pymongo.errors import DuplicateKeyError  # lazy import, as elsewhere in this module
+        # Checked against history BEFORE inserting the new record — the value
+        # being judged must never be part of its own baseline. Skipped
+        # entirely (no history query at all) when push isn't configured on
+        # this deployment — an anomaly here only ever leads to a push, so
+        # there's nothing to detect it for.
+        chart = event_type.get("chart") or {}
+        anomaly = None
+        field_def = None
+        value_field = chart.get("value_field") if chart.get("kind") == "value" else None
+        if value_field is not None and PUSH_CONFIG.get("vapid_private_key"):
+            new_value = cleaned_fields.get(value_field)
+            if isinstance(new_value, (int, float)):
+                field_def = next((f for f in event_type.get("fields", []) if f["name"] == value_field), None)
+                anomaly = detect_anomaly(
+                    app.db,
+                    pet_id,
+                    data.type,
+                    value_field,
+                    new_value,
+                    deviation_threshold=(field_def or {}).get("deviation_threshold"),
+                )
 
-    try:
-        inserted = app.db[EVENTS_COLLECTION].insert_one(doc)
-    except DuplicateKeyError:
-        # Two requests naming one record at the same moment: the second one finds what the first one wrote.
-        existing = _record_with_local_id(data.local_id) if data.local_id else None
-        if not existing:
-            raise
-        return _answer_for_local_id(existing, pet_id, data.type, data.local_id, event_type["label"])
-    app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
+        now = datetime.now(timezone.utc)
+        doc = {
+            "pet_id": pet_id,
+            "type": data.type,
+            "date_time": event_dt,
+            "fields": cleaned_fields,
+            "comment": comment,
+            "username": username,
+            # When the record was written down, apart from the time it happened at: it is what says
+            # whether a request that comes again is a repeat (see DUPLICATE_EVENT_WINDOW).
+            "created_at": now,
+            # Stamped again on every save (see _update_event_record): what a device compares with what it last saw.
+            "updated_at": now,
+        }
+        if data.local_id:
+            doc["local_id"] = data.local_id
+        # The zone the entered clock is in: an export moves the time onto the
+        # exporter's clock. Absent for old records and clients that don't say.
+        if valid_tz(data.tz):
+            doc["tz"] = data.tz
+        from pymongo.errors import DuplicateKeyError  # lazy import, as elsewhere in this module
 
-    if anomaly:
-        field_label = (field_def or {}).get("label", value_field)
-        _notify_trend_anomaly(g.pet, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
+        try:
+            inserted = app.db[EVENTS_COLLECTION].insert_one(doc)
+        except DuplicateKeyError:
+            # Two requests naming one record at the same moment: the second one finds what the first one wrote.
+            existing = _record_with_local_id(data.local_id) if data.local_id else None
+            if not existing:
+                raise
+            return _answer_for_local_id(existing, pet_id, data.type, data.local_id, event_type["label"])
+        app.logger.info(f"Event recorded: type={data.type}, pet_id={pet_id}, user={username}")
 
-    # The id lets the client offer «Отменить» for a record made by mistake.
-    # The name the device gave comes back with the id, so the device can match the answer to the record it sent.
-    named = {"local_id": data.local_id} if data.local_id else {}
-    return get_message("event_created", status=201, label=event_type["label"], id=str(inserted.inserted_id), **named)
+        if anomaly:
+            field_label = (field_def or {}).get("label", value_field)
+            _notify_trend_anomaly(g.pet, event_type["label"], field_label, cleaned_fields[value_field], anomaly)
+
+        # The id lets the client offer «Отменить» for a record made by mistake.
+        # The name the device gave comes back with the id, so the device can match the answer to the record it sent.
+        named = {"local_id": data.local_id} if data.local_id else {}
+        return get_message(
+            "event_created", status=201, label=event_type["label"], id=str(inserted.inserted_id), **named
+        )
+    finally:
+        release(lock_parts, lock_token)
 
 
 @events_bp.route("/api/events", methods=["GET"])
