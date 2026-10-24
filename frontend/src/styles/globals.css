@@ -2585,7 +2585,15 @@ html[data-prefers-color-scheme='dark'] body[data-pet-scene-accent='slate'] { --p
     margin: var(--spacing-sm) 0;
     border: 1px solid var(--app-divider-color);
     border-radius: var(--radius-md);
+    background: var(--app-field-fill);
     overflow: hidden;
+}
+/* The rows inside lie on the block's own fill and touch one another: no plate, no round corner, no gap of a row of their own. */
+.datepair .adm-list-item,
+.datepair .adm-form .adm-list-item {
+    background: transparent !important;
+    border-radius: 0;
+    margin-bottom: 0;
 }
 .datepair > .datefield-group + .datefield-group {
     border-top: 1px solid var(--app-divider-color);
