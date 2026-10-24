@@ -79,7 +79,7 @@ export function MedicalCard() {
       <div className="page-container">
         <div className="max-width-container safe-area-padding">
           {gone ? (
-            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или закрыли вам доступ" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
+            <EmptyState icon={FileHeart} title="Питомец не найден" description="Возможно, его удалили или у вас нет к нему доступа" actionLabel="К питомцам" onAction={() => navigate('/pets', { replace: true })} />
           ) : (
             <LoadError what="медкарту" onRetry={() => query.refetch()} />
           )}

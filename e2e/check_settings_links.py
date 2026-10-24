@@ -100,7 +100,7 @@ async def main():
             if left_total == 0:
                 check(
                     "with none left it says so and points to the card",
-                    "Действующих ссылок нет" in body and "Открыть медкарту" in body,
+                    "Здесь будут ссылки на медкарты" in body and "Открыть медкарту" in body,
                 )
             else:
                 print(f"NOTE someone else's {left_total} links are on the stand, the empty state was not reached for")

@@ -31,7 +31,7 @@ export function AdminPanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // A failed request is not an empty list: «Пользователей пока нет» after a failed fetch told the owner
+  // A failed request is not an empty list: «Здесь будут пользователи» after a failed fetch told the owner
   // that everyone had been deleted, and offered to add them again. Loading, error and empty are three states.
   // One page at a time, newest first: the list used to arrive whole, which grows with every account.
   const [search, setSearch] = useState('');
@@ -136,8 +136,8 @@ export function AdminPanel() {
             icon={ShieldAlert}
             heading="h1"
             title="Здесь нужны права администратора"
-            description="Учётными записями управляет администратор. Ваши питомцы, записи и настройки остаются на своих экранах"
-            actionLabel="Назад в настройки"
+            description="Аккаунтами управляет администратор. Ваши питомцы, записи и настройки остаются на своих экранах"
+            actionLabel="К настройкам"
             onAction={() => navigate('/settings')}
           />
         </div>
@@ -198,7 +198,7 @@ export function AdminPanel() {
              answers are different, and the wrong one invites adding a duplicate. */
           <EmptyState
             icon={Users}
-            title="Никого не нашлось"
+            title="Ничего не нашлось"
             description={`По запросу «${appliedSearch}» нет ни логина, ни имени`}
             actionLabel="Очистить поиск"
             onAction={() => setSearch('')}
@@ -206,7 +206,7 @@ export function AdminPanel() {
         ) : users.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="Пользователей пока нет"
+            title="Здесь будут пользователи"
             // A user created here is an ordinary one: the admin flag is not something this screen hands out,
             // so promising «и права» promised something it cannot give.
             description="Добавьте первого пользователя: у него будут свои питомцы, прав администратора не будет"

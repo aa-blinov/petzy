@@ -83,7 +83,7 @@ export function MedicalLinks() {
           {isFetched && pets.length === 0 && (
             <EmptyState
               icon={Link2}
-              title="Питомцев пока нет"
+              title="Здесь будут ссылки на медкарты"
               description="Ссылку для врача делают в медкарте питомца: сначала добавьте питомца"
               actionLabel="Добавить питомца"
               onAction={() => navigate('/pets/new')}
@@ -93,7 +93,7 @@ export function MedicalLinks() {
           {pets.length > 0 && !loading && total === 0 && failed.length === 0 && (
             <EmptyState
               icon={Link2}
-              title="Действующих ссылок нет"
+              title="Здесь будут ссылки на медкарты"
               description="Ссылку для врача делают в медкарте, в самом низу: на день, неделю или месяц"
               {...(selectedPetId ? { actionLabel: 'Открыть медкарту', onAction: () => navigate(`/pets/${selectedPetId}/medical-card`) } : {})}
             />

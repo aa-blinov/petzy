@@ -474,7 +474,7 @@ export function MedicationsList() {
                         )}
                         {needle && shownMedications.length === 0 && (
                             <div style={{ textAlign: 'center', color: 'var(--app-text-secondary)', padding: 'var(--spacing-lg)' }}>
-                                Ничего не найдено по «{search.trim()}»
+                                Ничего не нашлось по «{search.trim()}»
                             </div>
                         )}
                         {shownMedications.map((med) => (
@@ -822,7 +822,7 @@ export function MedicationsList() {
                                 <Button block color="primary" size="large" onClick={confirmLogIntake}>
                                     Записать
                                 </Button>
-                                <Button block fill="none" onClick={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}>
+                                <Button block size="large" fill="outline" onClick={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}>
                                     Отмена
                                 </Button>
                                 {/* Last, and apart from «Записать»: a skip closes the dose and stops its reminder.

@@ -127,7 +127,7 @@ export function AssistantAccess() {
           {tokens.isSuccess && list.length === 0 && (
             <EmptyState
               icon={Bot}
-              title="Доступов пока нет"
+              title="Здесь будут доступы"
               description="Доступ делают для скрипта или ассистента, когда он должен работать с дневником без входа в аккаунт"
             />
           )}
