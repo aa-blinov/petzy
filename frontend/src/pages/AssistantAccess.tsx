@@ -54,7 +54,7 @@ export function AssistantAccess() {
     mutationFn: (token: PersonalToken) => personalTokenService.remove(token),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PERSONAL_TOKENS_KEY });
-      showToast.success('Доступ убран из списка');
+      showToast.success('Доступ убран');
     },
     onError: (err: unknown) => {
       void queryClient.invalidateQueries({ queryKey: PERSONAL_TOKENS_KEY });
@@ -127,7 +127,7 @@ export function AssistantAccess() {
           {tokens.isSuccess && list.length === 0 && (
             <EmptyState
               icon={Bot}
-              title="Доступов пока нет"
+              title="Здесь будут доступы"
               description="Доступ делают для скрипта или ассистента, когда он должен работать с дневником без входа в аккаунт"
             />
           )}

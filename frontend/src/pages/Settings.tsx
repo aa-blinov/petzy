@@ -93,11 +93,11 @@ export function Settings() {
       if (checked) {
         await subscribeToPush();
         setPushState('on');
-        showToast.success('Уведомления включены');
+        showToast.success('Напоминания включены');
       } else {
         await unsubscribeFromPush();
         setPushState('off');
-        showToast.success('Уведомления отключены');
+        showToast.success('Напоминания отключены');
       }
     } catch (error) {
       // pushNotifications.ts throws plain Errors with an already
@@ -106,10 +106,10 @@ export function Settings() {
       // backend's "push_not_configured"), so a plain Error needs its
       // own .message instead of falling through to a generic fallback.
       const message = isAxiosError(error)
-        ? getApiErrorMessage(error, 'Не удалось изменить настройку уведомлений')
+        ? getApiErrorMessage(error, 'Не удалось изменить настройку напоминаний')
         : error instanceof Error
           ? error.message
-          : 'Не удалось изменить настройку уведомлений';
+          : 'Не удалось изменить настройку напоминаний';
       showToast.failure(message);
     } finally {
       setPushBusy(false);
@@ -205,24 +205,24 @@ export function Settings() {
               say, in the row, both why and what to do about it. On iPhone push works in an app added to the
               home screen, so plain Safari is not «браузер не поддерживает» (the same wording is in
               components/PushOffNotice.tsx). */}
-          <Group title="Уведомления">
+          <Group title="Напоминания">
             <SettingsRow
               icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Push-уведомления"
+              label="Напоминания"
               description={
                 pushState === 'unsupported'
                   ? needsHomeScreenForPush()
                     ? 'На iPhone напоминания работают, когда Petzy добавлен на экран «Домой». Добавьте его оттуда и включите напоминания здесь'
-                    : 'Этот браузер не поддерживает push-уведомления. Напоминания о приёмах придут в другое приложение, если оно установлено'
+                    : 'Этот браузер не поддерживает напоминания. Они придут в другое приложение, если оно установлено'
                   : pushState === 'denied'
-                    ? 'Заблокированы в настройках браузера. Разрешите уведомления для Petzy в настройках браузера или телефона'
+                    ? 'Заблокированы в настройках браузера. Разрешите их для Petzy в настройках браузера или телефона'
                     : pushState === 'on'
-                      ? 'Напоминания включены на этом устройстве: лекарства, прививки и обработки, документы, необычные показатели'
+                      ? 'Включены на этом телефоне: лекарства, прививки и обработки, документы, необычные показатели'
                       : 'Лекарства, прививки и обработки, документы, необычные показатели'
               }
               control={
                 <Switch
-                  aria-label="Push-уведомления"
+                  aria-label="Напоминания"
                   checked={pushState === 'on'}
                   disabled={pushState === null || pushState === 'unsupported' || pushState === 'denied' || pushBusy}
                   onChange={handlePushToggle}
@@ -347,7 +347,7 @@ export function Settings() {
               <SettingsRow
                 icon={<Users size={18} strokeWidth={2} style={{ display: 'block' }} />}
                 label="Пользователи"
-                description="Управление учётными записями"
+                description="Создание и отключение аккаунтов"
                 chevron
                 onClick={() => navigate('/admin')}
               />
@@ -359,7 +359,7 @@ export function Settings() {
             <SettingsRow
               icon={<LogOut size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Выйти из аккаунта"
-              description="На этом устройстве"
+              description="На этом телефоне"
               onClick={() => setLogoutDialogVisible(true)}
             />
             <SettingsRow
@@ -383,7 +383,7 @@ export function Settings() {
               <SettingsRow
                 icon={<Trash2 size={18} strokeWidth={2} style={{ display: 'block' }} />}
                 label="Удалить аккаунт"
-                description="Учётную запись администратора удалить нельзя"
+                description="Аккаунт администратора удалить нельзя"
               />
             )}
           </Group>
@@ -393,9 +393,9 @@ export function Settings() {
 
       <Dialog
         visible={logoutDialogVisible}
-        title="Выход из аккаунта"
-        aria-label="Выход из аккаунта"
-        content="Вы уверены, что хотите выйти?"
+        title="Выйти из аккаунта?"
+        aria-label="Выйти из аккаунта?"
+        content="На этом телефоне придётся войти заново"
         closeOnAction
         onClose={() => setLogoutDialogVisible(false)}
         actions={[
@@ -405,7 +405,7 @@ export function Settings() {
             // (курс, питомец, пользователь, запись) all put the
             // destructive one on top. This one had them reversed, so
             // the dangerous button changed position between screens.
-            { key: 'confirm', text: 'Выйти', bold: true, danger: true, onClick: confirmLogout },
+            { key: 'confirm', text: 'Выйти', danger: true, onClick: confirmLogout },
             { key: 'cancel', text: 'Отмена', onClick: () => setLogoutDialogVisible(false) },
           ],
         ]}
@@ -413,14 +413,14 @@ export function Settings() {
 
       <Dialog
         visible={logoutEverywhereVisible}
-        title="Выход на всех устройствах"
-        aria-label="Выход на всех устройствах"
+        title="Выйти на всех устройствах?"
+        aria-label="Выйти на всех устройствах?"
         content="Войти придётся заново и на этом устройстве, и на остальных"
         closeOnAction
         onClose={() => setLogoutEverywhereVisible(false)}
         actions={[
           [
-            { key: 'confirm', text: 'Выйти везде', bold: true, danger: true, onClick: confirmLogoutEverywhere },
+            { key: 'confirm', text: 'Выйти везде', danger: true, onClick: confirmLogoutEverywhere },
             { key: 'cancel', text: 'Отмена', onClick: () => setLogoutEverywhereVisible(false) },
           ],
         ]}

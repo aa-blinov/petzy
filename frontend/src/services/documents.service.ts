@@ -143,7 +143,9 @@ export function isInMedicalCard(doc: Pick<PetDocument, 'medical_record_kinds'>):
  *  nothing about the file itself being erased for good. */
 export function documentDeleteText(doc: Pick<PetDocument, 'title' | 'medical_record_kinds'>): string {
   const attached = (doc.medical_record_kinds ?? []).length > 0;
-  return `Удалить документ «${doc.title}»?${attached ? ' Он прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт' : ''} Файл будет стёрт насовсем`;
+  return attached
+    ? `«${doc.title}» прикреплён к записям медкарты: сами записи останутся, а документ из них пропадёт. Файл будет стёрт насовсем`
+    : `Файл «${doc.title}» будет стёрт насовсем`;
 }
 
 /** The record has a repeat date and reminds about it itself, so the document's own expiry is not shown as a second,

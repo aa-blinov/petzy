@@ -474,7 +474,7 @@ export function MedicationsList() {
                         )}
                         {needle && shownMedications.length === 0 && (
                             <div style={{ textAlign: 'center', color: 'var(--app-text-secondary)', padding: 'var(--spacing-lg)' }}>
-                                Ничего не найдено по «{search.trim()}»
+                                Ничего не нашлось по «{search.trim()}»
                             </div>
                         )}
                         {shownMedications.map((med) => (
@@ -578,7 +578,7 @@ export function MedicationsList() {
                                             <div style={{ marginBottom: 'var(--spacing-sm)' }}>
                                                 <span>
                                                     Сегодня давали: {med.intakes_today} {pluralRu(med.intakes_today ?? 0, 'раз', 'раза', 'раз')}
-                                                    {markedTodayByOther(med, currentUsername) && `, отметил(а) ${med.last_taken_by}`}
+                                                    {markedTodayByOther(med, currentUsername) && `, отметил: ${med.last_taken_by}`}
                                                 </span>
                                             </div>
                                         )}
@@ -593,7 +593,7 @@ export function MedicationsList() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)', color: 'var(--app-primary-text)' }}>
                                                 <span>
                                                     Последний приём: {formatRelativeTime(toDeviceClock(med.last_taken_at, med.last_taken_tz).replace(' ', 'T'))}
-                                                    {markedTodayByOther(med, currentUsername) && `, отметил(а) ${med.last_taken_by}`}
+                                                    {markedTodayByOther(med, currentUsername) && `, отметил: ${med.last_taken_by}`}
                                                 </span>
                                             </div>
                                         )}
@@ -623,7 +623,7 @@ export function MedicationsList() {
                                                 }}
                                             >
                                                 <UserAvatar username={med.username} size={16} />
-                                                Добавил(а) {med.username}
+                                                Добавил: {med.username}
                                             </button>
                                         )}
 
@@ -822,7 +822,7 @@ export function MedicationsList() {
                                 <Button block color="primary" size="large" onClick={confirmLogIntake}>
                                     Записать
                                 </Button>
-                                <Button block fill="none" onClick={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}>
+                                <Button block size="large" fill="outline" onClick={() => setLogIntakeDialog(prev => ({ ...prev, visible: false }))}>
                                     Отмена
                                 </Button>
                                 {/* Last, and apart from «Записать»: a skip closes the dose and stops its reminder.
@@ -904,8 +904,8 @@ export function MedicationsList() {
 
             <Dialog
                 visible={deleteDialog.visible}
-                title="Удаление лекарства"
-                aria-label="Удаление лекарства"
+                title="Удалить лекарство?"
+                aria-label="Удалить лекарство?"
                 content={
                     deleteDialog.medication && (
                         <span>{medicationDeleteText(deleteDialog.medication.name)}</span>

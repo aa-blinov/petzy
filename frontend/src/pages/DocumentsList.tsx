@@ -261,7 +261,7 @@ export function DocumentsList() {
     deleteWithUndo({
       id: doc._id,
       path: `/documents/${doc._id}`,
-      message: `Документ «${doc.title}» удалён`,
+      message: 'Документ удалён',
       onDeleted: () =>
         Promise.all([
           queryClient.invalidateQueries({ queryKey: ['documents', selectedPetId] }),
@@ -397,7 +397,7 @@ export function DocumentsList() {
         ) : searchedDocuments.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="Ничего не найдено"
+            title="Ничего не нашлось"
             description="Попробуйте изменить запрос"
           />
         ) : (
@@ -504,7 +504,7 @@ export function DocumentsList() {
                                         fontFamily: 'inherit',
                                       }}
                                     >
-                                      Оформить в медкарте
+                                      Оформить как запись
                                     </button>
                                   )}
                                   {expiry && (
@@ -584,7 +584,7 @@ export function DocumentsList() {
                                     }}
                                   >
                                     <UserAvatar username={doc.username} size={16} />
-                                    Добавил(а) {doc.username}
+                                    Добавил: {doc.username}
                                   </button>
                                 )}
                               </div>
@@ -791,8 +791,8 @@ export function DocumentsList() {
 
       <Dialog
         visible={deleteDialog.visible}
-        title="Удаление документа"
-        aria-label="Удаление документа"
+        title="Удалить документ?"
+        aria-label="Удалить документ?"
         content={deleteDialog.document && <span>{documentDeleteText(deleteDialog.document)}</span>}
         onClose={() => setDeleteDialog((prev) => ({ ...prev, visible: false }))}
         afterClose={() => setDeleteDialog({ visible: false, document: null })}

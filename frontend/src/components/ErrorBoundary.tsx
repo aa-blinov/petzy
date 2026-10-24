@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             color="primary"
                             onClick={this.handleReset}
                         >
-                            Вернуться в ленту
+                            К ленте
                         </Button>
 
                         {import.meta.env.DEV && this.state.error && (

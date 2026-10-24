@@ -106,11 +106,11 @@
    accessibility tree) until it takes keyboard focus. */
 .swipeable-row__menu {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 6px;
+    right: 6px;
     z-index: 2;
-    width: 40px;
-    height: 40px;
+    width: var(--touch-min);
+    height: var(--touch-min);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,7 +127,7 @@
 }
 
 .swipeable-row__menu::after {
-    /* 44px to touch, the circle keeps its 40. */
+    /* The box is 44px now; this keeps a larger area where the row's edge would cut it. */
     content: '';
     position: absolute;
     top: 50%;

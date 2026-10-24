@@ -63,7 +63,7 @@ export function Pets() {
   };
   const leaving = !!deleteDialog.pet && !deleteDialog.pet.current_user_is_owner;
   // antd keeps the title a plain <div>: the name a screen reader says is set here, so both read the same.
-  const deleteTitle = leaving ? 'Выйти из доступа' : 'Удаление питомца';
+  const deleteTitle = leaving ? 'Выйти из доступа?' : 'Удалить питомца?';
 
   return (
     <div className="page-container fab-page">
@@ -142,7 +142,7 @@ export function Pets() {
           !deleteDialog.pet
             ? ''
             : leaving
-              ? `Больше не видеть «${deleteDialog.pet.name}»? Его записи останутся у владельца, он сможет пригласить вас снова`
+              ? `«${deleteDialog.pet.name}» пропадёт из вашего списка, а записи останутся у владельца. Он сможет пригласить вас снова`
               : <PetDeleteSummary pet={deleteDialog.pet} />
         }
         onClose={() => setDeleteDialog(prev => ({ ...prev, visible: false }))}
@@ -150,7 +150,7 @@ export function Pets() {
         actions={[
           {
             key: 'delete',
-            text: leaving ? 'Выйти' : 'Удалить',
+            text: leaving ? 'Выйти из доступа' : 'Удалить',
             danger: true,
             onClick: confirmDelete,
           },
@@ -210,7 +210,7 @@ function PetCard({
     onTrigger: onEdit,
   };
   // Only the owner can delete a pet (the backend refuses anyone else);
-  // someone it's shared with gets «Выйти» in the same place instead.
+  // someone it's shared with gets «Выйти из доступа» in the same place instead.
   const rightAction: SwipeAction = pet.current_user_is_owner
     ? {
         icon: <Trash2 size={20} strokeWidth={2.4} />,
@@ -220,7 +220,7 @@ function PetCard({
       }
     : {
         icon: <LogOut size={20} strokeWidth={2.4} />,
-        label: 'Выйти',
+        label: 'Выйти из доступа',
         color: 'var(--app-danger-color)',
         onTrigger: onDelete,
       };
@@ -345,7 +345,7 @@ function PetCard({
               }}
             >
               {/* Nothing known yet: at least what animal it is, not a lone dash. */}
-              {[age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
+              {[age, pet.breed?.toLowerCase(), genderLabel(pet.gender).toLowerCase()].filter(Boolean).join(', ') || speciesLabel(pet.species) || 'Возраст и порода не указаны'}
             </div>
             {/* Every chip of the pet on a line that wraps: two to a row where they fit, not one under another. */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>

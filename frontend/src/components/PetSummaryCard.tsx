@@ -67,7 +67,7 @@ export function PetSummaryCard({ pet, look: lookOverride, compact = false }: { p
     };
   }, [font]);
   const age = computePetAge(pet.birth_date ?? "");
-  const meta = [age, pet.breed, genderLabel(pet.gender)].filter(Boolean).join(", ");
+  const meta = [age, pet.breed?.toLowerCase(), genderLabel(pet.gender).toLowerCase()].filter(Boolean).join(", ");
   const { username } = useAuth();
   const navigate = useNavigate();
   // The photo opens at full size; a pet with no photo has a picture of its species there, nothing to enlarge.

@@ -103,7 +103,6 @@
    (Material 3, md.sys.state.pressed-state-layer-opacity), the way antd's buttons take it. The
    text keeps its colour: the layer lies under it. */
 .medcard__link:active,
-.medcard__add:active,
 .medcard__copy:active,
 .medcard__pdf-button:active {
     background-image: linear-gradient(var(--app-accent-wash), var(--app-accent-wash));
@@ -284,8 +283,19 @@
     border-top: 1px solid var(--app-divider-color);
 }
 
-.medcard__ready-action {
+/* The one primary call on the card: the readiness block points at the next missing item with a filled button, and the
+   other blocks keep their quiet «+». */
+.medcard__link.medcard__ready-action {
     margin-top: var(--spacing-xs);
+    width: 100%;
+    justify-content: center;
+    padding: 0 var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: var(--app-primary-fill);
+    color: var(--app-on-primary-fill);
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-align: center;
 }
 
 /* The words that stand on the screen itself, not inside a sheet, lie on a plate of the page's colour: the pet's pattern
@@ -332,16 +342,36 @@
 /* The round «+» of a block: what this block is about is added here, one tap from where it is read. */
 .medcard__add {
     flex: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1px solid var(--app-border-color);
-    background: var(--app-card-background);
+    /* The box to press is 44px; the circle drawn in it stays 36, and the negative margin keeps the head's size. */
+    position: relative;
+    width: var(--touch-min);
+    height: var(--touch-min);
+    margin: -4px;
+    padding: 0;
+    border: none;
+    background: none;
     color: var(--app-accent-deep);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+}
+
+.medcard__add::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 1px solid var(--app-border-color);
+    background: var(--app-card-background);
+}
+
+.medcard__add > svg {
+    position: relative;
+}
+
+.medcard__add:active::before {
+    background-image: linear-gradient(var(--app-accent-wash), var(--app-accent-wash));
 }
 
 /* The action of a block («Изменить», «Все лекарства»): body size, so that it reads as an action and not as a footnote. */
@@ -609,11 +639,6 @@
     text-wrap: pretty;
 }
 
-.medcard__handover-empty {
-    padding: 0;
-    text-align: center;
-}
-
 /* The weight: the figure first, the trend under it. */
 .medcard__weight {
     padding: var(--spacing-md);
@@ -735,6 +760,11 @@
     font-size: var(--text-md);
     font-weight: 600;
     cursor: pointer;
+}
+
+.medcard__pdf-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* The two ways to hand the card over stay in the document itself, under the passport: a bar pinned

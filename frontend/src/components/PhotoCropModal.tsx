@@ -153,7 +153,7 @@ export function PhotoCropModal({ imageSrc, filename, onCancel, onCropped }: Phot
             }}
           >
             <Check size={18} strokeWidth={2.4} />
-            {isSaving ? 'Сохранение...' : 'Готово'}
+            {isSaving ? 'Сохраняем…' : 'Сохранить'}
           </button>
         </div>
       </div>

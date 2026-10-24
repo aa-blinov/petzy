@@ -73,7 +73,7 @@ export function PetAddedSheet({
           onClick={onClose}
           style={{ width: '100%', minHeight: 'var(--touch-min)', margin: 'var(--spacing-sm) 0 var(--spacing-md)', background: 'none', border: 'none', font: 'inherit', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--app-text-secondary)', cursor: 'pointer' }}
         >
-          Готово
+          Закрыть
         </button>
       </DraggableSheetBody>
     </Popup>
