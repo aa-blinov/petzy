@@ -287,12 +287,12 @@ def create_pet():
         # chosen up front: the photo's storage key includes it.
         new_pet_id = ObjectId()
         photo_file_id = None
+        # Read before the photo is stored: a date that is refused (422) must not leave a file in the storage.
+        birth_date = parse_date(data.birth_date, allow_future=False, tz=data.tz)
         if is_multipart and "photo_file" in request.files:
             photo_file = request.files["photo_file"]
             if photo_file.filename:
                 photo_file_id = _store_pet_photo(photo_file, username, new_pet_id)
-
-        birth_date = parse_date(data.birth_date, allow_future=False, tz=data.tz)
 
         pet_data = {
             "_id": new_pet_id,
@@ -334,6 +334,11 @@ def create_pet():
             if not data.local_id or not answer:
                 raise
             return answer
+        except Exception:
+            # The pet was not written: its photo must not stay behind with no owner.
+            if photo_file_id:
+                delete_stored_file(photo_file_id)
+            raise
         pet_data = _created_view(pet_data)
 
         logger.info(f"Pet created: id={pet_data['_id']}, owner={username}")
@@ -466,6 +471,8 @@ def update_pet_by_local_id(local_id):
 def _update_pet(pet: dict, username: str):
     """The update of one pet found by the access check, by its id or by the local_id the device named."""
     pet_id = str(pet["_id"])
+    uploaded_photo_id = None  # the file this request stored: it is deleted unless the request ends in a write
+    written = False
     try:
         is_multipart = request.content_type and "multipart/form-data" in request.content_type
         if is_multipart:
@@ -494,6 +501,8 @@ def _update_pet(pet: dict, username: str):
         # removal request are independent conditions now.
         photo_file_id = pet.get("photo_file_id") if pet else None
         stale_photo_id = None
+        # Read before a new photo is stored: a date that is refused (422) must not leave a file in the storage.
+        birth_date = parse_date(data.birth_date, allow_future=False, tz=data.tz)
         if is_multipart:
             photo_file = request.files.get("photo_file")
             if photo_file and photo_file.filename:
@@ -505,11 +514,10 @@ def _update_pet(pet: dict, username: str):
 
                 # The photo belongs under the pet owner's prefix, whoever uploads it.
                 photo_file_id = _store_pet_photo(photo_file, pet["owner"], pet_id)
+                uploaded_photo_id = photo_file_id
             elif request.form.get("remove_photo") == "true":
                 stale_photo_id = pet.get("photo_file_id") if pet else None
                 photo_file_id = None
-
-        birth_date = parse_date(data.birth_date, allow_future=False, tz=data.tz)
 
         # Build update data
         update_data = {}
@@ -577,6 +585,7 @@ def _update_pet(pet: dict, username: str):
             if latest is None:
                 return error_response("record_deleted")
             return conflict_answer(_pet_view(latest, username))
+        written = True
         if stale_photo_id and stale_photo_id != update_data.get("photo_file_id", photo_file_id):
             try:
                 delete_stored_file(stale_photo_id)
@@ -590,6 +599,14 @@ def _update_pet(pet: dict, username: str):
     except ValueError as e:
         app.logger.warning(f"Invalid pet_id for pet retrieval: pet_id={pet_id}, user={username}, error={e}")
         return error_response("validation_error", str(e))
+    finally:
+        if uploaded_photo_id and not written:
+            try:
+                delete_stored_file(uploaded_photo_id)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to delete unused photo: photo_id={uploaded_photo_id}, pet_id={pet_id}, error={e}"
+                )
 
 
 @pets_bp.route("/api/pets/<pet_id>/share", methods=["POST"])
