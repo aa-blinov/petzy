@@ -62,3 +62,23 @@
 .medlinks__head .medlinks__note {
     margin-top: var(--spacing-md);
 }
+
+/* «Отозвать» is a text button, not a filled red one: a row of them would shout, and it asks before it does anything.
+   The target is still 44px. */
+.medlinks__revoke {
+    flex-shrink: 0;
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+    padding: 0 var(--spacing-sm);
+    border: none;
+    background: none;
+    color: var(--app-danger-color);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.medlinks__revoke:disabled {
+    opacity: 0.5;
+}
