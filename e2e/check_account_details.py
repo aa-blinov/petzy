@@ -109,14 +109,14 @@ async def main():
         await settle(pg)
         # Near the limit the field says how much is left, instead of typing
         # quietly stopping at 254.
-        await pg.get_by_label("Адрес почты").fill("a" * 210 + "@example.com")
+        await pg.get_by_label("Почта", exact=True).fill("a" * 210 + "@example.com")
         await pg.wait_for_timeout(400)
         check(
             "the address field counts what is typed near the limit",
             await pg.locator(".field-counter").count() == 1,
             (await pg.inner_text(".field-note"))[:80] if await pg.locator(".field-note").count() else "no note",
         )
-        await pg.get_by_label("Адрес почты").fill("")
+        await pg.get_by_label("Почта", exact=True).fill("")
         await pg.wait_for_timeout(300)
         await pg.get_by_label("Текущий пароль").fill("точно-не-пароль")
         await pg.get_by_role("button", name="Сохранить и подтвердить").click()

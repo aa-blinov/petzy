@@ -115,8 +115,8 @@ export function HealthRecordForm() {
   const schema = useMemo(() => {
     const baseFields: Record<string, z.ZodTypeAny> = {
       pet_id: z.string().min(1),
-      date: z.string().min(1, 'Укажите дату'),
-      time: z.string().min(1, 'Укажите время'),
+      date: z.string().min(1, 'Выберите дату'),
+      time: z.string().min(1, 'Выберите время'),
       comment: z.string().optional(),
     };
 
