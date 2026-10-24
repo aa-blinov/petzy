@@ -1,6 +1,6 @@
 """An address with an id that is not there says «не найдено» with the right noun, and keeps «Сервер не ответил» for failures.
 
-P-02: /event-types/zzz/edit is «Тип события не найден», not «Загружаем…» for ever. P-04, P-05: a malformed id (the API
+P-02: /event-types/zzz/edit is «Тип записи не найден», not «Загружаем…» for ever. P-04, P-05: a malformed id (the API
 answers 422) and an unknown record under a real pet are «не найдено» too, with no useless «Повторить»; a record that is
 gone is not blamed on the pet.
 
@@ -28,7 +28,7 @@ async def main():
             for gone in absent:
                 check(f"{name}: no «{gone}»", gone not in text)
 
-        await says("/event-types/zzz/edit", "Тип события не найден", "an unknown event type")
+        await says("/event-types/zzz/edit", "Тип записи не найден", "an unknown event type")
         await says("/pets/nope/medical-card", "Питомец не найден", "a malformed pet id on the card")
         await says("/pets/nope/edit", "Питомец не найден", "a malformed pet id on its form")
         await says("/medications/zzz/edit", "Такого лекарства нет", "a malformed medication id")

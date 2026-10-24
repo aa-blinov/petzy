@@ -128,9 +128,9 @@ async def main() -> None:
         await check_byline(pg, "значения по умолчанию", "h1", ".safe-area-padding p")
 
         await pg.goto(BASE + "/pet-events")
-        await wait_until(pg, lambda t: "События питомца" in t)
+        await wait_until(pg, lambda t: "Типы записей питомца" in t)
         await pg.wait_for_timeout(500)
-        await check_byline(pg, "события питомца", "h1", ".safe-area-padding p")
+        await check_byline(pg, "типы записей питомца", "h1", ".safe-area-padding p")
 
         # 3. A button under a line of text is one gap, not two summed.
         await pg.goto(BASE + "/event-types/new")
@@ -148,7 +148,7 @@ async def main() -> None:
             }"""
         )
         check(
-            f"тип события: подсказка к кнопке {TEXT_TO_BUTTON_GAP}px",
+            f"тип записи: подсказка к кнопке {TEXT_TO_BUTTON_GAP}px",
             gap is not None and abs(gap - TEXT_TO_BUTTON_GAP) <= TOLERANCE,
             f"{gap}px",
         )
