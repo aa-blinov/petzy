@@ -27,6 +27,7 @@ vi.mock('../../src/services/api', async (importOriginal) => {
 
 vi.mock('../../src/utils/pushNotifications', () => ({
   unsubscribeBeforeSignOut: vi.fn(() => Promise.resolve()),
+  currentPushEndpoint: vi.fn(() => Promise.resolve('https://push.example/endpoint-1')),
 }))
 
 import { authService } from '../../src/services/auth.service'
@@ -103,6 +104,14 @@ describe('useAuth', () => {
       await result.current.auth.logout()
     })
     expect(result.current.path).toBe('/login')
+  })
+
+  it('выход называет адрес подписки на напоминания, чтобы сервер убрал её вместе со входом', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper: wrapper(client(), '/') })
+    await act(async () => {
+      await result.current.logout()
+    })
+    expect(logout).toHaveBeenCalledWith({ everywhere: false, pushEndpoint: 'https://push.example/endpoint-1' })
   })
 
   it('выход забывает имя и выбранного питомца', async () => {

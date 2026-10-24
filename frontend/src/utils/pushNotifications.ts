@@ -148,6 +148,19 @@ export async function unsubscribeFromPush(): Promise<void> {
   await pushService.unsubscribe(endpoint);
 }
 
+/** The address of this browser's reminders subscription, or undefined: none, push unsupported, or no answer within the
+ *  wait (a service worker still installing). It never throws and never holds the sign-out up. */
+export async function currentPushEndpoint(waitMs = 800): Promise<string | undefined> {
+  if (!isPushSupported()) return undefined;
+  const none = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), waitMs));
+  const read = (async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    return subscription?.endpoint;
+  })().catch(() => undefined);
+  return Promise.race([read, none]);
+}
+
 /** Takes this browser off push as part of signing out, while the session still works: the server call needs it.
  *  Best effort. It never throws and stops waiting after a short time, since a service worker that is still installing
  *  has no `ready` for a while and a slow network has no answer. Once the browser has unsubscribed, a late server call
