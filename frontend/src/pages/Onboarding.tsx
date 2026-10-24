@@ -719,7 +719,7 @@ function DiaryArt() {
   return (
     <div className="onb-stack" aria-hidden>
       <EventCard icon={Utensils} tile="brown" title="Кормление" meta="280 г корма" time="08:00" delay={0} />
-      <EventCard icon={Scale} tile="orange" title="Вес" meta="4.6 кг" time="вчера" delay={140} />
+      <EventCard icon={Scale} tile="orange" title="Вес" meta="4,6 кг" time="вчера" delay={140} />
       <EventCard icon={Pill} tile="purple" title="Лекарство" meta="Синулокс, 1 таб" time="08:00" delay={280} />
     </div>
   );

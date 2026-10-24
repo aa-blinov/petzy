@@ -83,7 +83,7 @@
     --app-primary-fill: #AD5830;
     --app-on-primary-fill: #FFFFFF;
     /* Text and outlines in copper: the deeper tone reads 4.5:1+ on the field fill (the fill tone, #AD5830, is 4.2). */
-    --app-primary-text: #9F4F2A;
+    --app-primary-text: #964A27;
     /* Icon colour on the accent / status pills behind swipe rows. */
     --app-on-accent: #FFFFFF;
     /* Brand gradient, deepened, for the buttons that carry white text. */
@@ -370,6 +370,51 @@ main#main-content {
     color: var(--app-accent-deep);
     white-space: nowrap;
     border: 1px solid transparent;
+}
+
+/* Running text that stands directly on the screen (a subtitle, a note, a section's name) lies on a soft plate of the
+   page's own colour, so the pet's pattern (dots, stripes, paws) does not run behind the letters. The plate is almost
+   opaque and as narrow as its text; the feed and the cards keep the pattern. */
+.pattern-plate {
+    width: fit-content;
+    max-width: 100%;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin-inline: calc(var(--spacing-sm) * -1);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--app-page-background) 94%, transparent);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+/* A switch row with a note («Аллергий нет»): the label and the switch share the first line, the note stands under them
+   at the width of the row. The note was a column of 80px between the label and the switch. */
+.adm-form .form-item--switch-note > .adm-list-item-content {
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.adm-form .form-item--switch-note .adm-list-item-content-prefix {
+    order: 1;
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+}
+
+.adm-form .form-item--switch-note .adm-list-item-content-extra {
+    order: 2;
+}
+
+.adm-form .form-item--switch-note .adm-list-item-content-main {
+    order: 3;
+    flex: 1 1 100%;
+    padding-top: 0;
+}
+
+.chip--action {
+    /* A chip that is a button: the 44px target is its own height, since the invisible area of
+       `touch-target` is covered by the neighbours of a chip standing in a row of chips. */
+    min-height: var(--touch-min);
+    padding-inline: var(--spacing-md);
 }
 
 /* Soft card — warm off-white card with subtle warm shadow on cream.
@@ -1107,6 +1152,30 @@ select {
     font-size: 11px;
     line-height: 15px;
     font-weight: 500;
+    /* A page zoomed to 200% is 195px wide: five tabs of 39px. A label may be cut with an ellipsis, but its tab stays. */
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-tab-bar__item {
+    min-width: 0;
+}
+
+@media (max-width: 239px) {
+    .app-tab-bar__item {
+        padding-inline: 0;
+    }
+
+    .app-tab-bar__title {
+        font-size: 9px;
+        letter-spacing: -0.02em;
+    }
+
+    .app-tab-bar__icon::before {
+        width: 36px;
+    }
 }
 
 /* 320-359px phones: five tabs of 64px each, and «Документы» at 11px
@@ -1479,6 +1548,8 @@ input.adm-input-element[type="date"]::-webkit-calendar-picker-indicator {
 .adm-dialog-content {
     overflow-y: auto;
     min-height: 0;
+    /* A pet's name typed as one long word must wrap inside the dialog, not run out of it. */
+    overflow-wrap: anywhere;
 }
 
 /* Error Boundary Styles */
@@ -2010,6 +2081,14 @@ button.chip::after {
    when the field is focused (it does for anything under 16px). */
 .adm-search-bar {
     --height: 44px;
+    /* The field fill and the 12px corner of every field (DESIGN, Fields): without a fill the bar
+       was the colour of the page, and in the dark theme it did not read as a field at all. */
+    --background: var(--app-field-fill);
+    --border-radius: var(--radius-md);
+}
+
+.adm-search-bar .adm-search-bar-input-box .adm-search-bar-input-box-icon {
+    color: var(--app-text-secondary);
 }
 
 .adm-search-bar .adm-input-element {
@@ -2185,6 +2264,31 @@ button.chip::after {
 
 .picker-value--empty {
     color: var(--app-text-placeholder);
+}
+
+/* A narrow phone (320-359px): the label took 40% of the row and left a value 150px, so
+   «Не указано (например, для прививок и страховки)» and «Выберите категорию» were cut. The label
+   stands over its value instead, and a placeholder may wrap rather than lose its end. */
+@media (max-width: 359px) {
+    .adm-form .adm-form-item-horizontal > .adm-list-item-content {
+        flex-wrap: wrap;
+    }
+
+    .adm-form .adm-form-item-horizontal .adm-list-item-content-prefix {
+        width: 100%;
+        padding-right: 0;
+        padding-top: var(--spacing-sm);
+    }
+
+    .adm-form .adm-form-item-horizontal .adm-list-item-content-main {
+        flex: 1 1 100%;
+        padding-top: 0;
+    }
+
+    .picker-value {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }
 
 /* A link standing on its own under a form («Забыли пароль?», «Войти»):

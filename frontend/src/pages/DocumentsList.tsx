@@ -353,7 +353,7 @@ export function DocumentsList() {
               Документы
             </h1>
           </div>
-          <p style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)', margin: 'var(--spacing-xs) 0 0' }}>
+          <p className="pattern-plate" style={{ color: 'var(--app-text-secondary)', fontSize: 'var(--text-sm)', margin: 'var(--spacing-xs) 0 0', marginInline: 'calc(var(--spacing-sm) * -1)' }}>
             Все файлы питомца. Визиты, прививки и обработки ведутся в медкарте
           </p>
         </div>
@@ -408,7 +408,7 @@ export function DocumentsList() {
             >
               {groupedDocuments.map(([category, docs]) => (
                 <div key={category} style={{ marginBottom: 'var(--spacing-lg)' }}>
-                  <h2 className="section-header" style={{ marginBottom: 'var(--spacing-sm)', paddingLeft: 4 }}>
+                  <h2 className="section-header pattern-plate" style={{ marginBottom: 'var(--spacing-sm)' }}>
                     {DOCUMENT_CATEGORY_LABELS[category]}
                   </h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>

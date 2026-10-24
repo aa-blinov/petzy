@@ -9,12 +9,31 @@ import { useHiddenRecords } from '../utils/deferredDelete';
 /** Pets the person was told about (or removed themselves): the notice of a vanished pet is said once, and never for
  *  one they deleted or left on purpose. */
 const toldAbout = new Set<string>();
-export function expectPetGone(petId: string) {
+const TOLD_ABOUT_KEY = 'petzy.petsGone';
+/** The memory outlives a reload of the page and a way back in history: the person who left a pet on their own is not
+ *  told afterwards that «the owner closed the access». */
+function rememberedGone(): Set<string> {
+  try {
+    const raw = window.sessionStorage.getItem(TOLD_ABOUT_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+function remember(petId: string) {
   toldAbout.add(petId);
+  try {
+    window.sessionStorage.setItem(TOLD_ABOUT_KEY, JSON.stringify([...rememberedGone().add(petId)]));
+  } catch {
+    /* the in-memory set is enough */
+  }
+}
+export function expectPetGone(petId: string) {
+  remember(petId);
 }
 function tellPetIsGone(petId: string, name: string | null) {
-  if (toldAbout.has(petId)) return;
-  toldAbout.add(petId);
+  if (toldAbout.has(petId) || rememberedGone().has(petId)) return;
+  remember(petId);
   showToast.info(`${name ? `«${name}»` : 'Питомец'} больше вам недоступен: владелец закрыл доступ или удалил питомца`);
 }
 

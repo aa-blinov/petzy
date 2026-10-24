@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MedicalProfile } from '../../src/services/medicalCard.service'
-import { formatDate, hasLife, weightDelta } from '../../src/utils/medicalCardFormat'
+import { formatDate, hasLife, petIdentity, weightDelta } from '../../src/utils/medicalCardFormat'
 
 /** Профиль с заполненными полями: незаполненные в нём пустые. */
 const profile = (fields: Partial<MedicalProfile>) => fields as MedicalProfile
@@ -76,5 +76,19 @@ describe('изменение веса', () => {
       { date: '2026-10-01', value: 5 },
       { date: '2026-10-04', value: 5 },
     ])).toBe('Без изменений с 01.10.2026')
+  })
+})
+
+describe("кто питомец на медкарте", () => {
+  it("вид открывает строку с заглавной, даже если записан строчными", () => {
+    expect(petIdentity({ species: "собака", breed: "Лабрадор" })).toBe("Собака, лабрадор")
+  })
+
+  it("без вида строка начинается с породы с заглавной", () => {
+    expect(petIdentity({ species: null, breed: "лабрадор" })).toBe("Лабрадор")
+  })
+
+  it("пустая строка остаётся пустой", () => {
+    expect(petIdentity({})).toBe("")
   })
 })

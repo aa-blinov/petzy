@@ -57,7 +57,9 @@ function SectionList() {
       <ul style={{ margin: 0 }}>
         {POLICY_SECTIONS.map(([id, title]) => (
           <li key={id}>
-            <a href={`#${id}`}>{title}</a>
+            <a href={`#${id}`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--touch-min)' }}>
+              {title}
+            </a>
           </li>
         ))}
       </ul>

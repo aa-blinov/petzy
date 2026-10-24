@@ -336,9 +336,12 @@ function PetCard({
               style={{
                 fontSize: 'var(--text-sm)',
                 color: 'var(--app-text-secondary)',
-                whiteSpace: 'nowrap',
+                // Two lines before a cut: at 320px «5 лет, Лабрадор-ретривер, самец» lost the sex at the end of one.
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                overflowWrap: 'anywhere',
               }}
             >
               {/* Nothing known yet: at least what animal it is, not a lone dash. */}
@@ -367,7 +370,7 @@ function PetCard({
             )}
               <button
                 type="button"
-                className="chip touch-target"
+                className="chip chip--action"
                 onClick={(e) => {
                   e.stopPropagation(); // the card itself opens the edit form
                   navigate(`/pets/${pet._id}/medical-card`);
@@ -391,7 +394,7 @@ function PetCard({
               {pet.current_user_is_owner && (
                 <button
                   type="button"
-                  className="chip touch-target"
+                  className="chip chip--action"
                   aria-label={`Оформление: ${pet.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
