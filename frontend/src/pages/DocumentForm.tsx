@@ -546,7 +546,8 @@ export function DocumentForm() {
                   ) : (
                     <Upload size={18} strokeWidth={2} style={{ display: 'block', flexShrink: 0 }} />
                   )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {/* A file name is cut with an ellipsis, the prompt «Выбрать фото или PDF» wraps: it is the main action of the form. */}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: file || isEditing ? 'nowrap' : 'normal', textAlign: 'right' }}>
                     {file
                       ? file.name
                       : isEditing
