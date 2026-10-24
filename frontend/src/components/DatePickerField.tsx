@@ -1,8 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Form, Input, Picker } from 'antd-mobile';
-import { ChoiceChip, ChoiceChips } from './ChoiceChips';
+import './DatePickerField.css';
+import { ChoiceChip,ChoiceChips } from './ChoiceChips';
 import { FieldError } from './FieldError';
 import { PickerValue } from './PickerValue';
+import { formatTyped, readTypedDate } from '../utils/typedDate';
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
@@ -37,15 +39,14 @@ interface DatePickerFieldProps {
   /** Choices of the field's own (a repeat in a month, in a year), in the same row as «Ввести цифрами»: the field, its
       choices and its typed value are one block. */
   chips?: ReactNode;
+  /** Told whenever what is typed is not a date the form can take (empty string: nothing wrong). The form then refuses to
+      save instead of silently keeping the older date. */
+  onTypedProblem?: (message: string) => void;
+  /** The form refused to save: an unfinished typed date shows its message now, not only after a wrong last digit. */
+  refusals?: number;
 }
 
 const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-/** «17082025» into «17.08.2025» as the digits come; anything but digits is dropped. */
-function formatTyped(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8);
-  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)].filter(Boolean).join('.');
-}
 
 /**
  * A row that opens a day, month, year picker: the one for forms that need a
@@ -67,6 +68,8 @@ export function DatePickerField({
   quick = false,
   typeable = true,
   chips,
+  onTypedProblem,
+  refusals = 0,
 }: DatePickerFieldProps) {
   const [visible, setVisible] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -100,37 +103,45 @@ export function DatePickerField({
   const todayIso = toIso(today);
   const yesterdayIso = toIso(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
 
+  const limits = { today, yearsBack, yearsForward };
+  const problemOf = (text: string) => readTypedDate(text, limits).error;
+  const report = (text: string, on: boolean) => onTypedProblem?.(on ? problemOf(text) : '');
   const typeIn = (raw: string) => {
     const text = formatTyped(raw);
     setTyped(text);
-    setTypedError('');
-    if (text.length < 10) return;
-    const [d, m, y] = text.split('.').map(Number);
-    const date = new Date(y, m - 1, d);
-    const real = date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
-    const thisYear = today.getFullYear();
-    if (!real) setTypedError('Такой даты нет. Введите, например, 17.08.2025');
-    else if (y < thisYear - yearsBack || y > thisYear + yearsForward || (yearsForward === 0 && toIso(date) > todayIso)) setTypedError('Дата вне допустимых. Проверьте год');
-    else {
-      onChange(toIso(date));
+    const result = readTypedDate(text, limits);
+    // An unfinished text is not an error yet (the person is still typing): it is reported to the form, which refuses to save.
+    setTypedError(text.length >= 10 ? result.error : '');
+    onTypedProblem?.(result.error);
+    if (result.iso) {
+      onChange(result.iso);
       onBlur?.();
       setTyping(false);
       setTyped('');
     }
   };
+  const incomplete = typing && typed.length > 0 && typed.length < 10 && refusals > 0 ? problemOf(typed) : '';
+  const shownProblem = typedError || incomplete;
+  // A refused save brings the field with the unfinished date into view: the button that was pressed is far below it.
+  const groupRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (refusals > 0 && typing && typed) groupRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    // Only a new refusal scrolls; typing on afterwards must not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refusals]);
+  const stopTyping = () => {
+    setTyping(false);
+    setTyped('');
+    setTypedError('');
+    report('', false);
+  };
 
-  const chipRow = quick || typeable || !!chips;
+  const canClear = !!clearLabel && !!value;
+  const chipRow = quick || typeable || !!chips || canClear;
 
   return (
-    <div className="datefield-group">
-    {/* The «Убрать» button is not inside the row that opens the picker (a button in a button cannot be told apart by a screen
-        reader, nor focused apart): it lies over the row's right edge, next to the arrow. */}
+    <div className="datefield-group" ref={groupRef}>
     <div className="datefield">
-    {clearLabel && value && (
-      <button type="button" className="datefield__clear touch-target" aria-label={clearLabel} onClick={() => { onChange(''); onBlur?.(); }}>
-        Убрать
-      </button>
-    )}
     <Form.Item
       label={label}
       clickable
@@ -157,6 +168,7 @@ export function DatePickerField({
           onChange(`${y}-${pad(Number(m) + 1)}-${pad(Math.min(Number(d), last))}`);
           setVisible(false);
           setDraft([]);
+          stopTyping();
         }}
         cancelText="Отмена"
         confirmText="Готово"
@@ -168,19 +180,32 @@ export function DatePickerField({
         <ChoiceChips label={`${label}: быстрый выбор`}>
           {quick && (
             <>
-              <ChoiceChip pressed={value === todayIso} onClick={() => { onChange(todayIso); onBlur?.(); setTyping(false); }}>Сегодня</ChoiceChip>
-              <ChoiceChip pressed={value === yesterdayIso} onClick={() => { onChange(yesterdayIso); onBlur?.(); setTyping(false); }}>Вчера</ChoiceChip>
+              <ChoiceChip pressed={value === todayIso} onClick={() => { onChange(todayIso); onBlur?.(); stopTyping(); }}>Сегодня</ChoiceChip>
+              <ChoiceChip pressed={value === yesterdayIso} onClick={() => { onChange(yesterdayIso); onBlur?.(); stopTyping(); }}>Вчера</ChoiceChip>
             </>
           )}
           {chips}
+          {/* «Убрать» is an action in the row of choices, not a button laid over the value: at 320px the value, the arrow and
+              a word on one line did not fit, and the hint beside them was squeezed into a column of a few letters. */}
+          {canClear && (
+            <button
+              type="button"
+              className="choice-chip"
+              aria-label={clearLabel}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => { onChange(''); onBlur?.(); stopTyping(); }}
+            >
+              Убрать
+            </button>
+          )}
           {typeable && (
-            <ChoiceChip pressed={typing} onClick={() => { setTyping((on) => !on); setTyped(''); setTypedError(''); }}>Ввести цифрами</ChoiceChip>
+            <ChoiceChip pressed={typing} onClick={() => { setTyping((on) => !on); setTyped(''); setTypedError(''); report('', false); }}>Ввести цифрами</ChoiceChip>
           )}
         </ChoiceChips>
       </Form.Item>
     )}
     {typeable && typing && (
-      <Form.Item label="Дата цифрами" description={typedError ? <FieldError message={typedError} /> : 'День, месяц и год подряд, точки поставятся сами'}>
+      <Form.Item label="Дата цифрами" description={shownProblem ? <FieldError message={shownProblem} /> : 'День, месяц и год подряд, точки поставятся сами'}>
         <Input
           aria-label={`${label}, цифрами`}
           value={typed}
