@@ -39,6 +39,7 @@ from web.schemas import (
 from web.decorators import pat_allowed
 from web.security import get_current_user, login_required
 from web.helpers import utc_iso
+from web.sync import now_utc
 
 medical_card_bp = Blueprint("medical_card", __name__)
 
@@ -515,7 +516,7 @@ def put_medical_profile(pet_id):
         {"_id": pet["_id"], "medical_profile.version": stored_version}
         if stored_version is not None
         else {"_id": pet["_id"]},
-        {"$set": {"medical_profile": profile}},
+        {"$set": {"medical_profile": profile, "updated_at": now_utc()}},
     )
     if stored_version is not None and result.matched_count == 0:
         response, status = error_response("conflict", "Профиль изменил другой человек, пока вы его правили")
@@ -571,13 +572,14 @@ def put_visit_prep(pet_id):
     guard = (
         {"_id": pet["_id"], "visit_prep.version": stored_version} if stored_version is not None else {"_id": pet["_id"]}
     )
+    # The pet's own stamp moves with the note, so a device that follows /api/sync sees the change.
     if not data.complaint and not data.checks:
-        result = app.db.pets.update_one(guard, {"$unset": {"visit_prep": ""}})
+        result = app.db.pets.update_one(guard, {"$unset": {"visit_prep": ""}, "$set": {"updated_at": now_utc()}})
     else:
         prep = data.model_dump(exclude={"base_version"})
         prep["updated_at"] = utc_iso(datetime.now(timezone.utc))
         prep["version"] = uuid.uuid4().hex
-        result = app.db.pets.update_one(guard, {"$set": {"visit_prep": prep}})
+        result = app.db.pets.update_one(guard, {"$set": {"visit_prep": prep, "updated_at": now_utc()}})
     if stored_version is not None and result.matched_count == 0:
         return _visit_prep_conflict(app.db.pets.find_one({"_id": pet["_id"]}) or pet)
     if not data.complaint and not data.checks:
