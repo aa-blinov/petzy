@@ -31,8 +31,8 @@ async def main():
             await settle(pg)
             body = await pg.inner_text("body")
             check(
-                "Settings has a «Медкарта» group with both rows",
-                "Данные для врача" in body and "Ссылки на медкарту" in body and "Медкарта" in body,
+                "Settings has both rows in the «Питомец» group",
+                "Данные для врача" in body and "Ссылки на медкарту" in body and "Питомец" in body,
             )
             await pg.get_by_text("Данные для врача", exact=True).click()
             await settle(pg, 150)
