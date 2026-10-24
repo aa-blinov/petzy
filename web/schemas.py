@@ -5,7 +5,7 @@ Naming Convention:
 - See docs/api-naming-conventions.md for full naming rules
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 from typing import Optional, List, Annotated, Any, Dict, Literal
 from zoneinfo import ZoneInfo
@@ -101,6 +101,31 @@ def validate_date_logic(v: str, allow_future: bool = True, max_future_days: int 
         raise ValueError(too_far_back_text(max_past_years))
 
     return dt.strftime("%Y-%m-%d")
+
+
+def real_moment(text: str) -> datetime:
+    """A moment in ISO 8601 that is a real one and that the server can do arithmetic with.
+
+    fromisoformat refuses «2026-02-30T10:00», and a moment at the very edge of the calendar (year 1, year 9999) is
+    refused here too: converting it to UTC or adding a day to it overflows, and that was a 500. The years a pet's diary
+    can hold are far inside the bounds below.
+    """
+    try:
+        moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        utc = moment.astimezone(timezone.utc) if moment.tzinfo else moment
+    except (ValueError, OverflowError):
+        raise ValueError("Неверный момент времени")
+    if not MOMENT_YEARS[0] <= utc.year <= MOMENT_YEARS[1]:
+        raise ValueError("Момент времени вне допустимых лет")
+    return moment
+
+
+MOMENT_YEARS = (1900, 2200)
+
+
+def _cursor_moment_is_real(cursor: str) -> None:
+    """The time part of «2026-10-18T09:00:00,64f1…»: the shape was checked, the calendar is checked here."""
+    real_moment(cursor.split(",", 1)[0].replace(" ", "T"))
 
 
 # ============================================================================
@@ -2127,7 +2152,8 @@ class EventListResponse(PaginatedResponse):
 class PaginationQuery(BaseModel):
     """Pagination query parameters."""
 
-    page: int = Field(1, ge=1, description="Номер страницы (начиная с 1)")
+    # Bounded: the offset is (page - 1) * page_size, and a page near 2^63 overflowed the database driver (500).
+    page: int = Field(1, ge=1, le=100_000, description="Номер страницы (начиная с 1)")
     page_size: int = Field(100, ge=1, le=1000, description="Количество элементов на странице (1-1000)")
 
     model_config = ConfigDict(
@@ -2207,6 +2233,15 @@ class PetIdPaginationQuery(PetIdQuery, PaginationQuery):
 FEED_CURSOR = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?,[0-9a-f]{24}$")
 
 
+def _check_feed_cursor(value: str) -> None:
+    if not FEED_CURSOR.match(value):
+        raise ValueError("Курсор не разобран: ожидается значение next_cursor из предыдущего ответа")
+    try:
+        _cursor_moment_is_real(value)
+    except ValueError:
+        raise ValueError("Курсор не разобран: ожидается значение next_cursor из предыдущего ответа")
+
+
 class FeedQuery(PetIdPaginationQuery):
     """Query parameters for a feed of events, newest first: a page by number, or on from a cursor."""
 
@@ -2225,8 +2260,8 @@ class FeedQuery(PetIdPaginationQuery):
     @classmethod
     def validate_before(cls, v):
         """A cursor is the time and the id the previous answer named; anything else is refused."""
-        if v is not None and not FEED_CURSOR.match(v):
-            raise ValueError("Курсор не разобран: ожидается значение next_cursor из предыдущего ответа")
+        if v is not None:
+            _check_feed_cursor(v)
         return v
 
 
@@ -2252,7 +2287,7 @@ class EventListQuery(FeedQuery):
         if v is None:
             return v
         try:
-            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            real_moment(v)
         except ValueError:
             raise ValueError("since: нужен момент в ISO 8601, например 2026-10-18T08:12:33.123Z")
         return v
@@ -2260,8 +2295,8 @@ class EventListQuery(FeedQuery):
     @field_validator("after")
     @classmethod
     def validate_after(cls, v):
-        if v is not None and not FEED_CURSOR.match(v):
-            raise ValueError("Курсор не разобран: ожидается значение next_cursor из предыдущего ответа")
+        if v is not None:
+            _check_feed_cursor(v)
         return v
 
     @model_validator(mode="after")
@@ -2389,6 +2424,23 @@ class UpcomingDosesQuery(PetIdQuery):
         None,
         description="IANA-имя часового пояса человека (Asia/Almaty): без client_datetime «сейчас» берётся по нему. Без него, или если имя неизвестно, UTC",
     )
+
+    @field_validator("client_datetime")
+    @classmethod
+    def _client_datetime_is_inside_the_calendar(cls, value):
+        """A text that is not a moment is answered by the view; one at the calendar's edge is refused here, where the
+        arithmetic on it would overflow."""
+        if not value:
+            return value
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+        try:
+            real_moment(value)
+        except ValueError:
+            raise ValueError("Время клиента вне допустимых лет")
+        return value
 
     model_config = ConfigDict(
         json_schema_extra={"example": {"pet_id": "507f1e88bf19b6fcdb027c75", "client_datetime": "2026-10-13 08:30"}}
@@ -2645,12 +2697,14 @@ class MedicationDetailResponse(BaseModel):
 class MedicationIntakeCreate(BaseModel):
     date: str
     time: str
-    dose_taken: Optional[FiniteFloat] = None  # Uses default_dose if not provided
+    dose_taken: Optional[FiniteFloat] = Field(None, le=10_000)  # Uses default_dose if not provided
     comment: Optional[str] = Field(None, max_length=500)
     # «Пропустить»: the slot is handled, nothing is given or taken from the stock.
     skipped: bool = False
     slot_date: Optional[str] = Field(
-        None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="День приёма по расписанию, который закрывает эта отметка"
+        None,
+        pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+        description="День приёма по расписанию, который закрывает эта отметка",
     )
     slot_time: Optional[str] = Field(
         None,
@@ -2675,6 +2729,14 @@ class MedicationIntakeCreate(BaseModel):
     @classmethod
     def _tz_is_a_zone(cls, value):
         return _iana_name(value)
+
+    @field_validator("slot_date")
+    @classmethod
+    def _slot_date_is_a_real_day(cls, value):
+        """A day of the calendar (not «2026-02-30», not year 9999): the slot's window is worked out from it."""
+        if value is None:
+            return value
+        return validate_date_logic(value, allow_future=True, max_future_days=10)
 
     @model_validator(mode="after")
     def dose_is_above_zero(self):
@@ -4421,7 +4483,7 @@ class SyncQuery(BaseModel):
     def _since_is_a_moment(cls, value):
         if value is not None:
             try:
-                datetime.fromisoformat(value.replace("Z", "+00:00"))
+                real_moment(value)
             except ValueError:
                 raise ValueError("since: время в формате ISO 8601, например 2026-10-18T08:12:33Z")
         return value
@@ -4429,8 +4491,13 @@ class SyncQuery(BaseModel):
     @field_validator("after")
     @classmethod
     def _after_is_a_cursor(cls, value):
-        if value is not None and not re.fullmatch(SYNC_CURSOR, value):
-            raise ValueError("after: курсор из next_cursor предыдущего ответа")
+        if value is not None:
+            if not re.fullmatch(SYNC_CURSOR, value):
+                raise ValueError("after: курсор из next_cursor предыдущего ответа")
+            try:
+                _cursor_moment_is_real(value)
+            except ValueError:
+                raise ValueError("after: курсор из next_cursor предыдущего ответа")
         return value
 
 

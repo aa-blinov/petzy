@@ -64,7 +64,7 @@ def get_users():
 def _page_number(raw_page) -> int:
     """A 1-based page number, whatever came in the query string."""
     try:
-        return max(1, int(raw_page)) if raw_page else 1
+        return min(max(1, int(raw_page)), 1_000_000) if raw_page else 1
     except (TypeError, ValueError):
         return 1
 
