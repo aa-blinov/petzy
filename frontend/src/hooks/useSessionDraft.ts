@@ -13,7 +13,7 @@ interface SessionDraftOptions<T> {
   reset: (values: T, options: { keepDefaultValues: boolean }) => void;
   /** The form has been filled with its own starting values (a loaded record, the blank), so a draft can go on top. */
   ready: boolean;
-  /** The unsaved-changes guard's `release`: a session that ended must not be held back by «Выйти без сохранения?». */
+  /** The unsaved-changes guard's `release`: a session that ended must not be held back by «Не сохранить изменения?». */
   release: () => void;
 }
 

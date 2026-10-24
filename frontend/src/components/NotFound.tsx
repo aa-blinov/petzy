@@ -19,7 +19,7 @@ export function NotFound() {
           icon={Compass}
           title="Такого адреса нет"
           description="Ссылка устарела или в адресе опечатка"
-          actionLabel="На ленту"
+          actionLabel="К ленте"
           onAction={() => navigate('/', { replace: true })}
         />
       </div>

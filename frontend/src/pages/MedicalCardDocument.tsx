@@ -189,7 +189,7 @@ function RecordPill({ record }: { record: MedicalRecord }) {
 /** What a screen reader says for the row: the title and what the eye takes from the pill, not only «открыть запись». */
 function recordAriaLabel(record: MedicalRecord): string {
   const parts = [record.title];
-  if (record.status !== 'none') parts.push(recordStatusText(record.status, record.days_left));
+  if (record.status !== 'none') parts.push(recordStatusText(record.status, record.days_left).toLowerCase());
   else if (!record.superseded && (record.kind === 'vaccination' || record.kind === 'parasite')) parts.push('без напоминания');
   if (record.next_due && !record.superseded && (record.kind === 'vaccination' || record.kind === 'parasite')) parts.push(`следующая ${formatDate(record.next_due)}`);
   else parts.push(formatDate(record.date));
@@ -636,7 +636,7 @@ function RecordsSheet({
         {all.isError ? (
           <p className="medcard__empty">Не удалось загрузить записи</p>
         ) : all.isFetching && !all.data ? (
-          <p className="medcard__empty">Загружаем записи</p>
+          <p className="medcard__empty">Загружаем записи…</p>
         ) : records.length === 0 ? (
           <p className="medcard__empty">Записей пока нет</p>
         ) : (
@@ -711,6 +711,8 @@ export interface CardDocumentProps {
   /** The file: the owner's copy has it in the bar at the foot, the guest's under the date. */
   onPdf?: () => void;
   onShare?: () => void;
+  /** Why the file and the link cannot be taken yet (the card is nearly empty): they stay on the page, disabled, and this is said beside them. */
+  handoverBlocked?: string;
   saving?: boolean;
   /** Under the passport: what the page is and how fresh it is. */
   afterPassport?: ReactNode;
@@ -719,7 +721,7 @@ export interface CardDocumentProps {
   shared?: boolean;
 }
 
-export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onShare, saving, afterPassport, shared }: CardDocumentProps) {
+export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onShare, handoverBlocked, saving, afterPassport, shared }: CardDocumentProps) {
   const [kindSheet, setKindSheet] = useState<null | { title: string; options: { label: string; to: string }[] }>(null);
   const [recordsSheet, setRecordsSheet] = useState<null | MedicalKind[]>(null);
   const [weightSheet, setWeightSheet] = useState(false);
@@ -771,7 +773,7 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
       {onPdf && owner && (
         <div className="medcard__topactions">
           <div className="medcard__handover">
-            <button type="button" className="medcard__pdf-button" onClick={onPdf} disabled={saving} aria-busy={saving}>
+            <button type="button" className="medcard__pdf-button" onClick={onPdf} disabled={saving || !!handoverBlocked} aria-busy={saving} aria-describedby="medcard-handover-hint">
               {saving ? (
                 <Loader2 size={18} strokeWidth={2.2} className="medcard__spin" aria-hidden />
               ) : (
@@ -780,13 +782,13 @@ export function CardDocument({ card, petId, hidden, owner, navigate, onPdf, onSh
               Скачать PDF
             </button>
             {onShare && (
-              <button type="button" className="medcard__pdf-button" onClick={onShare}>
+              <button type="button" className="medcard__pdf-button" onClick={onShare} disabled={!!handoverBlocked} aria-describedby="medcard-handover-hint">
                 <Link2 size={18} strokeWidth={2.2} aria-hidden />
                 Ссылка для врача
               </button>
             )}
           </div>
-          <p className="medcard__hint">Скачать заранее: на приёме может не быть связи</p>
+          <p className="medcard__hint" id="medcard-handover-hint">{handoverBlocked ?? 'Скачать заранее: на приёме может не быть связи'}</p>
         </div>
       )}
 

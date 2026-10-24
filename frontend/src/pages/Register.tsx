@@ -147,7 +147,7 @@ export function Register() {
     <AuthShell title="Новый аккаунт">
       {!statusKnown && !status.isError && (
         <p style={{ margin: '0 0 var(--spacing-md)', fontSize: 'var(--text-sm)', lineHeight: 1.5, textAlign: 'center', color: 'var(--app-text-secondary)' }}>
-          Проверяем, можно ли сейчас создать аккаунт
+          Проверяем, можно ли сейчас создать аккаунт…
         </p>
       )}
       {status.isError && (

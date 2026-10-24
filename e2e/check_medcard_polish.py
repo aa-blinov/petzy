@@ -47,7 +47,7 @@ async def main():
             await pg.get_by_placeholder("Имя питомца").fill("Тест-М")
             await pg.get_by_role("button", name="Добавить", exact=True).click()
             await settle(pg, 150)
-            await pg.get_by_role("button", name="Готово").click()
+            await pg.get_by_role("button", name="Закрыть").last.click()
             await settle(pg, 150)
             pid = next(q["_id"] for q in (await api(pg, "GET", "/pets"))["json"]["pets"] if q["name"] == "Тест-М")
 
@@ -227,7 +227,7 @@ async def main():
             left = await pg.inner_text("body")
             check(
                 "after the answer is taken back, leaving asks nothing",
-                "Выйти без сохранения?" not in left and not pg.url.endswith("/visit-prep"),
+                "Не сохранить изменения?" not in left and not pg.url.endswith("/visit-prep"),
                 left[-160:].replace(chr(10), " | "),
             )
             note = (await api(pg, "GET", f"/pets/{pid}/medical-card"))["json"]["card"]["visit_prep"]

@@ -41,7 +41,7 @@ async def main():
             )
             check(
                 "кнопка создания на экране одна",
-                await pg.get_by_role("button", name="Создать тип события").count() == 1,
+                await pg.get_by_role("button", name="Добавить тип события").count() == 1,
             )
             check(
                 "в списке нет точек-разделителей",

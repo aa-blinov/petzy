@@ -56,7 +56,7 @@ async def main():
                 "Рекс" in body and "Мурзик" in body and body.count("Отозвать") >= 2,
                 body[:200].replace(chr(10), " | "),
             )
-            check("each says until when and who made it", "До " in body and "Сделал demo" in body)
+            check("each says until when and who made it", "До " in body and "Кто: demo" in body)
             await pg.screenshot(path="ml_page.png")
             total = count_of(await pg.locator('[data-testid="medlinks-count"]').inner_text())
             rex_row = pg.locator('section[aria-label="Рекс"]').get_by_role("button", name="Отозвать").first
@@ -100,7 +100,7 @@ async def main():
             if left_total == 0:
                 check(
                     "with none left it says so and points to the card",
-                    "Действующих ссылок нет" in body and "Открыть медкарту" in body,
+                    "Здесь будут ссылки на медкарты" in body and "Открыть медкарту" in body,
                 )
             else:
                 print(f"NOTE someone else's {left_total} links are on the stand, the empty state was not reached for")

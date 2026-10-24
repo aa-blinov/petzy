@@ -68,7 +68,6 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
   // A dose is deleted at once, so the stock, the dose card and the slot are right straight away; «Отменить» writes the same
   // dose again (its dose, time, slot and comment). An event waits on its undo bar instead (utils/deferredDelete.ts).
   const deleteIntake = async () => {
-    const name = String(item.medication_name || 'лекарство');
     const skipped = !!item.skipped;
     const again: IntakeInput = {
       date: intakeDate,
@@ -89,7 +88,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
     await refreshAfterIntake(queryClient);
     showUndo({
       duration: INTAKE_UNDO_MS,
-      message: `Удалён приём: ${name}, ${intakeTime.slice(0, 5)}`,
+      message: 'Приём удалён',
       onUndo: async () => {
         await medicationsService.logIntake(String(item.medication_id), again);
         await refreshAfterIntake(queryClient);
@@ -109,7 +108,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
     deleteWithUndo({
       id: item._id,
       path: `/events/${item._id}`,
-      message: `Удалена запись: ${config.displayName}`,
+      message: 'Запись удалена',
       onDeleted: () =>
         // See HealthRecordForm's onSubmit for why this is a predicate rather
         // than queryKey: ['history'] — none of these views' query keys start
@@ -265,7 +264,7 @@ export const HistoryItem = memo(function HistoryItem({ item, config, type }: His
         onClose={() => setIntakeInfoVisible(false)}
         getContainer={() => document.body}
         actions={[
-          { key: 'time', text: 'Изменить время', bold: true, onClick: () => setTimePickerVisible(true) },
+          { key: 'time', text: 'Изменить время', onClick: () => setTimePickerVisible(true) },
           { key: 'delete', text: 'Удалить', danger: true, onClick: handleDelete },
           { key: 'close', text: 'Закрыть', onClick: () => setIntakeInfoVisible(false) },
         ]}

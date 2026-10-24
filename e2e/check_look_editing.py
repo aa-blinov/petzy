@@ -48,11 +48,11 @@ async def main():
             await pg.get_by_role("button", name="Сбросить оформление").first.click()
             await settle(pg, 150)
             check("reset asks first", await pg.get_by_text("Сбросить оформление?").count() == 1)
-            await pg.locator(".adm-dialog-button", has_text="Оставить").first.click()
+            await pg.locator(".adm-dialog-button", has_text="Отмена").first.click()
             await settle(pg, 150)
             await pg.get_by_role("tab", name="Подпись и шрифт").first.click()
             await settle(pg, 150)
-            check("«Оставить» keeps the caption as typed", await pg.locator("#pet-tagline").input_value() == "новая")
+            check("«Отмена» keeps the caption as typed", await pg.locator("#pet-tagline").input_value() == "новая")
 
             await pg.get_by_role("tab", name="Образы").first.click()
             await settle(pg, 150)
