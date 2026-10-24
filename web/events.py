@@ -1011,7 +1011,7 @@ def get_health_stats():
     else:
         event_type = app.db[EVENT_TYPES_COLLECTION].find_one({"key": record_type})
         if not event_type:
-            return error_response("invalid_type", f"Unsupported record type: {record_type}")
+            return error_response("invalid_type")
         collection_name = EVENTS_COLLECTION
         chart = event_type.get("chart") or {"kind": "count"}
         value_field = chart.get("value_field") if chart.get("kind") == "value" else "count"
@@ -1147,7 +1147,7 @@ def get_history_timeline():
                 record["created_at"] = utc_iso(record["created_at"])
             med = meds.get(record.get("medication_id"))
             if med:
-                record["medication_name"] = med.get("name", "Unknown")
+                record["medication_name"] = med.get("name", "Неизвестный курс")
                 # «1 таб», not a bare «1», on the feed. A unit from a script or an older
                 # client is read in Russian here; the course keeps what was written.
                 record["dose_unit"] = ru_dose_unit(med.get("dose_unit"))
