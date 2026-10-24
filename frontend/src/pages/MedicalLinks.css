@@ -57,3 +57,8 @@
     color: var(--app-text-secondary);
     font-size: var(--text-xs);
 }
+
+/* The count stands under the lead with the gap of a caption to the text above, not glued to it. */
+.medlinks__head .medlinks__note {
+    margin-top: var(--spacing-md);
+}
