@@ -149,6 +149,9 @@
     opacity: 1;
     top: 50%;
     right: 4px;
+    /* Its own 44px: the touch area of the circle's ::after was 38px high where the row's edge cut it. */
+    width: var(--touch-min);
+    height: var(--touch-min);
     transform: translateY(-50%);
     border: none;
     background: transparent;
