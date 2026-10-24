@@ -31,8 +31,8 @@ async def main():
             await settle(pg)
             body = await pg.inner_text("body")
             check(
-                "Settings has a «Медкарта» group with both rows",
-                "Данные для врача" in body and "Ссылки на медкарту" in body and "Медкарта" in body,
+                "Settings has both rows in the «Питомец» group",
+                "Данные для врача" in body and "Ссылки на медкарту" in body and "Питомец" in body,
             )
             await pg.get_by_text("Данные для врача", exact=True).click()
             await settle(pg, 150)
@@ -56,7 +56,16 @@ async def main():
                 "Рекс" in body and "Мурзик" in body and body.count("Отозвать") >= 2,
                 body[:200].replace(chr(10), " | "),
             )
-            check("each says until when and who made it", "До " in body and "Кто: demo" in body)
+            # The maker is named by the name they go by (the demo account is «Анна»), by the login when there is none.
+            check(
+                "each says until when and who made it", "До " in body and ("Кто: Анна" in body or "Кто: demo" in body)
+            )
+            revoke_box = await pg.get_by_role("button", name="Отозвать").first.bounding_box()
+            check(
+                "«Отозвать» is a 44px target",
+                revoke_box is not None and revoke_box["height"] >= 44 and revoke_box["width"] >= 44,
+                str(revoke_box),
+            )
             await pg.screenshot(path="ml_page.png")
             total = count_of(await pg.locator('[data-testid="medlinks-count"]').inner_text())
             rex_row = pg.locator('section[aria-label="Рекс"]').get_by_role("button", name="Отозвать").first

@@ -5,6 +5,7 @@ import { isAxiosError } from 'axios';
 import { showToast } from '../utils/toast';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useSessionDraft } from '../hooks/useSessionDraft';
+import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
 import { deleteWithUndo } from '../utils/deferredDelete';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -114,8 +115,8 @@ export function HealthRecordForm() {
   const schema = useMemo(() => {
     const baseFields: Record<string, z.ZodTypeAny> = {
       pet_id: z.string().min(1),
-      date: z.string().min(1, 'Укажите дату'),
-      time: z.string().min(1, 'Укажите время'),
+      date: z.string().min(1, 'Выберите дату'),
+      time: z.string().min(1, 'Выберите время'),
       comment: z.string().optional(),
     };
 
@@ -270,6 +271,12 @@ export function HealthRecordForm() {
     reset
   } = methods;
   const { dialog: leaveDialog, release } = useUnsavedChangesGuard(isDirty);
+  // A date typed in digits that is unfinished or impossible is not in the form's value: saving would keep the older date in silence.
+  const typedDates = useTypedDateProblems();
+  const submit = () => {
+    typedDates.refuse();
+    void handleSubmit((values) => (typedDates.blocked ? undefined : onSubmit(values)), onInvalidSubmit)();
+  };
   useSessionDraft({
     dirty: isDirty,
     petId: getSelectedPet?._id ?? null,
@@ -632,7 +639,7 @@ export function HealthRecordForm() {
                   </ChoiceChips>
                 </div>
               )}
-              <FormField field={{ name: 'date', type: 'date', label: 'Дата', required: true, id: 'event-date' }} defaultValue={defaultValues.date} />
+              <FormField field={{ name: 'date', type: 'date', label: 'Дата', required: true, id: 'event-date' }} defaultValue={defaultValues.date} onTypedProblem={typedDates.report('date')} refusals={typedDates.refusals} />
               <FormField field={{ name: 'time', type: 'time', label: 'Время', required: true, id: 'event-time' }} defaultValue={defaultValues.time} />
               {fields.map((field) => (
                 <Fragment key={field.id}>
@@ -701,13 +708,13 @@ export function HealthRecordForm() {
             <button
               style={{ display: 'none' }}
               type="submit"
-              onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onInvalidSubmit)(); }}
+              onClick={(e) => { e.preventDefault(); submit(); }}
             />
             <Button
               block
               color="primary"
               size="large"
-              onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
+              onClick={submit}
               loading={isSubmitting}
             >
               {id ? 'Сохранить' : 'Добавить'}

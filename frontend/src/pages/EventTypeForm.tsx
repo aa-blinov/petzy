@@ -255,7 +255,7 @@ export function EventTypeForm() {
         errors[f.key] = { ...errors[f.key], options: 'Нужен хотя бы один вариант' };
       }
     }
-    const nextLabelError = label.trim() ? null : 'Укажите название типа';
+    const nextLabelError = label.trim() ? null : 'Введите название типа';
     const nextChartError =
       chartKind === 'value'
         ? numberFields.length === 0

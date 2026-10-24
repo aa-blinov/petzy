@@ -144,11 +144,12 @@ export function Settings() {
         </div>
 
         <div className="safe-area-padding">
-          {/* Order: what the app is for first (the pets, the reminders, the records), then how entering a record is set up, then
-              the look of the app, the account, help, and the leaving and deleting at the very bottom. A pet's own settings (its
-              look, its quick buttons, its defaults, its export) act on the pet that is selected in the switcher. */}
+          {/* Order: by whose it is. First the pet (its list, look, record types, defaults, the data for the vet and the
+              links given to a vet), then the records (the household's types and the export), the look of the app, the
+              person's account (reminders and signing out of this phone included), help and the version, and the leaving
+              and deleting at the very bottom. A pet's own settings act on the pet that is selected in the switcher. */}
 
-          <Group title="Питомцы" first>
+          <Group title="Питомец" first>
             <SettingsRow
               icon={<PawPrint size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Мои питомцы"
@@ -182,10 +183,7 @@ export function Settings() {
               chevron
               onClick={() => navigate('/form-defaults')}
             />
-          </Group>
-
-          {/* The medical card's own settings: what a vet asks (the profile of the selected pet) and the links given to a vet. */}
-          <Group title="Медкарта">
+            {/* The medical card's own settings: what a vet asks (the profile of the selected pet) and the links given to a vet. */}
             <SettingsRow
               icon={<HeartPulse size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Данные для врача"
@@ -201,56 +199,22 @@ export function Settings() {
             />
           </Group>
 
-          {/* The row itself only ever shows a switch: the states where it cannot be turned on disable it and
-              say, in the row, both why and what to do about it. On iPhone push works in an app added to the
-              home screen, so plain Safari is not «браузер не поддерживает» (the same wording is in
-              components/PushOffNotice.tsx). */}
-          <Group title="Напоминания">
-            <SettingsRow
-              icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Напоминания"
-              description={
-                pushState === 'unsupported'
-                  ? needsHomeScreenForPush()
-                    ? 'На iPhone напоминания работают, когда Petzy добавлен на экран «Домой». Добавьте его оттуда и включите напоминания здесь'
-                    : 'Этот браузер не поддерживает напоминания. Они придут в другое приложение, если оно установлено'
-                  : pushState === 'denied'
-                    ? 'Заблокированы в настройках браузера. Разрешите их для Petzy в настройках браузера или телефона'
-                    : pushState === 'on'
-                      ? 'Включены на этом телефоне: лекарства, прививки и обработки, документы, необычные показатели'
-                      : 'Лекарства, прививки и обработки, документы, необычные показатели'
-              }
-              control={
-                <Switch
-                  aria-label="Напоминания"
-                  checked={pushState === 'on'}
-                  disabled={pushState === null || pushState === 'unsupported' || pushState === 'denied' || pushBusy}
-                  onChange={handlePushToggle}
-                />
-              }
-            />
-          </Group>
-
-          {/* The history screen is not a tab: this row and the card's «Вес» lead to it. */}
+          {/* The history screen is not a tab: this group's export and the card's «Вес» lead to it. The types of record
+              themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. They are the
+              household's, not one pet's: they are added to a pet in «Типы записей питомца». */}
           <Group title="Записи">
-
-            <SettingsRow
-              icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Экспорт записей"
-              description={petRowText('Скачать записи питомца таблицей')}
-              {...petRow(() => setExportVisible(true))}
-            />
-          </Group>
-
-          {/* The types of record themselves: builtin ones can be relabelled and recoloured, custom ones made from scratch. They
-              are the household's, not one pet's: they are added to a pet in «Типы записей питомца». */}
-          <Group title="Новые записи">
             <SettingsRow
               icon={<Sparkles size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Типы записей"
               description="Свои типы записей со своими полями"
               chevron
               onClick={() => navigate('/event-types')}
+            />
+            <SettingsRow
+              icon={<Download size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Экспорт записей"
+              description={petRowText('Скачать записи питомца таблицей')}
+              {...petRow(() => setExportVisible(true))}
             />
           </Group>
 
@@ -275,8 +239,18 @@ export function Settings() {
             </div>
           </Group>
 
-          {/* The email is what a forgotten password is recovered with, so its state is on the row itself. */}
+          {/* The email is what a forgotten password is recovered with, so its state is on the row itself. The reminders
+              are the person's too (they are switched on per phone), and signing out of this phone sits with the account. */}
           <Group title="Аккаунт">
+            {/* The profile is not only something you look at when someone else opens it: it is the answer to
+                «кто я у человека, с которым делюсь питомцем». */}
+            <SettingsRow
+              icon={<UserRound size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Мой профиль"
+              description="Как вас видят те, с кем вы делитесь питомцем"
+              chevron
+              onClick={() => navigate(`/users/${username}`)}
+            />
             <SettingsRow
               icon={<Mail size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Почта"
@@ -297,6 +271,33 @@ export function Settings() {
               chevron
               onClick={() => navigate('/settings/password')}
             />
+            {/* The row itself only ever shows a switch: the states where it cannot be turned on disable it and
+                say, in the row, both why and what to do about it. On iPhone push works in an app added to the
+                home screen, so plain Safari is not «браузер не поддерживает» (the same wording is in
+                components/PushOffNotice.tsx). */}
+            <SettingsRow
+              icon={<Bell size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Напоминания"
+              description={
+                pushState === 'unsupported'
+                  ? needsHomeScreenForPush()
+                    ? 'На iPhone напоминания работают, когда Petzy добавлен на экран «Домой». Добавьте его оттуда и включите напоминания здесь'
+                    : 'Этот браузер не поддерживает напоминания. Они придут в другое приложение, если оно установлено'
+                  : pushState === 'denied'
+                    ? 'Заблокированы в настройках браузера. Разрешите их для Petzy в настройках браузера или телефона'
+                    : pushState === 'on'
+                      ? 'Включены на этом телефоне: лекарства, прививки и обработки, документы, необычные показатели'
+                      : 'Лекарства, прививки и обработки, документы, необычные показатели'
+              }
+              control={
+                <Switch
+                  aria-label="Напоминания"
+                  checked={pushState === 'on'}
+                  disabled={pushState === null || pushState === 'unsupported' || pushState === 'denied' || pushBusy}
+                  onChange={handlePushToggle}
+                />
+              }
+            />
             <SettingsRow
               icon={<Bot size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Доступ для ассистентов"
@@ -304,14 +305,11 @@ export function Settings() {
               chevron
               onClick={() => navigate('/settings/assistants')}
             />
-            {/* The profile is not only something you look at when someone else opens it: it is the answer to
-                «кто я у человека, с которым делюсь питомцем». */}
             <SettingsRow
-              icon={<UserRound size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Мой профиль"
-              description="Как вас видят те, с кем вы делитесь питомцем"
-              chevron
-              onClick={() => navigate(`/users/${username}`)}
+              icon={<LogOut size={18} strokeWidth={2} style={{ display: 'block' }} />}
+              label="Выйти из аккаунта"
+              description="На этом телефоне"
+              onClick={() => setLogoutDialogVisible(true)}
             />
           </Group>
 
@@ -354,14 +352,8 @@ export function Settings() {
             </Group>
           )}
 
-          {/* Leaving and deleting, apart from everything else and last: rare, and the second one cannot be undone. */}
+          {/* Leaving everywhere and deleting, apart from everything else and last: rare, and the second one cannot be undone. */}
           <Group title="Выход">
-            <SettingsRow
-              icon={<LogOut size={18} strokeWidth={2} style={{ display: 'block' }} />}
-              label="Выйти из аккаунта"
-              description="На этом телефоне"
-              onClick={() => setLogoutDialogVisible(true)}
-            />
             <SettingsRow
               icon={<LogOut size={18} strokeWidth={2} style={{ display: 'block' }} />}
               label="Выйти на всех устройствах"

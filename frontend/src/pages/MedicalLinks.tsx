@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
-import { Button, Dialog } from 'antd-mobile';
+import { Dialog } from 'antd-mobile';
 import { Link2 } from 'lucide-react';
 
 import { EmptyState } from '../components/EmptyState';
 import { MAX_ACTIVE_SHARES } from '../components/MedicalShareSheet';
 import { usePet } from '../hooks/usePet';
 import { formatShareEnd, medicalShareService } from '../services/medicalShare.service';
+import { usersService } from '../services/users.service';
 import { getApiErrorMessage } from '../utils/apiError';
 import { showToast } from '../utils/toast';
 import { SkeletonList } from '../components/Skeletons';
@@ -24,6 +25,18 @@ export function MedicalLinks() {
   const lists = useQueries({
     queries: pets.map((pet) => ({ queryKey: ['medical-shares', pet._id], queryFn: () => medicalShareService.list(pet._id), staleTime: 0 })),
   });
+  // Who made a link is said by the name they go by when there is one, and by the login when there is not (or when the name
+  // cannot be read: the profile opens only for people the pets are shared with).
+  const makers = [...new Set(lists.flatMap((q) => (q.data ?? []).map((share) => share.username)).filter(Boolean))];
+  const profiles = useQueries({
+    queries: makers.map((login) => ({
+      queryKey: ['user-profile', login],
+      queryFn: () => usersService.getPublicProfile(login),
+      staleTime: 5 * 60_000,
+      retry: false,
+    })),
+  });
+  const nameOf = (login: string) => profiles[makers.indexOf(login)]?.data?.full_name?.trim() || login;
   const revoke = useMutation({
     mutationFn: ({ petId, shareId }: { petId: string; shareId: string }) => medicalShareService.revoke(petId, shareId),
     onSuccess: (_result, { petId }) => {
@@ -112,11 +125,16 @@ export function MedicalLinks() {
                     <li key={share.id} className="medlinks__item">
                       <span>
                         До {formatShareEnd(share.expires_at)}
-                        <span className="medlinks__by">Кто: {share.username || 'бывший участник'}, {formatShareEnd(share.created_at)}</span>
+                        <span className="medlinks__by">Кто: {share.username ? nameOf(share.username) : 'бывший участник'}, {formatShareEnd(share.created_at)}</span>
                       </span>
-                      <Button color="danger" loading={revoke.isPending && revoke.variables?.shareId === share.id} onClick={() => void ask(pet._id, share.id)}>
+                      <button
+                        type="button"
+                        className="medlinks__revoke"
+                        disabled={revoke.isPending && revoke.variables?.shareId === share.id}
+                        onClick={() => void ask(pet._id, share.id)}
+                      >
                         Отозвать
-                      </Button>
+                      </button>
                     </li>
                   ))}
                 </ul>

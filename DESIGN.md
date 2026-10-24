@@ -317,7 +317,7 @@ M3 buttons: one primary per screen.
 - **Outline:** a copper outline with ginger-deep text for secondary actions in a card («Отметить приём», «Пополнить»).
 - **Neutral outline:** an oat outline with ink text for the way out («Отмена», «Отклонить»): it takes no colour, so a copper outline always means a step forward.
 - **Text:** a navigation link on the sign-in screens only (plain ginger-deep text). Every action, header or row, is an outlined button (see Outline).
-- **Danger:** every destructive button is a solid red button, the same as «Удалить аккаунт» (dark text on it in the dark theme), at whatever size its place asks for: the foot of a form, a card, a row or a sheet («Удалить запись», «Убрать», «Отозвать»); which verb it carries is decided under «Interface wording». Red text or a red outline is never an action: on a pet's patterned backdrop it does not read.
+- **Danger:** a destructive button is red and is never the loudest thing on its screen. At the foot of a form («Удалить питомца», «Удалить лекарство», «Деактивировать») it is an outline button (`FormDangerButton`), set apart from «Сохранить» and «Отмена» by 24px instead of the 12px between buttons. In a row of a list or a sheet («Убрать», «Отозвать») it is a red text button with a 44px target. «Удалить аккаунт» and the confirm button of a dialog stay solid red (dark text on it in the dark theme). Which verb it carries is decided under «Interface wording». Red on a pet's patterned backdrop does not read, so a danger action is never put on one.
 - **Press:** 0.98 scale and the 12% state layer; no hover lift. A visible focus ring for the keyboard.
 
 ### The round «+»

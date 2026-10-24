@@ -1402,6 +1402,11 @@ html[data-prefers-color-scheme='dark'] .adm-button:active {
     --border-color: var(--app-danger-text) !important;
 }
 
+.adm-button-danger.adm-button-fill-outline {
+    --border-color: var(--app-danger-text) !important;
+    --text-color: var(--app-danger-text) !important;
+}
+
 /* One button shape everywhere: the 12px corner (--radius-md) of the button ladder, not a capsule. Chips and the round add
    button keep their own shape. */
 .adm-button {
@@ -2573,6 +2578,11 @@ html.keyboard-open .form-sticky-action {
     flex-direction: column;
     gap: var(--spacing-md);
     margin-top: var(--spacing-xl);
+}
+
+/* The destructive button at the foot of a form stands apart from the pair above it: 12px of the stack and 12px more. */
+.form-actions > .form-danger {
+    margin-top: var(--spacing-md);
 }
 
 /* The sticky button already pads itself 8px below: the buttons that follow it keep the usual 12px, not 24px on top of that. */
