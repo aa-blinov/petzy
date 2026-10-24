@@ -7,7 +7,7 @@ import { fieldNote } from '../components/FieldNote';
 import { getApiErrorMessage } from '../utils/apiError';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { goBack } from '../utils/navigation';
-import { Button, Form, Input, TextArea, Picker } from 'antd-mobile';
+import { Button, Form, Input, TextArea } from 'antd-mobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch, Controller, type FieldErrors } from 'react-hook-form';
 import { isAxiosError } from 'axios';
@@ -35,11 +35,16 @@ import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
 import { FormDangerButton } from '../components/FormDangerButton';
-import { PickerValue } from '../components/PickerValue';
+import { ChoiceSheetField } from '../components/ChoiceSheetField';
+import { AttachToRecordSheet } from '../components/AttachToRecordSheet';
+import { useRefreshAfterLink } from '../hooks/useRefreshAfterLink';
+import { detachDocumentFromRecord, attachDocumentToRecord, recordLabel } from '../utils/documentRecords';
+import { showUndo } from '../utils/undo';
 import { takePendingDocumentFile } from '../utils/pendingDocumentFile';
 import { drawableImage } from '../utils/drawableImage';
 import { DatePickerField } from '../components/DatePickerField';
 import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
+import './DocumentForm.css';
 
 const ALL_CATEGORY_OPTIONS = (Object.entries(DOCUMENT_CATEGORY_LABELS) as [DocumentCategory, string][]).map(
   ([value, label]) => ({ label, value }),
@@ -88,7 +93,10 @@ export function DocumentForm() {
   const { selectedPetId } = usePet();
   const queryClient = useQueryClient();
 
-  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  // «Прикрепить к записи»: the sheet of the pet's records, and the record being let go of (so its button waits).
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [detaching, setDetaching] = useState<string | null>(null);
+  const refreshLinks = useRefreshAfterLink(selectedPetId);
   // The file itself isn't a react-hook-form field — it's a one-shot pick:
   // the file a new document is made of, or, while editing, the file that
   // will replace the one the document has (null = keep it).
@@ -232,16 +240,14 @@ export function DocumentForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The form is filled from the fields of the document, not from the document itself: attaching it to a record reloads it, and
+  // that must not wipe what was typed meanwhile.
+  const savedFields = document
+    ? JSON.stringify({ category: document.category, title: document.title, note: document.note || '', expires_at: document.expires_at || '' })
+    : '';
   useEffect(() => {
-    if (document) {
-      reset({
-        category: document.category,
-        title: document.title,
-        note: document.note || '',
-        expires_at: document.expires_at || '',
-      });
-    }
-  }, [document, reset]);
+    if (savedFields) reset(JSON.parse(savedFields));
+  }, [savedFields, reset]);
   // The typed fields come back after a session that ran out; the chosen file has to be chosen again.
   useSessionDraft({ dirty: isDirty, petId: selectedPetId, getValues, reset, ready: !isEditing || !!document, release });
 
@@ -403,6 +409,27 @@ export function DocumentForm() {
     )();
   };
 
+  // Lets go of the document in one record and offers the way back; the file itself stays among the documents.
+  const detach = async (recordId: string) => {
+    if (!id || detaching) return;
+    setDetaching(recordId);
+    try {
+      await detachDocumentFromRecord(recordId, id);
+      await refreshLinks();
+      showUndo({
+        message: 'Документ откреплён от записи',
+        onUndo: async () => {
+          await attachDocumentToRecord(recordId, id);
+          await refreshLinks();
+        },
+      });
+    } catch (error) {
+      showToast.failure(getApiErrorMessage(error, 'Не удалось открепить документ'));
+    } finally {
+      setDetaching(null);
+    }
+  };
+
   if (isEditing && isLoadingDocument) {
     return <LoadingSpinner />;
   }
@@ -429,8 +456,8 @@ export function DocumentForm() {
           {gone ? (
             <EmptyState
               icon={FileText}
-              title="Такого документа нет"
-              description="Его удалили или у вас нет к нему доступа"
+              title="Документ не найден"
+              description="Возможно, его удалили или у вас нет к нему доступа"
               actionLabel="К документам"
               onAction={() => navigate('/documents', { replace: true })}
             />
@@ -455,7 +482,6 @@ export function DocumentForm() {
 
         <div>
           <Form layout="horizontal" mode="card" style={{ '--prefix-width': '7em' } as React.CSSProperties}>
-            <Form.Header>Файл</Form.Header>
             <Form.Item
               label="Файл"
               required={!isEditing}
@@ -658,45 +684,29 @@ export function DocumentForm() {
               name="category"
               control={control}
               render={({ field }) => (
-                <>
-                  <Form.Item
-                    label="Категория"
-                    required
-                    onClick={isEditingScan || isUploading ? undefined : () => setCategoryPickerVisible(true)}
-                    description={
-                      errors.category?.message ? (
-                        <FieldError message={errors.category.message} />
-                      ) : field.value === 'vaccination' && !isEditing ? (
-                        'Срок следующей прививки и напоминание появятся, когда оформите её записью в медкарте. Предложим это после сохранения'
-                      ) : undefined
+                <ChoiceSheetField
+                  label="Категория"
+                  required
+                  value={field.value}
+                  options={ALL_CATEGORY_OPTIONS}
+                  placeholder="Выберите категорию"
+                  disabled={isEditingScan || isUploading}
+                  description={
+                    errors.category?.message ? (
+                      <FieldError message={errors.category.message} />
+                    ) : field.value === 'vaccination' && !isEditing ? (
+                      'Срок следующей прививки и напоминание появятся, когда оформите её записью в медкарте. Предложим это после сохранения'
+                    ) : undefined
+                  }
+                  onChange={(next) => {
+                    field.onChange(next);
+                    // An archive can only be filed under «Снимки».
+                    if (fileIsArchive && next !== 'imaging') {
+                      setFile(null);
+                      setFileError('Архив можно добавить только в «Снимки». Выберите фото или PDF');
                     }
-                    style={{ cursor: isEditingScan || isUploading ? 'default' : 'pointer' }}
-                    arrow={!isEditingScan && !isUploading}
-                  >
-                    <PickerValue
-                      value={DOCUMENT_CATEGORY_LABELS[field.value as DocumentCategory]}
-                      placeholder="Выберите категорию"
-                    />
-                  </Form.Item>
-                  <Picker
-                    columns={[ALL_CATEGORY_OPTIONS]}
-                    visible={categoryPickerVisible}
-                    onClose={() => setCategoryPickerVisible(false)}
-                    value={[field.value]}
-                    onConfirm={(val) => {
-                      const next = val[0] as string;
-                      field.onChange(next);
-                      setCategoryPickerVisible(false);
-                      // An archive can only be filed under «Снимки».
-                      if (fileIsArchive && next !== 'imaging') {
-                        setFile(null);
-                        setFileError('Архив можно добавить только в «Снимки». Выберите фото или PDF');
-                      }
-                    }}
-                    cancelText="Отмена"
-                    confirmText="Готово"
-                  />
-                </>
+                  }}
+                />
               )}
             />
 
@@ -740,6 +750,44 @@ export function DocumentForm() {
                 />
               )}
             />
+
+            {isEditing && document && selectedPetId && (
+              <>
+                <Form.Header>Записи медкарты</Form.Header>
+                {(document.medical_records ?? []).length === 0 ? (
+                  <Form.Item description="Файл можно прикрепить к визиту, прививке или обработке: он будет виден и в записи">
+                    <span className="picker-value picker-value--empty">Не прикреплён ни к одной записи</span>
+                  </Form.Item>
+                ) : (
+                  (document.medical_records ?? []).map((record) => (
+                    <Form.Item key={record.id}>
+                      <div className="doc-links__row">
+                        <button
+                          type="button"
+                          className="doc-links__open touch-target"
+                          onClick={() => navigate(`/pets/${selectedPetId}/medical-records/${record.id}`)}
+                        >
+                          {`Прикреплён к записи: ${recordLabel(record)}`}
+                        </button>
+                        <button
+                          type="button"
+                          className="doc-links__detach touch-target"
+                          disabled={detaching === record.id}
+                          onClick={() => detach(record.id)}
+                        >
+                          Открепить
+                        </button>
+                      </div>
+                    </Form.Item>
+                  ))
+                )}
+                <Form.Item>
+                  <button type="button" className="doc-links__attach touch-target" onClick={() => setAttachOpen(true)}>
+                    Прикрепить к записи
+                  </button>
+                </Form.Item>
+              </>
+            )}
           </Form>
 
           {/* A long form: the main button stays above the tab bar, not three screens down. */}
@@ -788,6 +836,9 @@ export function DocumentForm() {
           </div>
         </div>
       </div>
+      {isEditing && id && selectedPetId && attachOpen && (
+        <AttachToRecordSheet visible petId={selectedPetId} documentId={id} onClose={() => setAttachOpen(false)} />
+      )}
       {leaveDialog}
     </div>
   );

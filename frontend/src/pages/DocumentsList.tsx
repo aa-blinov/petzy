@@ -71,6 +71,7 @@ import './DocumentsList.css';
 import { LoadError } from '../components/LoadError';
 import { ChoiceChip, ChoiceChips } from '../components/ChoiceChips';
 import { DocumentFab, DocumentSheet } from '../components/DocumentSheet';
+import { AttachToRecordSheet } from '../components/AttachToRecordSheet';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList, MedicationCardSkeleton } from '../components/Skeletons';
 
@@ -166,10 +167,13 @@ export function DocumentsList() {
     visible: false,
     document: null,
   });
-  const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null }>({
+  const [imageViewer, setImageViewer] = useState<{ visible: boolean; image: string | null; id: string | null }>({
     visible: false,
     image: null,
+    id: null,
   });
+  // The document being attached to a record: the sheet of the pet's records is open for it.
+  const [attachTo, setAttachTo] = useState<PetDocument | null>(null);
   // Non-image documents (PDFs) open in an in-app viewer rather than a new
   // tab or a same-tab navigation — window.open is unreliable here (a popup
   // blocker can silently swallow it, and installed as a PWA there is often
@@ -314,7 +318,7 @@ export function DocumentsList() {
     // and a way to open it in the browser.
     const undrawable = /^image\/hei[cf]$/i.test(doc.content_type);
     if (doc.content_type.startsWith('image/') && !undrawable) {
-      setImageViewer({ visible: true, image: url });
+      setImageViewer({ visible: true, image: url, id: doc._id });
     } else {
       setFileViewer({ visible: true, url, title: doc.title, id: doc._id });
     }
@@ -429,6 +433,7 @@ export function DocumentsList() {
                           key={doc._id}
                           itemLabel={doc.title}
                           openAction={{ label: doc.scan ? 'Скачать' : 'Открыть', onTrigger: () => handleOpen(doc) }}
+                          extraActions={[{ label: 'Прикрепить к записи', onTrigger: () => setAttachTo(doc) }]}
                           // Tap opens the file here, so edit and delete sit
                           // behind a visible button as well as the swipe.
                           menuVisible
@@ -606,7 +611,7 @@ export function DocumentsList() {
         image={imageViewer.image || ''}
         visible={imageViewer.visible}
         onClose={() => setImageViewer((prev) => ({ ...prev, visible: false }))}
-        afterClose={() => setImageViewer({ visible: false, image: null })}
+        afterClose={() => setImageViewer({ visible: false, image: null, id: null })}
       />
 
       {/* ImageViewer ships no close button of its own — dismissing relies
@@ -618,6 +623,43 @@ export function DocumentsList() {
           antd's own mask (1000) for the same reason as the file viewer
           below — RouteTransition's stacking context would otherwise
           bury it under the Navbar. */}
+      {imageViewer.visible && imageViewer.id && createPortal(
+        // The same «Изменить» the file viewer has: a tap on a row opens the file, and the way to its form is on the file.
+        <button
+          type="button"
+          onClick={() => {
+            hapticFeedback('light');
+            const docId = imageViewer.id;
+            setImageViewer({ visible: false, image: null, id: null });
+            navigate(`/documents/${docId}/edit`);
+          }}
+          className="touch-target"
+          style={{
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top) + var(--spacing-md))',
+            left: 'var(--spacing-md)',
+            zIndex: 1001,
+            background: 'var(--app-scrim)',
+            color: 'var(--app-text-on-dark)',
+            border: 'none',
+            borderRadius: 999,
+            minHeight: 36,
+            padding: '0 var(--spacing-md)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-sm)',
+            fontFamily: 'inherit',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          <Pencil size={16} strokeWidth={2.4} aria-hidden />
+          Изменить
+        </button>,
+        document.body,
+      )}
+
       {imageViewer.visible && createPortal(
         <button
           type="button"
@@ -788,6 +830,9 @@ export function DocumentsList() {
       {/* The same round «+» as the feed's and the card's, at the bottom under the thumb. */}
       <DocumentFab onOpen={() => setAddOpen(true)} />
       <DocumentSheet visible={addOpen} onClose={() => setAddOpen(false)} />
+      {selectedPetId && attachTo && (
+        <AttachToRecordSheet visible petId={selectedPetId} documentId={attachTo._id} onClose={() => setAttachTo(null)} />
+      )}
 
       <Dialog
         visible={deleteDialog.visible}
