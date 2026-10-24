@@ -926,6 +926,7 @@ export function MedicationForm() {
                                 </Form.Item>
                             )}
                         />
+                        <div className="datepair">
                         <Controller
                             name="started_on"
                             control={control}
@@ -959,6 +960,7 @@ export function MedicationForm() {
                                 />
                             )}
                         />
+                        </div>
                         <Controller
                             name="comment"
                             control={control}
