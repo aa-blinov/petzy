@@ -41,7 +41,7 @@ from web.courses import course_covers
 from web.medical_records import SOON_DAYS, record_states, repeating_document_ids
 from web.dose_slots import open_slots
 from web.medications import UPCOMING_LOOKAHEAD_DAYS, is_as_needed, load_day_intakes
-from web.push_delivery import send_push_to_subscriptions
+from web.push_delivery import inactive_usernames, send_push_to_subscriptions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("send_medication_reminders")
@@ -162,6 +162,9 @@ def _iter_subscribed_pets(db, now_utc: datetime):
     subscriptions_by_username: dict = {}
     for sub in db.push_subscriptions.find({}):
         subscriptions_by_username.setdefault(sub["username"], []).append(sub)
+    # A deactivated account is pushed nothing, even if a subscription of it is still on record.
+    for username in inactive_usernames(db, subscriptions_by_username):
+        del subscriptions_by_username[username]
     if not subscriptions_by_username:
         return
 
@@ -388,6 +391,27 @@ def find_due_medical_reminders(db, now_utc: datetime, subscribed_pets=None) -> l
     return due
 
 
+# A reminder is recorded as sent only once a push really reached a device: a failed delivery (the push service down, a
+# network error) must be tried again on the next tick, or the reminder is lost for good. A subscription that keeps
+# failing without ever being pruned must not be tried forever, so after this many failed ticks the reminder is
+# recorded as sent all the same. The count lives in this process: a restart gives a reminder a fresh set of tries.
+MAX_DELIVERY_ATTEMPTS = 30
+_failed_attempts: dict = {}
+
+
+def _delivered_or_given_up(key, delivered: int) -> bool:
+    """True when the reminder's dedupe row is to be written: it was delivered, or has failed too many times."""
+    if delivered > 0:
+        _failed_attempts.pop(key, None)
+        return True
+    _failed_attempts[key] = _failed_attempts.get(key, 0) + 1
+    if _failed_attempts[key] >= MAX_DELIVERY_ATTEMPTS:
+        _failed_attempts.pop(key, None)
+        logger.warning(f"Giving up on reminder {key}: {MAX_DELIVERY_ATTEMPTS} failed deliveries")
+        return True
+    return False
+
+
 def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: dict) -> int:
     """find_due_medication_reminders + find_due_document_expiry_reminders,
     push each one, and record a dedupe row per item. Returns the number
@@ -427,7 +451,10 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             )
             if last and last.get("username") and last.get("date_time"):
                 payload["body"] += f". Последняя отметка: {last['username']}, {last['date_time']:%H:%M}"
-        sent += send_push_to_subscriptions(db, slots[0]["subscriptions"], payload, vapid_private_key, vapid_claims)
+        delivered = send_push_to_subscriptions(db, slots[0]["subscriptions"], payload, vapid_private_key, vapid_claims)
+        sent += delivered
+        if not _delivered_or_given_up(("dose", pet_id, date_key, time_key, followup), delivered):
+            continue  # not delivered: no row, the next tick tries again
 
         if followup:
             # Marked after the send, like the first push's row below: a crash in between means one more «ещё не
@@ -473,7 +500,10 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
             "body": f"{pet.get('name', 'Питомец')}: {document.get('title', 'Документ')}, до {expiry['expires_at']}",
             "url": f"/documents?pet={pet['_id']}",
         }
-        sent += send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)
+        delivered = send_push_to_subscriptions(db, expiry["subscriptions"], payload, vapid_private_key, vapid_claims)
+        sent += delivered
+        if not _delivered_or_given_up(("document", str(document["_id"]), expiry["expires_at"]), delivered):
+            continue
 
         try:
             db.document_expiry_reminders_sent.insert_one(
@@ -496,9 +526,12 @@ def send_reminders(db, now_utc: datetime, vapid_private_key: str, vapid_claims: 
 
     for item in find_due_medical_reminders(db, now_utc, subscribed_pets=subscribed_pets):
         record = item["record"]
-        sent += send_push_to_subscriptions(
+        delivered = send_push_to_subscriptions(
             db, item["subscriptions"], medical_reminder_payload(item), vapid_private_key, vapid_claims
         )
+        sent += delivered
+        if not _delivered_or_given_up(("medical", str(record["_id"]), record["next_due"], item["stage"]), delivered):
+            continue
         try:
             db.medical_due_reminders_sent.insert_one(
                 {

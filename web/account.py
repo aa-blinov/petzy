@@ -48,6 +48,7 @@ from web.security import (
     is_admin,
     login_required,
     revoke_personal_tokens,
+    revoke_push_subscriptions,
     revoke_user_sessions,
     verify_token,
     verify_user_credentials,
@@ -476,6 +477,7 @@ def reset_password():
         {"$set": {"password_hash": bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()}},
     )
     revoke_user_sessions(username)
+    revoke_push_subscriptions(username)
     revoke_personal_tokens(username)
     _notify(
         user,

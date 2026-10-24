@@ -58,6 +58,16 @@ def send_push_to_subscriptions(
     return sent
 
 
+def inactive_usernames(db, usernames) -> set:
+    """Which of these people have been switched off: nothing is pushed to a deactivated account."""
+    names = [name for name in set(usernames) if name]
+    if not names:
+        return set()
+    return {
+        user["username"] for user in db.users.find({"username": {"$in": names}, "is_active": False}, {"username": 1})
+    }
+
+
 def get_pet_push_subscriptions(db, pet: dict) -> list:
     """The owner's + every shared_with user's active push subscriptions
     for one pet — the recipient list for a notification about that pet,
@@ -65,4 +75,5 @@ def get_pet_push_subscriptions(db, pet: dict) -> list:
     reminders process's ``_iter_subscribed_pets`` does the reverse: given
     the time, find which pets are due; this is given one pet, right now)."""
     usernames = [pet.get("owner"), *pet.get("shared_with", [])]
-    return list(db.push_subscriptions.find({"username": {"$in": usernames}}))
+    off = inactive_usernames(db, usernames)
+    return list(db.push_subscriptions.find({"username": {"$in": [name for name in usernames if name not in off]}}))
