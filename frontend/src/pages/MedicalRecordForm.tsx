@@ -462,20 +462,50 @@ export function MedicalRecordForm() {
   };
   const chosenClinic = profileClinics.find((c) => sameText(c.name, clinicValue));
   const clinicOptions = withCurrent([...profileClinics.map((c) => c.name), ...recordList.map((r) => r.clinic)], clinicValue).map((n) => ({ label: n, value: n }));
+  const clinicOf = (doctor: string) => profileClinics.find((c) => c.doctors.some((d) => sameText(d.name, doctor)));
+  const clinicChosen = !!clinicValue?.trim();
+  // With a clinic chosen only its own doctors are offered (a one-off clinic has none of the profile's), so a doctor never
+  // changes a clinic that was picked: the clinic follows the doctor only when none was chosen, and says so.
   const doctorOptions = withCurrent(
-    [...(chosenClinic ? [chosenClinic] : profileClinics).flatMap((c) => c.doctors.map((d) => d.name)), ...recordList.map((r) => r.vet)],
+    [
+      ...(clinicChosen ? (chosenClinic ? chosenClinic.doctors : []) : profileClinics.flatMap((c) => c.doctors)).map((d) => d.name),
+      ...recordList.map((r) => r.vet).filter((v) => !clinicChosen || !chosenClinic || !clinicOf(v ?? '') || sameText(clinicOf(v ?? '')?.name, chosenClinic.name)),
+    ],
     vetValue,
   ).map((n) => ({ label: n, value: n }));
+  // «Другая…» and «Другой…»: a clinic or a doctor that is not in the lists is typed in this row, no detour to the profile.
+  const OTHER = '__other__';
+  const [clinicOther, setClinicOther] = useState(false);
+  const [vetOther, setVetOther] = useState(false);
+  const [linkNote, setLinkNote] = useState('');
   const pickClinic = (name: string) => {
+    setLinkNote('');
+    if (name === OTHER) {
+      setClinicOther(true);
+      setValue('clinic', '', { shouldDirty: true });
+      return;
+    }
     setValue('clinic', name, { shouldDirty: true });
     // A doctor of another clinic does not stay next to this one.
     const next = profileClinics.find((c) => sameText(c.name, name));
-    if (vetValue && profileClinics.some((c) => c.doctors.some((d) => sameText(d.name, vetValue))) && !next?.doctors.some((d) => sameText(d.name, vetValue))) setValue('vet', '', { shouldDirty: true });
+    if (vetValue && clinicOf(vetValue) && !next?.doctors.some((d) => sameText(d.name, vetValue))) {
+      setValue('vet', '', { shouldDirty: true });
+      setLinkNote(`Врач «${vetValue}» убран: он из другой клиники`);
+    }
   };
   const pickDoctor = (name: string) => {
+    setLinkNote('');
+    if (name === OTHER) {
+      setVetOther(true);
+      setValue('vet', '', { shouldDirty: true });
+      return;
+    }
     setValue('vet', name, { shouldDirty: true });
-    const owner = profileClinics.find((c) => c.doctors.some((d) => sameText(d.name, name)));
-    if (owner?.name && !sameText(owner.name, clinicValue)) setValue('clinic', owner.name, { shouldDirty: true });
+    const owner = clinicOf(name);
+    if (owner?.name && !clinicChosen) {
+      setValue('clinic', owner.name, { shouldDirty: true });
+      setLinkNote(`Клиника «${owner.name}» поставлена по врачу`);
+    }
   };
   const repeatChoices = kind ? REPEAT_CHOICES[kind] ?? [] : [];
 
@@ -908,28 +938,62 @@ export function MedicalRecordForm() {
                   )}
                 />
               )}
-              {clinicOptions.length > 0 ? (
-                <PickerField label="Клиника" value={clinicValue ?? ''} options={clinicOptions} placeholder="Необязательно" empty="Не указана" onChange={pickClinic} />
+              {clinicOptions.length > 0 && !clinicOther ? (
+                <PickerField
+                  label="Клиника"
+                  value={clinicValue ?? ''}
+                  options={[...clinicOptions, { label: 'Другая…', value: OTHER }]}
+                  placeholder="Необязательно"
+                  empty="Не указана"
+                  description={linkNote.startsWith('Клиника') ? linkNote : undefined}
+                  onChange={pickClinic}
+                />
               ) : (
                 <Controller
                   name="clinic"
                   control={control}
                   render={({ field }) => (
-                    <Form.Item label="Клиника">
-                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                    <Form.Item
+                      label="Клиника"
+                      description={
+                        clinicOptions.length > 0 ? (
+                          <button type="button" className="record-push-note__button" onClick={() => setClinicOther(false)}>
+                            Выбрать из списка
+                          </button>
+                        ) : undefined
+                      }
+                    >
+                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Название клиники" maxLength={100} autoFocus={clinicOther} />
                     </Form.Item>
                   )}
                 />
               )}
-              {doctorOptions.length > 0 ? (
-                <PickerField label="Врач" value={vetValue ?? ''} options={doctorOptions} placeholder="Необязательно" empty="Не указан" onChange={pickDoctor} />
+              {doctorOptions.length > 0 && !vetOther ? (
+                <PickerField
+                  label="Врач"
+                  value={vetValue ?? ''}
+                  options={[...doctorOptions, { label: 'Другой…', value: OTHER }]}
+                  placeholder="Необязательно"
+                  empty="Не указан"
+                  description={linkNote.startsWith('Врач') ? linkNote : undefined}
+                  onChange={pickDoctor}
+                />
               ) : (
                 <Controller
                   name="vet"
                   control={control}
                   render={({ field }) => (
-                    <Form.Item label="Врач">
-                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="Необязательно" maxLength={100} />
+                    <Form.Item
+                      label="Врач"
+                      description={
+                        doctorOptions.length > 0 ? (
+                          <button type="button" className="record-push-note__button" onClick={() => setVetOther(false)}>
+                            Выбрать из списка
+                          </button>
+                        ) : undefined
+                      }
+                    >
+                      <Input {...left} value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} placeholder="ФИО врача" maxLength={100} autoFocus={vetOther} />
                     </Form.Item>
                   )}
                 />
