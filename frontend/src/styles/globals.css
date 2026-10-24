@@ -1068,7 +1068,9 @@ select {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4px 8px;
+    /* 2px at the sides: five tabs of 72px at 360px leave «Документы» (11px, 600 when current) about 66px, which the
+       8px of padding cut to «Докумен…» even at 390px. */
+    padding: 4px 2px;
     color: var(--app-text-secondary);
     text-decoration: none;
     white-space: nowrap;
@@ -2058,6 +2060,7 @@ label:has(~ .file-picker-input:focus-visible),
 .adm-button-mini,
 .adm-button-small,
 .adm-switch,
+.adm-input-clear,
 button.chip {
     position: relative;
 }
@@ -2067,6 +2070,7 @@ button.chip {
 .adm-button-mini::after,
 .adm-button-small::after,
 .adm-switch::after,
+.adm-input-clear::after,
 button.chip::after {
     content: '';
     position: absolute;
