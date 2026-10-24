@@ -44,6 +44,8 @@ interface DatePickerFieldProps {
   onTypedProblem?: (message: string) => void;
   /** The form refused to save: an unfinished typed date shows its message now, not only after a wrong last digit. */
   refusals?: number;
+  /** A star by the label: the field must be filled. */
+  required?: boolean;
 }
 
 const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -70,6 +72,7 @@ export function DatePickerField({
   chips,
   onTypedProblem,
   refusals = 0,
+  required,
 }: DatePickerFieldProps) {
   const [visible, setVisible] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -144,6 +147,7 @@ export function DatePickerField({
     <div className="datefield">
     <Form.Item
       label={label}
+      required={required}
       clickable
       arrow
       description={description}
