@@ -198,7 +198,7 @@ async def narrow_token_refused(pg, pet_id):
             )
         check(
             "a token without the events scope is refused, and the answer names the checkbox",
-            is_error and "«Записывать " in text,
+            is_error and "«Добавлять записи»" in text,
             text[:120],
         )
     finally:
