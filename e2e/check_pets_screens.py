@@ -120,7 +120,7 @@ async def main():
                 check(
                     "and takes that person to the events of the pet",
                     other.url.endswith("/pet-events")
-                    and "Записи меняет владелец питомца" in await other.inner_text("body"),
+                    and "Типы записей меняет владелец питомца" in await other.inner_text("body"),
                     other.url.replace(BASE, ""),
                 )
                 await other.goto(BASE + f"/pets/{pet_id}/edit")
