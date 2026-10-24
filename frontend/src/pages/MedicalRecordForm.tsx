@@ -32,6 +32,7 @@ import { PickerField } from '../components/PickerField';
 import { ProductPickerSheet, type ProductGroup } from '../components/ProductPickerSheet';
 import { catalogSpecies, inferProtects, useVaccineCatalog } from '../hooks/useVaccineCatalog';
 import { getApiErrorMessage } from '../utils/apiError';
+import { newFormKey } from '../utils/idempotency';
 import { getCurrentDate, getCurrentTime } from '../utils/dateUtils';
 import { healthRecordsService } from '../services/healthRecords.service';
 import { medicationsListQuery } from '../services/medications.service';
@@ -509,6 +510,8 @@ export function MedicalRecordForm() {
   };
   const repeatChoices = kind ? REPEAT_CHOICES[kind] ?? [] : [];
 
+  // One key per opening of the form: a retry after a lost answer does not store the record twice.
+  const formKey = useRef(newFormKey());
   const weightSaved = useRef(false);
   const save = useMutation({
     mutationFn: async (data: FormData) => {
@@ -540,7 +543,11 @@ export function MedicalRecordForm() {
         input.document_ids.push(id);
       }
       if (isEditing) await medicalRecordsService.update(recordId!, input);
-      else await medicalRecordsService.create(petId!, kind!, input);
+      else {
+        await medicalRecordsService.create(petId!, kind!, input, formKey.current);
+        // Saved: the next record from this same screen («Ещё одну») is a new request, even with the same words.
+        formKey.current = newFormKey();
+      }
       // The visit is recorded, with what was said before it: «К приёму» starts empty for the next one.
       if (kind === 'visit' && !isEditing && card.data?.visit_prep) {
         try {

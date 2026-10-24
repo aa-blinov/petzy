@@ -1,4 +1,5 @@
 import api from './api';
+import { idempotencyHeaders } from '../utils/idempotency';
 import type { FormSettings } from '../utils/formsConfig';
 import type { TilesSettings } from '../utils/tilesConfig';
 import type { PetLook } from '../utils/petLook';
@@ -118,7 +119,7 @@ export const petsService = {
     return response.data.pet;
   },
 
-  async createPet(data: PetCreate): Promise<Pet> {
+  async createPet(data: PetCreate, formKey?: string): Promise<Pet> {
     const formData = new FormData();
     formData.append('name', data.name);
     if (data.species) formData.append('species', data.species);
@@ -136,7 +137,12 @@ export const petsService = {
       formData.append('tiles_settings', JSON.stringify(data.tiles_settings));
     }
 
-    const response = await api.post<{ message: string; pet: Pet }>('/pets', formData, { timeout: 120_000 });
+    // The photo is not part of the hash (its bytes are not text): its name and size stand in for it.
+    const { photo_file: photo, ...fields } = data;
+    const response = await api.post<{ message: string; pet: Pet }>('/pets', formData, {
+      timeout: 120_000,
+      headers: idempotencyHeaders(formKey, { ...fields, photo: photo ? [photo.name, photo.size] : null }),
+    });
     return response.data.pet;
   },
 

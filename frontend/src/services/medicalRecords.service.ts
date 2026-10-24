@@ -1,4 +1,5 @@
 import api from './api';
+import { idempotencyHeaders } from '../utils/idempotency';
 import { deviceTimeZone } from '../utils/timezone';
 
 export type MedicalKind = 'vaccination' | 'parasite' | 'visit' | 'procedure';
@@ -71,8 +72,9 @@ export const medicalRecordsService = {
     return response.data.records;
   },
 
-  async create(petId: string, kind: MedicalKind, data: MedicalRecordInput): Promise<string> {
-    const response = await api.post<{ id: string }>('/medical-records', { ...data, pet_id: petId, kind });
+  async create(petId: string, kind: MedicalKind, data: MedicalRecordInput, formKey?: string): Promise<string> {
+    const body = { ...data, pet_id: petId, kind };
+    const response = await api.post<{ id: string }>('/medical-records', body, { headers: idempotencyHeaders(formKey, body) });
     return response.data.id;
   },
 

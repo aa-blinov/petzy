@@ -34,6 +34,7 @@ import { computePetAge, MONTHS_GENITIVE } from '../utils/relativeTime';
 import { dismissOnboarding } from '../utils/onboarding';
 import { goBack } from '../utils/navigation';
 import { getApiErrorMessage } from '../utils/apiError';
+import { newFormKey } from '../utils/idempotency';
 import { hapticFeedback } from '../utils/haptic';
 import { showToast } from '../utils/toast';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -161,6 +162,8 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
   const [cropTarget, setCropTarget] = useState<{ src: string; filename: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  // One key per opening of the screen: a retry after a lost answer does not add the pet twice.
+  const createKey = useRef(newFormKey());
   const [createdPet, setCreatedPet] = useState<Pet | null>(null);
   const [enablingPush, setEnablingPush] = useState(false);
 
@@ -263,7 +266,8 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
         photo_file: photoFile ?? undefined,
         // Only the events that make sense for this species start on.
         tiles_settings: defaultTilesFor(species),
-      });
+      }, createKey.current);
+      createKey.current = newFormKey();
       await queryClient.invalidateQueries({ queryKey: ['pets'] });
       selectPet(pet);
       setName('');
