@@ -12,6 +12,28 @@
     gap: var(--spacing-lg);
     /* Dates, weights, days and phones stand in columns of digits of one width. */
     font-variant-numeric: tabular-nums;
+    /* A breed, a clinic or a note typed as one long word may break anywhere, or it pushes the card wider
+       than the phone and the pet switcher off the screen. */
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+/* The passport's lines are flex children and grid cells: they may shrink below the width of a long word. */
+.medcard__passport,
+.medcard__passport-body,
+.medcard__pet-facts,
+.medcard__pet-more,
+.medcard__pet-line,
+.medcard__pet-dim,
+.medcard__weight-chip,
+.medcard__attention-body,
+.medcard__risks-body,
+.medcard__row,
+.medcard__row-sub,
+.medcard__fact,
+.medcard__call {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 /* The sheets of the card have no shadow: the record is a page, and a page is

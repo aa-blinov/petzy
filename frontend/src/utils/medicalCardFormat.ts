@@ -32,7 +32,9 @@ type PetFacts = {
  * artifact).
  */
 export function petIdentity(pet: PetFacts): string {
-  return [pet.species, pet.breed?.toLowerCase()].filter(Boolean).join(', ');
+  const line = [pet.species, pet.breed?.toLowerCase()].filter(Boolean).join(', ');
+  // The kind opens the line even when it was typed in small letters («собака»).
+  return line.charAt(0).toUpperCase() + line.slice(1);
 }
 
 /** What else the record says about the pet: the age, the sex, whether the pet is neutered. */
