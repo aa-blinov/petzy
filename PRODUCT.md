@@ -56,6 +56,7 @@ Deliberately not true, and worth knowing before a change:
 - The link for a vet is read only. It cannot write anything.
 - The medical card and the PDF invent nothing and write "not stated" where the record is silent.
 - One fact is entered in one place: weight, the medicines and the documents in their own sections, the vaccinations, the treatments, the visits, the operations and the profile for the vet in the medical card.
+- The repeat date («Следующая») of a vaccination or a treatment follows the record's date by the same interval for as long as it is the form's own (the usual interval put in, or an interval button pressed, also when the record is edited): the pressed button stays pressed. A date set by hand, typed or picked, is the person's and never moves. A date typed in that is unfinished or impossible stops the save with a message; it never silently leaves the old date.
 - The repository and the CI logs are public, so no secret and no user data is printed.
 
 ## Brand Commitments

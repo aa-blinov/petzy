@@ -23,6 +23,7 @@ import { Pill } from 'lucide-react';
 import { SpinnerButton } from '../components/SpinnerButton';
 import { FieldError } from '../components/FieldError';
 import { onInvalidSubmit } from '../utils/formErrors';
+import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
 import { formatAmount, isAmountDraft, parseAmount } from '../utils/stock';
 import { pluralRu } from '../utils/relativeTime';
 import { FormDangerButton } from '../components/FormDangerButton';
@@ -110,14 +111,21 @@ function nextFreeTime(times: string[] | undefined): string {
     return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
+/** The chip says the short name and a screen reader the whole one («Пн» alone is read as two letters). */
+const dayLabel = (short: string, full: string) => (
+    <>
+        <span aria-hidden="true">{short}</span>
+        <span className="sr-only">{full}</span>
+    </>
+);
 const DAYS_OF_WEEK = [
-    { label: 'Пн', value: 0 },
-    { label: 'Вт', value: 1 },
-    { label: 'Ср', value: 2 },
-    { label: 'Чт', value: 3 },
-    { label: 'Пт', value: 4 },
-    { label: 'Сб', value: 5 },
-    { label: 'Вс', value: 6 },
+    { label: dayLabel('Пн', 'Понедельник'), value: 0 },
+    { label: dayLabel('Вт', 'Вторник'), value: 1 },
+    { label: dayLabel('Ср', 'Среда'), value: 2 },
+    { label: dayLabel('Чт', 'Четверг'), value: 3 },
+    { label: dayLabel('Пт', 'Пятница'), value: 4 },
+    { label: dayLabel('Сб', 'Суббота'), value: 5 },
+    { label: dayLabel('Вс', 'Воскресенье'), value: 6 },
 ];
 
 const COMMON_TYPES = ['Таблетка', 'Капсула', 'Ингаляция', 'Капли', 'Укол', 'Мазь', 'Гель', 'Сироп', 'Суспензия', 'Порошок', 'Спрей', 'Паста'];
@@ -317,13 +325,15 @@ export function MedicationForm() {
         mutationFn: async () => {
             await medicationsService.update(id!, { is_active: false, ended_on: getCurrentDate() });
         },
-        onSuccess: () => {
+        onMutate: () => med?.ended_on ?? '',
+        onSuccess: (_result, _vars, endedBefore) => {
             refreshMedicationViews(queryClient);
             release();
             showUndo({
                 message: `Курс «${med?.name ?? 'лекарства'}» завершён`,
                 onUndo: async () => {
-                    await medicationsService.update(id!, { is_active: true });
+                    // The end date the course had before (a planned one) comes back with it, not only the switch.
+                    await medicationsService.update(id!, { is_active: true, ended_on: endedBefore });
                     await refreshMedicationViews(queryClient);
                 },
             });
@@ -390,7 +400,14 @@ export function MedicationForm() {
         }
     });
 
+    // A typed date that is unfinished or impossible is not in the form's value: saving would keep the older one in silence.
+    const typedDates = useTypedDateProblems();
+    const submit = () => {
+        typedDates.refuse();
+        void handleSubmit(onSubmit, onInvalidSubmit)();
+    };
     const onSubmit = (data: MedicationFormData) => {
+        if (typedDates.blocked) return;
         // Changed means different from what the form loaded with: react-hook-form keeps the loaded values as defaults.
         mutation.mutate({ data, stockEdited: !!dirtyFields.inventory_current });
     };
@@ -463,7 +480,7 @@ export function MedicationForm() {
                     <Form
                         layout="horizontal"
                         mode="card"
-                        onFinish={handleSubmit(onSubmit, onInvalidSubmit)}
+                        onFinish={submit}
                         style={{ '--prefix-width': '7em' } as React.CSSProperties}
                     >
                         <Form.Header>Лекарство</Form.Header>
@@ -685,6 +702,7 @@ export function MedicationForm() {
                                     render={({ field }) => (
                                         <Selector
                                             className="selector-chips"
+                                            aria-label="Дни недели"
                                             columns={7}
                                             options={DAYS_OF_WEEK}
                                             multiple
@@ -798,7 +816,14 @@ export function MedicationForm() {
                             render={({ field }) => (
                                 <Form.Item
                                     label="Включить"
-                                    extra={<Switch aria-label="Учёт остатков" checked={field.value} onChange={field.onChange} />}
+                                    // The whole row toggles, not only the small switch (which stops its own tap from reaching the row).
+                                    clickable
+                                    onClick={() => field.onChange(!field.value)}
+                                    extra={
+                                        <span onClick={(event) => event.stopPropagation()}>
+                                            <Switch aria-label="Учёт остатков" checked={field.value} onChange={field.onChange} />
+                                        </span>
+                                    }
                                     description={field.value ? `Будем списывать по ${formatAmount(parseAmount(String(watchedDefaultDose)) || 1)} ${doseUnit} за приём` : undefined}
                                 />
                             )}
@@ -936,6 +961,8 @@ export function MedicationForm() {
                                     value={field.value ?? ''}
                                     onChange={field.onChange}
                                     onBlur={field.onBlur}
+                                    onTypedProblem={typedDates.report('started_on')}
+                                    refusals={typedDates.refusals}
                                     yearsBack={5}
                                     yearsForward={1}
                                     clearLabel="Убрать дату начала"
@@ -952,6 +979,8 @@ export function MedicationForm() {
                                     value={field.value ?? ''}
                                     onChange={field.onChange}
                                     onBlur={field.onBlur}
+                                    onTypedProblem={typedDates.report('ended_on')}
+                                    refusals={typedDates.refusals}
                                     yearsBack={5}
                                     yearsForward={1}
                                     clearLabel="Убрать дату окончания"
@@ -987,7 +1016,7 @@ export function MedicationForm() {
                     }}>
                         <SpinnerButton
                             loading={mutation.isPending || isSubmitting}
-                            onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}
+                            onClick={submit}
                             style={{ borderRadius: 'var(--radius-md)', fontWeight: 500, marginBottom: 'var(--spacing-md)' }}
                         >
                             {/* «Добавить» for a new course, as on the document form («Сохранить» while editing). */}

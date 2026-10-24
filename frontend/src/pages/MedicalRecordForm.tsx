@@ -43,6 +43,8 @@ import { formatAmount } from '../utils/stock';
 import { getPushSubscriptionState, subscribeToPush, type PushSupportState } from '../utils/pushNotifications';
 import { addInterval, daysBetween, DEFAULT_REPEAT, PARASITE_PRODUCTS, parasiteTargetOf, OCCASION_GROUPS, REPEAT_CHOICES } from '../utils/medicalSuggestions';
 import { showToast } from '../utils/toast';
+import { useTypedDateProblems } from '../hooks/useTypedDateProblems';
+import { weightOfDay } from '../utils/visitWeight';
 import { confirmWithProgress } from '../utils/medicalReadiness';
 import { formatFileSize } from '../utils/fileSize';
 import { Camera, FileUp, FileHeart, FileText, X } from 'lucide-react';
@@ -158,6 +160,8 @@ const left = { style: { '--text-align': 'left' } as React.CSSProperties };
     Made to be quick: the date is today, the title is a tap away, the repeat is a
     button, the clinic is already filled in. «Записать снова» and a certificate kept as a
     document both open it pre-filled. */
+type RepeatInterval = { months?: number; years?: number };
+
 /** What the line under «Следующая» says: the reminder it brings, or that there will be none. */
 function repeatHint(kind: MedicalKind, hasDate: boolean, putInByForm: boolean): string {
   if (!hasDate) return 'Без даты напоминания не будет';
@@ -261,8 +265,10 @@ export function MedicalRecordForm() {
     ready: !!kind && (isEditing ? !!record.data : !!card.data),
     release,
   });
+  const typedDates = useTypedDateProblems();
   const date = useWatch({ control, name: 'date' });
-  const weightThatDay = kind === 'visit' ? card.data?.weight?.series.find((point) => point.date === date)?.value : undefined;
+  const dayWeight = kind === 'visit' ? weightOfDay(card.data?.weight?.series, date) : undefined;
+  const weightThatDay = dayWeight?.value;
   const nextDue = useWatch({ control, name: 'next_due' });
   const title = useWatch({ control, name: 'title' });
   const documentIds = useWatch({ control, name: 'document_ids' });
@@ -294,14 +300,22 @@ export function MedicalRecordForm() {
   };
   // The optional fields are closed, except for a record being edited that has something in them.
   const [moreChosen, setMoreChosen] = useState<boolean | null>(null);
-  // The repeat date put in by the form itself (not typed): it moves with the date until the person changes it.
+  // The repeat date that is still the form's own: put in by the default, or taken from an interval chip (and, in a record
+  // being edited, a date that is exactly one of the chips from the record's date). It moves with the date, by the same
+  // interval, for as long as it is untouched; a date set by hand, typed or picked, is the person's and stays.
   const autoDue = useRef('');
+  const autoRule = useRef<{ interval: RepeatInterval; byDefault: boolean } | null>(null);
   useEffect(() => {
-    if (!autoDue.current || !date || nextDue !== autoDue.current) return;
-    const moved = addInterval(date, DEFAULT_REPEAT[kind ?? 'vaccination'] ?? { years: 1 });
+    const rule = autoRule.current;
+    if (!rule || !autoDue.current || !date || nextDue !== autoDue.current) return;
+    const moved = addInterval(date, rule.interval);
     autoDue.current = moved;
     setValue('next_due', moved);
   }, [date, nextDue, kind, setValue]);
+  const followInterval = (interval: RepeatInterval | null, due: string, byDefault = false) => {
+    autoRule.current = interval ? { interval, byDefault } : null;
+    autoDue.current = interval ? due : '';
+  };
 
   // Filled once, when what it needs has arrived: a record being edited, or the
   // defaults (and, when asked, a record or a certificate to copy from) of a new one.
@@ -321,6 +335,9 @@ export function MedicalRecordForm() {
       const r = record.data;
       if (!r) return;
       filled.current = true;
+      // A repeat that is exactly one of the usual intervals from the record's date goes on following the date.
+      const same = r.next_due ? (REPEAT_CHOICES[kind] ?? []).find((choice) => addInterval(r.date, choice) === r.next_due) : undefined;
+      followInterval(same ?? null, r.next_due ?? '');
       reset({
         title: r.title, date: r.date, next_due: r.next_due ?? '', target: r.target ?? '', protects: r.protects ?? '', batch: r.batch ?? '', complaint: r.complaint ?? '', diagnosis: r.diagnosis ?? '',
         recommendations: r.recommendations ?? '', weight: '', clinic: r.clinic ?? '', vet: r.vet ?? '', note: r.note ?? '', document_ids: r.documents.map((d) => d.id),
@@ -341,7 +358,7 @@ export function MedicalRecordForm() {
     const startClinic = params.get('clinic') ?? clinic;
     const startVet = params.get('vet') ?? vet;
     const firstDue = repeating && !source && (!sourceDoc || !!renewId) ? addInterval(startDate, DEFAULT_REPEAT[kind] ?? { years: 1 }) : '';
-    autoDue.current = firstDue;
+    followInterval(firstDue ? DEFAULT_REPEAT[kind] ?? { years: 1 } : null, firstDue, true);
     const blank: FormData = { title: '', date: startDate, next_due: firstDue, target: '', protects: '', batch: '', complaint: kind === 'visit' ? card.data.visit_prep?.complaint ?? '' : '', diagnosis: '', recommendations: '', weight: '', clinic: startClinic, vet: startVet, note: '', document_ids: [] };
     if (!source && !sourceDoc) {
       reset(blank);
@@ -563,7 +580,13 @@ export function MedicalRecordForm() {
     if (accepted.length) setStaged((current) => [...current, ...accepted]);
   };
 
+  const submit = () => {
+    // A date typed in but not finished (or not a date) is not in the form's value: saving would keep the older one.
+    typedDates.refuse();
+    void handleSubmit(onSubmit, onInvalidSubmit)();
+  };
   const onSubmit = (data: FormData) => {
+    if (typedDates.blocked) return;
     if (kind === 'parasite' && !data.target) {
       setTargetError('Укажите, от чего обработка');
       return;
@@ -737,6 +760,8 @@ export function MedicalRecordForm() {
                 value={field.value}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
+                onTypedProblem={typedDates.report('date')}
+                refusals={typedDates.refusals}
                 yearsBack={30}
                 yearsForward={0}
                 quick
@@ -754,8 +779,14 @@ export function MedicalRecordForm() {
                   <DatePickerField
                     label="Следующая"
                     value={field.value ?? ''}
-                    onChange={field.onChange}
+                    onChange={(v) => {
+                      // A date put in by hand is the person's: it stops following the record's date.
+                      followInterval(null, '');
+                      field.onChange(v);
+                    }}
                     onBlur={field.onBlur}
+                    onTypedProblem={typedDates.report('next_due')}
+                    refusals={typedDates.refusals}
                     yearsBack={0}
                     yearsForward={10}
                     placeholder="Повтор не нужен"
@@ -763,7 +794,7 @@ export function MedicalRecordForm() {
                       <ChoiceChip
                         pressed={!nextDue}
                         onClick={() => {
-                          autoDue.current = '';
+                          followInterval(null, '');
                           setValue('next_due', '', { shouldDirty: true, shouldValidate: true });
                         }}
                       >
@@ -776,7 +807,8 @@ export function MedicalRecordForm() {
                             key={choice.label}
                             pressed={nextDue === target}
                             onClick={() => {
-                              autoDue.current = '';
+                              // The chip stays the rule: a later change of the record's date moves this one by the same interval.
+                              followInterval(choice, target);
                               setValue('next_due', target, { shouldDirty: true, shouldValidate: true });
                             }}
                           >
@@ -789,7 +821,7 @@ export function MedicalRecordForm() {
                       error?.message ? (
                         <FieldError message={error.message} />
                       ) : (
-                        repeatHint(kind!, !!nextDue, !!autoDue.current && nextDue === autoDue.current)
+                        repeatHint(kind!, !!nextDue, !!autoRule.current?.byDefault && nextDue === autoDue.current)
                       )
                     }
                   />
@@ -836,9 +868,9 @@ export function MedicalRecordForm() {
                   label="Вес в этот день"
                   clickable
                   arrow
-                  description="Записан отдельно, в дневнике. Открыть вес"
+                  description={`Записан отдельно, в дневнике${dayWeight && dayWeight.count > 1 ? `, в этот день замеров: ${dayWeight.count}, показан последний` : ''}. Открыть вес`}
                   extra={`${formatAmount(weightThatDay)} кг`}
-                  onClick={() => navigate('/form/weight')}
+                  onClick={() => navigate(`/pets/${petId}/medical-card/weight`)}
                 />
               )}
               {!isEditing && (
@@ -971,13 +1003,13 @@ export function MedicalRecordForm() {
 
         {/* A long form: the button stays in reach above the tab bar, not three screens down. */}
         <div className="form-sticky-action safe-area-padding">
-          <SpinnerButton loading={save.isPending || isSubmitting} onClick={() => handleSubmit(onSubmit, onInvalidSubmit)()}>
+          <SpinnerButton loading={save.isPending || isSubmitting} onClick={submit}>
             {isEditing ? 'Сохранить' : 'Добавить'}
           </SpinnerButton>
         </div>
         <div className="safe-area-padding form-actions">
           {isEditing && repeating && (
-            <Button block size="large" fill="outline" color="primary" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=${kind}&from=${recordId}`)}>
+            <Button block size="large" fill="outline" color="primary" onClick={() => navigate(`/pets/${petId}/medical-records/new?kind=${kind}&from=${recordId}`, { replace: true })}>
               {kind === 'parasite' ? 'Записать повторную обработку' : 'Записать повторную прививку'}
             </Button>
           )}
