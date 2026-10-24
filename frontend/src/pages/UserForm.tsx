@@ -46,7 +46,7 @@ const buildUserSchema = (isEditing: boolean) => z
       .regex(USERNAME_RE, 'От 3 до 30 символов: латинские буквы, цифры, точка, дефис или подчёркивание, начиная с буквы или цифры'),
     password: z.string().optional(),
     full_name: z.string().optional(),
-    email: z.string().email('Проверьте email, например name@mail.ru').optional().or(z.literal('')),
+    email: z.string().email('Проверьте почту, например name@mail.ru').optional().or(z.literal('')),
   })
   .superRefine((data, ctx) => {
     const password = data.password ?? '';
@@ -118,12 +118,12 @@ export function UserForm() {
     mutationFn: (data: UserCreate) => usersService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      showToast.success('Пользователь создан');
+      showToast.success('Пользователь добавлен');
       release();
       goBack(navigate, '/admin');
     },
     onError: (err: unknown) => {
-      showToast.failure(getApiErrorMessage(err, 'Не удалось создать пользователя'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось добавить пользователя'));
     },
   });
 
@@ -150,12 +150,12 @@ export function UserForm() {
       usersService.updateUser(username, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      showToast.success('Пользователь обновлён');
+      showToast.success('Пользователь сохранён');
       release();
       goBack(navigate, '/admin');
     },
     onError: (err: unknown) => {
-      showToast.failure(getApiErrorMessage(err, 'Не удалось обновить пользователя'));
+      showToast.failure(getApiErrorMessage(err, 'Не удалось сохранить пользователя'));
     },
   });
 
@@ -249,7 +249,7 @@ export function UserForm() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
             <h1 className="screen-title display-headline" style={{ fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {isEditing ? 'Редактировать пользователя' : 'Создать пользователя'}
+              {isEditing ? 'Изменить пользователя' : 'Новый пользователь'}
             </h1>
           </div>
         </div>
@@ -287,7 +287,7 @@ export function UserForm() {
                     <Input
                       {...field}
                       id="username"
-                      placeholder="Введите имя пользователя"
+                      placeholder="Например, anna"
                       clearable
                       autoComplete="username"
                     />
@@ -329,7 +329,7 @@ export function UserForm() {
                       {...field}
                       id="password"
                       type="password"
-                      placeholder={isEditing ? "Оставьте пустым" : "Введите пароль"}
+                      placeholder={isEditing ? "Оставьте пустым" : "Не короче 8 символов"}
                       clearable
                       autoComplete="new-password"
                     />
@@ -344,11 +344,11 @@ export function UserForm() {
               name="full_name"
               control={control}
               render={({ field }) => (
-                <Form.Item label="Полное имя">
+                <Form.Item label="Имя">
                   <Input
                     {...field}
                     id="full_name"
-                    placeholder="Введите полное имя"
+                    placeholder="Необязательно"
                     clearable
                     autoComplete="name"
                   />
@@ -360,12 +360,12 @@ export function UserForm() {
               name="email"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <Form.Item label="Email" description={error?.message ? <FieldError message={error.message} /> : undefined}>
+                <Form.Item label="Почта" description={error?.message ? <FieldError message={error.message} /> : undefined}>
                   <Input
                     {...field}
                     id="email"
                     type="email"
-                    placeholder="Введите email"
+                    placeholder="Необязательно"
                     clearable
                     autoComplete="email"
                   />
@@ -374,10 +374,12 @@ export function UserForm() {
             />
           </Form>
 
-          <div className="form-actions">
+          <div className="form-sticky-action">
             <SpinnerButton loading={isLoading}>
-              {isEditing ? 'Сохранить' : 'Создать'}
+              {isEditing ? 'Сохранить' : 'Добавить'}
             </SpinnerButton>
+          </div>
+          <div className="form-actions">
             <Button
               block
               size="large"

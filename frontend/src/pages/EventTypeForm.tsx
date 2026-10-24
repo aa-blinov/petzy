@@ -27,6 +27,7 @@ import { FieldError } from '../components/FieldError';
 import { fieldNote } from '../components/FieldNote';
 import { LoadError } from '../components/LoadError';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { RequiredLabel } from '../components/RequiredLabel';
 
 type FieldType = EventTypeField['type'];
 
@@ -306,7 +307,7 @@ export function EventTypeForm() {
         await eventTypesService.create(payload);
       }
       invalidate();
-      showToast.success(isEditing ? 'Тип события обновлён' : 'Тип события создан');
+      showToast.success(isEditing ? 'Тип события сохранён' : 'Тип события добавлен');
       release();
       goBack(navigate, '/event-types');
     } catch (error) {
@@ -360,7 +361,7 @@ export function EventTypeForm() {
         <div className="safe-area-padding" style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div className="screen-head">
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>
-              {isEditing ? 'Редактировать тип' : 'Новый тип события'}
+              {isEditing ? 'Изменить тип' : 'Новый тип события'}
             </h1>
           </div>
           {/* Someone else's type: the form below is there to read, not to fill in. Without this the person
@@ -392,7 +393,7 @@ export function EventTypeForm() {
             className="section-header"
             style={{ marginBottom: 'var(--spacing-sm)', display: 'block' }}
           >
-            Название
+            <RequiredLabel>Название</RequiredLabel>
           </label>
           <Input
             id="event-type-label"
@@ -462,7 +463,7 @@ export function EventTypeForm() {
           {/* No room under this text: the button below carries it (12px), so the pair is one gap and
               not two summed (8px here plus 12px there made 20px, off the spacing ladder). */}
           <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--app-text-secondary)' }}>
-            Дата, время и комментарий добавляются автоматически. Здесь только то, что нужно именно этому типу
+            Дата, время и заметка добавляются автоматически. Здесь только то, что нужно именно этому типу
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
@@ -486,7 +487,7 @@ export function EventTypeForm() {
                   </button>
                 </div>
 
-                <FieldLabel htmlFor={`field-label-${field.key}`}>Подпись поля</FieldLabel>
+                <FieldLabel htmlFor={`field-label-${field.key}`}><RequiredLabel>Подпись поля</RequiredLabel></FieldLabel>
                 <Input
                   id={`field-label-${field.key}`}
                   className="input-row"
@@ -628,11 +629,11 @@ export function EventTypeForm() {
               loading={isSaving}
               onClick={handleSave}
             >
-              {isEditing ? 'Сохранить' : 'Создать'}
+              {isEditing ? 'Сохранить' : 'Добавить'}
             </Button>
           ) : (
             <Button block size="large" onClick={() => navigate('/event-types')}>
-              К типам событий
+              Назад
             </Button>
           )}
           {canEdit && (
