@@ -181,7 +181,7 @@ export function AssistantAccessForm() {
                 Скопировать
               </Button>
               <Button block fill="none" onClick={finish}>
-                Готово
+                Закрыть
               </Button>
             </div>
           </div>
