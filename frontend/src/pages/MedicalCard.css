@@ -290,8 +290,10 @@
     width: 100%;
     justify-content: center;
     padding: 0 var(--spacing-md);
-    border-radius: var(--radius-md);
-    background: var(--app-primary-fill);
+    /* The house rule for every `.medcard__link` is an outline on a transparent ground, marked important in globals.css:
+       the one filled button of the card has to be as important and more specific. */
+    border-color: var(--app-primary-fill) !important;
+    background: var(--app-primary-fill) !important;
     color: var(--app-on-primary-fill);
     font-size: var(--text-md);
     font-weight: 600;

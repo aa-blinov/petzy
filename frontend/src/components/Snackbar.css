@@ -37,6 +37,16 @@
     overflow-wrap: anywhere;
 }
 
+.snackbar--two-actions {
+    /* Two buttons would squeeze the sentence to three words a line: the text takes the whole row, the buttons go under it. */
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.snackbar--two-actions .snackbar__text {
+    flex: 1 1 calc(100% - 40px);
+}
+
 .snackbar__icon {
     flex-shrink: 0;
     color: var(--app-accent-soft);
