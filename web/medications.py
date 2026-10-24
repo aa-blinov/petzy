@@ -48,6 +48,7 @@ from web.schemas import (
     UpcomingDosesQuery,
 )
 from web.idempotency import idempotent
+from web.save_lock import acquire, release, single_flight
 from web.offline import (
     conflict_answer,
     is_stale,
@@ -205,6 +206,7 @@ def _answer_for_course_name(existing: Optional[dict], pet_id: str, local_id: str
     tags=["medications"],
 )
 @require_pet_access
+@single_flight
 @idempotent
 def add_medication():
     """Create a new medication course.
@@ -742,6 +744,7 @@ def log_intake(id):
 
     Closes one slot of the course. With ``slot_date`` and ``slot_time`` it closes that slot: marking at 14:30 closes the 08:00 dose it was given late for. Without them it closes the nearest open slot. A dose already marked, by anybody in the household, is not written twice: 409 ``duplicate_intake`` with ``existing`` says who and when. With a slot, a slot closed by a skip counts as marked too; without one, «already marked» is a given dose of this course within 30 minutes either side. ``force: true`` records it anyway, and then the new intake closes the nearest other open slot of that day (the evening dose, say). Skips and courses without scheduled times are not checked. A date or time that is invalid or more than 8 days ahead answers 422, and so does a dose of zero or less. The stock is drawn down here (a skip takes nothing), the answer says ``ran_out``, and the reminder for that slot stops. A ``local_id`` the device gives makes the mark repeatable: sent again by the same person for the same course, it is answered with the mark it already made (200, the stock taken once) even though that mark closed the slot, and not with 409 ``duplicate_intake``; a name held by another mark answers 409 ``local_id_taken``. Without ``local_id`` a second mark of a closed slot is still 409 ``duplicate_intake``.
     """
+    lock_parts = lock_token = None
     try:
         medication = g.record
         medication_id = medication["_id"]
@@ -794,6 +797,14 @@ def log_intake(id):
             and not is_as_needed(medication)
             and (medication.get("schedule") or {}).get("times")
         ):
+            if _slot_of_the_mark(data) is None:
+                # Without a slot the check is «is there a dose within 30 minutes?», read and then written much later (the
+                # stock is drawn down in between): two marks at the same instant would both find nothing. One mark of
+                # the course at a time, and the next one runs its check after the first has written.
+                lock_parts = ("intake", id)
+                lock_token = acquire(lock_parts)
+                if lock_token is None:
+                    return error_response("idempotency_in_progress")
             existing = _already_handled(id, medication, data, event_dt, username)
             if existing:
                 return _duplicate_answer(existing)
@@ -923,6 +934,9 @@ def log_intake(id):
     except Exception as e:
         app.logger.error(f"Error logging intake: {e}")
         return error_response("internal_error")
+    finally:
+        if lock_parts:
+            release(lock_parts, lock_token)
 
 
 @medications_bp.route("/api/medications/<id>/restock", methods=["POST"])

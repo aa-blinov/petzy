@@ -49,6 +49,7 @@ from web.schemas import (
     ErrorResponse,
 )
 from web.idempotency import idempotent
+from web.save_lock import single_flight
 from web.offline import (
     conflict_answer,
     deleted_by_id_answer,
@@ -248,6 +249,7 @@ def _answer_for_pet_name(existing: dict | None, username: str, local_id: str):
     ),
     tags=["pets"],
 )
+@single_flight
 @idempotent
 def create_pet():
     """Create a new pet.
