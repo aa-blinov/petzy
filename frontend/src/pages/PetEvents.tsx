@@ -169,9 +169,14 @@ export function PetEvents() {
             <h1 className="screen-title" style={{ color: 'var(--app-text-color)', fontSize: 'var(--text-xxl)', fontWeight: 600, margin: 0 }}>События питомца</h1>
           </div>
           {getSelectedPet && (
-            <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
-              Питомец: <span className="pet-name">{getSelectedPet.name}</span>. Какие записи предлагает «+» и в каком порядке
-            </p>
+            <>
+              <p className="pet-subline">
+                Питомец: <strong className="pet-name">{getSelectedPet.name}</strong>
+              </p>
+              <p style={{ margin: 'var(--spacing-2xs) 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.5, color: 'var(--app-text-secondary)' }}>
+                Какие записи предлагает «+» и в каком порядке
+              </p>
+            </>
           )}
         </div>
 

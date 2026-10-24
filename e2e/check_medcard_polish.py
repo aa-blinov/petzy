@@ -227,7 +227,7 @@ async def main():
             left = await pg.inner_text("body")
             check(
                 "after the answer is taken back, leaving asks nothing",
-                "Выйти без сохранения?" not in left and not pg.url.endswith("/visit-prep"),
+                "Не сохранить изменения?" not in left and not pg.url.endswith("/visit-prep"),
                 left[-160:].replace(chr(10), " | "),
             )
             note = (await api(pg, "GET", f"/pets/{pid}/medical-card"))["json"]["card"]["visit_prep"]
