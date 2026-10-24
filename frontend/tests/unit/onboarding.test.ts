@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { dismissOnboarding, hadPets, isOnboardingDismissed, rememberHavingPets } from '../../src/utils/onboarding'
+import { dismissOnboarding, hadPets, isOnboardingDismissed, rememberHavingPets, resumeIndex } from '../../src/utils/onboarding'
 
 // Node держит свой localStorage и он пустой, поэтому хранилище страницы берём у jsdom
 beforeAll(() => {
@@ -78,5 +78,23 @@ describe('hadPets', () => {
       throw new Error('storage blocked')
     })
     expect(hadPets('anna')).toBe(false)
+  })
+})
+
+describe('resumeIndex', () => {
+  const steps = ['welcome', 'diary', 'family', 'species', 'name', 'notify', 'done']
+  const resumable = ['welcome', 'diary', 'family', 'species', 'name']
+
+  it('comes back to the step the person was on, the name step included', () => {
+    expect(resumeIndex(steps, 'diary', resumable)).toBe(1)
+    expect(resumeIndex(steps, 'name', resumable)).toBe(4)
+  })
+  it('starts over when nothing, something unknown or a step after the pet was saved', () => {
+    expect(resumeIndex(steps, null, resumable)).toBe(0)
+    expect(resumeIndex(steps, '3', resumable)).toBe(0)
+    expect(resumeIndex(steps, 'notify', resumable)).toBe(0)
+  })
+  it('starts over when the step is not in this flow', () => {
+    expect(resumeIndex(['welcome', 'diary', 'family'], 'name', resumable)).toBe(0)
   })
 })
