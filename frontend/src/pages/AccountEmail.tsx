@@ -140,7 +140,7 @@ export function AccountEmail() {
               </div>
             )}
             <Form layout="vertical" mode="card">
-              <Form.Item label="Адрес почты" description={fieldNote({ error: saveEmailError ?? undefined, value, max: 254 })}>
+              <Form.Item label="Почта" description={fieldNote({ error: saveEmailError ?? undefined, value, max: 254 })}>
                 <Input type="email" value={value} onChange={setEmail} placeholder="name@example.com" clearable maxLength={254} autoComplete="email" />
               </Form.Item>
               <Form.Item

@@ -527,7 +527,7 @@ export function PetForm() {
                     onClick={() => setGenderPickerVisible(true)}
                   >
                     <span style={{ color: field.value ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
-                      {selectedLabel || 'Не указан'}
+                      {field.value ? selectedLabel : 'Выберите'}
                     </span>
                     <Picker
                       columns={[GENDER_OPTIONS]}
@@ -564,7 +564,7 @@ export function PetForm() {
                     onClick={() => setNeuteredPickerVisible(true)}
                   >
                     <span style={{ color: value !== undefined ? 'var(--app-text-primary)' : 'var(--app-text-tertiary)' }}>
-                      {selectedLabel || 'Не указано'}
+                      {(value !== undefined && selectedLabel) || 'Выберите'}
                     </span>
                     <Picker
                       columns={[NEUTERED_OPTIONS]}
