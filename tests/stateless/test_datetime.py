@@ -72,7 +72,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_datetime(date_str, time_str, allow_future=True, max_future_days=1)
-        assert "не может быть более чем на 1 день(дней) в будущем" in str(exc_info.value)
+        assert "не может быть более чем на 1 день в будущем" in str(exc_info.value)
 
     def test_parse_datetime_future_date_not_allowed(self):
         """Test parsing future date when not allowed."""
@@ -82,7 +82,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_datetime(date_str, time_str, allow_future=False, max_future_days=0)
-        assert "не может быть более чем на 0 день(дней) в будущем" in str(exc_info.value)
+        assert "не может быть в будущем" in str(exc_info.value)
 
     def test_parse_datetime_past_date_too_old(self):
         """Test parsing date that is too old."""
@@ -160,7 +160,7 @@ class TestDateTimeParsing:
 
         with pytest.raises(ValueError) as exc_info:
             parse_date(date_str, allow_future=False)
-        assert "не может быть более чем на 0 день(дней) в будущем" in str(exc_info.value)
+        assert "не может быть в будущем" in str(exc_info.value)
 
     def test_parse_date_future_allowed_when_set(self):
         """Test that future dates are allowed when explicitly set."""

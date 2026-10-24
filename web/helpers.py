@@ -27,6 +27,7 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     pass
 
+from web.ru_text import is_strict_date, is_strict_time, too_far_ahead_text, too_far_back_text
 import web.app as app  # use app.db and app.logger so test patches (web.app.db) are visible
 from web import storage
 from web.errors import error_response
@@ -64,6 +65,9 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
         raise ValueError("Требуется строка с датой")
 
     try:
+        # Exactly YYYY-MM-DD and HH:MM: strptime alone also takes «2026-1-5» and «8:5».
+        if not is_strict_date(date_str) or (time_str and not is_strict_time(time_str)):
+            raise ValueError("not strict")
         if time_str:
             dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
         else:
@@ -82,10 +86,10 @@ def parse_datetime(date_str, time_str=None, allow_future=True, max_future_days=1
     max_past = now - timedelta(days=max_past_years * 365)
 
     if dt > max_future:
-        raise ValueError(f"Дата не может быть более чем на {max_future_days} день(дней) в будущем")
+        raise ValueError(too_far_ahead_text(max_future_days))
 
     if dt < max_past:
-        raise ValueError(f"Дата не может быть более чем на {max_past_years} лет в прошлом")
+        raise ValueError(too_far_back_text(max_past_years))
 
     return dt
 
@@ -140,7 +144,7 @@ def parse_event_datetime(date_str, time_str, context="", tz=None):
     elif date_str or time_str:
         raise ValueError("Дата и время должны быть указаны вместе")
     else:
-        return _entry_now(tz)
+        return _now_to_the_minute(tz)
 
 
 def valid_tz(name) -> Optional[str]:
@@ -244,7 +248,14 @@ def validate_pet_access(pet_id, username):
     return pet is not None, error
 
 
-def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, username=None, max_future_days=1, tz=None):
+def _now_to_the_minute(tz) -> datetime:
+    """«Now» for a record that was given no time: whole minutes, as every time the app writes (HH:MM)."""
+    return _entry_now(tz).replace(second=0, microsecond=0)
+
+
+def parse_event_datetime_safe(
+    date_str, time_str, context="", pet_id=None, username=None, max_future_days=1, tz=None, allow_now=True
+):
     """
     Safely parse event datetime with error handling and logging.
 
@@ -264,8 +275,13 @@ def parse_event_datetime_safe(date_str, time_str, context="", pet_id=None, usern
             log_context = f"pet_id={pet_id}, user={username}" if pet_id and username else ""
             logger.warning(f"Invalid datetime format for {context}: {log_context}, error={e}")
             return None, error_response("validation_error", str(e))
-    else:
-        return _entry_now(tz), None
+    if date_str or time_str or not allow_now:
+        # One half given: «now» would silently drop the half that was typed (a date with an empty time became today).
+        message = "Дата и время должны быть указаны вместе"
+        log_context = f"pet_id={pet_id}, user={username}" if pet_id and username else ""
+        logger.warning(f"Half a datetime for {context}: {log_context}")
+        return None, error_response("validation_error", message)
+    return _now_to_the_minute(tz), None
 
 
 # A deleted event stays in the stand as a tombstone for 30 days, so that the devices that sync can remove it. No

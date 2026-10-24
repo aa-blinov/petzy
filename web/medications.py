@@ -1038,6 +1038,7 @@ def update_intake(id):
             g.username,
             max_future_days=UPCOMING_LOOKAHEAD_DAYS + 1,
             tz=data.tz,
+            allow_now=False,
         )
         if dt_error:
             return dt_error[0], dt_error[1]

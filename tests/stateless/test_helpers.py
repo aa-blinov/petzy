@@ -132,32 +132,38 @@ class TestParseEventDateTimeSafe:
         assert "Неверный формат даты/времени" in data["error"]
         assert data["code"] == "validation_error"
 
-    def test_parse_event_datetime_safe_missing_date_or_time(self, client, mock_db, regular_user_token, test_pet):
-        """When date or time is missing, should return current datetime without error."""
+    def test_parse_event_datetime_safe_half_given_is_refused(self, client, mock_db, regular_user_token, test_pet):
+        """A date without a time (or the reverse) is refused: it used to become «now» and drop what was typed."""
+        from web.app import app
         from web.helpers import parse_event_datetime_safe
 
-        # Missing time
-        event_dt1, error_response1 = parse_event_datetime_safe(
-            datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            None,
-            "test-context",
-            str(test_pet["_id"]),
-            "testuser",
-        )
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        with app.app_context():
+            for date_str, time_str in ((today, None), (today, ""), (None, "10:00"), ("", "10:00")):
+                event_dt, error = parse_event_datetime_safe(date_str, time_str, "ctx", str(test_pet["_id"]), "u")
+                assert event_dt is None
+                assert error[1] == 422
 
-        # Missing date
-        event_dt2, error_response2 = parse_event_datetime_safe(
-            None,
-            datetime.now(timezone.utc).strftime("%H:%M"),
-            "test-context",
-            str(test_pet["_id"]),
-            "testuser",
-        )
+    def test_parse_event_datetime_safe_neither_is_now_to_the_minute(self, mock_db):
+        from web.app import app
+        from web.helpers import parse_event_datetime_safe
 
-        assert error_response1 is None
-        assert error_response2 is None
-        assert isinstance(event_dt1, datetime)
-        assert isinstance(event_dt2, datetime)
+        with app.app_context():
+            event_dt, error = parse_event_datetime_safe("", "")
+            assert error is None
+            assert event_dt.second == 0 and event_dt.microsecond == 0
+
+            event_dt, error = parse_event_datetime_safe("", "", allow_now=False)
+            assert event_dt is None and error[1] == 422
+
+    def test_non_padded_date_or_time_is_refused(self, mock_db):
+        from web.app import app
+        from web.helpers import parse_event_datetime_safe
+
+        with app.app_context():
+            for date_str, time_str in (("2026-1-5", "10:00"), ("2026-01-05", "8:5")):
+                event_dt, error = parse_event_datetime_safe(date_str, time_str)
+                assert event_dt is None and error[1] == 422
 
 
 class TestParseEventDatetime:
@@ -178,10 +184,11 @@ class TestParseEventDatetime:
         from web.helpers import parse_event_datetime
         from datetime import datetime, timedelta
 
-        before = datetime.now()
+        before = datetime.now().replace(second=0, microsecond=0)
         result = parse_event_datetime("", "")
         after = datetime.now()
-        assert before - timedelta(seconds=1) <= result <= after + timedelta(seconds=1)
+        assert before <= result <= after + timedelta(seconds=1)
+        assert result.second == 0 and result.microsecond == 0
 
     def test_only_date_present_raises(self):
         from web.helpers import parse_event_datetime

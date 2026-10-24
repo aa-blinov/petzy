@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import re
 from typing import Optional, List, Annotated, Any, Dict, Literal
 from zoneinfo import ZoneInfo
+
+from web.ru_text import is_strict_date, is_strict_time, too_far_ahead_text, too_far_back_text
 from pydantic import (
     BaseModel as PydanticBaseModel,
     BeforeValidator,
@@ -74,6 +76,10 @@ def validate_date_logic(v: str, allow_future: bool = True, max_future_days: int 
     """Common logic for date validation."""
     if not v:
         return v
+    # Exactly YYYY-MM-DD: strptime alone takes «2026-1-5», and a date is compared as text later (the latest record,
+    # the order of a course), where «2026-9-1» would come after «2026-10-01».
+    if not is_strict_date(v):
+        raise ValueError("Неверный формат даты. Используйте YYYY-MM-DD")
     try:
         dt = datetime.strptime(v, "%Y-%m-%d")
     except ValueError:
@@ -88,13 +94,13 @@ def validate_date_logic(v: str, allow_future: bool = True, max_future_days: int 
     if allow_future:
         max_future = now + timedelta(days=max_future_days)
         if dt > max_future:
-            raise ValueError(f"Дата не может быть более чем на {max_future_days} день в будущем")
+            raise ValueError(too_far_ahead_text(max_future_days))
 
     max_past = now - timedelta(days=max_past_years * 365)
     if dt < max_past:
-        raise ValueError(f"Дата не может быть более чем на {max_past_years} лет в прошлом")
+        raise ValueError(too_far_back_text(max_past_years))
 
-    return v
+    return dt.strftime("%Y-%m-%d")
 
 
 # ============================================================================
@@ -1630,9 +1636,7 @@ class HealthRecordBase(BaseModel):
         """Validate time format."""
         if not v:
             return v
-        try:
-            datetime.strptime(v, "%H:%M")
-        except ValueError:
+        if not is_strict_time(v):
             raise ValueError("Неверный формат времени. Используйте HH:MM")
         return v
 
@@ -1658,9 +1662,7 @@ class HealthRecordUpdateBase(BaseModel):
         """Validate time format."""
         if not v:
             return v
-        try:
-            datetime.strptime(v, "%H:%M")
-        except ValueError:
+        if not is_strict_time(v):
             raise ValueError("Неверный формат времени. Используйте HH:MM")
         return v
 
@@ -2651,7 +2653,9 @@ class MedicationIntakeCreate(BaseModel):
         None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="День приёма по расписанию, который закрывает эта отметка"
     )
     slot_time: Optional[str] = Field(
-        None, pattern=r"^\d{2}:\d{2}$", description="Время приёма по расписанию (08:00), которое закрывает эта отметка"
+        None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
+        description="Время приёма по расписанию (08:00), которое закрывает эта отметка",
     )
     force: bool = Field(
         False,
