@@ -94,7 +94,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
     if (value === null || value.trim() === '') delete next[row.typeKey][row.field];
     else next[row.typeKey][row.field] = value.trim();
     if (!Object.keys(next[row.typeKey]).length) delete next[row.typeKey];
-    return persist(next, value === null || value.trim() === '' ? 'Забыто' : 'Сохранено');
+    return persist(next, value === null || value.trim() === '' ? 'Значение забыто' : 'Значение сохранено');
   };
 
   const open = (row: Row) => {
@@ -143,7 +143,7 @@ function FormDefaultsFor({ pet }: { pet: Pet }) {
       confirmText: 'Забыть',
       cancelText: 'Отмена',
     });
-    if (confirmed) await persist({}, 'Забыто');
+    if (confirmed) await persist({}, 'Значения забыты');
   };
 
   const isSelect = editing?.def?.type === 'select';

@@ -210,7 +210,7 @@ function PetCard({
     onTrigger: onEdit,
   };
   // Only the owner can delete a pet (the backend refuses anyone else);
-  // someone it's shared with gets «Выйти» in the same place instead.
+  // someone it's shared with gets «Выйти из доступа» in the same place instead.
   const rightAction: SwipeAction = pet.current_user_is_owner
     ? {
         icon: <Trash2 size={20} strokeWidth={2.4} />,
@@ -220,7 +220,7 @@ function PetCard({
       }
     : {
         icon: <LogOut size={20} strokeWidth={2.4} />,
-        label: 'Выйти',
+        label: 'Выйти из доступа',
         color: 'var(--app-danger-color)',
         onTrigger: onDelete,
       };
