@@ -269,7 +269,16 @@ export function MedicalRecordForm() {
   const typedDates = useTypedDateProblems();
   const date = useWatch({ control, name: 'date' });
   const dayWeight = kind === 'visit' ? weightOfDay(card.data?.weight?.series, date) : undefined;
-  const weightThatDay = dayWeight?.value;
+  // The weighing this visit names, when it has one and it still exists: its own weight, not a guess among the day's.
+  const linkedWeightId = kind === 'visit' && isEditing ? record.data?.weight_event_id ?? undefined : undefined;
+  const linkedWeight = useQuery({
+    queryKey: ['weight-of-visit', linkedWeightId],
+    queryFn: () => healthRecordsService.get(linkedWeightId!),
+    enabled: !!linkedWeightId,
+    retry: false,
+  });
+  const linkedValue = Number(linkedWeight.data?.fields?.weight);
+  const weightThatDay = linkedWeightId && Number.isFinite(linkedValue) && linkedValue > 0 ? linkedValue : dayWeight?.value;
   const nextDue = useWatch({ control, name: 'next_due' });
   const title = useWatch({ control, name: 'title' });
   const documentIds = useWatch({ control, name: 'document_ids' });
@@ -529,6 +538,8 @@ export function MedicalRecordForm() {
         complaint: kind === 'visit' ? data.complaint?.trim() || null : null,
         diagnosis: kind === 'visit' ? data.diagnosis?.trim() || null : null,
         recommendations: kind === 'visit' ? data.recommendations?.trim() || null : null,
+        // An edit sends the link it was opened with again: the save replaces the whole record.
+        weight_event_id: kind === 'visit' && isEditing ? recorded?.weight_event_id ?? null : null,
         document_ids: [...data.document_ids],
       };
       // The new files first, each one a document of the pet filed by the kind of record; the record then
@@ -562,13 +573,22 @@ export function MedicalRecordForm() {
       const weight = kind === 'visit' && !isEditing ? Number((data.weight ?? '').replace(',', '.')) : 0;
       if (weight > 0) {
         try {
-          await healthRecordsService.create('weight', {
+          const weighed = await healthRecordsService.create('weight', {
             pet_id: petId!,
             date: data.date,
             time: data.date === today ? getCurrentTime() : '12:00',
             fields: { weight },
           });
           weightSaved.current = true;
+          // The visit points at the weighing said at it, so that its row shows this weight and opens it. Best effort: the
+          // visit and the weighing are both saved already.
+          if (weighed.id && createdId) {
+            try {
+              await medicalRecordsService.update(createdId, { ...input, weight_event_id: weighed.id });
+            } catch {
+              /* without the link the row falls back to the weight of that day */
+            }
+          }
         } catch {
           showToast.failure('Визит сохранён, а вес не записался. Добавьте его в ленте');
         }
@@ -934,9 +954,11 @@ export function MedicalRecordForm() {
                   label="Вес в этот день"
                   clickable
                   arrow
-                  description={`Записан отдельно, в дневнике${dayWeight && dayWeight.count > 1 ? `, в этот день замеров: ${dayWeight.count}, показан последний` : ''}. Открыть вес`}
+                  description={`Записан отдельно, в дневнике${!linkedWeightId && dayWeight && dayWeight.count > 1 ? `, в этот день замеров: ${dayWeight.count}, показан последний` : ''}. Открыть вес`}
                   extra={`${formatAmount(weightThatDay)} кг`}
-                  onClick={() => navigate(`/pets/${petId}/medical-card/weight`)}
+                  onClick={() =>
+                    navigate(linkedWeightId && linkedWeight.data ? `/form/weight/${linkedWeightId}` : `/pets/${petId}/medical-card/weight`)
+                  }
                 />
               )}
               {!isEditing && (

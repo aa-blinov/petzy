@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultTilesFor, getSpecies, MORE_SPECIES, neuteringLabel, SPECIES, speciesLabel, TILE_SPECIES } from '../../src/utils/species'
+import { defaultTilesFor, getSpecies, MORE_SPECIES, neuteringLabel, SPECIES, speciesLabel, suggestedFirst, TILE_SPECIES } from '../../src/utils/species'
 
 describe('getSpecies', () => {
   it('по ключу находит вид', () => {
@@ -125,5 +125,23 @@ describe('список видов', () => {
     expect(getSpecies('fish').neutering).toBe(false)
     expect(getSpecies('turtle').neutering).toBe(false)
     expect(getSpecies('cat').neutering).toBe(true)
+  })
+})
+
+describe('suggestedFirst', () => {
+  const tiles = [{ id: 'uv_lamp' }, { id: 'brushing' }, { id: 'misting' }, { id: 'litter' }, { id: 'play' }];
+
+  it('puts what the species suggests first, in its own order, and keeps the rest as they were', () => {
+    expect(suggestedFirst(tiles, ['litter', 'brushing']).map((t) => t.id)).toEqual(['litter', 'brushing', 'uv_lamp', 'misting', 'play']);
+  })
+
+  it('hides nothing and does not change the list it is given', () => {
+    const copy = [...tiles]
+    expect(suggestedFirst(tiles, ['play'])).toHaveLength(tiles.length)
+    expect(tiles).toEqual(copy)
+  })
+
+  it('leaves the order alone when nothing is suggested', () => {
+    expect(suggestedFirst(tiles, []).map((t) => t.id)).toEqual(tiles.map((t) => t.id))
   })
 })

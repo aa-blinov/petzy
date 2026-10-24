@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { buildTiles, byTileOrder, isTileShown } from '../utils/tilesConfig';
 import { buildEventDisplayConfigs } from '../utils/eventDisplay';
+import { getSpecies, suggestedFirst } from '../utils/species';
 import { useEventTypes } from '../hooks/useEventTypes';
 import { usePetTilesSettings } from '../hooks/usePetTilesSettings';
 import { usePet } from '../hooks/usePet';
@@ -42,7 +43,11 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
   );
   // The types this pet does not show as tiles: a one-off record of one of them is logged from here, without adding the type to
   // the pet first.
-  const others = buildTiles(eventTypes).filter((t) => t.isTile !== false && !isTileShown(tilesSettings, t.id));
+  // The ones that suit this kind of animal come first: a cat's list does not open on a terrarium's lamp.
+  const others = suggestedFirst(
+    buildTiles(eventTypes).filter((t) => t.isTile !== false && !isTileShown(tilesSettings, t.id)),
+    getSpecies(getSelectedPet?.species).suggested,
+  );
   const [othersOpen, setOthersOpen] = useState(false);
   const isOwner = getSelectedPet?.current_user_is_owner !== false;
   // The list of the others closes with the sheet: the next opening starts with the pet's own tiles.
