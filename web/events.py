@@ -59,7 +59,7 @@ from web.builtin_event_types import BUILTIN_TYPE_ORDER, HARD_BOUNDS
 from web.security import get_current_user, is_admin, login_required
 from web.idempotency import idempotent
 from web.save_lock import acquire, release
-from web.offline import conflict_answer, is_stale, version_guard
+from web.offline import conflict_answer, is_stale, next_stamp, version_guard
 from web.sync import log_deletion
 
 
@@ -914,7 +914,7 @@ def _update_event_record(record: dict):
             return error_response("validation_error", field_error)
         update_data["fields"] = cleaned_fields
 
-    update_data["updated_at"] = datetime.now(timezone.utc)
+    update_data["updated_at"] = next_stamp(record)
     result = app.db[EVENTS_COLLECTION].update_one(
         {"_id": record["_id"], **version_guard(record, data.base_version)}, {"$set": update_data}
     )

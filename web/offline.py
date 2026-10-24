@@ -11,7 +11,7 @@ refused with 409 ``conflict`` and the record as it is now, because the stand doe
 fields itself. Without ``base_version`` the change is applied as it always was.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable, Optional
 
@@ -49,6 +49,30 @@ def record_version(record: dict) -> str:
         return utc_iso(changed)
     # Already written the API's way (a record that has been through its serializer).
     return changed if isinstance(changed, str) else ""
+
+
+def next_stamp(record: dict) -> datetime:
+    """The moment to write as a record's new ``updated_at``: now, but never within the second of its last change.
+
+    The version is that moment to the second (a Swift client refuses a fraction), so two edits in one second would leave
+    the version as it was, and an edit made from the old copy would pass for a current one. Every write of a record
+    that is versioned moves the version on by at least a second: the stamp may run a second or two ahead of the clock
+    while a record is edited in bursts, which nothing reads as a time of day.
+    """
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    previous = record.get("edited_at") or record.get("updated_at") or record.get("created_at")
+    if isinstance(previous, str):
+        try:
+            previous = datetime.fromisoformat(previous.replace("Z", "+00:00"))
+        except ValueError:
+            previous = None
+    if isinstance(previous, datetime):
+        if previous.tzinfo is None:
+            previous = previous.replace(tzinfo=timezone.utc)
+        floor = previous.replace(microsecond=0) + timedelta(seconds=1)
+        if now < floor:
+            return floor
+    return now
 
 
 def is_stale(base_version: Optional[str], record: dict) -> bool:

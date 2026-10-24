@@ -268,3 +268,38 @@ def test_a_pets_photo_is_not_stored_by_an_edit_that_is_refused(
     stored = mock_db["pets"].find_one({"_id": test_pet["_id"]})
     assert stored["name"] == "Test Cat"
     assert not stored.get("photo_file_id")
+
+
+@pytest.mark.health_records
+class TestTwoEditsInOneSecond:
+    def test_a_second_edit_from_the_same_old_copy_is_refused_even_in_the_same_second(
+        self, client, mock_db, regular_user_token, kind, made
+    ):
+        record_id, version = made
+        change, _ = CHANGES[kind.name]
+
+        first = client.put(
+            URLS[kind.name].format(record_id),
+            json={**change, "base_version": version},
+            headers=_auth(regular_user_token),
+        )
+        second = client.put(
+            URLS[kind.name].format(record_id),
+            json={**change, "base_version": version},
+            headers=_auth(regular_user_token),
+        )
+
+        assert first.status_code == 200
+        assert (second.status_code, second.get_json()["code"]) == (409, "conflict")
+
+    def test_every_write_moves_the_version_on_by_at_least_a_second(self, mock_db, kind, made):
+        from web.offline import next_stamp
+
+        record_id, _ = made
+        stored = _stored(mock_db, kind, record_id)
+
+        stamp = next_stamp(stored)
+        previous = stored.get("edited_at") or stored.get("updated_at") or stored.get("created_at")
+        assert stamp.replace(tzinfo=None) >= previous.replace(microsecond=0) + __import__("datetime").timedelta(
+            seconds=1
+        )

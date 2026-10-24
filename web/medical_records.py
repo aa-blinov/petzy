@@ -45,6 +45,7 @@ from web.save_lock import single_flight
 from web.offline import (
     conflict_answer,
     is_stale,
+    next_stamp,
     record_version,
     require_local_record_access,
     tombstone_for_name,
@@ -432,7 +433,7 @@ def _update_record(record: dict):
         return error_response("validation_error", "Выберите, от чего обработка")
     if not _own_documents(g.pet_id, fields["document_ids"]):
         return error_response("validation_error", "Документ не найден среди документов этого питомца")
-    changes = {**_stored(fields, kind), "updated_at": datetime.now(timezone.utc)}
+    changes = {**_stored(fields, kind), "updated_at": next_stamp(record)}
     result = app.db.medical_records.update_one(
         {"_id": record["_id"], **version_guard(record, data.base_version)}, {"$set": changes}
     )

@@ -52,6 +52,7 @@ from web.save_lock import acquire, release, single_flight
 from web.offline import (
     conflict_answer,
     is_stale,
+    next_stamp,
     record_version,
     require_local_record_access,
     tombstone_for_name,
@@ -487,7 +488,7 @@ def _update_course(medication: dict, data):
         if started and ended and ended < started:
             return error_response("validation_error", "Окончание курса раньше его начала")
 
-        update_data["updated_at"] = update_data["edited_at"] = now_utc()
+        update_data["updated_at"] = update_data["edited_at"] = next_stamp(medication)
         result = app.db.medications.update_one(
             {"_id": medication_id, **version_guard(medication, data.base_version)}, {"$set": update_data}
         )
