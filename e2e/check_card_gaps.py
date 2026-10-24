@@ -39,8 +39,10 @@ async def main():
                 body[-200:].replace(chr(10), " | "),
             )
             check(
-                "and no PDF of an empty card is offered yet",
-                await pg.get_by_role("button", name="Скачать PDF").count() == 0,
+                "the PDF of an empty card is on the page but disabled, and the reason is beside it",
+                await pg.get_by_role("button", name="Скачать PDF").count() == 1
+                and await pg.get_by_role("button", name="Скачать PDF").is_disabled()
+                and await pg.get_by_role("button", name="Ссылка для врача").is_disabled(),
             )
             body = await wait_until(pg, lambda t: "Не хватает:" in t)
             check(
