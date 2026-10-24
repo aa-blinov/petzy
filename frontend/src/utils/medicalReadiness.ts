@@ -78,18 +78,51 @@ export function listWords(items: string[]): string {
 
 /** «Прививка добавлена. Заполнено 3 из 5.» after a save: the owner sees the card is getting there.
     The saved thing is confirmed at once; the count comes with the fresh card and is left out if it can't be had. */
-export async function confirmWithProgress(queryClient: QueryClient, petId: string, saved: string, action?: { label: string; run: () => void }): Promise<void> {
+export async function confirmWithProgress(
+  queryClient: QueryClient,
+  petId: string,
+  saved: string,
+  action?: { label: string; run: () => void },
+  options: ProgressOptions = {},
+): Promise<void> {
+  const show = (message: string) => {
+    // «Отменить» takes the record back; next to another action it is the second button, alone it is the only one.
+    const undo = options.undo ? { label: 'Отменить', run: () => runUndo(options.undo!) } : undefined;
+    if (action && undo) showSnackbar({ message, tone: 'success', action, secondaryAction: undo });
+    else if (action || undo) showSnackbar({ message, tone: 'success', action: action ?? undo });
+    else showToast.success(message);
+  };
   try {
     const card = await queryClient.fetchQuery({ queryKey: ['medical-card', petId], queryFn: () => medicalCardService.get(petId), staleTime: 0 });
     const checks = readinessChecks(card, petId);
-    const done = checks.filter((c) => c.done).length;
-    const message = done === checks.length ? `${saved}. Главное для врача заполнено` : `${saved}. Заполнено ${done} из ${checks.length}`;
-    if (action) showSnackbar({ message, tone: 'success', action });
-    else showToast.success(message);
+    show(progressMessage(saved, checks.filter((c) => c.done).length, checks.length, options.before));
   } catch {
-    if (action) showSnackbar({ message: saved, tone: 'success', action });
-    else showToast.success(saved);
+    show(saved);
   }
+}
+
+export interface ProgressOptions {
+  /** How many of the checks were done before this save: the count is said only when the save changed it. */
+  before?: number;
+  /** Takes the saved thing back; offered as «Отменить». */
+  undo?: () => Promise<void>;
+}
+
+/** What follows «Запись добавлена»: the count of the card, but only when this save moved it (a second vaccination
+    does not make «Заполнено 3 из 5» any more true than it was a minute ago). Without a count to compare, it is said. */
+export function progressMessage(saved: string, done: number, total: number, before?: number): string {
+  if (before !== undefined && before === done) return saved;
+  return done === total ? `${saved}. Главное для врача заполнено` : `${saved}. Заполнено ${done} из ${total}`;
+}
+
+async function runUndo(undo: () => Promise<void>): Promise<void> {
+  try {
+    await undo();
+  } catch {
+    showToast.failure('Не удалось отменить');
+    return;
+  }
+  showToast.success('Отменено');
 }
 
 /** The one line the feed shows under «Медкарта»: what is overdue first, else how far the card is filled in. */

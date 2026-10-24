@@ -14,12 +14,12 @@ export function Snackbar() {
 
 function Bar({ snackbar }: { snackbar: NonNullable<ReturnType<typeof getSnackbar>> }) {
   const [pending, setPending] = useState(false);
-  const { id, tone, message, action } = snackbar;
+  const { id, tone, message, action, secondaryAction } = snackbar;
 
-  const press = async () => {
+  const press = async (which: 'action' | 'secondary' = 'action') => {
     if (pending) return;
     setPending(true);
-    const ok = await runSnackbarAction(id);
+    const ok = await runSnackbarAction(id, which);
     if (!ok) setPending(false);
   };
 
@@ -30,6 +30,19 @@ function Bar({ snackbar }: { snackbar: NonNullable<ReturnType<typeof getSnackbar
       {tone === 'success' && <Check className="snackbar__icon" size={18} strokeWidth={2.4} aria-hidden />}
       {tone === 'error' && <CircleAlert className="snackbar__icon" size={18} strokeWidth={2.2} aria-hidden />}
       <span className="snackbar__text">{message}</span>
+      {action && secondaryAction && (
+        <button
+          type="button"
+          className="snackbar__action"
+          disabled={pending}
+          onClick={(event) => {
+            event.stopPropagation();
+            void press('secondary');
+          }}
+        >
+          {secondaryAction.label}
+        </button>
+      )}
       {action && (
         <button
           type="button"
