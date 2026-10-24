@@ -83,7 +83,7 @@
     --app-primary-fill: #AD5830;
     --app-on-primary-fill: #FFFFFF;
     /* Text and outlines in copper: the deeper tone reads 4.5:1+ on the field fill (the fill tone, #AD5830, is 4.2). */
-    --app-primary-text: #9F4F2A;
+    --app-primary-text: #964A27;
     /* Icon colour on the accent / status pills behind swipe rows. */
     --app-on-accent: #FFFFFF;
     /* Brand gradient, deepened, for the buttons that carry white text. */
@@ -2010,6 +2010,14 @@ button.chip::after {
    when the field is focused (it does for anything under 16px). */
 .adm-search-bar {
     --height: 44px;
+    /* The field fill and the 12px corner of every field (DESIGN, Fields): without a fill the bar
+       was the colour of the page, and in the dark theme it did not read as a field at all. */
+    --background: var(--app-field-fill);
+    --border-radius: var(--radius-md);
+}
+
+.adm-search-bar .adm-search-bar-input-box .adm-search-bar-input-box-icon {
+    color: var(--app-text-secondary);
 }
 
 .adm-search-bar .adm-input-element {
@@ -2185,6 +2193,31 @@ button.chip::after {
 
 .picker-value--empty {
     color: var(--app-text-placeholder);
+}
+
+/* A narrow phone (320-359px): the label took 40% of the row and left a value 150px, so
+   «Не указано (например, для прививок и страховки)» and «Выберите категорию» were cut. The label
+   stands over its value instead, and a placeholder may wrap rather than lose its end. */
+@media (max-width: 359px) {
+    .adm-form .adm-form-item-horizontal > .adm-list-item-content {
+        flex-wrap: wrap;
+    }
+
+    .adm-form .adm-form-item-horizontal .adm-list-item-content-prefix {
+        width: 100%;
+        padding-right: 0;
+        padding-top: var(--spacing-sm);
+    }
+
+    .adm-form .adm-form-item-horizontal .adm-list-item-content-main {
+        flex: 1 1 100%;
+        padding-top: 0;
+    }
+
+    .picker-value {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }
 
 /* A link standing on its own under a form («Забыли пароль?», «Войти»):
