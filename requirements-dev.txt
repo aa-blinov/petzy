@@ -12,8 +12,8 @@ pytest-cov==7.1.0
 # предсказуемым.
 pytest-xdist==3.8.0
 mongomock==4.3.0
-ruff==0.17.1
+ruff==0.17.2
 moto[s3,server]>=5.2.4
-pypdf==6.21.1
+pypdf==6.21.2
 # Checks the published document against the OpenAPI 3.0 schema: tests/stateless/test_openapi_30.py.
 openapi-spec-validator==0.9.0
