@@ -1300,6 +1300,25 @@ a,
     border-color: var(--app-text-secondary);
 }
 
+/* antd-mobile hides the native checkbox with display: none, so Tab skipped every checkbox and a keyboard user
+   could not tick the consent at sign-up. The input now stays in the tab order, invisible, and the focus ring is
+   drawn on the box it controls. The label still takes the tap as before. */
+.adm-checkbox input[type='checkbox'] {
+    display: block !important;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.adm-checkbox input[type='checkbox']:focus-visible ~ .adm-checkbox-icon {
+    outline: 2px solid var(--app-primary-color);
+    outline-offset: 2px;
+}
+
 /* Selector chips (weekday row, options) stay compact on screen but get
    the same 44px hit area as .touch-target. antd clips both the chip and
    the group (overflow: hidden, for the corner checkmark hidden below),

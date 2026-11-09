@@ -315,6 +315,11 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
     navigate('/', { replace: true });
   };
 
+  const browseFirst = () => {
+    dismissOnboarding(username);
+    navigate('/', { replace: true });
+  };
+
   const speciesMeta = getSpecies(species);
   const SpeciesIcon = speciesMeta.icon;
   const displayName = (createdPet?.name ?? name.trim()) || 'Питомец';
@@ -418,10 +423,18 @@ function OnboardingFlow({ initialReplay }: { initialReplay: boolean }) {
           />
         </div>
       );
+      // Looking around first is a way out too: the feed then says it is empty and offers to add a pet, so nothing is
+      // stuck behind the pet's form. Without it the only exit was the claim that a pet is coming, which is not true of
+      // someone who just wants to look.
       secondary = (
-        <button type="button" className="onb__secondary tap-feedback" onClick={waitForShare}>
-          Со мной поделятся питомцем
-        </button>
+        <>
+          <button type="button" className="onb__secondary tap-feedback" onClick={waitForShare}>
+            Со мной поделятся питомцем
+          </button>
+          <button type="button" className="onb__secondary tap-feedback" onClick={browseFirst}>
+            Посмотреть сначала
+          </button>
+        </>
       );
       break;
     case 'name': {
