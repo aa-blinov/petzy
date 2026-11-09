@@ -47,6 +47,7 @@ Confirmed by the code:
 - An MCP server with five tools: `list_pets`, `list_event_types`, `add_event`, `get_history`, `get_medical_card`.
 - Web Push reminders in steps, to everyone with access to the pet: "soon" at 14 and at 3 days for a vaccination, at 7 and at 3 for a parasite treatment, "today", "overdue", and "still overdue" a week later.
 - A record removed by a swipe disappears at once and stays undoable for six seconds.
+- A person with no pet yet can look around before adding one: on the step «Кто живёт у вас?» «Посмотреть сначала» opens the feed, which says it is empty and offers to add a pet. The step also offers «Со мной поделятся питомцем» for a pet shared by a family.
 - Personal data under 152-FZ and Law of the Republic of Kazakhstan No. 94-V: the consent and the version of the policy are recorded at registration, and a user deletes their own account.
 
 Deliberately not true, and worth knowing before a change:
@@ -89,6 +90,7 @@ Absent, and not to be invented: no reviews, no customers, no usage numbers. The 
 
 - **Large touch targets**, from 44px (`--touch-min`), on every control including the small chips and the links.
 - **Both themes carry enough contrast.** `e2e/check_accent_contrast.py` measures what lands on a pet's colour against the seven pet colours in both themes, on the rendered pixels, with a bar of 4.5:1.
+- **Every checkbox is reachable with Tab and ticked with Space**, the consent at sign-up included. The focus ring is drawn on the box itself (`globals.css`, `.adm-checkbox`).
 - **A visible focus ring** for the keyboard, and an open sheet or dialog that keeps the Tab inside it and returns the focus to what opened it (`utils/antdA11y.ts`).
 - **A status is a word and an icon**, never only a colour: "overdue", "not stated", "still overdue", with the days counted.
 - **The interface reads on a narrow screen** and works as a PWA on a phone.

@@ -15,7 +15,12 @@ All notable changes to petzy. Versions are ordered newest first.
 
 ### Added
 
-- Nothing yet.
+- A person with no pet can look around before adding one: «Посмотреть сначала» on the first pet step opens the feed, which says it is empty and offers to add a pet.
+
+### Fixed
+
+- The sheet with all vaccinations and treatments fits the screen and scrolls inside, so the vaccinations below the treatments can be reached, and scrolling back to the top no longer closes the sheet. The weight sheet has the same height.
+- Every checkbox, the consent at sign-up included, can be reached with Tab and ticked with Space.
 
 ## 0.1.0 — 2026
 

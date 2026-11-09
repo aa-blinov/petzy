@@ -1,3 +1,18 @@
 {
-  "buildPath": "code"
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "frontend/src/pages/Onboarding.css"
+        ],
+        "createdAt": "2026-11-09T10:03:59.402Z",
+        "reason": "DESIGN.md sanctions the brand gradient on the Petzy wordmark only (line 228, 437: 'Nowhere else'). The rule is the one at Onboarding.css onb-wordmark, the welcome wordmark. Decided by the design system, not by a user confirmation."
+      }
+    ]
+  }
 }
