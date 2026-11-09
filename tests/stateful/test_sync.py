@@ -10,7 +10,9 @@ from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
 
-BASE = datetime(2026, 10, 1, 12, 0, 0)  # naive UTC, as the database keeps moments
+# Naive UTC, as the database keeps moments, and a few days back from today: a fixed date drifted out of the 30 days
+# the feed answers for, and the feed then answered `reset` with nothing in it.
+BASE = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0) - timedelta(days=3)
 UTC_TO_THE_SECOND = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
