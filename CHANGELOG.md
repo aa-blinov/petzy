@@ -15,6 +15,12 @@ All notable changes to petzy. Versions are ordered newest first.
 
 ### Added
 
+- Nothing yet.
+
+## 0.1.1 — 2026
+
+### Added
+
 - A person with no pet can look around before adding one: «Посмотреть сначала» on the first pet step opens the feed, which says it is empty and offers to add a pet.
 
 ### Fixed
