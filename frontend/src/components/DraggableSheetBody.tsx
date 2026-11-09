@@ -48,11 +48,15 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 /** Downward travel that commits the dismiss, in CSS px. */
 const DISMISS_AFTER_PX = 90;
 
+/** The card's ceiling when the sheet names none. Without one a long list grew past the screen: its foot was cut
+    off, the content region never scrolled, and pulling the list back up read as pulling the sheet shut. */
+export const DEFAULT_SHEET_MAX_HEIGHT = '85vh';
+
 export function DraggableSheetBody({
   visible,
   onClose,
   children,
-  maxHeight,
+  maxHeight = DEFAULT_SHEET_MAX_HEIGHT,
   label,
 }: {
   visible: boolean;
@@ -60,7 +64,7 @@ export function DraggableSheetBody({
   children: ReactNode;
   /** What the sheet is, for a screen reader: it is a dialog. */
   label?: string;
-  /** Ceiling for the card's height — taller content scrolls inside instead of growing past it. */
+  /** Ceiling for the card's height: taller content scrolls inside instead of growing past it. */
   maxHeight?: string;
 }) {
   const [dragY, setDragY] = useState(0);

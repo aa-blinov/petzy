@@ -632,7 +632,7 @@ function RecordsSheet({
   const title = kinds.includes('vaccination') ? 'Все прививки и обработки' : 'Все визиты и операции';
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
-      <DraggableSheetBody visible={visible} onClose={onClose} label={title}>
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="85vh" label={title}>
         <h2 className="medcard__sheet-title">{title}</h2>
         {all.isError ? (
           <p className="medcard__empty">Не удалось загрузить записи</p>
@@ -663,7 +663,7 @@ function WeightSheet({ visible, onClose, series }: { visible: boolean; onClose: 
   const before = series.slice(0, -1).slice(-6).reverse();
   return (
     <Popup visible={visible} onMaskClick={onClose} position="bottom" bodyStyle={{ background: 'transparent' }}>
-      <DraggableSheetBody visible={visible} onClose={onClose} label="Замеры веса">
+      <DraggableSheetBody visible={visible} onClose={onClose} maxHeight="85vh" label="Замеры веса">
         <h2 className="medcard__sheet-title">Замеры веса</h2>
         {before.length === 0 ? (
           <p className="medcard__empty">Замеров пока нет</p>
